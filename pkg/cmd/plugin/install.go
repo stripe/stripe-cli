@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 
+	goversion "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -111,12 +112,21 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if prevVersion != "" {
-		fmt.Println(color.Green(fmt.Sprintf("✔ upgraded from v%s to v%s.", prevVersion, version)))
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
 	} else {
 		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 	}
 
 	return nil
+}
+
+func versionChangeVerb(from, to string) string {
+	prev, prevErr := goversion.NewVersion(from)
+	next, nextErr := goversion.NewVersion(to)
+	if prevErr == nil && nextErr == nil && prev.GreaterThan(next) {
+		return "downgraded"
+	}
+	return "upgraded"
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
