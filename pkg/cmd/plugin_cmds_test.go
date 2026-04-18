@@ -133,6 +133,11 @@ func TestAddPluginSubcommandStubsSkipsEmptyName(t *testing.T) {
 	assert.Equal(t, "valid", cmds[1].Name())
 }
 
+func TestNewPluginTemplateCmdSetsValidArgsFunction(t *testing.T) {
+	pluginCmd := createPluginCmd()
+	assert.NotNil(t, pluginCmd.cmd.ValidArgsFunction, "ValidArgsFunction should be set on plugin commands for shell completion")
+}
+
 func TestSubsliceAfter(t *testing.T) {
 	tests := []struct {
 		name     string

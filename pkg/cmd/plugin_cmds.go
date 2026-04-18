@@ -37,6 +37,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 			pluginArgs := subsliceAfter(os.Args, cmd.Name())
 			return ptc.runPluginCmd(cmd, pluginArgs)
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return plugins.GetPluginCompletions(cmd.Context(), ptc.cfg, ptc.fs, plugin.Shortname, args, toComplete)
+		},
 		Annotations: map[string]string{"scope": "plugin"},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
