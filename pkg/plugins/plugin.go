@@ -215,6 +215,33 @@ func (p *Plugin) getReleaseForVersion(version string) *Release {
 	return nil
 }
 
+// IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
+func (p *Plugin) IsVersionInstalled(config config.IConfig, fs afero.Fs, version string) bool {
+	pluginDir := p.getPluginInstallPath(config, version)
+	pluginBinaryPath := filepath.Join(pluginDir, p.Binary) + GetBinaryExtension()
+	_, err := fs.Stat(pluginBinaryPath)
+	return err == nil
+}
+
+// InstalledVersion returns the currently installed version of the plugin, or empty string if none.
+func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
+	pluginsDir := getPluginsDir(config)
+	pluginDir := filepath.Join(pluginsDir, p.Shortname)
+
+	entries, err := afero.ReadDir(fs, pluginDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return entry.Name()
+		}
+	}
+
+	return ""
+}
+
 // Install installs the plugin of the given version
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)

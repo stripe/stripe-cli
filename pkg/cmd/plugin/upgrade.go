@@ -70,13 +70,24 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	version := plugin.LookUpLatestVersion()
 
-	err = plugin.Install(ctx, uc.cfg, uc.fs, version, uc.apiBaseURL)
+	color := ansi.Color(os.Stdout)
 
-	if err == nil {
-		color := ansi.Color(os.Stdout)
-		successMsg := fmt.Sprintf("✔ upgrade to v%s complete.", version)
-		fmt.Println(color.Green(successMsg))
+	if plugin.IsVersionInstalled(uc.cfg, uc.fs, version) {
+		fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
+		return nil
 	}
 
-	return err
+	prevVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
+
+	if err := plugin.Install(ctx, uc.cfg, uc.fs, version, uc.apiBaseURL); err != nil {
+		return err
+	}
+
+	if prevVersion != "" {
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
+	} else {
+		fmt.Println(color.Green(fmt.Sprintf("✔ upgrade to v%s complete.", version)))
+	}
+
+	return nil
 }
