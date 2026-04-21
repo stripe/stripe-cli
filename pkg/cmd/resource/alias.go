@@ -3,6 +3,8 @@ package resource
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 )
 
 // Aliases are mapped from resource name in the OpenAPI spec -> friendly name in the CLI
@@ -29,12 +31,9 @@ func GetAliases() map[string]string {
 // HideAliasedCommands performs the post-processing on the command tree to hide
 // resources that have an alias
 func HideAliasedCommands(rootCmd *cobra.Command) {
-	for _, cmd := range rootCmd.Commands() {
-		for principle := range aliasedCmds {
-			formattedPrinciple := GetResourceCmdName(principle)
-			if cmd.Use == formattedPrinciple {
-				cmd.Hidden = true
-			}
+	for principle := range aliasedCmds {
+		if cmd, ok := cmdutil.FindSubCmd(rootCmd, GetResourceCmdName(principle)); ok {
+			cmd.Hidden = true
 		}
 	}
 }
