@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 const claudeCodePluginHint = `<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />`
@@ -17,7 +19,7 @@ func emitClaudeCodePluginHint() {
 }
 
 func writeClaudeCodePluginHint(getEnv func(string) string, w io.Writer) {
-	if getEnv("CLAUDECODE") == "" {
+	if useragent.DetectAIAgent(getEnv) != "claude_code" {
 		return
 	}
 	fmt.Fprintln(w, claudeCodePluginHint)
