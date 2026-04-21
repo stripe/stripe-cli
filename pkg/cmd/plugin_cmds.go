@@ -110,7 +110,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
+	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "")
 	plugins.CleanupAllClients()
 
 	if err != nil {

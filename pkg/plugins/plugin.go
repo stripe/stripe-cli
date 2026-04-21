@@ -441,8 +441,9 @@ func buildAdditionalInfo(logger *log.Entry) *proto.AdditionalInfo {
 	}
 }
 
-// Run boots up the binary and then sends the command to it via RPC
-func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string) error {
+// Run boots up the binary and then sends the command to it via RPC.
+// cwd sets the working directory for the plugin process; an empty string uses the current directory.
+func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
@@ -495,6 +496,10 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		// Couldn't find release info, assume it's a standalone binary
 		cmd = exec.Command(pluginBinaryPath)
 		usesRuntime = false
+	}
+
+	if cwd != "" {
+		cmd.Dir = cwd
 	}
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
@@ -564,7 +569,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelper(ctx)); err != nil {
+		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelper(ctx, config, fs)); err != nil {
 			return err
 		}
 	default:
