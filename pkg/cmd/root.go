@@ -22,6 +22,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -227,16 +228,13 @@ func init() {
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
-	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
-	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
-	rootCmd.AddCommand(newPostCmd().reqs.Cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
@@ -250,6 +248,7 @@ func init() {
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
+	registerHTTPCmds(rootCmd)
 	err := resource.AddDatabasesCmd(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
@@ -284,11 +283,8 @@ func init() {
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
-	cmd, _, err := rootCmd.Find([]string{"v2", "billing"})
-	if err != nil {
-		// silently fail
-		return
+	if billingCmd, ok := cmdutil.FindSubCmd(rootCmd, "v2", "billing"); ok {
+		rBillingMeterEventStreamCmd := resource.NewResourceCmd(billingCmd, "meter_event_stream")
+		resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 	}
-	rBillingMeterEventStreamCmd := resource.NewResourceCmd(cmd, "meter_event_stream")
-	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 }

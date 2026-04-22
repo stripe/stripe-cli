@@ -9,34 +9,44 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-type postCmd struct {
-	reqs requests.Base
-}
+func newPostCmd(isPreview bool) *requests.Base {
+	reqs := &requests.Base{
+		Method:           http.MethodPost,
+		Profile:          &Config.Profile,
+		IsPreviewCommand: isPreview,
+	}
 
-func newPostCmd() *postCmd {
-	gc := &postCmd{}
+	preview := ""
+	verb := "POST"
+	if isPreview {
+		preview = "preview "
+		verb = "preview POST"
+	}
 
-	gc.reqs.Method = http.MethodPost
-	gc.reqs.Profile = &Config.Profile
-	gc.reqs.Cmd = &cobra.Command{
+	previewNote := ""
+	if isPreview {
+		previewNote = "\nThe preview Stripe-Version header is set automatically on all requests.\n"
+	}
+
+	reqs.Cmd = &cobra.Command{
 		Use:   "post <path>",
 		Args:  validators.ExactArgs(1),
-		Short: "Make a POST request to the Stripe API",
-		Long: `Make POST requests to the Stripe API using your test mode key.
+		Short: "Make a " + verb + " request to the Stripe API",
+		Long: `Make ` + verb + ` requests to the Stripe API using your test mode key.
 
 The post command supports API features like idempotency keys and expand flags.
-
+` + previewNote + `
 For a full list of supported paths, see the API reference:
 https://stripe.com/docs/api
 `,
-		Example: `stripe post /payment_intents \
+		Example: `stripe ` + preview + `post /payment_intents \
     -d amount=2000 \
     -d currency=usd \
     -d "payment_method_types[]=card"`,
-		RunE: gc.reqs.RunRequestsCmd,
+		RunE: reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags()
+	reqs.InitFlags()
 
-	return gc
+	return reqs
 }

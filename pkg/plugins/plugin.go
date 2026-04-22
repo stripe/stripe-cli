@@ -35,6 +35,8 @@ var (
 	PluginsPath string
 )
 
+const localDevelopmentVersion = "local.build.dev"
+
 // CommandInfo describes a plugin subcommand for tree display (e.g. in --map).
 type CommandInfo struct {
 	Name     string        `toml:"Name" json:"name"`
@@ -97,6 +99,32 @@ func (p *Plugin) getPluginInstallPath(config config.IConfig, version string) str
 	cleanedPath := filepath.Clean(pluginPath)
 
 	return cleanedPath
+}
+
+func isLocalDevelopmentVersion(version string) bool {
+	return version == localDevelopmentVersion
+}
+
+func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (string, error) {
+	localDevPath := p.getPluginInstallPath(config, localDevelopmentVersion)
+	localDevExists, err := afero.DirExists(fs, localDevPath)
+	if err != nil {
+		return "", err
+	}
+	if localDevExists {
+		return localDevelopmentVersion, nil
+	}
+
+	localPluginDir := filepath.Join(getPluginsDir(config), p.Shortname, "*.*.*")
+	existingLocalPlugin, err := afero.Glob(fs, localPluginDir)
+	if err != nil {
+		return "", err
+	}
+	if len(existingLocalPlugin) == 0 {
+		return "", nil
+	}
+
+	return filepath.Base(existingLocalPlugin[0]), nil
 }
 
 // cleanUpPluginPath empties the plugin folder except for the version specified
@@ -185,6 +213,33 @@ func (p *Plugin) getReleaseForVersion(version string) *Release {
 	}
 
 	return nil
+}
+
+// IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
+func (p *Plugin) IsVersionInstalled(config config.IConfig, fs afero.Fs, version string) bool {
+	pluginDir := p.getPluginInstallPath(config, version)
+	pluginBinaryPath := filepath.Join(pluginDir, p.Binary) + GetBinaryExtension()
+	_, err := fs.Stat(pluginBinaryPath)
+	return err == nil
+}
+
+// InstalledVersion returns the currently installed version of the plugin, or empty string if none.
+func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
+	pluginsDir := getPluginsDir(config)
+	pluginDir := filepath.Join(pluginsDir, p.Shortname)
+
+	entries, err := afero.ReadDir(fs, pluginDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return entry.Name()
+		}
+	}
+
+	return ""
 }
 
 // Install installs the plugin of the given version
@@ -335,6 +390,10 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 // verifyChecksum is to be used during installation only
 // hcplugins takes care of the boot time verification for us
 func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
+	if isLocalDevelopmentVersion(version) {
+		return nil
+	}
+
 	expectedSum, err := p.getChecksum(version)
 	if err != nil {
 		return err
@@ -382,8 +441,9 @@ func buildAdditionalInfo(logger *log.Entry) *proto.AdditionalInfo {
 	}
 }
 
-// Run boots up the binary and then sends the command to it via RPC
-func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string) error {
+// Run boots up the binary and then sends the command to it via RPC.
+// cwd sets the working directory for the plugin process; an empty string uses the current directory.
+func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
@@ -391,24 +451,21 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	var version string
 
 	if PluginsPath != "" {
-		version = "local.build.dev"
+		version = localDevelopmentVersion
 	} else {
-		// first perform a naive glob of the plugins/name dir for an existing version
-		localPluginDir := filepath.Join(getPluginsDir(config), p.Shortname, "*.*.*")
-		existingLocalPlugin, err := filepath.Glob(localPluginDir)
+		var err error
+		version, err = p.lookUpInstalledVersion(config, fs)
 		if err != nil {
 			return err
 		}
 
 		// if plugin is not installed locally, then we should install it first
-		if len(existingLocalPlugin) == 0 {
+		if version == "" {
 			version = p.LookUpLatestVersion()
 			err := p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
 			if err != nil {
 				return err
 			}
-		} else {
-			version = filepath.Base(existingLocalPlugin[0])
 		}
 	}
 
@@ -441,6 +498,10 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		usesRuntime = false
 	}
 
+	if cwd != "" {
+		cmd.Dir = cwd
+	}
+
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
 	timeout, _ := time.ParseDuration("10s")
 
@@ -465,7 +526,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	// Only validate checksum for standalone binaries, not when using a runtime
 	// When using a runtime, cmd.Path points to the node binary, not the plugin
-	if !usesRuntime {
+	if !usesRuntime && !isLocalDevelopmentVersion(version) {
 		sum, err := p.getChecksum(version)
 		if err != nil {
 			return err
@@ -508,7 +569,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelper(ctx)); err != nil {
+		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelper(ctx, config, fs)); err != nil {
 			return err
 		}
 	default:
