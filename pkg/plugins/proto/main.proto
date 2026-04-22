@@ -39,6 +39,7 @@ service CoreCLIHelper {
   rpc KeychainSetPassword(KeychainSetPasswordRequest) returns (KeychainSetPasswordResponse);
   rpc KeychainDeletePassword(KeychainDeletePasswordRequest) returns (KeychainDeletePasswordResponse);
   rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse);
+  rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
 }
 
 message EchoRequest {
@@ -87,4 +88,13 @@ message KeychainFindCredentialsRequest {
 
 message KeychainFindCredentialsResponse {
   repeated string keys = 1;
+}
+
+message RunPeerPluginRequest {
+  string plugin_name = 1;
+  repeated string args = 2;
+  string cwd = 3;
+}
+
+message RunPeerPluginResponse {
 }
