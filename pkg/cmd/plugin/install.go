@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 
+	goversion "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -65,18 +66,40 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (version string, err error) {
-	pluginName, version := parseInstallArg(arg)
+func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+		return err
+	}
+
+	color := ansi.Color(os.Stdout)
+
+	// Refresh the plugin before proceeding
+	if err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
+		return err
+	}
+
+	pluginName, version := parseInstallArg(args[0])
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
-
 	if err != nil {
-		return version, err
+		return err
 	}
 
-	if len(version) == 0 {
+	isLatest := len(version) == 0
+	if isLatest {
 		version = plugin.LookUpLatestVersion()
 	}
+
+	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
+		if isLatest {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
+		} else {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed.", version)))
+		}
+		return nil
+	}
+
+	prevVersion := plugin.InstalledVersion(ic.cfg, ic.fs)
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
@@ -84,34 +107,26 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (versi
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
-
-	return version, err
-}
-
-func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+	if err := plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL); err != nil {
 		return err
 	}
 
-	var err error
-	var version string
-	color := ansi.Color(os.Stdout)
-
-	// Refresh the plugin before proceeding
-	err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
-	if err != nil {
-		return err
+	if prevVersion != "" {
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
+	} else {
+		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 	}
-
-	version, err = ic.installPluginByName(cmd, args[0])
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 
 	return nil
+}
+
+func versionChangeVerb(from, to string) string {
+	prev, prevErr := goversion.NewVersion(from)
+	next, nextErr := goversion.NewVersion(to)
+	if prevErr == nil && nextErr == nil && prev.GreaterThan(next) {
+		return "downgraded"
+	}
+	return "upgraded"
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {

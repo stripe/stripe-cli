@@ -127,6 +127,7 @@ const (
 	CoreCLIHelper_KeychainSetPassword_FullMethodName     = "/proto.CoreCLIHelper/KeychainSetPassword"
 	CoreCLIHelper_KeychainDeletePassword_FullMethodName  = "/proto.CoreCLIHelper/KeychainDeletePassword"
 	CoreCLIHelper_KeychainFindCredentials_FullMethodName = "/proto.CoreCLIHelper/KeychainFindCredentials"
+	CoreCLIHelper_RunPeerPlugin_FullMethodName           = "/proto.CoreCLIHelper/RunPeerPlugin"
 )
 
 // CoreCLIHelperClient is the client API for CoreCLIHelper service.
@@ -139,6 +140,7 @@ type CoreCLIHelperClient interface {
 	KeychainSetPassword(ctx context.Context, in *KeychainSetPasswordRequest, opts ...grpc.CallOption) (*KeychainSetPasswordResponse, error)
 	KeychainDeletePassword(ctx context.Context, in *KeychainDeletePasswordRequest, opts ...grpc.CallOption) (*KeychainDeletePasswordResponse, error)
 	KeychainFindCredentials(ctx context.Context, in *KeychainFindCredentialsRequest, opts ...grpc.CallOption) (*KeychainFindCredentialsResponse, error)
+	RunPeerPlugin(ctx context.Context, in *RunPeerPluginRequest, opts ...grpc.CallOption) (*RunPeerPluginResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -209,6 +211,16 @@ func (c *coreCLIHelperClient) KeychainFindCredentials(ctx context.Context, in *K
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) RunPeerPlugin(ctx context.Context, in *RunPeerPluginRequest, opts ...grpc.CallOption) (*RunPeerPluginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunPeerPluginResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_RunPeerPlugin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
@@ -219,6 +231,7 @@ type CoreCLIHelperServer interface {
 	KeychainSetPassword(context.Context, *KeychainSetPasswordRequest) (*KeychainSetPasswordResponse, error)
 	KeychainDeletePassword(context.Context, *KeychainDeletePasswordRequest) (*KeychainDeletePasswordResponse, error)
 	KeychainFindCredentials(context.Context, *KeychainFindCredentialsRequest) (*KeychainFindCredentialsResponse, error)
+	RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -246,6 +259,9 @@ func (UnimplementedCoreCLIHelperServer) KeychainDeletePassword(context.Context, 
 }
 func (UnimplementedCoreCLIHelperServer) KeychainFindCredentials(context.Context, *KeychainFindCredentialsRequest) (*KeychainFindCredentialsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method KeychainFindCredentials not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunPeerPlugin not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -376,6 +392,24 @@ func _CoreCLIHelper_KeychainFindCredentials_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_RunPeerPlugin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunPeerPluginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).RunPeerPlugin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_RunPeerPlugin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).RunPeerPlugin(ctx, req.(*RunPeerPluginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -406,6 +440,10 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "KeychainFindCredentials",
 			Handler:    _CoreCLIHelper_KeychainFindCredentials_Handler,
+		},
+		{
+			MethodName: "RunPeerPlugin",
+			Handler:    _CoreCLIHelper_RunPeerPlugin_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
