@@ -22,6 +22,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -280,11 +281,8 @@ func init() {
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
-	cmd, _, err := rootCmd.Find([]string{"v2", "billing"})
-	if err != nil {
-		// silently fail
-		return
+	if billingCmd, ok := cmdutil.FindSubCmd(rootCmd, "v2", "billing"); ok {
+		rBillingMeterEventStreamCmd := resource.NewResourceCmd(billingCmd, "meter_event_stream")
+		resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 	}
-	rBillingMeterEventStreamCmd := resource.NewResourceCmd(cmd, "meter_event_stream")
-	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 }
