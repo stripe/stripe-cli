@@ -68,6 +68,15 @@ type Release struct {
 	Runtime map[string]string `toml:"Runtime,omitempty"`
 }
 
+type releaseChecksumNotFoundError struct {
+	plugin  string
+	version string
+}
+
+func (e *releaseChecksumNotFoundError) Error() string {
+	return fmt.Sprintf("could not locate a valid checksum for %s version %s", e.plugin, e.version)
+}
+
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
 func (p *Plugin) getPluginInterface() (hcplugin.HandshakeConfig, map[int]hcplugin.PluginSet) {
 	handshakeConfig := hcplugin.HandshakeConfig{
@@ -163,21 +172,12 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 
 // getChecksum does what it says on the tin - it returns the checksum for a specific plugin version
 func (p *Plugin) getChecksum(version string) ([]byte, error) {
-	opsystem := runtime.GOOS
-	arch := runtime.GOARCH
-
-	var expectedSum string
-	for _, pkg := range p.Releases {
-		if pkg.OS == opsystem && pkg.Arch == arch && pkg.Version == version {
-			expectedSum = pkg.Sum
-		}
+	release := p.getReleaseForVersion(version)
+	if release == nil || release.Sum == "" {
+		return nil, &releaseChecksumNotFoundError{plugin: p.Shortname, version: version}
 	}
 
-	if expectedSum == "" {
-		return nil, fmt.Errorf("could not locate a valid checksum for %s version %s", p.Shortname, version)
-	}
-
-	decoded, err := hex.DecodeString(expectedSum)
+	decoded, err := hex.DecodeString(release.Sum)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode checksum for %s version %s", p.Shortname, version)
 	}
@@ -240,6 +240,56 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 	}
 
 	return ""
+}
+
+func (p *Plugin) installLatestVersion(ctx context.Context, cfg config.IConfig, fs afero.Fs, baseURL string) (string, error) {
+	version := p.LookUpLatestVersion()
+	if version == "" {
+		return "", fmt.Errorf("could not find a release for %s on %s/%s", p.Shortname, runtime.GOOS, runtime.GOARCH)
+	}
+
+	if err := p.Install(ctx, cfg, fs, version, baseURL); err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
+func (p *Plugin) resolveVersionForRun(ctx context.Context, cfg config.IConfig, fs afero.Fs, baseURL string) (string, error) {
+	if PluginsPath != "" {
+		return localDevelopmentVersion, nil
+	}
+
+	version, err := p.lookUpInstalledVersion(cfg, fs)
+	if err != nil {
+		return "", err
+	}
+
+	if version == "" {
+		return p.installLatestVersion(ctx, cfg, fs, baseURL)
+	}
+
+	if isLocalDevelopmentVersion(version) {
+		return version, nil
+	}
+
+	if _, err := p.getChecksum(version); err != nil {
+		var missingChecksumErr *releaseChecksumNotFoundError
+		if errors.As(err, &missingChecksumErr) {
+			latestVersion := p.LookUpLatestVersion()
+			if latestVersion != "" && latestVersion != version {
+				log.WithFields(log.Fields{
+					"prefix": "plugins.plugin.resolveVersionForRun",
+				}).Debugf("Installed plugin version %s is not in the current manifest, installing latest version %s", version, latestVersion)
+
+				return p.installLatestVersion(ctx, cfg, fs, baseURL)
+			}
+		}
+
+		return "", err
+	}
+
+	return version, nil
 }
 
 // Install installs the plugin of the given version
@@ -448,25 +498,9 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		"prefix": "plugins.plugin.Run",
 	})
 
-	var version string
-
-	if PluginsPath != "" {
-		version = localDevelopmentVersion
-	} else {
-		var err error
-		version, err = p.lookUpInstalledVersion(config, fs)
-		if err != nil {
-			return err
-		}
-
-		// if plugin is not installed locally, then we should install it first
-		if version == "" {
-			version = p.LookUpLatestVersion()
-			err := p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
-			if err != nil {
-				return err
-			}
-		}
+	version, err := p.resolveVersionForRun(ctx, config, fs, stripe.DefaultAPIBaseURL)
+	if err != nil {
+		return err
 	}
 
 	pluginDir := p.getPluginInstallPath(config, version)

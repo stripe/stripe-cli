@@ -197,6 +197,41 @@ func TestLookUpInstalledVersionFallsBackToInstalledRelease(t *testing.T) {
 	require.Equal(t, "1.0.1", version)
 }
 
+func TestResolveVersionForRunInstallsLatestIfInstalledVersionIsMissingFromManifest(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	err := plugin.Install(context.Background(), config, fs, "0.0.1", testServers.StripeServer.URL)
+	require.NoError(t, err)
+
+	filteredReleases := make([]Release, 0, len(plugin.Releases))
+	for _, release := range plugin.Releases {
+		if release.Version == "2.0.1" {
+			filteredReleases = append(filteredReleases, release)
+		}
+	}
+	plugin.Releases = filteredReleases
+
+	version, err := plugin.resolveVersionForRun(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, "2.0.1", version)
+
+	latestFile := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	latestFileExists, err := afero.Exists(fs, latestFile)
+	require.NoError(t, err)
+	require.True(t, latestFileExists)
+
+	oldFile := fmt.Sprintf("/plugins/appA/0.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	oldFileExists, err := afero.Exists(fs, oldFile)
+	require.NoError(t, err)
+	require.False(t, oldFileExists)
+}
+
 func TestCommandInfoParsedFromManifest(t *testing.T) {
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 	var pluginList PluginList
