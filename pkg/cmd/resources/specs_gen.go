@@ -97,6 +97,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether external account collection is enabled",
 		},
+		"components.balance_report.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Whether the embedded component is enabled",
+		},
 		"components.balances.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
@@ -305,6 +309,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
 		},
+		"components.payout_reconciliation_report.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Whether the embedded component is enabled",
+		},
 		"components.payouts.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
@@ -469,6 +477,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.amazon_pay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.app_distribution.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -657,6 +669,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.sofort_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.sunbit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -1397,8 +1413,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "The type of Stripe account to create",
-			MostCommon:       true,
+			ShortDescription: "The `type` parameter is deprecated",
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 				{Value: "express"},
@@ -1600,6 +1615,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
+		"capabilities.app_distribution.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
 		"capabilities.au_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
@@ -1785,6 +1804,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.sofort_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.sunbit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -4549,6 +4572,10 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 				{Value: "zh-TW"},
 			},
 		},
+		"managed_payments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Set to `true` to enable [Managed Payments](https://docs.stripe.com/payments/managed-payments), Stripe's merchant of record solution, for this session",
+		},
 		"mode": {
 			Type:             "string",
 			ShortDescription: "The mode of the Checkout Session",
@@ -5306,11 +5333,60 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
 		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
+		},
 		"payment_method_options.pix.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.revolut_pay.capture_method": {
@@ -6270,6 +6346,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -7406,6 +7483,7 @@ var V1CustomersListPaymentMethods = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -9620,6 +9698,39 @@ var V1InvoicesCreate = resource.OperationSpec{
 				{Value: "utility"},
 			},
 		},
+		"payment_settings.payment_method_options.pix.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_settings.payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
 		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
 			Type:             "array",
 			ShortDescription: "The account subcategories to use to filter for selectable accounts",
@@ -10397,6 +10508,39 @@ var V1InvoicesUpdate = resource.OperationSpec{
 				{Value: "tax"},
 				{Value: "utility"},
 			},
+		},
+		"payment_settings.payment_method_options.pix.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_settings.payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
 		},
 		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
 			Type:             "array",
@@ -11673,6 +11817,10 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The cardholder’s preferred locales (languages), ordered by preference",
 		},
+		"spending_controls.allowed_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be allowed",
+		},
 		"spending_controls.allowed_categories": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow",
@@ -11680,6 +11828,10 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		"spending_controls.allowed_merchant_countries": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing representing countries from which authorizations will be allowed",
+		},
+		"spending_controls.blocked_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be declined",
 		},
 		"spending_controls.blocked_categories": {
 			Type:             "array",
@@ -11855,6 +12007,10 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The cardholder’s preferred locales (languages), ordered by preference",
 		},
+		"spending_controls.allowed_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be allowed",
+		},
 		"spending_controls.allowed_categories": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow",
@@ -11862,6 +12018,10 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		"spending_controls.allowed_merchant_countries": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing representing countries from which authorizations will be allowed",
+		},
+		"spending_controls.blocked_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be declined",
 		},
 		"spending_controls.blocked_categories": {
 			Type:             "array",
@@ -12012,6 +12172,10 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 				{Value: "individual"},
 			},
 		},
+		"spending_controls.allowed_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be allowed",
+		},
 		"spending_controls.allowed_categories": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow",
@@ -12019,6 +12183,10 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"spending_controls.allowed_merchant_countries": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing representing countries from which authorizations will be allowed",
+		},
+		"spending_controls.blocked_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be declined",
 		},
 		"spending_controls.blocked_categories": {
 			Type:             "array",
@@ -12233,6 +12401,10 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 				{Value: "individual"},
 			},
 		},
+		"spending_controls.allowed_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be allowed",
+		},
 		"spending_controls.allowed_categories": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow",
@@ -12240,6 +12412,10 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"spending_controls.allowed_merchant_countries": {
 			Type:             "array",
 			ShortDescription: "Array of strings containing representing countries from which authorizations will be allowed",
+		},
+		"spending_controls.blocked_card_presences": {
+			Type:             "array",
+			ShortDescription: "Array of card presence statuses from which authorizations will be declined",
 		},
 		"spending_controls.blocked_categories": {
 			Type:             "array",
@@ -14381,6 +14557,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The total amount of tax on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
 		},
+		"amount_to_confirm": {
+			Type:             "integer",
+			ShortDescription: "Amount to confirm on the PaymentIntent",
+		},
 		"capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds will be captured from the customer's account",
@@ -14786,6 +14966,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -15779,11 +15960,60 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			ShortDescription: "The timestamp at which the Pix expires (between 10 and 1209600 seconds in the future)",
 			Format:           "unix-time",
 		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
+		},
 		"payment_method_options.pix.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.promptpay.setup_future_usage": {
@@ -16572,6 +16802,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -17565,11 +17796,60 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			ShortDescription: "The timestamp at which the Pix expires (between 10 and 1209600 seconds in the future)",
 			Format:           "unix-time",
 		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
+		},
 		"payment_method_options.pix.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.promptpay.setup_future_usage": {
@@ -18439,6 +18719,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -19432,11 +19713,60 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			ShortDescription: "The timestamp at which the Pix expires (between 10 and 1209600 seconds in the future)",
 			Format:           "unix-time",
 		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
+		},
 		"payment_method_options.pix.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.promptpay.setup_future_usage": {
@@ -19904,6 +20234,10 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"invoice_creation.invoice_data.rendering_options.template": {
 			Type:             "string",
 			ShortDescription: "ID of the invoice rendering template to use for this invoice",
+		},
+		"managed_payments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Set to `true` to enable [Managed Payments](https://docs.stripe.com/payments/managed-payments), Stripe's merchant of record solution, for this session",
 		},
 		"name_collection.business.enabled": {
 			Type:             "boolean",
@@ -20807,6 +21141,15 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 				{Value: "on"},
 			},
 		},
+		"sunbit.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
 		"swish.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
@@ -21368,6 +21711,15 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 				{Value: "on"},
 			},
 		},
+		"sunbit.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
 		"swish.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
@@ -21894,6 +22246,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -22044,6 +22397,7 @@ var V1PaymentMethodsList = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -25009,6 +25363,7 @@ var V1RadarValueListsCreate = resource.OperationSpec{
 			ShortDescription: "Type of the items in the value list",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
+				{Value: "account"},
 				{Value: "card_bin"},
 				{Value: "card_fingerprint"},
 				{Value: "case_sensitive_string"},
@@ -26423,6 +26778,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -26828,6 +27184,54 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.payto.mandate_options.start_date": {
 			Type:             "string",
 			ShortDescription: "Date, in YYYY-MM-DD format, from which payments will be collected",
+		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
 		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
@@ -27332,6 +27736,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -27737,6 +28142,54 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.payto.mandate_options.start_date": {
 			Type:             "string",
 			ShortDescription: "Date, in YYYY-MM-DD format, from which payments will be collected",
+		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
 		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
@@ -28265,6 +28718,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -28670,6 +29124,54 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.payto.mandate_options.start_date": {
 			Type:             "string",
 			ShortDescription: "Date, in YYYY-MM-DD format, from which payments will be collected",
+		},
+		"payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "Type of amount",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_method_options.pix.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Subscription name displayed to buyers in their bank app",
+		},
+		"payment_method_options.pix.mandate_options.start_date": {
+			Type:             "string",
+			ShortDescription: "Start date of the mandate, in `YYYY-MM-DD`",
 		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
@@ -30210,6 +30712,58 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 				{Value: "utility"},
 			},
 		},
+		"payment_settings.payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
 		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
 			Type:             "array",
 			ShortDescription: "The account subcategories to use to filter for selectable accounts",
@@ -30724,6 +31278,58 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "utility"},
 			},
 		},
+		"payment_settings.payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged, in `YYYY-MM-DD`",
+		},
+		"payment_settings.payment_method_options.pix.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Schedule at which the future payments will be charged",
+			Enum: []resource.EnumSpec{
+				{Value: "halfyearly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "weekly"},
+				{Value: "yearly"},
+			},
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_settings.payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
 		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
 			Type:             "array",
 			ShortDescription: "The account subcategories to use to filter for selectable accounts",
@@ -31004,7 +31610,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"type": {
 			Type:             "string",
-			ShortDescription: "Type of the tax ID, one of `ad_nrt`, `ae_trn`, `al_tin`, `am_tin`, `ao_tin`, `ar_cuit`, `au_abn`, `au_arn`, `aw_tin`, `az_tin`, `ba_tin`, `bb_tin`, `bd_bin`, `bf_ifu`, `bg_uic`, `bh_vat`, `bj_ifu`, `bo_tin`, `br_cnpj`, `br_cpf`, `bs_tin`, `by_tin`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `cd_nif`, `ch_uid`, `ch_vat`, `cl_tin`, `cm_niu`, `cn_tin`, `co_nit`, `cr_tin`, `cv_nif`, `de_stn`, `do_rcn`, `ec_ruc`, `eg_tin`, `es_cif`, `et_tin`, `eu_oss_vat`, `eu_vat`, `gb_vat`, `ge_vat`, `gn_nif`, `hk_br`, `hr_oib`, `hu_tin`, `id_npwp`, `il_vat`, `in_gst`, `is_vat`, `jp_cn`, `jp_rn`, `jp_trn`, `ke_pin`, `kg_tin`, `kh_tin`, `kr_brn`, `kz_bin`, `la_tin`, `li_uid`, `li_vat`, `lk_vat`, `ma_vat`, `md_vat`, `me_pib`, `mk_vat`, `mr_nif`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `ng_tin`, `no_vat`, `no_voec`, `np_pan`, `nz_gst`, `om_vat`, `pe_ruc`, `ph_tin`, `pl_nip`, `ro_tin`, `rs_pib`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `si_tin`, `sn_ninea`, `sr_fin`, `sv_nit`, `th_vat`, `tj_tin`, `tr_tin`, `tw_vat`, `tz_vat`, `ua_vat`, `ug_tin`, `us_ein`, `uy_ruc`, `uz_tin`, `uz_vat`, `ve_rif`, `vn_tin`, `za_vat`, `zm_tin`, or `zw_tin`",
+			ShortDescription: "Type of the tax ID, one of `ad_nrt`, `ae_trn`, `al_tin`, `am_tin`, `ao_tin`, `ar_cuit`, `au_abn`, `au_arn`, `aw_tin`, `az_tin`, `ba_tin`, `bb_tin`, `bd_bin`, `bf_ifu`, `bg_uic`, `bh_vat`, `bj_ifu`, `bo_tin`, `br_cnpj`, `br_cpf`, `bs_tin`, `by_tin`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `cd_nif`, `ch_uid`, `ch_vat`, `cl_tin`, `cm_niu`, `cn_tin`, `co_nit`, `cr_tin`, `cv_nif`, `de_stn`, `do_rcn`, `ec_ruc`, `eg_tin`, `es_cif`, `et_tin`, `eu_oss_vat`, `eu_vat`, `fo_vat`, `gb_vat`, `ge_vat`, `gi_tin`, `gn_nif`, `hk_br`, `hr_oib`, `hu_tin`, `id_npwp`, `il_vat`, `in_gst`, `is_vat`, `it_cf`, `jp_cn`, `jp_rn`, `jp_trn`, `ke_pin`, `kg_tin`, `kh_tin`, `kr_brn`, `kz_bin`, `la_tin`, `li_uid`, `li_vat`, `lk_vat`, `ma_vat`, `md_vat`, `me_pib`, `mk_vat`, `mr_nif`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `ng_tin`, `no_vat`, `no_voec`, `np_pan`, `nz_gst`, `om_vat`, `pe_ruc`, `ph_tin`, `pl_nip`, `py_ruc`, `ro_tin`, `rs_pib`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `si_tin`, `sn_ninea`, `sr_fin`, `sv_nit`, `th_vat`, `tj_tin`, `tr_tin`, `tw_vat`, `tz_vat`, `ua_vat`, `ug_tin`, `us_ein`, `uy_ruc`, `uz_tin`, `uz_vat`, `ve_rif`, `vn_tin`, `za_vat`, `zm_tin`, or `zw_tin`",
 			Required:         true,
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
@@ -31053,8 +31659,10 @@ var V1TaxIdsCreate = resource.OperationSpec{
 				{Value: "et_tin"},
 				{Value: "eu_oss_vat"},
 				{Value: "eu_vat"},
+				{Value: "fo_vat"},
 				{Value: "gb_vat"},
 				{Value: "ge_vat"},
+				{Value: "gi_tin"},
 				{Value: "gn_nif"},
 				{Value: "hk_br"},
 				{Value: "hr_oib"},
@@ -31063,6 +31671,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 				{Value: "il_vat"},
 				{Value: "in_gst"},
 				{Value: "is_vat"},
+				{Value: "it_cf"},
 				{Value: "jp_cn"},
 				{Value: "jp_rn"},
 				{Value: "jp_trn"},
@@ -31093,6 +31702,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 				{Value: "pe_ruc"},
 				{Value: "ph_tin"},
 				{Value: "pl_nip"},
+				{Value: "py_ruc"},
 				{Value: "ro_tin"},
 				{Value: "rs_pib"},
 				{Value: "ru_inn"},
@@ -32553,7 +33163,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.us.local_amusement_tax.jurisdiction": {
 			Type:             "string",
-			ShortDescription: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=amusement_tax#registration-types)",
 		},
 		"country_options.us.local_lease_tax.jurisdiction": {
 			Type:             "string",
@@ -34652,6 +35262,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
+				{Value: "sunbit"},
 				{Value: "swish"},
 				{Value: "twint"},
 				{Value: "upi"},
@@ -39749,6 +40360,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-01-28.clover"},
 				{Value: "2026-02-25.clover"},
 				{Value: "2026-03-25.dahlia"},
+				{Value: "2026-04-22.dahlia"},
 			},
 		},
 		"connect": {
@@ -39841,7 +40453,7 @@ var V2BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"cancel.identifier": {
 			Type:             "string",
-			ShortDescription: "Unique identifier for the event",
+			ShortDescription: "The identifier that was originally assigned to the meter event",
 			Required:         true,
 		},
 		"event_name": {
@@ -39851,7 +40463,7 @@ var V2BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "Specifies whether to cancel a single event or a range of events for a time period",
+			ShortDescription: "Specifies the type of cancellation",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
@@ -39886,6 +40498,100 @@ var V2BillingMeterEventsCreate = resource.OperationSpec{
 			Format:           "date-time",
 		},
 	},
+}
+
+var V2CommerceProductCatalogImportsCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v2/commerce/product_catalog/imports",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"feed_type": {
+			Type:             "string",
+			ShortDescription: "The type of catalog data to import",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "inventory"},
+				{Value: "pricing"},
+				{Value: "product"},
+			},
+		},
+		"mode": {
+			Type:             "string",
+			ShortDescription: "The strategy for handling existing catalog data during import",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "replace"},
+				{Value: "upsert"},
+			},
+		},
+	},
+}
+
+var V2CommerceProductCatalogImportsList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v2/commerce/product_catalog/imports",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created at the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_gt": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created after the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_gte": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created on or after the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_lt": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created before the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_lte": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created on or before the specified timestamp",
+			Format:           "date-time",
+		},
+		"feed_type": {
+			Type:             "string",
+			ShortDescription: "Filter by the type of feed data being imported",
+			Enum: []resource.EnumSpec{
+				{Value: "inventory"},
+				{Value: "pricing"},
+				{Value: "product"},
+			},
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "The maximum number of results per page",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "The page token",
+		},
+		"status": {
+			Type:             "string",
+			ShortDescription: "Filter by import status",
+			Enum: []resource.EnumSpec{
+				{Value: "awaiting_upload"},
+				{Value: "failed"},
+				{Value: "processing"},
+				{Value: "succeeded"},
+				{Value: "succeeded_with_errors"},
+			},
+		},
+	},
+}
+
+var V2CommerceProductCatalogImportsRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v2/commerce/product_catalog/imports/{id}",
+	Method: "GET",
 }
 
 var V2CoreAccountLinksCreate = resource.OperationSpec{
@@ -43583,6 +44289,18 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The region of the AWS event source",
 		},
+		"azure_event_grid.azure_region": {
+			Type:             "string",
+			ShortDescription: "The Azure region",
+		},
+		"azure_event_grid.azure_resource_group_name": {
+			Type:             "string",
+			ShortDescription: "The name of the Azure resource group",
+		},
+		"azure_event_grid.azure_subscription_id": {
+			Type:             "string",
+			ShortDescription: "The Azure subscription ID",
+		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An optional description of what the event destination is used for",
@@ -43624,6 +44342,7 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "amazon_eventbridge"},
+				{Value: "azure_event_grid"},
 				{Value: "webhook_endpoint"},
 			},
 		},
@@ -43780,7 +44499,7 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"calculation.tax.type": {
 			Type:             "string",
-			ShortDescription: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant",
+			ShortDescription: "Determines if tax is calculated automatically based on a PTC or manually based on rules defined by the business",
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "manual"},
@@ -43851,7 +44570,7 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"calculation.tax.type": {
 			Type:             "string",
-			ShortDescription: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant",
+			ShortDescription: "Determines if tax is calculated automatically based on a PTC or manually based on rules defined by the business",
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "manual"},
@@ -43992,7 +44711,7 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 		},
 		"payer.billing_profile": {
 			Type:             "string",
-			ShortDescription: "The ID of the Billing Profile object which determines how a bill will be paid",
+			ShortDescription: "The ID of the Billing Profile object which determines how a bill is paid",
 			Required:         true,
 		},
 	},
@@ -44407,7 +45126,7 @@ var V2PreviewBillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"cancel.identifier": {
 			Type:             "string",
-			ShortDescription: "Unique identifier for the event",
+			ShortDescription: "The identifier that was originally assigned to the meter event",
 			Required:         true,
 		},
 		"event_name": {
@@ -44417,7 +45136,7 @@ var V2PreviewBillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "Specifies whether to cancel a single event or a range of events for a time period",
+			ShortDescription: "Specifies the type of cancellation",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
@@ -44546,6 +45265,103 @@ var V2PreviewBillingProfilesUpdate = resource.OperationSpec{
 			ShortDescription: "An internal key you can use to search for a particular billing profile",
 		},
 	},
+}
+
+var V2PreviewCommerceProductCatalogImportsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/commerce/product_catalog/imports",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"feed_type": {
+			Type:             "string",
+			ShortDescription: "The type of catalog data to import",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "inventory"},
+				{Value: "pricing"},
+				{Value: "product"},
+			},
+		},
+		"mode": {
+			Type:             "string",
+			ShortDescription: "The strategy for handling existing catalog data during import",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "replace"},
+				{Value: "upsert"},
+			},
+		},
+	},
+}
+
+var V2PreviewCommerceProductCatalogImportsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/commerce/product_catalog/imports",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created at the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_gt": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created after the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_gte": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created on or after the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_lt": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created before the specified timestamp",
+			Format:           "date-time",
+		},
+		"created_lte": {
+			Type:             "string",
+			ShortDescription: "Filter for objects created on or before the specified timestamp",
+			Format:           "date-time",
+		},
+		"feed_type": {
+			Type:             "string",
+			ShortDescription: "Filter by the type of feed data being imported",
+			Enum: []resource.EnumSpec{
+				{Value: "inventory"},
+				{Value: "pricing"},
+				{Value: "product"},
+			},
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "The maximum number of results per page",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "The page token",
+		},
+		"status": {
+			Type:             "string",
+			ShortDescription: "Filter by import status",
+			Enum: []resource.EnumSpec{
+				{Value: "awaiting_upload"},
+				{Value: "failed"},
+				{Value: "processing"},
+				{Value: "succeeded"},
+				{Value: "succeeded_with_errors"},
+			},
+		},
+	},
+}
+
+var V2PreviewCommerceProductCatalogImportsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/commerce/product_catalog/imports/{id}",
+	Method:    "GET",
+	IsPreview: true,
 }
 
 var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
@@ -48438,6 +49254,7 @@ var V2PreviewCoreBatchJobsCreate = resource.OperationSpec{
 			ShortDescription: "The HTTP method to use when calling the endpoint",
 			Required:         true,
 			Enum: []resource.EnumSpec{
+				{Value: "delete"},
 				{Value: "post"},
 			},
 		},
@@ -48486,6 +49303,18 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 		"amazon_eventbridge.aws_region": {
 			Type:             "string",
 			ShortDescription: "The region of the AWS event source",
+		},
+		"azure_event_grid.azure_region": {
+			Type:             "string",
+			ShortDescription: "The Azure region",
+		},
+		"azure_event_grid.azure_resource_group_name": {
+			Type:             "string",
+			ShortDescription: "The name of the Azure resource group",
+		},
+		"azure_event_grid.azure_subscription_id": {
+			Type:             "string",
+			ShortDescription: "The Azure subscription ID",
 		},
 		"description": {
 			Type:             "string",
@@ -48691,7 +49520,9 @@ var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
 			ShortDescription: "Closed Enum",
 			Enum: []resource.EnumSpec{
 				{Value: "checking"},
+				{Value: "futsu"},
 				{Value: "savings"},
+				{Value: "toza"},
 			},
 		},
 		"confirmation_of_payee.business_type": {
@@ -48882,6 +49713,98 @@ var V2PreviewCoreVaultsUsBankAccountsUpdate = resource.OperationSpec{
 	},
 }
 
+var V2PreviewDataReportingsQueryRunsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/data/reporting/query_runs",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"result_options.compress_file": {
+			Type:             "boolean",
+			ShortDescription: "If set, the generated results file will be compressed into a ZIP folder",
+		},
+		"sql": {
+			Type:             "string",
+			ShortDescription: "The SQL to execute",
+			Required:         true,
+		},
+	},
+}
+
+var V2PreviewDataReportingsQueryRunsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/data/reporting/query_runs/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewExtendWorkflowRunsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/extend/workflow_runs",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "Restrict page size to no more than this number",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "Token of the current page in the list request",
+		},
+		"status": {
+			Type:             "array",
+			ShortDescription: "When retrieving Workflow Runs, include only those with the specified status values",
+		},
+		"workflow": {
+			Type:             "array",
+			ShortDescription: "When retrieving Workflow Runs, include only those associated with the Workflows specified",
+		},
+	},
+}
+
+var V2PreviewExtendWorkflowRunsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/extend/workflow_runs/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewExtendWorkflowsInvoke = resource.OperationSpec{
+	Name:      "invoke",
+	Path:      "/v2/extend/workflows/{id}/invoke",
+	Method:    "POST",
+	IsPreview: true,
+}
+
+var V2PreviewExtendWorkflowsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/extend/workflows",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "Restrict page size to no more than this number",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "Token of the current page in the list request",
+		},
+		"status": {
+			Type:             "array",
+			ShortDescription: "When retrieving Workflows, include only those with the specified status values",
+		},
+	},
+}
+
+var V2PreviewExtendWorkflowsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/extend/workflows/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
 var V2PreviewFinancialAddressCreditSimulationsTestHelpersCredit = resource.OperationSpec{
 	Name:      "credit",
 	Path:      "/v2/test_helpers/financial_addresses/{id}/credit",
@@ -48921,6 +49844,31 @@ var V2PreviewFinancialAddressGeneratedMicrodepositssTestHelpersGenerateMicrodepo
 	Path:      "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits",
 	Method:    "POST",
 	IsPreview: true,
+}
+
+var V2PreviewIamActivityLogsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/iam/activity_logs",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"action_groups": {
+			Type:             "array",
+			ShortDescription: "Filter results to only include activity logs for the specified action group types",
+		},
+		"actions": {
+			Type:             "array",
+			ShortDescription: "Filter results to only include activity logs for the specified action types",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "Maximum number of results to return per page",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "Pagination token from a previous request",
+		},
+	},
 }
 
 var V2PreviewMoneyManagementAdjustmentsList = resource.OperationSpec{
@@ -49427,7 +50375,9 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 			ShortDescription: "Closed Enum",
 			Enum: []resource.EnumSpec{
 				{Value: "checking"},
+				{Value: "futsu"},
 				{Value: "savings"},
+				{Value: "toza"},
 			},
 		},
 		"payout_method_data.bank_account.branch_number": {
@@ -49529,7 +50479,9 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 			ShortDescription: "Closed Enum",
 			Enum: []resource.EnumSpec{
 				{Value: "checking"},
+				{Value: "futsu"},
 				{Value: "savings"},
+				{Value: "toza"},
 			},
 		},
 		"payout_method_data.bank_account.branch_number": {
@@ -49922,6 +50874,76 @@ var V2PreviewMoneyManagementTransactionsRetrieve = resource.OperationSpec{
 	Name:      "retrieve",
 	Path:      "/v2/money_management/transactions/{id}",
 	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewNetworkBusinessProfilesMe = resource.OperationSpec{
+	Name:      "me",
+	Path:      "/v2/network/business_profiles/me",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewNetworkBusinessProfilesRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/network/business_profiles/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewOrchestratedCommerceAgreementsConfirm = resource.OperationSpec{
+	Name:      "confirm",
+	Path:      "/v2/orchestrated_commerce/agreements/{id}/confirm",
+	Method:    "POST",
+	IsPreview: true,
+}
+
+var V2PreviewOrchestratedCommerceAgreementsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/orchestrated_commerce/agreements",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"orchestrator": {
+			Type:             "string",
+			ShortDescription: "The Network ID of the orchestrator to create an agreement with",
+			Required:         true,
+		},
+	},
+}
+
+var V2PreviewOrchestratedCommerceAgreementsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/orchestrated_commerce/agreements",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "The limit for the number of results per page",
+		},
+		"network_business_profile": {
+			Type:             "string",
+			ShortDescription: "Filter list to Orchestrated Commerce Agreements with a specific counterparty",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "The page token for pagination",
+		},
+	},
+}
+
+var V2PreviewOrchestratedCommerceAgreementsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/orchestrated_commerce/agreements/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewOrchestratedCommerceAgreementsTerminate = resource.OperationSpec{
+	Name:      "terminate",
+	Path:      "/v2/orchestrated_commerce/agreements/{id}/terminate",
+	Method:    "POST",
 	IsPreview: true,
 }
 
