@@ -68,6 +68,8 @@ type SampleConfigIntegration struct {
 	Clients []string `json:"clients"`
 	// Servers are the backend server implementations available for a sample
 	Servers []string `json:"servers"`
+	// ClientEnvOverrides maps client name to env var overrides applied during .env generation
+	ClientEnvOverrides map[string]map[string]string `json:"clientEnvOverrides,omitempty"`
 }
 
 func (i *SampleConfigIntegration) hasClients() bool {
@@ -382,6 +384,12 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		}
 		for k, v := range envVars {
 			dotenv[k] = v
+		}
+
+		if overrides, ok := s.SelectedConfig.Integration.ClientEnvOverrides[s.SelectedConfig.Client]; ok {
+			for k, v := range overrides {
+				dotenv[k] = v
+			}
 		}
 
 		envFile := filepath.Join(sampleLocation, "server", ".env")
