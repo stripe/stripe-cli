@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -14,6 +15,16 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
+
+var pluginTelemetryFlagsWithValues = map[string]struct{}{
+	"--api-key":      {},
+	"--color":        {},
+	"--config":       {},
+	"--device-name":  {},
+	"--log-level":    {},
+	"--project-name": {},
+	"-p":             {},
+}
 
 type pluginTemplateCmd struct {
 	cfg        *config.Config
@@ -141,4 +152,81 @@ func subsliceAfter(sl []string, str string) []string {
 		}
 	}
 	return make([]string, 0)
+}
+
+func resolvePluginTelemetryCommandPath(cmd *cobra.Command, argv []string) string {
+	if cmd == nil {
+		return ""
+	}
+
+	basePath := cmd.CommandPath()
+	pluginRoot := pluginRootCommand(cmd)
+	if pluginRoot == nil {
+		return basePath
+	}
+
+	// If Cobra already resolved plugin subcommand stubs from the manifest,
+	// trust that path instead of trying to infer it from argv.
+	if len(strings.Fields(basePath)) > len(strings.Fields(pluginRoot.CommandPath())) {
+		return basePath
+	}
+
+	pluginArgs := subsliceAfter(argv, pluginRoot.Name())
+	subcommand := firstPluginTelemetrySubcommand(pluginArgs)
+	if subcommand == "" {
+		return basePath
+	}
+
+	return basePath + " " + subcommand
+}
+
+func pluginRootCommand(cmd *cobra.Command) *cobra.Command {
+	if cmd == nil || !plugins.IsPluginCommand(cmd) {
+		return nil
+	}
+
+	pluginRoot := cmd
+	for pluginRoot.Parent() != nil && plugins.IsPluginCommand(pluginRoot.Parent()) {
+		pluginRoot = pluginRoot.Parent()
+	}
+
+	return pluginRoot
+}
+
+func firstPluginTelemetrySubcommand(args []string) string {
+	skipNext := false
+
+	for _, arg := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+
+		if arg == "--" {
+			break
+		}
+
+		if arg == "--help" || arg == "-h" || arg == "--version" || arg == "-v" {
+			continue
+		}
+
+		if strings.HasPrefix(arg, "--") {
+			flagName, _, hasValue := strings.Cut(arg, "=")
+			if _, ok := pluginTelemetryFlagsWithValues[flagName]; ok && !hasValue {
+				skipNext = true
+			}
+			continue
+		}
+
+		if strings.HasPrefix(arg, "-") && arg != "-" {
+			if _, ok := pluginTelemetryFlagsWithValues[arg]; ok {
+				skipNext = true
+			}
+			continue
+		}
+
+		return arg
+	}
+
+	return ""
 }
