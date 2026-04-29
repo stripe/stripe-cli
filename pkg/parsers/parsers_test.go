@@ -278,6 +278,30 @@ func TestParseInterfaceToJSON(t *testing.T) {
 	require.Equal(t, "tax_id_data[1][value]=value_1", output[7])
 }
 
+func TestParseInterfaceWithNulls(t *testing.T) {
+	taxIDData := make([]interface{}, 2)
+	taxIDZero := make(map[string]interface{})
+	taxIDZero["type"] = "type_0"
+	taxIDZero["value"] = nil
+	taxIDData[0] = taxIDZero
+	taxIDData[1] = nil
+
+	data := make(map[string]interface{})
+	data["name"] = "Bender Bending Rodriguez"
+	data["description"] = nil
+	data["tax_id_data"] = taxIDData
+
+	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
+	sort.Strings(output)
+
+	require.Equal(t, len(output), 5)
+	require.Equal(t, "description=", output[0])
+	require.Equal(t, "name=Bender Bending Rodriguez", output[1])
+	require.Equal(t, "tax_id_data[0][type]=type_0", output[2])
+	require.Equal(t, "tax_id_data[0][value]=", output[3])
+	require.Equal(t, "tax_id_data[]=", output[4])
+}
+
 func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	queryRespMap := map[string]gjson.Result{
 		"cust_bender": gjson.Parse(`{"id": "cust_bend123456789", "currency": "eur"}`),
