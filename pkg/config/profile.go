@@ -223,7 +223,10 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	if envKey != "" {
 		err := validators.APIKey(envKey)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf(
+				"invalid STRIPE_API_KEY environment variable: %w. STRIPE_API_KEY takes precedence over the CLI config file; unset it or pass --api-key with a valid key",
+				err,
+			)
 		}
 
 		return envKey, nil
