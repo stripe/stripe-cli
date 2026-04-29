@@ -48,6 +48,7 @@ require (
 	github.com/hashicorp/go-plugin v1.7.0
 	github.com/hashicorp/go-version v1.8.0
 	github.com/joho/godotenv v1.5.1
+	github.com/toon-format/toon-go v0.0.0-20251202084852-7ca0e27c4e8c
 	github.com/yuin/goldmark v1.2.1
 )
 

@@ -22,13 +22,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
+	"github.com/stripe/stripe-cli/pkg/outputformat"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
-
-const outputFormatJSON = "JSON"
 
 var newlineRegex = regexp.MustCompile("[\r\n]")
 
@@ -60,7 +59,7 @@ HTTP methods, IP addresses, paths, response status, and more.`,
   stripe logs tail --filter-http-methods GET
   stripe logs tail --filter-status-code-type 4XX`,
 		Annotations: map[string]string{
-			"ai_agent_help": "  Use `--format json` for machine-readable output.\n" +
+			"ai_agent_help": "  Use `--format json` or `--format toon` for structured output.\n" +
 				"  Filter with `--filter-http-methods`, `--filter-status-code-type`, or `--filter-request-path`.",
 		},
 		RunE: tailCmd.runTailCmd,
@@ -70,9 +69,7 @@ HTTP methods, IP addresses, paths, response status, and more.`,
 		&tailCmd.format,
 		"format",
 		"",
-		`Specifies the output format of request logs
-Acceptable values:
-	'JSON' - Output logs in JSON format`,
+		outputformat.StructuredFlagUsage("request logs"),
 	)
 
 	// Log filters
@@ -154,6 +151,12 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 }
 
 func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
+	if tailCmd.format != "" {
+		if err := outputformat.Validate(tailCmd.format); err != nil {
+			return err
+		}
+	}
+
 	if err := stripe.ValidateAPIBaseURL(tailCmd.apiBaseURL); err != nil {
 		return err
 	}
@@ -299,8 +302,12 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 
 			sanitizePayload(&log)
 
-			if strings.ToUpper(format) == outputFormatJSON {
-				fmt.Println(ansi.ColorizeJSON(de.Marshaled, false, os.Stdout))
+			if format != "" {
+				formatted, err := outputformat.RenderJSON([]byte(de.Marshaled), format, false, os.Stdout)
+				if err != nil {
+					return err
+				}
+				fmt.Println(formatted)
 				return nil
 			}
 

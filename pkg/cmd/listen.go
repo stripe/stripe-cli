@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/outputformat"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -27,7 +28,6 @@ const (
 	webhooksWebSocketFeature     = "webhooks"
 	destinationsWebSocketFeature = "v2_events"
 	timeLayout                   = "2006-01-02 15:04:05"
-	outputFormatJSON             = "JSON"
 )
 
 type listenCmd struct {
@@ -74,7 +74,7 @@ Stripe account.`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
-				"  Use `--format json` and pipe to `jq` for machine-readable event output.\n" +
+				"  Use `--format json` or `--format toon` for structured event output.\n" +
 				"  Use `--print-secret` to retrieve the webhook signing secret for signature verification.",
 		},
 		RunE: lc.runListenCmd,
@@ -92,9 +92,7 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
 	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format json` instead and use `jq` if you need to process the JSON in the terminal.")
-	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
-	Acceptable values:
-		'JSON' - Output webhook events in JSON format`)
+	lc.cmd.Flags().StringVar(&lc.format, "format", "", outputformat.StructuredFlagUsage("webhook events"))
 	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, "Load webhook endpoint configuration from the webhooks API/dashboard")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
@@ -124,6 +122,12 @@ Stripe account.`,
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	if lc.format != "" {
+		if err := outputformat.Validate(lc.format); err != nil {
+			return err
+		}
+	}
+
 	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
 		return err
 	}
@@ -285,10 +289,19 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 			return nil
 		},
 		VisitData: func(de websocket.DataElement) error {
+			structuredFormat := format
+			if printJSON {
+				structuredFormat = outputformat.FormatJSON
+			}
+
 			switch data := de.Data.(type) {
 			case proxy.V2EventPayload:
-				if strings.ToUpper(format) == outputFormatJSON || printJSON {
-					fmt.Println(de.Marshaled)
+				if structuredFormat != "" {
+					formatted, err := outputformat.RenderJSON([]byte(de.Marshaled), structuredFormat, false, os.Stdout)
+					if err != nil {
+						return err
+					}
+					fmt.Println(formatted)
 					return nil
 				}
 
@@ -309,8 +322,12 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				fmt.Println(outputStr)
 				return nil
 			case proxy.StripeEvent:
-				if strings.ToUpper(format) == outputFormatJSON || printJSON {
-					fmt.Println(de.Marshaled)
+				if structuredFormat != "" {
+					formatted, err := outputformat.RenderJSON([]byte(de.Marshaled), structuredFormat, false, os.Stdout)
+					if err != nil {
+						return err
+					}
+					fmt.Println(formatted)
 				} else {
 					maybeConnect := ""
 					if data.IsConnect() {

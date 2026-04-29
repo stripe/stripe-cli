@@ -62,6 +62,24 @@ func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 	assert.Equal(t, requests.StripePreviewVersionHeaderValue, result.PreviewAPIVersion)
 }
 
+func TestWhoamiNotAuthenticatedTOON(t *testing.T) {
+	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{
+		ProfileName: "default",
+		DeviceName:  "test-device",
+	}
+	wc.format = "toon"
+
+	out, err := runWhoami(t, wc)
+	assert.ErrorIs(t, err, errNotAuthenticated)
+	assert.Contains(t, out, "authenticated: false")
+	assert.Contains(t, out, "profile_name: default")
+	assert.Contains(t, out, "test_mode_key:")
+	assert.Contains(t, out, "live_mode_key:")
+}
+
 func TestWhoamiWithTestKey(t *testing.T) {
 	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 

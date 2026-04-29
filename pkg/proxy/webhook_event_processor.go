@@ -161,7 +161,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 	if p.events["*"] || p.events[evt.Type] {
 		p.cfg.OutCh <- websocket.DataElement{
 			Data:      evt,
-			Marshaled: formatOutput(outputFormatJSON, webhookEvent.EventPayload),
+			Marshaled: webhookEvent.EventPayload,
 		}
 
 		for _, endpoint := range p.endpointClients {
@@ -196,9 +196,11 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 		return
 	}
 
-	// notify consumers
+	// notify consumers — Marshaled carries the raw payload so the presentation
+	// layer (visitor) can apply formatting (JSON colorization, TOON, etc.)
 	p.cfg.OutCh <- websocket.DataElement{
-		Data: evt,
+		Data:      evt,
+		Marshaled: v2Event.Payload,
 	}
 
 	evtCtx := eventContext{

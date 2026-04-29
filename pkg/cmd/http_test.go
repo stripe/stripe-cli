@@ -16,6 +16,8 @@ func TestNewGetCmd(t *testing.T) {
 	require.NotNil(t, cmd.Cmd.Flags().Lookup("limit"))
 	require.NotNil(t, cmd.Cmd.Flags().Lookup("starting-after"))
 	require.NotNil(t, cmd.Cmd.Flags().Lookup("ending-before"))
+	require.Contains(t, cmd.Cmd.Flags().Lookup("format").Usage, "'json' - Output the response in JSON format (default)")
+	require.Contains(t, cmd.Cmd.Flags().Lookup("format").Usage, "'toon' - Output the response in TOON format")
 }
 
 func TestNewGetCmd_Preview(t *testing.T) {

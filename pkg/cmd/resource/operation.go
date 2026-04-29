@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/outputformat"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -46,6 +46,10 @@ type OperationCmd struct {
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
+	if err := outputformat.Validate(oc.Format); err != nil {
+		return err
+	}
+
 	if err := stripe.ValidateAPIBaseURL(oc.APIBaseURL); err != nil {
 		return err
 	}
@@ -71,8 +75,13 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		if err != nil {
 			return err
 		}
-		b, _ := json.MarshalIndent(output, "", "  ")
-		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+
+		formatted, err := outputformat.Marshal(output, oc.Format)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), string(formatted))
 		return nil
 	}
 

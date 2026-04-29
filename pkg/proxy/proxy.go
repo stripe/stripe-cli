@@ -2,20 +2,17 @@ package proxy
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -309,24 +306,6 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 	return session, err
 }
 
-// This function outputs the event payload in the format specified.
-// Currently only supports JSON.
-func formatOutput(format string, eventPayload string) string {
-	var event map[string]interface{}
-	err := json.Unmarshal([]byte(eventPayload), &event)
-	if err != nil {
-		return fmt.Sprintf("Received malformed event: %s", err)
-	}
-	switch strings.ToUpper(format) {
-	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
-	case outputFormatJSON:
-		outputJSON, _ := json.Marshal(event)
-		return fmt.Sprintln(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
-	default:
-		return fmt.Sprintf("Unrecognized output format %s\n", format)
-	}
-}
-
 //
 // Public functions
 //
@@ -519,8 +498,6 @@ const (
 	maxHeaderKeySize   = 50
 	maxHeaderValueSize = 200
 )
-
-const outputFormatJSON = "JSON"
 
 //
 // Private functions

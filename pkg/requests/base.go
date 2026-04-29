@@ -22,6 +22,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/outputformat"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
@@ -109,6 +110,7 @@ type Base struct {
 	SuppressOutput bool
 
 	DarkStyle bool
+	Format    string
 
 	APIBaseURL string
 
@@ -139,6 +141,10 @@ var confirmationCommands = map[string]bool{http.MethodDelete: true}
 
 // RunRequestsCmd is the interface exposed for the CLI to run network requests through
 func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
+	if err := outputformat.Validate(rb.Format); err != nil {
+		return err
+	}
+
 	if err := stripe.ValidateAPIBaseURL(rb.APIBaseURL); err != nil {
 		return err
 	}
@@ -162,8 +168,13 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		b, _ := json.MarshalIndent(output, "", "  ")
-		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+
+		formatted, err := outputformat.Marshal(output, rb.Format)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(cmd.OutOrStdout(), string(formatted))
 		return nil
 	}
 
@@ -200,6 +211,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
+	rb.Cmd.Flags().StringVar(&rb.Format, "format", "", outputformat.RequestFlagUsage())
 	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
@@ -347,7 +359,10 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			}
 			fmt.Printf("PDF saved to: %s\n", filename)
 		} else {
-			result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
+			result, err := outputformat.RenderJSON(body, rb.Format, rb.DarkStyle, os.Stdout)
+			if err != nil {
+				return []byte{}, err
+			}
 			fmt.Println(result)
 		}
 	}

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/outputformat"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -57,25 +57,33 @@ func newWhoamiCmd() *whoamiCmd {
 
 Reads credentials from the config file and keychain — no API calls are made.
 
-Use --format json for output suitable for scripting or agent consumption. The
-schema is stable: test_mode_key and live_mode_key are always present regardless
-of auth state, and authenticated: false indicates no usable credentials exist.
+Use --format json or --format toon for structured output suitable for scripting
+or agent consumption. The schema is stable: test_mode_key and live_mode_key are
+always present regardless of auth state, and authenticated: false indicates no
+usable credentials exist.
 
 Exit codes:
   0  Authenticated (at least one key is available)
   1  Not authenticated, or an error occurred`,
 		Example: `stripe whoami
   stripe whoami --format json
+  stripe whoami --format toon
   stripe whoami --project-name myproject --format json`,
 		RunE: wc.runWhoamiCmd,
 	}
 
-	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
+	wc.cmd.Flags().StringVar(&wc.format, "format", "", outputformat.StructuredFlagUsage("authentication state"))
 
 	return wc
 }
 
 func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
+	if wc.format != "" {
+		if err := outputformat.Validate(wc.format); err != nil {
+			return err
+		}
+	}
+
 	profile := wc.profile
 
 	testKey := resolveKeyInfo(profile, false)
@@ -98,8 +106,8 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	w := cmd.OutOrStdout()
-	if strings.EqualFold(wc.format, "json") {
-		b, err := json.MarshalIndent(out, "", "  ")
+	if wc.format != "" {
+		b, err := outputformat.Marshal(out, wc.format)
 		if err != nil {
 			return err
 		}
