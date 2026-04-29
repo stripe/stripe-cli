@@ -151,6 +151,12 @@ func ParseMapForFormData(params map[string]interface{}, parent string, index int
 			keyname = key
 		}
 
+		// Handle null values by sending an empty string
+		if value == nil {
+			data = append(data, fmt.Sprintf("%s=", keyname))
+			continue
+		}
+
 		// Check the type of the value for this pair. If this is a
 		// terminal type, append the data with the key. For maps and
 		// arrays, keep parsing.
@@ -227,6 +233,12 @@ func ParseArrayForFormData(params []interface{}, parent string, queryRespMap map
 	// The index is only used for arrays of maps
 	index := -1
 	for _, value := range params {
+
+		if value == nil {
+			data = append(data, fmt.Sprintf("%s[]=", parent))
+			continue
+		}
+
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
 			// A string can be a regular value or one we need to look up first, ex: ${product.id}
