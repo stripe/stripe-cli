@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"golang.org/x/term"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -66,6 +68,12 @@ type Release struct {
 	Version string            `toml:"Version"`
 	Sum     string            `toml:"Sum"`
 	Runtime map[string]string `toml:"Runtime,omitempty"`
+}
+
+// GetDisplayName returns a human-friendly display name derived from the plugin's Shortname,
+// e.g. "projects" → "Stripe Projects".
+func (p *Plugin) GetDisplayName() string {
+	return "Stripe " + cases.Title(language.English).String(p.Shortname)
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -244,14 +252,14 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 
 // Install installs the plugin of the given version
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
-	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing \"%s\" v%s...", p.GetDisplayName(), version)), os.Stdout)
 
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
 
 	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin \"%s\"", p.GetDisplayName())), os.Stdout)
 
 		log.WithFields(log.Fields{
 			"prefix": "plugins.plugin.Install",
@@ -268,7 +276,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 			if err := InstallNodeRuntime(ctx, cfg, fs, nodeVersion); err != nil {
 				return fmt.Errorf("failed to install required Node.js runtime: %w", err)
 			}
-			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing \"%s\" v%s...", p.GetDisplayName(), version)), os.Stdout)
 		}
 	}
 
@@ -278,7 +286,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	err = p.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 
 	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin \"%s\": %s", p.GetDisplayName(), err)), os.Stdout)
 		return err
 	}
 
