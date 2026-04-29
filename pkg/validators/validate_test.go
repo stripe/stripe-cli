@@ -42,6 +42,11 @@ func TestTestmodeRestrictedAPIKey(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestClaimableSandboxRestrictedAPIKey(t *testing.T) {
+	err := APIKey("rkcs_test_12345")
+	require.NoError(t, err)
+}
+
 func TestHTTPMethod(t *testing.T) {
 	err := HTTPMethod("GET")
 	require.NoError(t, err)
