@@ -25,11 +25,19 @@ import (
 // SupportedVersions is the version number of the fixture template the CLI supports
 const SupportedVersions = 0
 
+// RequiredParam describes a parameter that must be provided via --param flag
+type RequiredParam struct {
+	Name        string `json:"name"`        // Fixture path (e.g., "charge:transfer_data.destination")
+	Description string `json:"description"` // Human-readable description
+	Placeholder string `json:"placeholder"` // Placeholder value for error messages
+}
+
 // MetaFixture contains fixture metadata
 type MetaFixture struct {
-	Version         int      `json:"template_version"`
-	ExcludeMetadata bool     `json:"exclude_metadata"`
-	Aliases         []string `json:"aliases,omitempty"`
+	Version         int             `json:"template_version"`
+	ExcludeMetadata bool            `json:"exclude_metadata"`
+	Aliases         []string        `json:"aliases,omitempty"`
+	RequiredParams  []RequiredParam `json:"required_params,omitempty"`
 }
 
 // FixtureData contains the whole fixture file

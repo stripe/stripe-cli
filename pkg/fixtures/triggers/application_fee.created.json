@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "template_version": 0,
+    "required_params": [
+      {
+        "name": "charge:transfer_data.destination",
+        "description": "Connect account ID with transfers capability enabled",
+        "placeholder": "acct_1ABC234DEF567GHI"
+      }
+    ]
+  },
+  "fixtures": [
+    {
+      "name": "charge",
+      "path": "/v1/charges",
+      "method": "post",
+      "params": {
+        "amount": 1000,
+        "currency": "usd",
+        "source": "tok_visa",
+        "description": "(created by Stripe CLI)",
+        "transfer_data": {
+          "destination": "{{CONNECT_ACCOUNT_ID}}"
+        },
+        "application_fee_amount": 100
+      }
+    }
+  ]
+}
