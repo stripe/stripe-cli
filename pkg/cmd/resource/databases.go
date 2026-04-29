@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -21,7 +24,7 @@ import (
 const (
 	databaseJSONFlagName               = "json"
 	databaseRequestVersion             = "unsafe-development"
-	databaseDeleteConfirmationPhrase   = "remove StripeDB"
+	databaseDeleteConfirmationPhrase   = "delete database"
 	databaseUserDeleteConfirmationText = "remove user"
 )
 
@@ -53,6 +56,7 @@ type databaseObject struct {
 	Created    string             `json:"created"`
 	Status     string             `json:"status"`
 	APIVersion string             `json:"api_version"`
+	Name       string             `json:"name"` // TODO: remove placeholder once API ships display_name
 	Connection databaseConnection `json:"connection"`
 	User       *databaseUser      `json:"user"`
 }
@@ -267,7 +271,15 @@ func newDatabaseUsersDeleteCmd(parentCmd *cobra.Command, cfg *config.Config) *co
 }
 
 func runDatabaseCreate(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	var sp *spinner.Spinner
+	if !jsonOutputEnabled(cmd) {
+		sp = ansi.StartNewSpinner("Creating StripeDB instance...", cmd.ErrOrStderr())
+	}
 	body, err := executeDatabaseOperation(cmd, opCmd, args)
+	if sp != nil {
+		ansi.StopSpinner(sp, "", cmd.ErrOrStderr())
+	}
+
 	if err != nil || body == nil {
 		return err
 	}
@@ -287,7 +299,38 @@ func runDatabaseCreate(cmd *cobra.Command, opCmd *OperationCmd, args []string) e
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Created StripeDB instance %s\n", database.ID)
+
+	// Leading blank line to match design spec
+	fmt.Fprintln(out)
+
+	// Progress steps (static, shown after API responds)
+	checkMark := "✓"
+	circle := "○"
+	if !databaseUnicodeSupported() {
+		checkMark = "[done]"
+		circle = "o"
+	}
+	steps := []struct {
+		glyph string
+		label string
+		color func(io.Writer, string) string
+	}{
+		{checkMark, "Provisioned database", textGreen},
+		{checkMark, "Generated credentials", textGreen},
+		{circle, "Syncing data...", textYellow},
+	}
+	for _, s := range steps {
+		fmt.Fprintf(out, "  %s %s\n", s.color(out, s.glyph), s.label)
+		if sp != nil {
+			time.Sleep(30 * time.Millisecond)
+		}
+	}
+	fmt.Fprintln(out)
+
+	fmt.Fprintf(out, "Created StripeDB instance %s (%s)\n",
+		textCyan(out, databaseTruncateID(database.ID)),
+		databaseDisplayName(database),
+	)
 	printDatabaseIndentedMetadataLine(out, "API Version", database.APIVersion)
 	printDatabaseIndentedMetadataLine(out, "Mode", databaseModeLabel(database.Livemode))
 
@@ -299,16 +342,38 @@ func runDatabaseCreate(cmd *cobra.Command, opCmd *OperationCmd, args []string) e
 		{Label: "URL", Value: user.URL},
 	})
 
-	status := strings.ToLower(database.Status)
-	if status != "" {
+	if user.Password != "" {
 		fmt.Fprintln(out)
-		fmt.Fprintf(out, "  %s %s. %s stripe databases retrieve %s\n",
+		fmt.Fprintln(out, textYellow(out, databaseWarningGlyph()+" Save this password now — it will not be shown again."))
+	}
+
+	fmt.Fprintln(out)
+	dashURL := databaseDashboardURL(database.ID, database.Livemode)
+	fmt.Fprintf(out, "  %s %s\n", textBoldCyan(out, "Dashboard:"), ansi.Linkify(dashURL, dashURL, out))
+
+	if database.Status != "" {
+		fmt.Fprintln(out)
+		statusVal := databaseStatusColored(out, database.Status, databaseStatusLabel(database.Status))
+		fmt.Fprintf(out, "  %s %s. %s\n  %s\n",
 			textMuted(out, "Current status:"),
-			status,
+			statusVal,
 			textFaint(out, "Check progress with:"),
-			database.ID,
+			textCyan(out, "stripe databases retrieve "+database.ID),
 		)
 	}
+
+	fmt.Fprintln(out)
+	// "Privacy Policy" and "Preview Terms" highlighted white; surrounding text faint
+	fmt.Fprintf(out, "%s %s %s %s\n",
+		textFaint(out, "By creating a database, you agree to the"),
+		textBold(out, "Privacy Policy"),
+		textFaint(out, "and"),
+		textBold(out, "Preview Terms."),
+	)
+	privacyURL := "https://stripe.com/privacy"
+	termsURL := "https://stripe.com/stripe-database-preview-terms"
+	fmt.Fprintf(out, "  %s\n", ansi.Linkify(privacyURL, privacyURL, out))
+	fmt.Fprintf(out, "  %s\n", ansi.Linkify(termsURL, termsURL, out))
 
 	return nil
 }
@@ -329,8 +394,50 @@ func runDatabaseRetrieve(cmd *cobra.Command, opCmd *OperationCmd, args []string)
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "StripeDB instance %s\n\n", database.ID)
-	printDatabaseTable(out, []databaseObject{database})
+	fmt.Fprintln(out)
+	// Show name + full dimmed ID once API ships display_name; fall back to full ID until then.
+	if database.Name != "" {
+		fmt.Fprintf(out, "%s %s\n  %s\n\n",
+			textBold(out, "StripeDB instance"),
+			database.Name,
+			textMuted(out, database.ID),
+		)
+	} else {
+		fmt.Fprintf(out, "%s %s\n\n",
+			textBold(out, "StripeDB instance"),
+			database.ID,
+		)
+	}
+
+	// Block 1: instance metadata (no section header)
+	printDatabaseDetailBlock(out, "", []databaseDetailField{
+		{Label: "Status", Value: databaseStatusColored(out, database.Status, databaseStatusCell(database.Status))},
+		{Label: "API Version", Value: database.APIVersion},
+		{Label: "Mode", Value: databaseModeLabel(database.Livemode)},
+		{Label: "Created", Value: databaseRelativeTimeAgo(database.Created)},
+	})
+
+	fmt.Fprintln(out)
+
+	// Block 2: connection details
+	printDatabaseDetailBlock(out, "Connection details:", []databaseDetailField{
+		{Label: "Host", Value: database.Connection.Host},
+		{Label: "Port", Value: func() string {
+			if database.Connection.Port == 0 {
+				return ""
+			}
+			return fmt.Sprintf("%d", database.Connection.Port)
+		}()},
+		{Label: "Database", Value: database.Connection.DatabaseName},
+	})
+
+	fmt.Fprintln(out)
+	dashURL := databaseDashboardURL(database.ID, database.Livemode)
+	fmt.Fprintf(out, "%s\n  %s\n",
+		textMuted(out, "View in Dashboard:"),
+		ansi.Linkify(dashURL, dashURL, out),
+	)
+	fmt.Fprintln(out)
 	return nil
 }
 
@@ -350,8 +457,10 @@ func runDatabaseList(cmd *cobra.Command, opCmd *OperationCmd, args []string) err
 	}
 
 	out := cmd.OutOrStdout()
+	fmt.Fprintln(out)
 	printDatabaseListHeading(out, opCmd.Profile)
 	printDatabaseTable(out, databases)
+	fmt.Fprintln(out)
 	return nil
 }
 
@@ -365,7 +474,10 @@ func runDatabaseDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, args [
 		return fmt.Errorf("--yes is required with --json")
 	}
 
-	confirmed, err := confirmDatabaseAction(cmd, yes, "Warning: this will permanently delete your StripeDB instance.", databaseDeleteConfirmationPhrase)
+	dbName := databaseDisplayName(databaseObject{ID: args[0]})
+	warning := fmt.Sprintf("%s Warning: this will permanently delete %s (%s).",
+		databaseWarningGlyph(), dbName, databaseTruncateID(args[0]))
+	confirmed, err := confirmDatabaseAction(cmd, yes, warning, databaseDeleteConfirmationPhrase)
 	if err != nil || !confirmed {
 		return err
 	}
@@ -379,7 +491,13 @@ func runDatabaseDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, args [
 		return writePrettyJSON(cmd, body)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Deleted StripeDB instance %s\n", args[0])
+	out := cmd.OutOrStdout()
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "%s %s\n",
+		textGreen(out, "Deleted "+dbName),
+		textMuted(out, "("+databaseTruncateID(args[0])+")"),
+	)
+	fmt.Fprintln(out)
 	return nil
 }
 
@@ -399,7 +517,8 @@ func runDatabaseUsersCreate(cmd *cobra.Command, opCmd *OperationCmd, args []stri
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Created StripeDB user %s\n", user.ID)
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "%s\n", textGreen(out, "Created StripeDB user "+user.ID))
 	printDatabaseIndentedMetadataLine(out, "Username", user.Username)
 	printDatabaseIndentedMetadataLine(out, "Mode", databaseModeLabel(user.Livemode))
 	fmt.Fprintln(out)
@@ -407,6 +526,13 @@ func runDatabaseUsersCreate(cmd *cobra.Command, opCmd *OperationCmd, args []stri
 		{Label: "Password", Value: user.Password},
 		{Label: "URL", Value: user.URL},
 	})
+
+	if user.Password != "" {
+		fmt.Fprintln(out)
+		fmt.Fprintln(out, textYellow(out, databaseWarningGlyph()+" Save this password now — it will not be shown again."))
+	}
+
+	fmt.Fprintln(out)
 	return nil
 }
 
@@ -425,7 +551,20 @@ func runDatabaseUsersRetrieve(cmd *cobra.Command, opCmd *OperationCmd, args []st
 		return err
 	}
 
-	printDatabaseUserSection(cmd.OutOrStdout(), args[0], []databaseUser{user})
+	out := cmd.OutOrStdout()
+	fmt.Fprintln(out)
+	dbName := databaseDisplayName(databaseObject{ID: args[0]})
+	fmt.Fprintf(out, "StripeDB user %s\n  %s\n\n",
+		user.ID,
+		textMuted(out, dbName+" ("+args[0]+")"),
+	)
+	printDatabaseDetailBlock(out, "Details:", []databaseDetailField{
+		{Label: "Username", Value: user.Username},
+		{Label: "Mode", Value: databaseModeLabel(user.Livemode)},
+		{Label: "Created", Value: databaseRelativeTimeAgo(user.Created)},
+		{Label: "Database", Value: args[0]},
+	})
+	fmt.Fprintln(out)
 	return nil
 }
 
@@ -458,7 +597,7 @@ func runDatabaseUsersDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, a
 		return fmt.Errorf("--yes is required with --json")
 	}
 
-	prompt := fmt.Sprintf("Warning: this will permanently remove StripeDB access for user %s.", args[1])
+	prompt := fmt.Sprintf("%s Warning: this will permanently remove StripeDB access for user %s.", databaseWarningGlyph(), args[1])
 	confirmed, err := confirmDatabaseAction(cmd, yes, prompt, databaseUserDeleteConfirmationText)
 	if err != nil || !confirmed {
 		return err
@@ -474,8 +613,9 @@ func runDatabaseUsersDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, a
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Deleted StripeDB user %s\n", args[1])
-	printDatabaseIndentedMetadataLine(out, "StripeDB", args[0])
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "%s\n", textGreen(out, "Deleted "+args[1]))
+	fmt.Fprintln(out)
 	return nil
 }
 
@@ -603,52 +743,72 @@ func writePrettyJSON(cmd *cobra.Command, body []byte) error {
 }
 
 func printDatabaseTable(out io.Writer, databases []databaseObject) {
-	headers := []string{"ID", "Host", "Status", "Created", "Mode", "API Version"}
-	rows := make([][]string, 0, len(databases))
-
-	for _, database := range databases {
-		rows = append(rows, []string{
-			database.ID,
-			database.Connection.Host,
-			strings.ToLower(database.Status),
-			databaseRelativeTime(database.Created),
-			databaseModeLabel(database.Livemode),
-			database.APIVersion,
-		})
-	}
-
-	printAlignedTable(out, headers, rows, "No StripeDB instances found.", func(i int, value string) string {
-		if i%2 == 1 {
-			return textMuted(out, value)
-		}
-		return value
-	})
+	// TODO: uncomment Name column when API ships the display_name field
+	// {
+	// 	header: "Name",
+	// 	value:  func(i int) string { return databaseDisplayName(databases[i]) },
+	// 	style:  func(o io.Writer, _ int, v string) string { return textCyan(o, v) },
+	// },
+	printTable(out, []tableColumn{
+		{
+			header: "ID",
+			value:  func(i int) string { return databases[i].ID },
+			style:  func(o io.Writer, _ int, v string) string { return textMuted(o, v) },
+		},
+		{
+			header: "Status",
+			value:  func(i int) string { return databaseStatusCell(databases[i].Status) },
+			style: func(o io.Writer, i int, v string) string {
+				return databaseStatusColored(o, databases[i].Status, v)
+			},
+		},
+		{
+			header: "Created",
+			value:  func(i int) string { return databaseRelativeTime(databases[i].Created) },
+			style:  func(o io.Writer, _ int, v string) string { return textMuted(o, v) },
+		},
+		{
+			header: "Mode",
+			value:  func(i int) string { return databaseModeLabel(databases[i].Livemode) },
+		},
+		{
+			header: "API Version",
+			value:  func(i int) string { return databases[i].APIVersion },
+			style:  func(o io.Writer, _ int, v string) string { return textMuted(o, v) },
+		},
+	}, len(databases), "No StripeDB instances found.")
 }
 
 func printDatabaseUserSection(out io.Writer, databaseID string, users []databaseUser) {
+	fmt.Fprintln(out)
 	fmt.Fprintf(out, "StripeDB users for %s\n\n", databaseID)
 	printDatabaseUserTable(out, users)
+	fmt.Fprintln(out)
 }
 
 func printDatabaseUserTable(out io.Writer, users []databaseUser) {
-	headers := []string{"ID", "Username", "Created", "Mode"}
-	rows := make([][]string, 0, len(users))
-
-	for _, user := range users {
-		rows = append(rows, []string{
-			user.ID,
-			user.Username,
-			databaseRelativeTime(user.Created),
-			databaseModeLabel(user.Livemode),
-		})
-	}
-
-	printAlignedTable(out, headers, rows, "No StripeDB users found.", func(i int, value string) string {
-		if i >= 2 {
-			return textMuted(out, value)
-		}
-		return value
-	})
+	printTable(out, []tableColumn{
+		{
+			header: "Username",
+			value:  func(i int) string { return users[i].Username },
+			style:  func(o io.Writer, _ int, v string) string { return textCyan(o, v) },
+		},
+		{
+			header: "ID",
+			value:  func(i int) string { return users[i].ID },
+			style:  func(o io.Writer, _ int, v string) string { return textMuted(o, v) },
+		},
+		{
+			header: "Created",
+			value:  func(i int) string { return databaseRelativeTime(users[i].Created) },
+			style:  func(o io.Writer, _ int, v string) string { return textMuted(o, v) },
+		},
+		{
+			header: "Mode",
+			value:  func(i int) string { return databaseModeLabel(users[i].Livemode) },
+			style:  func(o io.Writer, _ int, v string) string { return textMuted(o, v) },
+		},
+	}, len(users), "No StripeDB users found.")
 }
 
 func textBold(out io.Writer, text string) string {
@@ -663,12 +823,183 @@ func textFaint(out io.Writer, text string) string {
 	return ansi.Color(out).Faint(text).String()
 }
 
+func textCyan(out io.Writer, text string) string {
+	return ansi.Color(out).Cyan(text).String()
+}
+
+func textGreen(out io.Writer, text string) string {
+	return ansi.Color(out).Green(text).String()
+}
+
+func textYellow(out io.Writer, text string) string {
+	return ansi.Color(out).Yellow(text).String()
+}
+
+func textBoldCyan(out io.Writer, text string) string {
+	c := ansi.Color(out)
+	return c.BrightCyan(c.Bold(text)).String()
+}
+
+func textRed(out io.Writer, text string) string {
+	return ansi.Color(out).Red(text).String()
+}
+
+// databaseWarningGlyph returns ⚠ on Unicode-capable terminals, ! otherwise.
+func databaseWarningGlyph() string {
+	if databaseUnicodeSupported() {
+		return "⚠"
+	}
+	return "!"
+}
+
+// databaseRelativeTimeAgo wraps databaseRelativeTime and appends " ago" for
+// non-empty, non-"now" values (e.g. "5d ago"). Returns "just now" for "now".
+func databaseRelativeTimeAgo(raw string) string {
+	rel := databaseRelativeTime(raw)
+	switch rel {
+	case "", "now":
+		return "just now"
+	default:
+		return rel + " ago"
+	}
+}
+
+// databaseUnicodeSupported reports whether the current terminal renders Unicode glyphs correctly.
+// On Windows, only Windows Terminal (WT_SESSION) and ConEmu (ConEmuPID) are known-safe.
+func databaseUnicodeSupported() bool {
+	if runtime.GOOS == "windows" {
+		_, wt := os.LookupEnv("WT_SESSION")
+		_, ce := os.LookupEnv("ConEmuPID")
+		return wt || ce
+	}
+	return true
+}
+
+// visualWidth returns the display width of s after stripping ANSI escape sequences.
+// Uses rune count rather than byte count so multibyte glyphs (●, ─, ✓) measure as 1.
+func visualWidth(s string) int {
+	runes := []rune(s)
+	out := make([]rune, 0, len(runes))
+	i := 0
+	for i < len(runes) {
+		if runes[i] == '\x1b' && i+1 < len(runes) {
+			switch runes[i+1] {
+			case '[': // CSI: ESC [ ... letter
+				i += 2
+				for i < len(runes) && (runes[i] < 'A' || runes[i] > 'Z') && (runes[i] < 'a' || runes[i] > 'z') {
+					i++
+				}
+				if i < len(runes) {
+					i++
+				}
+				continue
+			case ']': // OSC: ESC ] ... ESC backslash
+				i += 2
+				for i < len(runes) {
+					if runes[i] == '\x1b' && i+1 < len(runes) && runes[i+1] == '\\' {
+						i += 2
+						break
+					}
+					i++
+				}
+				continue
+			}
+		}
+		out = append(out, runes[i])
+		i++
+	}
+	return len(out)
+}
+
+// databaseStatusLabel remaps internal API status values to user-facing labels.
+// Unknown statuses are title-cased and passed through unchanged.
+func databaseStatusLabel(rawStatus string) string {
+	switch strings.ToLower(rawStatus) {
+	case "ready":
+		return "Active"
+	case "backfilling":
+		return "Backfilling"
+	default:
+		if rawStatus == "" {
+			return ""
+		}
+		lower := strings.ToLower(rawStatus)
+		return strings.ToUpper(lower[:1]) + lower[1:]
+	}
+}
+
+// databaseStatusCell returns the plain-text display string for a status cell (glyph + label).
+// This is used for column-width calculation; color is applied separately at render time.
+func databaseStatusCell(rawStatus string) string {
+	label := databaseStatusLabel(rawStatus)
+	if databaseUnicodeSupported() {
+		switch strings.ToLower(rawStatus) {
+		case "ready":
+			return "● " + label
+		case "error":
+			return "✗ " + label
+		default:
+			return "○ " + label
+		}
+	}
+	switch strings.ToLower(rawStatus) {
+	case "ready":
+		return "* " + label
+	case "error":
+		return "x " + label
+	default:
+		return "o " + label
+	}
+}
+
+// databaseStatusColored wraps a status cell value with the appropriate terminal color.
+func databaseStatusColored(out io.Writer, rawStatus, cellValue string) string {
+	switch strings.ToLower(rawStatus) {
+	case "ready":
+		return textGreen(out, cellValue)
+	case "backfilling":
+		return textYellow(out, cellValue)
+	case "error":
+		return textRed(out, cellValue)
+	default:
+		return cellValue
+	}
+}
+
+// databaseTruncateID shortens a database ID by truncating the middle portion.
+// "db_1XyZ2aBcDeFgHiJkLmN8pQr" → "db_1Xy...N8pQr"
+func databaseTruncateID(id string) string {
+	const keep = 6
+	if len(id) <= keep*2+3 {
+		return id
+	}
+	return id[:keep] + "..." + id[len(id)-keep:]
+}
+
+// databaseDisplayName returns the human-readable display name for a database.
+// TODO: use db.Name once the API ships the display_name field; remove placeholder.
+func databaseDisplayName(db databaseObject) string {
+	if db.Name != "" {
+		return db.Name
+	}
+	return "StripeDB Instance"
+}
+
+// databaseDashboardURL returns the Dashboard URL for a database.
+// Test-mode databases use the /test/ path prefix.
+func databaseDashboardURL(id string, livemode bool) string {
+	if livemode {
+		return fmt.Sprintf("https://dashboard.stripe.com/data-management/databases/%s", id)
+	}
+	return fmt.Sprintf("https://dashboard.stripe.com/test/data-management/databases/%s", id)
+}
+
 func printDatabaseIndentedMetadataLine(out io.Writer, label, value string) {
 	if value == "" {
 		return
 	}
 
-	fmt.Fprintf(out, "  %s %s\n", textMuted(out, label+":"), value)
+	fmt.Fprintf(out, "  %s %s\n", textBoldCyan(out, label+":"), value)
 }
 
 func printDatabaseListHeading(out io.Writer, profile *config.Profile) {
@@ -702,7 +1033,9 @@ func printDatabaseDetailBlock(out io.Writer, title string, fields []databaseDeta
 		return
 	}
 
-	fmt.Fprintln(out, textBold(out, title))
+	if title != "" {
+		fmt.Fprintln(out, textBold(out, title))
+	}
 	for _, field := range fields {
 		if field.Value == "" {
 			continue
@@ -711,67 +1044,88 @@ func printDatabaseDetailBlock(out io.Writer, title string, fields []databaseDeta
 		label := field.Label + ":"
 		padding := labelWidth - len(label) + 2
 		fmt.Fprint(out, "  ")
-		fmt.Fprint(out, textMuted(out, label))
+		fmt.Fprint(out, textBoldCyan(out, label))
 		fmt.Fprint(out, strings.Repeat(" ", padding))
 		fmt.Fprintln(out, field.Value)
 	}
 }
 
-func printAlignedTable(out io.Writer, headers []string, rows [][]string, emptyMessage string, render func(int, string) string) {
-	if len(rows) == 0 {
+// tableColumn defines a single column in a CLI table.
+// value extracts the plain display string (used for width calculation).
+// style optionally wraps the plain value with ANSI formatting.
+// If style is nil the plain value is printed as-is.
+type tableColumn struct {
+	header string
+	value  func(rowIdx int) string
+	style  func(out io.Writer, rowIdx int, value string) string
+}
+
+func printTable(out io.Writer, columns []tableColumn, rowCount int, emptyMessage string) {
+	if rowCount == 0 {
 		fmt.Fprintln(out, textMuted(out, emptyMessage))
 		return
 	}
 
-	widths := tableColumnWidths(headers, rows)
-	printDatabaseTableRow(out, headers, widths, func(_ int, value string) string {
-		return textBold(out, value)
-	})
-	printDatabaseTableRow(out, tableSeparators(widths), widths, func(_ int, value string) string {
-		return textFaint(out, value)
-	})
-	for _, row := range rows {
-		printDatabaseTableRow(out, row, widths, render)
+	headers := make([]string, len(columns))
+	for i, col := range columns {
+		headers[i] = col.header
 	}
-}
-
-func tableColumnWidths(headers []string, rows [][]string) []int {
-	widths := make([]int, len(headers))
-	for i, header := range headers {
-		widths[i] = len(header)
+	rows := make([][]string, rowCount)
+	for i := 0; i < rowCount; i++ {
+		row := make([]string, len(columns))
+		for j, col := range columns {
+			row[j] = col.value(i)
+		}
+		rows[i] = row
 	}
 
+	widths := make([]int, len(columns))
+	for i, h := range headers {
+		widths[i] = visualWidth(h)
+	}
 	for _, row := range rows {
-		for i, value := range row {
-			if len(value) > widths[i] {
-				widths[i] = len(value)
+		for i, v := range row {
+			if w := visualWidth(v); w > widths[i] {
+				widths[i] = w
 			}
 		}
 	}
 
-	return widths
-}
-
-func tableSeparators(widths []int) []string {
-	separators := make([]string, len(widths))
-	for i, width := range widths {
-		separators[i] = strings.Repeat("-", width)
+	sep := "-"
+	if databaseUnicodeSupported() {
+		sep = "─"
 	}
-	return separators
-}
 
-func printDatabaseTableRow(out io.Writer, values []string, widths []int, render func(int, string) string) {
-	for i, value := range values {
-		fmt.Fprint(out, render(i, value))
-		if i == len(values)-1 {
-			continue
+	for i, h := range headers {
+		fmt.Fprint(out, textBold(out, h))
+		if i < len(headers)-1 {
+			fmt.Fprint(out, strings.Repeat(" ", widths[i]-visualWidth(h)+2))
 		}
-
-		padding := widths[i] - len(value) + 2
-		fmt.Fprint(out, strings.Repeat(" ", padding))
 	}
-
 	fmt.Fprintln(out)
+
+	for i, w := range widths {
+		fmt.Fprint(out, textFaint(out, strings.Repeat(sep, w)))
+		if i < len(widths)-1 {
+			fmt.Fprint(out, strings.Repeat(" ", 2))
+		}
+	}
+	fmt.Fprintln(out)
+
+	for rowIdx, row := range rows {
+		ri := rowIdx
+		for i, v := range row {
+			rendered := v
+			if columns[i].style != nil {
+				rendered = columns[i].style(out, ri, v)
+			}
+			fmt.Fprint(out, rendered)
+			if i < len(row)-1 {
+				fmt.Fprint(out, strings.Repeat(" ", widths[i]-visualWidth(v)+2))
+			}
+		}
+		fmt.Fprintln(out)
+	}
 }
 
 func databaseModeLabel(livemode bool) string {
@@ -848,6 +1202,7 @@ func confirmDatabaseAction(cmd *cobra.Command, autoConfirm bool, warning, confir
 	}
 
 	out := cmd.OutOrStdout()
+	fmt.Fprintln(out)
 	color := ansi.Color(out)
 	fmt.Fprintln(out, color.Yellow(warning).String())
 	if confirmationPhrase != "" {
@@ -872,8 +1227,5 @@ func confirmDatabaseAction(cmd *cobra.Command, autoConfirm bool, warning, confir
 		confirmed = trimmed == "y" || trimmed == "yes"
 	}
 
-	if confirmed {
-		fmt.Fprintln(out)
-	}
 	return confirmed, nil
 }
