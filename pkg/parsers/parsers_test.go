@@ -120,6 +120,18 @@ func TestParseTwoParam(t *testing.T) {
 	assert.Equal(t, "/v1/charges/char_12345/capture/cust_12345", path)
 }
 
+func TestParsePathTwoParamsWithTrailing(t *testing.T) {
+	queryRespMap := map[string]gjson.Result{
+		"customer":     gjson.Parse(`{"id": "cus_12345"}`),
+		"bank_account": gjson.Parse(`{"id": "ba_12345"}`),
+	}
+
+	httpPath := "/v1/customers/${customer:id}/sources/${bank_account:id}/verify"
+
+	path, _ := ParsePath(httpPath, queryRespMap)
+	assert.Equal(t, "/v1/customers/cus_12345/sources/ba_12345/verify", path)
+}
+
 func TestParsePathOneParamWithTrailing(t *testing.T) {
 	queryRespMap := map[string]gjson.Result{
 		"char_bender": gjson.Parse(`{"id": "char_12345"}`),

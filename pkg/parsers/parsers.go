@@ -79,7 +79,10 @@ func ParsePath(httpPath string, queryRespMap map[string]gjson.Result) (string, e
 			newPath = append(newPath, value)
 		}
 
-		if len(pathParts)%2 == 0 {
+		// Always append the trailing path segment after the last match.
+		// With N matches, Split produces N+1 parts; the loop above covers
+		// indices 0..N-1, so the final part (index N) must be added here.
+		if len(pathParts) > len(matches) {
 			newPath = append(newPath, pathParts[len(pathParts)-1])
 		}
 
