@@ -634,9 +634,9 @@ func captureStderr(t *testing.T, fn func()) string {
 	return string(out)
 }
 
-func TestMakeRequest_VersionUpgradeNotice(t *testing.T) {
+func TestMakeRequest_StripeNotice(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Please upgrade to the latest API version.")
+		w.Header().Set("Stripe-Notice", "Please upgrade to the latest API version.")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -650,12 +650,13 @@ func TestMakeRequest_VersionUpgradeNotice(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.Contains(t, out, "API version upgrade notice: Please upgrade to the latest API version.")
+	require.Contains(t, out, "Please upgrade to the latest API version.")
 }
 
-func TestMakeRequest_IntegrationPathUpgradeNotice(t *testing.T) {
+func TestMakeRequest_StripeNoticeMultiNotice(t *testing.T) {
+	multiNotice := "2 notices for this request: (1) Please upgrade to the latest API version. (2) Please migrate to the new integration path."
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Please migrate to the new integration path.")
+		w.Header().Set("Stripe-Notice", multiNotice)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -669,10 +670,10 @@ func TestMakeRequest_IntegrationPathUpgradeNotice(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.Contains(t, out, "API integration path upgrade notice: Please migrate to the new integration path.")
+	require.Contains(t, out, multiNotice)
 }
 
-func TestMakeRequest_BothUpgradeNotices(t *testing.T) {
+func TestMakeRequest_FallbackToOldHeaders(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Upgrade your API version.")
 		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Migrate your integration path.")
@@ -708,13 +709,12 @@ func TestMakeRequest_NoUpgradeNotice(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.NotContains(t, out, "upgrade notice:")
+	require.Empty(t, out)
 }
 
 func TestMakeRequest_UpgradeNoticeSuppressed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Please upgrade.")
-		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Please migrate.")
+		w.Header().Set("Stripe-Notice", "Please upgrade.")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -728,7 +728,7 @@ func TestMakeRequest_UpgradeNoticeSuppressed(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.NotContains(t, out, "upgrade notice:")
+	require.Empty(t, out)
 }
 
 func TestParseJSONDataFlag(t *testing.T) {
