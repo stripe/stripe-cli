@@ -3,6 +3,10 @@ TEST_PATTERN?=.
 TEST_OPTIONS?=
 PROTOC_FAILURE_MESSAGE="\nFailed to compile protobuf files: protoc exited with code $$?. Ensure you have the latest version of protoc: https://grpc.io/docs/protoc-installation/\n"
 
+GIT_SHA := $(shell git rev-parse HEAD 2>/dev/null)
+GIT_DIRTY := $(shell git diff-index --quiet HEAD 2>/dev/null || echo "dirty")
+BUILD_VERSION := $(if $(GIT_DIRTY),master,$(or $(GIT_SHA),master))
+
 export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
@@ -74,7 +78,7 @@ ci: build-all-platforms test go-mod-tidy protoc-ci
 # Build a beta version of stripe
 build:
 	go generate ./...
-	go build -o stripe cmd/stripe/main.go
+	go build -ldflags="-X github.com/stripe/stripe-cli/pkg/version.Version=$(BUILD_VERSION)" -o stripe cmd/stripe/main.go
 .PHONY: build
 
 # Build a beta version of stripe with the `dev` tag
