@@ -1,3 +1,4 @@
+// Package fsutil provides shared filesystem safety helpers.
 package fsutil
 
 import (
