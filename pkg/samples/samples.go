@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/validators"
 
 	g "github.com/stripe/stripe-cli/pkg/git"
@@ -396,8 +397,8 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 
 		// We refuse to write through a symlink to prevent a malicious
 		// sample from overwriting files outside the destination directory.
-		if isSymlink(envFile) {
-			return fmt.Errorf("refusing to write .env: %s is a symlink", envFile)
+		if err := fsutil.RefuseWriteThroughSymlink(s.Fs, envFile, ".env"); err != nil {
+			return err
 		}
 
 		err = godotenv.Write(dotenv, envFile)
