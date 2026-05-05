@@ -203,16 +203,65 @@ func (p *Plugin) LookUpLatestVersion() string {
 
 // getReleaseForVersion finds the release object for a specific version on the current platform
 func (p *Plugin) getReleaseForVersion(version string) *Release {
-	opsystem := runtime.GOOS
-	arch := runtime.GOARCH
+	return p.getRelease(version, runtime.GOOS, runtime.GOARCH)
+}
 
+func (p *Plugin) getRelease(version, opsystem, arch string) *Release {
 	for _, release := range p.Releases {
 		if release.Version == version && release.OS == opsystem && release.Arch == arch {
-			return &release
+			releaseCopy := release
+			return &releaseCopy
 		}
 	}
 
 	return nil
+}
+
+func copyRuntime(runtimeRequirements map[string]string) map[string]string {
+	if len(runtimeRequirements) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]string, len(runtimeRequirements))
+	for name, version := range runtimeRequirements {
+		cloned[name] = version
+	}
+
+	return cloned
+}
+
+func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
+	pluginList, err := validatePluginManifest([]byte(pluginManifest))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, candidate := range pluginList.Plugins {
+		if candidate.Shortname != p.Shortname {
+			continue
+		}
+
+		if len(candidate.Commands) == 0 && len(p.Commands) > 0 {
+			candidate.Commands = p.Commands
+		}
+
+		for i := range candidate.Releases {
+			if len(candidate.Releases[i].Runtime) != 0 {
+				continue
+			}
+
+			existingRelease := p.getRelease(candidate.Releases[i].Version, candidate.Releases[i].OS, candidate.Releases[i].Arch)
+			if existingRelease == nil || len(existingRelease.Runtime) == 0 {
+				continue
+			}
+
+			candidate.Releases[i].Runtime = copyRuntime(existingRelease.Runtime)
+		}
+
+		return &candidate, nil
+	}
+
+	return nil, fmt.Errorf("plugin metadata response did not include plugin %s", p.Shortname)
 }
 
 // IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
@@ -247,21 +296,54 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
+	pluginToInstall := p
+	var pluginDownloadURL string
 
-	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
-
-	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
-
+	if apiKey != "" {
 		log.WithFields(log.Fields{
-			"prefix": "plugins.plugin.Install",
-		}).Debugf("install error: %s", err)
+			"prefix":   "plugins.plugin.Install",
+			"endpoint": "/v1/stripecli/get-plugin-metadata",
+			"plugin":   p.Shortname,
+			"version":  version,
+			"os":       runtime.GOOS,
+			"arch":     runtime.GOARCH,
+		}).Debug("Fetching plugin metadata for install")
 
-		return errors.New("you don't seem to have access to this plugin")
+		pluginMetadata, err := requests.GetPluginMetadata(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+			}).Debugf("could not fetch plugin metadata, falling back to plugin URL lookup: %s", err)
+		} else {
+			pluginFromMetadata, err := p.pluginFromMetadata(pluginMetadata.PluginManifest)
+			if err != nil {
+				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+				return err
+			}
+
+			pluginToInstall = pluginFromMetadata
+			pluginDownloadURL = pluginMetadata.BinaryURL
+		}
+	}
+
+	if pluginDownloadURL == "" {
+		pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
+
+		if err != nil {
+			ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+			}).Debugf("install error: %s", err)
+
+			return errors.New("you don't seem to have access to this plugin")
+		}
+
+		pluginDownloadURL = fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, pluginToInstall.Shortname, version, runtime.GOOS, runtime.GOARCH, pluginToInstall.Binary)
 	}
 
 	// Check if this plugin requires a runtime and install it if needed
-	release := p.getReleaseForVersion(version)
+	release := pluginToInstall.getReleaseForVersion(version)
 	if release != nil {
 		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
 			ansi.StopSpinner(spinner, "", os.Stdout)
@@ -272,10 +354,8 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		}
 	}
 
-	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)
-
 	// Pull down bin, verify, and save to disk
-	err = p.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
+	err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)

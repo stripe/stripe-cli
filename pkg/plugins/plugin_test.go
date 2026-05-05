@@ -2,8 +2,12 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -41,11 +45,116 @@ func TestInstall(t *testing.T) {
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
 }
 
+func TestInstallUsesPluginMetadataEndpointWhenAPIKeyAvailable(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch {
+		case strings.Contains(req.URL.String(), "/appA/2.0.1"):
+			res.Write([]byte("hello, I am appA_2.0.1"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("install should not fall back to /v1/stripecli/get-plugin-url when plugin metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+}
+
+func TestInstallFallsBackIfPluginMetadataEndpointFails(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	fallbackServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(`{"error":{"message":"boom"}}`))
+		case "/v1/stripecli/get-plugin-url":
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer fallbackServer.Close()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", fallbackServer.URL)
+	require.NoError(t, err)
+}
+
 func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
 	plugin := Plugin{Shortname: "appA"}
 
 	err := plugin.verifyChecksum(strings.NewReader("locally built binary"), localDevelopmentVersion)
 	require.NoError(t, err)
+}
+
+func TestPluginFromMetadataPreservesRuntimeRequirements(t *testing.T) {
+	plugin := &Plugin{
+		Shortname:        "generate",
+		Binary:           "stripe-cli-generate",
+		MagicCookieValue: "GENERATE-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+				Runtime: map[string]string{"node": "20"},
+			},
+		},
+	}
+
+	metadataManifest := fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "abc123"
+`, runtime.GOARCH, runtime.GOOS)
+
+	resolved, err := plugin.pluginFromMetadata(metadataManifest)
+	require.NoError(t, err)
+	release := resolved.getReleaseForVersion("1.0.0")
+	require.NotNil(t, release)
+	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
