@@ -71,6 +71,9 @@ var rootCmd = &cobra.Command{
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
 		if telemetryMetadata != nil {
 			telemetryMetadata.SetCobraCommandContext(cmd)
+			if plugins.IsPluginCommand(cmd) {
+				telemetryMetadata.SetCommandPath(resolvePluginTelemetryCommandPath(cmd, os.Args))
+			}
 			telemetryMetadata.SetMerchant(merchant)
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
