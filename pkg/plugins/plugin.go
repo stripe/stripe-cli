@@ -298,6 +298,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 	pluginToInstall := p
 	var pluginDownloadURL string
+	downloadURLFromMetadata := false
 
 	if apiKey != "" {
 		log.WithFields(log.Fields{
@@ -323,12 +324,13 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 			pluginToInstall = pluginFromMetadata
 			pluginDownloadURL = pluginMetadata.BinaryURL
+			downloadURLFromMetadata = true
 		}
 	}
 
 	if pluginDownloadURL == "" {
-		pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
-
+		var err error
+		pluginDownloadURL, err = getLegacyPluginDownloadURL(ctx, cfg, apiKey, baseURL, version, pluginToInstall)
 		if err != nil {
 			ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
 
@@ -338,8 +340,6 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 			return errors.New("you don't seem to have access to this plugin")
 		}
-
-		pluginDownloadURL = fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, pluginToInstall.Shortname, version, runtime.GOOS, runtime.GOARCH, pluginToInstall.Binary)
 	}
 
 	// Check if this plugin requires a runtime and install it if needed
@@ -356,6 +356,23 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 	// Pull down bin, verify, and save to disk
 	err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
+	if err != nil && downloadURLFromMetadata {
+		var notFoundErr *remoteResourceNotFoundError
+		if errors.As(err, &notFoundErr) {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+			}).Debugf("could not download plugin from metadata URL, falling back to plugin URL lookup: %s", err)
+
+			fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, baseURL, version, pluginToInstall)
+			if fallbackErr != nil {
+				log.WithFields(log.Fields{
+					"prefix": "plugins.plugin.Install",
+				}).Debugf("could not look up fallback plugin URL after metadata download failed: %s", fallbackErr)
+			} else {
+				err = pluginToInstall.downloadAndSavePlugin(cfg, fallbackURL, fs, version)
+			}
+		}
+	}
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
@@ -385,6 +402,15 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	ansi.StopSpinner(spinner, "", os.Stdout)
 
 	return nil
+}
+
+func getLegacyPluginDownloadURL(ctx context.Context, cfg config.IConfig, apiKey, baseURL, version string, plugin *Plugin) (string, error) {
+	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, plugin.Shortname, version, runtime.GOOS, runtime.GOARCH, plugin.Binary), nil
 }
 
 // Uninstall removes a plugin from the disk and from the config's installed plugins list

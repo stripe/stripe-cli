@@ -114,6 +114,60 @@ func TestInstallFallsBackIfPluginMetadataEndpointFails(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	var pluginURLLookups int
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case fmt.Sprintf("/appA/2.0.1/%s/%s/binary", runtime.GOOS, runtime.GOARCH):
+			res.WriteHeader(http.StatusNotFound)
+		case fmt.Sprintf("/appA/2.0.1/%s/%s/stripe-cli-app-a", runtime.GOOS, runtime.GOARCH):
+			res.Write([]byte("hello, I am appA_2.0.1"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/binary", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			pluginURLLookups++
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       artifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, pluginURLLookups)
+
+	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	fileExists, err := afero.Exists(fs, file)
+	require.NoError(t, err)
+	require.True(t, fileExists)
+}
+
 func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
 	plugin := Plugin{Shortname: "appA"}
 
