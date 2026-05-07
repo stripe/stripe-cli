@@ -1,0 +1,281 @@
+package sandbox
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func computeChallenge(salt string, number int) string {
+	h := sha256.New()
+	h.Write([]byte(salt))
+	h.Write([]byte(strconv.Itoa(number)))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func TestSolveChallenge_KnownSolution(t *testing.T) {
+	salt := "testsalt"
+	expected := 42
+	challenge := computeChallenge(salt, expected)
+
+	result, err := SolveChallenge(context.Background(), "SHA-256", challenge, salt)
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+}
+
+func TestSolveChallenge_Zero(t *testing.T) {
+	salt := "zero"
+	challenge := computeChallenge(salt, 0)
+
+	result, err := SolveChallenge(context.Background(), "SHA-256", challenge, salt)
+	require.NoError(t, err)
+	assert.Equal(t, 0, result)
+}
+
+func TestSolveChallenge_UnsupportedAlgorithm(t *testing.T) {
+	_, err := SolveChallenge(context.Background(), "MD5", "abc", "salt")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrUnsupportedAlgorithm)
+}
+
+func TestSolveChallenge_InvalidChallengeHex(t *testing.T) {
+	_, err := SolveChallenge(context.Background(), "SHA-256", "not-hex!", "salt")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid challenge hex")
+}
+
+func TestSolveChallenge_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// Use a challenge that can never be solved (all zeros, won't match any reasonable salt)
+	_, err := SolveChallenge(ctx, "SHA-256", "0000000000000000000000000000000000000000000000000000000000000000", "salt")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestSolveChallenge_ContextTimeout(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+	defer cancel()
+
+	time.Sleep(5 * time.Millisecond)
+
+	_, err := SolveChallenge(ctx, "SHA-256", "0000000000000000000000000000000000000000000000000000000000000000", "salt")
+	require.Error(t, err)
+}
+
+func TestSolveChallenge_AlgorithmVariants(t *testing.T) {
+	salt := "variant"
+	expected := 7
+	challenge := computeChallenge(salt, expected)
+
+	tests := []string{"SHA-256", "sha-256", "SHA256", "sha256"}
+	for _, algo := range tests {
+		t.Run(algo, func(t *testing.T) {
+			result, err := SolveChallenge(context.Background(), algo, challenge, salt)
+			require.NoError(t, err)
+			assert.Equal(t, expected, result)
+		})
+	}
+}
+
+func TestClient_GetChallenge_Success(t *testing.T) {
+	expected := &ChallengeResponse{
+		Algorithm: "SHA-256",
+		Challenge: "abc123",
+		Salt:      "mysalt",
+		Signature: "sig456",
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/keys/challenge", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		var body map[string]string
+		json.NewDecoder(r.Body).Decode(&body)
+		assert.Equal(t, "test@example.com", body["email"])
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(expected)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	result, err := client.GetChallenge(context.Background(), "test@example.com")
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+}
+
+func TestClient_GetChallenge_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "internal error")
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	_, err := client.GetChallenge(context.Background(), "test@example.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
+}
+
+func TestClient_GetChallenge_MalformedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, "not json")
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	_, err := client.GetChallenge(context.Background(), "test@example.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode")
+}
+
+func TestClient_GetChallenge_MissingFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"algorithm": "SHA-256"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	_, err := client.GetChallenge(context.Background(), "test@example.com")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid challenge response")
+}
+
+func TestClient_Provision_Success(t *testing.T) {
+	expected := &ProvisionResponse{
+		SecretKey:      "sk_test_abc123",
+		PublishableKey: "pk_test_xyz789",
+		ClaimURL:       "https://dashboard.stripe.com/claim_sandbox/token",
+		ExpiresAt:      "2026-04-25T03:19:09.000Z",
+		AccountID:      "acct_123",
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/keys/provision", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+
+		var body ProvisionRequest
+		json.NewDecoder(r.Body).Decode(&body)
+		assert.Equal(t, "test@example.com", body.Email)
+		assert.Equal(t, 42, body.Number)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(expected)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	result, err := client.Provision(context.Background(), ProvisionRequest{
+		Algorithm: "SHA-256",
+		Challenge: "challenge",
+		Salt:      "salt",
+		Signature: "sig",
+		Number:    42,
+		Email:     "test@example.com",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+}
+
+func TestClient_Provision_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		fmt.Fprint(w, "rate limited")
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	_, err := client.Provision(context.Background(), ProvisionRequest{Email: "test@example.com"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "429")
+}
+
+func TestGitConfigFunc_Replaceable(t *testing.T) {
+	original := GitConfigFunc
+	defer func() { GitConfigFunc = original }()
+
+	GitConfigFunc = func(key string) string {
+		if key == "user.email" {
+			return "mock@example.com"
+		}
+		return ""
+	}
+
+	assert.Equal(t, "mock@example.com", GitConfigFunc("user.email"))
+	assert.Equal(t, "", GitConfigFunc("user.name"))
+}
+
+func TestClient_FullFlow(t *testing.T) {
+	salt := "integration-salt"
+	secretNumber := 17
+	challenge := computeChallenge(salt, secretNumber)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/keys/challenge":
+			json.NewEncoder(w).Encode(ChallengeResponse{
+				Algorithm: "SHA-256",
+				Challenge: challenge,
+				Salt:      salt,
+				Signature: "test-sig",
+			})
+		case "/keys/provision":
+			var req ProvisionRequest
+			json.NewDecoder(r.Body).Decode(&req)
+			if req.Number != secretNumber {
+				w.WriteHeader(http.StatusBadRequest)
+				fmt.Fprint(w, "invalid solution")
+				return
+			}
+			json.NewEncoder(w).Encode(ProvisionResponse{
+				SecretKey:      "sk_test_provisioned",
+				PublishableKey: "pk_test_provisioned",
+				ClaimURL:       "https://dashboard.stripe.com/claim_sandbox/abc",
+				ExpiresAt:      "2026-05-10T00:00:00Z",
+				AccountID:      "acct_test_123",
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+
+	challengeResp, err := client.GetChallenge(context.Background(), "user@example.com")
+	require.NoError(t, err)
+
+	solution, err := SolveChallenge(context.Background(), challengeResp.Algorithm, challengeResp.Challenge, challengeResp.Salt)
+	require.NoError(t, err)
+	assert.Equal(t, secretNumber, solution)
+
+	result, err := client.Provision(context.Background(), ProvisionRequest{
+		Algorithm: challengeResp.Algorithm,
+		Challenge: challengeResp.Challenge,
+		Salt:      challengeResp.Salt,
+		Signature: challengeResp.Signature,
+		Number:    solution,
+		Email:     "user@example.com",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "sk_test_provisioned", result.SecretKey)
+	assert.Equal(t, "pk_test_provisioned", result.PublishableKey)
+	assert.Equal(t, "acct_test_123", result.AccountID)
+}
