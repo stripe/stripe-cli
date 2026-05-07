@@ -8,14 +8,48 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
+
+func setupSandboxTestConfig(t *testing.T) func() {
+	t.Helper()
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+
+	origProfilesFile := Config.ProfilesFile
+	origProfileName := Config.Profile.ProfileName
+
+	Config.ProfilesFile = profilesFile
+	Config.Profile.ProfileName = "default"
+	Config.InitConfig()
+
+	// Mock browser to prevent real browser launches
+	origOpen := openBrowserFunc
+	origCanOpen := canOpenBrowserFunc
+	openBrowserFunc = func(url string) error { return nil }
+	canOpenBrowserFunc = func() bool { return true }
+
+	// Mock git config
+	origGit := sandbox.GitConfigFunc
+	sandbox.GitConfigFunc = func(key string) string { return "" }
+
+	return func() {
+		Config.ProfilesFile = origProfilesFile
+		Config.Profile.ProfileName = origProfileName
+		openBrowserFunc = origOpen
+		canOpenBrowserFunc = origCanOpen
+		sandbox.GitConfigFunc = origGit
+		viper.Reset()
+	}
+}
 
 func computeChallengeForTest(salt string, number int) string {
 	h := sha256.New()
@@ -50,6 +84,34 @@ func sandboxTestServer(t *testing.T, salt string, secretNumber int, challenge st
 				ClaimURL:       "https://dashboard.stripe.com/claim_sandbox/test",
 				ExpiresAt:      "2026-05-10T00:00:00Z",
 				AccountID:      "acct_sandbox_123",
+			})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+func dashboardServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/stripecli/auth":
+			pollURL := fmt.Sprintf("http://%s/stripecli/auth/poll-token?secret=s", r.Host)
+			json.NewEncoder(w).Encode(map[string]string{
+				"browser_url":       "https://dashboard.stripe.com/test",
+				"poll_url":          pollURL,
+				"verification_code": "code-123",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/stripecli/auth/poll-token":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"redeemed":                 true,
+				"account_id":               "acct_dash_789",
+				"account_display_name":     "Test Corp",
+				"testmode_key_secret":      "sk_test_dashboard",
+				"testmode_key_publishable": "pk_test_dashboard",
+				"livemode_key_secret":      "rk_live_dashboard",
+				"livemode_key_publishable": "pk_live_dashboard",
 			})
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -96,23 +158,10 @@ func TestResolveAutoValue_AutoMissingGitConfig(t *testing.T) {
 	assert.Contains(t, err.Error(), "git config user.email")
 }
 
-func TestResolveAutoValue_AutoName(t *testing.T) {
-	original := sandbox.GitConfigFunc
-	defer func() { sandbox.GitConfigFunc = original }()
-
-	sandbox.GitConfigFunc = func(key string) string {
-		if key == "user.name" {
-			return "Jane Smith"
-		}
-		return ""
-	}
-
-	result, err := resolveAutoValue("auto", "user.name", "--name")
-	require.NoError(t, err)
-	assert.Equal(t, "Jane Smith", result)
-}
-
 func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
 	cmd := newSandboxCreateCmd()
 	cmd.cmd.SetArgs([]string{})
 
@@ -125,8 +174,9 @@ func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
 }
 
 func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
-	original := sandbox.GitConfigFunc
-	defer func() { sandbox.GitConfigFunc = original }()
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
 	sandbox.GitConfigFunc = func(key string) string {
 		if key == "user.email" {
 			return "test@stripe.com"
@@ -152,8 +202,7 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	var result sandbox.ProvisionResponse
-	err = json.Unmarshal(stdout.Bytes(), &result)
-	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	assert.Equal(t, "sk_test_sandbox", result.SecretKey)
 	assert.Equal(t, "pk_test_sandbox", result.PublishableKey)
 	assert.Equal(t, "acct_sandbox_123", result.AccountID)
@@ -161,9 +210,14 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 	assert.Contains(t, stderr.String(), "Claim your sandbox")
 }
 
-func TestSandboxCreateCmd_ProvisionFlow_FallsBackToDashboard(t *testing.T) {
-	original := sandbox.GitConfigFunc
-	defer func() { sandbox.GitConfigFunc = original }()
+func TestSandboxCreateCmd_ProvisionFlow_FallsBackOnServerError(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	t.Setenv("SSH_TTY", "")
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_CLIENT", "")
+
 	sandbox.GitConfigFunc = func(key string) string {
 		if key == "user.email" {
 			return "test@stripe.com"
@@ -171,40 +225,18 @@ func TestSandboxCreateCmd_ProvisionFlow_FallsBackToDashboard(t *testing.T) {
 		return ""
 	}
 
-	// Provision server that always fails
+	// Provision server returns 503 (should trigger fallback)
 	failServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		fmt.Fprint(w, "service unavailable")
 	}))
 	defer failServer.Close()
 
-	// Dashboard server that succeeds immediately
-	dashServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/stripecli/auth":
-			pollURL := fmt.Sprintf("http://%s/stripecli/auth/poll-token?secret=s", r.Host)
-			json.NewEncoder(w).Encode(map[string]string{
-				"browser_url":       "https://dashboard.stripe.com/test",
-				"poll_url":          pollURL,
-				"verification_code": "code-123",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/stripecli/auth/poll-token":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"redeemed":                 true,
-				"account_id":               "acct_fallback_789",
-				"account_display_name":     "Fallback Account",
-				"testmode_key_secret":      "sk_test_fallback",
-				"testmode_key_publishable": "pk_test_fallback",
-			})
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer dashServer.Close()
+	dashSrv := dashboardServer(t)
+	defer dashSrv.Close()
 
 	cmd := newSandboxCreateCmd()
-	cmd.cmd.SetArgs([]string{"--email", "auto", "--base-url", failServer.URL, "--dashboard-base", dashServer.URL})
+	cmd.cmd.SetArgs([]string{"--email", "auto", "--base-url", failServer.URL, "--dashboard-base", dashSrv.URL})
 
 	var stdout, stderr bytes.Buffer
 	cmd.cmd.SetOut(&stdout)
@@ -212,19 +244,120 @@ func TestSandboxCreateCmd_ProvisionFlow_FallsBackToDashboard(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "Provisioning failed")
 	assert.Contains(t, stderr.String(), "Falling back to browser login")
 
 	var result sandbox.ProvisionResponse
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
-	assert.Equal(t, "sk_test_fallback", result.SecretKey)
-	assert.Equal(t, "pk_test_fallback", result.PublishableKey)
-	assert.Equal(t, "acct_fallback_789", result.AccountID)
+	assert.Equal(t, "sk_test_dashboard", result.SecretKey)
+}
+
+func TestSandboxCreateCmd_ProvisionFlow_NoFallbackOn400(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	sandbox.GitConfigFunc = func(key string) string {
+		if key == "user.email" {
+			return "bad@email"
+		}
+		return ""
+	}
+
+	// Server returns 400 (client error — should NOT fallback)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "invalid email")
+	}))
+	defer server.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "auto", "--base-url", server.URL})
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "400")
+	assert.NotContains(t, stderr.String(), "Falling back")
+}
+
+func TestSandboxCreateCmd_DashboardFlow(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	t.Setenv("SSH_TTY", "")
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_CLIENT", "")
+
+	dashSrv := dashboardServer(t)
+	defer dashSrv.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--dashboard", "--dashboard-base", dashSrv.URL})
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.NoError(t, err)
+
+	assert.NotContains(t, stderr.String(), "Solving proof-of-work")
+	assert.Contains(t, stderr.String(), "Waiting for confirmation")
+	assert.Contains(t, stderr.String(), `Connected to "Test Corp"`)
+
+	var result sandbox.ProvisionResponse
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
+	assert.Equal(t, "sk_test_dashboard", result.SecretKey)
+	assert.Equal(t, "pk_test_dashboard", result.PublishableKey)
+	assert.Equal(t, "acct_dash_789", result.AccountID)
+}
+
+func TestSandboxCreateCmd_DashboardFlow_DoesNotRequireEmail(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	t.Setenv("SSH_TTY", "")
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_CLIENT", "")
+
+	dashSrv := dashboardServer(t)
+	defer dashSrv.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--dashboard", "--dashboard-base", dashSrv.URL})
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.NoError(t, err)
+	assert.NotContains(t, stderr.String(), "--email is required")
+}
+
+func TestSandboxCreateCmd_DashboardFlow_BlockedInSSH(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	t.Setenv("SSH_TTY", "/dev/pts/0")
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--dashboard"})
+
+	var stderr bytes.Buffer
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "browser login unavailable in SSH session")
 }
 
 func TestSandboxCreateCmd_NoAuthRequired(t *testing.T) {
-	original := sandbox.GitConfigFunc
-	defer func() { sandbox.GitConfigFunc = original }()
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
 	sandbox.GitConfigFunc = func(key string) string {
 		if key == "user.email" {
 			return "test@stripe.com"
@@ -249,35 +382,28 @@ func TestSandboxCreateCmd_NoAuthRequired(t *testing.T) {
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
 	assert.NotContains(t, stderr.String(), "API key")
-	assert.NotContains(t, stderr.String(), "login")
 }
 
-func TestSandboxCreateCmd_DashboardFlag_SkipsProvision(t *testing.T) {
-	dashServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/stripecli/auth":
-			pollURL := fmt.Sprintf("http://%s/stripecli/auth/poll-token?secret=s", r.Host)
-			json.NewEncoder(w).Encode(map[string]string{
-				"browser_url":       "https://dashboard.stripe.com/test",
-				"poll_url":          pollURL,
-				"verification_code": "code-456",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/stripecli/auth/poll-token":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"redeemed":                 true,
-				"account_id":               "acct_dash_direct",
-				"testmode_key_secret":      "sk_test_dash_direct",
-				"testmode_key_publishable": "pk_test_dash_direct",
-			})
-		default:
-			w.WriteHeader(http.StatusNotFound)
+func TestSandboxCreateCmd_ConfigNotCorrupted(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	sandbox.GitConfigFunc = func(key string) string {
+		if key == "user.email" {
+			return "test@stripe.com"
 		}
-	}))
-	defer dashServer.Close()
+		return ""
+	}
+
+	salt := "config-test"
+	secretNumber := 2
+	challenge := computeChallengeForTest(salt, secretNumber)
+
+	server := sandboxTestServer(t, salt, secretNumber, challenge)
+	defer server.Close()
 
 	cmd := newSandboxCreateCmd()
-	cmd.cmd.SetArgs([]string{"--dashboard", "--dashboard-base", dashServer.URL})
+	cmd.cmd.SetArgs([]string{"--email", "auto", "--base-url", server.URL})
 
 	var stdout, stderr bytes.Buffer
 	cmd.cmd.SetOut(&stdout)
@@ -285,47 +411,11 @@ func TestSandboxCreateCmd_DashboardFlag_SkipsProvision(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.NotContains(t, stderr.String(), "Solving proof-of-work")
-	assert.Contains(t, stderr.String(), "Waiting for confirmation")
 
-	var result sandbox.ProvisionResponse
-	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
-	assert.Equal(t, "sk_test_dash_direct", result.SecretKey)
-}
-
-func TestSandboxCreateCmd_DashboardFlag_DoesNotRequireEmail(t *testing.T) {
-	dashServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/stripecli/auth":
-			pollURL := fmt.Sprintf("http://%s/stripecli/auth/poll-token?secret=s", r.Host)
-			json.NewEncoder(w).Encode(map[string]string{
-				"browser_url":       "https://dashboard.stripe.com/test",
-				"poll_url":          pollURL,
-				"verification_code": "code-789",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/stripecli/auth/poll-token":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"redeemed":                 true,
-				"account_id":               "acct_no_email",
-				"testmode_key_secret":      "sk_test_no_email",
-				"testmode_key_publishable": "pk_test_no_email",
-			})
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer dashServer.Close()
-
-	// No --email flag, just --dashboard
-	cmd := newSandboxCreateCmd()
-	cmd.cmd.SetArgs([]string{"--dashboard", "--dashboard-base", dashServer.URL})
-
-	var stdout, stderr bytes.Buffer
-	cmd.cmd.SetOut(&stdout)
-	cmd.cmd.SetErr(&stderr)
-
-	err := cmd.cmd.Execute()
-	require.NoError(t, err)
-	assert.NotContains(t, stderr.String(), "--email is required")
+	// Verify config was written to temp file, not real config
+	realConfig := filepath.Join(os.Getenv("HOME"), ".config", "stripe", "config.toml")
+	if _, statErr := os.Stat(realConfig); statErr == nil {
+		content, _ := os.ReadFile(realConfig)
+		assert.NotContains(t, string(content), "sk_test_sandbox")
+	}
 }

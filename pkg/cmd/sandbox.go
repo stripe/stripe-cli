@@ -2,10 +2,15 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -18,8 +23,11 @@ import (
 )
 
 // defaultSandboxBaseURL is the production endpoint for sandbox provisioning.
-// Confirmed reachable as a public HTTPS service by the DEeP team.
 const defaultSandboxBaseURL = "https://ai.stripe.com"
+
+// openBrowserFunc and canOpenBrowserFunc are replaceable for testing.
+var openBrowserFunc = open.Browser
+var canOpenBrowserFunc = open.CanOpenBrowser
 
 type sandboxCmd struct {
 	cmd *cobra.Command
@@ -60,7 +68,8 @@ func newSandboxCreateCmd() *sandboxCreateCmd {
 		Long: `Create a new Stripe sandbox with test API keys.
 
 By default, uses a proof-of-work challenge to provision a temporary sandbox
-without authentication. If that fails, automatically falls back to browser login.
+without authentication. If that fails due to a server error, automatically
+falls back to browser login.
 
 Use --dashboard to skip provisioning and connect an existing Stripe account
 via browser login directly (same flow as stripe login).
@@ -73,7 +82,7 @@ Keys are saved to the CLI config so subsequent stripe commands work immediately.
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Provisions a sandbox and saves keys to the CLI config (same as stripe login).\n" +
 				"  Pass --email auto to resolve your email from git config user.email.\n" +
-				"  Falls back to browser login if provisioning fails. Use --dashboard to go directly to browser.",
+				"  Falls back to browser login on server errors. Use --dashboard to go directly to browser.",
 		},
 		RunE: scc.runSandboxCreateCmd,
 	}
@@ -98,7 +107,6 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		return scc.runDashboardFlow(cmd, color)
 	}
 
-	// PoW flow with fallback to dashboard
 	email, err := resolveAutoValue(scc.email, "user.email", "--email")
 	if err != nil {
 		return err
@@ -114,9 +122,12 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 
 	result, err := scc.runProvisionFlow(cmd, color, email, name)
 	if err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nProvisioning failed: %v\n", err)
-		fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Falling back to browser login..."))
-		return scc.runDashboardFlow(cmd, color)
+		if shouldFallbackToDashboard(err) {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\nProvisioning failed: %v\n", err)
+			fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Falling back to browser login..."))
+			return scc.runDashboardFlow(cmd, color)
+		}
+		return err
 	}
 
 	return scc.outputResult(cmd, color, result)
@@ -155,6 +166,12 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 }
 
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora) error {
+	if isSSHSession() {
+		fmt.Fprintln(cmd.ErrOrStderr(), "SSH session detected. Cannot open browser.")
+		fmt.Fprintln(cmd.ErrOrStderr(), "Use `stripe login --interactive` or set STRIPE_API_KEY instead.")
+		return fmt.Errorf("browser login unavailable in SSH session")
+	}
+
 	links, err := login.GetLinks(cmd.Context(), scc.dashboardURL, "stripe-sandbox")
 	if err != nil {
 		return err
@@ -164,8 +181,11 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	fmt.Fprintf(cmd.ErrOrStderr(), "\nOpening browser to connect your Stripe account...\n")
 	fmt.Fprintf(cmd.ErrOrStderr(), "If the browser doesn't open, visit:\n  %s\n\n", links.BrowserURL)
 
-	if open.CanOpenBrowser() {
-		_ = open.Browser(links.BrowserURL)
+	if canOpenBrowserFunc() {
+		if err := openBrowserFunc(links.BrowserURL); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open browser: %v\n", err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Please visit the URL above manually.\n")
+		}
 	}
 
 	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Waiting for confirmation..."))
@@ -175,13 +195,31 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 		return err
 	}
 
+	// Save using the same mechanism as stripe login (preserves live keys)
+	configurer := keys.NewRAKConfigurer(&Config, afero.NewOsFs())
+	if err := configurer.SaveLoginDetails(response); err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not save to config: %v\n", err)
+	}
+
 	result := &sandbox.ProvisionResponse{
 		SecretKey:      response.TestModeAPIKey,
 		PublishableKey: response.TestModePublishableKey,
 		AccountID:      response.AccountID,
 	}
 
-	return scc.outputResult(cmd, color, result)
+	out, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), string(out))
+
+	displayName := response.AccountDisplayName
+	if displayName == "" {
+		displayName = response.AccountID
+	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s\n", color.Green(fmt.Sprintf("Connected to %q!", displayName)))
+
+	return nil
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
@@ -207,6 +245,8 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 }
 
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
+	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
+
 	Config.Profile.TestModeAPIKey = result.SecretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if result.AccountID != "" {
@@ -238,4 +278,25 @@ func resolveAutoValue(value, gitKey, flagName string) (string, error) {
 	}
 
 	return value, nil
+}
+
+// shouldFallbackToDashboard returns true for server/network errors (5xx, timeouts,
+// connection refused) but false for client errors (4xx) which indicate bad input.
+func shouldFallbackToDashboard(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Network errors (connection refused, timeout, DNS)
+	var opErr *net.OpError
+	if errors.As(err, &opErr) || os.IsTimeout(err) {
+		return true
+	}
+
+	// Server errors (5xx) from sandbox.readErrorResponse format: "server returned 5xx: ..."
+	return strings.Contains(err.Error(), "server returned 5")
+}
+
+func isSSHSession() bool {
+	return os.Getenv("SSH_TTY") != "" || os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != ""
 }

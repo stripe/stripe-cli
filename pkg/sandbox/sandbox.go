@@ -48,9 +48,9 @@ type ProvisionRequest struct {
 type ProvisionResponse struct {
 	SecretKey      string `json:"secret_key"`
 	PublishableKey string `json:"publishable_key"`
-	ClaimURL       string `json:"claim_url"`
-	ExpiresAt      string `json:"expires_at"`
-	AccountID      string `json:"account_id"`
+	ClaimURL       string `json:"claim_url,omitempty"`
+	ExpiresAt      string `json:"expires_at,omitempty"`
+	AccountID      string `json:"account_id,omitempty"`
 }
 
 type Client struct {
