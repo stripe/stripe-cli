@@ -16,16 +16,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func computeChallenge(salt string, number int) string {
+func computeChallenge(salt string, number int64) string {
 	h := sha256.New()
 	h.Write([]byte(salt))
-	h.Write([]byte(strconv.Itoa(number)))
+	h.Write([]byte(strconv.FormatInt(number, 10)))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
 func TestSolveChallenge_KnownSolution(t *testing.T) {
 	salt := "testsalt"
-	expected := 42
+	expected := int64(42)
 	challenge := computeChallenge(salt, expected)
 
 	result, err := SolveChallenge(context.Background(), "SHA-256", challenge, salt)
@@ -35,11 +35,11 @@ func TestSolveChallenge_KnownSolution(t *testing.T) {
 
 func TestSolveChallenge_Zero(t *testing.T) {
 	salt := "zero"
-	challenge := computeChallenge(salt, 0)
+	challenge := computeChallenge(salt, int64(0))
 
 	result, err := SolveChallenge(context.Background(), "SHA-256", challenge, salt)
 	require.NoError(t, err)
-	assert.Equal(t, 0, result)
+	assert.Equal(t, int64(0), result)
 }
 
 func TestSolveChallenge_UnsupportedAlgorithm(t *testing.T) {
@@ -76,7 +76,7 @@ func TestSolveChallenge_ContextCancelledMidSolve(t *testing.T) {
 
 func TestSolveChallenge_AlgorithmVariants(t *testing.T) {
 	salt := "variant"
-	expected := 7
+	expected := int64(7)
 	challenge := computeChallenge(salt, expected)
 
 	tests := []string{"SHA-256", "sha-256", "SHA256", "sha256"}
@@ -173,7 +173,7 @@ func TestClient_Provision_Success(t *testing.T) {
 		var body ProvisionRequest
 		json.NewDecoder(r.Body).Decode(&body)
 		assert.Equal(t, "test@example.com", body.Email)
-		assert.Equal(t, 42, body.Number)
+		assert.Equal(t, int64(42), body.Number)
 		assert.Equal(t, "sig", body.Signature)
 		assert.Equal(t, "SHA-256", body.Algorithm)
 		assert.Equal(t, "challenge", body.Challenge)
@@ -266,7 +266,7 @@ func TestGitConfigFunc_Replaceable(t *testing.T) {
 
 func TestClient_FullFlow(t *testing.T) {
 	salt := "integration-salt"
-	secretNumber := 17
+	secretNumber := int64(17)
 	challenge := computeChallenge(salt, secretNumber)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

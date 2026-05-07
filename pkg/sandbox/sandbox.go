@@ -53,7 +53,7 @@ type ProvisionRequest struct {
 	Challenge string `json:"challenge"`
 	Salt      string `json:"salt"`
 	Signature string `json:"signature"`
-	Number    int    `json:"number"`
+	Number    int64  `json:"number"`
 	Email     string `json:"email"`
 	Name      string `json:"name,omitempty"`
 }
@@ -177,7 +177,7 @@ func readErrorResponse(resp *http.Response) error {
 }
 
 // SolveChallenge brute-forces the proof-of-work: finds n where SHA-256(salt + n) == challenge.
-func SolveChallenge(ctx context.Context, algorithm, challenge, salt string) (int, error) {
+func SolveChallenge(ctx context.Context, algorithm, challenge, salt string) (int64, error) {
 	normalized := strings.ToLower(strings.ReplaceAll(algorithm, "-", ""))
 	if normalized != "sha256" {
 		return 0, fmt.Errorf("%w: got %q", ErrUnsupportedAlgorithm, algorithm)
@@ -192,7 +192,7 @@ func SolveChallenge(ctx context.Context, algorithm, challenge, salt string) (int
 	sumBuf := make([]byte, 0, sha256.Size)
 	numBuf := make([]byte, 0, 20)
 
-	for n := 0; n < maxIterations; n++ {
+	for n := int64(0); n < maxIterations; n++ {
 		if n&0xFFF == 0 {
 			if err := ctx.Err(); err != nil {
 				return 0, err
@@ -201,7 +201,7 @@ func SolveChallenge(ctx context.Context, algorithm, challenge, salt string) (int
 
 		h.Reset()
 		h.Write([]byte(salt))
-		h.Write(strconv.AppendInt(numBuf[:0], int64(n), 10))
+		h.Write(strconv.AppendInt(numBuf[:0], n, 10))
 
 		if bytes.Equal(h.Sum(sumBuf[:0]), target) {
 			return n, nil

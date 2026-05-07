@@ -51,14 +51,14 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	}
 }
 
-func computeChallengeForTest(salt string, number int) string {
+func computeChallengeForTest(salt string, number int64) string {
 	h := sha256.New()
 	h.Write([]byte(salt))
-	h.Write([]byte(strconv.Itoa(number)))
+	h.Write([]byte(strconv.FormatInt(number, 10)))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func sandboxTestServer(t *testing.T, salt string, secretNumber int, challenge string) *httptest.Server {
+func sandboxTestServer(t *testing.T, salt string, secretNumber int64, challenge string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -185,7 +185,7 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 	}
 
 	salt := "cmd-test-salt"
-	secretNumber := 5
+	secretNumber := int64(5)
 	challenge := computeChallengeForTest(salt, secretNumber)
 
 	server := sandboxTestServer(t, salt, secretNumber, challenge)
@@ -366,7 +366,7 @@ func TestSandboxCreateCmd_NoAuthRequired(t *testing.T) {
 	}
 
 	salt := "noauth-salt"
-	secretNumber := 3
+	secretNumber := int64(3)
 	challenge := computeChallengeForTest(salt, secretNumber)
 
 	server := sandboxTestServer(t, salt, secretNumber, challenge)
@@ -396,7 +396,7 @@ func TestSandboxCreateCmd_ConfigNotCorrupted(t *testing.T) {
 	}
 
 	salt := "config-test"
-	secretNumber := 2
+	secretNumber := int64(2)
 	challenge := computeChallengeForTest(salt, secretNumber)
 
 	server := sandboxTestServer(t, salt, secretNumber, challenge)
