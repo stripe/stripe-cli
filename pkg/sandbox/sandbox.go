@@ -28,6 +28,19 @@ var (
 	ErrMaxIterationsReached = errors.New("proof-of-work exceeded maximum iterations")
 )
 
+// HTTPError is returned when the sandbox server responds with a non-200 status.
+type HTTPError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *HTTPError) Error() string {
+	if e.Body != "" {
+		return fmt.Sprintf("server returned %d: %s", e.StatusCode, e.Body)
+	}
+	return fmt.Sprintf("server returned %d", e.StatusCode)
+}
+
 type ChallengeResponse struct {
 	Algorithm string `json:"algorithm"`
 	Challenge string `json:"challenge"`
@@ -160,10 +173,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body []byte
 
 func readErrorResponse(resp *http.Response) error {
 	body, _ := io.ReadAll(resp.Body)
-	if len(body) > 0 {
-		return fmt.Errorf("server returned %d: %s", resp.StatusCode, string(body))
-	}
-	return fmt.Errorf("server returned %d", resp.StatusCode)
+	return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 }
 
 // SolveChallenge brute-forces the proof-of-work: finds n where SHA-256(salt + n) == challenge.

@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -136,13 +136,13 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.Aurora, email, name string) (*sandbox.ProvisionResponse, error) {
 	client := sandbox.NewClient(scc.baseURL)
 
-	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Solving proof-of-work..."))
-	start := time.Now()
-
 	challengeResp, err := client.GetChallenge(cmd.Context(), email)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Solving proof-of-work..."))
+	start := time.Now()
 
 	solution, err := sandbox.SolveChallenge(cmd.Context(), challengeResp.Algorithm, challengeResp.Challenge, challengeResp.Salt)
 	if err != nil {
@@ -245,6 +245,10 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 }
 
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
+	if err := validators.APIKey(result.SecretKey); err != nil {
+		return fmt.Errorf("invalid secret key from server: %w", err)
+	}
+
 	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
 
 	Config.Profile.TestModeAPIKey = result.SecretKey
@@ -289,12 +293,20 @@ func shouldFallbackToDashboard(err error) bool {
 
 	// Network errors (connection refused, timeout, DNS)
 	var opErr *net.OpError
-	if errors.As(err, &opErr) || os.IsTimeout(err) {
+	if errors.As(err, &opErr) {
+		return true
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 
-	// Server errors (5xx) from sandbox.readErrorResponse format: "server returned 5xx: ..."
-	return strings.Contains(err.Error(), "server returned 5")
+	// Server errors (5xx)
+	var httpErr *sandbox.HTTPError
+	if errors.As(err, &httpErr) {
+		return httpErr.StatusCode >= 500
+	}
+
+	return false
 }
 
 func isSSHSession() bool {
