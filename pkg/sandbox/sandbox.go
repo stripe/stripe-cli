@@ -1,3 +1,4 @@
+// Package sandbox provisions anonymous Stripe sandbox environments.
 package sandbox
 
 import (
