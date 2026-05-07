@@ -412,10 +412,27 @@ func TestSandboxCreateCmd_ConfigNotCorrupted(t *testing.T) {
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
 
-	// Verify config was written to temp file, not real config
+	// Positive: temp config file actually got the key
+	content, readErr := os.ReadFile(Config.ProfilesFile)
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "sk_test_sandbox")
+
+	// Negative: real config was not touched
 	realConfig := filepath.Join(os.Getenv("HOME"), ".config", "stripe", "config.toml")
 	if _, statErr := os.Stat(realConfig); statErr == nil {
-		content, _ := os.ReadFile(realConfig)
-		assert.NotContains(t, string(content), "sk_test_sandbox")
+		realContent, _ := os.ReadFile(realConfig)
+		assert.NotContains(t, string(realContent), "sk_test_sandbox")
 	}
+}
+
+func TestSaveSandboxToConfig_RejectsInvalidKey(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := saveSandboxToConfig(&sandbox.ProvisionResponse{
+		SecretKey:      "garbage",
+		PublishableKey: "pk_test_x",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid secret key")
 }

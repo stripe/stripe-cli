@@ -224,7 +224,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
 	if err := saveSandboxToConfig(result); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not save to config: %v\n", err)
+		return err
 	}
 
 	out, err := json.MarshalIndent(result, "", "  ")
