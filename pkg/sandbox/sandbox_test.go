@@ -58,20 +58,20 @@ func TestSolveChallenge_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	// Use a challenge that can never be solved (all zeros, won't match any reasonable salt)
 	_, err := SolveChallenge(ctx, "SHA-256", "0000000000000000000000000000000000000000000000000000000000000000", "salt")
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
 
-func TestSolveChallenge_ContextTimeout(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
+func TestSolveChallenge_ContextCancelledMidSolve(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	time.Sleep(5 * time.Millisecond)
-
-	_, err := SolveChallenge(ctx, "SHA-256", "0000000000000000000000000000000000000000000000000000000000000000", "salt")
+	// Use a challenge that will never be solved (requires iterating past timeout)
+	unsolvable := "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	_, err := SolveChallenge(ctx, "SHA-256", unsolvable, "will-never-match")
 	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestSolveChallenge_AlgorithmVariants(t *testing.T) {
@@ -101,6 +101,7 @@ func TestClient_GetChallenge_Success(t *testing.T) {
 		assert.Equal(t, "/keys/challenge", r.URL.Path)
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.NotEmpty(t, r.Header.Get("User-Agent"))
 
 		var body map[string]string
 		json.NewDecoder(r.Body).Decode(&body)
@@ -173,6 +174,10 @@ func TestClient_Provision_Success(t *testing.T) {
 		json.NewDecoder(r.Body).Decode(&body)
 		assert.Equal(t, "test@example.com", body.Email)
 		assert.Equal(t, 42, body.Number)
+		assert.Equal(t, "sig", body.Signature)
+		assert.Equal(t, "SHA-256", body.Algorithm)
+		assert.Equal(t, "challenge", body.Challenge)
+		assert.Equal(t, "salt", body.Salt)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(expected)
@@ -190,6 +195,45 @@ func TestClient_Provision_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, expected, result)
+}
+
+func TestClient_Provision_WithName(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body ProvisionRequest
+		json.NewDecoder(r.Body).Decode(&body)
+		assert.Equal(t, "Test User", body.Name)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ProvisionResponse{SecretKey: "sk_test_x"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	_, err := client.Provision(context.Background(), ProvisionRequest{
+		Email: "test@example.com",
+		Name:  "Test User",
+	})
+	require.NoError(t, err)
+}
+
+func TestClient_Provision_NameOmittedWhenEmpty(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var raw map[string]interface{}
+		json.NewDecoder(r.Body).Decode(&raw)
+		_, hasName := raw["name"]
+		assert.False(t, hasName, "name field should be omitted when empty")
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ProvisionResponse{SecretKey: "sk_test_x"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	_, err := client.Provision(context.Background(), ProvisionRequest{
+		Email: "test@example.com",
+		Name:  "",
+	})
+	require.NoError(t, err)
 }
 
 func TestClient_Provision_ServerError(t *testing.T) {
@@ -244,6 +288,8 @@ func TestClient_FullFlow(t *testing.T) {
 				fmt.Fprint(w, "invalid solution")
 				return
 			}
+			assert.Equal(t, "test-sig", req.Signature)
+			assert.Equal(t, "user@example.com", req.Email)
 			json.NewEncoder(w).Encode(ProvisionResponse{
 				SecretKey:      "sk_test_provisioned",
 				PublishableKey: "pk_test_provisioned",

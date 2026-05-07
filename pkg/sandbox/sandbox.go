@@ -9,11 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 const maxIterations = 100_000_000
@@ -55,8 +59,18 @@ type Client struct {
 
 func NewClient(baseURL string) *Client {
 	return &Client{
-		BaseURL:    baseURL,
-		HTTPClient: &http.Client{},
+		BaseURL: baseURL,
+		HTTPClient: &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ResponseHeaderTimeout: 30 * time.Second,
+			},
+		},
 	}
 }
 
@@ -137,6 +151,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body []byte
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
+	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
 	return c.HTTPClient.Do(req)
 }
