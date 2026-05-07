@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/login/keys"
+	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -21,10 +26,12 @@ type sandboxCmd struct {
 }
 
 type sandboxCreateCmd struct {
-	cmd     *cobra.Command
-	email   string
-	name    string
-	baseURL string
+	cmd          *cobra.Command
+	email        string
+	name         string
+	baseURL      string
+	dashboardURL string
+	dashboard    bool
 }
 
 func newSandboxCmd() *sandboxCmd {
@@ -35,7 +42,8 @@ func newSandboxCmd() *sandboxCmd {
 		Args:  validators.NoArgs,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `stripe sandbox create --email auto` to provision a sandbox without authentication.\n" +
-				"  Returns test API keys you can use immediately. Claim the sandbox later to keep it.",
+				"  If provisioning fails, falls back to browser login (like stripe login).\n" +
+				"  Use `stripe sandbox create --dashboard` to skip provisioning and use browser login directly.",
 		},
 	}
 
@@ -51,26 +59,34 @@ func newSandboxCreateCmd() *sandboxCreateCmd {
 		Short: "Provision a new sandbox environment",
 		Long: `Create a new Stripe sandbox with test API keys.
 
-This command does not require authentication. It uses a proof-of-work challenge
-to provision a temporary sandbox environment with working test keys.
-Keys are saved to the CLI config so subsequent stripe commands work immediately.
+By default, uses a proof-of-work challenge to provision a temporary sandbox
+without authentication. If that fails, automatically falls back to browser login.
 
-Use --email auto to infer your email from git config.`,
+Use --dashboard to skip provisioning and connect an existing Stripe account
+via browser login directly (same flow as stripe login).
+
+Keys are saved to the CLI config so subsequent stripe commands work immediately.`,
 		Example: `  stripe sandbox create --email auto
-  stripe sandbox create --email you@example.com --name "Jane Smith"`,
+  stripe sandbox create --email you@example.com --name "Jane Smith"
+  stripe sandbox create --dashboard`,
 		Args: validators.NoArgs,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Provisions a sandbox and saves keys to the CLI config (same as stripe login).\n" +
-				"  Pass --email auto to resolve your email from git config user.email.",
+				"  Pass --email auto to resolve your email from git config user.email.\n" +
+				"  Falls back to browser login if provisioning fails. Use --dashboard to go directly to browser.",
 		},
 		RunE: scc.runSandboxCreateCmd,
 	}
 
-	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address (required). Use \"auto\" to infer from git config user.email")
+	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address (required for provisioning). Use \"auto\" to infer from git config user.email")
 	scc.cmd.Flags().StringVar(&scc.name, "name", "", "Your full name (optional). Use \"auto\" to infer from git config user.name")
+	scc.cmd.Flags().BoolVar(&scc.dashboard, "dashboard", false, "Skip provisioning and connect via browser login")
 
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
+
+	scc.cmd.Flags().StringVar(&scc.dashboardURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
+	_ = scc.cmd.Flags().MarkHidden("dashboard-base")
 
 	return scc
 }
@@ -78,6 +94,11 @@ Use --email auto to infer your email from git config.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
+	if scc.dashboard {
+		return scc.runDashboardFlow(cmd, color)
+	}
+
+	// PoW flow with fallback to dashboard
 	email, err := resolveAutoValue(scc.email, "user.email", "--email")
 	if err != nil {
 		return err
@@ -91,6 +112,17 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		}
 	}
 
+	result, err := scc.runProvisionFlow(cmd, color, email, name)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nProvisioning failed: %v\n", err)
+		fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Falling back to browser login..."))
+		return scc.runDashboardFlow(cmd, color)
+	}
+
+	return scc.outputResult(cmd, color, result)
+}
+
+func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.Aurora, email, name string) (*sandbox.ProvisionResponse, error) {
 	client := sandbox.NewClient(scc.baseURL)
 
 	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Solving proof-of-work..."))
@@ -98,12 +130,12 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 
 	challengeResp, err := client.GetChallenge(cmd.Context(), email)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	solution, err := sandbox.SolveChallenge(cmd.Context(), challengeResp.Algorithm, challengeResp.Challenge, challengeResp.Salt)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	elapsed := time.Since(start)
@@ -119,11 +151,40 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		Name:      name,
 	}
 
-	result, err := client.Provision(cmd.Context(), provisionReq)
+	return client.Provision(cmd.Context(), provisionReq)
+}
+
+func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora) error {
+	links, err := login.GetLinks(cmd.Context(), scc.dashboardURL, "stripe-sandbox")
 	if err != nil {
 		return err
 	}
 
+	fmt.Fprintf(cmd.ErrOrStderr(), "Your pairing code is: %s\n", links.VerificationCode)
+	fmt.Fprintf(cmd.ErrOrStderr(), "\nOpening browser to connect your Stripe account...\n")
+	fmt.Fprintf(cmd.ErrOrStderr(), "If the browser doesn't open, visit:\n  %s\n\n", links.BrowserURL)
+
+	if open.CanOpenBrowser() {
+		_ = open.Browser(links.BrowserURL)
+	}
+
+	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Waiting for confirmation..."))
+
+	response, _, err := keys.PollForKey(cmd.Context(), links.PollURL, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	result := &sandbox.ProvisionResponse{
+		SecretKey:      response.TestModeAPIKey,
+		PublishableKey: response.TestModePublishableKey,
+		AccountID:      response.AccountID,
+	}
+
+	return scc.outputResult(cmd, color, result)
+}
+
+func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
 	if err := saveSandboxToConfig(result); err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not save to config: %v\n", err)
 	}
