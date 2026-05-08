@@ -102,7 +102,7 @@ func TestMakeFolderExists(t *testing.T) {
 	path, err := sampleManager.MakeFolder("bender")
 
 	assert.Equal(t, "", path)
-	assert.EqualError(t, err, fmt.Sprintf("Path already exists, aborting: %s", preExistingPath))
+	assert.EqualError(t, err, fmt.Sprintf("path already exists, aborting: %s", preExistingPath))
 }
 
 func TestGetFolders(t *testing.T) {

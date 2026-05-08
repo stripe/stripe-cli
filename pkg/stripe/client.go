@@ -1,3 +1,4 @@
+// Package stripe provides the HTTP client for the Stripe API.
 package stripe
 
 import (

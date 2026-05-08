@@ -13,7 +13,7 @@ const (
 	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+.dev.stripe.me`
 
 	// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
-	DefaultFilesAPIBaseURL = "https://files.stripe.com"
+	DefaultFilesAPIBaseURL = "https://files.stripe.com/"
 
 	// DefaultDashboardBaseURL is the default base URL for dashboard requests
 	DefaultDashboardBaseURL   = "https://dashboard.stripe.com"
@@ -46,7 +46,7 @@ func isValid(url string, exactStrings []string, regexpStrings []string) bool {
 
 // ValidateAPIBaseURL returns an error if apiBaseURL isn't allowed
 func ValidateAPIBaseURL(apiBaseURL string) error {
-	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL}
+	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL, DefaultFilesAPIBaseURL}
 	regexpStrings := []string{APIBaseURLRegexp, devAPIBaseURLRegexp, localhostURLRegexp}
 	if isValid(apiBaseURL, exactStrings, regexpStrings) {
 		return nil

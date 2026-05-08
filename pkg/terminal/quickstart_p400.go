@@ -1,3 +1,4 @@
+// Package terminal provides commands for managing Stripe Terminal readers.
 package terminal
 
 import (
