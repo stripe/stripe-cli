@@ -72,13 +72,13 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	color := ansi.Color(os.Stdout)
+	pluginName, version := parseInstallArg(args[0])
+	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
 
 	// Refresh the plugin before proceeding
 	if err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
 		return err
 	}
-
-	pluginName, version := parseInstallArg(args[0])
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
 	if err != nil {
@@ -127,6 +127,13 @@ func versionChangeVerb(from, to string) string {
 		return "downgraded"
 	}
 	return "upgraded"
+}
+
+func (ic *InstallCmd) setInstallTelemetryMetadata(ctx context.Context, pluginName string) {
+	telemetryMetadata := stripe.GetEventMetadata(ctx)
+	if telemetryMetadata != nil {
+		telemetryMetadata.SetPluginName(pluginName)
+	}
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {

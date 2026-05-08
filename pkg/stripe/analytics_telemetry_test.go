@@ -83,6 +83,12 @@ func TestSetMerchant(t *testing.T) {
 	require.Equal(t, merchant, tel.Merchant)
 }
 
+func TestSetPluginName(t *testing.T) {
+	tel := stripe.NewEventMetadata()
+	tel.SetPluginName("apps")
+	require.Equal(t, "apps", tel.PluginName)
+}
+
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +104,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "livemode=false")
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
+		require.Contains(t, bodyString, "plugin_name=apps")
 		require.Contains(t, bodyString, "request_id=req_zzz")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
@@ -112,6 +119,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		CLIVersion:        "master",
 		OS:                "darwin",
 		CommandPath:       "stripe test",
+		PluginName:        "apps",
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
@@ -154,6 +162,7 @@ func TestSendEvent(t *testing.T) {
 		require.Contains(t, bodyString, "invocation_id=123456")
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
+		require.Contains(t, bodyString, "plugin_name=apps")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
 		require.NotContains(t, bodyString, "ai_agent")
@@ -167,6 +176,7 @@ func TestSendEvent(t *testing.T) {
 		CLIVersion:        "master",
 		OS:                "darwin",
 		CommandPath:       "stripe test",
+		PluginName:        "apps",
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
