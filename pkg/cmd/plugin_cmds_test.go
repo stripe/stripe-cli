@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -153,4 +154,75 @@ func TestSubsliceAfter(t *testing.T) {
 			assert.Equal(t, tt.expected, subsliceAfter(tt.sl, tt.str))
 		})
 	}
+}
+
+func TestResolvePluginTelemetryCommandPathAddsFirstPluginSubcommand(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	pluginCmd := &cobra.Command{
+		Use:         "projects",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+	root.AddCommand(pluginCmd)
+
+	assert.Equal(
+		t,
+		"stripe projects catalog",
+		resolvePluginTelemetryCommandPath(pluginCmd, []string{"stripe", "projects", "catalog"}),
+	)
+}
+
+func TestResolvePluginTelemetryCommandPathSkipsPluginGlobalFlags(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	pluginCmd := &cobra.Command{
+		Use:         "projects",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+	root.AddCommand(pluginCmd)
+
+	assert.Equal(
+		t,
+		"stripe projects catalog",
+		resolvePluginTelemetryCommandPath(pluginCmd, []string{"stripe", "projects", "--color", "off", "--project-name", "demo", "catalog"}),
+	)
+}
+
+func TestResolvePluginTelemetryCommandPathLeavesTopLevelWhenNoSubcommand(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	pluginCmd := &cobra.Command{
+		Use:         "projects",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+	root.AddCommand(pluginCmd)
+
+	assert.Equal(
+		t,
+		"stripe projects",
+		resolvePluginTelemetryCommandPath(pluginCmd, []string{"stripe", "projects", "--help"}),
+	)
+}
+
+func TestResolvePluginTelemetryCommandPathUsesResolvedPluginStubPath(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	pluginCmd := &cobra.Command{
+		Use:         "projects",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+	billingCmd := &cobra.Command{
+		Use:         "billing",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+	listCmd := &cobra.Command{
+		Use:         "list",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+
+	root.AddCommand(pluginCmd)
+	pluginCmd.AddCommand(billingCmd)
+	billingCmd.AddCommand(listCmd)
+
+	assert.Equal(
+		t,
+		"stripe projects billing list",
+		resolvePluginTelemetryCommandPath(listCmd, []string{"stripe", "projects", "billing", "list", "--json"}),
+	)
 }

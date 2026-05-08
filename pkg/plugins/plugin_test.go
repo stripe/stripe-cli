@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -38,6 +39,13 @@ func TestInstall(t *testing.T) {
 	require.True(t, fileExists)
 
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
+func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
+	plugin := Plugin{Shortname: "appA"}
+
+	err := plugin.verifyChecksum(strings.NewReader("locally built binary"), localDevelopmentVersion)
+	require.NoError(t, err)
 }
 
 func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
@@ -159,6 +167,34 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	// Require that we did not delete the initial version of the plugin
 	fileExists, _ = afero.Exists(fs, file)
 	require.True(t, fileExists, "Did not expect the original version of the plugin to be deleted.")
+}
+
+func TestLookUpInstalledVersionPrefersLocalDevelopmentVersion(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/local.build.dev", 0755))
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+
+	version, err := plugin.lookUpInstalledVersion(config, fs)
+	require.NoError(t, err)
+	require.Equal(t, localDevelopmentVersion, version)
+}
+
+func TestLookUpInstalledVersionFallsBackToInstalledRelease(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/1.0.1", 0755))
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+
+	version, err := plugin.lookUpInstalledVersion(config, fs)
+	require.NoError(t, err)
+	require.Equal(t, "1.0.1", version)
 }
 
 func TestCommandInfoParsedFromManifest(t *testing.T) {

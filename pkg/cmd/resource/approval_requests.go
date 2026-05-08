@@ -3,6 +3,7 @@ package resource
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
@@ -52,26 +53,15 @@ var approvalRequestsSpecs = []OperationSpec{
 
 // AddApprovalRequestsSubCmds patches approval_requests commands into the
 // auto-generated `core` namespace command tree.
-func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) error {
-	var coreCmd *cobra.Command
+func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) {
+	// Fail open if "stripe v2 core" command is not found
+	// This is best effort while the approval_requests API is still in private preview
+	if coreCmd, ok := cmdutil.FindSubCmd(rootCmd, "v2", "core"); ok {
+		rApprovalRequestsCmd := NewResourceCmd(coreCmd, "approval_requests")
+		rApprovalRequestsCmd.Cmd.Hidden = true
 
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Use == "core" {
-			coreCmd = cmd
-			break
+		for i := range approvalRequestsSpecs {
+			NewOperationCmd(rApprovalRequestsCmd.Cmd, &approvalRequestsSpecs[i], cfg)
 		}
 	}
-
-	if coreCmd == nil {
-		return nil
-	}
-
-	rApprovalRequestsCmd := NewResourceCmd(coreCmd, "approval_requests")
-	rApprovalRequestsCmd.Cmd.Hidden = true
-
-	for i := range approvalRequestsSpecs {
-		NewOperationCmd(rApprovalRequestsCmd.Cmd, &approvalRequestsSpecs[i], cfg)
-	}
-
-	return nil
 }

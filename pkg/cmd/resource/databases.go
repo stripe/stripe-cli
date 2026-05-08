@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -133,11 +134,8 @@ func AddDatabasesCmd(rootCmd *cobra.Command, cfg *config.Config) error {
 		rootCmd.Annotations = make(map[string]string)
 	}
 
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Use == "databases" {
-			rootCmd.RemoveCommand(cmd)
-			break
-		}
+	if existing, ok := cmdutil.FindSubCmd(rootCmd, "databases"); ok {
+		rootCmd.RemoveCommand(existing)
 	}
 
 	newDatabasesResourceCmd(rootCmd, cfg)
@@ -162,12 +160,10 @@ func newDatabasesResourceCmd(parentCmd *cobra.Command, cfg *config.Config) *Reso
 	addDatabaseCommands(databasesCmd.Cmd, cfg)
 	databasesCmd.Cmd.Hidden = true
 
-	for _, cmd := range parentCmd.Commands() {
-		if cmd.Use == "databases" {
-			cmd.Short = databasesCmd.Cmd.Short
-			cmd.Long = databasesCmd.Cmd.Long
-			cmd.Hidden = true
-		}
+	if existing, ok := cmdutil.FindSubCmd(parentCmd, "databases"); ok {
+		existing.Short = databasesCmd.Cmd.Short
+		existing.Long = databasesCmd.Cmd.Long
+		existing.Hidden = true
 	}
 
 	return databasesCmd
