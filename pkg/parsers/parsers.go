@@ -233,7 +233,6 @@ func ParseArrayForFormData(params []interface{}, parent string, queryRespMap map
 	// The index is only used for arrays of maps
 	index := -1
 	for _, value := range params {
-
 		if value == nil {
 			data = append(data, fmt.Sprintf("%s[]=", parent))
 			continue
