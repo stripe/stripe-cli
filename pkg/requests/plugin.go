@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
@@ -14,8 +16,25 @@ type PluginData struct {
 	AdditionalManifests []string `json:"additional_manifests,omitempty"`
 }
 
+// defaultPluginBaseURL is the repository where plugins are hosted.
+// This is used as a fallback if the user is not logged in to the CLI.
+const defaultPluginBaseURL = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local"
+
+var DefaultPluginData = PluginData{
+	PluginBaseURL:       defaultPluginBaseURL,
+	AdditionalManifests: []string{},
+}
+
 // GetPluginData returns the plugin download information
 func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) (PluginData, error) {
+	// If no API key is available, use hardcoded fallback values
+	if apiKey == "" {
+		log.Debug("No API key available, using default plugin data")
+		return DefaultPluginData, nil
+	}
+
+	log.Debug("API key available, fetching plugin URL")
+
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,

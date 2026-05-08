@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -14,6 +15,16 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
+
+var pluginTelemetryFlagsWithValues = map[string]struct{}{
+	"--api-key":      {},
+	"--color":        {},
+	"--config":       {},
+	"--device-name":  {},
+	"--log-level":    {},
+	"--project-name": {},
+	"-p":             {},
+}
 
 type pluginTemplateCmd struct {
 	cfg        *config.Config
@@ -58,7 +69,35 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		ptc.runPluginCmd(c, args)
 	})
 
+	// Add subcommand stubs from manifest metadata so they appear in --map and help
+	addPluginSubcommandStubs(ptc.cmd, plugin.Commands, ptc)
+
 	return ptc
+}
+
+// addPluginSubcommandStubs recursively creates cobra.Command stubs from
+// manifest CommandInfo metadata. These stubs exist for --map display and
+// shell completion; actual execution is always delegated to the plugin binary.
+func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandInfo, ptc *pluginTemplateCmd) {
+	for _, ci := range commands {
+		if ci.Name == "" {
+			continue
+		}
+		sub := &cobra.Command{
+			Use:   ci.Name,
+			Short: ci.Desc,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				pluginArgs := subsliceAfter(os.Args, ptc.cmd.Name())
+				return ptc.runPluginCmd(ptc.cmd, pluginArgs)
+			},
+			Annotations: map[string]string{"scope": "plugin"},
+			FParseErrWhitelist: cobra.FParseErrWhitelist{
+				UnknownFlags: true,
+			},
+		}
+		parent.AddCommand(sub)
+		addPluginSubcommandStubs(sub, ci.Commands, ptc)
+	}
 }
 
 // runPluginCmd hands off to the plugin itself to take over
@@ -82,12 +121,12 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
+	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "")
 	plugins.CleanupAllClients()
 
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {
-			return errors.New("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`")
+			return errors.New("install failed due to API key not configured, please run `stripe login` or specify the `--api-key`")
 		}
 
 		log.WithFields(log.Fields{
@@ -113,4 +152,81 @@ func subsliceAfter(sl []string, str string) []string {
 		}
 	}
 	return make([]string, 0)
+}
+
+func resolvePluginTelemetryCommandPath(cmd *cobra.Command, argv []string) string {
+	if cmd == nil {
+		return ""
+	}
+
+	basePath := cmd.CommandPath()
+	pluginRoot := pluginRootCommand(cmd)
+	if pluginRoot == nil {
+		return basePath
+	}
+
+	// If Cobra already resolved plugin subcommand stubs from the manifest,
+	// trust that path instead of trying to infer it from argv.
+	if len(strings.Fields(basePath)) > len(strings.Fields(pluginRoot.CommandPath())) {
+		return basePath
+	}
+
+	pluginArgs := subsliceAfter(argv, pluginRoot.Name())
+	subcommand := firstPluginTelemetrySubcommand(pluginArgs)
+	if subcommand == "" {
+		return basePath
+	}
+
+	return basePath + " " + subcommand
+}
+
+func pluginRootCommand(cmd *cobra.Command) *cobra.Command {
+	if cmd == nil || !plugins.IsPluginCommand(cmd) {
+		return nil
+	}
+
+	pluginRoot := cmd
+	for pluginRoot.Parent() != nil && plugins.IsPluginCommand(pluginRoot.Parent()) {
+		pluginRoot = pluginRoot.Parent()
+	}
+
+	return pluginRoot
+}
+
+func firstPluginTelemetrySubcommand(args []string) string {
+	skipNext := false
+
+	for _, arg := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+
+		if arg == "--" {
+			break
+		}
+
+		if arg == "--help" || arg == "-h" || arg == "--version" || arg == "-v" {
+			continue
+		}
+
+		if strings.HasPrefix(arg, "--") {
+			flagName, _, hasValue := strings.Cut(arg, "=")
+			if _, ok := pluginTelemetryFlagsWithValues[flagName]; ok && !hasValue {
+				skipNext = true
+			}
+			continue
+		}
+
+		if strings.HasPrefix(arg, "-") && arg != "-" {
+			if _, ok := pluginTelemetryFlagsWithValues[arg]; ok {
+				skipNext = true
+			}
+			continue
+		}
+
+		return arg
+	}
+
+	return ""
 }

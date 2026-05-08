@@ -1,3 +1,4 @@
+// Package acct provides Stripe account retrieval during login.
 package acct
 
 import (

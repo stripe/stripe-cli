@@ -1,3 +1,4 @@
+// Package websocket provides the WebSocket client for Stripe event streaming.
 package websocket
 
 import (
