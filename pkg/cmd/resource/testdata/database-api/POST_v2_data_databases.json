@@ -1,0 +1,22 @@
+{
+  "id": "db_1XyZ2aBcDeFgHiJkLmN8pQr",
+  "object": "v2.data.database",
+  "livemode": false,
+  "created": "2026-04-02T11:55:00Z",
+  "status": "backfilling",
+  "api_version": "2026-01-28.clover",
+  "connection": {
+    "host": "db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com",
+    "port": 5432,
+    "database_name": "data"
+  },
+  "user": {
+    "id": "dbuser_1JqM7xBcDeFgHiJkLmN8pQrS",
+    "livemode": false,
+    "database": "db_1XyZ2aBcDeFgHiJkLmN8pQr",
+    "username": "llama_user",
+    "password": "pass_123",
+    "url": "postgresql://llama_user:pass_123@db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com:5432/data",
+    "created": "2026-04-02T11:55:00Z"
+  }
+}

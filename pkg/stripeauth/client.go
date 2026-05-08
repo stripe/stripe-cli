@@ -1,3 +1,4 @@
+// Package stripeauth handles Stripe session authorization.
 package stripeauth
 
 import (
@@ -16,12 +17,12 @@ import (
 
 const stripeCLISessionPath = "/v1/stripecli/sessions"
 
-type AuthorizeHttpError struct {
+type AuthorizeHTTPError struct {
 	StatusCode int
 	Body       string
 }
 
-func (e *AuthorizeHttpError) Error() string {
+func (e *AuthorizeHTTPError) Error() string {
 	return fmt.Sprintf("Authorization failed, status=%d, body=%s", e.StatusCode, e.Body)
 }
 
@@ -104,7 +105,7 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, &AuthorizeHttpError{
+		return nil, &AuthorizeHTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       string(body),
 		}
@@ -145,8 +146,8 @@ func NewClient(client stripe.RequestPerformer, cfg *Config) *Client {
 	}
 }
 
-func IsAuthorizationClientError(err error) (*AuthorizeHttpError, bool) {
-	var clientError *AuthorizeHttpError
+func IsAuthorizationClientError(err error) (*AuthorizeHTTPError, bool) {
+	var clientError *AuthorizeHTTPError
 	if errors.As(err, &clientError) && clientError.StatusCode >= 400 && clientError.StatusCode < 500 {
 		return clientError, true
 	}

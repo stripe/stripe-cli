@@ -17,6 +17,7 @@ func TestValidateAPIBaseURLWorks(t *testing.T) {
 	assert.Nil(t, ValidateAPIBaseURL("https://foo-lv5r9y--api-iso.dev.stripe.me"))
 	assert.Nil(t, ValidateAPIBaseURL("http://127.0.0.1"))
 	assert.Nil(t, ValidateAPIBaseURL("http://127.0.0.1:1337"))
+	assert.Nil(t, ValidateAPIBaseURL("https://files.stripe.com/"))
 
 	assert.ErrorIs(t, ValidateAPIBaseURL("https://example.com"), errInvalidAPIBaseURL)
 	assert.ErrorIs(t, ValidateAPIBaseURL("https://unknowndomain"), errInvalidAPIBaseURL)

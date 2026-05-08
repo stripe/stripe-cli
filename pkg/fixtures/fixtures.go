@@ -1,3 +1,4 @@
+// Package fixtures provides declarative test data creation via fixture files.
 package fixtures
 
 import (
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
 
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -26,8 +28,9 @@ const SupportedVersions = 0
 
 // MetaFixture contains fixture metadata
 type MetaFixture struct {
-	Version         int  `json:"template_version"`
-	ExcludeMetadata bool `json:"exclude_metadata"`
+	Version         int      `json:"template_version"`
+	ExcludeMetadata bool     `json:"exclude_metadata"`
+	Aliases         []string `json:"aliases,omitempty"`
 }
 
 // FixtureData contains the whole fixture file
@@ -428,6 +431,10 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 
 	envFile := filepath.Join(dir, ".env")
 
+	if err := fsutil.RefuseWriteThroughSymlink(fxt.Fs, envFile, ".env"); err != nil {
+		return err
+	}
+
 	exists, _ := afero.Exists(fxt.Fs, envFile)
 	if !exists {
 		// If there is no .env in the current directory, return and do nothing
@@ -438,6 +445,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	dotenv, err := godotenv.Parse(file)
 	if err != nil {
@@ -458,7 +466,9 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 		return err
 	}
 
-	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
+	if err := afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm); err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -1,3 +1,4 @@
+// Package plugin provides plugin management commands.
 package plugin
 
 import (
@@ -5,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 
+	goversion "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -65,18 +66,40 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error {
-	pluginName, version := parseInstallArg(arg)
+func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+		return err
+	}
+
+	color := ansi.Color(os.Stdout)
+	pluginName, version := parseInstallArg(args[0])
+	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
+
+	// Refresh the plugin before proceeding
+	if err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
+		return err
+	}
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
-
 	if err != nil {
 		return err
 	}
 
-	if len(version) == 0 {
+	isLatest := len(version) == 0
+	if isLatest {
 		version = plugin.LookUpLatestVersion()
 	}
+
+	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
+		if isLatest {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
+		} else {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed.", version)))
+		}
+		return nil
+	}
+
+	prevVersion := plugin.InstalledVersion(ic.cfg, ic.fs)
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
@@ -84,49 +107,33 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
-
-	return err
-}
-
-func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+	if err := plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL); err != nil {
 		return err
 	}
 
-	var err error
-	color := ansi.Color(os.Stdout)
-
-	// check if plugin manfest exists to be updated with the plugin to be installed
-	configPath := ic.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
-	_, err = afero.ReadFile(ic.fs, pluginManifestPath)
-	if os.IsNotExist(err) {
-		// plugin manifest does not exist. will need to retrieve from web
-		// api key is required to retrieve the plugin manifest
-		_, err = ic.cfg.GetProfile().GetAPIKey(false)
-		if err != nil {
-			fmt.Println(color.Red("x could not install plugin. please run `stripe login` and try again"))
-			return fmt.Errorf("installation process exited")
-		}
-	}
-
-	// Refresh the plugin before proceeding
-	err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
-	if err != nil {
-		return err
-	}
-
-	err = ic.installPluginByName(cmd, args[0])
-	if err != nil {
-		return err
-	}
-
-	if err == nil {
-		fmt.Println(color.Green("✔ installation complete."))
+	if prevVersion != "" {
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
+	} else {
+		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 	}
 
 	return nil
+}
+
+func versionChangeVerb(from, to string) string {
+	prev, prevErr := goversion.NewVersion(from)
+	next, nextErr := goversion.NewVersion(to)
+	if prevErr == nil && nextErr == nil && prev.GreaterThan(next) {
+		return "downgraded"
+	}
+	return "upgraded"
+}
+
+func (ic *InstallCmd) setInstallTelemetryMetadata(ctx context.Context, pluginName string) {
+	telemetryMetadata := stripe.GetEventMetadata(ctx)
+	if telemetryMetadata != nil {
+		telemetryMetadata.SetPluginName(pluginName)
+	}
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
