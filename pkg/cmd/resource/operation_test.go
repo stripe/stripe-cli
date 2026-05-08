@@ -1,25 +1,34 @@
 package resource
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/spec"
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestNewOperationCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodGet,
+	}, &config.Config{})
 
 	require.Equal(t, "foo", oc.Name)
 	require.Equal(t, "/v1/bars/{id}", oc.Path)
@@ -35,13 +44,18 @@ func TestNewOperationCmd(t *testing.T) {
 func TestNewOperationCmd_NumberType(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "create", "/v1/test", http.MethodPost, map[string]string{
-		"percentage":   "number",
-		"percent_off":  "number",
-		"string_param": "string",
-		"int_param":    "integer",
-		"bool_param":   "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"percentage":   {Type: "number"},
+			"percent_off":  {Type: "number"},
+			"string_param": {Type: "string"},
+			"int_param":    {Type: "integer"},
+			"bool_param":   {Type: "boolean"},
+		},
+	}, &config.Config{})
 
 	// Check that number type parameters create string flags
 	_, err := oc.Cmd.Flags().GetString("percentage")
@@ -87,15 +101,20 @@ func TestRunOperationCmd(t *testing.T) {
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
 	}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1":                 "string",
-		"param2":                 "string",
-		"param_with_underscores": "string",
-		"param.with.dots":        "string",
-		"param_array":            "array",
-	}, map[string][]spec.StripeEnumValue{}, &config.Config{
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1":                 {Type: "string"},
+			"param2":                 {Type: "string"},
+			"param_with_underscores": {Type: "string"},
+			"param.with.dots":        {Type: "string"},
+			"param_array":            {Type: "array"},
+		},
+	}, &config.Config{
 		Profile: profile,
-	}, false, "")
+	})
 	oc.APIBaseURL = ts.URL
 
 	oc.Cmd.Flags().Set("param1", "value1")
@@ -134,11 +153,16 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
 	}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-	}, map[string][]spec.StripeEnumValue{}, &config.Config{
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+		},
+	}, &config.Config{
 		Profile: profile,
-	}, false, "")
+	})
 	oc.APIBaseURL = ts.URL
 
 	oc.Cmd.Flags().Set("param1", "value1")
@@ -155,14 +179,238 @@ func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	viper.Reset()
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-		"param2": "string",
-	}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+			"param2": {Type: "string"},
+		},
+	}, &config.Config{})
 
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
 
 	require.Error(t, err, "your API key has not been configured. Use `stripe login` to set your API key")
+}
+
+func TestRunOperationCmd_DryRun(t *testing.T) {
+	serverCalled := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	profile := config.Profile{APIKey: "sk_test_1234567890abcdef"}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+		},
+	}, &config.Config{Profile: profile})
+	oc.APIBaseURL = ts.URL
+
+	var buf bytes.Buffer
+	oc.Cmd.SetOut(&buf)
+	oc.Cmd.Flags().Set("param1", "value1")
+	oc.Cmd.Flags().Set("dry-run", "true")
+
+	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	require.NoError(t, err)
+	require.False(t, serverCalled, "HTTP server should not be called during dry-run")
+
+	var result requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	// "sk_test_1234567890abcdef" (24 chars) redacts to "sk_test_************cdef"
+	require.Equal(t, requests.DryRunOutput{DryRun: requests.DryRunDetails{
+		Method: "POST",
+		URL:    ts.URL + "/v1/bars/bar_123",
+		Params: map[string]interface{}{"param1": "value1"},
+		Headers: map[string]string{
+			"Authorization": "Bearer sk_test_************cdef",
+			"Content-Type":  "application/x-www-form-urlencoded",
+		},
+	}}, result)
+}
+
+func TestRunOperationCmd_DryRun_NoAPIKey(t *testing.T) {
+	viper.Reset()
+
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+	}, &config.Config{})
+
+	var buf bytes.Buffer
+	oc.Cmd.SetOut(&buf)
+	oc.Cmd.Flags().Set("dry-run", "true")
+
+	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	require.NoError(t, err, "dry-run should succeed even without an API key")
+
+	var result requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Equal(t, requests.DryRunOutput{DryRun: requests.DryRunDetails{
+		Method:  "POST",
+		URL:     "https://api.stripe.com/v1/bars/bar_123",
+		Params:  map[string]interface{}{},
+		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+	}}, result)
+}
+
+// assertDryRunParityV1 checks that structured dry-run params are semantically
+// consistent with the URL-encoded body received by a test server.
+// One-directional: every param in dry-run must appear in the server request.
+func assertDryRunParityV1(t *testing.T, serverBody []byte, dryRunParams map[string]interface{}) {
+	t.Helper()
+	serverVals, err := url.ParseQuery(string(serverBody))
+	require.NoError(t, err)
+	flattenAndAssert(t, serverVals, dryRunParams, "")
+}
+
+func flattenAndAssert(t *testing.T, serverVals url.Values, params map[string]interface{}, prefix string) {
+	t.Helper()
+	for k, v := range params {
+		fullKey := k
+		if prefix != "" {
+			fullKey = prefix + "[" + k + "]"
+		}
+		switch val := v.(type) {
+		case string:
+			require.Equal(t, val, serverVals.Get(fullKey), "param %q mismatch", fullKey)
+		case map[string]interface{}:
+			flattenAndAssert(t, serverVals, val, fullKey)
+		case []interface{}:
+			for _, item := range val {
+				require.Contains(t, serverVals[fullKey+"[]"], fmt.Sprint(item))
+			}
+		default:
+			require.Equal(t, fmt.Sprint(val), serverVals.Get(fullKey), "param %q mismatch", fullKey)
+		}
+	}
+}
+
+func TestRunOperationCmd_DryRunParity_V1(t *testing.T) {
+	var capturedPath string
+	var capturedBody []byte
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.Path
+		capturedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	profile := config.Profile{APIKey: "sk_test_1234"}
+	propFlags := map[string]string{
+		"param1":    "string",
+		"int-param": "integer",
+		"arr-param": "array",
+	}
+
+	newOC := func(dryRun bool) (*OperationCmd, *cobra.Command) {
+		parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+		params := make(map[string]*ParamSpec, len(propFlags))
+		for name, typ := range propFlags {
+			params[name] = &ParamSpec{Type: typ}
+		}
+		oc := NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "foo",
+			Path:   "/v1/bars/{id}",
+			Method: http.MethodPost,
+			Params: params,
+		}, &config.Config{Profile: profile})
+		oc.APIBaseURL = ts.URL
+		oc.Cmd.Flags().Set("param1", "value1")
+		oc.Cmd.Flags().Set("int-param", "42")
+		oc.Cmd.Flags().Set("arr-param", "x")
+		oc.Cmd.Flags().Set("arr-param", "y")
+		oc.Cmd.Flags().Set("data", "metadata[env]=staging")
+		oc.Cmd.Flags().Set("data", "metadata[version]=2")
+		if dryRun {
+			oc.Cmd.Flags().Set("dry-run", "true")
+		}
+		parentCmd.SetArgs([]string{"foo", "bar_123"})
+		return oc, parentCmd
+	}
+
+	// --- LIVE RUN ---
+	_, liveCmd := newOC(false)
+	require.NoError(t, liveCmd.ExecuteContext(t.Context()))
+
+	// --- DRY-RUN ---
+	dryOC, dryCmd := newOC(true)
+	var buf bytes.Buffer
+	dryOC.Cmd.SetOut(&buf)
+	require.NoError(t, dryCmd.ExecuteContext(t.Context()))
+
+	var dryOut requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &dryOut))
+
+	require.Equal(t, "/v1/bars/bar_123", capturedPath)
+	require.Contains(t, dryOut.DryRun.URL, "/v1/bars/bar_123")
+	assertDryRunParityV1(t, capturedBody, dryOut.DryRun.Params)
+}
+
+func TestRunOperationCmd_DryRunParity_V2(t *testing.T) {
+	var capturedBody []byte
+	var capturedQuery string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedBody, _ = io.ReadAll(r.Body)
+		capturedQuery = r.URL.RawQuery
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	profile := config.Profile{APIKey: "sk_test_1234"}
+	jsonData := `{"event_name": "foo", "value": 100}`
+
+	newOC := func(dryRun bool) (*OperationCmd, *cobra.Command) {
+		parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+		oc := NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "create",
+			Path:   "/v2/billing/meter_events",
+			Method: http.MethodPost,
+		}, &config.Config{Profile: profile})
+		oc.APIBaseURL = ts.URL
+		oc.Cmd.Flags().Set("data", jsonData)
+		if dryRun {
+			oc.Cmd.Flags().Set("dry-run", "true")
+		}
+		parentCmd.SetArgs([]string{"create"})
+		return oc, parentCmd
+	}
+
+	// --- LIVE RUN ---
+	_, liveCmd := newOC(false)
+	require.NoError(t, liveCmd.ExecuteContext(t.Context()))
+
+	// --- DRY-RUN ---
+	dryOC, dryCmd := newOC(true)
+	var buf bytes.Buffer
+	dryOC.Cmd.SetOut(&buf)
+	require.NoError(t, dryCmd.ExecuteContext(t.Context()))
+
+	var dryOut requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &dryOut))
+
+	require.Equal(t, "", capturedQuery)
+	var liveParams map[string]interface{}
+	require.NoError(t, json.Unmarshal(capturedBody, &liveParams))
+
+	require.Equal(t, liveParams, dryOut.DryRun.Params)
+	require.NotContains(t, dryOut.DryRun.URL, "?")
 }
 
 func TestConstructParamFromDot(t *testing.T) {
@@ -170,11 +418,64 @@ func TestConstructParamFromDot(t *testing.T) {
 	require.Equal(t, "shipping[address][line1]", param)
 }
 
+func TestNewOperationCmd_FlagUsageFromDescription(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", ShortDescription: "The customer's email address"},
+		},
+	}, &config.Config{})
+
+	flag := oc.Cmd.Flags().Lookup("email")
+	require.NotNil(t, flag)
+	require.Equal(t, "The customer's email address", flag.Usage)
+}
+
+func TestNewOperationCmd_FormatAnnotation(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/charges",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"created":     {Type: "integer", Format: "unix-time"},
+			"currency":    {Type: "string", Format: "currency"},
+			"description": {Type: "string"},
+		},
+	}, &config.Config{})
+
+	cmd := parentCmd.Commands()[0]
+
+	// Params with a format get the "format" annotation.
+	createdFlag := cmd.Flags().Lookup("created")
+	require.NotNil(t, createdFlag)
+	require.Equal(t, []string{"unix-time"}, createdFlag.Annotations["format"])
+
+	currencyFlag := cmd.Flags().Lookup("currency")
+	require.NotNil(t, currencyFlag)
+	require.Equal(t, []string{"currency"}, currencyFlag.Annotations["format"])
+
+	// Params without a format have no "format" annotation.
+	descFlag := cmd.Flags().Lookup("description")
+	require.NotNil(t, descFlag)
+	require.Nil(t, descFlag.Annotations["format"])
+}
+
 func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
 	serverURL := "https://files.stripe.com/"
-	oc := NewOperationCmd(parentCmd, "pdf", "/v1/quotes/{quote}/pdf", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false, serverURL)
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:      "pdf",
+		Path:      "/v1/quotes/{quote}/pdf",
+		Method:    http.MethodGet,
+		ServerURL: serverURL,
+	}, &config.Config{})
 
 	require.Equal(t, "pdf", oc.Name)
 	require.Equal(t, "/v1/quotes/{quote}/pdf", oc.Path)
@@ -184,4 +485,240 @@ func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	flag := oc.Cmd.Flags().Lookup("api-base")
 	require.NotNil(t, flag)
 	require.Equal(t, serverURL, flag.DefValue)
+}
+
+func TestBuildExamples_RequiredAndMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/payment_intents",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"amount":      {Type: "integer", Required: true},
+			"currency":    {Type: "string", Required: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe payment_intents create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+}
+
+func TestBuildExamples_MostCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "# common usage")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_NoRequiredNoMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/customers",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"limit": {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe customers list", opSpec)
+	require.Equal(t, "", result)
+}
+
+func TestBuildExamples_EnumValue(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"status": {
+				Type:     "string",
+				Required: true,
+				Enum:     []EnumSpec{{Value: "active"}, {Value: "inactive"}},
+			},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	require.Contains(t, result, "# required fields")
+	require.Contains(t, result, "$ stripe test create --status <enum>")
+}
+
+// TestBuildExamples_RequiredMostCommonAndCommonOnly covers the case where some params are
+// both Required and MostCommon alongside params that are only MostCommon. Only the required
+// section should appear; MostCommon-only params are not shown.
+func TestBuildExamples_RequiredMostCommonAndCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"currency":    {Type: "string", Required: true},
+			"amount":      {Type: "integer", Required: true, MostCommon: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+}
+
+func TestBuildExamples_FallbackMostCommon_All(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+			"phone": {Type: "string"},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// Both MostCommon params shown; plain param omitted; no ellipsis needed
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "--phone")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackMostCommon_Truncated(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"description": {Type: "string", MostCommon: true},
+			"email":       {Type: "string", MostCommon: true},
+			"name":        {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// First two alphabetically (description, email); name omitted; ellipsis appended
+	require.Contains(t, result, "--description")
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--name")
+	require.Contains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/charges",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"created":  {Type: "integer"},
+			"currency": {Type: "string"},
+			"limit":    {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe charges list", opSpec)
+	require.Equal(t, "", result)
+}
+
+func TestBuildExamples_FallbackExcludesClearableObject(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email":   {Type: "string", MostCommon: true},
+			"address": {Type: "clearable_object", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// clearable_object should be excluded; only scalar depth-0 params shown
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--address")
+}
+
+func TestBuildExamples_FallbackExcludesDepth1(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email":        {Type: "string", MostCommon: true},
+			"address.city": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// depth-1 sub-fields should be excluded; only depth-0 scalar params shown
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--address")
+}
+
+func TestClearableObject_BracesTranslatedToEmptyString(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "update",
+		Path:   "/v1/customers/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"shipping": {Type: "clearable_object"},
+		},
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("shipping", "{}")
+	parentCmd.SetArgs([]string{"update", "cus_123"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+
+	vals, err := url.ParseQuery(gotBody)
+	require.NoError(t, err)
+	require.Equal(t, "", vals["shipping"][0], "{} should be translated to empty string for clearable_object")
+}
+
+func TestClearableObject_BracesNotTranslatedForPlainString(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/things",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"name": {Type: "string"},
+		},
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("name", "{}")
+	parentCmd.SetArgs([]string{"create"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+
+	vals, err := url.ParseQuery(gotBody)
+	require.NoError(t, err)
+	require.Equal(t, "{}", vals["name"][0], "{} should be sent as-is for plain string params")
 }

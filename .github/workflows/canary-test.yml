@@ -1,0 +1,96 @@
+name: Canary Tests
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_call:
+    inputs:
+      run_api_tests:
+        description: 'Run API tests (requires secrets)'
+        required: false
+        default: true
+        type: boolean
+    secrets:
+      STRIPE_TEST_API_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      run_api_tests:
+        description: 'Run API tests (requires secrets)'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: stripe
+          - os: macos-latest
+            binary: stripe
+          - os: windows-latest
+            binary: stripe.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+
+    steps:
+      - name: Set git to use LF
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+
+      - name: Build binary (production-like)
+        run: |
+          go generate ./...
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o ${{ matrix.binary }} ./cmd/stripe
+        shell: bash
+
+      - name: Run offline canary tests
+        run: go test -v -timeout 10m ./canary/... -run "TestOffline"
+        shell: bash
+        env:
+          STRIPE_CLI_BINARY: ${{ github.workspace }}/${{ matrix.binary }}
+          STRIPE_CLI_TELEMETRY_OPTOUT: "1"
+
+      - name: Check API key availability
+        id: check-key
+        run: |
+          if [ -n "$API_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+        env:
+          API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+
+      - name: Run API canary tests
+        # Run API tests when the secret is available AND:
+        # 1. On push to master (always run)
+        # 2. On manual workflow_dispatch when run_api_tests is not disabled
+        # 3. When called from another workflow with run_api_tests enabled
+        if: |
+          steps.check-key.outputs.has_key == 'true' &&
+          (github.event_name == 'push' ||
+           (github.event_name == 'workflow_dispatch' && inputs.run_api_tests != 'false') ||
+           (github.event_name == 'workflow_call' && inputs.run_api_tests))
+        run: go test -v -timeout 15m ./canary/... -run "TestAPI"
+        shell: bash
+        env:
+          STRIPE_CLI_BINARY: ${{ github.workspace }}/${{ matrix.binary }}
+          STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          STRIPE_CLI_TELEMETRY_OPTOUT: "1"

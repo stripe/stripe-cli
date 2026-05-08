@@ -13,8 +13,8 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/spec"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 // Context Tests
@@ -66,7 +66,11 @@ func TestSetCobraCommandContext(t *testing.T) {
 func TestSetCobraCommandContext_SetsGeneratedResourceForGeneratedCommands(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false, "")
+	oc := resource.NewOperationCmd(parentCmd, &resource.OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodGet,
+	}, &config.Config{})
 	tel := stripe.NewEventMetadata()
 	tel.SetCobraCommandContext(oc.Cmd)
 	require.True(t, tel.GeneratedResource)
@@ -77,6 +81,12 @@ func TestSetMerchant(t *testing.T) {
 	merchant := "acct_zzzzzz"
 	tel.SetMerchant(merchant)
 	require.Equal(t, merchant, tel.Merchant)
+}
+
+func TestSetPluginName(t *testing.T) {
+	tel := stripe.NewEventMetadata()
+	tel.SetPluginName("apps")
+	require.Equal(t, "apps", tel.PluginName)
 }
 
 // AnalyticsClient Tests
@@ -94,6 +104,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "livemode=false")
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
+		require.Contains(t, bodyString, "plugin_name=apps")
 		require.Contains(t, bodyString, "request_id=req_zzz")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
@@ -108,6 +119,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		CLIVersion:        "master",
 		OS:                "darwin",
 		CommandPath:       "stripe test",
+		PluginName:        "apps",
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
@@ -150,6 +162,7 @@ func TestSendEvent(t *testing.T) {
 		require.Contains(t, bodyString, "invocation_id=123456")
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
+		require.Contains(t, bodyString, "plugin_name=apps")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
 		require.NotContains(t, bodyString, "ai_agent")
@@ -163,6 +176,7 @@ func TestSendEvent(t *testing.T) {
 		CLIVersion:        "master",
 		OS:                "darwin",
 		CommandPath:       "stripe test",
+		PluginName:        "apps",
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
@@ -232,7 +246,7 @@ func TestDetectAIAgent_WithClaudeCode(t *testing.T) {
 		}
 		return ""
 	}
-	result := stripe.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "claude_code", result)
 }
 
@@ -241,7 +255,7 @@ func TestDetectAIAgent_NoAgentDetected(t *testing.T) {
 	getEnv := func(key string) string {
 		return ""
 	}
-	result := stripe.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "", result)
 }
 
@@ -269,7 +283,7 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 				}
 				return ""
 			}
-			result := stripe.DetectAIAgent(getEnv)
+			result := useragent.DetectAIAgent(getEnv)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -283,6 +297,6 @@ func TestAIAgentDetection_Priority(t *testing.T) {
 		}
 		return ""
 	}
-	result := stripe.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "antigravity", result)
 }

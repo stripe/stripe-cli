@@ -108,3 +108,46 @@
     Version = "1.2.1"
     Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
 
+# appC has subcommand metadata for --map testing
+[[Plugin]]
+  Shortname = "appC"
+  Shortdesc = "A plugin with subcommands"
+  Binary = "stripe-cli-app-c"
+  MagicCookieValue = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
+
+  [[Plugin.Command]]
+    Name = "create"
+    Desc = "Create a resource"
+
+  [[Plugin.Command]]
+    Name = "logs"
+    Desc = "View logs"
+
+    [[Plugin.Command.Command]]
+      Name = "tail"
+      Desc = "Tail logs in real-time"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "1.0.0"
+    Sum = "0000000000000000000000000000000000000000000000000000000000000000"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "1.0.0"
+    Sum = "0000000000000000000000000000000000000000000000000000000000000000"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "linux"
+    Version = "1.0.0"
+    Sum = "0000000000000000000000000000000000000000000000000000000000000000"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "windows"
+    Version = "1.0.0"
+    Sum = "0000000000000000000000000000000000000000000000000000000000000000"
+

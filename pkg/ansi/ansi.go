@@ -1,3 +1,4 @@
+// Package ansi provides helpers for terminal color and formatting.
 package ansi
 
 import (
@@ -56,6 +57,12 @@ func Bold(text string) string {
 // depending on whether the writer supports colors.
 func Color(w io.Writer) aurora.Aurora {
 	return aurora.NewAurora(shouldUseColors(w))
+}
+
+// ColorsEnabled reports whether ANSI color output should be used for the
+// given writer, respecting ForceColors, DisableColors, CLICOLOR, and TTY state.
+func ColorsEnabled(w io.Writer) bool {
+	return shouldUseColors(w)
 }
 
 // ColorizeJSON returns a colorized version of the input JSON, if the writer
@@ -134,7 +141,7 @@ func StartNewSpinner(msg string, w io.Writer) *spinner.Spinner {
 		return nil
 	}
 
-	s := spinner.New(getCharset(), duration)
+	s := spinner.New(getCharset(), duration, spinner.WithHiddenCursor(false))
 	s.Writer = w
 
 	if msg != "" {

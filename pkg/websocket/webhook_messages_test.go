@@ -22,8 +22,8 @@ func TestUnmarshalWebhookEvent(t *testing.T) {
 	require.Equal(t, "foo", msg.WebhookEvent.EventPayload)
 	require.Equal(t, "bar", msg.WebhookEvent.HTTPHeaders["Request-Header"])
 	require.Equal(t, "webhook_event", msg.WebhookEvent.Type)
-	require.Equal(t, "wh_123", msg.WebhookEvent.WebhookID)
-	require.Equal(t, "wc_123", msg.WebhookEvent.WebhookConversationID)
+	require.Equal(t, "wh_123", msg.WebhookID)
+	require.Equal(t, "wc_123", msg.WebhookConversationID)
 }
 
 func TestUnmarshalWebhookV2Event(t *testing.T) {
@@ -36,7 +36,7 @@ func TestUnmarshalWebhookV2Event(t *testing.T) {
 	require.NotNil(t, msg.StripeV2Event)
 	require.Nil(t, msg.RequestLogEvent)
 
-	require.Equal(t, "foo", msg.StripeV2Event.Payload)
+	require.Equal(t, "foo", msg.Payload)
 	require.Equal(t, "bar", msg.StripeV2Event.HTTPHeaders["Request-Header"])
 	require.Equal(t, "v2_event", msg.StripeV2Event.Type)
 }
@@ -116,5 +116,5 @@ func TestNewWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, msg.Status)
 	require.Equal(t, "foo", msg.Body)
 	require.Equal(t, "bar", msg.HTTPHeaders["Response-Header"])
-	require.Equal(t, "evt_123", msg.WebhookResponse.NotificationID)
+	require.Equal(t, "evt_123", msg.NotificationID)
 }

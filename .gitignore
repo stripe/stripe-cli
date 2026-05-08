@@ -9,3 +9,7 @@ default_cassette.yaml
 .vscode/*.log
 stripe-completion.bash
 stripe-completion.zsh
+stripe.fish
+
+# Claude Code local configuration (auto-added)
+.claude/*.local.*

@@ -71,6 +71,12 @@ Stripe account.`,
     --forward-to localhost:3000/events
   stripe listen --thin-events v1.billing.meter.no_meter_found \
     --forward-thin-to localhost:3000/thin-events`,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
+				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
+				"  Use `--format json` and pipe to `jq` for machine-readable event output.\n" +
+				"  Use `--print-secret` to retrieve the webhook signing secret for signature verification.",
+		},
 		RunE: lc.runListenCmd,
 	}
 
@@ -85,7 +91,7 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
-	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format JSON` instead and use `jq` if you need to process the JSON in the terminal.")
+	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format json` instead and use `jq` if you need to process the JSON in the terminal.")
 	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
 	Acceptable values:
 		'JSON' - Output webhook events in JSON format`)

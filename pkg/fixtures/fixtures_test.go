@@ -368,6 +368,38 @@ CUST_ID="char_12345"`
 	assert.Equal(t, expected, string(output))
 }
 
+func TestUpdateEnvRefusesSymlink(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(wd))
+	})
+
+	victimFile := filepath.Join(t.TempDir(), "victim.txt")
+	require.NoError(t, os.WriteFile(victimFile, []byte("original"), 0o644))
+	require.NoError(t, os.Symlink(victimFile, filepath.Join(tmpDir, ".env")))
+
+	fxt := Fixture{
+		Fs: afero.NewOsFs(),
+		Responses: map[string]gjson.Result{
+			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
+		},
+	}
+
+	err = fxt.updateEnv(map[string]string{
+		"CHAR_ID": "${char_bender:id}",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "symlink")
+
+	content, err := os.ReadFile(victimFile)
+	require.NoError(t, err)
+	assert.Equal(t, "original", string(content))
+}
+
 func TestExecuteReturnsRequestNames(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

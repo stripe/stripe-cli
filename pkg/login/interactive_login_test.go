@@ -6,90 +6,91 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 
 const testAccountName = "test-account-name"
 
-func TestDisplayName(t *testing.T) {
-	account := &acct.Account{
-		ID: "acct_123",
+func setupInteractiveLoginConfig(t *testing.T) (*config.Config, func()) {
+	t.Helper()
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	c := &config.Config{
+		Color:    "auto",
+		LogLevel: "info",
+		Profile: config.Profile{
+			ProfileName: "test",
+		},
+		ProfilesFile: profilesFile,
 	}
-	account.Settings.Dashboard.DisplayName = testAccountName
-
-	displayName, err := getDisplayName(context.Background(), account, "", "sk_test_123")
-	require.NoError(t, err)
-	require.Equal(
-		t,
-		testAccountName,
-		displayName,
-	)
+	c.InitConfig()
+	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	cleanup := func() {
+		os.Remove(profilesFile)
+	}
+	return c, cleanup
 }
 
-func TestDisplayNameNoName(t *testing.T) {
-	account := &acct.Account{
-		ID: "acct_123",
-	}
-
-	displayName, err := getDisplayName(context.Background(), account, "", "sk_test_123")
-	require.NoError(t, err)
-	require.Equal(
-		t,
-		"",
-		displayName,
-	)
-}
-
-func TestDisplayNameGetAccount(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method)
-
-		account := &acct.Account{
-			ID: "acct_123",
-		}
-		account.Settings.Dashboard.DisplayName = testAccountName
-
-		w.WriteHeader(http.StatusOK)
+func accountHandler(displayName string, accountID string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		account := &acct.Account{ID: accountID}
+		account.Settings.Dashboard.DisplayName = displayName
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(account)
-	}))
+	}
+}
+
+func TestInteractiveLoginTestModeKey(t *testing.T) {
+	ts := httptest.NewServer(accountHandler(testAccountName, "acct_123"))
 	defer ts.Close()
 
-	displayName, err := getDisplayName(context.Background(), nil, ts.URL, "sk_test_123")
+	cfg, cleanup := setupInteractiveLoginConfig(t)
+	defer cleanup()
+
+	input := strings.NewReader("sk_test_foobar\n")
+	err := interactiveLoginWithParams(context.Background(), cfg, input, ts.URL)
 	require.NoError(t, err)
-	require.Equal(
-		t,
-		testAccountName,
-		displayName,
-	)
+
+	require.Equal(t, "sk_test_foobar", cfg.Profile.TestModeAPIKey)
+	require.Empty(t, cfg.Profile.LiveModeAPIKey)
 }
 
-func TestDisplayNameGetAccountNoName(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method)
-
-		account := &acct.Account{
-			ID: "acct_123",
-		}
-
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(account)
-	}))
+func TestInteractiveLoginLiveModeKey(t *testing.T) {
+	ts := httptest.NewServer(accountHandler(testAccountName, "acct_123"))
 	defer ts.Close()
 
-	displayName, err := getDisplayName(context.Background(), nil, ts.URL, "sk_test_123")
+	cfg, cleanup := setupInteractiveLoginConfig(t)
+	defer cleanup()
+
+	input := strings.NewReader("sk_live_foobar\n")
+	err := interactiveLoginWithParams(context.Background(), cfg, input, ts.URL)
 	require.NoError(t, err)
-	require.Equal(
-		t,
-		"",
-		displayName,
-	)
+
+	require.Equal(t, "sk_live_foobar", cfg.Profile.LiveModeAPIKey)
+	require.Empty(t, cfg.Profile.TestModeAPIKey)
+}
+
+func TestInteractiveLoginAccountIDAndDisplayName(t *testing.T) {
+	ts := httptest.NewServer(accountHandler(testAccountName, "acct_123"))
+	defer ts.Close()
+
+	cfg, cleanup := setupInteractiveLoginConfig(t)
+	defer cleanup()
+
+	input := strings.NewReader("sk_test_foobar\n")
+	err := interactiveLoginWithParams(context.Background(), cfg, input, ts.URL)
+	require.NoError(t, err)
+
+	require.Equal(t, "acct_123", cfg.Profile.AccountID)
+	require.Equal(t, testAccountName, cfg.Profile.DisplayName)
 }
 
 func TestAPIKeyInput(t *testing.T) {

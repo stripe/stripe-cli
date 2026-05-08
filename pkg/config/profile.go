@@ -1,11 +1,14 @@
 package config
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -58,10 +61,85 @@ const (
 // KeyRing ...
 var KeyRing keyring.Keyring
 
+func isWSLFromVersion(procVersion string) bool {
+	lower := strings.ToLower(procVersion)
+	return strings.Contains(lower, "microsoft") || strings.Contains(lower, "wsl")
+}
+
+func isWSL() bool {
+	data, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return isWSLFromVersion(string(data))
+}
+
+func wslFilePasswordFromPaths(machineIDPath, bootIDPath string) (string, error) {
+	machineID, err := os.ReadFile(machineIDPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %s: %w", machineIDPath, err)
+	}
+	bootID, err := os.ReadFile(bootIDPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %s: %w", bootIDPath, err)
+	}
+	const appKey = "stripe-cli-keyring-v1"
+	mac := hmac.New(sha256.New, []byte(appKey))
+	mac.Write([]byte(strings.TrimSpace(string(machineID))))
+	mac.Write([]byte(strings.TrimSpace(string(bootID))))
+	return hex.EncodeToString(mac.Sum(nil)), nil
+}
+
+func wslFilePassword(_ string) (string, error) {
+	return wslFilePasswordFromPaths("/etc/machine-id", "/proc/sys/kernel/random/boot_id")
+}
+
+func getKeyringConfig() keyring.Config {
+	c := keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	}
+
+	if runtime.GOOS == "linux" {
+		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		c.FilePasswordFunc = wslFilePassword
+		if isWSL() {
+			c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
+		} else {
+			c.AllowedBackends = []keyring.BackendType{keyring.SecretServiceBackend, keyring.FileBackend}
+		}
+	}
+
+	return c
+}
+
+// authFieldNames are the config fields that are removed on login/logout.
+// Non-auth fields like "color" are preserved.
+var authFieldNames = []string{
+	DeviceNameName,
+	DisplayNameName,
+	AccountIDName,
+	IsTermsAcceptanceValidName,
+	TestModeAPIKeyName,
+	TestModePubKeyName,
+	TestModeKeyExpiresAtName,
+	LiveModeAPIKeyName,
+	LiveModePubKeyName,
+	LiveModeKeyExpiresAtName,
+	"profile_name",
+	// legacy field names from older config formats
+	"secret_key",
+	"api_key",
+	"publishable_key",
+	"test_mode_publishable_key",
+	// experimental settings are auth-session-scoped
+	"experimental",
+}
+
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	// Remove all keys under existing profile first
-	v := p.deleteProfile(viper.GetViper())
+	// Remove only auth-related keys under existing profile first
+	v := p.deleteAuthFields(viper.GetViper())
 
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
@@ -74,9 +152,10 @@ func (p *Profile) CreateProfile() error {
 	return nil
 }
 
-func (p *Profile) deleteProfile(v *viper.Viper) *viper.Viper {
-	for _, key := range v.AllKeys() {
-		if strings.HasPrefix(key, p.ProfileName+".") {
+func (p *Profile) deleteAuthFields(v *viper.Viper) *viper.Viper {
+	for _, field := range authFieldNames {
+		key := p.GetConfigField(field)
+		if v.IsSet(key) {
 			newViper, err := removeKey(v, key)
 			if err == nil {
 				// failure to remove a key should not break the login flow
@@ -358,17 +437,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
-	runtimeViper.SetConfigFile(profilesFile)
-
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeConfig(runtimeViper)
 }
 
 func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
@@ -499,10 +568,7 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-	})
+	ring, err := keyring.Open(getKeyringConfig())
 	if err != nil {
 		return nil, err
 	}

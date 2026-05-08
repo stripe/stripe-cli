@@ -1,3 +1,4 @@
+// Package gen provides code generation from OpenAPI specs.
 package gen
 
 // OpenAPI spec file paths shared across code generation tools
