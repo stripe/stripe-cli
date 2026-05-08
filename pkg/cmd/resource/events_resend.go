@@ -28,10 +28,15 @@ func (erc *EventsResendCmd) runEventsResendCmd(cmd *cobra.Command, args []string
 // NewEventsResendCmd returns a new EventsResendCmd.
 func NewEventsResendCmd(parentCmd *cobra.Command, cfg *config.Config) *EventsResendCmd {
 	eventsResendCmd := &EventsResendCmd{
-		opCmd: NewOperationCmd(parentCmd, "resend", "/v1/events/{event}/retry", http.MethodPost, map[string]string{
-			"account":          "string",
-			"webhook_endpoint": "string",
-		}, map[string][]string{}, cfg, false, ""),
+		opCmd: NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "resend",
+			Path:   "/v1/events/{event}/retry",
+			Method: http.MethodPost,
+			Params: map[string]*ParamSpec{
+				"account":          {Type: "string"},
+				"webhook_endpoint": {Type: "string"},
+			},
+		}, cfg),
 	}
 
 	eventsResendCmd.opCmd.Cmd.RunE = eventsResendCmd.runEventsResendCmd

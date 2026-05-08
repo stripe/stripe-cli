@@ -18,12 +18,18 @@ message RunCommandResponse {
 
 message AdditionalInfo {
   IsTerminal is_terminal = 1;
+  TerminalDimensions terminal_dimensions = 2;
 }
 
 message IsTerminal {
   bool stdin = 1;
   bool stdout = 2;
   bool stderr = 3;
+}
+
+message TerminalDimensions {
+  uint32 width = 1;
+  uint32 height = 2;
 }
 
 service CoreCLIHelper {
@@ -33,6 +39,7 @@ service CoreCLIHelper {
   rpc KeychainSetPassword(KeychainSetPasswordRequest) returns (KeychainSetPasswordResponse);
   rpc KeychainDeletePassword(KeychainDeletePasswordRequest) returns (KeychainDeletePasswordResponse);
   rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse);
+  rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
 }
 
 message EchoRequest {
@@ -81,4 +88,13 @@ message KeychainFindCredentialsRequest {
 
 message KeychainFindCredentialsResponse {
   repeated string keys = 1;
+}
+
+message RunPeerPluginRequest {
+  string plugin_name = 1;
+  repeated string args = 2;
+  string cwd = 3;
+}
+
+message RunPeerPluginResponse {
 }

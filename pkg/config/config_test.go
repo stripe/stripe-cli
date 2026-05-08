@@ -78,6 +78,60 @@ func TestCopyProfile(t *testing.T) {
 	require.Equal(t, "backup", v.GetString("backup.profile_name"))
 }
 
+// Simulate the degenerate case where the profile name is the same as a plugin config section key
+func TestCopyProfile_SkipsPluginConfigsFieldsInPluginConfigsProfile(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	p := Profile{
+		ProfileName:    "plugin_configs",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "Test Account",
+	}
+	c.Profile = p
+	err := p.CreateProfile()
+	require.NoError(t, err)
+
+	c.WriteConfigField(p.GetConfigField("__global.updates"), "off")
+	c.WriteConfigField(p.GetConfigField("apps.updates"), "on")
+
+	err = c.CopyProfile("plugin_configs", "backup")
+	require.NoError(t, err)
+
+	v := viper.GetViper()
+	require.True(t, v.IsSet("backup"))
+	require.Equal(t, "sk_test_123", v.GetString("backup.test_mode_api_key"))
+	require.False(t, v.IsSet("backup.apps"), "per-plugin config section must not be copied")
+	require.False(t, v.IsSet("backup.__global"), "global plugin config section must not be copied")
+}
+
+// Defensively assert that we don't copy plugin configs on accident at all
+func TestCopyProfile_SkipsPluginConfigsField(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	p := Profile{
+		ProfileName:    "default",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "Test Account",
+	}
+	c.Profile = p
+	err := p.CreateProfile()
+	require.NoError(t, err)
+
+	c.WriteConfigField(p.GetConfigField("__global.updates"), "off")
+	c.WriteConfigField(p.GetConfigField("apps.updates"), "on")
+
+	err = c.CopyProfile("default", "backup")
+	require.NoError(t, err)
+
+	v := viper.GetViper()
+	require.True(t, v.IsSet("backup"))
+	require.Equal(t, "sk_test_123", v.GetString("backup.test_mode_api_key"))
+	require.False(t, v.IsSet("backup.apps"), "per-plugin config section must not be copied")
+	require.False(t, v.IsSet("backup.__global"), "global plugin config section must not be copied")
+}
+
 func TestCopyProfileErrors(t *testing.T) {
 	c, _, cleanup := setupTestConfig(t)
 	defer cleanup()

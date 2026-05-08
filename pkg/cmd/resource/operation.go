@@ -1,11 +1,13 @@
 package resource
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -48,10 +50,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
-	if err != nil {
-		return err
-	}
+	apiKey, apiKeyErr := oc.Profile.GetAPIKey(oc.Livemode)
 
 	path := formatURL(oc.Path, args)
 	requestParams := make(map[string]interface{})
@@ -59,9 +58,26 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	oc.addIntRequestParams(requestParams)
 	oc.addBoolRequestParams(requestParams)
 
-	err = oc.addArrayRequestParams(requestParams)
-	if err != nil {
+	if err := oc.addArrayRequestParams(requestParams); err != nil {
 		return err
+	}
+
+	if oc.DryRun {
+		dryRunKey := apiKey
+		if apiKeyErr != nil {
+			dryRunKey = ""
+		}
+		output, err := oc.BuildDryRunOutput(dryRunKey, oc.APIBaseURL, path, &oc.Parameters, requestParams)
+		if err != nil {
+			return err
+		}
+		b, _ := json.MarshalIndent(output, "", "  ")
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		return nil
+	}
+
+	if apiKeyErr != nil {
+		return apiKeyErr
 	}
 
 	if oc.HTTPVerb == http.MethodDelete {
@@ -99,7 +115,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 	// else
-	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
+	_, err := oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 
@@ -128,22 +144,21 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 }
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, enumFlags map[string][]string, cfg *config.Config, isPreview bool, serverURL string) *OperationCmd {
-	urlParams := extractURLParams(path)
-	httpVerb = strings.ToUpper(httpVerb)
+func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *config.Config) *OperationCmd {
+	method := strings.ToUpper(opSpec.Method)
+	urlParams := extractURLParams(opSpec.Path)
 
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
-			Method:           httpVerb,
+			Method:           method,
 			Profile:          &cfg.Profile,
-			IsPreviewCommand: isPreview,
+			IsPreviewCommand: opSpec.IsPreview,
 		},
-		Name:             name,
-		HTTPVerb:         httpVerb,
-		Path:             path,
+		Name:             opSpec.Name,
+		HTTPVerb:         method,
+		Path:             opSpec.Path,
 		URLParams:        urlParams,
-		IsPreviewCommand: isPreview,
+		IsPreviewCommand: opSpec.IsPreview,
 
 		arrayFlags:   make(map[string]*[]string),
 		stringFlags:  make(map[string]*string),
@@ -151,34 +166,50 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 		boolFlags:    make(map[string]*bool),
 	}
 	cmd := &cobra.Command{
-		Use:         name,
+		Use:         opSpec.Name,
 		Annotations: make(map[string]string),
 		RunE:        operationCmd.runOperationCmd,
 		Args:        validators.ExactArgs(len(urlParams)),
 	}
 
-	for prop, propType := range propFlags {
+	for prop, paramSpec := range opSpec.Params {
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
+		desc := paramSpec.ShortDescription
 
-		switch propType {
+		switch paramSpec.Type {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, desc)
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
+		case "clearable_object":
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "number":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, desc)
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, desc)
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
-		cmd.Flags().SetAnnotation(flagName, "apitype", []string{propType})
-		if enums, hasEnum := enumFlags[prop]; hasEnum && len(enums) > 0 {
-			cmd.Flags().SetAnnotation(flagName, "enum", enums)
+		cmd.Flags().SetAnnotation(flagName, "apitype", []string{paramSpec.Type})
+		if paramSpec.Required {
+			cmd.Flags().SetAnnotation(flagName, "required", []string{"true"})
+		}
+		if paramSpec.MostCommon {
+			cmd.Flags().SetAnnotation(flagName, "mostcommon", []string{"true"})
+		}
+		if paramSpec.Format != "" {
+			cmd.Flags().SetAnnotation(flagName, "format", []string{paramSpec.Format})
+		}
+		if len(paramSpec.Enum) > 0 {
+			enumVals := make([]string, 0, len(paramSpec.Enum))
+			for _, ev := range paramSpec.Enum {
+				enumVals = append(enumVals, ev.Value)
+			}
+			cmd.Flags().SetAnnotation(flagName, "enum", enumVals)
 		}
 	}
 
@@ -189,19 +220,110 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 
 	// Set the operation-specific server URL after InitFlags if provided
 	// We need to set both the value and the default value of the flag
-	if serverURL != "" {
-		operationCmd.APIBaseURL = serverURL
+	if opSpec.ServerURL != "" {
+		operationCmd.APIBaseURL = opSpec.ServerURL
 		// Also update the flag's default value so it doesn't get reset during parsing
 		if flag := cmd.Flags().Lookup("api-base"); flag != nil {
-			flag.DefValue = serverURL
-			flag.Value.Set(serverURL)
+			flag.DefValue = opSpec.ServerURL
+			flag.Value.Set(opSpec.ServerURL)
 		}
 	}
 
 	parentCmd.AddCommand(cmd)
-	parentCmd.Annotations[name] = "operation"
+	parentCmd.Annotations[opSpec.Name] = "operation"
+
+	defaultHelp := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		if c.Example == "" {
+			c.Example = buildExamples(c.CommandPath(), opSpec)
+		}
+		defaultHelp(c, args)
+	})
 
 	return operationCmd
+}
+
+// paramFlagName converts a param key (underscore-separated) to its flag name (hyphen-separated).
+// e.g. "account_balance" → "account-balance", "usage_threshold.gte" → "usage-threshold.gte"
+func paramFlagName(param string) string {
+	return strings.ReplaceAll(param, "_", "-")
+}
+
+// exampleValue returns the placeholder value string to use in an example for the given param.
+func exampleValue(ps *ParamSpec) string {
+	switch ps.Type {
+	case "integer":
+		return "<integer>"
+	case "boolean":
+		return "<boolean>"
+	default:
+		if len(ps.Enum) > 0 {
+			return "<enum>"
+		}
+		return "<string>"
+	}
+}
+
+// buildExamples generates an example invocation for a command's --help output.
+// The goal is quick orientation: show the minimum needed to call the API.
+//
+// If there are required params: show a single "# required fields" line with those params.
+// If there are no required params but MostCommon params exist: show up to the first two
+// (alphabetically), with a trailing " ..." if more exist.
+// If there are no params at all, or none are required or MostCommon: return "".
+func buildExamples(cmdPath string, opSpec *OperationSpec) string {
+	var reqFields []string
+	for name, p := range opSpec.Params {
+		if p.Required {
+			reqFields = append(reqFields, name)
+		}
+	}
+	sort.Strings(reqFields)
+
+	if len(reqFields) > 0 {
+		return "  # required fields\n" + buildExampleLine(cmdPath, reqFields, opSpec.Params, false)
+	}
+
+	// No required fields: use top-level (depth-0) non-clearable MostCommon params if any
+	// are curated; otherwise no example. Clearable_object params (e.g. --address="") and
+	// depth-1 sub-fields are excluded — examples should show scalar params only.
+	var candidates []string
+	for name, p := range opSpec.Params {
+		if p.MostCommon && !strings.Contains(name, ".") && p.Type != "clearable_object" {
+			candidates = append(candidates, name)
+		}
+	}
+	sort.Strings(candidates)
+
+	if len(candidates) == 0 {
+		return ""
+	}
+	ellipsis := len(candidates) > 2
+	if ellipsis {
+		candidates = candidates[:2]
+	}
+	return buildExampleLine(cmdPath, candidates, opSpec.Params, ellipsis)
+}
+
+// buildExampleLine constructs a single example command line for the given fields.
+// If ellipsis is true, " ..." is appended to indicate additional params exist.
+func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamSpec, ellipsis bool) string {
+	var tokens []string
+	for _, field := range fields {
+		ps, ok := params[field]
+		if !ok {
+			continue
+		}
+		tokens = append(tokens, fmt.Sprintf("--%s %s", paramFlagName(field), exampleValue(ps)))
+	}
+	if len(tokens) == 0 {
+		return ""
+	}
+	line := fmt.Sprintf("  $ %s %s", cmdPath, strings.Join(tokens, " "))
+	if ellipsis {
+		line += " ..."
+	}
+	return line
 }
 
 //
@@ -252,12 +374,10 @@ func operationUsageTemplate(urlParams []string) string {
 {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
 
 %s
 {{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
-
-%s
 
 %s
 {{WrappedNonRequestParamsFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
@@ -276,7 +396,6 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
 		ansi.Bold("Request Parameters:"),
-		ansi.Italic("Note: all types are specifically for the Stripe CLI itself, not the Stripe API. The CLI handles\ntransforming types to what the API expects."),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),
@@ -302,10 +421,21 @@ func (oc *OperationCmd) addStringRequestParams(requestParams map[string]interfac
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
 			paramName := getParamName(stringProp)
+			val := *stringVal
+			// For clearable_object flags, "{}" is accepted as an alias for "" for
+			// compatibility with other tools. The v1 API requires an empty string to
+			// clear the field, so translate "{}" accordingly.
+			if val == "{}" {
+				if f := oc.Cmd.Flags().Lookup(stringProp); f != nil {
+					if apitype, ok := f.Annotations["apitype"]; ok && len(apitype) > 0 && apitype[0] == "clearable_object" {
+						val = ""
+					}
+				}
+			}
 			if strings.Contains(paramName, ".") {
-				constructedNestedStringParams(requestParams, strings.Split(paramName, "."), stringVal)
+				constructedNestedStringParams(requestParams, strings.Split(paramName, "."), &val)
 			} else {
-				requestParams[paramName] = *stringVal
+				requestParams[paramName] = val
 			}
 		}
 	}

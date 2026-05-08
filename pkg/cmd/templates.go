@@ -2,17 +2,24 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/yuin/goldmark"
+	goldmarkast "github.com/yuin/goldmark/ast"
+	goldmarktext "github.com/yuin/goldmark/text"
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 //
@@ -33,46 +40,212 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
 }
 
+// fullHelpMode is set by PersistentPreRun when the help subcommand is invoked,
+// signaling that all parameters should be shown (not just required/mostcommon).
+var fullHelpMode bool
+
 // WrappedRequestParamsFlagUsages returns a string containing the usage
 // information for all request parameters flags, i.e. flags used in operation
 // commands to set values for request parameters.
+//
+// By default, only flags annotated "required" or "mostcommon" are shown, followed
+// by a "N more parameters" message. If fullHelpMode is set (via `stripe help <command>`),
+// or if no flags have either annotation, all flags are shown.
 //
 // For enum parameters, the possible values are shown inline (e.g. --status
 // complete|expired|open), truncated with "..." if they would exceed the
 // terminal width. For other parameters, the API type is shown in angle
 // brackets (e.g. --amount <integer>).
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
-	var sb strings.Builder
+	fullHelp := fullHelpMode
+
+	descIndent := strings.Repeat(" ", 10)
+	termWidth := getTerminalWidth()
+
+	// Collect all request flags, and separately the filtered (required/mostcommon) subset.
+	var allFlags []*pflag.Flag
+	var filteredFlags []*pflag.Flag
+	hasAnnotations := false
 
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
 		if _, ok := flag.Annotations["request"]; !ok {
 			return
 		}
-
-		if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
-			const maxDisplayedEnumValues = 5
-			prefix := fmt.Sprintf("      --%s ", flag.Name)
-
-			if len(enumVals) <= maxDisplayedEnumValues {
-				fmt.Fprintf(&sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
-			} else {
-				fmt.Fprintf(&sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
-			}
-		} else if apiType, ok := flag.Annotations["apitype"]; ok {
-			typeName := apiType[0]
-			switch typeName {
-			case "array":
-				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
-			case "boolean":
-				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
-			default:
-				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, typeName)
-			}
-		} else {
-			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
+		allFlags = append(allFlags, flag)
+		isRequired := len(flag.Annotations["required"]) > 0
+		isMostCommon := len(flag.Annotations["mostcommon"]) > 0
+		isClearableObject := len(flag.Annotations["apitype"]) > 0 && flag.Annotations["apitype"][0] == "clearable_object"
+		if (isRequired || isMostCommon) && !isClearableObject {
+			hasAnnotations = true
+			filteredFlags = append(filteredFlags, flag)
 		}
 	})
 
+	// Decide which set to render.
+	toRender := allFlags
+	if !fullHelp && hasAnnotations {
+		toRender = filteredFlags
+	}
+
+	var sb strings.Builder
+	for _, flag := range toRender {
+		writeFlagLine(&sb, flag, descIndent, termWidth)
+	}
+
+	// Append truncation hint when showing a subset.
+	if !fullHelp && hasAnnotations {
+		hidden := len(allFlags) - len(filteredFlags)
+		if hidden > 0 {
+			// Strip the root command name so the hint reads "stripe help customers create"
+			// rather than "stripe help stripe customers create".
+			cmdPath := strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" ")
+			fmt.Fprintf(&sb, "\n%s\n", ansi.Italic(fmt.Sprintf("  ... and %d more parameters (stripe help %s)", hidden, cmdPath)))
+		}
+	}
+
+	return sb.String()
+}
+
+// writeFlagLine appends a single request parameter flag entry to sb.
+func writeFlagLine(sb *strings.Builder, flag *pflag.Flag, descIndent string, termWidth int) {
+	if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
+		const maxDisplayedEnumValues = 5
+		prefix := fmt.Sprintf("      --%s ", flag.Name)
+
+		if len(enumVals) <= maxDisplayedEnumValues {
+			fmt.Fprintf(sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
+		} else {
+			fmt.Fprintf(sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
+		}
+	} else if apiType, ok := flag.Annotations["apitype"]; ok {
+		typeName := apiType[0]
+		switch typeName {
+		case "array":
+			fmt.Fprintf(sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
+		case "boolean":
+			fmt.Fprintf(sb, "      --%s true|false\n", flag.Name)
+		case "clearable_object":
+			fmt.Fprintf(sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
+		default:
+			label := typeName
+			if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
+				label = formatVals[0]
+			}
+			fmt.Fprintf(sb, "      --%s <%s>\n", flag.Name, label)
+		}
+	} else {
+		fmt.Fprintf(sb, "      --%s\n", flag.Name)
+	}
+
+	if flag.Usage != "" {
+		text := flag.Usage
+		if ansi.ColorsEnabled(os.Stdout) {
+			text = renderMarkdown(flag.Usage, os.Stdout)
+		}
+		fmt.Fprintf(sb, "%s%s\n", descIndent, wrapText(text, termWidth, len(descIndent)))
+	}
+}
+
+// renderMarkdown parses s as inline CommonMark and maps common formatting to
+// ANSI codes: bold, italic, code spans, and links.
+func renderMarkdown(s string, w io.Writer) string {
+	doc := goldmark.New().Parser().Parse(goldmarktext.NewReader([]byte(s)))
+	var sb strings.Builder
+	renderNode(doc, []byte(s), w, &sb)
+	return strings.TrimSpace(sb.String())
+}
+
+func renderNode(n goldmarkast.Node, src []byte, w io.Writer, sb *strings.Builder) {
+	switch node := n.(type) {
+	case *goldmarkast.Text:
+		sb.Write(node.Segment.Value(src))
+		return
+	case *goldmarkast.CodeSpan:
+		var code strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			if t, ok := c.(*goldmarkast.Text); ok {
+				code.Write(t.Segment.Value(src))
+			}
+		}
+		color := ansi.Color(w)
+		sb.WriteString(color.Sprintf(color.Bold(color.Blue(code.String()))))
+		return
+	case *goldmarkast.Emphasis:
+		var inner strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			renderNode(c, src, w, &inner)
+		}
+		if node.Level == 2 {
+			sb.WriteString(ansi.Bold(inner.String()))
+		} else {
+			sb.WriteString(ansi.Italic(inner.String()))
+		}
+		return
+	case *goldmarkast.Link:
+		var linkText strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			renderNode(c, src, w, &linkText)
+		}
+		url := string(node.Destination)
+		color := ansi.Color(w)
+		sb.WriteString(color.Sprintf(color.Bold(linkText.String())))
+		sb.WriteByte(' ')
+		sb.WriteString(ansi.Linkify(color.Sprintf(color.Faint(color.Underline(color.Cyan(url)))), url, w))
+		return
+	}
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		renderNode(c, src, w, sb)
+	}
+}
+
+// ansiEscRe matches CSI escape sequences (\x1b[...m) and OSC sequences
+// (\x1b]...\x1b\) used by ANSI color codes and OSC 8 hyperlinks.
+//
+// Note: github.com/acarl005/stripansi is already in go.mod and could replace
+// this regex in visibleLen, but its pattern targets BEL-terminated OSC
+// (\x1b]...\x07) and may not cover the ST-terminated form (\x1b]...\x1b\)
+// used by OSC 8 hyperlinks. Using our own regex keeps the two cases consistent.
+var ansiEscRe = regexp.MustCompile("\x1b(?:\\[[0-9;]*[a-zA-Z]|\\][^\x1b]*\x1b\\\\)")
+
+// visibleLen returns the display width of s, ignoring ANSI escape bytes.
+func visibleLen(s string) int {
+	return utf8.RuneCountInString(ansiEscRe.ReplaceAllString(s, ""))
+}
+
+// wrapText word-wraps s to fit within width columns. Continuation lines are
+// indented by indent spaces. ANSI escape sequences are treated as zero-width
+// for measurement purposes.
+func wrapText(s string, width, indent int) string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return ""
+	}
+
+	prefix := strings.Repeat(" ", indent)
+	lineWidth := width - indent
+	if lineWidth < 20 {
+		lineWidth = 20
+	}
+
+	var sb strings.Builder
+	col := 0
+	for i, word := range words {
+		wlen := visibleLen(word)
+		switch {
+		case i == 0:
+			sb.WriteString(word)
+			col = wlen
+		case col+1+wlen > lineWidth:
+			sb.WriteString("\n")
+			sb.WriteString(prefix)
+			sb.WriteString(word)
+			col = wlen
+		default:
+			sb.WriteString(" ")
+			sb.WriteString(word)
+			col += 1 + wlen
+		}
+	}
 	return sb.String()
 }
 
@@ -94,6 +267,60 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 //
 // Private functions
 //
+
+func isAIAgent() bool {
+	return useragent.DetectAIAgent(os.Getenv) != ""
+}
+
+// AIAgentHelpAnnotationKey is the Cobra annotation key used to store
+// per-command help text shown only when an AI agent is detected.
+// Set it on any command via cmd.Annotations["ai_agent_help"] = "your text".
+const AIAgentHelpAnnotationKey = "ai_agent_help"
+
+func formatAgentGuidance(cmd *cobra.Command) string {
+	var sb strings.Builder
+
+	fmt.Fprintf(&sb, "\n\n%s\n", ansi.Bold("[Agent guidance]"))
+
+	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
+		sb.WriteString(extra + "\n")
+	}
+
+	fmt.Fprintf(&sb, "  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
+
+	if cmd.Flags().Lookup("data") != nil {
+		fmt.Fprintf(&sb, "  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`))
+	}
+
+	fmt.Fprintf(&sb, "  Run %s to quickly see all available commands.\n", ansi.Bold("stripe --map"))
+	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
+	fmt.Fprintf(&sb, "  Run %s to see operations and required/common parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+	fmt.Fprintf(&sb, "  Run %s to see the full parameter list for a specific operation.\n", ansi.Bold("stripe help [resource] [operation]"))
+
+	if cmd.Flags().Lookup("stripe-account") != nil {
+		fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
+	}
+
+	return sb.String()
+}
+
+// aiAgentHelpTop renders agent guidance only for the root command (no parent).
+// Used at the top of the root usage template.
+func aiAgentHelpTop(cmd *cobra.Command) string {
+	if !isAIAgent() || cmd.HasParent() {
+		return ""
+	}
+	return formatAgentGuidance(cmd)
+}
+
+// aiAgentHelp renders agent guidance for non-root commands.
+// Used in the pre-flags position of usage templates.
+func aiAgentHelp(cmd *cobra.Command) string {
+	if !isAIAgent() || !cmd.HasParent() {
+		return ""
+	}
+	return formatAgentGuidance(cmd)
+}
 
 func getLogin(fs *afero.Fs, cfg *config.Config) string {
 	// We're checking against the path because we don't initialize the config
@@ -121,13 +348,13 @@ If you're working on multiple projects, you can run the login command with the
 func getUsageTemplate() string {
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+  {{.CommandPath}} [command]{{end}}{{AIAgentHelpTop .}}{{if gt (len .Aliases) 0}}
 
 %s
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
 %s
-  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if (index .Annotations "get")}}
 
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
@@ -151,7 +378,7 @@ func getUsageTemplate() string {
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
 
 %s
 {{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
@@ -178,13 +405,10 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 }
 
 func getTerminalWidth() int {
-	var width int
-
 	width, _, err := term.GetSize(0)
 	if err != nil {
-		width = 80
+		return 80
 	}
-
 	return width
 }
 
@@ -193,4 +417,7 @@ func init() {
 	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
 	cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", WrappedRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
+	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
+	cobra.AddTemplateFunc("AIAgentHelp", aiAgentHelp)
+	cobra.AddTemplateFunc("AIAgentHelpTop", aiAgentHelpTop)
 }

@@ -11,6 +11,9 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func executeCommand(root *cobra.Command, args ...string) (output string, err error) {
@@ -122,4 +125,25 @@ func TestV2BillingOverrides(t *testing.T) {
 
 	require.Contains(t, output, "meter_event_stream")
 	require.NoError(t, err)
+}
+
+func TestDatabasesHiddenButDirectlyAddressable(t *testing.T) {
+	root := &cobra.Command{
+		Use:         "stripe",
+		Annotations: map[string]string{"get": "http"},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+	root.AddCommand(&cobra.Command{Use: "version", Short: "Get the version of the Stripe CLI", RunE: noop})
+	err := resource.AddDatabasesCmd(root, &config.Config{})
+	require.NoError(t, err)
+
+	helpOutput, err := executeCommand(root, "--help")
+	require.NoError(t, err)
+	require.NotContains(t, helpOutput, "databases")
+
+	output, err := executeCommand(root, "databases", "--help")
+	require.NoError(t, err)
+	require.Contains(t, output, "Manage StripeDB")
+	require.Contains(t, output, "unstable preview APIs")
+	require.Contains(t, output, "users")
 }

@@ -113,10 +113,33 @@ func getKeyringConfig() keyring.Config {
 	return c
 }
 
+// authFieldNames are the config fields that are removed on login/logout.
+// Non-auth fields like "color" are preserved.
+var authFieldNames = []string{
+	DeviceNameName,
+	DisplayNameName,
+	AccountIDName,
+	IsTermsAcceptanceValidName,
+	TestModeAPIKeyName,
+	TestModePubKeyName,
+	TestModeKeyExpiresAtName,
+	LiveModeAPIKeyName,
+	LiveModePubKeyName,
+	LiveModeKeyExpiresAtName,
+	"profile_name",
+	// legacy field names from older config formats
+	"secret_key",
+	"api_key",
+	"publishable_key",
+	"test_mode_publishable_key",
+	// experimental settings are auth-session-scoped
+	"experimental",
+}
+
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	// Remove all keys under existing profile first
-	v := p.deleteProfile(viper.GetViper())
+	// Remove only auth-related keys under existing profile first
+	v := p.deleteAuthFields(viper.GetViper())
 
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
@@ -129,9 +152,10 @@ func (p *Profile) CreateProfile() error {
 	return nil
 }
 
-func (p *Profile) deleteProfile(v *viper.Viper) *viper.Viper {
-	for _, key := range v.AllKeys() {
-		if strings.HasPrefix(key, p.ProfileName+".") {
+func (p *Profile) deleteAuthFields(v *viper.Viper) *viper.Viper {
+	for _, field := range authFieldNames {
+		key := p.GetConfigField(field)
+		if v.IsSet(key) {
 			newViper, err := removeKey(v, key)
 			if err == nil {
 				// failure to remove a key should not break the login flow

@@ -35,7 +35,7 @@ func TestGetPluginList(t *testing.T) {
 	pluginList, err := GetPluginList(context.Background(), config, fs)
 
 	require.Nil(t, err)
-	require.Equal(t, 2, len(pluginList.Plugins))
+	require.Equal(t, 3, len(pluginList.Plugins))
 	plugin := pluginList.Plugins[0]
 	require.Equal(t, "appA", plugin.Shortname)
 	require.Equal(t, "stripe-cli-app-a", plugin.Binary)

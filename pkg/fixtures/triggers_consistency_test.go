@@ -25,7 +25,7 @@ import (
 // entry but forget to create the fixture file (or delete the file but forget to remove
 // the Events map entry).
 func TestEventsMapHasCorrespondingFixtureFiles(t *testing.T) {
-	for eventName, fixturePath := range Events {
+	for eventName, fixturePath := range getEvents() {
 		t.Run(eventName, func(t *testing.T) {
 			// Check if the fixture file exists
 			content, err := triggers.ReadFile(fixturePath)
@@ -45,7 +45,7 @@ func TestFixtureFilesHaveEventsMapEntry(t *testing.T) {
 
 	// Build reverse map: filepath -> event name
 	reverseMap := make(map[string]string)
-	for eventName, fixturePath := range Events {
+	for eventName, fixturePath := range getEvents() {
 		reverseMap[fixturePath] = eventName
 	}
 
@@ -76,7 +76,7 @@ func TestFixtureFilesHaveEventsMapEntry(t *testing.T) {
 func TestNoMissingFixtureFiles(t *testing.T) {
 	var missingFiles []string
 
-	for eventName, fixturePath := range Events {
+	for eventName, fixturePath := range getEvents() {
 		_, err := triggers.ReadFile(fixturePath)
 		if err != nil {
 			missingFiles = append(missingFiles, fixturePath+" (for event: "+eventName+")")
@@ -84,6 +84,47 @@ func TestNoMissingFixtureFiles(t *testing.T) {
 	}
 
 	assert.Empty(t, missingFiles, "Events map references non-existent fixture files: %v", missingFiles)
+}
+
+// TestNoDuplicateEventClaims ensures no two fixture files claim the same event name,
+// either via basename or via _meta.aliases. Duplicates would cause non-deterministic
+// behavior since buildEventsMap iterates directory entries in filesystem order.
+func TestNoDuplicateEventClaims(t *testing.T) {
+	entries, err := triggers.ReadDir("triggers")
+	require.NoError(t, err, "Failed to read triggers directory")
+
+	// claimedBy maps event name → first file that claimed it.
+	claimedBy := make(map[string]string)
+	var conflicts []string
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		path := "triggers/" + entry.Name()
+		basename := strings.TrimSuffix(entry.Name(), ".json")
+
+		claim := func(event string) {
+			if prior, exists := claimedBy[event]; exists {
+				conflicts = append(conflicts, event+": claimed by both "+prior+" and "+path)
+			} else {
+				claimedBy[event] = path
+			}
+		}
+
+		claim(basename)
+
+		content, readErr := triggers.ReadFile(path)
+		require.NoError(t, readErr)
+		var data FixtureData
+		if json.Unmarshal(content, &data) == nil {
+			for _, alias := range data.Meta.Aliases {
+				claim(alias)
+			}
+		}
+	}
+
+	assert.Empty(t, conflicts, "Multiple fixture files claim the same event name: %v", conflicts)
 }
 
 // TestFixtureFilesAreValidJSON validates all fixture files against the FixtureData schema.
@@ -123,7 +164,7 @@ func TestFixtureFilesAreValidJSON(t *testing.T) {
 // TestEventNamesFollowConvention ensures event names follow Stripe's naming convention:
 // resource.action (e.g., "customer.created") or resource.sub_resource.action
 func TestEventNamesFollowConvention(t *testing.T) {
-	for eventName := range Events {
+	for eventName := range getEvents() {
 		t.Run(eventName, func(t *testing.T) {
 			// v2 events can have brackets, e.g., v2.core.account[configuration.customer].updated
 			if strings.HasPrefix(eventName, "v2.") {

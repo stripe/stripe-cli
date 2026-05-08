@@ -59,6 +59,10 @@ HTTP methods, IP addresses, paths, response status, and more.`,
 		Example: `stripe logs tail
   stripe logs tail --filter-http-methods GET
   stripe logs tail --filter-status-code-type 4XX`,
+		Annotations: map[string]string{
+			"ai_agent_help": "  Use `--format json` for machine-readable output.\n" +
+				"  Filter with `--filter-http-methods`, `--filter-status-code-type`, or `--filter-request-path`.",
+		},
 		RunE: tailCmd.runTailCmd,
 	}
 

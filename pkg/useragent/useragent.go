@@ -50,6 +50,9 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("OPENCODE") != "" {
 		return "open_code"
 	}
+	if getEnv("OPENCLAW_SHELL") != "" {
+		return "openclaw"
+	}
 	return ""
 }
 

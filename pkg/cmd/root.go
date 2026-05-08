@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,8 +17,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/cmd/resources"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -47,6 +52,8 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"status":    "stripe",
 		"resources": "resources",
+		AIAgentHelpAnnotationKey: "  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
+			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -55,11 +62,18 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if cmd.Name() == "help" {
+			fullHelpMode = true
+		}
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
 		if telemetryMetadata != nil {
 			telemetryMetadata.SetCobraCommandContext(cmd)
+			if plugins.IsPluginCommand(cmd) {
+				telemetryMetadata.SetCommandPath(resolvePluginTelemetryCommandPath(cmd, os.Args))
+			}
 			telemetryMetadata.SetMerchant(merchant)
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
@@ -102,11 +116,27 @@ func showSuggestion() {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
+	emitClaudeCodePluginHint()
+
 	telemetryMetadata := stripe.NewEventMetadata()
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
 
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
+
+	// Handle --map before ExecuteContext so it works for non-runnable
+	// commands (namespaces, root) where PersistentPreRun never fires.
+	if mode := getMapMode(os.Args[1:]); mode != mapModeDefault {
+		remaining := stripMapFlag(os.Args[1:])
+		targetCmd, _, _ := rootCmd.Find(remaining)
+		if targetCmd == nil || (targetCmd == rootCmd && len(remaining) > 0) {
+			fmt.Fprintf(os.Stderr, "Unknown command %q — showing full command tree.\n\n", strings.Join(remaining, " "))
+			targetCmd = rootCmd
+		}
+		printCommandMap(os.Stdout, targetCmd, mode)
+		return
+	}
+
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 
@@ -114,28 +144,36 @@ func Execute(ctx context.Context) {
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
+		case errors.Is(err, errNotAuthenticated):
+			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && projectNameFlag != "default":
-			fmt.Printf("You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
+			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
 			errRunes[0] = unicode.ToUpper(errRunes[0])
 
-			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
+			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+				fmt.Fprintln(os.Stderr, string(errRunes))
+				fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
+				fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+			} else {
+				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
-			err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
+				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
 
-			if err != nil {
-				fmt.Println(err)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				}
 			}
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
 
 		default:
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 		}
 
 		os.Exit(1)
@@ -179,6 +217,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
 	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, trace, warn, error)")
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
+	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
+	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
 	// tell viper to monitor the following flags:
@@ -191,16 +231,13 @@ func init() {
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
-	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
-	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
-	rootCmd.AddCommand(newPostCmd().reqs.Cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
@@ -209,13 +246,19 @@ func init() {
 	// rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
+	rootCmd.AddCommand(newWhoamiCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
-	addAllResourcesCmds(rootCmd)
+	resources.AddAllResourcesCmds(rootCmd, &Config)
+	registerHTTPCmds(rootCmd)
+	err := resource.AddDatabasesCmd(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	addV2BillingStubs(rootCmd)
 
-	err := resource.PostProcessResourceCommands(rootCmd, &Config)
+	err = resource.PostProcessResourceCommands(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -228,20 +271,23 @@ func init() {
 	nfs := afero.NewOsFs()
 	pluginList := Config.GetInstalledPlugins()
 
+	installedPluginSet := make(map[string]bool)
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
+			installedPluginSet[p] = true
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
+
+	// For known plugins not yet installed, add a hint command so users get
+	// a helpful message instead of "unknown command".
+	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
-	cmd, _, err := rootCmd.Find([]string{"v2", "billing"})
-	if err != nil {
-		// silently fail
-		return
+	if billingCmd, ok := cmdutil.FindSubCmd(rootCmd, "v2", "billing"); ok {
+		rBillingMeterEventStreamCmd := resource.NewResourceCmd(billingCmd, "meter_event_stream")
+		resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 	}
-	rBillingMeterEventStreamCmd := resource.NewResourceCmd(cmd, "meter_event_stream")
-	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 }

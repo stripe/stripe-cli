@@ -4,7 +4,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -44,6 +43,8 @@ type IConfig interface {
 	SwitchProfile(targetProfileName string) error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
+	RemoveAuthFields(profileName string) error
+	RemoveAllAuthFields() error
 	WriteConfigField(field string, value interface{}) error
 	GetInstalledPlugins() []string
 }
@@ -225,10 +226,16 @@ func (c *Config) CopyProfile(source string, target string) error {
 		return fmt.Errorf("source '%s' is not a profile", source)
 	}
 
-	// Clone the profile map and update profile_name
 	safeTarget := strings.ReplaceAll(target, ".", " ")
 	existingMap := existing.(map[string]interface{})
-	newProfile := maps.Clone(existingMap)
+	newProfile := make(map[string]interface{})
+	for k, v := range existingMap {
+		if isPluginConfigSection(v) {
+			// Skip plugin config sections of the form <scope>.<plugin config key>.
+			continue
+		}
+		newProfile[k] = v
+	}
 	newProfile["profile_name"] = safeTarget
 
 	runtimeViper.Set(safeTarget, newProfile)
@@ -241,13 +248,18 @@ func (c *Config) ListProfiles() error {
 	var profiles []string
 
 	for _, value := range runtimeViper.AllSettings() {
-		// TODO: there's probably a better way to e.g. hydrate a Profile and read from there?
-		profile, isProfile := value.(map[string]interface{})
-		if isProfile {
-			displayName, _ := profile["display_name"].(string)
-			if !slices.Contains(profiles, displayName) {
-				profiles = append(profiles, displayName)
-			}
+		if !isProfile(value) {
+			continue
+		}
+		var displayName string
+		switch v := value.(type) {
+		case map[string]interface{}:
+			displayName, _ = v["display_name"].(string)
+		case map[string]string:
+			displayName = v["display_name"]
+		}
+		if displayName != "" && !slices.Contains(profiles, displayName) {
+			profiles = append(profiles, displayName)
 		}
 	}
 
@@ -381,6 +393,49 @@ func (c *Config) RemoveAllProfiles() error {
 	return writeConfig(runtimeViper)
 }
 
+// RemoveAuthFields removes only auth-related fields for the named profile,
+// preserving non-auth settings like color.
+func (c *Config) RemoveAuthFields(profileName string) error {
+	runtimeViper := viper.GetViper()
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			var profileNameAttr string
+			switch v := value.(type) {
+			case map[string]interface{}:
+				if pn, ok := v["profile_name"].(string); ok {
+					profileNameAttr = pn
+				}
+			case map[string]string:
+				profileNameAttr = v["profile_name"]
+			}
+			if field == profileName || profileNameAttr == profileName {
+				p := &Profile{ProfileName: field}
+				runtimeViper = p.deleteAuthFields(runtimeViper)
+				deleteLivemodeKey(LiveModeAPIKeyName, field)
+			}
+		}
+	}
+
+	return writeConfig(runtimeViper)
+}
+
+// RemoveAllAuthFields removes only auth-related fields from all profiles,
+// preserving non-auth settings like color.
+func (c *Config) RemoveAllAuthFields() error {
+	runtimeViper := viper.GetViper()
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			p := &Profile{ProfileName: field}
+			runtimeViper = p.deleteAuthFields(runtimeViper)
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
+		}
+	}
+
+	return writeConfig(runtimeViper)
+}
+
 func deleteLivemodeKey(key string, profile string) error {
 	fieldID := profile + "." + key
 	existingKeys, err := KeyRing.Keys()
@@ -396,15 +451,18 @@ func deleteLivemodeKey(key string, profile string) error {
 	return nil
 }
 
-// isProfile identifies whether a value in the config pertains to a profile.
+// isProfile identifies whether a config entry pertains to a user profile.
+// A profile is a map that contains a display_name field.
 func isProfile(value interface{}) bool {
-	// TODO: ianjabour - ideally find a better way to identify projects in config
-	_, ok := value.(map[string]interface{})
-	if !ok {
-		_, ok = value.(map[string]string)
+	switch v := value.(type) {
+	case map[string]interface{}:
+		_, ok := v["display_name"]
+		return ok
+	case map[string]string:
+		_, ok := v["display_name"]
+		return ok
 	}
-
-	return ok
+	return false
 }
 
 // WriteConfigField updates a configuration field and writes the updated
@@ -413,7 +471,7 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(field, value)
 
-	return runtimeViper.WriteConfig()
+	return writeConfig(runtimeViper)
 }
 
 // writeConfig writes a viper instance to the config file and syncs the global viper.

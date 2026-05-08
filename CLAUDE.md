@@ -47,6 +47,15 @@ macOS security may block execution of binaries built outside the project tree.
 
 Templates live in `pkg/gen/*.go.tpl`. Build tags `gen_resources` and `events_list` gate the generators.
 
+## GitHub CLI
+
+Always set `GH_HOST=github.com` when running `gh` commands to ensure they target public GitHub, not GitHub Enterprise:
+
+```bash
+GH_HOST=github.com gh pr create ...
+GH_HOST=github.com gh pr view ...
+```
+
 ## Key Conventions
 
 - **Import ordering**: stdlib, then external packages, then `github.com/stripe/stripe-cli/...` (enforced by goimports with local-prefixes)

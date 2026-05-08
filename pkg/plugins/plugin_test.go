@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
@@ -37,6 +39,13 @@ func TestInstall(t *testing.T) {
 	require.True(t, fileExists)
 
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
+func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
+	plugin := Plugin{Shortname: "appA"}
+
+	err := plugin.verifyChecksum(strings.NewReader("locally built binary"), localDevelopmentVersion)
+	require.NoError(t, err)
 }
 
 func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
@@ -158,6 +167,80 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	// Require that we did not delete the initial version of the plugin
 	fileExists, _ = afero.Exists(fs, file)
 	require.True(t, fileExists, "Did not expect the original version of the plugin to be deleted.")
+}
+
+func TestLookUpInstalledVersionPrefersLocalDevelopmentVersion(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/local.build.dev", 0755))
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+
+	version, err := plugin.lookUpInstalledVersion(config, fs)
+	require.NoError(t, err)
+	require.Equal(t, localDevelopmentVersion, version)
+}
+
+func TestLookUpInstalledVersionFallsBackToInstalledRelease(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/1.0.1", 0755))
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+
+	version, err := plugin.lookUpInstalledVersion(config, fs)
+	require.NoError(t, err)
+	require.Equal(t, "1.0.1", version)
+}
+
+func TestCommandInfoParsedFromManifest(t *testing.T) {
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	var pluginList PluginList
+	_, err := toml.Decode(string(manifestContent), &pluginList)
+	require.Nil(t, err)
+
+	// appC should have Commands metadata
+	var appC *Plugin
+	for i, p := range pluginList.Plugins {
+		if p.Shortname == "appC" {
+			appC = &pluginList.Plugins[i]
+			break
+		}
+	}
+	require.NotNil(t, appC, "appC should be present in manifest")
+	require.Equal(t, 2, len(appC.Commands))
+
+	require.Equal(t, "create", appC.Commands[0].Name)
+	require.Equal(t, "Create a resource", appC.Commands[0].Desc)
+	require.Equal(t, 0, len(appC.Commands[0].Commands))
+
+	require.Equal(t, "logs", appC.Commands[1].Name)
+	require.Equal(t, "View logs", appC.Commands[1].Desc)
+	require.Equal(t, 1, len(appC.Commands[1].Commands))
+	require.Equal(t, "tail", appC.Commands[1].Commands[0].Name)
+	require.Equal(t, "Tail logs in real-time", appC.Commands[1].Commands[0].Desc)
+}
+
+func TestCommandInfoNilWhenAbsent(t *testing.T) {
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	var pluginList PluginList
+	_, err := toml.Decode(string(manifestContent), &pluginList)
+	require.Nil(t, err)
+
+	// appA has no Commands metadata — field should be nil
+	var appA *Plugin
+	for i, p := range pluginList.Plugins {
+		if p.Shortname == "appA" {
+			appA = &pluginList.Plugins[i]
+			break
+		}
+	}
+	require.NotNil(t, appA)
+	require.Nil(t, appA.Commands)
 }
 
 func TestUninstall(t *testing.T) {

@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/validators"
 
 	g "github.com/stripe/stripe-cli/pkg/git"
@@ -68,6 +69,8 @@ type SampleConfigIntegration struct {
 	Clients []string `json:"clients"`
 	// Servers are the backend server implementations available for a sample
 	Servers []string `json:"servers"`
+	// ClientEnvOverrides maps client name to env var overrides applied during .env generation
+	ClientEnvOverrides map[string]map[string]string `json:"clientEnvOverrides,omitempty"`
 }
 
 func (i *SampleConfigIntegration) hasClients() bool {
@@ -249,7 +252,7 @@ func (s *SampleManager) Copy(target string) error {
 		serverSource := filepath.Join(s.repoPath, integration, "server", s.SelectedConfig.Server)
 		serverDestination := filepath.Join(target, "server")
 
-		err := copy.Copy(serverSource, serverDestination)
+		err := copy.Copy(serverSource, serverDestination, skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -269,7 +272,7 @@ func (s *SampleManager) Copy(target string) error {
 		clientSource := filepath.Join(s.repoPath, integration, "client", s.SelectedConfig.Client)
 		clientDestination := filepath.Join(target, "client")
 
-		err := copy.Copy(clientSource, clientDestination)
+		err := copy.Copy(clientSource, clientDestination, skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -281,7 +284,7 @@ func (s *SampleManager) Copy(target string) error {
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file), skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -294,13 +297,22 @@ func (s *SampleManager) Copy(target string) error {
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file), skipSymlinks())
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// Returns options to skip symlinks during file copy
+func skipSymlinks() copy.Options {
+	return copy.Options{
+		OnSymlink: func(src string) copy.SymlinkAction {
+			return copy.Skip
+		},
+	}
 }
 
 // ConfigureDotEnv returns a map of environment variables to copy into the
@@ -360,6 +372,7 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		if err != nil {
 			return err
 		}
+		defer file.Close()
 
 		dotenv, err := godotenv.Parse(file)
 		if err != nil {
@@ -374,7 +387,20 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 			dotenv[k] = v
 		}
 
+		if overrides, ok := s.SelectedConfig.Integration.ClientEnvOverrides[s.SelectedConfig.Client]; ok {
+			for k, v := range overrides {
+				dotenv[k] = v
+			}
+		}
+
 		envFile := filepath.Join(sampleLocation, "server", ".env")
+
+		// We refuse to write through a symlink to prevent a malicious
+		// sample from overwriting files outside the destination directory.
+		if err := fsutil.RefuseWriteThroughSymlink(s.Fs, envFile, ".env"); err != nil {
+			return err
+		}
+
 		err = godotenv.Write(dotenv, envFile)
 		if err != nil {
 			return err

@@ -8,9 +8,12 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/cmd/resources"
+	"github.com/stripe/stripe-cli/pkg/config"
 
 	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/require"
@@ -22,15 +25,38 @@ const (
 	pluginManifestURL = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
 )
 
+func newResourcesTestRoot(t *testing.T) *cobra.Command {
+	t.Helper()
+
+	cfg := &config.Config{}
+	root := &cobra.Command{
+		Use:         "stripe",
+		Annotations: map[string]string{"resources": "resources"},
+	}
+	root.PersistentFlags().StringVar(&cfg.Profile.APIKey, "api-key", "", "Your API key to use for the command")
+	root.AddCommand(newResourcesCmd().cmd)
+	resources.AddAllResourcesCmds(root, cfg)
+	require.NoError(t, resource.AddDatabasesCmd(root, cfg))
+	require.NoError(t, resource.PostProcessResourceCommands(root, cfg))
+
+	return root
+}
+
 func TestResources(t *testing.T) {
-	output, err := executeCommand(rootCmd, "resources")
+	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 
 	require.Contains(t, output, "Available commands:")
 	require.NoError(t, err)
 }
 
+func TestResourcesHidesDatabases(t *testing.T) {
+	output, err := executeCommand(newResourcesTestRoot(t), "resources")
+	require.NoError(t, err)
+	require.NotContains(t, output, "databases")
+}
+
 func TestResourcesListAliasedName(t *testing.T) {
-	output, err := executeCommand(rootCmd, "resources")
+	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 	require.NoError(t, err)
 
 	assert.Contains(t, output, "Available commands:")
@@ -50,12 +76,13 @@ func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	root := newResourcesTestRoot(t)
 	apiBase := fmt.Sprintf("--api-base=%s", ts.URL)
 	apiKey := "--api-key=rk_test_1234567890"
 
-	_, err := executeCommand(rootCmd, apiBase, apiKey, "invoice_line_items", "list", "in_123")
+	_, err := executeCommand(root, apiBase, apiKey, "invoice_line_items", "list", "in_123")
 	require.NoError(t, err)
-	_, err = executeCommand(rootCmd, apiBase, apiKey, "line_items", "list", "in_123")
+	_, err = executeCommand(root, apiBase, apiKey, "line_items", "list", "in_123")
 	require.NoError(t, err)
 }
 
@@ -78,7 +105,7 @@ func TestConflictWithPluginCommand(t *testing.T) {
 		pluginCommands = append(pluginCommands, plugin.Shortname)
 	}
 
-	for _, cmd := range rootCmd.Commands() {
+	for _, cmd := range newResourcesTestRoot(t).Commands() {
 		for _, pluginCommand := range pluginCommands {
 			// TO-DO: this is a patch.
 			// this check and this patch PR https://github.com/stripe/stripe-cli/pull/887
