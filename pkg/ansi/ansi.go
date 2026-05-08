@@ -141,7 +141,7 @@ func StartNewSpinner(msg string, w io.Writer) *spinner.Spinner {
 		return nil
 	}
 
-	s := spinner.New(getCharset(), duration)
+	s := spinner.New(getCharset(), duration, spinner.WithHiddenCursor(false))
 	s.Writer = w
 
 	if msg != "" {

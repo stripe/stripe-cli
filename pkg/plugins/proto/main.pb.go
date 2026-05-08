@@ -809,6 +809,102 @@ func (x *KeychainFindCredentialsResponse) GetKeys() []string {
 	return nil
 }
 
+type RunPeerPluginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PluginName    string                 `protobuf:"bytes,1,opt,name=plugin_name,json=pluginName,proto3" json:"plugin_name,omitempty"`
+	Args          []string               `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	Cwd           string                 `protobuf:"bytes,3,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunPeerPluginRequest) Reset() {
+	*x = RunPeerPluginRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunPeerPluginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunPeerPluginRequest) ProtoMessage() {}
+
+func (x *RunPeerPluginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunPeerPluginRequest.ProtoReflect.Descriptor instead.
+func (*RunPeerPluginRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *RunPeerPluginRequest) GetPluginName() string {
+	if x != nil {
+		return x.PluginName
+	}
+	return ""
+}
+
+func (x *RunPeerPluginRequest) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *RunPeerPluginRequest) GetCwd() string {
+	if x != nil {
+		return x.Cwd
+	}
+	return ""
+}
+
+type RunPeerPluginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunPeerPluginResponse) Reset() {
+	*x = RunPeerPluginResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunPeerPluginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunPeerPluginResponse) ProtoMessage() {}
+
+func (x *RunPeerPluginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunPeerPluginResponse.ProtoReflect.Descriptor instead.
+func (*RunPeerPluginResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{18}
+}
+
 var File_pkg_plugins_proto_main_proto protoreflect.FileDescriptor
 
 const file_pkg_plugins_proto_main_proto_rawDesc = "" +
@@ -856,17 +952,24 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\adeleted\x18\x01 \x01(\bR\adeleted\" \n" +
 	"\x1eKeychainFindCredentialsRequest\"5\n" +
 	"\x1fKeychainFindCredentialsResponse\x12\x12\n" +
-	"\x04keys\x18\x01 \x03(\tR\x04keys2I\n" +
+	"\x04keys\x18\x01 \x03(\tR\x04keys\"]\n" +
+	"\x14RunPeerPluginRequest\x12\x1f\n" +
+	"\vplugin_name\x18\x01 \x01(\tR\n" +
+	"pluginName\x12\x12\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\x12\x10\n" +
+	"\x03cwd\x18\x03 \x01(\tR\x03cwd\"\x17\n" +
+	"\x15RunPeerPluginResponse2I\n" +
 	"\x04Main\x12A\n" +
 	"\n" +
-	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse2\x99\x04\n" +
+	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse2\xe5\x04\n" +
 	"\rCoreCLIHelper\x12/\n" +
 	"\x04Echo\x12\x12.proto.EchoRequest\x1a\x13.proto.EchoResponse\x12J\n" +
 	"\rSendAnalytics\x12\x1b.proto.SendAnalyticsRequest\x1a\x1c.proto.SendAnalyticsResponse\x12\\\n" +
 	"\x13KeychainGetPassword\x12!.proto.KeychainGetPasswordRequest\x1a\".proto.KeychainGetPasswordResponse\x12\\\n" +
 	"\x13KeychainSetPassword\x12!.proto.KeychainSetPasswordRequest\x1a\".proto.KeychainSetPasswordResponse\x12e\n" +
 	"\x16KeychainDeletePassword\x12$.proto.KeychainDeletePasswordRequest\x1a%.proto.KeychainDeletePasswordResponse\x12h\n" +
-	"\x17KeychainFindCredentials\x12%.proto.KeychainFindCredentialsRequest\x1a&.proto.KeychainFindCredentialsResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
+	"\x17KeychainFindCredentials\x12%.proto.KeychainFindCredentialsRequest\x1a&.proto.KeychainFindCredentialsResponse\x12J\n" +
+	"\rRunPeerPlugin\x12\x1b.proto.RunPeerPluginRequest\x1a\x1c.proto.RunPeerPluginResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
 
 var (
 	file_pkg_plugins_proto_main_proto_rawDescOnce sync.Once
@@ -880,7 +983,7 @@ func file_pkg_plugins_proto_main_proto_rawDescGZIP() []byte {
 	return file_pkg_plugins_proto_main_proto_rawDescData
 }
 
-var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_pkg_plugins_proto_main_proto_goTypes = []any{
 	(*RunCommandRequest)(nil),               // 0: proto.RunCommandRequest
 	(*RunCommandResponse)(nil),              // 1: proto.RunCommandResponse
@@ -899,6 +1002,8 @@ var file_pkg_plugins_proto_main_proto_goTypes = []any{
 	(*KeychainDeletePasswordResponse)(nil),  // 14: proto.KeychainDeletePasswordResponse
 	(*KeychainFindCredentialsRequest)(nil),  // 15: proto.KeychainFindCredentialsRequest
 	(*KeychainFindCredentialsResponse)(nil), // 16: proto.KeychainFindCredentialsResponse
+	(*RunPeerPluginRequest)(nil),            // 17: proto.RunPeerPluginRequest
+	(*RunPeerPluginResponse)(nil),           // 18: proto.RunPeerPluginResponse
 }
 var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	2,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
@@ -911,15 +1016,17 @@ var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	11, // 7: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
 	13, // 8: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
 	15, // 9: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
-	1,  // 10: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
-	6,  // 11: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
-	8,  // 12: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
-	10, // 13: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
-	12, // 14: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
-	14, // 15: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
-	16, // 16: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
-	10, // [10:17] is the sub-list for method output_type
-	3,  // [3:10] is the sub-list for method input_type
+	17, // 10: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
+	1,  // 11: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
+	6,  // 12: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
+	8,  // 13: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
+	10, // 14: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
+	12, // 15: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
+	14, // 16: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
+	16, // 17: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
+	18, // 18: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
+	11, // [11:19] is the sub-list for method output_type
+	3,  // [3:11] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -936,7 +1043,7 @@ func file_pkg_plugins_proto_main_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_plugins_proto_main_proto_rawDesc), len(file_pkg_plugins_proto_main_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

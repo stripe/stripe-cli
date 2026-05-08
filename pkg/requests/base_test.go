@@ -634,9 +634,10 @@ func captureStderr(t *testing.T, fn func()) string {
 	return string(out)
 }
 
-func TestMakeRequest_VersionUpgradeNotice(t *testing.T) {
+func TestMakeRequest_StripeNotice(t *testing.T) {
+	notice := "You are using an outdated API version (2024-01-01.ember). We recommend upgrading to the latest API version, 2025-01-27.acacia. See https://docs.stripe.com/upgrades"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Please upgrade to the latest API version.")
+		w.Header().Set("Stripe-Notice", notice)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -650,12 +651,13 @@ func TestMakeRequest_VersionUpgradeNotice(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.Contains(t, out, "API version upgrade notice: Please upgrade to the latest API version.")
+	require.Contains(t, out, notice)
 }
 
-func TestMakeRequest_IntegrationPathUpgradeNotice(t *testing.T) {
+func TestMakeRequest_StripeNoticeMultiNotice(t *testing.T) {
+	multiNotice := "2 notices for this request: (1) You are using an outdated API version (2024-01-01.ember). We recommend upgrading to the latest API version, 2025-01-27.acacia. See https://docs.stripe.com/upgrades (2) We recommend building your integration using Accounts v2. See https://docs.stripe.com/api/v2/core/accounts"
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Please migrate to the new integration path.")
+		w.Header().Set("Stripe-Notice", multiNotice)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -669,28 +671,7 @@ func TestMakeRequest_IntegrationPathUpgradeNotice(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.Contains(t, out, "API integration path upgrade notice: Please migrate to the new integration path.")
-}
-
-func TestMakeRequest_BothUpgradeNotices(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Upgrade your API version.")
-		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Migrate your integration path.")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{}`))
-	}))
-	defer ts.Close()
-
-	out := captureStderr(t, func() {
-		rb := Base{APIBaseURL: ts.URL}
-		rb.Method = http.MethodGet
-		params := &RequestParameters{}
-		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
-		require.NoError(t, err)
-	})
-
-	require.Contains(t, out, "API version upgrade notice: Upgrade your API version.")
-	require.Contains(t, out, "API integration path upgrade notice: Migrate your integration path.")
+	require.Contains(t, out, multiNotice)
 }
 
 func TestMakeRequest_NoUpgradeNotice(t *testing.T) {
@@ -708,13 +689,12 @@ func TestMakeRequest_NoUpgradeNotice(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.NotContains(t, out, "upgrade notice:")
+	require.Empty(t, out)
 }
 
 func TestMakeRequest_UpgradeNoticeSuppressed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Please upgrade.")
-		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Please migrate.")
+		w.Header().Set("Stripe-Notice", "You are using an outdated API version (2024-01-01.ember). We recommend upgrading to the latest API version, 2025-01-27.acacia. See https://docs.stripe.com/upgrades")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -728,7 +708,7 @@ func TestMakeRequest_UpgradeNoticeSuppressed(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	require.NotContains(t, out, "upgrade notice:")
+	require.Empty(t, out)
 }
 
 func TestParseJSONDataFlag(t *testing.T) {

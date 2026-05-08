@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/99designs/keyring"
+	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
@@ -19,6 +20,7 @@ type CoreCLIHelper interface {
 	KeychainSetPassword(key string, value string) error
 	KeychainDeletePassword(key string) (bool, error)
 	KeychainFindCredentials() ([]string, error)
+	RunPeerPlugin(pluginName string, args []string, cwd string) error
 }
 
 type CoreCLIHelperClient struct {
@@ -71,6 +73,15 @@ func (c *CoreCLIHelperClient) KeychainFindCredentials() ([]string, error) {
 		return nil, err
 	}
 	return resp.Keys, nil
+}
+
+func (c *CoreCLIHelperClient) RunPeerPlugin(pluginName string, args []string, cwd string) error {
+	_, err := c.client.RunPeerPlugin(context.Background(), &proto.RunPeerPluginRequest{
+		PluginName: pluginName,
+		Args:       args,
+		Cwd:        cwd,
+	})
+	return err
 }
 
 type CoreCLIHelperServer struct {
@@ -126,16 +137,26 @@ func (s *CoreCLIHelperServer) KeychainFindCredentials(ctx context.Context, req *
 	return &proto.KeychainFindCredentialsResponse{Keys: keys}, nil
 }
 
+func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunPeerPluginRequest) (*proto.RunPeerPluginResponse, error) {
+	err := s.Impl.RunPeerPlugin(req.PluginName, req.Args, req.Cwd)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.RunPeerPluginResponse{}, nil
+}
+
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
 type coreCLIHelper struct {
-	ctx context.Context
+	ctx    context.Context
+	config config.IConfig
+	fs     afero.Fs
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
 
-// NewCoreCLIHelper creates a new CoreCLIHelper with the given context.
-func NewCoreCLIHelper(ctx context.Context) CoreCLIHelper {
-	return &coreCLIHelper{ctx: ctx}
+// NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
+func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
+	return &coreCLIHelper{ctx: ctx, config: cfg, fs: fs}
 }
 
 // Echo echoes the input string.
@@ -199,4 +220,18 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 // KeychainFindCredentials lists all keys stored in the keychain for this service.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
 	return config.KeyRing.Keys()
+}
+
+// RunPeerPlugin looks up and runs the named plugin with the given arguments.
+// cwd sets the working directory for the plugin process; an empty string uses the current directory.
+func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd string) error {
+	plugin, err := LookUpPlugin(h.ctx, h.config, h.fs, pluginName)
+	if err != nil {
+		return fmt.Errorf("peer plugin %q not found: %w", pluginName, err)
+	}
+	cfg, ok := h.config.(*config.Config)
+	if !ok {
+		return fmt.Errorf("could not run peer plugin %q: config type mismatch", pluginName)
+	}
+	return plugin.Run(h.ctx, cfg, h.fs, args, cwd)
 }

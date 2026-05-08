@@ -270,3 +270,162 @@ func TestWriteDotEnvWorksForRegularFile(t *testing.T) {
 	assert.Contains(t, envContent, "STRIPE_PUBLISHABLE_KEY")
 	assert.Contains(t, envContent, "STRIPE_WEBHOOK_SECRET")
 }
+
+func TestWriteDotEnvAppliesClientOverride(t *testing.T) {
+	sampleDir := t.TempDir()
+	serverDir := filepath.Join(sampleDir, "server")
+	require.NoError(t, os.MkdirAll(serverDir, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(sampleDir, ".env.example"), []byte("DOMAIN=http://localhost:4242\n"), 0o644))
+
+	sm := &SampleManager{
+		Fs: afero.NewOsFs(),
+		SampleConfig: SampleConfig{
+			ConfigureDotEnv: true,
+		},
+		SelectedConfig: SelectedConfig{
+			Integration: &SampleConfigIntegration{
+				Name:    "main",
+				Servers: []string{"node"},
+				ClientEnvOverrides: map[string]map[string]string{
+					"react-cra": {"DOMAIN": "http://localhost:3000"},
+				},
+			},
+			Client: "react-cra",
+			Server: "node",
+		},
+		ConfigureDotEnv: func(ctx context.Context, cfg *config.Config) (map[string]string, error) {
+			return map[string]string{
+				"STRIPE_SECRET_KEY":      "sk_test_123",
+				"STRIPE_PUBLISHABLE_KEY": "pk_test_123",
+			}, nil
+		},
+	}
+
+	err := sm.WriteDotEnv(context.Background(), sampleDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(serverDir, ".env"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), `DOMAIN="http://localhost:3000"`)
+}
+
+func TestWriteDotEnvNoOverrideForDifferentClient(t *testing.T) {
+	sampleDir := t.TempDir()
+	serverDir := filepath.Join(sampleDir, "server")
+	require.NoError(t, os.MkdirAll(serverDir, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(sampleDir, ".env.example"), []byte("DOMAIN=http://localhost:4242\n"), 0o644))
+
+	sm := &SampleManager{
+		Fs: afero.NewOsFs(),
+		SampleConfig: SampleConfig{
+			ConfigureDotEnv: true,
+		},
+		SelectedConfig: SelectedConfig{
+			Integration: &SampleConfigIntegration{
+				Name:    "main",
+				Servers: []string{"node"},
+				ClientEnvOverrides: map[string]map[string]string{
+					"react-cra": {"DOMAIN": "http://localhost:3000"},
+				},
+			},
+			Client: "html",
+			Server: "node",
+		},
+		ConfigureDotEnv: func(ctx context.Context, cfg *config.Config) (map[string]string, error) {
+			return map[string]string{
+				"STRIPE_SECRET_KEY":      "sk_test_123",
+				"STRIPE_PUBLISHABLE_KEY": "pk_test_123",
+			}, nil
+		},
+	}
+
+	err := sm.WriteDotEnv(context.Background(), sampleDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(serverDir, ".env"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), `DOMAIN="http://localhost:4242"`)
+}
+
+func TestWriteDotEnvNilOverridesMap(t *testing.T) {
+	sampleDir := t.TempDir()
+	serverDir := filepath.Join(sampleDir, "server")
+	require.NoError(t, os.MkdirAll(serverDir, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(sampleDir, ".env.example"), []byte("DOMAIN=http://localhost:4242\n"), 0o644))
+
+	sm := &SampleManager{
+		Fs: afero.NewOsFs(),
+		SampleConfig: SampleConfig{
+			ConfigureDotEnv: true,
+		},
+		SelectedConfig: SelectedConfig{
+			Integration: &SampleConfigIntegration{
+				Name:    "main",
+				Servers: []string{"node"},
+				// ClientEnvOverrides intentionally nil
+			},
+			Client: "react-cra",
+			Server: "node",
+		},
+		ConfigureDotEnv: func(ctx context.Context, cfg *config.Config) (map[string]string, error) {
+			return map[string]string{
+				"STRIPE_SECRET_KEY":      "sk_test_123",
+				"STRIPE_PUBLISHABLE_KEY": "pk_test_123",
+			}, nil
+		},
+	}
+
+	err := sm.WriteDotEnv(context.Background(), sampleDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(serverDir, ".env"))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), `DOMAIN="http://localhost:4242"`)
+}
+
+func TestWriteDotEnvOverrideWinsOverExample(t *testing.T) {
+	sampleDir := t.TempDir()
+	serverDir := filepath.Join(sampleDir, "server")
+	require.NoError(t, os.MkdirAll(serverDir, 0o755))
+
+	require.NoError(t, os.WriteFile(filepath.Join(sampleDir, ".env.example"), []byte("DOMAIN=http://localhost:4242\nPORT=4242\n"), 0o644))
+
+	sm := &SampleManager{
+		Fs: afero.NewOsFs(),
+		SampleConfig: SampleConfig{
+			ConfigureDotEnv: true,
+		},
+		SelectedConfig: SelectedConfig{
+			Integration: &SampleConfigIntegration{
+				Name:    "main",
+				Servers: []string{"node"},
+				ClientEnvOverrides: map[string]map[string]string{
+					"react-cra": {"DOMAIN": "http://localhost:3000"},
+				},
+			},
+			Client: "react-cra",
+			Server: "node",
+		},
+		ConfigureDotEnv: func(ctx context.Context, cfg *config.Config) (map[string]string, error) {
+			return map[string]string{
+				"STRIPE_SECRET_KEY":      "sk_test_123",
+				"STRIPE_PUBLISHABLE_KEY": "pk_test_123",
+			}, nil
+		},
+	}
+
+	err := sm.WriteDotEnv(context.Background(), sampleDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(filepath.Join(serverDir, ".env"))
+	require.NoError(t, err)
+	envContent := string(content)
+	// Override wins over .env.example default
+	assert.Contains(t, envContent, `DOMAIN="http://localhost:3000"`)
+	assert.NotContains(t, envContent, `DOMAIN="http://localhost:4242"`)
+	// Non-overridden vars preserved
+	assert.Contains(t, envContent, "PORT=4242")
+}
