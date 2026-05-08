@@ -3,6 +3,8 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"time"
 
 	"github.com/99designs/keyring"
 	"github.com/spf13/afero"
@@ -154,6 +156,52 @@ type coreCLIHelper struct {
 
 var _ CoreCLIHelper = &coreCLIHelper{}
 
+var (
+	keychainVisibilityRetryInterval = 100 * time.Millisecond
+	keychainVisibilityRetryTimeout  = 1500 * time.Millisecond
+	keychainVisibilityRetryEnabled  = runtime.GOOS == "darwin"
+	keychainVisibilityNow           = time.Now
+	keychainVisibilitySleep         = time.Sleep
+)
+
+func readKeychainPassword(key string) (string, bool, error) {
+	item, err := config.KeyRing.Get(key)
+	if err == nil {
+		return string(item.Data), true, nil
+	}
+	if err == keyring.ErrKeyNotFound {
+		return "", false, nil
+	}
+	return "", false, err
+}
+
+func readKeychainPasswordWithRetry(key string, acceptValue func(string) bool) (string, bool, error) {
+	value, found, err := readKeychainPassword(key)
+	if err != nil {
+		return "", false, err
+	}
+	if found && acceptValue(value) {
+		return value, true, nil
+	}
+	if !keychainVisibilityRetryEnabled {
+		return value, found, nil
+	}
+
+	deadline := keychainVisibilityNow().Add(keychainVisibilityRetryTimeout)
+	for keychainVisibilityNow().Before(deadline) {
+		keychainVisibilitySleep(keychainVisibilityRetryInterval)
+		value, found, err = readKeychainPassword(key)
+		if err != nil {
+			return "", false, err
+		}
+		if found && acceptValue(value) {
+			return value, true, nil
+		}
+	}
+
+	return value, found, nil
+}
+
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
 	return &coreCLIHelper{ctx: ctx, config: cfg, fs: fs}
@@ -181,23 +229,37 @@ func (h *coreCLIHelper) SendAnalytics(eventName string, eventValue string) error
 
 // KeychainGetPassword retrieves a password from the system keychain.
 func (h *coreCLIHelper) KeychainGetPassword(key string) (string, bool, error) {
-	item, err := config.KeyRing.Get(key)
-	if err == keyring.ErrKeyNotFound {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	return string(item.Data), true, nil
+	return readKeychainPasswordWithRetry(key, func(string) bool { return true })
 }
 
 // KeychainSetPassword stores a password in the system keychain.
 func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
-	return config.KeyRing.Set(keyring.Item{
+	if err := config.KeyRing.Set(keyring.Item{
 		Key:   key,
 		Data:  []byte(value),
 		Label: key,
+	}); err != nil {
+		return err
+	}
+
+	if !keychainVisibilityRetryEnabled {
+		return nil
+	}
+
+	visibleValue, found, err := readKeychainPasswordWithRetry(key, func(candidate string) bool {
+		return candidate == value
 	})
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("keychain value for %q not visible after write", key)
+	}
+	if visibleValue != value {
+		return fmt.Errorf("keychain value for %q did not match after write", key)
+	}
+
+	return nil
 }
 
 // KeychainDeletePassword removes a password from the system keychain.
