@@ -58,11 +58,7 @@ func getPluginsDir(config config.IConfig) string {
 
 // GetPluginList builds a list of allowed plugins to be installed and run by the CLI
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
-	var pluginList PluginList
-	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
-
-	file, err := afero.ReadFile(fs, pluginManifestPath)
+	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
 		log.Debug("The plugin manifest file does not exist. Downloading...")
 		err = RefreshPluginManifest(ctx, config, fs, stripe.DefaultAPIBaseURL)
@@ -70,9 +66,73 @@ func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (Plu
 			log.Debug("Could not download plugin manifest")
 			return pluginList, err
 		}
-		file, err = afero.ReadFile(fs, pluginManifestPath)
+		return getCachedPluginList(config, fs)
 	}
 
+	if err != nil {
+		return pluginList, err
+	}
+
+	return pluginList, nil
+}
+
+// LookUpPlugin returns the matching plugin object
+func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
+	pluginList, err := GetPluginList(ctx, config, fs)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	return findPlugin(pluginList, pluginName)
+}
+
+// ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
+// without requiring a manifest refresh on the metadata-backed path.
+func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, baseURL string) (*Plugin, string, error) {
+	apiKey, err := config.GetProfile().GetAPIKey(false)
+	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
+		return nil, "", err
+	}
+
+	if apiKey != "" {
+		plugin, resolvedVersion, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, baseURL, apiKey)
+		if err == nil {
+			return plugin, resolvedVersion, nil
+		}
+
+		log.WithFields(log.Fields{
+			"prefix":  "plugins.ResolvePluginForInstall",
+			"plugin":  pluginName,
+			"version": version,
+		}).Debugf("could not resolve plugin via metadata, falling back to manifest lookup: %s", err)
+	}
+
+	if err := RefreshPluginManifest(ctx, config, fs, baseURL); err != nil {
+		return nil, "", err
+	}
+
+	plugin, err := LookUpPlugin(ctx, config, fs, pluginName)
+	if err != nil {
+		return nil, "", err
+	}
+
+	resolvedVersion := version
+	if resolvedVersion == "" {
+		resolvedVersion = plugin.LookUpLatestVersion()
+	}
+	if resolvedVersion == "" {
+		return nil, "", fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+	}
+
+	return &plugin, resolvedVersion, nil
+}
+
+func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
+	var pluginList PluginList
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+
+	file, err := afero.ReadFile(fs, pluginManifestPath)
 	if err != nil {
 		return pluginList, err
 	}
@@ -85,21 +145,53 @@ func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (Plu
 	return pluginList, nil
 }
 
-// LookUpPlugin returns the matching plugin object
-func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
-	var plugin Plugin
-	pluginList, err := GetPluginList(ctx, config, fs)
-	if err != nil {
-		return plugin, err
-	}
-
+func findPlugin(pluginList PluginList, pluginName string) (Plugin, error) {
 	for _, p := range pluginList.Plugins {
 		if pluginName == p.Shortname {
 			return p, nil
 		}
 	}
 
-	return plugin, fmt.Errorf("could not find a plugin named %s", pluginName)
+	return Plugin{}, fmt.Errorf("could not find a plugin named %s", pluginName)
+}
+
+func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, baseURL, apiKey string) (*Plugin, string, error) {
+	basePlugin := &Plugin{Shortname: pluginName}
+	if cachedPlugin, err := lookUpCachedPlugin(config, fs, pluginName); err == nil {
+		basePlugin = &cachedPlugin
+	}
+
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return nil, "", err
+	}
+
+	plugin, err := basePlugin.pluginFromMetadata(pluginMetadata.PluginManifest)
+	if err != nil {
+		return nil, "", err
+	}
+
+	resolvedVersion := version
+	if resolvedVersion == "" {
+		resolvedVersion = plugin.LookUpLatestVersion()
+	}
+	if resolvedVersion == "" {
+		return nil, "", fmt.Errorf("plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
+	}
+	if plugin.getReleaseForVersion(resolvedVersion) == nil {
+		return nil, "", fmt.Errorf("plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	}
+
+	return plugin, resolvedVersion, nil
+}
+
+func lookUpCachedPlugin(config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
+	pluginList, err := getCachedPluginList(config, fs)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	return findPlugin(pluginList, pluginName)
 }
 
 // RefreshPluginManifest refreshes the plugin manifest

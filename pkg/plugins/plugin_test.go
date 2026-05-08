@@ -168,6 +168,114 @@ func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 	require.True(t, fileExists)
 }
 
+func TestResolvePluginForInstallUsesMetadataWithoutCachedManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	var metadataLookups int
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			metadataLookups++
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, plugin)
+	require.Equal(t, "appA", plugin.Shortname)
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, 1, metadataLookups)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestResolvePluginForInstallResolvesLatestVersionFromMetadata(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	var metadataLookups int
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			metadataLookups++
+			require.Equal(t, "", req.URL.Query().Get("version"))
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/latest",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when metadata can resolve latest")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", stripeServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, plugin)
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, 1, metadataLookups)
+}
+
+func TestResolvePluginForInstallFallsBackToManifestLookupWhenMetadataFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	var pluginURLLookups int
+	fallbackServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(`{"error":{"message":"boom"}}`))
+		case "/v1/stripecli/get-plugin-url":
+			pluginURLLookups++
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer fallbackServer.Close()
+
+	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", fallbackServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, plugin)
+	require.Equal(t, "appA", plugin.Shortname)
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, 1, pluginURLLookups)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.NoError(t, err)
+}
+
 func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
 	plugin := Plugin{Shortname: "appA"}
 
