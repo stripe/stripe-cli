@@ -1,3 +1,4 @@
+// Package config manages CLI configuration and profiles.
 package config
 
 import (
@@ -5,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -35,8 +38,13 @@ type IConfig interface {
 	InitConfig()
 	EditConfig() error
 	PrintConfig() error
+	CopyProfile(source string, target string) error
+	ListProfiles() error
+	SwitchProfile(targetProfileName string) error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
+	RemoveAuthFields(profileName string) error
+	RemoveAllAuthFields() error
 	WriteConfigField(field string, value interface{}) error
 	GetInstalledPlugins() []string
 }
@@ -58,7 +66,12 @@ func (c *Config) GetProfile() *Profile {
 // GetConfigFolder retrieves the folder where the profiles file is stored
 // It searches for the xdg environment path first and will secondarily
 // place it in the home directory
+
 func (c *Config) GetConfigFolder(xdgPath string) string {
+	return getConfigFolder(xdgPath)
+}
+
+func getConfigFolder(xdgPath string) string {
 	configPath := xdgPath
 
 	if configPath == "" {
@@ -166,9 +179,13 @@ func (c *Config) InitConfig() {
 	}
 
 	// initialize key ring
-	KeyRing, _ = keyring.Open(keyring.Config{
-		ServiceName: KeyManagementService,
-	})
+	KeyRing, err = keyring.Open(getKeyringConfig())
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "config.Config.InitConfig",
+			"error":  err,
+		}).Warn("Failed to initialize keyring")
+	}
 
 	// redact livemode values for existing configs
 	c.Profile.redactAllLivemodeValues()
@@ -185,6 +202,86 @@ func (c *Config) EditConfig() error {
 
 	_, err = editor.EditContent()
 	return err
+}
+
+func (c *Config) CopyProfile(source string, target string) error {
+	if source == "" {
+		return fmt.Errorf("source profile name cannot be empty")
+	}
+	if target == "" {
+		return fmt.Errorf("target profile name cannot be empty")
+	}
+
+	if source == target {
+		return fmt.Errorf("cannot copy profile to itself")
+	}
+
+	runtimeViper := viper.GetViper()
+	safeSource := strings.ReplaceAll(source, ".", " ")
+	if !runtimeViper.IsSet(safeSource) {
+		return fmt.Errorf("source profile '%s' does not exist", source)
+	}
+	existing := runtimeViper.Get(safeSource)
+	if !isProfile(existing) {
+		return fmt.Errorf("source '%s' is not a profile", source)
+	}
+
+	safeTarget := strings.ReplaceAll(target, ".", " ")
+	existingMap := existing.(map[string]interface{})
+	newProfile := make(map[string]interface{})
+	for k, v := range existingMap {
+		if isPluginConfigSection(v) {
+			// Skip plugin config sections of the form <scope>.<plugin config key>.
+			continue
+		}
+		newProfile[k] = v
+	}
+	newProfile["profile_name"] = safeTarget
+
+	runtimeViper.Set(safeTarget, newProfile)
+
+	return writeConfig(runtimeViper)
+}
+
+func (c *Config) ListProfiles() error {
+	runtimeViper := viper.GetViper()
+	var profiles []string
+
+	for _, value := range runtimeViper.AllSettings() {
+		if !isProfile(value) {
+			continue
+		}
+		var displayName string
+		switch v := value.(type) {
+		case map[string]interface{}:
+			displayName, _ = v["display_name"].(string)
+		case map[string]string:
+			displayName = v["display_name"]
+		}
+		if displayName != "" && !slices.Contains(profiles, displayName) {
+			profiles = append(profiles, displayName)
+		}
+	}
+
+	// TODO: sort by most recently used
+	sort.Strings(profiles)
+
+	if len(profiles) == 0 {
+		fmt.Println("No profiles found.")
+	} else {
+		fmt.Println("Available profiles:")
+		for _, profile := range profiles {
+			// GetDisplayName() reads from the config file to ensure consistency
+			// with the display names we extracted from AllSettings() above
+			if profile == c.Profile.GetDisplayName() {
+				fmt.Printf("  * %s (active)\n", profile)
+			} else {
+				fmt.Printf("    %s\n", profile)
+			}
+		}
+	}
+
+	return nil
 }
 
 // PrintConfig outputs the contents of the configuration file.
@@ -220,6 +317,32 @@ func (c *Config) GetInstalledPlugins() []string {
 	return runtimeViper.GetStringSlice("installed_plugins")
 }
 
+func (c *Config) SwitchProfile(profileName string) error {
+	// First copy the active profile to a different key
+	// TODO: should this be account id instead of display name?
+	if err := c.CopyProfile("default", c.Profile.GetDisplayName()); err != nil {
+		return err
+	}
+
+	// Then copy the target profile to "default"
+	// This makes the target profile the active one
+	// since the CLI always uses the "default" profile internally
+	if err := c.CopyProfile(profileName, "default"); err != nil {
+		return err
+	}
+
+	// Remove the old profile key since it's now been copied to "default"
+	// This keeps the config file clean by not having duplicate data
+	c.RemoveProfile(profileName)
+
+	// Finally, reload the config to pick up the new "default" profile
+	c.InitConfig()
+
+	fmt.Printf("Switched to profile: %s\n", profileName)
+
+	return nil
+}
+
 // RemoveProfile removes the profile whose name matches the provided
 // profileName from the config file.
 func (c *Config) RemoveProfile(profileName string) error {
@@ -227,17 +350,28 @@ func (c *Config) RemoveProfile(profileName string) error {
 	var err error
 
 	for field, value := range runtimeViper.AllSettings() {
-		if isProfile(value) && field == profileName {
-			runtimeViper, err = removeKey(runtimeViper, field)
-			if err != nil {
-				return err
+		if isProfile(value) {
+			var profileNameAttr string
+			switch v := value.(type) {
+			case map[string]interface{}:
+				if pn, ok := v["profile_name"].(string); ok {
+					profileNameAttr = pn
+				}
+			case map[string]string:
+				profileNameAttr = v["profile_name"]
 			}
+			if field == profileName || profileNameAttr == profileName {
+				runtimeViper, err = removeKey(runtimeViper, field)
+				if err != nil {
+					return err
+				}
 
-			deleteLivemodeKey(LiveModeAPIKeyName, field)
+				deleteLivemodeKey(LiveModeAPIKeyName, field)
+			}
 		}
 	}
 
-	return syncConfig(runtimeViper)
+	return writeConfig(runtimeViper)
 }
 
 // RemoveAllProfiles removes all the profiles from the config file.
@@ -256,7 +390,50 @@ func (c *Config) RemoveAllProfiles() error {
 		}
 	}
 
-	return syncConfig(runtimeViper)
+	return writeConfig(runtimeViper)
+}
+
+// RemoveAuthFields removes only auth-related fields for the named profile,
+// preserving non-auth settings like color.
+func (c *Config) RemoveAuthFields(profileName string) error {
+	runtimeViper := viper.GetViper()
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			var profileNameAttr string
+			switch v := value.(type) {
+			case map[string]interface{}:
+				if pn, ok := v["profile_name"].(string); ok {
+					profileNameAttr = pn
+				}
+			case map[string]string:
+				profileNameAttr = v["profile_name"]
+			}
+			if field == profileName || profileNameAttr == profileName {
+				p := &Profile{ProfileName: field}
+				runtimeViper = p.deleteAuthFields(runtimeViper)
+				deleteLivemodeKey(LiveModeAPIKeyName, field)
+			}
+		}
+	}
+
+	return writeConfig(runtimeViper)
+}
+
+// RemoveAllAuthFields removes only auth-related fields from all profiles,
+// preserving non-auth settings like color.
+func (c *Config) RemoveAllAuthFields() error {
+	runtimeViper := viper.GetViper()
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			p := &Profile{ProfileName: field}
+			runtimeViper = p.deleteAuthFields(runtimeViper)
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
+		}
+	}
+
+	return writeConfig(runtimeViper)
 }
 
 func deleteLivemodeKey(key string, profile string) error {
@@ -274,11 +451,18 @@ func deleteLivemodeKey(key string, profile string) error {
 	return nil
 }
 
-// isProfile identifies whether a value in the config pertains to a profile.
+// isProfile identifies whether a config entry pertains to a user profile.
+// A profile is a map that contains a display_name field.
 func isProfile(value interface{}) bool {
-	// TODO: ianjabour - ideally find a better way to identify projects in config
-	_, ok := value.(map[string]interface{})
-	return ok
+	switch v := value.(type) {
+	case map[string]interface{}:
+		_, ok := v["display_name"]
+		return ok
+	case map[string]string:
+		_, ok := v["display_name"]
+		return ok
+	}
+	return false
 }
 
 // WriteConfigField updates a configuration field and writes the updated
@@ -287,23 +471,29 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(field, value)
 
-	return runtimeViper.WriteConfig()
+	return writeConfig(runtimeViper)
 }
 
-// syncConfig merges a runtimeViper instance with the config file being used.
-func syncConfig(runtimeViper *viper.Viper) error {
-	runtimeViper.MergeInConfig()
+// writeConfig writes a viper instance to the config file and syncs the global viper.
+func writeConfig(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
 	runtimeViper.SetConfigFile(profilesFile)
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
+	configType := strings.TrimPrefix(filepath.Ext(profilesFile), ".")
+	runtimeViper.SetConfigType(configType)
 
-	err := runtimeViper.WriteConfig()
-	if err != nil {
+	if err := runtimeViper.WriteConfig(); err != nil {
 		return err
 	}
 
-	return nil
+	// Reset global viper and re-read from file.
+	// We must reset because ReadInConfig merges with existing values rather than
+	// replacing them - so deleted keys would persist without this reset.
+	viper.Reset()
+	viper.SetConfigFile(profilesFile)
+	viper.SetConfigType(configType)
+	viper.SetConfigPermissions(os.FileMode(0600))
+
+	return viper.ReadInConfig()
 }
 
 // Temporary workaround until https://github.com/spf13/viper/pull/519 can remove a key from viper

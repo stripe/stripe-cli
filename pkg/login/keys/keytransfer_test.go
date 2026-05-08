@@ -54,6 +54,7 @@ func TestAsyncPollKey_Succeeds(t *testing.T) {
 
 	go rt.AsyncPollKey(context.Background(), ts.URL, 1*time.Millisecond, 3, ch)
 
+	<-ch
 	result := <-ch
 
 	require.True(t, configurer.called, "expected SaveLoginDetails to be called, but wasn't")
@@ -158,6 +159,7 @@ func TestAsyncPollKey_ConfigurerError(t *testing.T) {
 
 	go rt.AsyncPollKey(context.Background(), ts.URL, 1*time.Millisecond, 3, ch)
 
+	<-ch
 	result := <-ch
 	require.True(t, configurer.called, "expected SaveLoginDetails to be called, but wasn't")
 	assert.EqualError(t, result.Err, "failed to save login details")

@@ -47,7 +47,12 @@ needed to create the triggered event as well as the corresponding API objects.
 			fixtures.EventList(),
 		),
 		Example: `stripe trigger payment_intent.created`,
-		RunE:    tc.runTriggerCmd,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Use `--override` to customize event data, e.g. `--override customer:email=test@example.com`.\n" +
+				"  Use `--skip` to skip specific steps in the trigger sequence.\n" +
+				"  Triggers create real API objects in test mode that you can inspect afterward.",
+		},
+		RunE: tc.runTriggerCmd,
 	}
 
 	tc.cmd.Flags().StringVar(&tc.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")

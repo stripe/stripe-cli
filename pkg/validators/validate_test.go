@@ -94,7 +94,7 @@ func TestStatusCode(t *testing.T) {
 
 func TestStatusCodeUnusedInStripe(t *testing.T) {
 	err := StatusCode("300")
-	require.Equal(t, "Provided status code 300 is not in the range of acceptable status codes (200's, 400's, 500's)", fmt.Sprintf("%s", err))
+	require.Equal(t, "provided status code 300 is not in the range of acceptable status codes (200's, 400's, 500's)", fmt.Sprintf("%s", err))
 }
 
 func TestStatusCodeType(t *testing.T) {
@@ -104,10 +104,10 @@ func TestStatusCodeType(t *testing.T) {
 
 func TestStatusCodeTypeUnusedInStripe(t *testing.T) {
 	err := StatusCodeType("3XX")
-	require.Equal(t, "Provided status code type 3XX is not a valid type (2XX, 4XX, 5XX)", fmt.Sprintf("%s", err))
+	require.Equal(t, "provided status code type 3XX is not a valid type (2XX, 4XX, 5XX)", fmt.Sprintf("%s", err))
 }
 
 func TestStatusCodeNotXs(t *testing.T) {
 	err := StatusCodeType("201")
-	require.Equal(t, "Provided status code type 201 is not a valid type (2XX, 4XX, 5XX)", fmt.Sprintf("%s", err))
+	require.Equal(t, "provided status code type 201 is not a valid type (2XX, 4XX, 5XX)", fmt.Sprintf("%s", err))
 }

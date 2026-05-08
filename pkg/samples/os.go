@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
+
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
 
 // cacheFolder is the local directory where we place local copies of samples
@@ -48,7 +50,7 @@ func (s *SampleManager) MakeFolder(name string) (string, error) {
 			return "", err
 		}
 	} else {
-		return "", fmt.Errorf("Path already exists, aborting: %s", appFolder)
+		return "", fmt.Errorf("path already exists, aborting: %s", appFolder)
 	}
 
 	return appFolder, nil
@@ -83,8 +85,10 @@ func (s *SampleManager) GetFiles(path string) ([]string, error) {
 	}
 
 	for _, f := range files {
-		// We only want files
-		if !f.IsDir() {
+		// We only want regular files, not directories or symlinks.
+		// Filtering symlinks prevents malicious sample repositories from
+		// using symlinks to escape the destination directory.
+		if !f.IsDir() && !fsutil.IsSymlink(s.Fs, filepath.Join(path, f.Name())) {
 			file = append(file, f.Name())
 		}
 	}

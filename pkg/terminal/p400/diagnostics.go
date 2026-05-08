@@ -1,3 +1,4 @@
+// Package p400 provides support for Stripe Terminal P400 readers.
 package p400
 
 import (
