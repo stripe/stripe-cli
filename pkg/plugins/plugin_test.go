@@ -168,6 +168,57 @@ func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 	require.True(t, fileExists)
 }
 
+func TestInstallPersistsLocalMetadataWithoutManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch {
+		case strings.Contains(req.URL.String(), "/appA/2.0.1"):
+			res.Write([]byte("hello, I am appA_2.0.1"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("install should not fall back to /v1/stripecli/get-plugin-url when plugin metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin := &Plugin{Shortname: "appA"}
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "stripe-cli-app-a", cachedPlugin.Binary)
+	require.NotNil(t, cachedPlugin.getReleaseForVersion("2.0.1"))
+	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+
+	lookedUpPlugin, err := LookUpPlugin(context.Background(), config, fs, "appA")
+	require.NoError(t, err)
+	require.Equal(t, cachedPlugin, lookedUpPlugin)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.True(t, os.IsNotExist(err))
+}
+
 func TestResolvePluginForInstallUsesMetadataWithoutCachedManifest(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
@@ -525,11 +576,53 @@ func TestUninstall(t *testing.T) {
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
 	require.Nil(t, err)
+	metadataPath := getLocalPluginMetadataPath(config, "appA")
+	cacheExists, err := afero.Exists(fs, metadataPath)
+	require.NoError(t, err)
+	require.True(t, cacheExists)
 
 	pluginDir := "/plugins/appA"
 	err = plugin.Uninstall(context.Background(), config, fs)
 	require.Nil(t, err)
 	dirExists, _ := afero.Exists(fs, pluginDir)
+	require.False(t, dirExists)
+	cacheExists, err = afero.Exists(fs, metadataPath)
+	require.NoError(t, err)
+	require.False(t, cacheExists)
+
+	require.Equal(t, 0, len(config.GetInstalledPlugins()))
+}
+
+func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	plugin := Plugin{
+		Shortname:        "docs",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+	require.NoError(t, fs.MkdirAll("/plugins/docs/1.0.0", 0755))
+
+	err := plugin.Uninstall(context.Background(), config, fs)
+	require.NoError(t, err)
+
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	require.NoError(t, err)
+	require.False(t, cacheExists)
+
+	dirExists, err := afero.Exists(fs, "/plugins/docs")
+	require.NoError(t, err)
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))

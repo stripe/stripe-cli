@@ -379,22 +379,18 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		return err
 	}
 
-	installedList := cfg.GetInstalledPlugins()
-
-	// check for plugin already in list (ie. in the case of an upgrade)
-	isInstalled := false
-	for _, name := range installedList {
-		if name == p.Shortname {
-			isInstalled = true
+	if err := PersistInstalledPluginState(cfg, fs, *pluginToInstall); err != nil {
+		pluginPath := pluginToInstall.getPluginInstallPath(cfg, version)
+		if cleanupErr := fs.RemoveAll(pluginPath); cleanupErr != nil {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+				"path":   pluginPath,
+			}).Debugf("could not clean up plugin after local metadata write failure: %s", cleanupErr)
 		}
-	}
 
-	if !isInstalled {
-		installedList = append(installedList, p.Shortname)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+		return err
 	}
-
-	// sync list of installed plugins to file
-	cfg.WriteConfigField("installed_plugins", installedList)
 
 	// Once the plugin is successfully downloaded, clean up other versions
 	p.cleanUpPluginPath(cfg, fs, version)
@@ -424,23 +420,35 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 		}
 	}
 
-	if pluginIdx == -1 {
-		return errors.New("this plugin doesn't seem to be installed, canceling")
+	pluginDir := p.getPluginInstallPath(config, "")
+	dirExists, err := afero.DirExists(fs, pluginDir)
+	if err != nil {
+		return err
+	}
+	metadataPath := getLocalPluginMetadataPath(config, p.Shortname)
+	metadataExists, err := afero.Exists(fs, metadataPath)
+	if err != nil {
+		return err
 	}
 
-	pluginDir := p.getPluginInstallPath(config, "")
-
-	err := fs.RemoveAll(pluginDir)
+	if pluginIdx == -1 && !dirExists && !metadataExists {
+		return errors.New("this plugin doesn't seem to be installed, canceling")
+	}
+	err = fs.RemoveAll(pluginDir)
 
 	if err != nil {
 		return err
 	}
 
-	// remove plugin from installed plugins list in profile
-	installedList := make([]string, 0)
-	installedList = append(installedList, pluginList[:pluginIdx]...)
-	installedList = append(installedList, pluginList[pluginIdx+1:]...)
-	config.WriteConfigField("installed_plugins", installedList)
+	if err := removeLocalPluginMetadata(config, fs, p.Shortname); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Uninstall",
+			"plugin": p.Shortname,
+		}).Debugf("could not remove local plugin metadata: %s", err)
+	}
+	if err := RemoveInstalledPlugin(config, p.Shortname); err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -3,9 +3,11 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -59,6 +61,279 @@ func TestLookUpPlugin(t *testing.T) {
 	require.Equal(t, "stripe-cli-app-b", plugin.Binary)
 	require.Equal(t, "FDBE6FB9-A149-44BD-9639-4D33D8B594E8", plugin.MagicCookieValue)
 	require.Equal(t, 4, len(plugin.Releases))
+}
+
+func TestLookUpPluginUsesLocalMetadataWhenManifestMissing(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "local-plugin",
+		Binary:           "stripe-cli-local-plugin",
+		MagicCookieValue: "LOCAL-PLUGIN-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	plugin, err := LookUpPlugin(context.Background(), config, fs, "local-plugin")
+	require.NoError(t, err)
+	require.Equal(t, localPlugin, plugin)
+}
+
+func TestGetInstalledPluginNamesIncludesLocalMetadata(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InstalledPlugins = []string{"projects"}
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	pluginNames, err := GetInstalledPluginNames(config, fs)
+	require.NoError(t, err)
+	require.Equal(t, []string{"projects", "docs"}, pluginNames)
+}
+
+func TestRecordInstalledPlugin(t *testing.T) {
+	config := &TestConfig{}
+
+	require.NoError(t, RecordInstalledPlugin(config, "docs"))
+	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+
+	require.NoError(t, RecordInstalledPlugin(config, "docs"))
+	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+}
+
+func TestRemoveInstalledPlugin(t *testing.T) {
+	config := &TestConfig{}
+	config.InstalledPlugins = []string{"projects", "docs"}
+
+	require.NoError(t, RemoveInstalledPlugin(config, "docs"))
+	require.Equal(t, []string{"projects"}, config.GetInstalledPlugins())
+
+	require.NoError(t, RemoveInstalledPlugin(config, "docs"))
+	require.Equal(t, []string{"projects"}, config.GetInstalledPlugins())
+}
+
+func TestPersistInstalledPluginState(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	plugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "search",
+				Desc: "Search docs",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, PersistInstalledPluginState(config, fs, plugin))
+	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
+	require.NoError(t, err)
+	require.Equal(t, plugin, cachedPlugin)
+}
+
+func TestLookUpPluginInManifestIgnoresLocalMetadata(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "appA",
+		Binary:           "stripe-cli-local-app-a",
+		MagicCookieValue: "LOCAL-APP-A-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "9.9.9",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	plugin, err := LookUpPluginInManifest(context.Background(), config, fs, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
+	require.Equal(t, "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291", plugin.MagicCookieValue)
+}
+
+func TestResolvePluginForInstallUsesLocalMetadataAsMetadataBase(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	localPlugin := Plugin{
+		Shortname:        "generate",
+		Binary:           "stripe-cli-generate",
+		MagicCookieValue: "GENERATE-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "create",
+				Desc: "Create generated artifacts",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+				Runtime: map[string]string{"node": "20"},
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	metadataManifest := fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "abc123"
+`, runtime.GOARCH, runtime.GOOS)
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/generate/1.0.0",
+				PluginManifest: metadataManifest,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, "1.0.0", version)
+	require.Len(t, plugin.Commands, 1)
+	require.Equal(t, "create", plugin.Commands[0].Name)
+	release := plugin.getReleaseForVersion("1.0.0")
+	require.NotNil(t, release)
+	require.Equal(t, "20", release.Runtime["node"])
+}
+
+func TestResolvePluginForUpgradeUsesLocalMetadataWhenManifestMissing(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "search",
+				Desc: "Search docs",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "0.1.25",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	plugin, err := ResolvePluginForUpgrade(config, fs, "docs")
+	require.NoError(t, err)
+	require.Equal(t, localPlugin, *plugin)
+}
+
+func TestResolvePluginForUpgradePrefersNewerManifestVersion(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "search",
+				Desc: "Search docs",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "0.1.25",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	manifestContent := fmt.Sprintf(`[[Plugin]]
+  Shortname = "docs"
+  Shortdesc = "Docs plugin"
+  Binary = "stripe-cli-docs"
+  MagicCookieValue = "DOCS-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "0.1.26"
+    Sum = "def456"
+`, runtime.GOARCH, runtime.GOOS)
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(manifestContent), os.ModePerm))
+
+	plugin, err := ResolvePluginForUpgrade(config, fs, "docs")
+	require.NoError(t, err)
+	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
+	require.Len(t, plugin.Commands, 1)
+	require.Equal(t, "search", plugin.Commands[0].Name)
 }
 
 func TestRefreshPluginManifest(t *testing.T) {

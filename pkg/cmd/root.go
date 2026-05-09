@@ -266,23 +266,33 @@ func init() {
 	// config is not initialized by cobra at this point, so we need to temporarily initialize it
 	Config.InitConfig()
 
-	// get a list of installed plugins, validate against the manifest
-	// and finally add each validated plugin as a command
-	nfs := afero.NewOsFs()
-	pluginList := Config.GetInstalledPlugins()
-
-	installedPluginSet := make(map[string]bool)
-	for _, p := range pluginList {
-		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
-		if err == nil {
-			installedPluginSet[p] = true
-			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
-		}
-	}
+	installedPluginSet := registerInstalledPlugins(rootCmd, &Config, afero.NewOsFs())
 
 	// For known plugins not yet installed, add a hint command so users get
 	// a helpful message instead of "unknown command".
 	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
+}
+
+func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	pluginNames, err := plugins.GetInstalledPluginNames(cfg, fs)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.registerInstalledPlugins",
+		}).Debugf("could not list installed plugins: %s", err)
+		pluginNames = cfg.GetInstalledPlugins()
+	}
+
+	installedPluginSet := make(map[string]bool)
+	for _, pluginName := range pluginNames {
+		plugin, err := plugins.LookUpPlugin(context.Background(), cfg, fs, pluginName)
+		if err != nil {
+			continue
+		}
+		installedPluginSet[pluginName] = true
+		root.AddCommand(newPluginTemplateCmd(cfg, &plugin).cmd)
+	}
+
+	return installedPluginSet
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
