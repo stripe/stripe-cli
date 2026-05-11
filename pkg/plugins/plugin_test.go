@@ -424,6 +424,73 @@ func TestResolvePluginForInstallFallsBackToManifestLookupWhenMetadataFails(t *te
 	require.NoError(t, err)
 }
 
+func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	stalePlugin := Plugin{
+		Shortname:        "appA",
+		Binary:           "stripe-cli-app-a",
+		MagicCookieValue: "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.1",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, stalePlugin))
+
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	plugin, version, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", testServers.StripeServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, plugin)
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, "2.0.1", plugin.LookUpLatestVersion())
+}
+
+func TestResolvePluginForAutoInstallFallsBackToCachedManifestWhenFreshLookupFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	stalePlugin := Plugin{
+		Shortname:        "appA",
+		Binary:           "stripe-cli-app-a",
+		MagicCookieValue: "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.1",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, stalePlugin))
+
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", manifestContent, os.ModePerm))
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusInternalServerError)
+		_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+	}))
+	defer failingServer.Close()
+
+	plugin, version, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", failingServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, plugin)
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, "2.0.1", plugin.LookUpLatestVersion())
+}
+
 func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
 	plugin := Plugin{Shortname: "appA"}
 

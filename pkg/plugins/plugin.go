@@ -578,10 +578,18 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			return err
 		}
 
-		// if plugin is not installed locally, then we should install it first
+		// If the plugin binary is missing locally, resolve the freshest metadata
+		// before reinstalling so stale cached local metadata does not pin us to an
+		// older release.
 		if version == "" {
-			version = p.LookUpLatestVersion()
-			err := p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
+			pluginToInstall, resolvedVersion, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, stripe.DefaultAPIBaseURL)
+			if err != nil {
+				return err
+			}
+
+			p = pluginToInstall
+			version = resolvedVersion
+			err = p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
 			if err != nil {
 				return err
 			}

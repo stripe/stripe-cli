@@ -365,6 +365,32 @@ func ResolvePluginForUpgrade(config config.IConfig, fs afero.Fs, pluginName stri
 	return nil, manifestErr
 }
 
+// resolvePluginForAutoInstall resolves the freshest plugin metadata to use when
+// a command is invoked but the local plugin binary is missing.
+func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, baseURL string) (*Plugin, string, error) {
+	plugin, version, err := ResolvePluginForInstall(ctx, config, fs, pluginName, "", baseURL)
+	if err == nil {
+		return plugin, version, nil
+	}
+
+	log.WithFields(log.Fields{
+		"prefix": "plugins.resolvePluginForAutoInstall",
+		"plugin": pluginName,
+	}).Debugf("could not resolve latest plugin metadata for auto-install, falling back to cached metadata: %s", err)
+
+	plugin, cachedErr := ResolvePluginForUpgrade(config, fs, pluginName)
+	if cachedErr != nil {
+		return nil, "", fmt.Errorf("could not resolve plugin %s for auto-install: latest lookup failed: %v; cached lookup failed: %w", pluginName, err, cachedErr)
+	}
+
+	version = plugin.LookUpLatestVersion()
+	if version == "" {
+		return nil, "", fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+	}
+
+	return plugin, version, nil
+}
+
 func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
 	var pluginList PluginList
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
