@@ -4,6 +4,7 @@ package fsutil
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/afero"
 )
@@ -29,20 +30,46 @@ func IsSymlink(fs afero.Fs, path string) bool {
 	return entry.Mode()&os.ModeSymlink == os.ModeSymlink
 }
 
-// RefuseWriteThroughSymlink rejects writes to symlinked paths.
-func RefuseWriteThroughSymlink(fs afero.Fs, path, name string) error {
-	entry, lstated, err := lstatIfPossible(fs, path)
-	if !lstated {
-		return nil
-	}
+// RefuseWriteThroughSymlink rejects writes when the destination path or any
+// existing parent directory between path and stopPath is a symlink.
+func RefuseWriteThroughSymlink(fs afero.Fs, path, stopPath, name string) error {
+	return walkPathAndParents(path, stopPath, func(candidate string) error {
+		entry, lstated, err := lstatIfPossible(fs, candidate)
+		if !lstated {
+			return nil
+		}
 
-	return refuseWriteThroughSymlink(entry, err, path, name)
+		return refuseWriteThroughSymlink(entry, err, candidate, name)
+	})
 }
 
-// RefuseWriteThroughSymlinkOS rejects writes to an existing symlink path on the OS filesystem.
-func RefuseWriteThroughSymlinkOS(path, name string) error {
-	entry, err := os.Lstat(path)
-	return refuseWriteThroughSymlink(entry, err, path, name)
+// RefuseWriteThroughSymlinkOS rejects writes when the destination path or any
+// existing parent directory between path and stopPath is a symlink on the OS filesystem.
+func RefuseWriteThroughSymlinkOS(path, stopPath, name string) error {
+	return walkPathAndParents(path, stopPath, func(candidate string) error {
+		entry, err := os.Lstat(candidate)
+		return refuseWriteThroughSymlink(entry, err, candidate, name)
+	})
+}
+
+func walkPathAndParents(path, stopPath string, visit func(string) error) error {
+	current := filepath.Clean(path)
+	stop := filepath.Clean(stopPath)
+
+	for {
+		if err := visit(current); err != nil {
+			return err
+		}
+		if current == stop {
+			return nil
+		}
+
+		parent := filepath.Dir(current)
+		if parent == current {
+			return nil
+		}
+		current = parent
+	}
 }
 
 func refuseWriteThroughSymlink(entry os.FileInfo, err error, path, name string) error {

@@ -127,6 +127,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginManifestPath, filepath.Dir(configPath), filepath.Base(pluginManifestPath)); err != nil {
+		return err
+	}
+
 	// Ensure the config directory exists
 	err = fs.MkdirAll(configPath, os.FileMode(0755))
 	if err != nil {
@@ -135,10 +139,6 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 	body := new(bytes.Buffer)
 	if err := toml.NewEncoder(body).Encode(pluginList); err != nil {
-		return err
-	}
-
-	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginManifestPath, filepath.Base(pluginManifestPath)); err != nil {
 		return err
 	}
 

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -339,7 +340,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 		if strings.Contains(contentType, "application/pdf") {
 			// Extract a filename from the path (e.g., /v1/quotes/qt_123/pdf -> qt_123.pdf)
 			filename := extractFilenameFromPath(path, "pdf")
-			if err := fsutil.RefuseWriteThroughSymlinkOS(filename, filename); err != nil {
+			if err := fsutil.RefuseWriteThroughSymlinkOS(filename, filepath.Dir(filename), filename); err != nil {
 				return []byte{}, err
 			}
 			err := os.WriteFile(filename, body, 0644)

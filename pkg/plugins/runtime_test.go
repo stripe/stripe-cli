@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -177,7 +178,7 @@ func TestExtractTarGzZipSlipProtection(t *testing.T) {
 	gzw.Close()
 
 	// Attempt to extract should fail due to path traversal
-	err = extractTarGz(fs, buf.Bytes(), destPath)
+	err = extractTarGz(fs, buf.Bytes(), destPath, destPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "illegal file path")
 
@@ -211,7 +212,7 @@ func TestExtractTarGzValidArchive(t *testing.T) {
 	gzw.Close()
 
 	// Extraction should succeed
-	err = extractTarGz(fs, buf.Bytes(), destPath)
+	err = extractTarGz(fs, buf.Bytes(), destPath, destPath)
 	require.NoError(t, err)
 
 	// Verify the file was created in the correct location
@@ -222,6 +223,45 @@ func TestExtractTarGzValidArchive(t *testing.T) {
 	content, err := afero.ReadFile(fs, filepath.Join(destPath, "bin", "node"))
 	require.NoError(t, err)
 	require.Equal(t, validContent, content)
+}
+
+func TestExtractRuntimeRefusesSymlinkedDestinationParent(t *testing.T) {
+	fs := afero.NewOsFs()
+	tempDir := t.TempDir()
+
+	victimDir := filepath.Join(tempDir, "victim-runtime")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+
+	linkDir := filepath.Join(tempDir, "runtime-link")
+	require.NoError(t, os.Symlink(victimDir, linkDir))
+
+	destPath := filepath.Join(linkDir, "node", "20.18.1")
+	archive := buildTarGzArchive(t, "node-v20.0.0-linux-x64/bin/node", []byte("valid content"), 0o755)
+
+	err := extractRuntime(fs, archive, destPath, tempDir, "linux")
+	require.ErrorContains(t, err, "symlink")
+
+	_, err = os.Stat(filepath.Join(victimDir, "node", "20.18.1", "bin", "node"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestExtractTarGzRefusesSymlinkedParent(t *testing.T) {
+	fs := afero.NewOsFs()
+	tempDir := t.TempDir()
+	destPath := filepath.Join(tempDir, "runtime")
+	require.NoError(t, os.MkdirAll(destPath, 0o755))
+
+	victimDir := filepath.Join(tempDir, "victim-bin")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+	require.NoError(t, os.Symlink(victimDir, filepath.Join(destPath, "bin")))
+
+	archive := buildTarGzArchive(t, "node-v20.0.0-linux-x64/bin/node", []byte("valid content"), 0o755)
+
+	err := extractTarGz(fs, archive, destPath, destPath)
+	require.ErrorContains(t, err, "symlink")
+
+	_, err = os.Stat(filepath.Join(victimDir, "node"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestExtractZipZipSlipProtection(t *testing.T) {
@@ -242,7 +282,7 @@ func TestExtractZipZipSlipProtection(t *testing.T) {
 	zw.Close()
 
 	// Attempt to extract should fail due to path traversal
-	err = extractZip(fs, buf.Bytes(), destPath)
+	err = extractZip(fs, buf.Bytes(), destPath, destPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "illegal file path")
 
@@ -273,7 +313,7 @@ func TestExtractZipValidArchive(t *testing.T) {
 	zw.Close()
 
 	// Extraction should succeed
-	err = extractZip(fs, buf.Bytes(), destPath)
+	err = extractZip(fs, buf.Bytes(), destPath, destPath)
 	require.NoError(t, err)
 
 	// Verify the file was created in the correct location
@@ -284,6 +324,25 @@ func TestExtractZipValidArchive(t *testing.T) {
 	content, err := afero.ReadFile(fs, filepath.Join(destPath, "node.exe"))
 	require.NoError(t, err)
 	require.Equal(t, validContent, content)
+}
+
+func TestExtractZipRefusesSymlinkedParent(t *testing.T) {
+	fs := afero.NewOsFs()
+	tempDir := t.TempDir()
+	destPath := filepath.Join(tempDir, "runtime")
+	require.NoError(t, os.MkdirAll(destPath, 0o755))
+
+	victimDir := filepath.Join(tempDir, "victim-bin")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+	require.NoError(t, os.Symlink(victimDir, filepath.Join(destPath, "bin")))
+
+	archive := buildZipArchive(t, "node-v20.0.0-win-x64/bin/node.exe", []byte("valid windows node.exe content"))
+
+	err := extractZip(fs, archive, destPath, destPath)
+	require.ErrorContains(t, err, "symlink")
+
+	_, err = os.Stat(filepath.Join(victimDir, "node.exe"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestGetReleaseForVersion(t *testing.T) {
@@ -329,4 +388,43 @@ func TestGetReleaseForVersion(t *testing.T) {
 	// Should return nil for non-existent version
 	release = plugin.getReleaseForVersion("2.0.0")
 	require.Nil(t, release)
+}
+
+func buildTarGzArchive(t *testing.T, name string, content []byte, mode int64) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+
+	err := tw.WriteHeader(&tar.Header{
+		Name:     name,
+		Mode:     mode,
+		Size:     int64(len(content)),
+		Typeflag: tar.TypeReg,
+	})
+	require.NoError(t, err)
+
+	_, err = tw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	return buf.Bytes()
+}
+
+func buildZipArchive(t *testing.T, name string, content []byte) []byte {
+	t.Helper()
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	fw, err := zw.Create(name)
+	require.NoError(t, err)
+
+	_, err = fw.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+
+	return buf.Bytes()
 }

@@ -373,13 +373,13 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 		return err
 	}
 
-	err = fs.MkdirAll(pluginDir, 0755)
-	if err != nil {
-		logger.Debugf("could not create plugin directory: %s", pluginDir)
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginFilePath, filepath.Dir(getPluginsDir(config)), filepath.Base(pluginFilePath)); err != nil {
 		return err
 	}
 
-	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginFilePath, filepath.Base(pluginFilePath)); err != nil {
+	err = fs.MkdirAll(pluginDir, 0755)
+	if err != nil {
+		logger.Debugf("could not create plugin directory: %s", pluginDir)
 		return err
 	}
 

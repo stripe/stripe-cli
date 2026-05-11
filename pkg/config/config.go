@@ -482,7 +482,7 @@ func writeConfig(runtimeViper *viper.Viper) error {
 	configType := strings.TrimPrefix(filepath.Ext(profilesFile), ".")
 	runtimeViper.SetConfigType(configType)
 
-	if err := fsutil.RefuseWriteThroughSymlinkOS(profilesFile, filepath.Base(profilesFile)); err != nil {
+	if err := fsutil.RefuseWriteThroughSymlinkOS(profilesFile, filepath.Dir(filepath.Dir(profilesFile)), filepath.Base(profilesFile)); err != nil {
 		return err
 	}
 
@@ -529,6 +529,10 @@ func removeKey(v *viper.Viper, key string) (*viper.Viper, error) {
 
 func makePath(path string) error {
 	dir := filepath.Dir(path)
+
+	if err := fsutil.RefuseWriteThroughSymlinkOS(dir, filepath.Dir(dir), "config directory"); err != nil {
+		return err
+	}
 
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, os.ModePerm)
