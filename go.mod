@@ -96,6 +96,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.34.0
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
