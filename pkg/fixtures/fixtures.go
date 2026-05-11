@@ -431,6 +431,10 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 
 	envFile := filepath.Join(dir, ".env")
 
+	if err := fsutil.RefuseWriteThroughSymlink(fxt.Fs, envFile, ".env"); err != nil {
+		return err
+	}
+
 	exists, _ := afero.Exists(fxt.Fs, envFile)
 	if !exists {
 		// If there is no .env in the current directory, return and do nothing
@@ -441,6 +445,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	dotenv, err := godotenv.Parse(file)
 	if err != nil {
@@ -458,10 +463,6 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 
 	content, err := godotenv.Marshal(dotenv)
 	if err != nil {
-		return err
-	}
-
-	if err := fsutil.RefuseWriteThroughSymlink(fxt.Fs, envFile, ".env"); err != nil {
 		return err
 	}
 

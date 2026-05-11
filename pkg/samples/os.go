@@ -7,18 +7,9 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
-)
 
-// isSymlink returns true if the file at path is a symbolic link.
-// Returns false if the path does not exist or cannot be stat'd.
-func isSymlink(path string) bool {
-	// os.Lstat inspects the link entry itself (rather than following it like os.Stat)
-	entry, err := os.Lstat(path)
-	if err != nil {
-		return false
-	}
-	return entry.Mode().Type() == os.ModeSymlink
-}
+	"github.com/stripe/stripe-cli/pkg/fsutil"
+)
 
 // cacheFolder is the local directory where we place local copies of samples
 func (s *SampleManager) cacheFolder() (string, error) {
@@ -97,7 +88,7 @@ func (s *SampleManager) GetFiles(path string) ([]string, error) {
 		// We only want regular files, not directories or symlinks.
 		// Filtering symlinks prevents malicious sample repositories from
 		// using symlinks to escape the destination directory.
-		if !f.IsDir() && !isSymlink(filepath.Join(path, f.Name())) {
+		if !f.IsDir() && !fsutil.IsSymlink(s.Fs, filepath.Join(path, f.Name())) {
 			file = append(file, f.Name())
 		}
 	}
