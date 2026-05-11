@@ -449,6 +449,9 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 
 	err = fs.RemoveAll(pluginDir)
 	if err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, p.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to remove plugin files for %s: %w; rollback failed: %v", p.Shortname, err, rollbackErr)
+		}
 		return err
 	}
 

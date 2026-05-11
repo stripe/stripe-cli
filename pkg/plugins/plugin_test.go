@@ -19,6 +19,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
+type failRemoveAllFs struct {
+	afero.Fs
+	path string
+	err  error
+}
+
+func (fs *failRemoveAllFs) RemoveAll(name string) error {
+	if name == fs.path {
+		return fs.err
+	}
+
+	return fs.Fs.RemoveAll(name)
+}
+
 func TestLookUpLatestVersion(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
@@ -776,6 +790,50 @@ func TestUninstallRollsBackStateWhenConfigWriteFails(t *testing.T) {
 
 	err := plugin.Uninstall(context.Background(), config, fs)
 	require.ErrorIs(t, err, config.WriteErr)
+
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	require.NoError(t, err)
+	require.True(t, cacheExists)
+
+	fileExists, err := afero.Exists(fs, pluginFile)
+	require.NoError(t, err)
+	require.True(t, fileExists)
+	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+}
+
+func TestUninstallRollsBackStateWhenPluginRemovalFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.InstalledPlugins = []string{"docs"}
+	plugin := Plugin{
+		Shortname:        "docs",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+	pluginFile := fmt.Sprintf("/plugins/docs/1.0.0/stripe-cli-docs%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll("/plugins/docs/1.0.0", 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginFile, []byte("installed"), 0755))
+
+	removeErr := errors.New("remove all failed")
+	failingFS := &failRemoveAllFs{
+		Fs:   fs,
+		path: "/plugins/docs",
+		err:  removeErr,
+	}
+
+	err := plugin.Uninstall(context.Background(), config, failingFS)
+	require.ErrorIs(t, err, removeErr)
 
 	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
 	require.NoError(t, err)
