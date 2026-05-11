@@ -29,6 +29,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+type installedPluginStateSnapshot struct {
+	installedPlugins []string
+	localMetadata    []byte
+	hasLocalMetadata bool
+}
+
 // GetBinaryExtension returns the appropriate file extension for plugin binary
 func GetBinaryExtension() string {
 	if runtime.GOOS == "windows" {
@@ -63,6 +69,77 @@ func getLocalPluginMetadataDir(config config.IConfig) string {
 
 func getLocalPluginMetadataPath(config config.IConfig, pluginName string) string {
 	return filepath.Join(getLocalPluginMetadataDir(config), pluginName+".toml")
+}
+
+func snapshotInstalledPluginState(config config.IConfig, fs afero.Fs, pluginName string) (installedPluginStateSnapshot, error) {
+	snapshot := installedPluginStateSnapshot{
+		installedPlugins: append([]string(nil), config.GetInstalledPlugins()...),
+	}
+
+	body, err := afero.ReadFile(fs, getLocalPluginMetadataPath(config, pluginName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return snapshot, nil
+		}
+		return installedPluginStateSnapshot{}, err
+	}
+
+	snapshot.hasLocalMetadata = true
+	snapshot.localMetadata = append([]byte(nil), body...)
+	return snapshot, nil
+}
+
+func rollbackInstalledPluginState(config config.IConfig, fs afero.Fs, pluginName string, snapshot installedPluginStateSnapshot) error {
+	rollbackErrors := make([]string, 0, 2)
+
+	if err := restoreLocalPluginMetadata(config, fs, pluginName, snapshot); err != nil {
+		rollbackErrors = append(rollbackErrors, fmt.Sprintf("restore local plugin metadata: %v", err))
+	}
+
+	if err := restoreInstalledPluginList(config, snapshot.installedPlugins); err != nil {
+		rollbackErrors = append(rollbackErrors, fmt.Sprintf("restore installed_plugins: %v", err))
+	}
+
+	if len(rollbackErrors) != 0 {
+		return errors.New(strings.Join(rollbackErrors, "; "))
+	}
+
+	return nil
+}
+
+func restoreLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginName string, snapshot installedPluginStateSnapshot) error {
+	if snapshot.hasLocalMetadata {
+		return afero.WriteFile(fs, getLocalPluginMetadataPath(config, pluginName), snapshot.localMetadata, 0644)
+	}
+
+	return removeLocalPluginMetadata(config, fs, pluginName)
+}
+
+func restoreInstalledPluginList(config config.IConfig, installedPlugins []string) error {
+	if stringSlicesEqual(config.GetInstalledPlugins(), installedPlugins) {
+		return nil
+	}
+
+	err := config.WriteConfigField("installed_plugins", installedPlugins)
+	if err != nil && !stringSlicesEqual(config.GetInstalledPlugins(), installedPlugins) {
+		return err
+	}
+
+	return nil
+}
+
+func stringSlicesEqual(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // GetInstalledPluginNames returns the union of plugin names recorded in config
@@ -146,11 +223,26 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 		return nil
 	}
 
-	if err := writeLocalPluginMetadata(config, fs, plugin); err != nil {
+	previousState, err := snapshotInstalledPluginState(config, fs, plugin.Shortname)
+	if err != nil {
 		return err
 	}
 
-	return RecordInstalledPlugin(config, plugin.Shortname)
+	if err := writeLocalPluginMetadata(config, fs, plugin); err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, plugin.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to write local plugin metadata: %w; rollback failed: %v", err, rollbackErr)
+		}
+		return err
+	}
+
+	if err := RecordInstalledPlugin(config, plugin.Shortname); err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, plugin.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to record installed plugin %s: %w; rollback failed: %v", plugin.Shortname, err, rollbackErr)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // GetPluginList builds a list of allowed plugins to be installed and run by the CLI

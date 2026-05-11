@@ -21,11 +21,29 @@ type TestConfig struct {
 	config.Config
 }
 
+type FailingWriteConfig struct {
+	TestConfig
+	WriteErr                 error
+	MutateInstalledPluginsOn bool
+}
+
 // WriteConfigField mocks out the method so that we can ensure installed plugins data is written
 func (c *TestConfig) WriteConfigField(field string, value interface{}) error {
 	c.InstalledPlugins = value.([]string)
 
 	return nil
+}
+
+func (c *FailingWriteConfig) WriteConfigField(field string, value interface{}) error {
+	if c.MutateInstalledPluginsOn {
+		c.InstalledPlugins = append([]string(nil), value.([]string)...)
+	}
+
+	if c.WriteErr == nil {
+		return c.TestConfig.WriteConfigField(field, value)
+	}
+
+	return c.WriteErr
 }
 
 // GetConfigFolder returns the absolute path for the TestConfig

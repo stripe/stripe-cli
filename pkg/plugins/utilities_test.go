@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -165,6 +166,81 @@ func TestPersistInstalledPluginState(t *testing.T) {
 	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
 	require.NoError(t, err)
 	require.Equal(t, plugin, cachedPlugin)
+}
+
+func TestPersistInstalledPluginStateRollsBackOnConfigWriteFailure(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &FailingWriteConfig{
+		WriteErr:                 errors.New("boom"),
+		MutateInstalledPluginsOn: true,
+	}
+	plugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	err := PersistInstalledPluginState(config, fs, plugin)
+	require.ErrorIs(t, err, config.WriteErr)
+
+	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	require.NoError(t, err)
+	require.False(t, metadataExists)
+	require.Empty(t, config.GetInstalledPlugins())
+}
+
+func TestPersistInstalledPluginStateRestoresPreviousMetadataOnConfigWriteFailure(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &FailingWriteConfig{
+		WriteErr:                 errors.New("boom"),
+		MutateInstalledPluginsOn: true,
+	}
+	existingPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Existing docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+	updatedPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Updated docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.1.0",
+				Sum:     "def456",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, existingPlugin))
+
+	err := PersistInstalledPluginState(config, fs, updatedPlugin)
+	require.ErrorIs(t, err, config.WriteErr)
+
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
+	require.NoError(t, err)
+	require.Equal(t, existingPlugin, cachedPlugin)
+	require.Empty(t, config.GetInstalledPlugins())
 }
 
 func TestLookUpPluginInManifestIgnoresLocalMetadata(t *testing.T) {

@@ -357,20 +357,17 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	// Pull down bin, verify, and save to disk
 	err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 	if err != nil && downloadURLFromMetadata {
-		var notFoundErr *remoteResourceNotFoundError
-		if errors.As(err, &notFoundErr) {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Install",
+		}).Debugf("could not download plugin from metadata URL, falling back to plugin URL lookup: %s", err)
+
+		fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, baseURL, version, pluginToInstall)
+		if fallbackErr != nil {
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",
-			}).Debugf("could not download plugin from metadata URL, falling back to plugin URL lookup: %s", err)
-
-			fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, baseURL, version, pluginToInstall)
-			if fallbackErr != nil {
-				log.WithFields(log.Fields{
-					"prefix": "plugins.plugin.Install",
-				}).Debugf("could not look up fallback plugin URL after metadata download failed: %s", fallbackErr)
-			} else {
-				err = pluginToInstall.downloadAndSavePlugin(cfg, fallbackURL, fs, version)
-			}
+			}).Debugf("could not look up fallback plugin URL after metadata download failed: %s", fallbackErr)
+		} else {
+			err = pluginToInstall.downloadAndSavePlugin(cfg, fallbackURL, fs, version)
 		}
 	}
 
@@ -434,19 +431,24 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 	if pluginIdx == -1 && !dirExists && !metadataExists {
 		return errors.New("this plugin doesn't seem to be installed, canceling")
 	}
-	err = fs.RemoveAll(pluginDir)
 
+	previousState, err := snapshotInstalledPluginState(config, fs, p.Shortname)
 	if err != nil {
 		return err
 	}
 
 	if err := removeLocalPluginMetadata(config, fs, p.Shortname); err != nil {
-		log.WithFields(log.Fields{
-			"prefix": "plugins.plugin.Uninstall",
-			"plugin": p.Shortname,
-		}).Debugf("could not remove local plugin metadata: %s", err)
+		return err
 	}
 	if err := RemoveInstalledPlugin(config, p.Shortname); err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, p.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to update uninstall state for plugin %s: %w; rollback failed: %v", p.Shortname, err, rollbackErr)
+		}
+		return err
+	}
+
+	err = fs.RemoveAll(pluginDir)
+	if err != nil {
 		return err
 	}
 

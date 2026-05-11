@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -43,6 +44,32 @@ func TestInstall(t *testing.T) {
 	require.True(t, fileExists)
 
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
+func TestInstallRollsBackPersistedStateWhenConfigWriteFails(t *testing.T) {
+	fs := setUpFS()
+	config := &FailingWriteConfig{
+		WriteErr:                 errors.New("boom"),
+		MutateInstalledPluginsOn: true,
+	}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	require.ErrorIs(t, err, config.WriteErr)
+
+	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	fileExists, err := afero.Exists(fs, file)
+	require.NoError(t, err)
+	require.False(t, fileExists)
+
+	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "appA"))
+	require.NoError(t, err)
+	require.False(t, metadataExists)
+	require.Empty(t, config.GetInstalledPlugins())
 }
 
 func TestInstallUsesPluginMetadataEndpointWhenAPIKeyAvailable(t *testing.T) {
@@ -126,6 +153,61 @@ func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 		switch req.URL.Path {
 		case fmt.Sprintf("/appA/2.0.1/%s/%s/binary", runtime.GOOS, runtime.GOARCH):
 			res.WriteHeader(http.StatusNotFound)
+		case fmt.Sprintf("/appA/2.0.1/%s/%s/stripe-cli-app-a", runtime.GOOS, runtime.GOARCH):
+			res.Write([]byte("hello, I am appA_2.0.1"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/binary", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			pluginURLLookups++
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       artifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, pluginURLLookups)
+
+	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	fileExists, err := afero.Exists(fs, file)
+	require.NoError(t, err)
+	require.True(t, fileExists)
+}
+
+func TestInstallFallsBackIfMetadataBinaryURLVerificationFails(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	var pluginURLLookups int
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case fmt.Sprintf("/appA/2.0.1/%s/%s/binary", runtime.GOOS, runtime.GOARCH):
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte("html error page"))
 		case fmt.Sprintf("/appA/2.0.1/%s/%s/stripe-cli-app-a", runtime.GOOS, runtime.GOARCH):
 			res.Write([]byte("hello, I am appA_2.0.1"))
 		default:
@@ -626,4 +708,81 @@ func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))
+}
+
+func TestUninstallReturnsErrorWithoutRemovingFilesWhenMetadataRemovalFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.InstalledPlugins = []string{"docs"}
+	plugin := Plugin{
+		Shortname:        "docs",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+	pluginFile := fmt.Sprintf("/plugins/docs/1.0.0/stripe-cli-docs%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll("/plugins/docs/1.0.0", 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginFile, []byte("installed"), 0755))
+
+	err := plugin.Uninstall(context.Background(), config, afero.NewReadOnlyFs(fs))
+	require.Error(t, err)
+
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	require.NoError(t, err)
+	require.True(t, cacheExists)
+
+	fileExists, err := afero.Exists(fs, pluginFile)
+	require.NoError(t, err)
+	require.True(t, fileExists)
+	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+}
+
+func TestUninstallRollsBackStateWhenConfigWriteFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &FailingWriteConfig{
+		WriteErr:                 errors.New("boom"),
+		MutateInstalledPluginsOn: true,
+	}
+	config.InitConfig()
+	config.InstalledPlugins = []string{"docs"}
+	plugin := Plugin{
+		Shortname:        "docs",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+	pluginFile := fmt.Sprintf("/plugins/docs/1.0.0/stripe-cli-docs%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll("/plugins/docs/1.0.0", 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginFile, []byte("installed"), 0755))
+
+	err := plugin.Uninstall(context.Background(), config, fs)
+	require.ErrorIs(t, err, config.WriteErr)
+
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	require.NoError(t, err)
+	require.True(t, cacheExists)
+
+	fileExists, err := afero.Exists(fs, pluginFile)
+	require.NoError(t, err)
+	require.True(t, fileExists)
+	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
 }
