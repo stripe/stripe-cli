@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -134,6 +135,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 	body := new(bytes.Buffer)
 	if err := toml.NewEncoder(body).Encode(pluginList); err != nil {
+		return err
+	}
+
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginManifestPath, filepath.Base(pluginManifestPath)); err != nil {
 		return err
 	}
 

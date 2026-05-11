@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
 
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -460,7 +461,13 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 		return err
 	}
 
-	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
+	if err := fsutil.RefuseWriteThroughSymlink(fxt.Fs, envFile, ".env"); err != nil {
+		return err
+	}
+
+	if err := afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm); err != nil {
+		return err
+	}
 
 	return nil
 }

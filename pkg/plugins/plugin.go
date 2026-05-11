@@ -19,6 +19,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -375,6 +376,10 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 	err = fs.MkdirAll(pluginDir, 0755)
 	if err != nil {
 		logger.Debugf("could not create plugin directory: %s", pluginDir)
+		return err
+	}
+
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginFilePath, filepath.Base(pluginFilePath)); err != nil {
 		return err
 	}
 

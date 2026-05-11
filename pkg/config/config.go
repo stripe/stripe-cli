@@ -19,6 +19,7 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
 )
 
@@ -480,6 +481,10 @@ func writeConfig(runtimeViper *viper.Viper) error {
 	runtimeViper.SetConfigFile(profilesFile)
 	configType := strings.TrimPrefix(filepath.Ext(profilesFile), ".")
 	runtimeViper.SetConfigType(configType)
+
+	if err := fsutil.RefuseWriteThroughSymlinkOS(profilesFile, filepath.Base(profilesFile)); err != nil {
+		return err
+	}
 
 	if err := runtimeViper.WriteConfig(); err != nil {
 		return err
