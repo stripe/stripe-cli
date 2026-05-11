@@ -180,7 +180,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		return plugin, nil
 	}
 
-	if err != nil && !os.IsNotExist(err) {
+	if !os.IsNotExist(err) {
 		log.WithFields(log.Fields{
 			"prefix": "plugins.LookUpPlugin",
 			"plugin": pluginName,
