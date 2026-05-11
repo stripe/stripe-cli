@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -26,7 +27,7 @@ type failRemoveAllFs struct {
 }
 
 func (fs *failRemoveAllFs) RemoveAll(name string) error {
-	if name == fs.path {
+	if filepath.Clean(name) == filepath.Clean(fs.path) {
 		return fs.err
 	}
 
