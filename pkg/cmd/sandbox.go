@@ -220,7 +220,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 
 	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Waiting for confirmation..."))
 
-	response, _, err := keys.PollForKey(cmd.Context(), links.PollURL, 0, 0)
+	response, _, err := keys.PollForKey(cmd.Context(), links.PollURL, 2*time.Second, 20*60/2)
 	if err != nil {
 		return err
 	}
