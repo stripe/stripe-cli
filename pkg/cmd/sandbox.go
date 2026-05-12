@@ -107,9 +107,13 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		return scc.runDashboardFlow(cmd, color)
 	}
 
-	email, err := resolveAutoValue(scc.email, "user.email", "--email")
-	if err != nil {
-		return err
+	var email string
+	var err error
+	if scc.email != "" {
+		email, err = resolveAutoValue(scc.email, "user.email", "--email")
+		if err != nil {
+			return err
+		}
 	}
 
 	var name string
