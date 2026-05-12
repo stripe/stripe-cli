@@ -74,23 +74,16 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(os.Stdout)
 	pluginName, version := parseInstallArg(args[0])
 	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
-
-	// Refresh the plugin before proceeding
-	if err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
-		return err
-	}
-
-	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
+	isLatest := len(version) == 0
+	plugin, version, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
 	if err != nil {
 		return err
 	}
 
-	isLatest := len(version) == 0
-	if isLatest {
-		version = plugin.LookUpLatestVersion()
-	}
-
 	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
+		if err := plugins.PersistInstalledPluginState(ic.cfg, ic.fs, *plugin); err != nil {
+			return err
+		}
 		if isLatest {
 			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
 		} else {
