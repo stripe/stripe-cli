@@ -37,15 +37,18 @@ type installedPluginStateSnapshot struct {
 }
 
 // ResolvedPluginVersion contains the resolved plugin metadata needed to
-// install a specific plugin version without re-querying the metadata endpoint.
+// install a specific plugin version, including a resolved download URL when
+// the metadata endpoint already returned one.
 type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
 }
 
-// Install installs the resolved plugin version using the already-resolved
-// plugin metadata and binary URL when available.
+// Install installs the resolved plugin version. If the metadata lookup already
+// resolved a concrete binary URL, it reuses that result and skips a second
+// metadata request. Otherwise it retries metadata during install so manifest or
+// cached fallbacks can still recover fresh release details.
 func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
 	switch {
 	case r == nil:
@@ -55,7 +58,7 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errors.New("missing plugin version")
 	default:
-		return r.Plugin.install(ctx, config, fs, r.Version, baseURL, r.BinaryURL, true)
+		return r.Plugin.install(ctx, config, fs, r.Version, baseURL, r.BinaryURL, r.BinaryURL != "")
 	}
 }
 

@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -526,21 +527,53 @@ func TestResolvedPluginInstallUsesResolvedMetadataWithoutSecondLookup(t *testing
 	require.Equal(t, 1, metadataLookups)
 }
 
-func TestResolvedPluginInstallDoesNotRetryMetadataAfterManifestFallback(t *testing.T) {
+func TestResolvedPluginInstallRetriesMetadataAfterManifestFallback(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 	config.InitConfig()
-	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	binaryBody := []byte("hello, I am generate_1.0.0")
+	binarySum := fmt.Sprintf("%x", sha256.Sum256(binaryBody))
+	manifestContent := []byte(fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "%s"
+`, runtime.GOARCH, runtime.GOOS, binarySum))
+
+	metadataManifest := fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "%s"
+    Runtime = {node = "20"}
+`, runtime.GOARCH, runtime.GOOS, binarySum)
 
 	var metadataLookups int
 	var pluginURLLookups int
+
+	nodeBinaryPath := GetNodeBinaryPath(config, "20")
+	require.NoError(t, fs.MkdirAll(filepath.Dir(nodeBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, nodeBinaryPath, []byte("node"), 0755))
 
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/plugins.toml":
 			res.Write(manifestContent)
-		case fmt.Sprintf("/appA/2.0.1/%s/%s/stripe-cli-app-a", runtime.GOOS, runtime.GOARCH):
-			res.Write([]byte("hello, I am appA_2.0.1"))
+		case fmt.Sprintf("/generate/1.0.0/%s/%s/stripe-cli-generate", runtime.GOOS, runtime.GOARCH):
+			res.Write(binaryBody)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -551,8 +584,18 @@ func TestResolvedPluginInstallDoesNotRetryMetadataAfterManifestFallback(t *testi
 		switch req.URL.Path {
 		case "/v1/stripecli/get-plugin-metadata":
 			metadataLookups++
-			res.WriteHeader(http.StatusInternalServerError)
-			_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+			if metadataLookups == 1 {
+				res.WriteHeader(http.StatusInternalServerError)
+				_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+				return
+			}
+
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/generate/1.0.0/%s/%s/stripe-cli-generate", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: metadataManifest,
+			})
+			require.NoError(t, err)
+			res.Write(body)
 		case "/v1/stripecli/get-plugin-url":
 			pluginURLLookups++
 			body, err := json.Marshal(requests.PluginData{
@@ -567,15 +610,21 @@ func TestResolvedPluginInstallDoesNotRetryMetadataAfterManifestFallback(t *testi
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, metadataLookups)
 	require.Equal(t, 1, pluginURLLookups)
 
 	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL)
 	require.NoError(t, err)
-	require.Equal(t, 1, metadataLookups)
-	require.Equal(t, 2, pluginURLLookups)
+	require.Equal(t, 2, metadataLookups)
+	require.Equal(t, 1, pluginURLLookups)
+
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "generate")
+	require.NoError(t, err)
+	release := cachedPlugin.getReleaseForVersion("1.0.0")
+	require.NotNil(t, release)
+	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale(t *testing.T) {
