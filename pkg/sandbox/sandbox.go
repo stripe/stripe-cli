@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -69,9 +70,39 @@ type ProvisionResponse struct {
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
+	useProxy   bool
+}
+
+// stripeProxySocket returns the path to the Stripe proxy Unix socket if it exists.
+func stripeProxySocket() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	sock := home + "/.stripeproxy"
+	if _, err := os.Stat(sock); err == nil {
+		return sock
+	}
+	return ""
 }
 
 func NewClient(baseURL string) *Client {
+	sock := stripeProxySocket()
+	if sock != "" {
+		return &Client{
+			BaseURL:  baseURL,
+			useProxy: true,
+			HTTPClient: &http.Client{
+				Transport: &http.Transport{
+					DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+						return (&net.Dialer{Timeout: 30 * time.Second}).DialContext(ctx, "unix", sock)
+					},
+					ResponseHeaderTimeout: 30 * time.Second,
+				},
+			},
+		}
+	}
+
 	return &Client{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
@@ -149,6 +180,11 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body []byte
 	ref, err := url.Parse(path)
 	if err != nil {
 		return nil, err
+	}
+
+	// When using the Unix socket proxy, switch to http:// — the proxy handles TLS.
+	if c.useProxy {
+		u.Scheme = "http"
 	}
 	fullURL := u.ResolveReference(ref).String()
 
