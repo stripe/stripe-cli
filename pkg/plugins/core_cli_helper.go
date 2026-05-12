@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/99designs/keyring"
@@ -156,12 +157,17 @@ type coreCLIHelper struct {
 
 var _ CoreCLIHelper = &coreCLIHelper{}
 
+type pendingKeychainValue struct {
+	value     string
+	expiresAt time.Time
+}
+
 var (
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
 	keychainVisibilityRetryTimeout  = 1500 * time.Millisecond
 	keychainVisibilityRetryEnabled  = runtime.GOOS == "darwin"
 	keychainVisibilityNow           = time.Now
-	keychainVisibilitySleep         = time.Sleep
+	keychainVisibilityPendingMu     sync.Mutex
+	keychainVisibilityPendingValues = map[string]pendingKeychainValue{}
 )
 
 func readKeychainPassword(key string) (string, bool, error) {
@@ -175,31 +181,44 @@ func readKeychainPassword(key string) (string, bool, error) {
 	return "", false, err
 }
 
-func readKeychainPasswordWithRetry(key string, acceptValue func(string) bool) (string, bool, error) {
-	value, found, err := readKeychainPassword(key)
-	if err != nil {
-		return "", false, err
-	}
-	if found && acceptValue(value) {
-		return value, true, nil
-	}
+func rememberPendingKeychainValue(key string, value string) {
 	if !keychainVisibilityRetryEnabled {
-		return value, found, nil
+		return
 	}
 
-	deadline := keychainVisibilityNow().Add(keychainVisibilityRetryTimeout)
-	for keychainVisibilityNow().Before(deadline) {
-		keychainVisibilitySleep(keychainVisibilityRetryInterval)
-		value, found, err = readKeychainPassword(key)
-		if err != nil {
-			return "", false, err
-		}
-		if found && acceptValue(value) {
-			return value, true, nil
-		}
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+
+	keychainVisibilityPendingValues[key] = pendingKeychainValue{
+		value:     value,
+		expiresAt: keychainVisibilityNow().Add(keychainVisibilityRetryTimeout),
+	}
+}
+
+func pendingKeychainValueFor(key string) (string, bool) {
+	if !keychainVisibilityRetryEnabled {
+		return "", false
 	}
 
-	return value, found, nil
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+
+	pending, ok := keychainVisibilityPendingValues[key]
+	if !ok {
+		return "", false
+	}
+	if !keychainVisibilityNow().Before(pending.expiresAt) {
+		delete(keychainVisibilityPendingValues, key)
+		return "", false
+	}
+
+	return pending.value, true
+}
+
+func clearPendingKeychainValue(key string) {
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+	delete(keychainVisibilityPendingValues, key)
 }
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
@@ -229,7 +248,21 @@ func (h *coreCLIHelper) SendAnalytics(eventName string, eventValue string) error
 
 // KeychainGetPassword retrieves a password from the system keychain.
 func (h *coreCLIHelper) KeychainGetPassword(key string) (string, bool, error) {
-	return readKeychainPasswordWithRetry(key, func(string) bool { return true })
+	value, found, err := readKeychainPassword(key)
+	if err != nil {
+		return "", false, err
+	}
+
+	pendingValue, hasPendingValue := pendingKeychainValueFor(key)
+	switch {
+	case hasPendingValue && found && value == pendingValue:
+		clearPendingKeychainValue(key)
+		return value, true, nil
+	case hasPendingValue:
+		return pendingValue, true, nil
+	default:
+		return value, found, nil
+	}
 }
 
 // KeychainSetPassword stores a password in the system keychain.
@@ -242,28 +275,14 @@ func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
 		return err
 	}
 
-	if !keychainVisibilityRetryEnabled {
-		return nil
-	}
-
-	visibleValue, found, err := readKeychainPasswordWithRetry(key, func(candidate string) bool {
-		return candidate == value
-	})
-	if err != nil {
-		return err
-	}
-	if !found {
-		return fmt.Errorf("keychain value for %q not visible after write", key)
-	}
-	if visibleValue != value {
-		return fmt.Errorf("keychain value for %q did not match after write", key)
-	}
-
+	rememberPendingKeychainValue(key, value)
 	return nil
 }
 
 // KeychainDeletePassword removes a password from the system keychain.
 func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
+	clearPendingKeychainValue(key)
+
 	existingKeys, err := config.KeyRing.Keys()
 	if err != nil {
 		return false, err

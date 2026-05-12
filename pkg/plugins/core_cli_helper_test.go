@@ -41,6 +41,10 @@ type fakeKeyring struct {
 	setErr      error
 	setCalls    int
 	lastSetItem keyring.Item
+	keys        []string
+	removeErr   error
+	removeCalls int
+	removedKey  string
 }
 
 func (f *fakeKeyring) Get(key string) (keyring.Item, error) {
@@ -69,41 +73,55 @@ func (f *fakeKeyring) Set(item keyring.Item) error {
 }
 
 func (f *fakeKeyring) Remove(key string) error {
-	return nil
+	f.removeCalls++
+	f.removedKey = key
+	return f.removeErr
 }
 
 func (f *fakeKeyring) Keys() ([]string, error) {
-	return nil, nil
+	return f.keys, nil
 }
 
-func stubKeychainRetryClock(t *testing.T) {
+func stubKeychainVisibilityClock(t *testing.T) func(time.Duration) {
 	t.Helper()
 
 	originalNow := keychainVisibilityNow
-	originalSleep := keychainVisibilitySleep
 	currentTime := time.Unix(0, 0)
 
 	keychainVisibilityNow = func() time.Time {
 		return currentTime
 	}
-	keychainVisibilitySleep = func(d time.Duration) {
-		currentTime = currentTime.Add(d)
-	}
 
 	t.Cleanup(func() {
 		keychainVisibilityNow = originalNow
-		keychainVisibilitySleep = originalSleep
+	})
+
+	return func(d time.Duration) {
+		currentTime = currentTime.Add(d)
+	}
+}
+
+func resetPendingKeychainValues(t *testing.T) {
+	t.Helper()
+
+	keychainVisibilityPendingMu.Lock()
+	originalPendingValues := keychainVisibilityPendingValues
+	keychainVisibilityPendingValues = map[string]pendingKeychainValue{}
+	keychainVisibilityPendingMu.Unlock()
+
+	t.Cleanup(func() {
+		keychainVisibilityPendingMu.Lock()
+		keychainVisibilityPendingValues = originalPendingValues
+		keychainVisibilityPendingMu.Unlock()
 	})
 }
 
-func TestKeychainGetPasswordRetriesTransientNotFound(t *testing.T) {
+func TestKeychainGetPasswordReturnsNotFoundWithoutRetry(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{err: keyring.ErrKeyNotFound},
 			{err: keyring.ErrKeyNotFound},
 			{item: keyring.Item{Data: []byte("sk_test_123")}},
 		},
@@ -111,44 +129,12 @@ func TestKeychainGetPasswordRetriesTransientNotFound(t *testing.T) {
 
 	config.KeyRing = ring
 	keychainVisibilityRetryEnabled = true
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
 	keychainVisibilityRetryTimeout = 300 * time.Millisecond
-	stubKeychainRetryClock(t)
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
 	t.Cleanup(func() {
 		config.KeyRing = originalKeyRing
 		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
-		keychainVisibilityRetryTimeout = originalTimeout
-	})
-
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
-	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
-	require.NoError(t, err)
-	require.True(t, found)
-	require.Equal(t, "sk_test_123", value)
-	require.Equal(t, 3, ring.getCalls)
-}
-
-func TestKeychainGetPasswordReturnsNotFoundAfterRetryWindow(t *testing.T) {
-	originalKeyRing := config.KeyRing
-	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
-	originalTimeout := keychainVisibilityRetryTimeout
-	ring := &fakeKeyring{
-		getResults: []fakeKeyringGetResult{
-			{err: keyring.ErrKeyNotFound},
-		},
-	}
-
-	config.KeyRing = ring
-	keychainVisibilityRetryEnabled = true
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
-	keychainVisibilityRetryTimeout = 200 * time.Millisecond
-	stubKeychainRetryClock(t)
-	t.Cleanup(func() {
-		config.KeyRing = originalKeyRing
-		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
@@ -157,13 +143,12 @@ func TestKeychainGetPasswordReturnsNotFoundAfterRetryWindow(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, found)
 	require.Empty(t, value)
-	require.Equal(t, 3, ring.getCalls)
+	require.Equal(t, 1, ring.getCalls)
 }
 
 func TestKeychainGetPasswordReturnsUnexpectedError(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
 	originalTimeout := keychainVisibilityRetryTimeout
 	expectedErr := errors.New("boom")
 	ring := &fakeKeyring{
@@ -174,13 +159,12 @@ func TestKeychainGetPasswordReturnsUnexpectedError(t *testing.T) {
 
 	config.KeyRing = ring
 	keychainVisibilityRetryEnabled = true
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
 	keychainVisibilityRetryTimeout = 300 * time.Millisecond
-	stubKeychainRetryClock(t)
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
 	t.Cleanup(func() {
 		config.KeyRing = originalKeyRing
 		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
@@ -192,10 +176,9 @@ func TestKeychainGetPasswordReturnsUnexpectedError(t *testing.T) {
 	require.Equal(t, 1, ring.getCalls)
 }
 
-func TestKeychainGetPasswordReturnsNotFoundWithoutRetryWhenDisabled(t *testing.T) {
+func TestKeychainSetPasswordMakesRecentWriteVisibleWhenKeychainHasNotCaughtUp(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
@@ -204,95 +187,32 @@ func TestKeychainGetPasswordReturnsNotFoundWithoutRetryWhenDisabled(t *testing.T
 	}
 
 	config.KeyRing = ring
-	keychainVisibilityRetryEnabled = false
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
+	keychainVisibilityRetryEnabled = true
 	keychainVisibilityRetryTimeout = 300 * time.Millisecond
-	stubKeychainRetryClock(t)
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
 	t.Cleanup(func() {
 		config.KeyRing = originalKeyRing
 		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
-	value, found, err := coreCLIHelper.KeychainGetPassword("missing.key")
+	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
-	require.False(t, found)
-	require.Empty(t, value)
+	require.Equal(t, 1, ring.setCalls)
+	require.Equal(t, 0, ring.getCalls)
+
+	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "sk_test_123", value)
 	require.Equal(t, 1, ring.getCalls)
 }
 
-func TestKeychainSetPasswordVerifiesVisibleValueAfterWrite(t *testing.T) {
+func TestKeychainGetPasswordPrefersRecentWriteOverStaleVisibleValue(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
-	originalTimeout := keychainVisibilityRetryTimeout
-	ring := &fakeKeyring{
-		getResults: []fakeKeyringGetResult{
-			{err: keyring.ErrKeyNotFound},
-			{item: keyring.Item{Data: []byte("sk_test_123")}},
-		},
-	}
-
-	config.KeyRing = ring
-	keychainVisibilityRetryEnabled = true
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
-	keychainVisibilityRetryTimeout = 200 * time.Millisecond
-	stubKeychainRetryClock(t)
-	t.Cleanup(func() {
-		config.KeyRing = originalKeyRing
-		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
-		keychainVisibilityRetryTimeout = originalTimeout
-	})
-
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
-	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
-	require.NoError(t, err)
-	require.Equal(t, 1, ring.setCalls)
-	require.Equal(t, keyring.Item{
-		Key:   "test.key",
-		Data:  []byte("sk_test_123"),
-		Label: "test.key",
-	}, ring.lastSetItem)
-	require.Equal(t, 2, ring.getCalls)
-}
-
-func TestKeychainSetPasswordReturnsErrorWhenWrittenValueStaysInvisible(t *testing.T) {
-	originalKeyRing := config.KeyRing
-	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
-	originalTimeout := keychainVisibilityRetryTimeout
-	ring := &fakeKeyring{
-		getResults: []fakeKeyringGetResult{
-			{err: keyring.ErrKeyNotFound},
-		},
-	}
-
-	config.KeyRing = ring
-	keychainVisibilityRetryEnabled = true
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
-	keychainVisibilityRetryTimeout = 200 * time.Millisecond
-	stubKeychainRetryClock(t)
-	t.Cleanup(func() {
-		config.KeyRing = originalKeyRing
-		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
-		keychainVisibilityRetryTimeout = originalTimeout
-	})
-
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
-	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
-	require.EqualError(t, err, `keychain value for "test.key" not visible after write`)
-	require.Equal(t, 1, ring.setCalls)
-	require.Equal(t, 3, ring.getCalls)
-}
-
-func TestKeychainSetPasswordReturnsErrorWhenVisibleValueDoesNotMatch(t *testing.T) {
-	originalKeyRing := config.KeyRing
-	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
@@ -302,27 +222,101 @@ func TestKeychainSetPasswordReturnsErrorWhenVisibleValueDoesNotMatch(t *testing.
 
 	config.KeyRing = ring
 	keychainVisibilityRetryEnabled = true
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
-	keychainVisibilityRetryTimeout = 200 * time.Millisecond
-	stubKeychainRetryClock(t)
+	keychainVisibilityRetryTimeout = 300 * time.Millisecond
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
 	t.Cleanup(func() {
 		config.KeyRing = originalKeyRing
 		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
-	require.EqualError(t, err, `keychain value for "test.key" did not match after write`)
-	require.Equal(t, 1, ring.setCalls)
-	require.Equal(t, 3, ring.getCalls)
+	require.NoError(t, err)
+
+	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "sk_test_123", value)
+	require.Equal(t, 1, ring.getCalls)
 }
 
-func TestKeychainSetPasswordSkipsVerificationWhenRetryDisabled(t *testing.T) {
+func TestKeychainGetPasswordClearsRecentWriteOnceKeychainMatches(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	originalEnabled := keychainVisibilityRetryEnabled
-	originalInterval := keychainVisibilityRetryInterval
+	originalTimeout := keychainVisibilityRetryTimeout
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{item: keyring.Item{Data: []byte("sk_test_123")}},
+			{err: keyring.ErrKeyNotFound},
+		},
+	}
+
+	config.KeyRing = ring
+	keychainVisibilityRetryEnabled = true
+	keychainVisibilityRetryTimeout = 200 * time.Millisecond
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
+	t.Cleanup(func() {
+		config.KeyRing = originalKeyRing
+		keychainVisibilityRetryEnabled = originalEnabled
+		keychainVisibilityRetryTimeout = originalTimeout
+	})
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
+	require.NoError(t, err)
+
+	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "sk_test_123", value)
+
+	value, found, err = coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.False(t, found)
+	require.Empty(t, value)
+	require.Equal(t, 2, ring.getCalls)
+}
+
+func TestKeychainGetPasswordDoesNotReturnRecentWriteAfterExpiry(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	originalEnabled := keychainVisibilityRetryEnabled
+	originalTimeout := keychainVisibilityRetryTimeout
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{err: keyring.ErrKeyNotFound},
+		},
+	}
+
+	config.KeyRing = ring
+	keychainVisibilityRetryEnabled = true
+	keychainVisibilityRetryTimeout = 200 * time.Millisecond
+	resetPendingKeychainValues(t)
+	advanceClock := stubKeychainVisibilityClock(t)
+	t.Cleanup(func() {
+		config.KeyRing = originalKeyRing
+		keychainVisibilityRetryEnabled = originalEnabled
+		keychainVisibilityRetryTimeout = originalTimeout
+	})
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
+	require.NoError(t, err)
+
+	advanceClock(200 * time.Millisecond)
+
+	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.False(t, found)
+	require.Empty(t, value)
+	require.Equal(t, 1, ring.getCalls)
+}
+
+func TestKeychainSetPasswordDoesNotRememberRecentWriteWhenDisabled(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	originalEnabled := keychainVisibilityRetryEnabled
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
@@ -332,13 +326,12 @@ func TestKeychainSetPasswordSkipsVerificationWhenRetryDisabled(t *testing.T) {
 
 	config.KeyRing = ring
 	keychainVisibilityRetryEnabled = false
-	keychainVisibilityRetryInterval = 100 * time.Millisecond
 	keychainVisibilityRetryTimeout = 200 * time.Millisecond
-	stubKeychainRetryClock(t)
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
 	t.Cleanup(func() {
 		config.KeyRing = originalKeyRing
 		keychainVisibilityRetryEnabled = originalEnabled
-		keychainVisibilityRetryInterval = originalInterval
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
@@ -347,6 +340,78 @@ func TestKeychainSetPasswordSkipsVerificationWhenRetryDisabled(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, ring.setCalls)
 	require.Equal(t, 0, ring.getCalls)
+
+	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.False(t, found)
+	require.Empty(t, value)
+	require.Equal(t, 1, ring.getCalls)
+}
+
+func TestKeychainSetPasswordReturnsSetError(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	originalEnabled := keychainVisibilityRetryEnabled
+	originalTimeout := keychainVisibilityRetryTimeout
+	expectedErr := errors.New("boom")
+	ring := &fakeKeyring{
+		setErr: expectedErr,
+	}
+
+	config.KeyRing = ring
+	keychainVisibilityRetryEnabled = true
+	keychainVisibilityRetryTimeout = 200 * time.Millisecond
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
+	t.Cleanup(func() {
+		config.KeyRing = originalKeyRing
+		keychainVisibilityRetryEnabled = originalEnabled
+		keychainVisibilityRetryTimeout = originalTimeout
+	})
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
+	require.ErrorIs(t, err, expectedErr)
+	require.Equal(t, 1, ring.setCalls)
+	require.Equal(t, 0, ring.getCalls)
+}
+
+func TestKeychainDeletePasswordClearsRecentWrite(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	originalEnabled := keychainVisibilityRetryEnabled
+	originalTimeout := keychainVisibilityRetryTimeout
+	ring := &fakeKeyring{
+		keys: []string{"test.key"},
+		getResults: []fakeKeyringGetResult{
+			{err: keyring.ErrKeyNotFound},
+		},
+	}
+
+	config.KeyRing = ring
+	keychainVisibilityRetryEnabled = true
+	keychainVisibilityRetryTimeout = 200 * time.Millisecond
+	resetPendingKeychainValues(t)
+	stubKeychainVisibilityClock(t)
+	t.Cleanup(func() {
+		config.KeyRing = originalKeyRing
+		keychainVisibilityRetryEnabled = originalEnabled
+		keychainVisibilityRetryTimeout = originalTimeout
+	})
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
+	require.NoError(t, err)
+
+	deleted, err := coreCLIHelper.KeychainDeletePassword("test.key")
+	require.NoError(t, err)
+	require.True(t, deleted)
+	require.Equal(t, 1, ring.removeCalls)
+	require.Equal(t, "test.key", ring.removedKey)
+
+	value, found, err := coreCLIHelper.KeychainGetPassword("test.key")
+	require.NoError(t, err)
+	require.False(t, found)
+	require.Empty(t, value)
+	require.Equal(t, 1, ring.getCalls)
 }
 
 func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
