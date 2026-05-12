@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -113,6 +114,23 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		email, err = resolveAutoValue(scc.email, "user.email", "--email")
 		if err != nil {
 			return err
+		}
+	} else {
+		gitEmail := sandbox.GitConfigFunc("user.email")
+		if gitEmail != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Enter your email address [%s]: ", gitEmail)
+		} else {
+			fmt.Fprint(cmd.ErrOrStderr(), "Enter your email address: ")
+		}
+		var input string
+		fmt.Scanln(&input)
+		input = strings.TrimSpace(input)
+		if input == "" && gitEmail != "" {
+			email = gitEmail
+		} else if input != "" {
+			email = input
+		} else {
+			return fmt.Errorf("email is required for sandbox provisioning")
 		}
 	}
 
