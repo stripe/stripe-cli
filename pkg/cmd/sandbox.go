@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -196,16 +197,26 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 		return err
 	}
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "Your pairing code is: %s\n", links.VerificationCode)
-	fmt.Fprintf(cmd.ErrOrStderr(), "\nOpening browser to connect your Stripe account...\n")
-	fmt.Fprintf(cmd.ErrOrStderr(), "If the browser doesn't open, visit:\n  %s\n\n", links.BrowserURL)
+	// Build a signup URL that redirects to the CLI auth confirmation page after registration.
+	confirmPath := "/stripecli/confirm_auth"
+	if parsed, err := url.Parse(links.BrowserURL); err == nil {
+		confirmPath = parsed.RequestURI()
+	}
+	signupURL := fmt.Sprintf("%s/register?redirect=%s", scc.dashboardURL, url.QueryEscape(confirmPath))
 
+	fmt.Fprintf(cmd.ErrOrStderr(), "\nOpening browser to create or log in to your Stripe account...\n")
+	fmt.Fprintf(cmd.ErrOrStderr(), "  1. Sign up or log in at the page that opens\n")
+	fmt.Fprintf(cmd.ErrOrStderr(), "  2. Confirm the pairing code: %s\n", color.Bold(links.VerificationCode))
+	fmt.Fprintf(cmd.ErrOrStderr(), "  3. Return here — your keys will appear automatically\n\n")
+
+	// Try to open the signup URL; fall back to the direct confirm_auth URL
+	openURL := signupURL
 	if canOpenBrowserFunc() {
-		if err := openBrowserFunc(links.BrowserURL); err != nil {
+		if err := openBrowserFunc(openURL); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open browser: %v\n", err)
-			fmt.Fprintf(cmd.ErrOrStderr(), "Please visit the URL above manually.\n")
 		}
 	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "If the browser doesn't open, visit:\n  %s\n\n", links.BrowserURL)
 
 	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Waiting for confirmation..."))
 
