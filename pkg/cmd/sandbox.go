@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strings"
 	"time"
@@ -306,29 +303,8 @@ func resolveAutoValue(value, gitKey, flagName string) (string, error) {
 	return value, nil
 }
 
-// shouldFallbackToDashboard returns true for server/network errors (5xx, timeouts,
-// connection refused) but false for client errors (4xx) which indicate bad input.
 func shouldFallbackToDashboard(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	// Network errors (connection refused, timeout, DNS)
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return true
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return true
-	}
-
-	// Server errors (5xx)
-	var httpErr *sandbox.HTTPError
-	if errors.As(err, &httpErr) {
-		return httpErr.StatusCode >= 500
-	}
-
-	return false
+	return err != nil
 }
 
 func isSSHSession() bool {
