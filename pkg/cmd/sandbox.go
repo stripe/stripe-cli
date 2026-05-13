@@ -273,13 +273,17 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		return fmt.Errorf("no secret key in server response")
 	}
 
-	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
+	profileName := "sandbox"
+	if result.AccountID != "" {
+		profileName = result.AccountID
+	}
 
+	Config.Profile.ProfileName = profileName
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if result.AccountID != "" {
 		Config.Profile.AccountID = result.AccountID
-		Config.Profile.DisplayName = result.AccountID
+		Config.Profile.DisplayName = profileName
 	}
 	if err := Config.Profile.CreateProfile(); err != nil {
 		return err
@@ -289,6 +293,8 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 			return err
 		}
 	}
+
+	fmt.Fprintf(os.Stderr, "Keys saved to profile %q. Use with: stripe --project-name %s <command>\n", profileName, profileName)
 	return nil
 }
 
