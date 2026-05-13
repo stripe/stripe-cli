@@ -275,13 +275,14 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 }
 
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
-	if err := validators.APIKey(result.SecretKey); err != nil {
-		return fmt.Errorf("invalid secret key from server: %w", err)
+	secretKey := result.GetSecretKey()
+	if secretKey == "" {
+		return fmt.Errorf("no secret key in server response")
 	}
 
 	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
 
-	Config.Profile.TestModeAPIKey = result.SecretKey
+	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if result.AccountID != "" {
 		Config.Profile.AccountID = result.AccountID

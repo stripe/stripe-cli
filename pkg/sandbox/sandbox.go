@@ -61,10 +61,20 @@ type ProvisionRequest struct {
 
 type ProvisionResponse struct {
 	SecretKey      string `json:"secret_key"`
+	RestrictedKey  string `json:"restricted_key"`
 	PublishableKey string `json:"publishable_key"`
 	ClaimURL       string `json:"claim_url,omitempty"`
 	ExpiresAt      string `json:"expires_at,omitempty"`
 	AccountID      string `json:"account_id,omitempty"`
+	MerchantToken  string `json:"merchant_token,omitempty"`
+}
+
+// GetSecretKey returns whichever key the server provided.
+func (r *ProvisionResponse) GetSecretKey() string {
+	if r.RestrictedKey != "" {
+		return r.RestrictedKey
+	}
+	return r.SecretKey
 }
 
 type Client struct {
