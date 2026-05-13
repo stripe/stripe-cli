@@ -278,12 +278,15 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		profileName = result.AccountID
 	}
 
+	deviceName, _ := Config.Profile.GetDeviceName()
+
 	Config.Profile.ProfileName = profileName
+	Config.Profile.DeviceName = deviceName
+	Config.Profile.DisplayName = profileName
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if result.AccountID != "" {
 		Config.Profile.AccountID = result.AccountID
-		Config.Profile.DisplayName = profileName
 	}
 	if err := Config.Profile.CreateProfile(); err != nil {
 		return err
