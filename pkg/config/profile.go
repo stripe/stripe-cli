@@ -33,6 +33,9 @@ type Profile struct {
 	AccountID              string
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
+	UAT                    string
+	LiveContext            string
+	TestWorkspaceID        string
 }
 
 // config key names
@@ -49,6 +52,9 @@ const (
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 	SandboxClaimURLName        = "sandbox_claim_url"
 	SandboxExpiresAtName       = "sandbox_expires_at"
+	UATName                    = "uat"
+	LiveContextName            = "live_context"
+	TestWorkspaceIDName        = "test_workspace_id"
 )
 
 const (
@@ -487,6 +493,18 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.SandboxExpiresAt != "" {
 		runtimeViper.Set(p.GetConfigField(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
+	}
+
+	if p.UAT != "" {
+		p.saveLivemodeValue(UATName, strings.TrimSpace(p.UAT), "UAT")
+	}
+
+	if p.LiveContext != "" {
+		runtimeViper.Set(p.GetConfigField(LiveContextName), strings.TrimSpace(p.LiveContext))
+	}
+
+	if p.TestWorkspaceID != "" {
+		runtimeViper.Set(p.GetConfigField(TestWorkspaceIDName), strings.TrimSpace(p.TestWorkspaceID))
 	}
 
 	runtimeViper.MergeInConfig()
