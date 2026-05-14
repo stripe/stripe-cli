@@ -19,14 +19,6 @@ var canOpenBrowser = open.CanOpenBrowser
 
 const stripeCLIAuthPath = "/stripecli/auth"
 
-// TODO
-/*
-4. Observability and associated alerting? Business metrics (how many users use this flow)?
-5. Rate limiting for each operation?
-6. Audit trail for key generation
-7. Move configuration changes to profile package
-*/
-
 // Authenticator handles the login flow
 type Authenticator struct {
 	keytransfer      keys.KeyTransfer
