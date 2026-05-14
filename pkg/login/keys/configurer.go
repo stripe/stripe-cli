@@ -41,6 +41,9 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 	c.cfg.Profile.LiveModePublishableKey = response.LiveModePublishableKey
 	c.cfg.Profile.TestModeAPIKey = response.TestModeAPIKey
 	c.cfg.Profile.TestModePublishableKey = response.TestModePublishableKey
+	c.cfg.Profile.UAT = response.UAT
+	c.cfg.Profile.LiveContext = response.LiveContext
+	c.cfg.Profile.TestWorkspaceID = response.TestWorkspaceID
 	// TODO: AccountDisplayName appears to be empty for test mode accounts; is there a better default?
 	if response.AccountDisplayName != "" {
 		c.cfg.Profile.DisplayName = response.AccountDisplayName
