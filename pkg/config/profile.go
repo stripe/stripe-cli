@@ -31,6 +31,9 @@ type Profile struct {
 	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
+	UAT                    string
+	LiveContext            string
+	TestWorkspaceID        string
 }
 
 // config key names
@@ -45,6 +48,9 @@ const (
 	LiveModeAPIKeyName         = "live_mode_api_key"
 	LiveModePubKeyName         = "live_mode_pub_key"
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
+	UATName                    = "uat"
+	LiveContextName            = "live_context"
+	TestWorkspaceIDName        = "test_workspace_id"
 )
 
 const (
@@ -420,6 +426,18 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.AccountID != "" {
 		runtimeViper.Set(p.GetConfigField(AccountIDName), strings.TrimSpace(p.AccountID))
+	}
+
+	if p.UAT != "" {
+		p.saveLivemodeValue(UATName, strings.TrimSpace(p.UAT), "UAT")
+	}
+
+	if p.LiveContext != "" {
+		runtimeViper.Set(p.GetConfigField(LiveContextName), strings.TrimSpace(p.LiveContext))
+	}
+
+	if p.TestWorkspaceID != "" {
+		runtimeViper.Set(p.GetConfigField(TestWorkspaceIDName), strings.TrimSpace(p.TestWorkspaceID))
 	}
 
 	runtimeViper.MergeInConfig()
