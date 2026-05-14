@@ -912,3 +912,75 @@ func TestUninstallRollsBackStateWhenPluginRemovalFails(t *testing.T) {
 	require.True(t, fileExists)
 	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
 }
+
+func TestVerifyChecksumAndSavePluginRefusesSymlink(t *testing.T) {
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+
+	var pluginList PluginList
+	_, err = toml.Decode(string(manifestContent), &pluginList)
+	require.NoError(t, err)
+
+	var plugin Plugin
+	for _, candidate := range pluginList.Plugins {
+		if candidate.Shortname == "appA" {
+			plugin = candidate
+			break
+		}
+	}
+
+	require.Equal(t, "appA", plugin.Shortname)
+
+	tempDir := t.TempDir()
+	config := &CustomTestConfig{customConfigPath: tempDir}
+	fs := afero.NewOsFs()
+
+	pluginFilePath := filepath.Join(tempDir, "plugins", "appA", "2.0.1", "stripe-cli-app-a"+GetBinaryExtension())
+	require.NoError(t, os.MkdirAll(filepath.Dir(pluginFilePath), 0o755))
+
+	victimFile := filepath.Join(tempDir, "victim")
+	require.NoError(t, os.WriteFile(victimFile, []byte("original"), 0o644))
+	require.NoError(t, os.Symlink(victimFile, pluginFilePath))
+
+	err = plugin.verifychecksumAndSavePlugin([]byte("hello, I am appA_2.0.1"), config, fs, "2.0.1")
+	require.ErrorContains(t, err, "symlink")
+
+	victimContents, err := os.ReadFile(victimFile)
+	require.NoError(t, err)
+	require.Equal(t, "original", string(victimContents))
+}
+
+func TestVerifyChecksumAndSavePluginRefusesSymlinkedParent(t *testing.T) {
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+
+	var pluginList PluginList
+	_, err = toml.Decode(string(manifestContent), &pluginList)
+	require.NoError(t, err)
+
+	var plugin Plugin
+	for _, candidate := range pluginList.Plugins {
+		if candidate.Shortname == "appA" {
+			plugin = candidate
+			break
+		}
+	}
+
+	require.Equal(t, "appA", plugin.Shortname)
+
+	tempDir := t.TempDir()
+	victimDir := filepath.Join(tempDir, "victim-config")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+
+	configPath := filepath.Join(tempDir, "config-link")
+	require.NoError(t, os.Symlink(victimDir, configPath))
+
+	config := &CustomTestConfig{customConfigPath: configPath}
+	fs := afero.NewOsFs()
+
+	err = plugin.verifychecksumAndSavePlugin([]byte("hello, I am appA_2.0.1"), config, fs, "2.0.1")
+	require.ErrorContains(t, err, "symlink")
+
+	_, err = os.Stat(filepath.Join(victimDir, "plugins", "appA", "2.0.1", "stripe-cli-app-a"+GetBinaryExtension()))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}

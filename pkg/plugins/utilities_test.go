@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -838,4 +839,59 @@ func TestRefreshPluginManifestCreatesConfigDirectory(t *testing.T) {
 	exists, err = afero.Exists(fs, pluginManifestPath)
 	require.Nil(t, err)
 	require.True(t, exists)
+}
+
+func TestRefreshPluginManifestRefusesSymlink(t *testing.T) {
+	tempDir := t.TempDir()
+	customConfig := &CustomTestConfig{
+		customConfigPath: tempDir,
+	}
+	customConfig.InitConfig()
+
+	fs := afero.NewOsFs()
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins_updated.toml")
+	require.NoError(t, err)
+
+	testServers := setUpServers(t, manifestContent, nil)
+	defer func() { testServers.CloseAll() }()
+
+	victimFile := filepath.Join(tempDir, "victim.toml")
+	require.NoError(t, os.WriteFile(victimFile, []byte("original = true\n"), 0o644))
+
+	pluginManifestPath := filepath.Join(tempDir, "plugins.toml")
+	require.NoError(t, os.Symlink(victimFile, pluginManifestPath))
+
+	err = RefreshPluginManifest(context.Background(), customConfig, fs, testServers.StripeServer.URL)
+	require.ErrorContains(t, err, "symlink")
+
+	victimContents, err := os.ReadFile(victimFile)
+	require.NoError(t, err)
+	require.Equal(t, "original = true\n", string(victimContents))
+}
+
+func TestRefreshPluginManifestRefusesSymlinkedParent(t *testing.T) {
+	tempDir := t.TempDir()
+	victimDir := filepath.Join(tempDir, "victim-config")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+
+	configPath := filepath.Join(tempDir, "config-link")
+	require.NoError(t, os.Symlink(victimDir, configPath))
+
+	customConfig := &CustomTestConfig{
+		customConfigPath: configPath,
+	}
+	customConfig.InitConfig()
+
+	fs := afero.NewOsFs()
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins_updated.toml")
+	require.NoError(t, err)
+
+	testServers := setUpServers(t, manifestContent, nil)
+	defer func() { testServers.CloseAll() }()
+
+	err = RefreshPluginManifest(context.Background(), customConfig, fs, testServers.StripeServer.URL)
+	require.ErrorContains(t, err, "symlink")
+
+	_, err = os.Stat(filepath.Join(victimDir, "plugins.toml"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }

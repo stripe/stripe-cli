@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -111,6 +112,38 @@ func TestMakeRequest(t *testing.T) {
 
 	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), true, nil)
 	require.NoError(t, err)
+}
+
+func TestMakeRequest_RefusesWriteThroughPDFSymlink(t *testing.T) {
+	tempDir := t.TempDir()
+	oldWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tempDir))
+	t.Cleanup(func() {
+		require.NoError(t, os.Chdir(oldWD))
+	})
+
+	victimFile := filepath.Join(tempDir, "victim")
+	require.NoError(t, os.WriteFile(victimFile, []byte("original"), 0o644))
+	require.NoError(t, os.Symlink(victimFile, filepath.Join(tempDir, "qt_123.pdf")))
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/pdf")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("%PDF-1.4"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+
+	params := &RequestParameters{}
+	_, err = rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/quotes/qt_123/pdf", params, make(map[string]interface{}), false, nil)
+	require.ErrorContains(t, err, "symlink")
+
+	victimContents, err := os.ReadFile(victimFile)
+	require.NoError(t, err)
+	require.Equal(t, "original", string(victimContents))
 }
 
 func TestMakeRequest_GetV2(t *testing.T) {

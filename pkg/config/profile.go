@@ -360,7 +360,7 @@ func (p *Profile) RegisterAlias(alias, key string) {
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.ReadInConfig()
 	viper.Set(p.GetConfigField(field), value)
-	return viper.WriteConfig()
+	return writeConfig(viper.GetViper())
 }
 
 // DeleteConfigField deletes a configuration field.

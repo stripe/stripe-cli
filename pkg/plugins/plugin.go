@@ -19,6 +19,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -488,6 +489,10 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 	err := p.verifyChecksum(reader, version)
 	if err != nil {
 		logger.Debug("could not match checksum of plugin")
+		return err
+	}
+
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginFilePath, filepath.Dir(getPluginsDir(config)), filepath.Base(pluginFilePath)); err != nil {
 		return err
 	}
 

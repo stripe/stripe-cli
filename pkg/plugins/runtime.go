@@ -20,6 +20,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
 
 // NodeRuntimeConfig holds configuration for a specific Node.js runtime version
@@ -239,7 +240,7 @@ func InstallNodeRuntime(ctx context.Context, cfg config.IConfig, fs afero.Fs, ma
 
 	// Extract and install
 	runtimePath := GetNodeRuntimePath(cfg, majorVersion)
-	if err := extractRuntime(fs, body, runtimePath, opsys); err != nil {
+	if err := extractRuntime(fs, body, runtimePath, filepath.Dir(GetRuntimesDir(cfg)), opsys); err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("failed to extract Node.js runtime: %s", err)), os.Stdout)
 		return err
 	}
@@ -287,7 +288,11 @@ func verifyChecksum(data []byte, expectedChecksum string) error {
 }
 
 // extractRuntime extracts the downloaded runtime archive
-func extractRuntime(fs afero.Fs, data []byte, destPath string, opsys string) error {
+func extractRuntime(fs afero.Fs, data []byte, destPath, stopPath, opsys string) error {
+	if err := fsutil.RefuseWriteThroughSymlink(fs, destPath, stopPath, "runtime directory"); err != nil {
+		return err
+	}
+
 	// Create destination directory
 	if err := fs.MkdirAll(destPath, 0755); err != nil {
 		return fmt.Errorf("failed to create runtime directory: %w", err)
@@ -295,16 +300,16 @@ func extractRuntime(fs afero.Fs, data []byte, destPath string, opsys string) err
 
 	switch opsys {
 	case "darwin", "linux":
-		return extractTarGz(fs, data, destPath)
+		return extractTarGz(fs, data, destPath, stopPath)
 	case "windows":
-		return extractZip(fs, data, destPath)
+		return extractZip(fs, data, destPath, stopPath)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", opsys)
 	}
 }
 
 // extractTarGz extracts a .tar.gz archive
-func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
+func extractTarGz(fs afero.Fs, data []byte, destPath, stopPath string) error {
 	gzr, err := gzip.NewReader(strings.NewReader(string(data)))
 	if err != nil {
 		return fmt.Errorf("failed to create gzip reader: %w", err)
@@ -349,10 +354,18 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
+			if err := fsutil.RefuseWriteThroughSymlink(fs, targetPath, stopPath, cleanRelativePath); err != nil {
+				return err
+			}
+
 			if err := fs.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
 				return fmt.Errorf("failed to create directory: %w", err)
 			}
 		case tar.TypeReg:
+			if err := fsutil.RefuseWriteThroughSymlink(fs, targetPath, stopPath, cleanRelativePath); err != nil {
+				return err
+			}
+
 			if err := fs.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 				return fmt.Errorf("failed to create parent directory: %w", err)
 			}
@@ -368,11 +381,7 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 			}
 			outFile.Close()
 		case tar.TypeSymlink:
-			if err := fs.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-				return fmt.Errorf("failed to create parent directory for symlink: %w", err)
-			}
-			// For afero compatibility, we'll skip symlinks for now
-			// In production, you might want to handle these properly
+			// Symlink entries are not extracted.
 		}
 	}
 
@@ -380,7 +389,7 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 }
 
 // extractZip extracts a .zip archive (for Windows)
-func extractZip(fs afero.Fs, data []byte, destPath string) error {
+func extractZip(fs afero.Fs, data []byte, destPath, stopPath string) error {
 	// Create a reader from the byte slice
 	reader := bytes.NewReader(data)
 	zipReader, err := zip.NewReader(reader, int64(len(data)))
@@ -416,10 +425,18 @@ func extractZip(fs afero.Fs, data []byte, destPath string) error {
 
 		// Check if it's a directory
 		if file.FileInfo().IsDir() {
+			if err := fsutil.RefuseWriteThroughSymlink(fs, targetPath, stopPath, cleanRelativePath); err != nil {
+				return err
+			}
+
 			if err := fs.MkdirAll(targetPath, file.Mode()); err != nil {
 				return fmt.Errorf("failed to create directory: %w", err)
 			}
 			continue
+		}
+
+		if err := fsutil.RefuseWriteThroughSymlink(fs, targetPath, stopPath, cleanRelativePath); err != nil {
+			return err
 		}
 
 		// Create parent directories

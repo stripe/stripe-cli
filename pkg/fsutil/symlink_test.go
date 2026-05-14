@@ -29,7 +29,37 @@ func TestRefuseWriteThroughSymlink(t *testing.T) {
 	require.NoError(t, os.WriteFile(victimFile, []byte("original"), 0o644))
 	require.NoError(t, os.Symlink(victimFile, linkPath))
 
-	err := RefuseWriteThroughSymlink(afero.NewOsFs(), linkPath, ".env")
+	err := RefuseWriteThroughSymlink(afero.NewOsFs(), linkPath, tmpDir, ".env")
 	require.Error(t, err)
 	assert.Equal(t, "refusing to write .env: "+linkPath+" is a symlink", err.Error())
+}
+
+func TestRefuseWriteThroughSymlinkRefusesSymlinkedParent(t *testing.T) {
+	tmpDir := t.TempDir()
+	victimDir := filepath.Join(tmpDir, "victim-dir")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+
+	linkPath := filepath.Join(tmpDir, "link-dir")
+	require.NoError(t, os.Symlink(victimDir, linkPath))
+
+	targetPath := filepath.Join(linkPath, "child.txt")
+
+	err := RefuseWriteThroughSymlink(afero.NewOsFs(), targetPath, tmpDir, "child.txt")
+	require.Error(t, err)
+	assert.Equal(t, "refusing to write child.txt: "+linkPath+" is a symlink", err.Error())
+}
+
+func TestRefuseWriteThroughSymlinkOSRefusesSymlinkedParent(t *testing.T) {
+	tmpDir := t.TempDir()
+	victimDir := filepath.Join(tmpDir, "victim-dir")
+	require.NoError(t, os.MkdirAll(victimDir, 0o755))
+
+	linkPath := filepath.Join(tmpDir, "link-dir")
+	require.NoError(t, os.Symlink(victimDir, linkPath))
+
+	targetPath := filepath.Join(linkPath, "child.txt")
+
+	err := RefuseWriteThroughSymlinkOS(targetPath, tmpDir, "child.txt")
+	require.Error(t, err)
+	assert.Equal(t, "refusing to write child.txt: "+linkPath+" is a symlink", err.Error())
 }
