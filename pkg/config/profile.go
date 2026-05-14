@@ -219,6 +219,15 @@ func (p *Profile) GetAccountID() (string, error) {
 
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
+	if p.APIKey != "" {
+		err := validators.APIKey(p.APIKey)
+		if err != nil {
+			return "", err
+		}
+
+		return p.APIKey, nil
+	}
+
 	envKey := os.Getenv("STRIPE_API_KEY")
 	if envKey != "" {
 		err := validators.APIKey(envKey)
@@ -227,15 +236,6 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		}
 
 		return envKey, nil
-	}
-
-	if p.APIKey != "" {
-		err := validators.APIKey(p.APIKey)
-		if err != nil {
-			return "", err
-		}
-
-		return p.APIKey, nil
 	}
 
 	var key string

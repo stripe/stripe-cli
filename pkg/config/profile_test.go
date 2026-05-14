@@ -283,6 +283,28 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 	cleanUp(c.ProfilesFile)
 }
 
+func TestGetAPIKeyFlagTakesPrecedenceOverEnvVar(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "sk_test_envvar1234567890")
+
+	p := Profile{
+		APIKey: "rk_live_flag1234567890",
+	}
+
+	key, err := p.GetAPIKey(false)
+	require.NoError(t, err)
+	require.Equal(t, "rk_live_flag1234567890", key)
+}
+
+func TestGetAPIKeyFallsBackToEnvVar(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "sk_test_envvar1234567890")
+
+	p := Profile{}
+
+	key, err := p.GetAPIKey(false)
+	require.NoError(t, err)
+	require.Equal(t, "sk_test_envvar1234567890", key)
+}
+
 func helperLoadBytes(t *testing.T, name string) []byte {
 	bytes, err := os.ReadFile(name)
 	if err != nil {

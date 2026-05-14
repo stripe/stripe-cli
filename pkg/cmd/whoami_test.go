@@ -130,6 +130,29 @@ func TestWhoamiWithEnvVarKey(t *testing.T) {
 	assert.False(t, result.LiveModeKey.Available)
 }
 
+func TestWhoamiFlagKeyTakesPrecedenceOverEnvVar(t *testing.T) {
+	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	t.Setenv("STRIPE_API_KEY", "sk_test_envvar1234567890")
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{
+		ProfileName: "default",
+		DeviceName:  "test-device",
+		APIKey:      "rk_live_flag1234567890",
+	}
+	wc.format = "json"
+
+	out, err := runWhoami(t, wc)
+	require.NoError(t, err)
+
+	var result whoamiOutput
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	assert.True(t, result.Authenticated)
+	assert.False(t, result.TestModeKey.Available)
+	assert.True(t, result.LiveModeKey.Available)
+}
+
 func TestAPIKeyIsLivemode(t *testing.T) {
 	assert.False(t, apiKeyIsLivemode("sk_test_abc123"))
 	assert.True(t, apiKeyIsLivemode("sk_live_abc123"))

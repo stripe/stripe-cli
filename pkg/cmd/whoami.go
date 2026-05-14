@@ -184,10 +184,13 @@ func resolveKeyInfo(profile *config.Profile, livemode bool) whoamiKeyInfo {
 // command, if any. These are the sources that GetAPIKey checks before the
 // persisted config/keyring, and which are mode-agnostic in that function.
 func overrideAPIKey(profile *config.Profile) string {
+	if profile.APIKey != "" {
+		return profile.APIKey
+	}
 	if key := os.Getenv("STRIPE_API_KEY"); key != "" {
 		return key
 	}
-	return profile.APIKey
+	return ""
 }
 
 // apiKeyIsLivemode reports whether a key's prefix indicates live mode.
