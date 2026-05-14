@@ -46,3 +46,35 @@ func TestExactArgsTooManyMoreThan1(t *testing.T) {
 	result := ExactArgs(2)(c, args)
 	require.EqualError(t, result, "`c` requires exactly 2 positional arguments. See `c --help` for supported flags and usage")
 }
+
+func TestMinimumNArgsExactlyOne(t *testing.T) {
+	c := &cobra.Command{Use: "c"}
+	args := []string{"foo"}
+
+	result := MinimumNArgs(1)(c, args)
+	require.Nil(t, result)
+}
+
+func TestMinimumNArgsMoreThanRequired(t *testing.T) {
+	c := &cobra.Command{Use: "c"}
+	args := []string{"foo", "bar", "baz"}
+
+	result := MinimumNArgs(1)(c, args)
+	require.Nil(t, result)
+}
+
+func TestMinimumNArgsTooFew(t *testing.T) {
+	c := &cobra.Command{Use: "c"}
+	args := []string{}
+
+	result := MinimumNArgs(1)(c, args)
+	require.EqualError(t, result, "`c` requires at least 1 positional argument. See `c --help` for supported flags and usage")
+}
+
+func TestMinimumNArgsTooFewMoreThan1(t *testing.T) {
+	c := &cobra.Command{Use: "c"}
+	args := []string{"foo"}
+
+	result := MinimumNArgs(2)(c, args)
+	require.EqualError(t, result, "`c` requires at least 2 positional arguments. See `c --help` for supported flags and usage")
+}
