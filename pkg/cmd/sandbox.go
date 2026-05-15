@@ -344,13 +344,13 @@ func (slc *sandboxLsCmd) runSandboxLsCmd(cmd *cobra.Command, args []string) erro
 		}
 
 		claimURL, _ := section["sandbox_claim_url"].(string)
+		if claimURL == "" {
+			continue
+		}
+
 		accountID, _ := section["account_id"].(string)
 		expiresAt, _ := section["test_mode_key_expires_at"].(string)
 		displayName, _ := section["display_name"].(string)
-
-		if accountID == "" {
-			continue
-		}
 
 		found = true
 
