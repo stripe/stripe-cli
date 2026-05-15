@@ -302,15 +302,12 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 			return err
 		}
 	}
-	if result.ExpiresAt != "" {
-		if err := Config.Profile.WriteConfigField("test_mode_key_expires_at", result.ExpiresAt); err != nil {
-			return err
-		}
-	} else {
-		expiry := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
-		if err := Config.Profile.WriteConfigField("test_mode_key_expires_at", expiry); err != nil {
-			return err
-		}
+	sandboxExpiry := result.ExpiresAt
+	if sandboxExpiry == "" {
+		sandboxExpiry = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	}
+	if err := Config.Profile.WriteConfigField("sandbox_expires_at", sandboxExpiry); err != nil {
+		return err
 	}
 
 	fmt.Fprintf(os.Stderr, "Keys saved to profile %q. Use with: stripe --project-name %s <command>\n", profileName, profileName)
@@ -352,7 +349,7 @@ func (slc *sandboxLsCmd) runSandboxLsCmd(cmd *cobra.Command, args []string) erro
 		displayName, _ := section["display_name"].(string)
 		var expiresAt string
 		if claimURL != "" {
-			expiresAt, _ = section["test_mode_key_expires_at"].(string)
+			expiresAt, _ = section["sandbox_expires_at"].(string)
 		}
 
 		found = true
