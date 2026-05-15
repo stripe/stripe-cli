@@ -132,6 +132,8 @@ var authFieldNames = []string{
 	LiveModeAPIKeyName,
 	LiveModePubKeyName,
 	LiveModeKeyExpiresAtName,
+	LiveContextName,
+	TestWorkspaceIDName,
 	"profile_name",
 	// legacy field names from older config formats
 	"secret_key",
