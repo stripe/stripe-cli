@@ -414,6 +414,7 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 				p := &Profile{ProfileName: field}
 				runtimeViper = p.deleteAuthFields(runtimeViper)
 				deleteLivemodeKey(LiveModeAPIKeyName, field)
+				deleteLivemodeKey(UATName, field)
 			}
 		}
 	}
@@ -431,6 +432,7 @@ func (c *Config) RemoveAllAuthFields() error {
 			p := &Profile{ProfileName: field}
 			runtimeViper = p.deleteAuthFields(runtimeViper)
 			deleteLivemodeKey(LiveModeAPIKeyName, field)
+			deleteLivemodeKey(UATName, field)
 		}
 	}
 
