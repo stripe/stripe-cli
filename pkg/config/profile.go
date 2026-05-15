@@ -136,6 +136,8 @@ var authFieldNames = []string{
 	LiveModeAPIKeyName,
 	LiveModePubKeyName,
 	LiveModeKeyExpiresAtName,
+	LiveContextName,
+	TestWorkspaceIDName,
 	"profile_name",
 	// sandbox-specific fields from stripe sandbox create
 	SandboxClaimURLName,
