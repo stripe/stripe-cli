@@ -11,6 +11,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -56,7 +57,9 @@ func newSandboxCmd() *sandboxCmd {
 	}
 
 	createCmd := newSandboxCreateCmd()
+	lsCmd := newSandboxLsCmd()
 	sc.cmd.AddCommand(createCmd.cmd)
+	sc.cmd.AddCommand(lsCmd.cmd)
 	return sc
 }
 
@@ -261,9 +264,11 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	if result.ClaimURL != "" {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Claim your sandbox: %s\n", result.ClaimURL)
 	}
-	if result.ExpiresAt != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Expires: %s\n", result.ExpiresAt)
+	expiry := result.ExpiresAt
+	if expiry == "" {
+		expiry = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
 	}
+	fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires on %s. Claim it before then to keep it.\n", color.Yellow("⚠"), expiry)
 
 	return nil
 }
@@ -297,8 +302,78 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 			return err
 		}
 	}
+	if result.ExpiresAt != "" {
+		if err := Config.Profile.WriteConfigField("test_mode_key_expires_at", result.ExpiresAt); err != nil {
+			return err
+		}
+	} else {
+		expiry := time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+		if err := Config.Profile.WriteConfigField("test_mode_key_expires_at", expiry); err != nil {
+			return err
+		}
+	}
 
 	fmt.Fprintf(os.Stderr, "Keys saved to profile %q. Use with: stripe --project-name %s <command>\n", profileName, profileName)
+	return nil
+}
+
+type sandboxLsCmd struct {
+	cmd *cobra.Command
+}
+
+func newSandboxLsCmd() *sandboxLsCmd {
+	slc := &sandboxLsCmd{}
+	slc.cmd = &cobra.Command{
+		Use:   "ls",
+		Short: "List sandbox profiles",
+		Long:  "List all sandbox profiles saved in the CLI config, showing account IDs, claim URLs, and expiry dates. Keys are not displayed.",
+		Args:  validators.NoArgs,
+		RunE:  slc.runSandboxLsCmd,
+	}
+	return slc
+}
+
+func (slc *sandboxLsCmd) runSandboxLsCmd(cmd *cobra.Command, args []string) error {
+	color := ansi.Color(cmd.ErrOrStderr())
+
+	found := false
+	for profileName, raw := range viper.AllSettings() {
+		section, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		claimURL, _ := section["sandbox_claim_url"].(string)
+		accountID, _ := section["account_id"].(string)
+		expiresAt, _ := section["test_mode_key_expires_at"].(string)
+		displayName, _ := section["display_name"].(string)
+
+		if accountID == "" {
+			continue
+		}
+
+		found = true
+
+		label := profileName
+		if displayName != "" && displayName != profileName {
+			label = fmt.Sprintf("%s (%s)", displayName, profileName)
+		}
+
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", color.Bold(label))
+		fmt.Fprintf(cmd.OutOrStdout(), "  Account:  %s\n", accountID)
+		if claimURL != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "  Claim:    %s\n", claimURL)
+		}
+		if expiresAt != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "  Expires:  %s\n", expiresAt)
+		}
+		fmt.Fprintln(cmd.OutOrStdout())
+	}
+
+	if !found {
+		fmt.Fprintln(cmd.OutOrStdout(), "No sandbox profiles found. Create one with: stripe sandbox create")
+	}
+
 	return nil
 }
 
