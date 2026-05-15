@@ -44,9 +44,10 @@ type sandboxCreateCmd struct {
 func newSandboxCmd() *sandboxCmd {
 	sc := &sandboxCmd{}
 	sc.cmd = &cobra.Command{
-		Use:   "sandbox",
-		Short: "Manage Stripe sandbox environments",
-		Args:  validators.NoArgs,
+		Use:    "sandbox",
+		Short:  "Manage Stripe sandbox environments",
+		Hidden: true,
+		Args:   validators.NoArgs,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `stripe sandbox create --email auto` to provision a sandbox without authentication.\n" +
 				"  If provisioning fails, falls back to browser login (like stripe login).\n" +
