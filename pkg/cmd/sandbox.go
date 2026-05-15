@@ -343,14 +343,17 @@ func (slc *sandboxLsCmd) runSandboxLsCmd(cmd *cobra.Command, args []string) erro
 			continue
 		}
 
-		claimURL, _ := section["sandbox_claim_url"].(string)
-		if claimURL == "" {
+		accountID, _ := section["account_id"].(string)
+		if accountID == "" {
 			continue
 		}
 
-		accountID, _ := section["account_id"].(string)
-		expiresAt, _ := section["test_mode_key_expires_at"].(string)
+		claimURL, _ := section["sandbox_claim_url"].(string)
 		displayName, _ := section["display_name"].(string)
+		var expiresAt string
+		if claimURL != "" {
+			expiresAt, _ = section["test_mode_key_expires_at"].(string)
+		}
 
 		found = true
 
