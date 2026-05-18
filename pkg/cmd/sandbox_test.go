@@ -417,14 +417,15 @@ func TestSandboxCreateCmd_FromGitResolvesName(t *testing.T) {
 	var receivedName string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/keys/challenge" {
+		switch r.URL.Path {
+		case "/keys/challenge":
 			json.NewEncoder(w).Encode(sandbox.ChallengeResponse{
 				Algorithm: "SHA-256",
 				Challenge: computeChallengeForTest("name-test", 1),
 				Salt:      "name-test",
 				Signature: "sig",
 			})
-		} else if r.URL.Path == "/keys/provision" {
+		case "/keys/provision":
 			var req sandbox.ProvisionRequest
 			json.NewDecoder(r.Body).Decode(&req)
 			receivedName = req.Name
