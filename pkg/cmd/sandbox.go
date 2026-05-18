@@ -336,7 +336,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
 	}
 
-
 	return nil
 }
 
