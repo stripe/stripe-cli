@@ -286,12 +286,12 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s Use the keys above to start building your integration.\n", color.Green("Provisioned!"))
 	if result.ClaimURL != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nClaim your sandbox: %s\n", result.ClaimURL)
-	}
-	if result.ExpiresAt != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires on %s. Claim it before then to keep it.\n", color.Yellow("⚠"), result.ExpiresAt)
-	} else {
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires in approximately 7 days. Claim it before then to keep it.\n", color.Yellow("⚠"))
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", result.ClaimURL)
+		if result.ExpiresAt != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Expires: %s\n", result.ExpiresAt)
+		} else {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Expires in approximately 7 days.\n")
+		}
 	}
 
 	return nil
