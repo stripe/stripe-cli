@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/afero"
@@ -200,18 +199,11 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 	return client.Provision(cmd.Context(), provisionReq)
 }
 
-// runDashboardFlow is the browser-based fallback. It reuses the existing
-// stripe login infrastructure (GetLinks + PollForKey) but with different UX.
-//
-// We don't call login.Authenticator.Login() directly because:
-//  1. It waits for "Press Enter" before opening the browser — we auto-open.
-//  2. It opens /stripecli/confirm_auth — we open /register with email pre-filled
-//     so new users land on signup, not a login gate.
-//  3. It uses interactive spinners and stdin readers that conflict with agent usage.
-//  4. It prints its own success message ("this key will expire after 90 days")
-//     which doesn't apply to sandbox flows.
-//
-// The shared primitives (GetLinks, PollForKey, SaveLoginDetails) are reused.
+// runDashboardFlow is the browser-based fallback. It calls
+// login.Authenticator.Login() with a modified BrowserURL that points to
+// /register with the user's email pre-filled, so new users land on signup
+// instead of a login gate. Everything else (spinners, polling, key saving,
+// success messages) uses the standard stripe login flow.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
 	if isSSHSession() {
 		fmt.Fprintln(cmd.ErrOrStderr(), "SSH session detected. Cannot open browser.")
@@ -224,8 +216,8 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 		return err
 	}
 
-	// Build a signup URL with email pre-filled and redirect back to CLI auth
-	// confirmation page after registration completes.
+	// Override BrowserURL to point to /register with email pre-filled.
+	// After registration, the redirect sends the user to the confirm_auth page.
 	confirmPath := "/stripecli/confirm_auth"
 	if parsed, err := url.Parse(links.BrowserURL); err == nil {
 		confirmPath = parsed.RequestURI()
@@ -235,42 +227,14 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	if email != "" {
 		params.Set("email", email)
 	}
-	signupURL := fmt.Sprintf("%s/register?%s", scc.dashboardURL, params.Encode())
+	links.BrowserURL = fmt.Sprintf("%s/register?%s", scc.dashboardURL, params.Encode())
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "Your pairing code is: %s\n", color.Bold(links.VerificationCode))
-
-	if canOpenBrowserFunc() {
-		if err := openBrowserFunc(signupURL); err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open browser: %v\n", err)
-		}
-	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s\n", signupURL)
-
-	// Poll for up to 20 minutes. The user may need to create an account,
-	// verify email, etc. The token itself expires server-side after 30 min.
-	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Waiting for confirmation..."))
-
-	response, _, err := keys.PollForKey(cmd.Context(), links.PollURL, 2*time.Second, 20*60/2)
-	if err != nil {
-		return err
-	}
-
-	// Save to current profile using the same mechanism as stripe login.
+	// Use the standard login flow — handles "Press Enter", spinners,
+	// polling, key saving, and success messaging.
 	configurer := keys.NewRAKConfigurer(&Config, afero.NewOsFs())
-	if err := configurer.SaveLoginDetails(response); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not save keys to config: %v\n", err)
-		fmt.Fprintf(cmd.ErrOrStderr(), "You may need to run `stripe login` manually.\n")
-		return nil
-	}
-
-	displayName := response.AccountDisplayName
-	if displayName == "" {
-		displayName = response.AccountID
-	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s\n", color.Green(fmt.Sprintf("Connected to %q!", displayName)))
-	fmt.Fprintf(cmd.ErrOrStderr(), "Your test API key is now configured. Run `stripe` commands to get started.\n")
-
-	return nil
+	transfer := keys.NewRAKTransfer(configurer)
+	authenticator := login.NewAuthenticator(transfer)
+	return authenticator.Login(cmd.Context(), links)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
