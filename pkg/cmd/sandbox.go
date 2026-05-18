@@ -118,15 +118,13 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		return nil
 	}
 
-	// If an existing sandbox key exists, save it to a named profile before
-	// overwriting so the user can still access it via --project-name.
+	// If an existing sandbox key exists, copy the current profile to a named
+	// backup (by account ID) before overwriting, so old sandboxes remain
+	// accessible via --project-name.
 	if existingKey != "" && strings.HasPrefix(existingKey, "rkcs_") {
 		existingAccountID, _ := Config.Profile.GetAccountID()
 		if existingAccountID != "" {
-			origProfile := Config.Profile.ProfileName
-			Config.Profile.ProfileName = existingAccountID
-			Config.Profile.CreateProfile()
-			Config.Profile.ProfileName = origProfile
+			Config.CopyProfile(Config.Profile.ProfileName, existingAccountID)
 		}
 	}
 
