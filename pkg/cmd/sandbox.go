@@ -336,9 +336,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
 	}
 
-	fmt.Fprintf(os.Stderr, "Keys saved to profile %q.\n", profileName)
-	fmt.Fprintf(os.Stderr, "Use with: stripe --project-name %s <command>\n", profileName)
-	fmt.Fprintf(os.Stderr, "Or set: export STRIPE_API_KEY=%s\n", secretKey)
 
 	return nil
 }
