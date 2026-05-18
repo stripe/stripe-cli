@@ -336,14 +336,9 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
 	}
 
-	// Switch the active project to the new sandbox profile so subsequent
-	// stripe commands use it without --project-name.
-	if err := Config.WriteConfigField("project-name", profileName); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: could not switch active project: %v\n", err)
-	}
-
-	fmt.Fprintf(os.Stderr, "Switched active project to %q.\n", profileName)
-	fmt.Fprintf(os.Stderr, "To switch back: stripe config --set project-name default\n")
+	fmt.Fprintf(os.Stderr, "Keys saved to profile %q.\n", profileName)
+	fmt.Fprintf(os.Stderr, "Use with: stripe --project-name %s <command>\n", profileName)
+	fmt.Fprintf(os.Stderr, "Or set: export STRIPE_API_KEY=%s\n", secretKey)
 
 	return nil
 }
