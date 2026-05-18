@@ -290,7 +290,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	return nil
 }
 
-
 func isSSHSession() bool {
 	return os.Getenv("SSH_TTY") != "" || os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != ""
 }
