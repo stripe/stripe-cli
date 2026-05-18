@@ -201,9 +201,12 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 }
 
 // runDashboardFlow is the browser-based fallback. It reuses the existing
-// stripe login infrastructure: POST /stripecli/auth creates a pairing session,
-// the browser confirmation page generates keys, and we poll until they arrive.
-// The signup URL pre-fills the user's email to reduce friction.
+// stripe login infrastructure (GetLinks + PollForKey) but with different UX:
+// - Opens /register instead of /stripecli/confirm_auth (handles new users)
+// - Pre-fills email in the signup URL
+// - Different messaging (numbered steps instead of "Press Enter")
+// We don't call login.Authenticator.Login() directly because it has its own
+// interactive UX (spinners, "Press Enter") that doesn't fit the sandbox flow.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
 	if isSSHSession() {
 		fmt.Fprintln(cmd.ErrOrStderr(), "SSH session detected. Cannot open browser.")
