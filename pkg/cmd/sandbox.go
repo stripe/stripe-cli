@@ -232,17 +232,14 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	}
 	signupURL := fmt.Sprintf("%s/register?%s", scc.dashboardURL, params.Encode())
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "\nOpening browser to create or log in to your Stripe account...\n")
-	fmt.Fprintf(cmd.ErrOrStderr(), "  1. Sign up or log in at the page that opens\n")
-	fmt.Fprintf(cmd.ErrOrStderr(), "  2. Confirm the pairing code: %s\n", color.Bold(links.VerificationCode))
-	fmt.Fprintf(cmd.ErrOrStderr(), "  3. Return here — your keys will appear automatically\n\n")
+	fmt.Fprintf(cmd.ErrOrStderr(), "Your pairing code is: %s\n", color.Bold(links.VerificationCode))
 
 	if canOpenBrowserFunc() {
 		if err := openBrowserFunc(signupURL); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Could not open browser: %v\n", err)
 		}
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "If the browser doesn't open, visit:\n  %s\n\n", signupURL)
+	fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s\n", signupURL)
 
 	// Poll for up to 20 minutes. The user may need to create an account,
 	// verify email, etc. The token itself expires server-side after 30 min.
