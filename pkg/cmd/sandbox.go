@@ -297,33 +297,26 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	return nil
 }
 
-// saveSandboxToConfig creates a new profile for the provisioned sandbox and
-// switches the active project to it. Existing profiles are never overwritten.
+// saveSandboxToConfig writes the provisioned sandbox keys to the current
+// profile (typically "default"). This is the same behavior as stripe login —
+// just overwrites test-mode keys on whatever profile is active.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
 		return fmt.Errorf("no secret key in server response")
 	}
 
-	profileName := result.AccountID
-	if profileName == "" {
-		profileName = result.MerchantToken
-	}
-	if profileName == "" {
-		profileName = "sandbox"
-	}
-
-	// Create the new profile with sandbox keys
 	accountID := result.AccountID
 	if accountID == "" {
 		accountID = result.MerchantToken
 	}
 
-	Config.Profile.ProfileName = profileName
-	Config.Profile.DisplayName = profileName
-	Config.Profile.AccountID = accountID
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
+	if accountID != "" {
+		Config.Profile.AccountID = accountID
+		Config.Profile.DisplayName = accountID
+	}
 	if err := Config.Profile.CreateProfile(); err != nil {
 		return err
 	}
