@@ -298,8 +298,9 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 }
 
 // saveSandboxToConfig writes the provisioned sandbox keys to the current
-// profile (typically "default"). This is the same behavior as stripe login —
-// just overwrites test-mode keys on whatever profile is active.
+// profile AND saves a copy under the account ID. The current profile gets
+// the new keys so stripe commands work immediately. The named profile
+// preserves older sandboxes so they aren't lost.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
@@ -311,6 +312,7 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		accountID = result.MerchantToken
 	}
 
+	// Write to current profile so stripe commands work immediately
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if accountID != "" {
@@ -327,6 +329,21 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	}
 	if result.ExpiresAt != "" {
 		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
+	}
+
+	// Also save a copy under the account ID so previous sandboxes are preserved
+	// and accessible via --project-name.
+	if accountID != "" {
+		origProfile := Config.Profile.ProfileName
+		Config.Profile.ProfileName = accountID
+		Config.Profile.CreateProfile()
+		if result.ClaimURL != "" {
+			Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
+		}
+		if result.ExpiresAt != "" {
+			Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
+		}
+		Config.Profile.ProfileName = origProfile
 	}
 
 	return nil
