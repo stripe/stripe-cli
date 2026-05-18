@@ -104,13 +104,13 @@ work immediately.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	// Only redirect to dashboard if the user has a livemode key, meaning
-	// they have a real Stripe account. If they only have test keys (from a
-	// previous sandbox create), let them provision a new one.
-	existingKey, _ := Config.Profile.GetAPIKey(true)
+	// If already logged in (any test key configured), redirect to dashboard.
+	// Design: one sandbox at a time. To get a fresh one, user should log out
+	// first (stripe logout) or claim the existing sandbox.
+	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" {
 		sandboxURL := scc.dashboardURL + "/test/sandboxes"
-		fmt.Fprintf(cmd.ErrOrStderr(), "Already logged in. Opening sandbox management page...\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "Already configured. Opening sandbox management page...\n")
 		fmt.Fprintf(cmd.ErrOrStderr(), "  %s\n", sandboxURL)
 		if canOpenBrowserFunc() {
 			openBrowserFunc(sandboxURL)
@@ -298,9 +298,7 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 }
 
 // saveSandboxToConfig writes the provisioned sandbox keys to the current
-// profile AND saves a copy under the account ID. The current profile gets
-// the new keys so stripe commands work immediately. The named profile
-// preserves older sandboxes so they aren't lost.
+// profile. One sandbox at a time — creating a new one overwrites the old.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
@@ -312,7 +310,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		accountID = result.MerchantToken
 	}
 
-	// Write to current profile so stripe commands work immediately
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if accountID != "" {
@@ -329,21 +326,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	}
 	if result.ExpiresAt != "" {
 		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
-	}
-
-	// Also save a copy under the account ID so previous sandboxes are preserved
-	// and accessible via --project-name.
-	if accountID != "" {
-		origProfile := Config.Profile.ProfileName
-		Config.Profile.ProfileName = accountID
-		Config.Profile.CreateProfile()
-		if result.ClaimURL != "" {
-			Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
-		}
-		if result.ExpiresAt != "" {
-			Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
-		}
-		Config.Profile.ProfileName = origProfile
 	}
 
 	return nil
