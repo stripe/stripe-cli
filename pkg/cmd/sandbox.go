@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/afero"
@@ -103,11 +104,11 @@ work immediately.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	// If already configured, redirect to dashboard. We never overwrite
-	// existing keys — one sandbox at a time. To provision a new one, user
-	// must stripe logout first or claim the existing sandbox.
+	// If logged in with a real account key (sk_test_, rk_test_ from stripe login),
+	// redirect to dashboard. Sandbox keys (rkcs_test_) are temporary and can be
+	// overwritten — the user should be able to provision a fresh sandbox anytime.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
-	if existingKey != "" {
+	if existingKey != "" && !strings.HasPrefix(existingKey, "rkcs_") {
 		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "Already logged in.\n\n")
 		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", sandboxURL)
