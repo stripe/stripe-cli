@@ -104,10 +104,10 @@ work immediately.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	// If already logged in, just open the sandboxes page.
-	// Design: a user with existing keys likely wants to manage sandboxes in
-	// the dashboard rather than provision a new anonymous one.
-	existingKey, _ := Config.Profile.GetAPIKey(false)
+	// Only redirect to dashboard if the user has a livemode key, meaning
+	// they have a real Stripe account. If they only have test keys (from a
+	// previous sandbox create), let them provision a new one.
+	existingKey, _ := Config.Profile.GetAPIKey(true)
 	if existingKey != "" {
 		sandboxURL := scc.dashboardURL + "/test/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "Already logged in. Opening sandbox management page...\n")
