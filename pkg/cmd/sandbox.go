@@ -243,7 +243,18 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 		return err
 	}
 
-	out, err := json.MarshalIndent(result, "", "  ")
+	output := struct {
+		SecretKey      string `json:"secret_key"`
+		PublishableKey string `json:"publishable_key"`
+		ClaimURL       string `json:"claim_url,omitempty"`
+		AccountID      string `json:"account_id,omitempty"`
+	}{
+		SecretKey:      result.GetSecretKey(),
+		PublishableKey: result.PublishableKey,
+		ClaimURL:       result.ClaimURL,
+		AccountID:      result.MerchantToken,
+	}
+	out, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
 		return err
 	}
