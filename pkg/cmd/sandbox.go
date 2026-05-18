@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -102,7 +104,9 @@ work immediately.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	// If already logged in, just open the sandboxes page
+	// If already logged in, just open the sandboxes page.
+	// Design: a user with existing keys likely wants to manage sandboxes in
+	// the dashboard rather than provision a new anonymous one.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" {
 		sandboxURL := scc.dashboardURL + "/test/sandboxes"
@@ -114,20 +118,10 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		return nil
 	}
 
-	// Resolve email
-	var email string
-	switch {
-	case scc.fromGit:
-		gitEmail := sandbox.GitConfigFunc("user.email")
-		if gitEmail == "" {
-			return fmt.Errorf("--from-git requires git config user.email to be set, but it was not found")
-		}
-		email = gitEmail
-		fmt.Fprintf(cmd.ErrOrStderr(), "Using email: %s (from git config)\n", email)
-	case scc.email != "":
-		email = scc.email
-	default:
-		return fmt.Errorf("email is required, pass --email your@email.com or use --from-git to infer from git config user.email")
+	// Resolve email — --email and --from-git are mutually exclusive.
+	email, err := scc.resolveEmail(cmd)
+	if err != nil {
+		return err
 	}
 
 	var name string
@@ -135,14 +129,48 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		name = scc.name
 	}
 
+	// Primary path: proof-of-work provisioning against developer-ai-srv.
+	// This gives the user a temporary sandbox without any browser interaction.
 	result, err := scc.runProvisionFlow(cmd, color, email, name)
 	if err != nil {
+		// Don't fallback if the user cancelled (Ctrl+C) or the context expired.
+		// Only fallback on server/network errors — the user intentionally interrupted.
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+
+		// Fallback: open browser for signup/login. This uses the existing
+		// stripe login infrastructure (POST /stripecli/auth + polling).
+		// Any server-side failure (429, 500, network) triggers this path
+		// so the user always has a way to get keys.
 		fmt.Fprintf(cmd.ErrOrStderr(), "\nProvisioning failed: %v\n", err)
 		fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Falling back to browser login..."))
 		return scc.runDashboardFlow(cmd, color, email)
 	}
 
 	return scc.outputResult(cmd, color, result)
+}
+
+// resolveEmail determines the email from flags. --email and --from-git are
+// mutually exclusive; providing both is an error.
+func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
+	if scc.fromGit && scc.email != "" {
+		return "", fmt.Errorf("--email and --from-git are mutually exclusive")
+	}
+
+	switch {
+	case scc.fromGit:
+		gitEmail := sandbox.GitConfigFunc("user.email")
+		if gitEmail == "" {
+			return "", fmt.Errorf("--from-git requires git config user.email to be set, but it was not found")
+		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "Using email: %s (from git config)\n", gitEmail)
+		return gitEmail, nil
+	case scc.email != "":
+		return scc.email, nil
+	default:
+		return "", fmt.Errorf("email is required, pass --email your@email.com or use --from-git to infer from git config user.email")
+	}
 }
 
 func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.Aurora, email, name string) (*sandbox.ProvisionResponse, error) {
@@ -177,6 +205,10 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 	return client.Provision(cmd.Context(), provisionReq)
 }
 
+// runDashboardFlow is the browser-based fallback. It reuses the existing
+// stripe login infrastructure: POST /stripecli/auth creates a pairing session,
+// the browser confirmation page generates keys, and we poll until they arrive.
+// The signup URL pre-fills the user's email to reduce friction.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
 	if isSSHSession() {
 		fmt.Fprintln(cmd.ErrOrStderr(), "SSH session detected. Cannot open browser.")
@@ -189,7 +221,8 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 		return err
 	}
 
-	// Build a signup URL with email pre-filled and redirect to CLI auth confirmation
+	// Build a signup URL with email pre-filled and redirect back to CLI auth
+	// confirmation page after registration completes.
 	confirmPath := "/stripecli/confirm_auth"
 	if parsed, err := url.Parse(links.BrowserURL); err == nil {
 		confirmPath = parsed.RequestURI()
@@ -213,6 +246,8 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	}
 	fmt.Fprintf(cmd.ErrOrStderr(), "If the browser doesn't open, visit:\n  %s\n\n", signupURL)
 
+	// Poll for up to 20 minutes. The user may need to create an account,
+	// verify email, etc. The token itself expires server-side after 30 min.
 	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Waiting for confirmation..."))
 
 	response, _, err := keys.PollForKey(cmd.Context(), links.PollURL, 2*time.Second, 20*60/2)
@@ -220,10 +255,12 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 		return err
 	}
 
-	// Save to current profile (same as stripe login)
+	// Save to current profile using the same mechanism as stripe login.
 	configurer := keys.NewRAKConfigurer(&Config, afero.NewOsFs())
 	if err := configurer.SaveLoginDetails(response); err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not save to config: %v\n", err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not save keys to config: %v\n", err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "You may need to run `stripe login` manually.\n")
+		return nil
 	}
 
 	displayName := response.AccountDisplayName
@@ -251,22 +288,23 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	if result.ClaimURL != "" {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Claim your sandbox: %s\n", result.ClaimURL)
 	}
-	expiry := result.ExpiresAt
-	if expiry == "" {
-		expiry = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	if result.ExpiresAt != "" {
+		fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires on %s. Claim it before then to keep it.\n", color.Yellow("⚠"), result.ExpiresAt)
+	} else {
+		fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires in approximately 7 days. Claim it before then to keep it.\n", color.Yellow("⚠"))
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires on %s. Claim it before then to keep it.\n", color.Yellow("⚠"), expiry)
 
 	return nil
 }
 
+// saveSandboxToConfig persists the provisioned sandbox keys to the current CLI
+// profile. This overwrites any existing test-mode keys in the active profile.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
 		return fmt.Errorf("no secret key in server response")
 	}
 
-	// Save to current profile (overwrite test mode keys)
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if result.AccountID != "" {
@@ -277,15 +315,14 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		return err
 	}
 
-	// Write additional sandbox metadata (non-fatal if these fail)
+	// Write sandbox-specific metadata. These are informational and non-fatal
+	// if they fail (e.g. config file permissions).
 	if result.ClaimURL != "" {
 		Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
 	}
-	sandboxExpiry := result.ExpiresAt
-	if sandboxExpiry == "" {
-		sandboxExpiry = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
+	if result.ExpiresAt != "" {
+		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
 	}
-	Config.Profile.WriteConfigField("sandbox_expires_at", sandboxExpiry)
 
 	return nil
 }

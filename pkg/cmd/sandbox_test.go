@@ -137,6 +137,18 @@ func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
 	assert.Contains(t, err.Error(), "email is required")
 }
 
+func TestSandboxCreateCmd_EmailAndFromGitMutuallyExclusive(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "test@example.com", "--from-git"})
+
+	err := cmd.cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mutually exclusive")
+}
+
 func TestSandboxCreateCmd_FromGitResolves(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
