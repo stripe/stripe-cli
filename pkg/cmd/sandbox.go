@@ -297,31 +297,42 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	return nil
 }
 
-// saveSandboxToConfig persists the provisioned sandbox keys to the current CLI
-// profile. This overwrites any existing test-mode keys in the active profile.
+// saveSandboxToConfig creates a new profile for the provisioned sandbox and
+// switches the active project to it. Existing profiles are never overwritten.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
 		return fmt.Errorf("no secret key in server response")
 	}
 
+	profileName := result.AccountID
+	if profileName == "" {
+		profileName = "sandbox"
+	}
+
+	// Create the new profile with sandbox keys
+	Config.Profile.ProfileName = profileName
+	Config.Profile.DeviceName = Config.Profile.DeviceName
+	Config.Profile.DisplayName = profileName
+	Config.Profile.AccountID = result.AccountID
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
-	if result.AccountID != "" {
-		Config.Profile.AccountID = result.AccountID
-		Config.Profile.DisplayName = result.AccountID
-	}
 	if err := Config.Profile.CreateProfile(); err != nil {
 		return err
 	}
 
-	// Write sandbox-specific metadata. These are informational and non-fatal
-	// if they fail (e.g. config file permissions).
+	// Write sandbox-specific metadata (non-fatal if these fail)
 	if result.ClaimURL != "" {
 		Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
 	}
 	if result.ExpiresAt != "" {
 		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
+	}
+
+	// Switch the active project to the new sandbox profile so subsequent
+	// stripe commands use it without --project-name.
+	if err := Config.WriteConfigField("project-name", profileName); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not switch active project: %v\n", err)
 	}
 
 	return nil
