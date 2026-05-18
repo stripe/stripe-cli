@@ -241,7 +241,7 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 	assert.Equal(t, "pk_test_sandbox", result.PublishableKey)
 	assert.Equal(t, "acct_sandbox_123", result.AccountID)
 	assert.Contains(t, stderr.String(), "Provisioned!")
-	assert.Contains(t, stderr.String(), "Claim your sandbox")
+	assert.Contains(t, stderr.String(), "claim your sandbox")
 }
 
 func TestSandboxCreateCmd_ProvisionFlow_FallsBackOnServerError(t *testing.T) {
