@@ -278,18 +278,16 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	if err := Config.Profile.CreateProfile(); err != nil {
 		return err
 	}
+
+	// Write additional sandbox metadata (non-fatal if these fail)
 	if result.ClaimURL != "" {
-		if err := Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL); err != nil {
-			return err
-		}
+		Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
 	}
 	sandboxExpiry := result.ExpiresAt
 	if sandboxExpiry == "" {
 		sandboxExpiry = time.Now().AddDate(0, 0, 7).Format("2006-01-02")
 	}
-	if err := Config.Profile.WriteConfigField("sandbox_expires_at", sandboxExpiry); err != nil {
-		return err
-	}
+	Config.Profile.WriteConfigField("sandbox_expires_at", sandboxExpiry)
 
 	return nil
 }

@@ -98,7 +98,8 @@ func stripeProxySocket() string {
 
 func NewClient(baseURL string) *Client {
 	sock := stripeProxySocket()
-	if sock != "" {
+	parsedBase, _ := url.Parse(baseURL)
+	if sock != "" && parsedBase != nil && parsedBase.Scheme == "https" {
 		return &Client{
 			BaseURL:  baseURL,
 			useProxy: true,
