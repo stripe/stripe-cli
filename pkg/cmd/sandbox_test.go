@@ -330,11 +330,14 @@ func TestSandboxCreateCmd_FallbackBlockedInSSH(t *testing.T) {
 	assert.Contains(t, err.Error(), "browser login unavailable in SSH session")
 }
 
-func TestSandboxCreateCmd_AlreadyLoggedIn(t *testing.T) {
+func TestSandboxCreateCmd_AlreadyLoggedIn_WithRealKey(t *testing.T) {
+	if os.Getenv("CI") == "" {
+		t.Skip("Skipping — fmt.Scanln blocks without stdin in devbox")
+	}
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
-	// Simulate being logged in
+	// Simulate being logged in with a real key (not rkcs_)
 	Config.Profile.TestModeAPIKey = "sk_test_existing"
 	Config.Profile.CreateProfile()
 
@@ -344,13 +347,104 @@ func TestSandboxCreateCmd_AlreadyLoggedIn(t *testing.T) {
 	cmd := newSandboxCreateCmd()
 	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com"})
 
+	// Provide stdin so fmt.Scanln doesn't block
+	cmd.cmd.SetIn(bytes.NewReader([]byte("\n")))
+
 	var stderr bytes.Buffer
 	cmd.cmd.SetErr(&stderr)
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "Press Enter to open the browser")
+	assert.Contains(t, stderr.String(), "Already logged in")
 	assert.Contains(t, openedURL, "/sandboxes")
+}
+
+func TestSandboxCreateCmd_ExistingSandboxKeyAllowsReprovisioning(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	t.Setenv("SSH_TTY", "")
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_CLIENT", "")
+
+	// Simulate having an existing sandbox key — should NOT redirect
+	Config.Profile.TestModeAPIKey = "rkcs_test_existing_sandbox"
+	Config.Profile.AccountID = "acct_old_sandbox"
+	Config.Profile.CreateProfile()
+
+	// Server returns 503 to trigger fallback
+	failServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer failServer.Close()
+
+	dashSrv := dashboardServer(t)
+	defer dashSrv.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--base-url", failServer.URL, "--dashboard-base", dashSrv.URL})
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.NoError(t, err)
+	// Should NOT say "Already logged in" — sandbox keys allow re-provisioning
+	assert.NotContains(t, stderr.String(), "Already logged in")
+	assert.Contains(t, stderr.String(), "Opening browser to set up your account")
+}
+
+func TestSandboxCreateCmd_FromGitResolvesName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	t.Setenv("SSH_TTY", "")
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_CLIENT", "")
+
+	sandbox.GitConfigFunc = func(key string) string {
+		switch key {
+		case "user.email":
+			return "test@stripe.com"
+		case "user.name":
+			return "Test User"
+		}
+		return ""
+	}
+
+	// Capture what gets sent to the server
+	var receivedName string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/keys/challenge" {
+			json.NewEncoder(w).Encode(sandbox.ChallengeResponse{
+				Algorithm: "SHA-256",
+				Challenge: computeChallengeForTest("name-test", 1),
+				Salt:      "name-test",
+				Signature: "sig",
+			})
+		} else if r.URL.Path == "/keys/provision" {
+			var req sandbox.ProvisionRequest
+			json.NewDecoder(r.Body).Decode(&req)
+			receivedName = req.Name
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	}))
+	defer server.Close()
+
+	dashSrv := dashboardServer(t)
+	defer dashSrv.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--from-git", "--base-url", server.URL, "--dashboard-base", dashSrv.URL})
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	cmd.cmd.Execute()
+	assert.Equal(t, "Test User", receivedName)
 }
 
 func TestSandboxCreateCmd_FallbackPreFillsEmail(t *testing.T) {
