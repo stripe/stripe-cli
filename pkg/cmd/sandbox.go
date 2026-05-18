@@ -110,11 +110,10 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" {
 		sandboxURL := scc.dashboardURL + "/sandboxes"
-		fmt.Fprintf(cmd.ErrOrStderr(), "Already configured. Opening sandbox management page...\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "  %s\n", sandboxURL)
 		if canOpenBrowserFunc() {
 			openBrowserFunc(sandboxURL)
 		}
+		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s\n", sandboxURL)
 		return nil
 	}
 

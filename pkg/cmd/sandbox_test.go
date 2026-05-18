@@ -347,7 +347,7 @@ func TestSandboxCreateCmd_AlreadyLoggedIn(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "Already configured")
+	assert.Contains(t, stderr.String(), "Press Enter to open the browser")
 	assert.Contains(t, openedURL, "/sandboxes")
 }
 
