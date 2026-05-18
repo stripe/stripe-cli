@@ -105,8 +105,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	color := ansi.Color(cmd.ErrOrStderr())
 
 	// If logged in with a real account key (sk_test_, rk_test_ from stripe login),
-	// redirect to dashboard. Sandbox keys (rkcs_test_) are temporary and can be
-	// overwritten — the user should be able to provision a fresh sandbox anytime.
+	// redirect to dashboard.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" && !strings.HasPrefix(existingKey, "rkcs_") {
 		sandboxURL := scc.dashboardURL + "/sandboxes"
@@ -117,6 +116,18 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 			openBrowserFunc(sandboxURL)
 		}
 		return nil
+	}
+
+	// If an existing sandbox key exists, save it to a named profile before
+	// overwriting so the user can still access it via --project-name.
+	if existingKey != "" && strings.HasPrefix(existingKey, "rkcs_") {
+		existingAccountID, _ := Config.Profile.GetAccountID()
+		if existingAccountID != "" {
+			origProfile := Config.Profile.ProfileName
+			Config.Profile.ProfileName = existingAccountID
+			Config.Profile.CreateProfile()
+			Config.Profile.ProfileName = origProfile
+		}
 	}
 
 	// Resolve email — --email and --from-git are mutually exclusive.
