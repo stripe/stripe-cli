@@ -204,12 +204,12 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 // stripe login infrastructure (GetLinks + PollForKey) but with different UX.
 //
 // We don't call login.Authenticator.Login() directly because:
-// 1. It waits for "Press Enter" before opening the browser — we auto-open.
-// 2. It opens /stripecli/confirm_auth — we open /register with email pre-filled
-//    so new users land on signup, not a login gate.
-// 3. It uses interactive spinners and stdin readers that conflict with agent usage.
-// 4. It prints its own success message ("this key will expire after 90 days")
-//    which doesn't apply to sandbox flows.
+//  1. It waits for "Press Enter" before opening the browser — we auto-open.
+//  2. It opens /stripecli/confirm_auth — we open /register with email pre-filled
+//     so new users land on signup, not a login gate.
+//  3. It uses interactive spinners and stdin readers that conflict with agent usage.
+//  4. It prints its own success message ("this key will expire after 90 days")
+//     which doesn't apply to sandbox flows.
 //
 // The shared primitives (GetLinks, PollForKey, SaveLoginDetails) are reused.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
