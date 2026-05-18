@@ -10,7 +10,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -55,9 +54,7 @@ func newSandboxCmd() *sandboxCmd {
 	}
 
 	createCmd := newSandboxCreateCmd()
-	lsCmd := newSandboxLsCmd()
 	sc.cmd.AddCommand(createCmd.cmd)
-	sc.cmd.AddCommand(lsCmd.cmd)
 	return sc
 }
 
@@ -293,68 +290,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	return nil
 }
 
-type sandboxLsCmd struct {
-	cmd *cobra.Command
-}
-
-func newSandboxLsCmd() *sandboxLsCmd {
-	slc := &sandboxLsCmd{}
-	slc.cmd = &cobra.Command{
-		Use:   "ls",
-		Short: "List sandbox profiles",
-		Long:  "List all profiles saved in the CLI config, showing account IDs and sandbox expiry. Keys are not displayed.",
-		Args:  validators.NoArgs,
-		RunE:  slc.runSandboxLsCmd,
-	}
-	return slc
-}
-
-func (slc *sandboxLsCmd) runSandboxLsCmd(cmd *cobra.Command, args []string) error {
-	color := ansi.Color(cmd.ErrOrStderr())
-
-	found := false
-	for profileName, raw := range viper.AllSettings() {
-		section, ok := raw.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		accountID, _ := section["account_id"].(string)
-		if accountID == "" {
-			continue
-		}
-
-		claimURL, _ := section["sandbox_claim_url"].(string)
-		displayName, _ := section["display_name"].(string)
-		var expiresAt string
-		if claimURL != "" {
-			expiresAt, _ = section["sandbox_expires_at"].(string)
-		}
-
-		found = true
-
-		label := profileName
-		if displayName != "" && displayName != profileName {
-			label = fmt.Sprintf("%s (%s)", displayName, profileName)
-		}
-
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", color.Bold(label))
-		fmt.Fprintf(cmd.OutOrStdout(), "  Account:  %s\n", accountID)
-		if claimURL != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "  Claim:    %s\n", claimURL)
-		}
-		if expiresAt != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "  Expires:  %s\n", expiresAt)
-		}
-		fmt.Fprintln(cmd.OutOrStdout())
-	}
-
-	if !found {
-		fmt.Fprintln(cmd.OutOrStdout(), "No profiles found. Create one with: stripe sandbox create")
-	}
-
-	return nil
-}
 
 func isSSHSession() bool {
 	return os.Getenv("SSH_TTY") != "" || os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != ""
