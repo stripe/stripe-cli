@@ -24,10 +24,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
+
+type installedPluginStateSnapshot struct {
+	installedPlugins []string
+	localMetadata    []byte
+	hasLocalMetadata bool
+}
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
 func GetBinaryExtension() string {
@@ -56,13 +63,192 @@ func getPluginsDir(config config.IConfig) string {
 	return pluginsDir
 }
 
+func getLocalPluginMetadataDir(config config.IConfig) string {
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	return filepath.Join(configPath, "plugin-metadata")
+}
+
+func getLocalPluginMetadataPath(config config.IConfig, pluginName string) string {
+	return filepath.Join(getLocalPluginMetadataDir(config), pluginName+".toml")
+}
+
+func snapshotInstalledPluginState(config config.IConfig, fs afero.Fs, pluginName string) (installedPluginStateSnapshot, error) {
+	snapshot := installedPluginStateSnapshot{
+		installedPlugins: append([]string(nil), config.GetInstalledPlugins()...),
+	}
+
+	body, err := afero.ReadFile(fs, getLocalPluginMetadataPath(config, pluginName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return snapshot, nil
+		}
+		return installedPluginStateSnapshot{}, err
+	}
+
+	snapshot.hasLocalMetadata = true
+	snapshot.localMetadata = append([]byte(nil), body...)
+	return snapshot, nil
+}
+
+func rollbackInstalledPluginState(config config.IConfig, fs afero.Fs, pluginName string, snapshot installedPluginStateSnapshot) error {
+	rollbackErrors := make([]string, 0, 2)
+
+	if err := restoreLocalPluginMetadata(config, fs, pluginName, snapshot); err != nil {
+		rollbackErrors = append(rollbackErrors, fmt.Sprintf("restore local plugin metadata: %v", err))
+	}
+
+	if err := restoreInstalledPluginList(config, snapshot.installedPlugins); err != nil {
+		rollbackErrors = append(rollbackErrors, fmt.Sprintf("restore installed_plugins: %v", err))
+	}
+
+	if len(rollbackErrors) != 0 {
+		return errors.New(strings.Join(rollbackErrors, "; "))
+	}
+
+	return nil
+}
+
+func restoreLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginName string, snapshot installedPluginStateSnapshot) error {
+	if snapshot.hasLocalMetadata {
+		return afero.WriteFile(fs, getLocalPluginMetadataPath(config, pluginName), snapshot.localMetadata, 0644)
+	}
+
+	return removeLocalPluginMetadata(config, fs, pluginName)
+}
+
+func restoreInstalledPluginList(config config.IConfig, installedPlugins []string) error {
+	if stringSlicesEqual(config.GetInstalledPlugins(), installedPlugins) {
+		return nil
+	}
+
+	err := config.WriteConfigField("installed_plugins", installedPlugins)
+	if err != nil && !stringSlicesEqual(config.GetInstalledPlugins(), installedPlugins) {
+		return err
+	}
+
+	return nil
+}
+
+func stringSlicesEqual(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// GetInstalledPluginNames returns the union of plugin names recorded in config
+// and plugin names with persisted local metadata.
+func GetInstalledPluginNames(config config.IConfig, fs afero.Fs) ([]string, error) {
+	names := make([]string, 0)
+	seen := make(map[string]struct{})
+
+	for _, pluginName := range config.GetInstalledPlugins() {
+		if pluginName == "" {
+			continue
+		}
+		if _, exists := seen[pluginName]; exists {
+			continue
+		}
+		seen[pluginName] = struct{}{}
+		names = append(names, pluginName)
+	}
+
+	localMetadataNames, err := getLocalPluginMetadataNames(config, fs)
+	if err != nil {
+		return names, err
+	}
+
+	for _, pluginName := range localMetadataNames {
+		if _, exists := seen[pluginName]; exists {
+			continue
+		}
+		seen[pluginName] = struct{}{}
+		names = append(names, pluginName)
+	}
+
+	return names, nil
+}
+
+// RecordInstalledPlugin ensures a plugin name is persisted in installed_plugins.
+func RecordInstalledPlugin(config config.IConfig, pluginName string) error {
+	if pluginName == "" {
+		return nil
+	}
+
+	installedPlugins := config.GetInstalledPlugins()
+	for _, installedPlugin := range installedPlugins {
+		if installedPlugin == pluginName {
+			return nil
+		}
+	}
+
+	installedPlugins = append(installedPlugins, pluginName)
+	return config.WriteConfigField("installed_plugins", installedPlugins)
+}
+
+// RemoveInstalledPlugin removes a plugin name from installed_plugins if present.
+func RemoveInstalledPlugin(config config.IConfig, pluginName string) error {
+	if pluginName == "" {
+		return nil
+	}
+
+	installedPlugins := config.GetInstalledPlugins()
+	updatedPlugins := make([]string, 0, len(installedPlugins))
+	removed := false
+	for _, installedPlugin := range installedPlugins {
+		if installedPlugin == pluginName {
+			removed = true
+			continue
+		}
+		updatedPlugins = append(updatedPlugins, installedPlugin)
+	}
+
+	if !removed {
+		return nil
+	}
+
+	return config.WriteConfigField("installed_plugins", updatedPlugins)
+}
+
+// PersistInstalledPluginState ensures local metadata and installed_plugins are
+// both updated for a locally installed plugin.
+func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plugin) error {
+	if plugin.Shortname == "" {
+		return nil
+	}
+
+	previousState, err := snapshotInstalledPluginState(config, fs, plugin.Shortname)
+	if err != nil {
+		return err
+	}
+
+	if err := writeLocalPluginMetadata(config, fs, plugin); err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, plugin.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to write local plugin metadata: %w; rollback failed: %v", err, rollbackErr)
+		}
+		return err
+	}
+
+	if err := RecordInstalledPlugin(config, plugin.Shortname); err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, plugin.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to record installed plugin %s: %w; rollback failed: %v", plugin.Shortname, err, rollbackErr)
+		}
+		return err
+	}
+
+	return nil
+}
+
 // GetPluginList builds a list of allowed plugins to be installed and run by the CLI
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
-	var pluginList PluginList
-	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
-
-	file, err := afero.ReadFile(fs, pluginManifestPath)
+	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
 		log.Debug("The plugin manifest file does not exist. Downloading...")
 		err = RefreshPluginManifest(ctx, config, fs, stripe.DefaultAPIBaseURL)
@@ -70,9 +256,148 @@ func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (Plu
 			log.Debug("Could not download plugin manifest")
 			return pluginList, err
 		}
-		file, err = afero.ReadFile(fs, pluginManifestPath)
+		return getCachedPluginList(config, fs)
 	}
 
+	if err != nil {
+		return pluginList, err
+	}
+
+	return pluginList, nil
+}
+
+// LookUpPlugin returns the matching plugin object
+func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
+	plugin, err := readLocalPluginMetadata(config, fs, pluginName)
+	if err == nil {
+		return plugin, nil
+	}
+
+	if !os.IsNotExist(err) {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.LookUpPlugin",
+			"plugin": pluginName,
+		}).Debugf("could not read local plugin metadata, falling back to manifest lookup: %s", err)
+	}
+
+	return LookUpPluginInManifest(ctx, config, fs, pluginName)
+}
+
+// LookUpPluginInManifest returns plugin metadata from the cached global manifest.
+func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
+	pluginList, err := GetPluginList(ctx, config, fs)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	return findPlugin(pluginList, pluginName)
+}
+
+// ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
+// without requiring a manifest refresh on the metadata-backed path.
+func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, baseURL string) (*Plugin, string, error) {
+	apiKey, err := config.GetProfile().GetAPIKey(false)
+	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
+		return nil, "", err
+	}
+
+	if apiKey != "" {
+		plugin, resolvedVersion, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, baseURL, apiKey)
+		if err == nil {
+			return plugin, resolvedVersion, nil
+		}
+
+		log.WithFields(log.Fields{
+			"prefix":  "plugins.ResolvePluginForInstall",
+			"plugin":  pluginName,
+			"version": version,
+		}).Debugf("could not resolve plugin via metadata, falling back to manifest lookup: %s", err)
+	}
+
+	if err := RefreshPluginManifest(ctx, config, fs, baseURL); err != nil {
+		return nil, "", err
+	}
+
+	plugin, err := LookUpPluginInManifest(ctx, config, fs, pluginName)
+	if err != nil {
+		return nil, "", err
+	}
+
+	resolvedVersion := version
+	if resolvedVersion == "" {
+		resolvedVersion = plugin.LookUpLatestVersion()
+	}
+	if resolvedVersion == "" {
+		return nil, "", fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+	}
+
+	return &plugin, resolvedVersion, nil
+}
+
+// ResolvePluginForUpgrade resolves plugin metadata for `stripe plugin upgrade`
+// using persisted local metadata and the cached global manifest.
+func ResolvePluginForUpgrade(config config.IConfig, fs afero.Fs, pluginName string) (*Plugin, error) {
+	var localPlugin *Plugin
+	localPluginValue, localErr := readLocalPluginMetadata(config, fs, pluginName)
+	if localErr == nil {
+		localPlugin = &localPluginValue
+	} else if !os.IsNotExist(localErr) {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.ResolvePluginForUpgrade",
+			"plugin": pluginName,
+		}).Debugf("could not read local plugin metadata for upgrade: %s", localErr)
+	}
+
+	var manifestPlugin *Plugin
+	manifestPluginValue, manifestErr := lookUpPluginInCachedManifest(config, fs, pluginName)
+	if manifestErr == nil {
+		manifestPlugin = &manifestPluginValue
+	}
+
+	plugin := selectPluginForUpgrade(localPlugin, manifestPlugin)
+	if plugin != nil {
+		return plugin, nil
+	}
+
+	if localErr != nil && !os.IsNotExist(localErr) {
+		return nil, localErr
+	}
+
+	return nil, manifestErr
+}
+
+// resolvePluginForAutoInstall resolves the freshest plugin metadata to use when
+// a command is invoked but the local plugin binary is missing.
+func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, baseURL string) (*Plugin, string, error) {
+	plugin, version, err := ResolvePluginForInstall(ctx, config, fs, pluginName, "", baseURL)
+	if err == nil {
+		return plugin, version, nil
+	}
+
+	log.WithFields(log.Fields{
+		"prefix": "plugins.resolvePluginForAutoInstall",
+		"plugin": pluginName,
+	}).Debugf("could not resolve latest plugin metadata for auto-install, falling back to cached metadata: %s", err)
+
+	plugin, cachedErr := ResolvePluginForUpgrade(config, fs, pluginName)
+	if cachedErr != nil {
+		return nil, "", fmt.Errorf("could not resolve plugin %s for auto-install: latest lookup failed: %v; cached lookup failed: %w", pluginName, err, cachedErr)
+	}
+
+	version = plugin.LookUpLatestVersion()
+	if version == "" {
+		return nil, "", fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+	}
+
+	return plugin, version, nil
+}
+
+func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
+	var pluginList PluginList
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+
+	file, err := afero.ReadFile(fs, pluginManifestPath)
 	if err != nil {
 		return pluginList, err
 	}
@@ -85,21 +410,205 @@ func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (Plu
 	return pluginList, nil
 }
 
-// LookUpPlugin returns the matching plugin object
-func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
-	var plugin Plugin
-	pluginList, err := GetPluginList(ctx, config, fs)
-	if err != nil {
-		return plugin, err
-	}
-
+func findPlugin(pluginList PluginList, pluginName string) (Plugin, error) {
 	for _, p := range pluginList.Plugins {
 		if pluginName == p.Shortname {
 			return p, nil
 		}
 	}
 
-	return plugin, fmt.Errorf("could not find a plugin named %s", pluginName)
+	return Plugin{}, fmt.Errorf("could not find a plugin named %s", pluginName)
+}
+
+func selectPluginForUpgrade(localPlugin, manifestPlugin *Plugin) *Plugin {
+	switch {
+	case localPlugin == nil:
+		return mergePluginMetadata(manifestPlugin, nil)
+	case manifestPlugin == nil:
+		return mergePluginMetadata(localPlugin, nil)
+	case comparePluginVersions(localPlugin.LookUpLatestVersion(), manifestPlugin.LookUpLatestVersion()) >= 0:
+		return mergePluginMetadata(localPlugin, manifestPlugin)
+	default:
+		return mergePluginMetadata(manifestPlugin, localPlugin)
+	}
+}
+
+func comparePluginVersions(left, right string) int {
+	switch {
+	case left == "" && right == "":
+		return 0
+	case left == "":
+		return -1
+	case right == "":
+		return 1
+	}
+
+	leftVersion, leftErr := version.NewVersion(left)
+	rightVersion, rightErr := version.NewVersion(right)
+	if leftErr == nil && rightErr == nil {
+		switch {
+		case leftVersion.GreaterThan(rightVersion):
+			return 1
+		case leftVersion.LessThan(rightVersion):
+			return -1
+		default:
+			return 0
+		}
+	}
+
+	switch {
+	case left > right:
+		return 1
+	case left < right:
+		return -1
+	default:
+		return 0
+	}
+}
+
+func mergePluginMetadata(primary, fallback *Plugin) *Plugin {
+	if primary == nil {
+		if fallback == nil {
+			return nil
+		}
+		pluginCopy := *fallback
+		return &pluginCopy
+	}
+
+	pluginCopy := *primary
+	if fallback == nil {
+		return &pluginCopy
+	}
+
+	if pluginCopy.Shortdesc == "" {
+		pluginCopy.Shortdesc = fallback.Shortdesc
+	}
+	if pluginCopy.Binary == "" {
+		pluginCopy.Binary = fallback.Binary
+	}
+	if pluginCopy.MagicCookieValue == "" {
+		pluginCopy.MagicCookieValue = fallback.MagicCookieValue
+	}
+	if len(pluginCopy.Commands) == 0 && len(fallback.Commands) > 0 {
+		pluginCopy.Commands = fallback.Commands
+	}
+
+	for i := range pluginCopy.Releases {
+		if len(pluginCopy.Releases[i].Runtime) != 0 {
+			continue
+		}
+
+		fallbackRelease := fallback.getRelease(pluginCopy.Releases[i].Version, pluginCopy.Releases[i].OS, pluginCopy.Releases[i].Arch)
+		if fallbackRelease == nil || len(fallbackRelease.Runtime) == 0 {
+			continue
+		}
+
+		pluginCopy.Releases[i].Runtime = copyRuntime(fallbackRelease.Runtime)
+	}
+
+	return &pluginCopy
+}
+
+func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, baseURL, apiKey string) (*Plugin, string, error) {
+	basePlugin := &Plugin{Shortname: pluginName}
+	if cachedPlugin, err := readLocalPluginMetadata(config, fs, pluginName); err == nil {
+		basePlugin = &cachedPlugin
+	} else if cachedPlugin, err := lookUpPluginInCachedManifest(config, fs, pluginName); err == nil {
+		basePlugin = &cachedPlugin
+	}
+
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return nil, "", err
+	}
+
+	plugin, err := basePlugin.pluginFromMetadata(pluginMetadata.PluginManifest)
+	if err != nil {
+		return nil, "", err
+	}
+
+	resolvedVersion := version
+	if resolvedVersion == "" {
+		resolvedVersion = plugin.LookUpLatestVersion()
+	}
+	if resolvedVersion == "" {
+		return nil, "", fmt.Errorf("plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
+	}
+	if plugin.getReleaseForVersion(resolvedVersion) == nil {
+		return nil, "", fmt.Errorf("plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	}
+
+	return plugin, resolvedVersion, nil
+}
+
+func lookUpPluginInCachedManifest(config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
+	pluginList, err := getCachedPluginList(config, fs)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	return findPlugin(pluginList, pluginName)
+}
+
+func readLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
+	body, err := afero.ReadFile(fs, getLocalPluginMetadataPath(config, pluginName))
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	pluginList, err := validatePluginManifest(body)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	return findPlugin(*pluginList, pluginName)
+}
+
+func writeLocalPluginMetadata(config config.IConfig, fs afero.Fs, plugin Plugin) error {
+	pluginMetadataDir := getLocalPluginMetadataDir(config)
+	if err := fs.MkdirAll(pluginMetadataDir, 0755); err != nil {
+		return err
+	}
+
+	body := new(bytes.Buffer)
+	if err := toml.NewEncoder(body).Encode(PluginList{Plugins: []Plugin{plugin}}); err != nil {
+		return err
+	}
+
+	return afero.WriteFile(fs, getLocalPluginMetadataPath(config, plugin.Shortname), body.Bytes(), 0644)
+}
+
+func removeLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginName string) error {
+	err := fs.Remove(getLocalPluginMetadataPath(config, pluginName))
+	if os.IsNotExist(err) {
+		return nil
+	}
+
+	return err
+}
+
+func getLocalPluginMetadataNames(config config.IConfig, fs afero.Fs) ([]string, error) {
+	entries, err := afero.ReadDir(fs, getLocalPluginMetadataDir(config))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if filepath.Ext(entry.Name()) != ".toml" {
+			continue
+		}
+		names = append(names, strings.TrimSuffix(entry.Name(), ".toml"))
+	}
+	sort.Strings(names)
+
+	return names, nil
 }
 
 // RefreshPluginManifest refreshes the plugin manifest
@@ -125,6 +634,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginManifestPath, filepath.Dir(configPath), filepath.Base(pluginManifestPath)); err != nil {
+		return err
+	}
 
 	// Ensure the config directory exists
 	err = fs.MkdirAll(configPath, os.FileMode(0755))

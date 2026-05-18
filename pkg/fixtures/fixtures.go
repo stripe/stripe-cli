@@ -431,7 +431,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 
 	envFile := filepath.Join(dir, ".env")
 
-	if err := fsutil.RefuseWriteThroughSymlink(fxt.Fs, envFile, ".env"); err != nil {
+	if err := fsutil.RefuseWriteThroughSymlink(fxt.Fs, envFile, dir, ".env"); err != nil {
 		return err
 	}
 

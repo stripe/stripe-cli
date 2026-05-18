@@ -369,18 +369,17 @@ CUST_ID="char_12345"`
 }
 
 func TestUpdateEnvRefusesSymlink(t *testing.T) {
-	wd, err := os.Getwd()
+	tempDir := t.TempDir()
+	oldWD, err := os.Getwd()
 	require.NoError(t, err)
-
-	tmpDir := t.TempDir()
-	require.NoError(t, os.Chdir(tmpDir))
+	require.NoError(t, os.Chdir(tempDir))
 	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(wd))
+		require.NoError(t, os.Chdir(oldWD))
 	})
 
-	victimFile := filepath.Join(t.TempDir(), "victim.txt")
-	require.NoError(t, os.WriteFile(victimFile, []byte("original"), 0o644))
-	require.NoError(t, os.Symlink(victimFile, filepath.Join(tmpDir, ".env")))
+	victimFile := filepath.Join(tempDir, "victim")
+	require.NoError(t, os.WriteFile(victimFile, []byte("ORIGINAL=1\n"), 0o644))
+	require.NoError(t, os.Symlink(victimFile, filepath.Join(tempDir, ".env")))
 
 	fxt := Fixture{
 		Fs: afero.NewOsFs(),
@@ -392,12 +391,11 @@ func TestUpdateEnvRefusesSymlink(t *testing.T) {
 	err = fxt.updateEnv(map[string]string{
 		"CHAR_ID": "${char_bender:id}",
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "symlink")
+	require.ErrorContains(t, err, "symlink")
 
-	content, err := os.ReadFile(victimFile)
+	victimContents, err := os.ReadFile(victimFile)
 	require.NoError(t, err)
-	assert.Equal(t, "original", string(content))
+	require.Equal(t, "ORIGINAL=1\n", string(victimContents))
 }
 
 func TestExecuteReturnsRequestNames(t *testing.T) {

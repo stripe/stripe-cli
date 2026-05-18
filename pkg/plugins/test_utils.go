@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -19,11 +21,29 @@ type TestConfig struct {
 	config.Config
 }
 
+type FailingWriteConfig struct {
+	TestConfig
+	WriteErr                 error
+	MutateInstalledPluginsOn bool
+}
+
 // WriteConfigField mocks out the method so that we can ensure installed plugins data is written
 func (c *TestConfig) WriteConfigField(field string, value interface{}) error {
 	c.InstalledPlugins = value.([]string)
 
 	return nil
+}
+
+func (c *FailingWriteConfig) WriteConfigField(field string, value interface{}) error {
+	if c.MutateInstalledPluginsOn {
+		c.InstalledPlugins = append([]string(nil), value.([]string)...)
+	}
+
+	if c.WriteErr == nil {
+		return c.TestConfig.WriteConfigField(field, value)
+	}
+
+	return c.WriteErr
 }
 
 // GetConfigFolder returns the absolute path for the TestConfig
@@ -96,11 +116,27 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 
 	// The checksums in the test toml files are the same for each OS variation of the release for unit testing purposes
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		switch url := req.URL.String(); url {
+		switch req.URL.Path {
 		case "/v1/stripecli/get-plugin-url":
 			pd := requests.PluginData{
 				PluginBaseURL:       artifactoryServer.URL,
 				AdditionalManifests: additionalManifestNames,
+			}
+			body, err := json.Marshal(pd)
+			if err != nil {
+				t.Error(err)
+			}
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-metadata":
+			pluginName := req.URL.Query().Get("plugin")
+			version := req.URL.Query().Get("version")
+			opsystem := req.URL.Query().Get("os")
+			arch := req.URL.Query().Get("arch")
+
+			pluginManifest := singlePluginManifest(t, pluginName, manifestContent, additionalManifests)
+			pd := requests.PluginMetadata{
+				BinaryURL:      artifactoryServer.URL + "/" + pluginName + "/" + version + "/" + opsystem + "/" + arch + "/stripe-cli-" + strings.ReplaceAll(pluginName, "_", "-"),
+				PluginManifest: string(pluginManifest),
 			}
 			body, err := json.Marshal(pd)
 			if err != nil {
@@ -115,6 +151,41 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 	return TestServers{
 		ArtifactoryServer: artifactoryServer,
 		StripeServer:      stripeServer,
+	}
+}
+
+func singlePluginManifest(t *testing.T, pluginName string, manifestContent []byte, additionalManifests map[string][]byte) []byte {
+	t.Helper()
+
+	merged := &PluginList{}
+	if len(manifestContent) > 0 {
+		requireNoError(t, toml.Unmarshal(manifestContent, merged))
+	}
+
+	for _, content := range additionalManifests {
+		additionalPluginList := &PluginList{}
+		requireNoError(t, toml.Unmarshal(content, additionalPluginList))
+		mergePluginLists(merged, []*PluginList{additionalPluginList})
+	}
+
+	for _, plugin := range merged.Plugins {
+		if plugin.Shortname != pluginName {
+			continue
+		}
+
+		buffer := &bytes.Buffer{}
+		requireNoError(t, toml.NewEncoder(buffer).Encode(PluginList{Plugins: []Plugin{plugin}}))
+		return buffer.Bytes()
+	}
+
+	t.Fatalf("plugin %s not found in test manifests", pluginName)
+	return nil
+}
+
+func requireNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

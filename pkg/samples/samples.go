@@ -397,7 +397,7 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 
 		// We refuse to write through a symlink to prevent a malicious
 		// sample from overwriting files outside the destination directory.
-		if err := fsutil.RefuseWriteThroughSymlink(s.Fs, envFile, ".env"); err != nil {
+		if err := fsutil.RefuseWriteThroughSymlink(s.Fs, envFile, sampleLocation, ".env"); err != nil {
 			return err
 		}
 

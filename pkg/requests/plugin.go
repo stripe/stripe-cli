@@ -3,6 +3,7 @@ package requests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
@@ -14,6 +15,12 @@ import (
 type PluginData struct {
 	PluginBaseURL       string   `json:"base_url"`
 	AdditionalManifests []string `json:"additional_manifests,omitempty"`
+}
+
+// PluginMetadata contains plugin-specific manifest and binary information.
+type PluginMetadata struct {
+	BinaryURL      string `json:"binary_url"`
+	PluginManifest string `json:"plugin_manifest"`
 }
 
 // defaultPluginBaseURL is the repository where plugins are hosted.
@@ -53,7 +60,45 @@ func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, prof
 	}
 
 	data := PluginData{}
-	json.Unmarshal(resp, &data)
+	if err := json.Unmarshal(resp, &data); err != nil {
+		return PluginData{}, fmt.Errorf("failed to decode plugin data response: %w", err)
+	}
 
 	return data, nil
+}
+
+// GetPluginMetadata returns plugin-specific manifest and binary information.
+func GetPluginMetadata(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
+	if apiKey == "" {
+		return PluginMetadata{}, fmt.Errorf("plugin metadata endpoint requires an API key")
+	}
+
+	params := &RequestParameters{
+		data:    []string{},
+		version: apiVersion,
+	}
+
+	base := &Base{
+		Profile:        profile,
+		Method:         http.MethodGet,
+		SuppressOutput: true,
+		APIBaseURL:     baseURL,
+	}
+
+	resp, err := base.MakeRequest(ctx, apiKey, "/v1/stripecli/get-plugin-metadata", params, map[string]interface{}{
+		"plugin":  pluginName,
+		"version": version,
+		"os":      os,
+		"arch":    arch,
+	}, true, nil)
+	if err != nil {
+		return PluginMetadata{}, err
+	}
+
+	metadata := PluginMetadata{}
+	if err := json.Unmarshal(resp, &metadata); err != nil {
+		return PluginMetadata{}, fmt.Errorf("failed to decode plugin metadata response: %w", err)
+	}
+
+	return metadata, nil
 }
