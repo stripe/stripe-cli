@@ -285,8 +285,9 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	fmt.Fprintln(cmd.OutOrStdout(), string(out))
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s\n", color.Green("Provisioned!"))
+	fmt.Fprintf(cmd.ErrOrStderr(), "Your test API keys are ready. Run `stripe` commands to start building your integration.\n")
 	if result.ClaimURL != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Claim your sandbox: %s\n", result.ClaimURL)
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nClaim your sandbox: %s\n", result.ClaimURL)
 	}
 	if result.ExpiresAt != "" {
 		fmt.Fprintf(cmd.ErrOrStderr(), "%s This sandbox expires on %s. Claim it before then to keep it.\n", color.Yellow("⚠"), result.ExpiresAt)
