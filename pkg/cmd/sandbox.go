@@ -76,8 +76,8 @@ browser-based signup/login.
 
 Keys are saved to the current CLI profile so subsequent stripe commands
 work immediately.`,
-		Example: `  stripe sandbox create --from-git
-  stripe sandbox create --email you@example.com`,
+		Example: `stripe sandbox create --email you@example.com
+  stripe sandbox create --from-git`,
 		Args: validators.NoArgs,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Provisions a sandbox and saves keys to the current CLI profile.\n" +
