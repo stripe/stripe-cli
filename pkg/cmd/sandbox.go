@@ -119,17 +119,18 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 
 	// Resolve email
 	var email string
-	if scc.fromGit {
+	switch {
+	case scc.fromGit:
 		gitEmail := sandbox.GitConfigFunc("user.email")
 		if gitEmail == "" {
 			return fmt.Errorf("--from-git requires git config user.email to be set, but it was not found")
 		}
 		email = gitEmail
 		fmt.Fprintf(cmd.ErrOrStderr(), "Using email: %s (from git config)\n", email)
-	} else if scc.email != "" {
+	case scc.email != "":
 		email = scc.email
-	} else {
-		return fmt.Errorf("Email is required. Pass --email your@email.com\nUse --from-git to infer from git config user.email.")
+	default:
+		return fmt.Errorf("email is required, pass --email your@email.com or use --from-git to infer from git config user.email")
 	}
 
 	var name string
@@ -353,10 +354,6 @@ func (slc *sandboxLsCmd) runSandboxLsCmd(cmd *cobra.Command, args []string) erro
 	}
 
 	return nil
-}
-
-func shouldFallbackToDashboard(err error) bool {
-	return err != nil
 }
 
 func isSSHSession() bool {

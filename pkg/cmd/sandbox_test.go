@@ -134,7 +134,7 @@ func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Email is required")
+	assert.Contains(t, err.Error(), "email is required")
 }
 
 func TestSandboxCreateCmd_FromGitResolves(t *testing.T) {
@@ -262,7 +262,6 @@ func TestSandboxCreateCmd_ProvisionFlow_FallsBackOnServerError(t *testing.T) {
 	assert.Contains(t, stderr.String(), "Falling back to browser login")
 	assert.Contains(t, stderr.String(), `Connected to "Test Corp"`)
 }
-
 
 func TestSandboxCreateCmd_FallsBackOn429(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
