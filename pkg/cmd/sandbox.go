@@ -104,9 +104,9 @@ work immediately.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	// If already logged in (any test key configured), redirect to dashboard.
-	// Design: one sandbox at a time. To get a fresh one, user should log out
-	// first (stripe logout) or claim the existing sandbox.
+	// If already configured, redirect to dashboard. We never overwrite
+	// existing keys — one sandbox at a time. To provision a new one, user
+	// must stripe logout first or claim the existing sandbox.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" {
 		sandboxURL := scc.dashboardURL + "/test/sandboxes"
@@ -298,7 +298,8 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 }
 
 // saveSandboxToConfig writes the provisioned sandbox keys to the current
-// profile. One sandbox at a time — creating a new one overwrites the old.
+// profile. Only called when no keys exist (the already-configured check
+// ensures we never overwrite).
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
