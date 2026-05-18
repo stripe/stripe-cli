@@ -307,13 +307,21 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 
 	profileName := result.AccountID
 	if profileName == "" {
+		profileName = result.MerchantToken
+	}
+	if profileName == "" {
 		profileName = "sandbox"
 	}
 
 	// Create the new profile with sandbox keys
+	accountID := result.AccountID
+	if accountID == "" {
+		accountID = result.MerchantToken
+	}
+
 	Config.Profile.ProfileName = profileName
 	Config.Profile.DisplayName = profileName
-	Config.Profile.AccountID = result.AccountID
+	Config.Profile.AccountID = accountID
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
 	if err := Config.Profile.CreateProfile(); err != nil {
@@ -333,6 +341,9 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	if err := Config.WriteConfigField("project-name", profileName); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not switch active project: %v\n", err)
 	}
+
+	fmt.Fprintf(os.Stderr, "Switched active project to %q.\n", profileName)
+	fmt.Fprintf(os.Stderr, "To switch back: stripe config --set project-name default\n")
 
 	return nil
 }
