@@ -133,7 +133,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	// This gives the user a temporary sandbox without any browser interaction.
 	result, err := scc.runProvisionFlow(cmd, color, email, name)
 	if err != nil {
-		// Don't fallback if the user cancelled (Ctrl+C) or the context expired.
+		// Don't fallback if the user canceled (Ctrl+C) or the context expired.
 		// Only fallback on server/network errors — the user intentionally interrupted.
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return err
@@ -312,7 +312,6 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 
 	// Create the new profile with sandbox keys
 	Config.Profile.ProfileName = profileName
-	Config.Profile.DeviceName = Config.Profile.DeviceName
 	Config.Profile.DisplayName = profileName
 	Config.Profile.AccountID = result.AccountID
 	Config.Profile.TestModeAPIKey = secretKey
