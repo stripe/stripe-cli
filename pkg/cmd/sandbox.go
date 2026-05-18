@@ -109,7 +109,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	// must stripe logout first or claim the existing sandbox.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" {
-		sandboxURL := scc.dashboardURL + "/test/sandboxes"
+		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "Already configured. Opening sandbox management page...\n")
 		fmt.Fprintf(cmd.ErrOrStderr(), "  %s\n", sandboxURL)
 		if canOpenBrowserFunc() {
@@ -127,6 +127,8 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	var name string
 	if scc.name != "" {
 		name = scc.name
+	} else if scc.fromGit {
+		name = sandbox.GitConfigFunc("user.name")
 	}
 
 	// Primary path: proof-of-work provisioning against developer-ai-srv.
@@ -143,8 +145,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// stripe login infrastructure (POST /stripecli/auth + polling).
 		// Any server-side failure (429, 500, network) triggers this path
 		// so the user always has a way to get keys.
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nProvisioning failed: %v\n", err)
-		fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Falling back to browser login..."))
+		fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("\nOpening browser to set up your account..."))
 		return scc.runDashboardFlow(cmd, color, email)
 	}
 
@@ -181,16 +182,10 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 		return nil, err
 	}
 
-	fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("Solving proof-of-work..."))
-	start := time.Now()
-
 	solution, err := sandbox.SolveChallenge(cmd.Context(), challengeResp.Algorithm, challengeResp.Challenge, challengeResp.Salt)
 	if err != nil {
 		return nil, err
 	}
-
-	elapsed := time.Since(start)
-	fmt.Fprintf(cmd.ErrOrStderr(), "Solved in %s\n", elapsed.Round(time.Millisecond))
 
 	provisionReq := sandbox.ProvisionRequest{
 		Algorithm: challengeResp.Algorithm,

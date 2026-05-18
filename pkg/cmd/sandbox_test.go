@@ -271,7 +271,7 @@ func TestSandboxCreateCmd_ProvisionFlow_FallsBackOnServerError(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "Falling back to browser login")
+	assert.Contains(t, stderr.String(), "Opening browser to set up your account")
 	assert.Contains(t, stderr.String(), `Connected to "Test Corp"`)
 }
 
@@ -302,7 +302,7 @@ func TestSandboxCreateCmd_FallsBackOn429(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "Falling back to browser login")
+	assert.Contains(t, stderr.String(), "Opening browser to set up your account")
 }
 
 func TestSandboxCreateCmd_FallbackBlockedInSSH(t *testing.T) {
@@ -348,7 +348,7 @@ func TestSandboxCreateCmd_AlreadyLoggedIn(t *testing.T) {
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
 	assert.Contains(t, stderr.String(), "Already configured")
-	assert.Contains(t, openedURL, "/test/sandboxes")
+	assert.Contains(t, openedURL, "/sandboxes")
 }
 
 func TestSandboxCreateCmd_FallbackPreFillsEmail(t *testing.T) {
