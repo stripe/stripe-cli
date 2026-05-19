@@ -77,6 +77,14 @@ func (r *ProvisionResponse) GetSecretKey() string {
 	return r.SecretKey
 }
 
+// GetAccountID returns the account identifier from whichever field the server populated.
+func (r *ProvisionResponse) GetAccountID() string {
+	if r.AccountID != "" {
+		return r.AccountID
+	}
+	return r.MerchantToken
+}
+
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client

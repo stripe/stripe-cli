@@ -252,7 +252,7 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 		SecretKey:      result.GetSecretKey(),
 		PublishableKey: result.PublishableKey,
 		ClaimURL:       result.ClaimURL,
-		AccountID:      result.MerchantToken,
+		AccountID:      result.GetAccountID(),
 	}
 	out, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
@@ -277,10 +277,7 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		return fmt.Errorf("no secret key in server response")
 	}
 
-	accountID := result.AccountID
-	if accountID == "" {
-		accountID = result.MerchantToken
-	}
+	accountID := result.GetAccountID()
 
 	// Back up current profile before overwriting (preserves old sandboxes)
 	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
