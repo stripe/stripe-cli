@@ -62,20 +62,46 @@ type ProvisionRequest struct {
 }
 
 type ProvisionResponse struct {
-	SecretKey      string `json:"secret_key"`
-	RestrictedKey  string `json:"restricted_key"`
-	PublishableKey string `json:"publishable_key"`
-	ClaimURL       string `json:"claim_url,omitempty"`
-	ExpiresAt      string `json:"expires_at,omitempty"`
-	AccountID      string `json:"account_id,omitempty"`
-	MerchantToken  string `json:"merchant_token,omitempty"`
+	SecretKey      string      `json:"secret_key"`
+	PublishableKey string      `json:"publishable_key"`
+	ClaimURL       string      `json:"claim_url,omitempty"`
+	ExpiresAt      interface{} `json:"expires_at,omitempty"`
+	AccountID      string      `json:"account_id,omitempty"`
+	MerchantToken  string      `json:"merchant_token,omitempty"`
 }
 
-// GetSecretKey returns whichever key the server provided.
-func (r *ProvisionResponse) GetSecretKey() string {
-	if r.RestrictedKey != "" {
-		return r.RestrictedKey
+// UnmarshalJSON handles the server returning the key as either
+// "secret_key" or "restricted_key".
+func (r *ProvisionResponse) UnmarshalJSON(data []byte) error {
+	type Alias ProvisionResponse
+	aux := &struct {
+		*Alias
+		RestrictedKey string `json:"restricted_key"`
+	}{Alias: (*Alias)(r)}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
 	}
+	if r.SecretKey == "" && aux.RestrictedKey != "" {
+		r.SecretKey = aux.RestrictedKey
+	}
+	return nil
+}
+
+// GetExpiresAt returns the expiry as a string regardless of whether
+// the server sent it as a string or number (unix timestamp).
+func (r *ProvisionResponse) GetExpiresAt() string {
+	switch v := r.ExpiresAt.(type) {
+	case string:
+		return v
+	case float64:
+		return time.Unix(int64(v), 0).UTC().Format(time.RFC3339)
+	default:
+		return ""
+	}
+}
+
+// GetSecretKey returns the secret key.
+func (r *ProvisionResponse) GetSecretKey() string {
 	return r.SecretKey
 }
 

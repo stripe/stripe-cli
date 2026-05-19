@@ -298,8 +298,8 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	if result.ClaimURL != "" {
 		Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
 	}
-	if result.ExpiresAt != "" {
-		Config.Profile.WriteConfigField("sandbox_expires_at", result.ExpiresAt)
+	if expiresAt := result.GetExpiresAt(); expiresAt != "" {
+		Config.Profile.WriteConfigField("sandbox_expires_at", expiresAt)
 	}
 
 	return nil
