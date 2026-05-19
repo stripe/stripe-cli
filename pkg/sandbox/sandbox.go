@@ -155,13 +155,13 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 	}
 	defer resp.Body.Close()
 
-	requestID := getRequestID(resp)
+	actionID := getActionID(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		httpErr := readErrorResponse(resp)
 		log.WithFields(log.Fields{
 			"status":     resp.StatusCode,
-			"request_id": requestID,
+			"action_id": actionID,
 			"error":      httpErr,
 		}).Debug("sandbox: challenge returned non-200")
 		return nil, httpErr
@@ -177,7 +177,7 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 	}
 
 	log.WithFields(log.Fields{
-		"request_id": requestID,
+		"action_id": actionID,
 		"algorithm":  challenge.Algorithm,
 	}).Debug("sandbox: challenge succeeded")
 
@@ -199,13 +199,13 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 	}
 	defer resp.Body.Close()
 
-	requestID := getRequestID(resp)
+	actionID := getActionID(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		httpErr := readErrorResponse(resp)
 		log.WithFields(log.Fields{
 			"status":     resp.StatusCode,
-			"request_id": requestID,
+			"action_id": actionID,
 			"error":      httpErr,
 		}).Debug("sandbox: provision returned non-200")
 		return nil, httpErr
@@ -217,7 +217,7 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 	}
 
 	log.WithFields(log.Fields{
-		"request_id": requestID,
+		"action_id": actionID,
 		"account_id": provision.GetAccountID(),
 	}).Debug("sandbox: provision succeeded")
 
@@ -265,13 +265,8 @@ func readErrorResponse(resp *http.Response) error {
 	return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 }
 
-func getRequestID(resp *http.Response) string {
-	for _, header := range []string{"Stripe-Action-Id", "Request-Id", "X-Request-Id"} {
-		if v := resp.Header.Get(header); v != "" {
-			return v
-		}
-	}
-	return ""
+func getActionID(resp *http.Response) string {
+	return resp.Header.Get("Stripe-Action-Id")
 }
 
 // SolveChallenge brute-forces the proof-of-work: finds n where SHA-256(salt + n) == challenge.
