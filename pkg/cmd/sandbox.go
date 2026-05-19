@@ -118,16 +118,6 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		return nil
 	}
 
-	// If an existing sandbox key exists, copy the current profile to a named
-	// backup (by account ID) before overwriting, so old sandboxes remain
-	// accessible via --project-name.
-	if existingKey != "" && strings.HasPrefix(existingKey, "rkcs_") {
-		existingAccountID, _ := Config.Profile.GetAccountID()
-		if existingAccountID != "" {
-			Config.CopyProfile(Config.Profile.ProfileName, existingAccountID)
-		}
-	}
-
 	// Resolve email — --email and --from-git are mutually exclusive.
 	email, err := scc.resolveEmail(cmd)
 	if err != nil {
@@ -279,9 +269,8 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	return nil
 }
 
-// saveSandboxToConfig writes the provisioned sandbox keys to the current
-// profile. Only called when no keys exist (the already-configured check
-// ensures we never overwrite).
+// saveSandboxToConfig backs up the current profile (if any) and writes
+// the provisioned sandbox keys. Same pattern as SaveLoginDetails.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
@@ -292,6 +281,9 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	if accountID == "" {
 		accountID = result.MerchantToken
 	}
+
+	// Back up current profile before overwriting (preserves old sandboxes)
+	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
 
 	Config.Profile.TestModeAPIKey = secretKey
 	Config.Profile.TestModePublishableKey = result.PublishableKey
