@@ -157,9 +157,9 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 	if resp.StatusCode != http.StatusOK {
 		httpErr := readErrorResponse(resp)
 		log.WithFields(log.Fields{
-			"status":     resp.StatusCode,
+			"status":    resp.StatusCode,
 			"action_id": actionID,
-			"error":      httpErr,
+			"error":     httpErr,
 		}).Debug("sandbox: challenge returned non-200")
 		return nil, httpErr
 	}
@@ -175,7 +175,7 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 
 	log.WithFields(log.Fields{
 		"action_id": actionID,
-		"algorithm":  challenge.Algorithm,
+		"algorithm": challenge.Algorithm,
 	}).Debug("sandbox: challenge succeeded")
 
 	return &challenge, nil
@@ -201,9 +201,9 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 	if resp.StatusCode != http.StatusOK {
 		httpErr := readErrorResponse(resp)
 		log.WithFields(log.Fields{
-			"status":     resp.StatusCode,
+			"status":    resp.StatusCode,
 			"action_id": actionID,
-			"error":      httpErr,
+			"error":     httpErr,
 		}).Debug("sandbox: provision returned non-200")
 		return nil, httpErr
 	}
@@ -214,7 +214,7 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 	}
 
 	log.WithFields(log.Fields{
-		"action_id": actionID,
+		"action_id":  actionID,
 		"account_id": provision.GetAccountID(),
 	}).Debug("sandbox: provision succeeded")
 
