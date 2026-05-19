@@ -101,9 +101,12 @@ func (r *ProvisionResponse) GetExpiresAt() string {
 	}
 	switch val := v.(type) {
 	case string:
+		if t, err := time.Parse(time.RFC3339, val); err == nil {
+			return t.Format("2006-01-02")
+		}
 		return val
 	case float64:
-		return time.Unix(int64(val), 0).UTC().Format(time.RFC3339)
+		return time.Unix(int64(val), 0).UTC().Format("2006-01-02")
 	default:
 		return ""
 	}

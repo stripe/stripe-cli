@@ -241,10 +241,10 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 	assert.Equal(t, "sk_test_sandbox", result.GetSecretKey())
 	assert.Equal(t, "pk_test_sandbox", result.GetPublishableKey())
 	assert.Equal(t, "acct_sandbox_123", result.GetAccountID())
-	assert.Equal(t, "2026-05-10T00:00:00Z", result.GetExpiresAt())
+	assert.Equal(t, "2026-05-10", result.GetExpiresAt())
 	assert.Contains(t, stderr.String(), "Provisioned!")
 	assert.Contains(t, stderr.String(), "claim your sandbox")
-	assert.Contains(t, stderr.String(), "2026-05-10T00:00:00Z")
+	assert.Contains(t, stderr.String(), "2026-05-10")
 }
 
 func TestSandboxCreateCmd_ProvisionFlow_FallsBackOnServerError(t *testing.T) {
