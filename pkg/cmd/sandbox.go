@@ -141,8 +141,16 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	default:
 		// Active claimable sandbox that hasn't expired. Show existing keys
 		// and claim URL — one sandbox at a time.
+		pubKey, _ := Config.Profile.GetPublishableKey(false)
+		accountID, _ := Config.Profile.GetAccountID()
 		fmt.Fprintf(cmd.ErrOrStderr(), "You already have an active sandbox.\n\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "Secret key: %s\n", existingKey)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Secret key:      %s\n", existingKey)
+		if pubKey != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Publishable key: %s\n", pubKey)
+		}
+		if accountID != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Account ID:      %s\n", accountID)
+		}
 		claimURL := viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
 		if claimURL != "" {
 			fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", claimURL)
