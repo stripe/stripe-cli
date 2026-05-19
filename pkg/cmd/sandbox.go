@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
 	"net/url"
 	"os"
 	"strings"
@@ -111,10 +112,13 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	if existingKey != "" && !strings.HasPrefix(existingKey, "rkcs_") {
 		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "Already logged in.\n\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", sandboxURL)
-		fmt.Scanln()
 		if canOpenBrowserFunc() {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", sandboxURL)
+			buf := make([]byte, 1)
+			cmd.InOrStdin().Read(buf)
 			openBrowserFunc(sandboxURL)
+		} else {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Visit %s\n", sandboxURL)
 		}
 		return nil
 	}
@@ -161,6 +165,7 @@ func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 		return "", fmt.Errorf("--email and --from-git are mutually exclusive")
 	}
 
+	var email string
 	switch {
 	case scc.fromGit:
 		gitEmail := sandbox.GitConfigFunc("user.email")
@@ -168,12 +173,17 @@ func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 			return "", fmt.Errorf("--from-git requires git config user.email to be set, but it was not found")
 		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "Using email: %s (from git config)\n", gitEmail)
-		return gitEmail, nil
+		email = gitEmail
 	case scc.email != "":
-		return scc.email, nil
+		email = scc.email
 	default:
 		return "", fmt.Errorf("email is required, pass --email your@email.com or use --from-git to infer from git config user.email")
 	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return "", fmt.Errorf("invalid email %q: %w", email, err)
+	}
+	return email, nil
 }
 
 func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.Aurora, email, name string) (*sandbox.ProvisionResponse, error) {
@@ -184,10 +194,13 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 		return nil, err
 	}
 
+	fmt.Fprint(cmd.ErrOrStderr(), "Setting up your sandbox...")
 	solution, err := sandbox.SolveChallenge(cmd.Context(), challengeResp.Algorithm, challengeResp.Challenge, challengeResp.Salt)
 	if err != nil {
+		fmt.Fprintln(cmd.ErrOrStderr())
 		return nil, err
 	}
+	fmt.Fprintln(cmd.ErrOrStderr(), " done.")
 
 	provisionReq := sandbox.ProvisionRequest{
 		Algorithm: challengeResp.Algorithm,

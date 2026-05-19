@@ -247,7 +247,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body []byte
 }
 
 func readErrorResponse(resp *http.Response) error {
-	body, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 }
 
