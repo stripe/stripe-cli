@@ -266,7 +266,7 @@ func readErrorResponse(resp *http.Response) error {
 }
 
 func getRequestID(resp *http.Response) string {
-	for _, header := range []string{"Request-Id", "X-Request-Id", "X-Envoy-Request-Id"} {
+	for _, header := range []string{"Stripe-Action-Id", "Request-Id", "X-Request-Id"} {
 		if v := resp.Header.Get(header); v != "" {
 			return v
 		}
