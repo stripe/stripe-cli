@@ -3,6 +3,9 @@ package plugins
 import (
 	"context"
 	"fmt"
+	"runtime"
+	"sync"
+	"time"
 
 	"github.com/99designs/keyring"
 	"github.com/spf13/afero"
@@ -154,6 +157,70 @@ type coreCLIHelper struct {
 
 var _ CoreCLIHelper = &coreCLIHelper{}
 
+type pendingKeychainValue struct {
+	value     string
+	expiresAt time.Time
+}
+
+var (
+	keychainVisibilityRetryTimeout  = 1500 * time.Millisecond
+	keychainVisibilityRetryEnabled  = runtime.GOOS == "darwin"
+	keychainVisibilityNow           = time.Now
+	keychainVisibilityPendingMu     sync.Mutex
+	keychainVisibilityPendingValues = map[string]pendingKeychainValue{}
+)
+
+func readKeychainPassword(key string) (string, bool, error) {
+	item, err := config.KeyRing.Get(key)
+	if err == nil {
+		return string(item.Data), true, nil
+	}
+	if err == keyring.ErrKeyNotFound {
+		return "", false, nil
+	}
+	return "", false, err
+}
+
+func rememberPendingKeychainValue(key string, value string) {
+	if !keychainVisibilityRetryEnabled {
+		return
+	}
+
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+
+	keychainVisibilityPendingValues[key] = pendingKeychainValue{
+		value:     value,
+		expiresAt: keychainVisibilityNow().Add(keychainVisibilityRetryTimeout),
+	}
+}
+
+func pendingKeychainValueFor(key string) (string, bool) {
+	if !keychainVisibilityRetryEnabled {
+		return "", false
+	}
+
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+
+	pending, ok := keychainVisibilityPendingValues[key]
+	if !ok {
+		return "", false
+	}
+	if !keychainVisibilityNow().Before(pending.expiresAt) {
+		delete(keychainVisibilityPendingValues, key)
+		return "", false
+	}
+
+	return pending.value, true
+}
+
+func clearPendingKeychainValue(key string) {
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+	delete(keychainVisibilityPendingValues, key)
+}
+
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
 	return &coreCLIHelper{ctx: ctx, config: cfg, fs: fs}
@@ -181,27 +248,41 @@ func (h *coreCLIHelper) SendAnalytics(eventName string, eventValue string) error
 
 // KeychainGetPassword retrieves a password from the system keychain.
 func (h *coreCLIHelper) KeychainGetPassword(key string) (string, bool, error) {
-	item, err := config.KeyRing.Get(key)
-	if err == keyring.ErrKeyNotFound {
-		return "", false, nil
-	}
+	value, found, err := readKeychainPassword(key)
 	if err != nil {
 		return "", false, err
 	}
-	return string(item.Data), true, nil
+
+	pendingValue, hasPendingValue := pendingKeychainValueFor(key)
+	switch {
+	case hasPendingValue && found && value == pendingValue:
+		clearPendingKeychainValue(key)
+		return value, true, nil
+	case hasPendingValue:
+		return pendingValue, true, nil
+	default:
+		return value, found, nil
+	}
 }
 
 // KeychainSetPassword stores a password in the system keychain.
 func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
-	return config.KeyRing.Set(keyring.Item{
+	if err := config.KeyRing.Set(keyring.Item{
 		Key:   key,
 		Data:  []byte(value),
 		Label: key,
-	})
+	}); err != nil {
+		return err
+	}
+
+	rememberPendingKeychainValue(key, value)
+	return nil
 }
 
 // KeychainDeletePassword removes a password from the system keychain.
 func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
+	clearPendingKeychainValue(key)
+
 	existingKeys, err := config.KeyRing.Keys()
 	if err != nil {
 		return false, err
