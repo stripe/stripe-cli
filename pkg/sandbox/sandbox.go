@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -144,14 +146,25 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 		return nil, err
 	}
 
+	log.Debugf("sandbox: POST /keys/challenge email=%s", email)
+
 	resp, err := c.doRequest(ctx, http.MethodPost, "/keys/challenge", body)
 	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Debug("sandbox: challenge request failed")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	requestID := resp.Header.Get("X-Request-Id")
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, readErrorResponse(resp)
+		httpErr := readErrorResponse(resp)
+		log.WithFields(log.Fields{
+			"status":     resp.StatusCode,
+			"request_id": requestID,
+			"error":      httpErr,
+		}).Debug("sandbox: challenge returned non-200")
+		return nil, httpErr
 	}
 
 	var challenge ChallengeResponse
@@ -163,6 +176,11 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 		return nil, fmt.Errorf("invalid challenge response: missing algorithm or challenge")
 	}
 
+	log.WithFields(log.Fields{
+		"request_id": requestID,
+		"algorithm":  challenge.Algorithm,
+	}).Debug("sandbox: challenge succeeded")
+
 	return &challenge, nil
 }
 
@@ -172,20 +190,36 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 		return nil, err
 	}
 
+	log.Debugf("sandbox: POST /keys/provision email=%s", req.Email)
+
 	resp, err := c.doRequest(ctx, http.MethodPost, "/keys/provision", body)
 	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Debug("sandbox: provision request failed")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	requestID := resp.Header.Get("X-Request-Id")
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, readErrorResponse(resp)
+		httpErr := readErrorResponse(resp)
+		log.WithFields(log.Fields{
+			"status":     resp.StatusCode,
+			"request_id": requestID,
+			"error":      httpErr,
+		}).Debug("sandbox: provision returned non-200")
+		return nil, httpErr
 	}
 
 	var provision ProvisionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&provision); err != nil {
 		return nil, fmt.Errorf("failed to decode provision response: %w", err)
 	}
+
+	log.WithFields(log.Fields{
+		"request_id": requestID,
+		"account_id": provision.GetAccountID(),
+	}).Debug("sandbox: provision succeeded")
 
 	return &provision, nil
 }

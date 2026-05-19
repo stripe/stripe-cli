@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/logrusorgru/aurora"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -145,6 +146,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// stripe login infrastructure (POST /stripecli/auth + polling).
 		// Any server-side failure (429, 500, network) triggers this path
 		// so the user always has a way to get keys.
+		log.WithFields(log.Fields{"error": err}).Debug("sandbox: provisioning failed, falling back to browser")
 		fmt.Fprintln(cmd.ErrOrStderr(), color.Yellow("\nOpening browser to set up your account..."))
 		return scc.runDashboardFlow(cmd, color, email)
 	}
