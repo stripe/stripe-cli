@@ -12,8 +12,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -114,39 +112,14 @@ func (r *ProvisionResponse) GetExpiresAt() string {
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
-	useProxy   bool
-}
-
-// stripeProxySocket returns the path to the Stripe proxy Unix socket if it exists.
-func stripeProxySocket() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	sock := home + "/.stripeproxy"
-	if _, err := os.Stat(sock); err == nil {
-		return sock
-	}
-	return ""
 }
 
 func NewClient(baseURL string) *Client {
-	sock := stripeProxySocket()
-	parsedBase, _ := url.Parse(baseURL)
-	if sock != "" && parsedBase != nil && parsedBase.Scheme == "https" {
-		return &Client{
-			BaseURL:  baseURL,
-			useProxy: true,
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-						return (&net.Dialer{Timeout: 30 * time.Second}).DialContext(ctx, "unix", sock)
-					},
-					ResponseHeaderTimeout: 30 * time.Second,
-				},
-			},
-		}
+	// Normalize: add https:// if no scheme, ensure trailing slash doesn't matter
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		baseURL = "https://" + baseURL
 	}
+	baseURL = strings.TrimRight(baseURL, "/")
 
 	return &Client{
 		BaseURL: baseURL,
@@ -249,21 +222,7 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 }
 
 func (c *Client) doRequest(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
-	u, err := url.Parse(c.BaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid base URL: %w", err)
-	}
-
-	ref, err := url.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// When using the Unix socket proxy, switch to http:// — the proxy handles TLS.
-	if c.useProxy {
-		u.Scheme = "http"
-	}
-	fullURL := u.ResolveReference(ref).String()
+	fullURL := c.BaseURL + path
 
 	var reqBody io.Reader
 	if body != nil {
