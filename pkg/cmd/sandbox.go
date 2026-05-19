@@ -252,8 +252,8 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 		AccountID      string `json:"account_id,omitempty"`
 	}{
 		SecretKey:      result.GetSecretKey(),
-		PublishableKey: result.PublishableKey,
-		ClaimURL:       result.ClaimURL,
+		PublishableKey: result.GetPublishableKey(),
+		ClaimURL:       result.GetClaimURL(),
 		AccountID:      result.GetAccountID(),
 	}
 	out, err := json.MarshalIndent(output, "", "  ")
@@ -263,8 +263,8 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	fmt.Fprintln(cmd.OutOrStdout(), string(out))
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s Use the keys above to start building your integration.\n", color.Green("Provisioned!"))
-	if result.ClaimURL != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", result.ClaimURL)
+	if result.GetClaimURL() != "" {
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", result.GetClaimURL())
 		fmt.Fprintf(cmd.ErrOrStderr(), "Expires in 7 days.\n")
 	}
 
@@ -285,7 +285,7 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
 
 	Config.Profile.TestModeAPIKey = secretKey
-	Config.Profile.TestModePublishableKey = result.PublishableKey
+	Config.Profile.TestModePublishableKey = result.GetPublishableKey()
 	if accountID != "" {
 		Config.Profile.AccountID = accountID
 		Config.Profile.DisplayName = accountID
@@ -295,8 +295,8 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	}
 
 	// Write sandbox-specific metadata (non-fatal if these fail)
-	if result.ClaimURL != "" {
-		Config.Profile.WriteConfigField("sandbox_claim_url", result.ClaimURL)
+	if result.GetClaimURL() != "" {
+		Config.Profile.WriteConfigField("sandbox_claim_url", result.GetClaimURL())
 	}
 	if expiresAt := result.GetExpiresAt(); expiresAt != "" {
 		Config.Profile.WriteConfigField("sandbox_expires_at", expiresAt)

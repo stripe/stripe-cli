@@ -61,56 +61,54 @@ type ProvisionRequest struct {
 	Name      string `json:"name,omitempty"`
 }
 
+// ProvisionResponse wraps the server response loosely so field additions
+// or type changes don't break the CLI.
 type ProvisionResponse struct {
-	SecretKey      string      `json:"secret_key"`
-	PublishableKey string      `json:"publishable_key"`
-	ClaimURL       string      `json:"claim_url,omitempty"`
-	ExpiresAt      interface{} `json:"expires_at,omitempty"`
-	AccountID      string      `json:"account_id,omitempty"`
-	MerchantToken  string      `json:"merchant_token,omitempty"`
+	raw map[string]interface{}
 }
 
-// UnmarshalJSON handles the server returning the key as either
-// "secret_key" or "restricted_key".
 func (r *ProvisionResponse) UnmarshalJSON(data []byte) error {
-	type Alias ProvisionResponse
-	aux := &struct {
-		*Alias
-		RestrictedKey string `json:"restricted_key"`
-	}{Alias: (*Alias)(r)}
-	if err := json.Unmarshal(data, aux); err != nil {
-		return err
-	}
-	if r.SecretKey == "" && aux.RestrictedKey != "" {
-		r.SecretKey = aux.RestrictedKey
-	}
-	return nil
+	return json.Unmarshal(data, &r.raw)
 }
 
-// GetExpiresAt returns the expiry as a string regardless of whether
-// the server sent it as a string or number (unix timestamp).
+func (r *ProvisionResponse) getString(keys ...string) string {
+	for _, k := range keys {
+		if v, ok := r.raw[k].(string); ok && v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func (r *ProvisionResponse) GetSecretKey() string {
+	return r.getString("restricted_key", "secret_key")
+}
+
+func (r *ProvisionResponse) GetPublishableKey() string {
+	return r.getString("publishable_key")
+}
+
+func (r *ProvisionResponse) GetClaimURL() string {
+	return r.getString("claim_url")
+}
+
+func (r *ProvisionResponse) GetAccountID() string {
+	return r.getString("account_id", "merchant_token")
+}
+
 func (r *ProvisionResponse) GetExpiresAt() string {
-	switch v := r.ExpiresAt.(type) {
+	v, ok := r.raw["expires_at"]
+	if !ok {
+		return ""
+	}
+	switch val := v.(type) {
 	case string:
-		return v
+		return val
 	case float64:
-		return time.Unix(int64(v), 0).UTC().Format(time.RFC3339)
+		return time.Unix(int64(val), 0).UTC().Format(time.RFC3339)
 	default:
 		return ""
 	}
-}
-
-// GetSecretKey returns the secret key.
-func (r *ProvisionResponse) GetSecretKey() string {
-	return r.SecretKey
-}
-
-// GetAccountID returns the account identifier from whichever field the server populated.
-func (r *ProvisionResponse) GetAccountID() string {
-	if r.AccountID != "" {
-		return r.AccountID
-	}
-	return r.MerchantToken
 }
 
 type Client struct {

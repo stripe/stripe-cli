@@ -158,12 +158,12 @@ func TestClient_GetChallenge_MissingFields(t *testing.T) {
 }
 
 func TestClient_Provision_Success(t *testing.T) {
-	expected := &ProvisionResponse{
-		SecretKey:      "sk_test_abc123",
-		PublishableKey: "pk_test_xyz789",
-		ClaimURL:       "https://dashboard.stripe.com/claim_sandbox/token",
-		ExpiresAt:      "2026-04-25T03:19:09.000Z",
-		AccountID:      "acct_123",
+	serverResp := map[string]interface{}{
+		"secret_key":      "sk_test_abc123",
+		"publishable_key": "pk_test_xyz789",
+		"claim_url":       "https://dashboard.stripe.com/claim_sandbox/token",
+		"expires_at":      "2026-04-25T03:19:09.000Z",
+		"account_id":      "acct_123",
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +180,7 @@ func TestClient_Provision_Success(t *testing.T) {
 		assert.Equal(t, "salt", body.Salt)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(expected)
+		json.NewEncoder(w).Encode(serverResp)
 	}))
 	defer server.Close()
 
@@ -194,7 +194,10 @@ func TestClient_Provision_Success(t *testing.T) {
 		Email:     "test@example.com",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, expected, result)
+	assert.Equal(t, "sk_test_abc123", result.GetSecretKey())
+	assert.Equal(t, "pk_test_xyz789", result.GetPublishableKey())
+	assert.Equal(t, "https://dashboard.stripe.com/claim_sandbox/token", result.GetClaimURL())
+	assert.Equal(t, "acct_123", result.GetAccountID())
 }
 
 func TestClient_Provision_WithName(t *testing.T) {
@@ -204,7 +207,7 @@ func TestClient_Provision_WithName(t *testing.T) {
 		assert.Equal(t, "Test User", body.Name)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(ProvisionResponse{SecretKey: "sk_test_x"})
+		json.NewEncoder(w).Encode(map[string]string{"secret_key": "sk_test_x"})
 	}))
 	defer server.Close()
 
@@ -224,7 +227,7 @@ func TestClient_Provision_NameOmittedWhenEmpty(t *testing.T) {
 		assert.False(t, hasName, "name field should be omitted when empty")
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(ProvisionResponse{SecretKey: "sk_test_x"})
+		json.NewEncoder(w).Encode(map[string]string{"secret_key": "sk_test_x"})
 	}))
 	defer server.Close()
 
@@ -290,12 +293,12 @@ func TestClient_FullFlow(t *testing.T) {
 			}
 			assert.Equal(t, "test-sig", req.Signature)
 			assert.Equal(t, "user@example.com", req.Email)
-			json.NewEncoder(w).Encode(ProvisionResponse{
-				SecretKey:      "sk_test_provisioned",
-				PublishableKey: "pk_test_provisioned",
-				ClaimURL:       "https://dashboard.stripe.com/claim_sandbox/abc",
-				ExpiresAt:      "2026-05-10T00:00:00Z",
-				AccountID:      "acct_test_123",
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"secret_key":      "sk_test_provisioned",
+				"publishable_key": "pk_test_provisioned",
+				"claim_url":       "https://dashboard.stripe.com/claim_sandbox/abc",
+				"expires_at":      "2026-05-10T00:00:00Z",
+				"account_id":      "acct_test_123",
 			})
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -321,7 +324,7 @@ func TestClient_FullFlow(t *testing.T) {
 		Email:     "user@example.com",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "sk_test_provisioned", result.SecretKey)
-	assert.Equal(t, "pk_test_provisioned", result.PublishableKey)
-	assert.Equal(t, "acct_test_123", result.AccountID)
+	assert.Equal(t, "sk_test_provisioned", result.GetSecretKey())
+	assert.Equal(t, "pk_test_provisioned", result.GetPublishableKey())
+	assert.Equal(t, "acct_test_123", result.GetAccountID())
 }

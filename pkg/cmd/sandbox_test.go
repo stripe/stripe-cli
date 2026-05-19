@@ -82,12 +82,12 @@ func sandboxTestServer(t *testing.T, salt string, secretNumber int64, challenge 
 				fmt.Fprint(w, "invalid solution")
 				return
 			}
-			json.NewEncoder(w).Encode(sandbox.ProvisionResponse{
-				SecretKey:      "sk_test_sandbox",
-				PublishableKey: "pk_test_sandbox",
-				ClaimURL:       "https://dashboard.stripe.com/claim_sandbox/test",
-				ExpiresAt:      "2026-05-10T00:00:00Z",
-				AccountID:      "acct_sandbox_123",
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"secret_key":      "sk_test_sandbox",
+				"publishable_key": "pk_test_sandbox",
+				"claim_url":       "https://dashboard.stripe.com/claim_sandbox/test",
+				"expires_at":      "2026-05-10T00:00:00Z",
+				"account_id":      "acct_sandbox_123",
 			})
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -238,9 +238,9 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 
 	var result sandbox.ProvisionResponse
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
-	assert.Equal(t, "sk_test_sandbox", result.SecretKey)
-	assert.Equal(t, "pk_test_sandbox", result.PublishableKey)
-	assert.Equal(t, "acct_sandbox_123", result.AccountID)
+	assert.Equal(t, "sk_test_sandbox", result.GetSecretKey())
+	assert.Equal(t, "pk_test_sandbox", result.GetPublishableKey())
+	assert.Equal(t, "acct_sandbox_123", result.GetAccountID())
 	assert.Contains(t, stderr.String(), "Provisioned!")
 	assert.Contains(t, stderr.String(), "claim your sandbox")
 }
@@ -514,10 +514,9 @@ func TestSaveSandboxToConfig_EmptyKey(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
-	err := saveSandboxToConfig(&sandbox.ProvisionResponse{
-		SecretKey:      "",
-		PublishableKey: "pk_test_x",
-	})
+	var resp sandbox.ProvisionResponse
+	json.Unmarshal([]byte(`{"publishable_key":"pk_test_x"}`), &resp)
+	err := saveSandboxToConfig(&resp)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no secret key")
 }
