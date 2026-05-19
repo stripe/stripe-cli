@@ -9,11 +9,13 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -106,11 +108,15 @@ work immediately.`,
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	// If logged in with a real account key (sk_test_, rk_test_ from stripe login),
-	// redirect to dashboard. Sandbox creation requires starting from an empty
-	// profile — use `stripe logout` first if you need a fresh sandbox.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
-	if existingKey != "" && !strings.HasPrefix(existingKey, "rkcs_") {
+
+	switch {
+	case existingKey == "":
+		// No key — proceed to provision a new sandbox below.
+
+	case !isClaimableSandbox():
+		// Logged in with a real key (sk_test_, rk_test_ from stripe login).
+		// Direct to dashboard — sandbox creation requires an empty profile.
 		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "You're already authenticated; sandbox management is available in Dashboard.\n\n")
 		if canOpenBrowserFunc() {
@@ -120,6 +126,30 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 			openBrowserFunc(sandboxURL)
 		} else {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Visit %s\n", sandboxURL)
+		}
+		return nil
+
+	case isExpiredSandbox():
+		// Claimable sandbox has expired. Clear the stale config so the user
+		// can provision a fresh one or login with a claimed account.
+		clearExpiredSandboxProfile()
+		fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox session has expired.\n\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "Run `stripe login` to continue with a claimed sandbox,\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "or run `stripe sandbox create` again to create a new one.\n")
+		return nil
+
+	default:
+		// Active claimable sandbox that hasn't expired. Show existing keys
+		// and claim URL — one sandbox at a time.
+		fmt.Fprintf(cmd.ErrOrStderr(), "You already have an active sandbox.\n\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "Secret key: %s\n", existingKey)
+		claimURL := viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
+		if claimURL != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", claimURL)
+		}
+		expiresAt := viper.GetString(Config.Profile.GetConfigField("sandbox_expires_at"))
+		if expiresAt != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Expires: %s\n", expiresAt)
 		}
 		return nil
 	}
@@ -331,6 +361,44 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	}
 
 	return nil
+}
+
+// isClaimableSandbox returns true if the current profile looks like a
+// CLI-created claimable sandbox (not a real account from stripe login).
+func isClaimableSandbox() bool {
+	key, _ := Config.Profile.GetAPIKey(false)
+	if strings.HasPrefix(key, "rkcs_") {
+		return true
+	}
+	if viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url")) != "" {
+		return true
+	}
+	return viper.GetString(Config.Profile.GetConfigField("sandbox_expires_at")) != ""
+}
+
+// isExpiredSandbox returns true if the sandbox_expires_at date has passed.
+func isExpiredSandbox() bool {
+	expiresAt := viper.GetString(Config.Profile.GetConfigField("sandbox_expires_at"))
+	if expiresAt == "" {
+		return false
+	}
+	expiry, err := time.Parse("2006-01-02", expiresAt)
+	if err != nil {
+		return false
+	}
+	return time.Now().UTC().After(expiry)
+}
+
+// clearExpiredSandboxProfile removes sandbox-specific fields from the current
+// profile without affecting other profiles. Narrowly scoped — only clears
+// fields that sandbox create wrote.
+func clearExpiredSandboxProfile() {
+	Config.Profile.DeleteConfigField("test_mode_api_key")
+	Config.Profile.DeleteConfigField("test_mode_pub_key")
+	Config.Profile.DeleteConfigField("sandbox_claim_url")
+	Config.Profile.DeleteConfigField("sandbox_expires_at")
+	Config.Profile.DeleteConfigField("account_id")
+	Config.Profile.DeleteConfigField("display_name")
 }
 
 func isSSHSession() bool {

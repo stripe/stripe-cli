@@ -361,30 +361,17 @@ func TestSandboxCreateCmd_AlreadyLoggedIn_WithRealKey(t *testing.T) {
 	assert.Contains(t, openedURL, "/sandboxes")
 }
 
-func TestSandboxCreateCmd_ExistingSandboxKeyAllowsReprovisioning(t *testing.T) {
+func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
-	t.Setenv("SSH_TTY", "")
-	t.Setenv("SSH_CONNECTION", "")
-	t.Setenv("SSH_CLIENT", "")
-
-	// Simulate having an existing sandbox key — should NOT redirect
+	// Simulate having an existing active sandbox key
 	Config.Profile.TestModeAPIKey = "rkcs_test_existing_sandbox"
 	Config.Profile.AccountID = "acct_old_sandbox"
 	Config.Profile.CreateProfile()
 
-	// Server returns 503 to trigger fallback
-	failServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}))
-	defer failServer.Close()
-
-	dashSrv := dashboardServer(t)
-	defer dashSrv.Close()
-
 	cmd := newSandboxCreateCmd()
-	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--base-url", failServer.URL, "--dashboard-base", dashSrv.URL})
+	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com"})
 
 	var stdout, stderr bytes.Buffer
 	cmd.cmd.SetOut(&stdout)
@@ -392,9 +379,11 @@ func TestSandboxCreateCmd_ExistingSandboxKeyAllowsReprovisioning(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	// Should NOT say "Already logged in" — sandbox keys allow re-provisioning
-	assert.NotContains(t, stderr.String(), "Already logged in")
-	assert.Contains(t, stderr.String(), "Opening browser to set up your account")
+	// Should show existing sandbox info, not provision a new one
+	assert.Contains(t, stderr.String(), "You already have an active sandbox")
+	assert.Contains(t, stderr.String(), "rkcs_test_existing_sandbox")
+	// Should NOT redirect to dashboard
+	assert.NotContains(t, stderr.String(), "already authenticated")
 }
 
 func TestSandboxCreateCmd_FromGitResolvesName(t *testing.T) {
