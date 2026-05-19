@@ -155,7 +155,7 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 	}
 	defer resp.Body.Close()
 
-	requestID := resp.Header.Get("X-Request-Id")
+	requestID := getRequestID(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		httpErr := readErrorResponse(resp)
@@ -199,7 +199,7 @@ func (c *Client) Provision(ctx context.Context, req ProvisionRequest) (*Provisio
 	}
 	defer resp.Body.Close()
 
-	requestID := resp.Header.Get("X-Request-Id")
+	requestID := getRequestID(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		httpErr := readErrorResponse(resp)
@@ -263,6 +263,15 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body []byte
 func readErrorResponse(resp *http.Response) error {
 	body, _ := io.ReadAll(resp.Body)
 	return &HTTPError{StatusCode: resp.StatusCode, Body: string(body)}
+}
+
+func getRequestID(resp *http.Response) string {
+	for _, header := range []string{"Request-Id", "X-Request-Id", "X-Envoy-Request-Id"} {
+		if v := resp.Header.Get(header); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // SolveChallenge brute-forces the proof-of-work: finds n where SHA-256(salt + n) == challenge.
