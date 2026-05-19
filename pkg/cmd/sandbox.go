@@ -250,11 +250,13 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 		PublishableKey string `json:"publishable_key"`
 		ClaimURL       string `json:"claim_url,omitempty"`
 		AccountID      string `json:"account_id,omitempty"`
+		ExpiresAt      string `json:"expires_at,omitempty"`
 	}{
 		SecretKey:      result.GetSecretKey(),
 		PublishableKey: result.GetPublishableKey(),
 		ClaimURL:       result.GetClaimURL(),
 		AccountID:      result.GetAccountID(),
+		ExpiresAt:      result.GetExpiresAt(),
 	}
 	out, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {
@@ -264,8 +266,14 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s Use the keys above to start building your integration.\n", color.Green("Provisioned!"))
 	if result.GetClaimURL() != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", result.GetClaimURL())
-		fmt.Fprintf(cmd.ErrOrStderr(), "Expires in 7 days.\n")
+		expiresAt := result.GetExpiresAt()
+		if expiresAt != "" {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", result.GetClaimURL())
+			fmt.Fprintf(cmd.ErrOrStderr(), "Expires: %s\n", expiresAt)
+		} else {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", result.GetClaimURL())
+			fmt.Fprintf(cmd.ErrOrStderr(), "Expires in 7 days.\n")
+		}
 	}
 
 	return nil
