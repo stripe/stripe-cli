@@ -54,5 +54,10 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		return profileErr
 	}
 
+	// Clear sandbox-specific fields that are no longer relevant after login.
+	// These may exist if the user previously provisioned a temporary sandbox.
+	c.cfg.Profile.DeleteConfigField("sandbox_claim_url")
+	c.cfg.Profile.DeleteConfigField("sandbox_expires_at")
+
 	return nil
 }

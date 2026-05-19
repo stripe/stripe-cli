@@ -245,14 +245,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	configurer := keys.NewRAKConfigurer(&Config, afero.NewOsFs())
 	transfer := keys.NewRAKTransfer(configurer)
 	authenticator := login.NewAuthenticator(transfer)
-	if err := authenticator.Login(cmd.Context(), links); err != nil {
-		return err
-	}
-
-	// Clear stale sandbox fields — the user now has a real account.
-	Config.Profile.DeleteConfigField("sandbox_claim_url")
-	Config.Profile.DeleteConfigField("sandbox_expires_at")
-	return nil
+	return authenticator.Login(cmd.Context(), links)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
