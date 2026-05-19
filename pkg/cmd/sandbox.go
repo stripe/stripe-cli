@@ -107,11 +107,12 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	color := ansi.Color(cmd.ErrOrStderr())
 
 	// If logged in with a real account key (sk_test_, rk_test_ from stripe login),
-	// redirect to dashboard.
+	// redirect to dashboard. Sandbox creation requires starting from an empty
+	// profile — use `stripe logout` first if you need a fresh sandbox.
 	existingKey, _ := Config.Profile.GetAPIKey(false)
 	if existingKey != "" && !strings.HasPrefix(existingKey, "rkcs_") {
 		sandboxURL := scc.dashboardURL + "/sandboxes"
-		fmt.Fprintf(cmd.ErrOrStderr(), "Already logged in.\n\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "You're already authenticated; sandbox management is available in Dashboard.\n\n")
 		if canOpenBrowserFunc() {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", sandboxURL)
 			buf := make([]byte, 1)
@@ -292,8 +293,12 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	return nil
 }
 
-// saveSandboxToConfig backs up the current profile (if any) and writes
-// the provisioned sandbox keys. Same pattern as SaveLoginDetails.
+// saveSandboxToConfig backs up the current profile and writes the new
+// sandbox keys. Uses the same CopyProfile pattern as SaveLoginDetails:
+// the current profile is copied to a backup named by its DisplayName
+// (the account ID), then the active profile is overwritten. Repeated
+// runs with the same sandbox produce the same backup name (no churn).
+// A new sandbox overwrites the backup with the new account ID.
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
@@ -302,7 +307,9 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 
 	accountID := result.GetAccountID()
 
-	// Back up current profile before overwriting (preserves old sandboxes)
+	// Back up current profile before overwriting. Uses DisplayName as the
+	// backup profile name — same behavior as SaveLoginDetails (line 38 of
+	// configurer.go). Idempotent: same display name = same backup target.
 	Config.CopyProfile(Config.Profile.ProfileName, Config.Profile.GetDisplayName())
 
 	Config.Profile.TestModeAPIKey = secretKey
