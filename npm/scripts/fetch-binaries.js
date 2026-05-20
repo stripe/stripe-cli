@@ -69,6 +69,7 @@ async function main() {
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
   console.log('\nDone.');
+  process.exit(0);
 }
 
 function download(url, dest) {
