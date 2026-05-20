@@ -36,6 +36,11 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
 	}
+	if !installedPluginSet["docs"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "docs", "Browse Stripe documentation and API reference.").Command,
+		)
+	}
 }
 
 // pluginHintCmd is a placeholder Cobra command registered when a known plugin
@@ -95,8 +100,8 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 	}
 
 	p.Command = &cobra.Command{
-		Use:    name,
-		Hidden: true,
+		Use:   name,
+		Short: description,
 		// Accept unknown flags/args so they aren't rejected before we can show the hint
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		RunE:               p.run,
@@ -119,6 +124,7 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return p.suggestNotAvailable()
 	}
 
+	fmt.Fprintf(p.stdout, "The \"%s\" plugin is not currently available. Run 'stripe plugin install %s' to try installing it manually.\n", p.name, p.name)
 	return nil
 }
 
