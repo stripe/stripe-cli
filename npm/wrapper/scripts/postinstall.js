@@ -44,6 +44,7 @@ async function main() {
   fs.unlinkSync(archivePath);
   fs.unlinkSync(checksumPath);
   console.log(`@stripe/cli: binary installed successfully.`);
+  process.exit(0);
 }
 
 main().catch(err => {
