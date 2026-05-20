@@ -371,11 +371,17 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 
 // isClaimableSandbox returns true if the current profile looks like a
 // CLI-created claimable sandbox (not a real account from stripe login).
+// Key prefix is authoritative — if the key is sk_test_ or rk_test_,
+// it's a real account regardless of leftover sandbox metadata.
 func isClaimableSandbox() bool {
 	key, _ := Config.Profile.GetAPIKey(false)
+	if key != "" && !strings.HasPrefix(key, "rkcs_") {
+		return false
+	}
 	if strings.HasPrefix(key, "rkcs_") {
 		return true
 	}
+	// No key — check metadata for partially-cleared sandbox state
 	if viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url")) != "" {
 		return true
 	}
