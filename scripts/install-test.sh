@@ -32,6 +32,19 @@ run_install() {
     docker)
     ;;
 
+    npm)
+        npm install -g @stripe/cli
+    ;;
+
+    npm-no-optional)
+        npm install -g @stripe/cli --no-optional
+    ;;
+
+    npx)
+        npx --yes @stripe/cli --version
+        exit $?
+    ;;
+
     *)
         echo "Error! Invalid package manager supplied"
         echo ""
