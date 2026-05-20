@@ -133,7 +133,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Claimable sandbox has expired. Clear the stale config so the user
 		// can provision a fresh one or login with a claimed account.
 		clearExpiredSandboxProfile()
-		fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox session has expired. Run `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
 		return nil
 
 	default:
