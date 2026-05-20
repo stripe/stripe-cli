@@ -48,14 +48,14 @@ func TestRun_PluginFound_CallsPromptInstall(t *testing.T) {
 	assert.Contains(t, p.output(), "The \"generate\" plugin is required")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_ReturnsNil(t *testing.T) {
+func TestRun_PluginNotFound_PrivatePreviewFalse_PrintsInstallHint(t *testing.T) {
 	p := newTestCmd("apps")
 	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
 
 	err := p.run(p.Command, nil)
 
 	require.NoError(t, err)
-	assert.Empty(t, p.output())
+	assert.Contains(t, p.output(), "stripe plugin install apps")
 }
 
 func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
