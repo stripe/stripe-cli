@@ -133,9 +133,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Claimable sandbox has expired. Clear the stale config so the user
 		// can provision a fresh one or login with a claimed account.
 		clearExpiredSandboxProfile()
-		fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox session has expired.\n\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "Run `stripe login` to continue with a claimed sandbox,\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "or run `stripe sandbox create` again to create a new one.\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox session has expired. Run `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
 		return nil
 
 	default:
@@ -390,9 +388,13 @@ func isExpiredSandbox() bool {
 	if expiresAt == "" {
 		return false
 	}
+	// Try date-only first, then RFC3339 (older sandboxes may have full timestamps)
 	expiry, err := time.Parse("2006-01-02", expiresAt)
 	if err != nil {
-		return false
+		expiry, err = time.Parse(time.RFC3339, expiresAt)
+		if err != nil {
+			return false
+		}
 	}
 	return time.Now().UTC().After(expiry)
 }
