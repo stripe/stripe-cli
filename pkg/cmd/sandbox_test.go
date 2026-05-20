@@ -357,7 +357,7 @@ func TestSandboxCreateCmd_AlreadyLoggedIn_WithRealKey(t *testing.T) {
 
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
-	assert.Contains(t, stderr.String(), "Already logged in")
+	assert.Contains(t, stderr.String(), "already authenticated")
 	assert.Contains(t, openedURL, "/sandboxes")
 }
 
