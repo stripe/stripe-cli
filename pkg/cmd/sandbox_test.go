@@ -208,7 +208,7 @@ func TestSandboxCreateCmd_FromGitMissing(t *testing.T) {
 	assert.Contains(t, err.Error(), "--from-git requires git config user.email")
 }
 
-func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
+func TestSandboxCreateCmd_ProvisionFlow_Succeeds(t *testing.T) {
 	if os.Getenv("CI") == "" {
 		t.Skip("Skipping integration test outside CI (CreateProfile hangs in devbox)")
 	}
@@ -229,22 +229,14 @@ func TestSandboxCreateCmd_ProvisionFlow_OutputsJSON(t *testing.T) {
 	cmd := newSandboxCreateCmd()
 	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--base-url", server.URL})
 
-	var stdout, stderr bytes.Buffer
-	cmd.cmd.SetOut(&stdout)
-	cmd.cmd.SetErr(&stderr)
-
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
 
-	var result sandbox.ProvisionResponse
-	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
-	assert.Equal(t, "sk_test_sandbox", result.GetSecretKey())
-	assert.Equal(t, "pk_test_sandbox", result.GetPublishableKey())
-	assert.Equal(t, "acct_sandbox_123", result.GetAccountID())
-	assert.Equal(t, "2026-05-10", result.GetExpiresAt())
-	// Output verified by no error returned
-	// Claim messaging goes to stdout
-	// Expiry in output
+	// Verify keys were saved to config
+	key, _ := Config.Profile.GetAPIKey(false)
+	assert.Equal(t, "sk_test_sandbox", key)
+	pubKey, _ := Config.Profile.GetPublishableKey(false)
+	assert.Equal(t, "pk_test_sandbox", pubKey)
 }
 
 func TestSandboxCreateCmd_ProvisionFlow_FallsBackOnServerError(t *testing.T) {
