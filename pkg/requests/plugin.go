@@ -32,6 +32,14 @@ var DefaultPluginData = PluginData{
 	AdditionalManifests: []string{},
 }
 
+func getPluginMetadataPath(apiKey string) string {
+	if apiKey == "" {
+		return "/v1/stripecli/plugins_metadata"
+	}
+
+	return "/v1/stripecli/get-plugin-metadata"
+}
+
 // GetPluginData returns the plugin download information
 func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) (PluginData, error) {
 	// If no API key is available, use hardcoded fallback values
@@ -68,11 +76,9 @@ func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, prof
 }
 
 // GetPluginMetadata returns plugin-specific manifest and binary information.
+// It uses the authenticated endpoint when an API key is available and the
+// anonymous endpoint otherwise.
 func GetPluginMetadata(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
-	if apiKey == "" {
-		return PluginMetadata{}, fmt.Errorf("plugin metadata endpoint requires an API key")
-	}
-
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,
@@ -85,7 +91,7 @@ func GetPluginMetadata(ctx context.Context, baseURL, apiVersion, apiKey string, 
 		APIBaseURL:     baseURL,
 	}
 
-	resp, err := base.MakeRequest(ctx, apiKey, "/v1/stripecli/get-plugin-metadata", params, map[string]interface{}{
+	resp, err := base.MakeRequest(ctx, apiKey, getPluginMetadataPath(apiKey), params, map[string]interface{}{
 		"plugin":  pluginName,
 		"version": version,
 		"os":      os,
