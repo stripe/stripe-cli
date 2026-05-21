@@ -521,8 +521,8 @@ func TestSandboxClaimCmd_OpensClaimURL(t *testing.T) {
 
 	// Set up a profile with a claim URL
 	Config.Profile.TestModeAPIKey = "rkcs_test_claim"
+	Config.Profile.SandboxClaimURL = "https://dashboard.stripe.com/onboard_sandbox/test123"
 	Config.Profile.CreateProfile()
-	Config.Profile.WriteConfigField("sandbox_claim_url", "https://dashboard.stripe.com/onboard_sandbox/test123")
 
 	var openedURL string
 	openBrowserFunc = func(u string) error { openedURL = u; return nil }
