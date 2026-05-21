@@ -33,12 +33,13 @@ type sandboxCmd struct {
 }
 
 type sandboxCreateCmd struct {
-	cmd          *cobra.Command
-	email        string
-	fromGit      bool
-	name         string
-	baseURL      string
-	dashboardURL string
+	cmd            *cobra.Command
+	email          string
+	fromGit        bool
+	name           string
+	nonInteractive bool
+	baseURL        string
+	dashboardURL   string
 }
 
 func newSandboxCmd() *sandboxCmd {
@@ -94,6 +95,7 @@ work immediately.`,
 	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address")
 	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email and full name from git config")
 	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", "Your full name (optional)")
+	scc.cmd.Flags().BoolVarP(&scc.nonInteractive, "non-interactive", "N", false, "Print output directly without waiting for input")
 
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
@@ -118,7 +120,9 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Direct to dashboard — sandbox creation requires an empty profile.
 		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "You're already authenticated; sandbox management is available in Dashboard.\n\n")
-		if canOpenBrowserFunc() {
+		if scc.nonInteractive {
+			fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", sandboxURL)
+		} else if canOpenBrowserFunc() {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", sandboxURL)
 			buf := make([]byte, 1)
 			cmd.InOrStdin().Read(buf)
@@ -255,12 +259,15 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 // stripe login flow directly. Future enhancement: pass email to
 // login.Login() to pre-fill and open /register instead of /confirm_auth.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
-	if isSSHSession() {
+	if isSSHSession() && !scc.nonInteractive {
 		fmt.Fprintln(cmd.ErrOrStderr(), "SSH session detected. Cannot open browser.")
 		fmt.Fprintln(cmd.ErrOrStderr(), "Use `stripe login --interactive` or set STRIPE_API_KEY instead.")
 		return fmt.Errorf("browser login unavailable in SSH session")
 	}
 
+	if scc.nonInteractive {
+		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, &Config)
+	}
 	return login.Login(cmd.Context(), scc.dashboardURL, &Config)
 }
 
@@ -288,10 +295,11 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	}
 	fmt.Fprintln(cmd.OutOrStdout(), string(out))
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "\n%s Use the keys above to start building your integration.\n", color.Green("Provisioned!"))
-	fmt.Fprintf(cmd.ErrOrStderr(), "When you're ready, run `stripe sandbox claim` to claim your sandbox.\n")
+	fmt.Fprintf(cmd.ErrOrStderr(), "\nUse the keys above to start building your integration.\n")
 	if result.GetExpiresAt() != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Expires: %s\n", result.GetExpiresAt())
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandbox claim`.\n", result.GetExpiresAt())
+	} else {
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nClaim your sandbox by using the above claim_url or running `stripe sandbox claim`.\n")
 	}
 
 	return nil
@@ -386,7 +394,8 @@ func clearExpiredSandboxProfile() {
 }
 
 type sandboxClaimCmd struct {
-	cmd *cobra.Command
+	cmd            *cobra.Command
+	nonInteractive bool
 }
 
 func newSandboxClaimCmd() *sandboxClaimCmd {
@@ -398,6 +407,7 @@ func newSandboxClaimCmd() *sandboxClaimCmd {
 		Args:  validators.NoArgs,
 		RunE:  scc.runSandboxClaimCmd,
 	}
+	scc.cmd.Flags().BoolVarP(&scc.nonInteractive, "non-interactive", "N", false, "Print output directly without waiting for input")
 	return scc
 }
 
@@ -426,7 +436,9 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 	fmt.Fprintln(cmd.ErrOrStderr())
 	fmt.Fprintln(cmd.ErrOrStderr())
 
-	if canOpenBrowserFunc() {
+	if scc.nonInteractive {
+		fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", claimURL)
+	} else if canOpenBrowserFunc() {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", claimURL)
 		buf := make([]byte, 1)
 		cmd.InOrStdin().Read(buf)
