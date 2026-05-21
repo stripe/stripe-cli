@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/cmd/agentguidance"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
@@ -119,6 +120,13 @@ func showSuggestion() {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
 	emitClaudeCodePluginHint()
+	agentguidance.MaybeEmit(
+		os.Getenv,
+		os.Stderr,
+		viper.GetString("agent_guidance.snoozed_until"),
+		agentguidance.Today(),
+		os.Args[1:],
+	)
 
 	telemetryMetadata := stripe.NewEventMetadata()
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
@@ -260,6 +268,7 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newWhoamiCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
+	rootCmd.AddCommand(newAgentGuidanceCmd(&Config))
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
