@@ -41,6 +41,11 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 			newPluginHintCmd(cfg, "docs", "Browse Stripe documentation and API reference.").Command,
 		)
 	}
+	if !installedPluginSet["myNewPlugin"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "myNewPlugin", "This is my new CLI plugin.").Command,
+		)
+	}
 }
 
 // pluginHintCmd is a placeholder Cobra command registered when a known plugin
