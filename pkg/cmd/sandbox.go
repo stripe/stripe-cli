@@ -120,14 +120,15 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Direct to dashboard — sandbox creation requires an empty profile.
 		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Fprintf(cmd.ErrOrStderr(), "You're already authenticated; sandbox management is available in Dashboard.\n\n")
-		if scc.nonInteractive {
+		switch {
+		case scc.nonInteractive:
 			fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", sandboxURL)
-		} else if canOpenBrowserFunc() {
+		case canOpenBrowserFunc():
 			fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", sandboxURL)
 			buf := make([]byte, 1)
 			cmd.InOrStdin().Read(buf)
 			openBrowserFunc(sandboxURL)
-		} else {
+		default:
 			fmt.Fprintf(cmd.ErrOrStderr(), "Visit %s\n", sandboxURL)
 		}
 		return nil
@@ -436,14 +437,15 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 	fmt.Fprintln(cmd.ErrOrStderr())
 	fmt.Fprintln(cmd.ErrOrStderr())
 
-	if scc.nonInteractive {
+	switch {
+	case scc.nonInteractive:
 		fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", claimURL)
-	} else if canOpenBrowserFunc() {
+	case canOpenBrowserFunc():
 		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", claimURL)
 		buf := make([]byte, 1)
 		cmd.InOrStdin().Read(buf)
 		openBrowserFunc(claimURL)
-	} else {
+	default:
 		fmt.Fprintf(cmd.ErrOrStderr(), "Visit %s\n", claimURL)
 	}
 	return nil
