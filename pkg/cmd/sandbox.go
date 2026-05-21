@@ -336,6 +336,15 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 		return err
 	}
 
+	// Also write sandbox fields via WriteConfigField to update the global
+	// viper instance (CreateProfile writes to a local viper copy).
+	if result.GetClaimURL() != "" {
+		Config.Profile.WriteConfigField(config.SandboxClaimURLName, result.GetClaimURL())
+	}
+	if result.GetExpiresAt() != "" {
+		Config.Profile.WriteConfigField(config.SandboxExpiresAtName, result.GetExpiresAt())
+	}
+
 	return nil
 }
 

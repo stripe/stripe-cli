@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
 
@@ -523,6 +524,7 @@ func TestSandboxClaimCmd_OpensClaimURL(t *testing.T) {
 	Config.Profile.TestModeAPIKey = "rkcs_test_claim"
 	Config.Profile.SandboxClaimURL = "https://dashboard.stripe.com/onboard_sandbox/test123"
 	Config.Profile.CreateProfile()
+	Config.Profile.WriteConfigField(config.SandboxClaimURLName, "https://dashboard.stripe.com/onboard_sandbox/test123")
 
 	var openedURL string
 	openBrowserFunc = func(u string) error { openedURL = u; return nil }
