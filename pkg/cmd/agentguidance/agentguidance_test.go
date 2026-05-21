@@ -70,6 +70,27 @@ func TestMaybeEmit(t *testing.T) {
 			args:          []string{"customers", "list"},
 			expectMessage: true,
 		},
+		{
+			name:          "leading_flag_with_value_then_suppressed",
+			getEnv:        claudeEnv,
+			snoozedUntil:  "",
+			args:          []string{"-p", "prod", "agent-guidance", "snooze"},
+			expectMessage: false,
+		},
+		{
+			name:          "leading_flag_inline_value_then_normal_command",
+			getEnv:        claudeEnv,
+			snoozedUntil:  "",
+			args:          []string{"--color=off", "customers", "list"},
+			expectMessage: true,
+		},
+		{
+			name:          "all_flags_no_subcommand",
+			getEnv:        claudeEnv,
+			snoozedUntil:  "",
+			args:          []string{"--color", "off", "--version"},
+			expectMessage: false,
+		},
 	}
 
 	for _, tc := range tests {

@@ -120,6 +120,8 @@ func showSuggestion() {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
 	emitClaudeCodePluginHint()
+	// Viper is populated by Config.InitConfig() during package init() — see
+	// the call below in init() — so the snoozed_until read is valid here.
 	agentguidance.MaybeEmit(
 		os.Getenv,
 		os.Stderr,

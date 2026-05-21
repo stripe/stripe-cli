@@ -3,6 +3,7 @@ package agentguidance
 import (
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -10,7 +11,8 @@ import (
 
 // MaybeEmit writes the agent guidance message to w when all gates pass:
 //   - an AI agent is detected via env vars
-//   - the command path (args[0]) is not on the suppression list
+//   - the first positional in args (after any leading flags) is not on
+//     the suppression list
 //   - snoozedUntil does not equal today's local ISO date
 //
 // Any failed gate is a no-op. The function performs no I/O beyond the
@@ -43,10 +45,28 @@ func isSnoozedToday(stored string, today time.Time) bool {
 }
 
 func isSuppressedCommand(args []string) bool {
-	if len(args) == 0 {
+	// Skip leading flag tokens (-foo, --foo, --foo=bar, -foo bar) to find
+	// the first positional. Cobra persistent flags can appear before the
+	// subcommand, e.g. `stripe -p prod agent-guidance snooze`. Without
+	// this, args[0] would be the flag, not the subcommand, and the
+	// suppression list would miss.
+	i := 0
+	for i < len(args) && strings.HasPrefix(args[i], "-") {
+		hasInlineValue := strings.Contains(args[i], "=")
+		i++
+		// If the flag does NOT use --foo=bar form AND the next token is
+		// not itself a flag, treat it as the flag's value and skip it.
+		// We can't perfectly distinguish boolean flags without the cobra
+		// flag set, but this heuristic handles the common cases
+		// (-p prod, --color off, --api-key sk_test_...).
+		if !hasInlineValue && i < len(args) && !strings.HasPrefix(args[i], "-") {
+			i++
+		}
+	}
+	if i >= len(args) {
 		return true
 	}
-	switch args[0] {
+	switch args[i] {
 	case "agent-guidance", "spec", "completion", "version",
 		"--version", "-v", "help", "--help", "-h":
 		return true
