@@ -511,3 +511,41 @@ func TestSaveSandboxToConfig_EmptyKey(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no secret key")
 }
+
+func TestSandboxClaimCmd_NoActiveSandbox(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	cmd := newSandboxClaimCmd()
+
+	var stderr bytes.Buffer
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, stderr.String(), "No active sandbox")
+	assert.Contains(t, stderr.String(), "stripe sandbox create")
+}
+
+func TestSandboxClaimCmd_OpensClaimURL(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	// Set up a profile with a claim URL
+	Config.Profile.TestModeAPIKey = "rkcs_test_claim"
+	Config.Profile.CreateProfile()
+	Config.Profile.WriteConfigField("sandbox_claim_url", "https://dashboard.stripe.com/onboard_sandbox/test123")
+
+	var openedURL string
+	openBrowserFunc = func(u string) error { openedURL = u; return nil }
+
+	cmd := newSandboxClaimCmd()
+	cmd.cmd.SetIn(bytes.NewReader([]byte("\n")))
+
+	var stderr bytes.Buffer
+	cmd.cmd.SetErr(&stderr)
+
+	err := cmd.cmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, openedURL, "onboard_sandbox/test123")
+}

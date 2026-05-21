@@ -6,20 +6,17 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/login"
-	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -60,7 +57,9 @@ func newSandboxCmd() *sandboxCmd {
 	}
 
 	createCmd := newSandboxCreateCmd()
+	claimCmd := newSandboxClaimCmd()
 	sc.cmd.AddCommand(createCmd.cmd)
+	sc.cmd.AddCommand(claimCmd.cmd)
 	return sc
 }
 
@@ -93,8 +92,8 @@ work immediately.`,
 	}
 
 	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address")
-	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email from git config user.email")
-	scc.cmd.Flags().StringVar(&scc.name, "name", "", "Your full name (optional)")
+	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email and full name from git config")
+	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", "Your full name (optional)")
 
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
@@ -173,7 +172,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		name = sandbox.GitConfigFunc("user.name")
 	}
 
-	// Primary path: proof-of-work provisioning against developer-ai-srv.
+	// Primary path: proof-of-work provisioning against ai.stripe.com.
 	// This gives the user a temporary sandbox without any browser interaction.
 	result, err := scc.runProvisionFlow(cmd, color, email, name)
 	if err != nil {
@@ -252,11 +251,9 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 	return client.Provision(cmd.Context(), provisionReq)
 }
 
-// runDashboardFlow is the browser-based fallback. It calls
-// login.Authenticator.Login() with a modified BrowserURL that points to
-// /register with the user's email pre-filled, so new users land on signup
-// instead of a login gate. Everything else (spinners, polling, key saving,
-// success messages) uses the standard stripe login flow.
+// runDashboardFlow is the browser-based fallback. Uses the standard
+// stripe login flow directly. Future enhancement: pass email to
+// login.Login() to pre-fill and open /register instead of /confirm_auth.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
 	if isSSHSession() {
 		fmt.Fprintln(cmd.ErrOrStderr(), "SSH session detected. Cannot open browser.")
@@ -264,30 +261,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 		return fmt.Errorf("browser login unavailable in SSH session")
 	}
 
-	links, err := login.GetLinks(cmd.Context(), scc.dashboardURL, "stripe-sandbox")
-	if err != nil {
-		return err
-	}
-
-	// Override BrowserURL to point to /register with email pre-filled.
-	// After registration, the redirect sends the user to the confirm_auth page.
-	confirmPath := "/stripecli/confirm_auth"
-	if parsed, err := url.Parse(links.BrowserURL); err == nil {
-		confirmPath = parsed.RequestURI()
-	}
-	params := url.Values{}
-	params.Set("redirect", confirmPath)
-	if email != "" {
-		params.Set("email", email)
-	}
-	links.BrowserURL = fmt.Sprintf("%s/register?%s", scc.dashboardURL, params.Encode())
-
-	// Use the standard login flow — handles "Press Enter", spinners,
-	// polling, key saving, and success messaging.
-	configurer := keys.NewRAKConfigurer(&Config, afero.NewOsFs())
-	transfer := keys.NewRAKTransfer(configurer)
-	authenticator := login.NewAuthenticator(transfer)
-	return authenticator.Login(cmd.Context(), links)
+	return login.Login(cmd.Context(), scc.dashboardURL, &Config)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
@@ -415,6 +389,40 @@ func clearExpiredSandboxProfile() {
 	Config.Profile.DeleteConfigField("sandbox_expires_at")
 	Config.Profile.DeleteConfigField("account_id")
 	Config.Profile.DeleteConfigField("display_name")
+}
+
+type sandboxClaimCmd struct {
+	cmd *cobra.Command
+}
+
+func newSandboxClaimCmd() *sandboxClaimCmd {
+	scc := &sandboxClaimCmd{}
+	scc.cmd = &cobra.Command{
+		Use:   "claim",
+		Short: "Claim your sandbox in the browser",
+		Long:  "Opens the claim URL for your active sandbox. After claiming, run `stripe login` to get permanent keys.",
+		Args:  validators.NoArgs,
+		RunE:  scc.runSandboxClaimCmd,
+	}
+	return scc
+}
+
+func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string) error {
+	claimURL := viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
+	if claimURL == "" {
+		fmt.Fprintf(cmd.ErrOrStderr(), "No active sandbox. Run `stripe sandbox create` to get started.\n")
+		return nil
+	}
+
+	if canOpenBrowserFunc() {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", claimURL)
+		buf := make([]byte, 1)
+		cmd.InOrStdin().Read(buf)
+		openBrowserFunc(claimURL)
+	} else {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Visit %s\n", claimURL)
+	}
+	return nil
 }
 
 func isSSHSession() bool {
