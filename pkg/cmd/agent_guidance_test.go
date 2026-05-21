@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,58 +17,74 @@ import (
 )
 
 // resetViperWithCleanup wipes viper for the duration of the test and
-// re-binds the persistent root flags afterward so other tests in this
-// package (which rely on the global viper state set up in init()) are
-// unaffected by ordering.
+// restores the bindings root.go::init() set up afterward, so other tests
+// in this package (which rely on that global viper state) are unaffected
+// by ordering.
 func resetViperWithCleanup(t *testing.T) {
 	t.Helper()
 	viper.Reset()
 	t.Cleanup(func() {
 		viper.Reset()
-		// Re-bind what package init() set up, so tests like
-		// TestReadProjectFromFlag continue to work regardless of
-		// test execution order.
-		for _, key := range keysToReBind {
-			if flag := rootCmd.PersistentFlags().Lookup(key); flag != nil {
-				viper.BindPFlag(key, flag)
-			}
-		}
-		viper.BindEnv("project-name", "STRIPE_PROJECT_NAME")
-		viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
+		rebindViperFromRoot()
 	})
 }
 
-// newTempConfig returns a *config.Config pointing at a temp file so tests
-// don't touch the developer's real ~/.config/stripe/config.toml.
+// newTempConfigForPath builds a *config.Config pointed at the supplied
+// path and prepares viper to write to it. Pass an existing temp path
+// (use t.TempDir()) for the happy-path case, or a deliberately
+// unwritable path for the failure case.
+//
+// Cobra's OnInitialize hook (registered in root.go) re-points viper at
+// the package-global Config.ProfilesFile on every Execute(), so this
+// helper also redirects the global Config to the test path for the
+// duration of the test and restores it on cleanup.
+//
+// Tests should not touch viper directly; this helper is the one obvious
+// way to set up a temp-config-backed test.
+func newTempConfigForPath(t *testing.T, path string) *config.Config {
+	t.Helper()
+	resetViperWithCleanup(t)
+	viper.SetConfigFile(path)
+	viper.SetConfigType("toml")
+
+	// Only attempt to read in config if the file exists; the failure-path
+	// test uses a path that intentionally does not exist.
+	if _, err := os.Stat(path); err == nil {
+		require.NoError(t, viper.ReadInConfig())
+	}
+
+	// Redirect the package-global Config to the test path so that
+	// cobra.OnInitialize -> Config.InitConfig (which fires inside
+	// cmd.Execute()) does not clobber viper back to the developer's
+	// real config. Restore on cleanup.
+	prevProfilesFile := Config.ProfilesFile
+	Config.ProfilesFile = path
+	t.Cleanup(func() { Config.ProfilesFile = prevProfilesFile })
+
+	return &config.Config{ProfilesFile: path}
+}
+
+// newTempConfig returns a *config.Config pointing at a freshly-created
+// temp file so tests don't touch the developer's real
+// ~/.config/stripe/config.toml.
 func newTempConfig(t *testing.T) (*config.Config, string) {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
-
 	require.NoError(t, os.WriteFile(path, []byte(""), 0600))
-
-	// Reset viper so each test starts clean.
-	resetViperWithCleanup(t)
-	viper.SetConfigFile(path)
-	viper.SetConfigType("toml")
-	require.NoError(t, viper.ReadInConfig())
-
-	cfg := &config.Config{ProfilesFile: path}
-	return cfg, path
+	return newTempConfigForPath(t, path), path
 }
 
 func TestAgentGuidanceSnooze_HappyPath(t *testing.T) {
 	cfg, path := newTempConfig(t)
 
 	cmd := newAgentGuidanceCmd(cfg)
-	snooze, _, err := cmd.Find([]string{"snooze"})
-	require.NoError(t, err)
-
 	var stdout bytes.Buffer
-	snooze.SetOut(&stdout)
-	snooze.SetErr(&stdout)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"snooze"})
 
-	require.NoError(t, snooze.RunE(snooze, []string{}))
+	require.NoError(t, cmd.Execute())
 
 	assert.Contains(t, stdout.String(), "Agent guidance snoozed")
 
@@ -89,22 +104,15 @@ func TestAgentGuidanceSnooze_HappyPath(t *testing.T) {
 }
 
 func TestAgentGuidanceSnooze_WriteFailure(t *testing.T) {
-	cfg := &config.Config{ProfilesFile: "/nonexistent/path/that/cannot/be/written/config.toml"}
-	resetViperWithCleanup(t)
-	viper.SetConfigFile(cfg.ProfilesFile)
-	viper.SetConfigType("toml")
+	cfg := newTempConfigForPath(t, "/nonexistent/path/that/cannot/be/written/config.toml")
 
 	cmd := newAgentGuidanceCmd(cfg)
-	snooze, _, err := cmd.Find([]string{"snooze"})
-	require.NoError(t, err)
-
 	var stdout bytes.Buffer
-	snooze.SetOut(&stdout)
-	snooze.SetErr(&stdout)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"snooze"})
 
-	err = snooze.RunE(snooze, []string{})
+	err := cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to snooze")
-	// Sanity-check it's an error wrap, not a nil pointer panic
-	assert.False(t, errors.Is(err, nil))
 }

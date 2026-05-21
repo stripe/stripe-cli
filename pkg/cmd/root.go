@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -206,7 +207,22 @@ func ReBindKeys() {
 func bindEnv(key, envKey string) {
 	viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(key))
 	viper.BindEnv(key, envKey)
-	keysToReBind = append(keysToReBind, key)
+	if !slices.Contains(keysToReBind, key) {
+		keysToReBind = append(keysToReBind, key)
+	}
+}
+
+// rebindViperFromRoot wires the persistent root flags and environment
+// variables into viper. It is invoked from init() during package setup
+// and may be called again (e.g. from tests that call viper.Reset()) to
+// restore those bindings without re-declaring the flags themselves.
+func rebindViperFromRoot() {
+	// tell viper to monitor the following flags:
+	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
+	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
+
+	// also, bind flags to the environment variables
+	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 }
 
 func init() {
@@ -222,12 +238,7 @@ func init() {
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
-	// tell viper to monitor the following flags:
-	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
-	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
-
-	// also, bind flags to the environment variables
-	bindEnv("project-name", "STRIPE_PROJECT_NAME")
+	rebindViperFromRoot()
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
