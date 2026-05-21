@@ -414,6 +414,24 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 		return nil
 	}
 
+	if isExpiredSandbox() {
+		clearExpiredSandboxProfile()
+		fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
+		return nil
+	}
+
+	accountID, _ := Config.Profile.GetAccountID()
+	displayName := Config.Profile.GetDisplayName()
+
+	fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox claim link is below.")
+	if displayName != "" && displayName != accountID {
+		fmt.Fprintf(cmd.ErrOrStderr(), " (%s)", displayName)
+	} else if accountID != "" {
+		fmt.Fprintf(cmd.ErrOrStderr(), " (%s)", accountID)
+	}
+	fmt.Fprintln(cmd.ErrOrStderr())
+	fmt.Fprintln(cmd.ErrOrStderr())
+
 	if canOpenBrowserFunc() {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Press Enter to open the browser or visit %s", claimURL)
 		buf := make([]byte, 1)
