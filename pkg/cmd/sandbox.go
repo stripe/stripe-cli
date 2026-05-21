@@ -95,7 +95,7 @@ work immediately.`,
 	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address")
 	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email and full name from git config")
 	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", "Your full name (optional)")
-	scc.cmd.Flags().BoolVarP(&scc.nonInteractive, "non-interactive", "N", false, "Print output directly without waiting for input")
+	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
 
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
@@ -408,7 +408,7 @@ func newSandboxClaimCmd() *sandboxClaimCmd {
 		Args:  validators.NoArgs,
 		RunE:  scc.runSandboxClaimCmd,
 	}
-	scc.cmd.Flags().BoolVarP(&scc.nonInteractive, "non-interactive", "N", false, "Print output directly without waiting for input")
+	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
 	return scc
 }
 
