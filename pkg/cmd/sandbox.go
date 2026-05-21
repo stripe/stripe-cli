@@ -426,7 +426,7 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 	accountID, _ := Config.Profile.GetAccountID()
 	displayName := Config.Profile.GetDisplayName()
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "Your sandbox claim link is below.")
+	fmt.Fprintf(cmd.ErrOrStderr(), "Claim your sandbox by visiting the claim link below.")
 	if displayName != "" && displayName != accountID {
 		fmt.Fprintf(cmd.ErrOrStderr(), " (%s)", displayName)
 	} else if accountID != "" {
