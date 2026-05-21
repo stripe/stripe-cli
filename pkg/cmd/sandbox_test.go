@@ -474,10 +474,6 @@ func TestSandboxCreateCmd_ConfigNotCorrupted(t *testing.T) {
 	cmd := newSandboxCreateCmd()
 	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--base-url", server.URL})
 
-	var stdout, stderr bytes.Buffer
-	cmd.cmd.SetOut(&stdout)
-	cmd.cmd.SetErr(&stderr)
-
 	err := cmd.cmd.Execute()
 	require.NoError(t, err)
 
