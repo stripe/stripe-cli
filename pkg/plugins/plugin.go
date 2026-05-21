@@ -292,19 +292,28 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 	return ""
 }
 
-// Install installs the plugin of the given version
+// Install installs the plugin of the given version.
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
+	return p.install(ctx, cfg, fs, version, baseURL, "", false)
+}
+
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 	pluginToInstall := p
-	var pluginDownloadURL string
-	downloadURLFromMetadata := false
+	pluginDownloadURL := resolvedBinaryURL
+	downloadURLFromMetadata := resolvedBinaryURL != ""
 
-	if apiKey != "" {
+	if !skipMetadataLookup {
+		metadataEndpoint := "/v1/stripecli/get-plugin-metadata"
+		if apiKey == "" {
+			metadataEndpoint = "/v1/stripecli/plugins_metadata"
+		}
+
 		log.WithFields(log.Fields{
 			"prefix":   "plugins.plugin.Install",
-			"endpoint": "/v1/stripecli/get-plugin-metadata",
+			"endpoint": metadataEndpoint,
 			"plugin":   p.Shortname,
 			"version":  version,
 			"os":       runtime.GOOS,
@@ -356,7 +365,8 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Pull down bin, verify, and save to disk
-	err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
+	var err error
+	err = pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 	if err != nil && downloadURLFromMetadata {
 		log.WithFields(log.Fields{
 			"prefix": "plugins.plugin.Install",
@@ -587,15 +597,14 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		// before reinstalling so stale cached local metadata does not pin us to an
 		// older release.
 		if version == "" {
-			pluginToInstall, resolvedVersion, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, stripe.DefaultAPIBaseURL)
+			resolvedPlugin, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, stripe.DefaultAPIBaseURL)
 			if err != nil {
 				return err
 			}
 
-			p = pluginToInstall
-			version = resolvedVersion
-			err = p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
-			if err != nil {
+			p = resolvedPlugin.Plugin
+			version = resolvedPlugin.Version
+			if err := resolvedPlugin.Install(ctx, config, fs, stripe.DefaultAPIBaseURL); err != nil {
 				return err
 			}
 		}
