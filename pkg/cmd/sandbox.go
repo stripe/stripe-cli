@@ -153,13 +153,11 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		if accountID != "" {
 			fmt.Fprintf(cmd.ErrOrStderr(), "Account ID:      %s\n", accountID)
 		}
-		claimURL := viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
-		if claimURL != "" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "\nWhen you're ready, claim your sandbox at:\n  %s\n", claimURL)
-		}
 		expiresAt := viper.GetString(Config.Profile.GetConfigField("sandbox_expires_at"))
 		if expiresAt != "" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Expires: %s\n", expiresAt)
+			fmt.Fprintf(cmd.ErrOrStderr(), "\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandbox claim`.\n", expiresAt)
+		} else {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\nRun `stripe sandbox claim` when you're ready to claim your sandbox.\n")
 		}
 		return nil
 	}
