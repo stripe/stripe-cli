@@ -124,6 +124,14 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return p.suggestNotAvailable()
 	}
 
+	// If the user is not logged in, direct them to login rather than a manual
+	// install that will also fail unauthenticated.
+	accountID, err := p.accountIDFn()
+	if err != nil || accountID == "" {
+		fmt.Fprintf(p.stdout, "Run 'stripe login' to access the \"%s\" plugin.\n", p.name)
+		return nil
+	}
+
 	fmt.Fprintf(p.stdout, "The \"%s\" plugin is not currently available. Run 'stripe plugin install %s' to try installing it manually.\n", p.name, p.name)
 	return nil
 }

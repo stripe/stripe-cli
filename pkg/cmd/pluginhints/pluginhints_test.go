@@ -15,12 +15,15 @@ import (
 )
 
 // newTestCmd builds a pluginHintCmd with all side effects mocked out.
+// By default accountIDFn reports a logged-in account; override in tests that
+// need to simulate an unauthenticated user.
 func newTestCmd(name string, opts ...option) *pluginHintCmd {
 	p := &pluginHintCmd{
 		name:        name,
 		description: "Test description.",
 		stdout:      &bytes.Buffer{},
 		stdin:       strings.NewReader(""),
+		accountIDFn: func() (string, error) { return "acct_test", nil },
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -48,14 +51,38 @@ func TestRun_PluginFound_CallsPromptInstall(t *testing.T) {
 	assert.Contains(t, p.output(), "The \"generate\" plugin is required")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_PrintsInstallHint(t *testing.T) {
-	p := newTestCmd("apps")
+func TestRun_PluginNotFound_PrivatePreviewFalse_LoggedIn_PrintsInstallHint(t *testing.T) {
+	p := newTestCmd("apps") // accountIDFn returns "acct_test" by default
 	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
 
 	err := p.run(p.Command, nil)
 
 	require.NoError(t, err)
 	assert.Contains(t, p.output(), "stripe plugin install apps")
+}
+
+func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PrintsLoginHint(t *testing.T) {
+	p := newTestCmd("docs")
+	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.accountIDFn = func() (string, error) { return "", nil }
+
+	err := p.run(p.Command, nil)
+
+	require.NoError(t, err)
+	assert.Contains(t, p.output(), "stripe login")
+	assert.NotContains(t, p.output(), "stripe plugin install")
+}
+
+func TestRun_PluginNotFound_PrivatePreviewFalse_AccountIDError_PrintsLoginHint(t *testing.T) {
+	p := newTestCmd("docs")
+	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
+
+	err := p.run(p.Command, nil)
+
+	require.NoError(t, err)
+	assert.Contains(t, p.output(), "stripe login")
+	assert.NotContains(t, p.output(), "stripe plugin install")
 }
 
 func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
