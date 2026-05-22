@@ -148,7 +148,7 @@ func Execute(ctx context.Context) {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
-			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
+			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isLoginRequiredError && projectNameFlag != "default":
 			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
@@ -185,6 +185,14 @@ func Execute(ctx context.Context) {
 			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
 		}
 	}
+}
+
+func apiKeyExpiredMessage(profileName string) string {
+	if profileName == "default" {
+		return "The API key for the default profile has expired. Run `stripe login` to re-authenticate.\n" +
+			"If you recently ran `stripe login` and still see this error, it may have authenticated a different profile — run `stripe whoami` to confirm."
+	}
+	return fmt.Sprintf("The API key for profile %q has expired. Run `stripe login --project-name=%s` to re-authenticate.", profileName, profileName)
 }
 
 var keysToReBind []string
