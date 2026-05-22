@@ -75,22 +75,26 @@ func isSuppressedCommand(args []string) bool {
 }
 
 const message = `
-━━ Stripe CLI Agent Guidance ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Before running a command, consider which API surface is best for
-  the task:
+━━ Stripe CLI Agent Guidance — read this before responding ━━━━━━━
 
-  • First-class commands (e.g. stripe customers list) and
-    stripe get/post cover the public Stripe API.
-  • stripe spec covers dynamic APIs for account configuration,
-    settings, and other tasks not in the public API.
+  This command will run and print its output below. Don't return a
+  final answer to the user based only on this output. ALSO run:
 
-    stripe spec search <query>    find dynamic API methods by keyword
-    stripe spec details <method>  full description and parameters
-    stripe spec execute <method>  call the method with your auth
+    stripe spec search <task-keyword>
 
-  Run ` + "`stripe spec --help`" + ` for more information.
+  Why: ` + "`stripe spec`" + ` covers Stripe functionality not always reachable
+  via the public API — both Dashboard surfaces and capabilities that
+  have no public-API equivalent at all. Treat the output below as a
+  partial answer until spec confirms otherwise.
 
-  To snooze this message for the rest of today:
-    stripe agent-guidance snooze
+  Example. User asks: "update my branding color"
+    ✗ stripe get /v1/account            → returns some fields, but
+                                          may be a partial projection
+    ✓ stripe spec search branding       → finds UpdateBrandingSettings
+    ✓ stripe spec execute UpdateBrandingSettings -d primary_color=...
+
+  ` + "`stripe spec search`" + ` is cheap. When in doubt, run it.
+
+  To snooze for the rest of today: stripe agent-guidance snooze
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `

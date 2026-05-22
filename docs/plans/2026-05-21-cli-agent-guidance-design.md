@@ -174,3 +174,69 @@ If we wanted to split it (probably overkill), a stacked split would be: (1) pack
 - **Telemetry:** wire `guidance_displayed` and `guidance_snoozed` into the existing telemetry client to measure adoption. Fast-follow.
 - **Per-agent-session snooze:** if the once-a-day snooze proves too coarse (fresh agents later in the day inherit the snooze and miss the guidance), implement process-tree fingerprinting. Defer until we have evidence.
 - **Unsnooze command:** `stripe agent-guidance unsnooze` if anyone asks.
+
+---
+
+## v2 message update (2026-05-21, post-dogfooding)
+
+After v1 shipped, an agent invoked `stripe get /v1/account --live` for a "branding settings" task, got a JSON response containing `primary_color`, and returned that as the final answer — bypassing `stripe spec` entirely. The agent had read the v1 message but rationalized past it.
+
+The agent's own self-reflection identified four failure modes in the v1 text:
+1. **Informational, not directive.** "Consider which API surface is best" reads like a menu, not a step.
+2. **"…not in the public API" was permission to skip.** Branding fields *were* visible in the public API, so the agent rationalized that the guidance didn't apply.
+3. **No failure mode named.** Nothing told the agent that `/v1/account.settings.*` is a partial projection.
+4. **No keyword bridge.** "Settings" appeared in both task and guidance but no explicit "if task mentions settings → run spec first."
+
+Architectural constraint: `MaybeEmit` runs at the start of `Execute()`, before the cobra command resolves. The `stripe get`/`stripe post` ALWAYS runs after the message prints. We cannot block. We can only frame the result so the agent doesn't trust it blindly.
+
+### v2 message text
+
+```
+━━ Stripe CLI Agent Guidance — read this before responding ━━━━━━━
+
+  This command will run and print its output below. Don't return a
+  final answer to the user based only on this output. ALSO run:
+
+    stripe spec search <task-keyword>
+
+  Why: `stripe spec` covers Stripe functionality not always reachable
+  via the public API — both Dashboard surfaces and capabilities that
+  have no public-API equivalent at all. Treat the output below as a
+  partial answer until spec confirms otherwise.
+
+  Example. User asks: "update my branding color"
+    ✗ stripe get /v1/account            → returns some fields, but
+                                          may be a partial projection
+    ✓ stripe spec search branding       → finds UpdateBrandingSettings
+    ✓ stripe spec execute UpdateBrandingSettings -d primary_color=...
+
+  `stripe spec search` is cheap. When in doubt, run it.
+
+  To snooze for the rest of today: stripe agent-guidance snooze
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### What changed and why
+
+| Change | Why |
+|---|---|
+| Heading: "read this before responding" | Frames the message as a required pre-flight check, not background context. |
+| Opening: "This command will run and print its output below" | Acknowledges the architectural reality (we can't block) up front, so the agent doesn't expect a gate. |
+| Imperative: "Don't return a final answer based only on this output. ALSO run…" | Replaces v1's "consider" with a directive. The "ALSO" is critical — positions spec as a parallel check, not an alternative. |
+| Named pitfall: "partial projection" | Addresses the v1 failure where the agent saw fields and assumed the answer was complete. The pitfall now has a name the agent can hold onto. |
+| Worked example | Shows the contrast at the moment of decision: `✗ stripe get` vs. `✓ stripe spec search` for the same task. The branding example is illustrative, not a hardcoded routing rule. |
+| Closing posture: "When in doubt, run it" | Pre-empts the rationalization "I already have an answer." |
+
+### What did NOT change
+
+- **Trigger logic.** Still fires on every agent invocation in agent context (except suppression list). No new path-pattern matching, no JSON response inspection, no per-topic routing.
+- **Snooze mechanism.** Same per-machine-day snooze in `~/.config/stripe/config.toml`.
+- **Message channel.** Still stderr.
+- **Tests.** Existing assertions ("Stripe CLI Agent Guidance", "stripe spec search", "stripe agent-guidance snooze") all match the v2 text without modification.
+
+### Out of scope (stayed scope-disciplined per user feedback)
+
+Discussed but deliberately not added:
+- **Post-output hint** — fire a separate hint *after* the command output. User flagged that the message rewrite was the higher-leverage lever; revisit if v2 still doesn't move the needle in dogfooding.
+- **Path-pattern blocking** — refuse to run certain paths in agent context. Too aggressive; would generate false positives where the public API is genuinely the right answer.
+- **Topic-keyword response correlation** — inspect the JSON response for keywords like "settings" and append a topic-specific hint. Hardcodes domain knowledge into the CLI in a way that won't age well.
