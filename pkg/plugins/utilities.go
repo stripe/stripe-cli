@@ -344,6 +344,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 	manifestPlugin, err := LookUpPluginInManifest(ctx, config, fs, pluginName)
 	if err != nil {
+		if apiKey == "" {
+			return nil, fmt.Errorf("could not find a plugin named %s. Run 'stripe login' and try again", pluginName)
+		}
 		return nil, err
 	}
 
