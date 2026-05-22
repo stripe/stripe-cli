@@ -10,6 +10,7 @@ func TestAPIKeyExpiredMessage_DefaultProfile(t *testing.T) {
 	msg := apiKeyExpiredMessage("default")
 	require.Contains(t, msg, "default profile")
 	require.Contains(t, msg, "`stripe login`")
+	require.Contains(t, msg, "`stripe whoami`")
 	require.NotContains(t, msg, "--project-name")
 }
 

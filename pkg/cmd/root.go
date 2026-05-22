@@ -189,7 +189,8 @@ func Execute(ctx context.Context) {
 
 func apiKeyExpiredMessage(profileName string) string {
 	if profileName == "default" {
-		return "The API key for the default profile has expired. Run `stripe login` to re-authenticate."
+		return "The API key for the default profile has expired. Run `stripe login` to re-authenticate.\n" +
+			"If you recently ran `stripe login` and still see this error, it may have authenticated a different profile — run `stripe whoami` to confirm."
 	}
 	return fmt.Sprintf("The API key for profile %q has expired. Run `stripe login --project-name=%s` to re-authenticate.", profileName, profileName)
 }
