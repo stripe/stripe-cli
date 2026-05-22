@@ -191,7 +191,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Any server-side failure (429, 500, network) triggers this path
 		// so the user always has a way to get keys.
 		log.WithFields(log.Fields{"error": err}).Debug("sandbox: provisioning failed, falling back to browser")
-		fmt.Println(color.Yellow("\nOpening browser to set up your account..."))
+		fmt.Println(color.Yellow("\nCould not provision a sandbox automatically. Opening browser to create your Stripe sandbox account instead..."))
 		return scc.runDashboardFlow(cmd, color, email)
 	}
 
