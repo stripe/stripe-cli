@@ -22,7 +22,7 @@ type stubGRPCBrokerAccepter struct {
 	acceptedIDs []uint32
 }
 
-func (s *stubGRPCBrokerAccepter) NextId() uint32 {
+func (s *stubGRPCBrokerAccepter) nextID() uint32 {
 	return uint32(len(s.acceptedIDs) + 1)
 }
 
@@ -79,9 +79,8 @@ func TestStartCoreCLIHelperBrokerServerServesRPCs(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	conn, err := grpc.DialContext(
-		ctx,
-		"bufnet",
+	conn, err := grpc.NewClient(
+		"passthrough:///bufnet",
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			return listener.Dial()
 		}),
@@ -109,15 +108,15 @@ func TestStartCoreCLIHelperBrokerServerReturnsAcceptError(t *testing.T) {
 }
 
 type sequencingGRPCBroker struct {
-	nextID        uint32
+	nextIDValue   uint32
 	acceptedIDs   []uint32
 	published     chan struct{}
 	publishHelper chan struct{}
 	returnServe   chan struct{}
 }
 
-func (s *sequencingGRPCBroker) NextId() uint32 {
-	return atomic.AddUint32(&s.nextID, 1)
+func (s *sequencingGRPCBroker) nextID() uint32 {
+	return atomic.AddUint32(&s.nextIDValue, 1)
 }
 
 func (s *sequencingGRPCBroker) AcceptAndServe(id uint32, newGRPCServer func([]grpc.ServerOption) *grpc.Server) {
@@ -191,15 +190,15 @@ func TestGRPCClientV3RunCommandPublishesHelperAfterPluginRunCommandStarts(t *tes
 }
 
 type raceAwareGRPCBroker struct {
-	nextID                uint32
+	nextIDValue           uint32
 	acceptedIDs           []uint32
 	pendingDialRegistered <-chan struct{}
 	publishedAfterPending chan struct{}
 	returnServe           chan struct{}
 }
 
-func (s *raceAwareGRPCBroker) NextId() uint32 {
-	return atomic.AddUint32(&s.nextID, 1)
+func (s *raceAwareGRPCBroker) nextID() uint32 {
+	return atomic.AddUint32(&s.nextIDValue, 1)
 }
 
 func (s *raceAwareGRPCBroker) AcceptAndServe(id uint32, newGRPCServer func([]grpc.ServerOption) *grpc.Server) {
@@ -232,7 +231,7 @@ func (c *pendingDialMainClient) RunCommand(ctx context.Context, in *proto.RunCom
 }
 
 func runCommandWithHelperPublishedFirst(client proto.MainClient, broker grpcBrokerClient, additionalInfo *proto.AdditionalInfo, args []string, coreCLIHelper CoreCLIHelper) error {
-	brokerID := broker.NextId()
+	brokerID := broker.nextID()
 
 	cleanup, err := startCoreCLIHelperBrokerServer(broker, brokerID, coreCLIHelper)
 	if err != nil {

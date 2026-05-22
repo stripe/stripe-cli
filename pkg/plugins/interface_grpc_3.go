@@ -36,7 +36,7 @@ func (p *CLIPluginV3) GRPCServer(broker *hcplugin.GRPCBroker, s *grpc.Server) er
 func (p *CLIPluginV3) GRPCClient(ctx context.Context, broker *hcplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClientV3{
 		client: proto.NewMainClient(c),
-		broker: broker,
+		broker: grpcBrokerAdapter{broker: broker},
 	}, nil
 }
 
@@ -52,7 +52,19 @@ type grpcBrokerServer interface {
 
 type grpcBrokerClient interface {
 	grpcBrokerServer
-	NextId() uint32
+	nextID() uint32
+}
+
+type grpcBrokerAdapter struct {
+	broker *hcplugin.GRPCBroker
+}
+
+func (b grpcBrokerAdapter) nextID() uint32 {
+	return b.broker.NextId()
+}
+
+func (b grpcBrokerAdapter) AcceptAndServe(id uint32, newGRPCServer func([]grpc.ServerOption) *grpc.Server) {
+	b.broker.AcceptAndServe(id, newGRPCServer)
 }
 
 var errCoreCLIHelperBrokerServerStart = errors.New("failed to start CoreCLIHelper broker server")
@@ -97,7 +109,7 @@ func startCoreCLIHelperBrokerServer(broker grpcBrokerServer, brokerID uint32, co
 
 // RunCommand calls the RPC.
 func (m *GRPCClientV3) RunCommand(additionalInfo *proto.AdditionalInfo, args []string, coreCLIHelper CoreCLIHelper) error {
-	brokerID := m.broker.NextId()
+	brokerID := m.broker.nextID()
 	errCh := make(chan error, 1)
 	go func() {
 		_, err := m.client.RunCommand(context.Background(), &proto.RunCommandRequest{
