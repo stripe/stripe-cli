@@ -2,6 +2,9 @@ package plugins
 
 import (
 	"context"
+	"errors"
+	"sync"
+	"time"
 
 	hcplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
@@ -40,33 +43,86 @@ func (p *CLIPluginV3) GRPCClient(ctx context.Context, broker *hcplugin.GRPCBroke
 // GRPCClientV3 is an implementation of the gRPC client that talks over gRPC.
 type GRPCClientV3 struct {
 	client proto.MainClient
-	broker *hcplugin.GRPCBroker
+	broker grpcBrokerClient
+}
+
+type grpcBrokerServer interface {
+	AcceptAndServe(id uint32, newGRPCServer func([]grpc.ServerOption) *grpc.Server)
+}
+
+type grpcBrokerClient interface {
+	grpcBrokerServer
+	NextId() uint32
+}
+
+var errCoreCLIHelperBrokerServerStart = errors.New("failed to start CoreCLIHelper broker server")
+var coreCLIHelperBrokerPublishDelay = 25 * time.Millisecond
+var coreCLIHelperBrokerServerStartTimeout = 5 * time.Second
+
+func startCoreCLIHelperBrokerServer(broker grpcBrokerServer, brokerID uint32, coreCLIHelper CoreCLIHelper) (func(), error) {
+	startedCh := make(chan struct{})
+	doneCh := make(chan struct{})
+
+	var server *grpc.Server
+	go func() {
+		defer close(doneCh)
+
+		broker.AcceptAndServe(brokerID, func(opts []grpc.ServerOption) *grpc.Server {
+			server = grpc.NewServer(opts...)
+			proto.RegisterCoreCLIHelperServer(server, &CoreCLIHelperServer{Impl: coreCLIHelper})
+			close(startedCh)
+			return server
+		})
+	}()
+
+	select {
+	case <-startedCh:
+	case <-doneCh:
+		return nil, errCoreCLIHelperBrokerServerStart
+	case <-time.After(coreCLIHelperBrokerServerStartTimeout):
+		return nil, errCoreCLIHelperBrokerServerStart
+	}
+
+	var cleanupOnce sync.Once
+	cleanup := func() {
+		cleanupOnce.Do(func() {
+			if server != nil {
+				server.Stop()
+			}
+		})
+	}
+
+	return cleanup, nil
 }
 
 // RunCommand calls the RPC.
 func (m *GRPCClientV3) RunCommand(additionalInfo *proto.AdditionalInfo, args []string, coreCLIHelper CoreCLIHelper) error {
-	coreCLIHelperServer := &CoreCLIHelperServer{Impl: coreCLIHelper}
-
-	var s *grpc.Server
-	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
-		s = grpc.NewServer(opts...)
-		proto.RegisterCoreCLIHelperServer(s, coreCLIHelperServer)
-		return s
-	}
-
 	brokerID := m.broker.NextId()
-	go m.broker.AcceptAndServe(brokerID, serverFunc)
+	errCh := make(chan error, 1)
+	go func() {
+		_, err := m.client.RunCommand(context.Background(), &proto.RunCommandRequest{
+			AdditionalInfo:  additionalInfo,
+			Args:            args,
+			CoreCliHelperId: brokerID,
+		})
+		errCh <- err
+	}()
 
-	_, err := m.client.RunCommand(context.Background(), &proto.RunCommandRequest{
-		AdditionalInfo:  additionalInfo,
-		Args:            args,
-		CoreCliHelperId: brokerID,
-	})
+	// Non-Go plugins can drop unsolicited broker connection info if it arrives
+	// before they register a pending dial for this service ID.
+	time.Sleep(coreCLIHelperBrokerPublishDelay)
+
+	cleanup, err := startCoreCLIHelperBrokerServer(m.broker, brokerID, coreCLIHelper)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	err = <-errCh
 	if err != nil {
 		return err
 	}
 
-	s.Stop()
 	return nil
 }
 

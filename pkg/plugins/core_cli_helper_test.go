@@ -146,6 +146,20 @@ func TestKeychainGetPasswordReturnsNotFoundWithoutRetry(t *testing.T) {
 	require.Equal(t, 1, ring.getCalls)
 }
 
+func TestKeychainGetPasswordReturnsErrorWhenKeyringUnavailable(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	config.KeyRing = nil
+	t.Cleanup(func() {
+		config.KeyRing = originalKeyRing
+	})
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	value, found, err := coreCLIHelper.KeychainGetPassword("missing.key")
+	require.ErrorIs(t, err, errKeychainUnavailable)
+	require.False(t, found)
+	require.Empty(t, value)
+}
+
 func TestKeychainGetPasswordReturnsUnexpectedError(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	originalEnabled := keychainVisibilityRetryEnabled
@@ -208,6 +222,18 @@ func TestKeychainSetPasswordMakesRecentWriteVisibleWhenKeychainHasNotCaughtUp(t 
 	require.True(t, found)
 	require.Equal(t, "sk_test_123", value)
 	require.Equal(t, 1, ring.getCalls)
+}
+
+func TestKeychainSetPasswordReturnsErrorWhenKeyringUnavailable(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	config.KeyRing = nil
+	t.Cleanup(func() {
+		config.KeyRing = originalKeyRing
+	})
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
+	require.ErrorIs(t, err, errKeychainUnavailable)
 }
 
 func TestKeychainGetPasswordPrefersRecentWriteOverStaleVisibleValue(t *testing.T) {
