@@ -56,19 +56,12 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	// Refresh the plugin info before proceeding
-	refreshErr := plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, uc.apiBaseURL)
-	if refreshErr != nil {
-		log.Debug(refreshErr)
-		fmt.Println("Unable to refresh plugin manifest, continuing with cached plugin metadata or manifest...")
-	}
-
-	plugin, err := plugins.ResolvePluginForUpgrade(uc.cfg, uc.fs, args[0])
+	resolvedPlugin, err := plugins.ResolvePluginForUpgrade(ctx, uc.cfg, uc.fs, args[0], uc.apiBaseURL)
 	if err != nil {
 		return err
 	}
-
-	version := plugin.LookUpLatestVersion()
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 
 	color := ansi.Color(os.Stdout)
 
@@ -82,7 +75,7 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	prevVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
 
-	if err := plugin.Install(ctx, uc.cfg, uc.fs, version, uc.apiBaseURL); err != nil {
+	if err := resolvedPlugin.Install(ctx, uc.cfg, uc.fs, uc.apiBaseURL); err != nil {
 		return err
 	}
 
