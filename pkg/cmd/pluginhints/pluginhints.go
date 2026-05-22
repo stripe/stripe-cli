@@ -13,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -54,6 +55,7 @@ type pluginHintCmd struct {
 
 	lookupFn      func(ctx context.Context) error
 	installFn     func(ctx context.Context) error
+	loginFn       func(ctx context.Context) error
 	accountIDFn   func() (string, error)
 	openBrowserFn func(url string) error
 	stdin         io.Reader
@@ -88,6 +90,9 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 			}
 			version := plugin.LookUpLatestVersion()
 			return plugin.Install(ctx, cfg, fs, version, stripe.DefaultAPIBaseURL)
+		},
+		loginFn: func(ctx context.Context) error {
+			return login.Login(ctx, stripe.DefaultDashboardBaseURL, cfg)
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
@@ -124,12 +129,11 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return p.suggestNotAvailable()
 	}
 
-	// If the user is not logged in, direct them to login rather than a manual
-	// install that will also fail unauthenticated.
+	// If the user is not logged in, offer to kick off the login flow rather than
+	// a manual install that will also fail unauthenticated.
 	accountID, err := p.accountIDFn()
 	if err != nil || accountID == "" {
-		fmt.Fprintf(p.stdout, "Run 'stripe login' to access the \"%s\" plugin.\n", p.name)
-		return nil
+		return p.promptLogin(ctx)
 	}
 
 	fmt.Fprintf(p.stdout, "The \"%s\" plugin is not currently available. Run 'stripe plugin install %s' to try installing it manually.\n", p.name, p.name)
@@ -157,6 +161,21 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
 
 	return nil
+}
+
+func (p *pluginHintCmd) promptLogin(ctx context.Context) error {
+	fmt.Fprintf(p.stdout, "You must be logged in to access the \"%s\" plugin.\n", p.name)
+	fmt.Fprintf(p.stdout, "\n")
+	fmt.Fprintf(p.stdout, "Press Enter to run 'stripe login', or type anything to cancel")
+
+	var input string
+	fmt.Fscanln(p.stdin, &input)
+
+	if input != "" {
+		return fmt.Errorf("login canceled")
+	}
+
+	return p.loginFn(ctx)
 }
 
 func (p *pluginHintCmd) suggestNotAvailable() error {

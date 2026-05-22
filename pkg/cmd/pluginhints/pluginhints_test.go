@@ -24,6 +24,7 @@ func newTestCmd(name string, opts ...option) *pluginHintCmd {
 		stdout:      &bytes.Buffer{},
 		stdin:       strings.NewReader(""),
 		accountIDFn: func() (string, error) { return "acct_test", nil },
+		loginFn:     func(ctx context.Context) error { return nil },
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -61,26 +62,32 @@ func TestRun_PluginNotFound_PrivatePreviewFalse_LoggedIn_PrintsInstallHint(t *te
 	assert.Contains(t, p.output(), "stripe plugin install apps")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PrintsLoginHint(t *testing.T) {
+func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PromptsLogin(t *testing.T) {
 	p := newTestCmd("docs")
 	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
 	p.accountIDFn = func() (string, error) { return "", nil }
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
 
 	err := p.run(p.Command, nil)
 
 	require.NoError(t, err)
+	assert.True(t, loginCalled)
 	assert.Contains(t, p.output(), "stripe login")
 	assert.NotContains(t, p.output(), "stripe plugin install")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_AccountIDError_PrintsLoginHint(t *testing.T) {
+func TestRun_PluginNotFound_PrivatePreviewFalse_AccountIDError_PromptsLogin(t *testing.T) {
 	p := newTestCmd("docs")
 	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
 	p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
 
 	err := p.run(p.Command, nil)
 
 	require.NoError(t, err)
+	assert.True(t, loginCalled)
 	assert.Contains(t, p.output(), "stripe login")
 	assert.NotContains(t, p.output(), "stripe plugin install")
 }
@@ -151,6 +158,43 @@ func TestPromptInstall_InstallError_ReturnsError(t *testing.T) {
 	err := p.promptInstall(context.Background())
 
 	assert.EqualError(t, err, "install failed")
+}
+
+// --- promptLogin ---
+
+func TestPromptLogin_EnterKey_LogsIn(t *testing.T) {
+	p := newTestCmd("docs")
+	p.stdin = strings.NewReader("\n")
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+
+	err := p.promptLogin(context.Background())
+
+	require.NoError(t, err)
+	assert.True(t, loginCalled)
+	assert.Contains(t, p.output(), "stripe login")
+}
+
+func TestPromptLogin_OtherInput_CancelsLogin(t *testing.T) {
+	p := newTestCmd("docs")
+	p.stdin = strings.NewReader("n\n")
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+
+	err := p.promptLogin(context.Background())
+
+	assert.EqualError(t, err, "login canceled")
+	assert.False(t, loginCalled)
+}
+
+func TestPromptLogin_LoginError_ReturnsError(t *testing.T) {
+	p := newTestCmd("docs")
+	p.stdin = strings.NewReader("\n")
+	p.loginFn = func(ctx context.Context) error { return errors.New("login failed") }
+
+	err := p.promptLogin(context.Background())
+
+	assert.EqualError(t, err, "login failed")
 }
 
 // --- suggestNotAvailable ---
