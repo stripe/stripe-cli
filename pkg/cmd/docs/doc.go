@@ -1,0 +1,4 @@
+// Package cmd defines the root Cobra command and all subcommands for the
+// stripe docs plugin. Commands are methods on [RootCommand], which holds
+// shared dependencies injected via [WithOptions].
+package cmd
