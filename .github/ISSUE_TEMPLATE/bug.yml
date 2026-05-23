@@ -1,0 +1,66 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before submitting:** please search [existing issues](https://github.com/stripe/stripe-cli-docs-plugin-go/issues) to avoid duplicates. For security vulnerabilities, see [SECURITY.md](../SECURITY.md) instead.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and this is not a duplicate
+          required: true
+        - label: I have read the [Code of Conduct](../CODE_OF_CONDUCT.md)
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug and what you expected to happen instead.
+      placeholder: |
+        What happened?
+        What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Run `stripe docs ...`
+        2. ...
+    validations:
+      required: true
+
+  - type: input
+    id: cli-version
+    attributes:
+      label: Stripe CLI Version
+      description: Output of `stripe version`
+      placeholder: "1.21.0"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Plugin Version
+      description: Output of `stripe docs --version`
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context, logs, or screenshots that might help.
+    validations:
+      required: false

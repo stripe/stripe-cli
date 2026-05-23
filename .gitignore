@@ -1,0 +1,36 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+stripe-docs
+
+# Test output
+*.test
+*.out
+coverage.txt
+
+# Build output
+bin/
+dist/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Dependency vendor directory
+vendor/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
