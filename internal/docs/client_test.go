@@ -99,7 +99,7 @@ func TestFetchPage(t *testing.T) {
 			route:  "/payments",
 			params: map[string]string{"api_version": "2024-06-30"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, "text/plain", r.Header.Get("Accept"))
+				assert.Equal(t, "text/markdown", r.Header.Get("Accept"))
 				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli docs-plugin/")
 				assert.Equal(t, "/payments", r.URL.Path)
 				assert.Equal(t, "2024-06-30", r.URL.Query().Get("api_version"))
@@ -137,6 +137,26 @@ func TestFetchPage(t *testing.T) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
 			wantErr: "returned 500",
+		},
+		{
+			name:  "unsupported content type returns error",
+			route: "/html",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				fmt.Fprint(w, "<html></html>")
+			},
+			wantErr: "unsupported content type",
+		},
+		{
+			name:  "text/plain with charset is accepted",
+			route: "/plain",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				fmt.Fprint(w, "plain content")
+			},
+			wantCheck: func(t *testing.T, got Page) {
+				assert.Equal(t, []byte("plain content"), got.Content)
+			},
 		},
 	}
 

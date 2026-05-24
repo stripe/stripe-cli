@@ -52,7 +52,7 @@ func NewFSCache(dir string, opts ...CacheOption) (*FSCache, error) {
 }
 
 func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
-	path := filepath.Join(c.dir, hash(key))
+	path := filepath.Join(c.dir, hash(key)+".md")
 
 	info, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -79,7 +79,7 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 }
 
 func (c *FSCache) Set(key string, data []byte) error {
-	path := filepath.Join(c.dir, hash(key))
+	path := filepath.Join(c.dir, hash(key)+".md")
 	return os.WriteFile(path, data, 0o644)
 }
 
