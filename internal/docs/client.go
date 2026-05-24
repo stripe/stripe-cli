@@ -134,7 +134,7 @@ func (c *Client) do(ctx context.Context, rawURL string) ([]byte, error) {
 		c.logger.Error("request failed", "url", rawURL, "err", err)
 		return nil, fmt.Errorf("docs: request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	c.logger.Debug("request complete", "url", rawURL, "status", resp.StatusCode, "duration", time.Since(start).Round(time.Millisecond))
 
