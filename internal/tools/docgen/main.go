@@ -1,3 +1,4 @@
+// Package main generates CLI reference documentation in various formats.
 package main
 
 import (
@@ -18,7 +19,7 @@ func main() {
 	front := flag.Bool("frontmatter", false, "prepend YAML front matter to markdown files")
 	flag.Parse()
 
-	if err := os.MkdirAll(*out, 0o755); err != nil {
+	if err := os.MkdirAll(*out, 0o750); err != nil {
 		log.Fatal(err)
 	}
 
