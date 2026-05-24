@@ -2,10 +2,10 @@ name: ci
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
     tags: ["*"]
   pull_request:
-    branches: ["main"]
+    branches: ["master"]
   workflow_dispatch:
 
 jobs:
