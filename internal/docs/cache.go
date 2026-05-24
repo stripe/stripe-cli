@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -41,8 +42,8 @@ func WithClock(now func() time.Time) CacheOption {
 
 // NewFSCache creates a filesystem-backed cache rooted at dir.
 func NewFSCache(dir string, opts ...CacheOption) (*FSCache, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return nil, fmt.Errorf("docs: create cache dir: %w", err)
 	}
 	c := &FSCache{dir: dir, ttl: defaultCacheTTL, now: time.Now}
 	for _, opt := range opts {
@@ -51,6 +52,8 @@ func NewFSCache(dir string, opts ...CacheOption) (*FSCache, error) {
 	return c, nil
 }
 
+// Get retrieves a cached entry by key, returning the data, cache time, and
+// whether the entry was found. Expired entries are removed on access.
 func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 	path := filepath.Join(c.dir, hash(key)+".md")
 
@@ -59,11 +62,11 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 		return nil, time.Time{}, false, nil
 	}
 	if err != nil {
-		return nil, time.Time{}, false, err
+		return nil, time.Time{}, false, fmt.Errorf("docs: stat cache entry: %w", err)
 	}
 
 	if c.now().Sub(info.ModTime()) > c.ttl {
-		os.Remove(path)
+		_ = os.Remove(path)
 		return nil, time.Time{}, false, nil
 	}
 
@@ -72,19 +75,22 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 		return nil, time.Time{}, false, nil
 	}
 	if err != nil {
-		return nil, time.Time{}, false, err
+		return nil, time.Time{}, false, fmt.Errorf("docs: read cache entry: %w", err)
 	}
 
 	return data, info.ModTime(), true, nil
 }
 
+// Set writes data to the cache under key.
 func (c *FSCache) Set(key string, data []byte) error {
 	path := filepath.Join(c.dir, hash(key)+".md")
-	return os.WriteFile(path, data, 0o644)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("docs: write cache entry: %w", err)
+	}
+	return nil
 }
 
 func hash(key string) string {
 	h := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(h[:])
 }
-
