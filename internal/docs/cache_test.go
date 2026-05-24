@@ -86,7 +86,7 @@ func TestFSCache_Get_UnreadableFile(t *testing.T) {
 
 	require.NoError(t, cache.Set("key", []byte("data")))
 
-	path := filepath.Join(dir, hash("key"))
+	path := filepath.Join(dir, hash("key")+".md")
 	require.NoError(t, os.Chmod(path, 0o000))
 	t.Cleanup(func() { os.Chmod(path, 0o644) })
 

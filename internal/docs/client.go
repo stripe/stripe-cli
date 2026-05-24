@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -125,7 +126,7 @@ func (c *Client) do(ctx context.Context, rawURL string) ([]byte, error) {
 		return nil, fmt.Errorf("docs: build request: %w", err)
 	}
 	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Accept", "text/plain")
+	req.Header.Set("Accept", "text/markdown")
 
 	start := time.Now()
 	resp, err := c.http.Do(req)
@@ -139,6 +140,13 @@ func (c *Client) do(ctx context.Context, rawURL string) ([]byte, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("docs: %s returned %d", rawURL, resp.StatusCode)
+	}
+
+	if ct := resp.Header.Get("Content-Type"); ct != "" {
+		mediaType, _, _ := mime.ParseMediaType(ct)
+		if mediaType != "text/plain" && mediaType != "text/markdown" {
+			return nil, fmt.Errorf("docs: %s returned unsupported content type %q", rawURL, ct)
+		}
 	}
 
 	body, err := io.ReadAll(resp.Body)
