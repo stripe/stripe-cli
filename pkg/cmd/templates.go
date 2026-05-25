@@ -394,7 +394,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Webhook commands:"),
 		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Resource commands:"),
-		ansi.Italic("To see more resource commands, run `stripe resources help`"),
+		ansi.Italic("To see more resource commands, run `stripe resources --help`"),
 		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
 		ansi.Bold("API commands:"),
 		ansi.Bold("Other commands:"),
