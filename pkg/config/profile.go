@@ -31,6 +31,8 @@ type Profile struct {
 	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
+	SandboxClaimURL        string
+	SandboxExpiresAt       string
 }
 
 // config key names
@@ -45,6 +47,8 @@ const (
 	LiveModeAPIKeyName         = "live_mode_api_key"
 	LiveModePubKeyName         = "live_mode_pub_key"
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
+	SandboxClaimURLName        = "sandbox_claim_url"
+	SandboxExpiresAtName       = "sandbox_expires_at"
 )
 
 const (
@@ -127,6 +131,9 @@ var authFieldNames = []string{
 	LiveModePubKeyName,
 	LiveModeKeyExpiresAtName,
 	"profile_name",
+	// sandbox-specific fields from stripe sandbox create
+	SandboxClaimURLName,
+	SandboxExpiresAtName,
 	// legacy field names from older config formats
 	"secret_key",
 	"api_key",
@@ -420,6 +427,14 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.AccountID != "" {
 		runtimeViper.Set(p.GetConfigField(AccountIDName), strings.TrimSpace(p.AccountID))
+	}
+
+	if p.SandboxClaimURL != "" {
+		runtimeViper.Set(p.GetConfigField(SandboxClaimURLName), strings.TrimSpace(p.SandboxClaimURL))
+	}
+
+	if p.SandboxExpiresAt != "" {
+		runtimeViper.Set(p.GetConfigField(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
 	}
 
 	runtimeViper.MergeInConfig()

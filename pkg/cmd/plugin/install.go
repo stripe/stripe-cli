@@ -16,6 +16,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -75,10 +76,28 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	pluginName, version := parseInstallArg(args[0])
 	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
 	isLatest := len(version) == 0
-	plugin, version, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
+	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
 	if err != nil {
-		return err
+		accountID, aErr := ic.cfg.GetProfile().GetAccountID()
+		if aErr != nil || accountID == "" {
+			fmt.Printf("You must be logged in to install the \"%s\" plugin.\n\n", pluginName)
+			fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
+			var input string
+			fmt.Fscanln(os.Stdin, &input)
+			if input != "" {
+				return fmt.Errorf("login canceled")
+			}
+			if lErr := login.Login(cmd.Context(), stripe.DefaultDashboardBaseURL, ic.cfg); lErr != nil {
+				return lErr
+			}
+			resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
+		}
+		if err != nil {
+			return err
+		}
 	}
+	plugin := resolvedPlugin.Plugin
+	version = resolvedPlugin.Version
 
 	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
 		if err := plugins.PersistInstalledPluginState(ic.cfg, ic.fs, *plugin); err != nil {
@@ -100,7 +119,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	if err := plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL); err != nil {
+	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
 		return err
 	}
 

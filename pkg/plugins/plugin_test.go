@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -123,6 +124,55 @@ func TestInstallUsesPluginMetadataEndpointWhenAPIKeyAvailable(t *testing.T) {
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
 	require.NoError(t, err)
+}
+
+func TestInstallUsesAnonymousPluginMetadataEndpointWhenAPIKeyUnavailable(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch {
+		case strings.Contains(req.URL.String(), "/appA/2.0.1"):
+			res.Write([]byte("hello, I am appA_2.0.1"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/plugins_metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("install should not fall back to /v1/stripecli/get-plugin-url when anonymous plugin metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	plugin := &Plugin{Shortname: "appA"}
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+
+	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	fileExists, err := afero.Exists(fs, file)
+	require.NoError(t, err)
+	require.True(t, fileExists)
+
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "stripe-cli-app-a", cachedPlugin.Binary)
+	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
 }
 
 func TestInstallFallsBackIfPluginMetadataEndpointFails(t *testing.T) {
@@ -341,11 +391,14 @@ func TestResolvePluginForInstallUsesMetadataWithoutCachedManifest(t *testing.T) 
 	}))
 	defer stripeServer.Close()
 
-	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
 	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 	require.NotNil(t, plugin)
 	require.Equal(t, "appA", plugin.Shortname)
 	require.Equal(t, "2.0.1", version)
+	require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
 	require.Equal(t, 1, metadataLookups)
 
 	_, err = fs.Stat("/plugins.toml")
@@ -378,10 +431,13 @@ func TestResolvePluginForInstallResolvesLatestVersionFromMetadata(t *testing.T) 
 	}))
 	defer stripeServer.Close()
 
-	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", stripeServer.URL)
 	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 	require.NotNil(t, plugin)
 	require.Equal(t, "2.0.1", version)
+	require.Equal(t, "https://example.test/appA/latest", resolvedPlugin.BinaryURL)
 	require.Equal(t, 1, metadataLookups)
 }
 
@@ -413,15 +469,162 @@ func TestResolvePluginForInstallFallsBackToManifestLookupWhenMetadataFails(t *te
 	}))
 	defer fallbackServer.Close()
 
-	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", fallbackServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", fallbackServer.URL)
 	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 	require.NotNil(t, plugin)
 	require.Equal(t, "appA", plugin.Shortname)
 	require.Equal(t, "2.0.1", version)
+	require.Empty(t, resolvedPlugin.BinaryURL)
 	require.Equal(t, 1, pluginURLLookups)
 
 	_, err = fs.Stat("/plugins.toml")
 	require.NoError(t, err)
+}
+
+func TestResolvedPluginInstallUsesResolvedMetadataWithoutSecondLookup(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	var metadataLookups int
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch {
+		case strings.Contains(req.URL.String(), "/appA/2.0.1"):
+			res.Write([]byte("hello, I am appA_2.0.1"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			metadataLookups++
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("resolved install should not fall back to /v1/stripecli/get-plugin-url when metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, metadataLookups)
+
+	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, metadataLookups)
+}
+
+func TestResolvedPluginInstallRetriesMetadataAfterManifestFallback(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	binaryBody := []byte("hello, I am generate_1.0.0")
+	binarySum := fmt.Sprintf("%x", sha256.Sum256(binaryBody))
+	manifestContent := []byte(fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "%s"
+`, runtime.GOARCH, runtime.GOOS, binarySum))
+
+	metadataManifest := fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "%s"
+    Runtime = {node = "20"}
+`, runtime.GOARCH, runtime.GOOS, binarySum)
+
+	var metadataLookups int
+	var pluginURLLookups int
+
+	nodeBinaryPath := GetNodeBinaryPath(config, "20")
+	require.NoError(t, fs.MkdirAll(filepath.Dir(nodeBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, nodeBinaryPath, []byte("node"), 0755))
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/plugins.toml":
+			res.Write(manifestContent)
+		case fmt.Sprintf("/generate/1.0.0/%s/%s/stripe-cli-generate", runtime.GOOS, runtime.GOARCH):
+			res.Write(binaryBody)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer artifactoryServer.Close()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			metadataLookups++
+			if metadataLookups == 1 {
+				res.WriteHeader(http.StatusInternalServerError)
+				_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+				return
+			}
+
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      fmt.Sprintf("%s/generate/1.0.0/%s/%s/stripe-cli-generate", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
+				PluginManifest: metadataManifest,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			pluginURLLookups++
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       artifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, metadataLookups)
+	require.Equal(t, 1, pluginURLLookups)
+
+	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 2, metadataLookups)
+	require.Equal(t, 1, pluginURLLookups)
+
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "generate")
+	require.NoError(t, err)
+	release := cachedPlugin.getReleaseForVersion("1.0.0")
+	require.NotNil(t, release)
+	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale(t *testing.T) {
@@ -448,8 +651,10 @@ func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale
 	testServers := setUpServers(t, manifestContent, nil)
 	defer testServers.CloseAll()
 
-	plugin, version, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", testServers.StripeServer.URL)
+	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", testServers.StripeServer.URL)
 	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 	require.NotNil(t, plugin)
 	require.Equal(t, "2.0.1", version)
 	require.Equal(t, "2.0.1", plugin.LookUpLatestVersion())
@@ -484,8 +689,10 @@ func TestResolvePluginForAutoInstallFallsBackToCachedManifestWhenFreshLookupFail
 	}))
 	defer failingServer.Close()
 
-	plugin, version, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", failingServer.URL)
+	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", failingServer.URL)
 	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 	require.NotNil(t, plugin)
 	require.Equal(t, "2.0.1", version)
 	require.Equal(t, "2.0.1", plugin.LookUpLatestVersion())
