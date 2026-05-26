@@ -94,6 +94,12 @@ Tests that require a valid Stripe test API key:
 | `TestAPILogsTailCapture` | `stripe logs tail --format JSON` + API call | Logs tail captures requests |
 | `TestAPIConfigSetAndUseAPIKey` | `stripe config --set` + API call | Config-based auth |
 | `TestAPIConfigMultipleProfiles` | `--project-name` flag | Multi-profile support |
+| `TestAPIV2CoreEventsList` | `stripe v2 core events list` | V2 resource commands work |
+| `TestAPIV2CoreEventDestinationsList` | `stripe v2 core event_destinations list` | V2 namespace routing |
+| `TestAPIV2BillingMeterEventSessionCreate` | `stripe v2 billing meter_event_sessions create` | V2 POST with JSON body |
+| `TestAPIV2RawGet` | `stripe get /v2/core/events` | Raw GET to v2 path |
+| `TestAPIV2RawPost` | `stripe post /v2/billing/meter_event_session` | Raw POST to v2 path (JSON content-type) |
+| `TestAPIV2TriggerMeterNoMeterFound` | `stripe trigger v1.billing.meter.no_meter_found` | V2 trigger fixtures execute |
 
 ## Environment Variables
 
