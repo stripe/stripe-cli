@@ -11,11 +11,12 @@ type KeyMap struct {
 	Down     key.Binding
 	PageUp   key.Binding
 	PageDown key.Binding
+	Help     key.Binding
 }
 
 // ShortHelp returns bindings for the short help view.
 func (k KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Quit}
+	return []key.Binding{k.Help}
 }
 
 // FullHelp returns bindings grouped by column for the full help view.
@@ -49,6 +50,10 @@ func DefaultKeyMap() KeyMap {
 		PageDown: key.NewBinding(
 			key.WithKeys("pgdown", "space", "f"),
 			key.WithHelp("f/pgdn", "page down"),
+		),
+		Help: key.NewBinding(
+			key.WithKeys("?"),
+			key.WithHelp("?", "help"),
 		),
 	}
 }

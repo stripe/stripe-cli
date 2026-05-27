@@ -11,10 +11,8 @@ func TestKeyMap_ShortHelp(t *testing.T) {
 	km := DefaultKeyMap()
 	bindings := km.ShortHelp()
 
-	assert.Len(t, bindings, 3)
-	assert.Equal(t, km.Up, bindings[0])
-	assert.Equal(t, km.Down, bindings[1])
-	assert.Equal(t, km.Quit, bindings[2])
+	assert.Len(t, bindings, 1)
+	assert.Equal(t, km.Help, bindings[0])
 }
 
 func TestKeyMap_FullHelp(t *testing.T) {
