@@ -27,8 +27,8 @@ func New() *RootCommand {
 		Use:                "version",
 		Short:              "Print the docs plugin version",
 		DisableFlagParsing: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Fprintf(cmd.OutOrStdout(), "stripe docs version %s\n", r.version)
+		Run: func(cmd *cobra.Command, _ []string) {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "stripe docs version %s\n", r.version)
 		},
 	})
 	return r
