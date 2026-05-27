@@ -262,13 +262,9 @@ func init() {
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
 	registerHTTPCmds(rootCmd)
-	err := resource.AddDatabasesCmd(rootCmd, &Config)
-	if err != nil {
-		log.Fatal(err)
-	}
 	addV2BillingStubs(rootCmd)
 
-	err = resource.PostProcessResourceCommands(rootCmd, &Config)
+	err := resource.PostProcessResourceCommands(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
 	}
