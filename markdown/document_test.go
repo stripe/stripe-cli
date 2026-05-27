@@ -44,6 +44,48 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestTitle(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "extracts first h1",
+			src:  "# Hello World\n\nSome content.",
+			want: "Hello World",
+		},
+		{
+			name: "ignores h2",
+			src:  "## Not a title\n\n# Real Title",
+			want: "Real Title",
+		},
+		{
+			name: "returns empty when no h1",
+			src:  "## Heading Two\n\nParagraph.",
+			want: "",
+		},
+		{
+			name: "empty document",
+			src:  "",
+			want: "",
+		},
+		{
+			name: "inline formatting in heading",
+			src:  "# Hello **World**\n\nContent.",
+			want: "Hello World",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := markdown.Parse([]byte(tt.src))
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, doc.Title())
+		})
+	}
+}
+
 func TestParseAST(t *testing.T) {
 	src := "# Hello\n\nParagraph."
 	doc, err := markdown.Parse([]byte(src))
