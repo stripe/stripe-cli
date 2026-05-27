@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -21,6 +22,7 @@ type Model struct {
 	viewport viewport.Model
 	help     help.Model
 	keys     KeyMap
+	styles   Styles
 
 	// Dependencies
 	client   *docs.Client
@@ -64,11 +66,24 @@ func WithTitle(title string) Option {
 	return func(m *Model) { m.title = title }
 }
 
+// WithStyles sets custom styles.
+func WithStyles(s Styles) Option {
+	return func(m *Model) { m.styles = s }
+}
+
 // New creates a Model configured with the given options.
 func New(opts ...Option) Model {
+	h := help.New()
+	h.FullSeparator = " • "
+	s := DefaultStyles()
+	h.Styles.FullKey = h.Styles.FullKey.Background(s.FullHelpBackground)
+	h.Styles.FullDesc = h.Styles.FullDesc.Background(s.FullHelpBackground)
+	h.Styles.FullSeparator = h.Styles.FullSeparator.Background(s.FullHelpBackground)
+
 	m := Model{
-		keys: DefaultKeyMap(),
-		help: help.New(),
+		keys:   DefaultKeyMap(),
+		help:   h,
+		styles: s,
 	}
 	m.WithOptions(opts...)
 	return m
@@ -92,13 +107,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		viewportHeight := msg.Height - statusBarHeight
 		if !m.ready {
 			m.viewport = viewport.New(
 				viewport.WithWidth(msg.Width),
-				viewport.WithHeight(viewportHeight),
+				viewport.WithHeight(m.viewportHeight()),
 			)
 			m.viewport.MouseWheelEnabled = true
+			m.viewport.MouseWheelDelta = 1
 			m.viewport.KeyMap = viewport.KeyMap{}
 			m.help.SetWidth(msg.Width)
 			if m.doc != nil && m.renderer != nil {
@@ -109,11 +124,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ready = true
 		} else {
 			m.viewport.SetWidth(msg.Width)
-			m.viewport.SetHeight(viewportHeight)
+			m.viewport.SetHeight(m.viewportHeight())
 			m.help.SetWidth(msg.Width)
 		}
 	case tea.KeyPressMsg:
 		switch {
+		case key.Matches(msg, m.keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			m.viewport.SetHeight(m.viewportHeight())
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, m.keys.Up):
@@ -136,7 +154,15 @@ func (m Model) View() tea.View {
 		return tea.NewView("loading...")
 	}
 
-	view := tea.NewView(m.viewport.View() + "\n" + m.status())
+	content := m.viewport.View() + "\n" + m.status()
+	if m.help.ShowAll {
+		helpStyle := lipgloss.NewStyle().
+			Background(m.styles.FullHelpBackground).
+			Width(m.width)
+		content += "\n" + helpStyle.Render(m.help.View(m.keys))
+	}
+
+	view := tea.NewView(content)
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
 	if m.title != "" {
@@ -147,28 +173,34 @@ func (m Model) View() tea.View {
 	return view
 }
 
-func (m Model) status() string {
-	title := lipgloss.NewStyle().
-		Bold(true).
-		Background(lipgloss.Color("#7D56F4")).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Padding(0, 1).
-		Render("Stripe")
+func (m Model) viewportHeight() int {
+	h := m.height - statusBarHeight
+	if m.help.ShowAll {
+		helpView := m.help.View(m.keys)
+		h -= strings.Count(helpView, "\n") + 1
+	}
+	return max(1, h)
+}
 
-	titleWithName := title
+func (m Model) status() string {
+	bar := m.styles.StatusBar
+
+	title := m.styles.StatusTitle.Render("Stripe")
+
+	name := ""
 	if m.title != "" {
-		titleWithName += "  " + m.title
+		name = bar.Padding(0, 1).Render(m.title)
 	}
 
-	percent := fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
-	helpView := m.help.View(m.keys)
-	right := percent + "  " + helpView
+	percent := bar.Padding(0, 1).Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+	helpPill := m.styles.StatusHelp.Render("? help")
 
-	gap := max(0, m.width-lipgloss.Width(titleWithName)-lipgloss.Width(right))
+	left := title + name
+	right := percent + helpPill
 
-	bar := lipgloss.NewStyle().
-		Width(m.width).
-		Render(titleWithName + lipgloss.NewStyle().Width(gap).Render("") + right)
+	gap := max(0, m.width-lipgloss.Width(left)-lipgloss.Width(right))
+	fill := lipgloss.PlaceHorizontal(gap, lipgloss.Left, "",
+		lipgloss.WithWhitespaceStyle(bar))
 
-	return bar
+	return left + fill + right
 }
