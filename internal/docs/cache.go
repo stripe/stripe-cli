@@ -55,9 +55,9 @@ func NewFSCache(dir string, opts ...CacheOption) (*FSCache, error) {
 // Get retrieves a cached entry by key, returning the data, cache time, and
 // whether the entry was found. Expired entries are removed on access.
 func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
-	path := filepath.Join(c.dir, hash(key)+".md")
+	p := filepath.Clean(c.path(key))
 
-	info, err := os.Stat(path)
+	info, err := os.Stat(p)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, time.Time{}, false, nil
 	}
@@ -66,11 +66,11 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 	}
 
 	if c.now().Sub(info.ModTime()) > c.ttl {
-		_ = os.Remove(path)
+		_ = os.Remove(p)
 		return nil, time.Time{}, false, nil
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(p)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, time.Time{}, false, nil
 	}
@@ -83,14 +83,15 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 
 // Set writes data to the cache under key.
 func (c *FSCache) Set(key string, data []byte) error {
-	path := filepath.Join(c.dir, hash(key)+".md")
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	p := filepath.Clean(c.path(key))
+	if err := os.WriteFile(p, data, 0o600); err != nil {
 		return fmt.Errorf("docs: write cache entry: %w", err)
 	}
 	return nil
 }
 
-func hash(key string) string {
+func (c *FSCache) path(key string) string {
 	h := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(h[:])
+	name := hex.EncodeToString(h[:]) + ".md"
+	return filepath.Join(c.dir, filepath.Base(name))
 }
