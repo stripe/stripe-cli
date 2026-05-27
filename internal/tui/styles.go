@@ -1,17 +1,12 @@
 package tui
 
-import (
-	"image/color"
-
-	"charm.land/lipgloss/v2"
-)
+import "charm.land/lipgloss/v2"
 
 // Styles defines the shared visual styles for the TUI.
 type Styles struct {
-	StatusBar          lipgloss.Style
-	StatusTitle        lipgloss.Style
-	StatusHelp         lipgloss.Style
-	FullHelpBackground color.Color
+	StatusBar   lipgloss.Style
+	StatusTitle lipgloss.Style
+	StatusHelp  lipgloss.Style
 }
 
 // DefaultStyles returns the default set of styles.
@@ -29,6 +24,5 @@ func DefaultStyles() Styles {
 			Background(lipgloss.Color("#3D3D3D")).
 			Foreground(lipgloss.Color("#EEEEEE")).
 			Padding(0, 1),
-		FullHelpBackground: lipgloss.Color("#222222"),
 	}
 }

@@ -76,9 +76,6 @@ func New(opts ...Option) Model {
 	h := help.New()
 	h.FullSeparator = " • "
 	s := DefaultStyles()
-	h.Styles.FullKey = h.Styles.FullKey.Background(s.FullHelpBackground)
-	h.Styles.FullDesc = h.Styles.FullDesc.Background(s.FullHelpBackground)
-	h.Styles.FullSeparator = h.Styles.FullSeparator.Background(s.FullHelpBackground)
 
 	m := Model{
 		keys:   DefaultKeyMap(),
@@ -156,10 +153,8 @@ func (m Model) View() tea.View {
 
 	content := m.viewport.View() + "\n" + m.status()
 	if m.help.ShowAll {
-		helpStyle := lipgloss.NewStyle().
-			Background(m.styles.FullHelpBackground).
-			Width(m.width)
-		content += "\n" + helpStyle.Render(m.help.View(m.keys))
+		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
+		content += "\n" + helpView
 	}
 
 	view := tea.NewView(content)
@@ -176,7 +171,7 @@ func (m Model) View() tea.View {
 func (m Model) viewportHeight() int {
 	h := m.height - statusBarHeight
 	if m.help.ShowAll {
-		helpView := m.help.View(m.keys)
+		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
 		h -= strings.Count(helpView, "\n") + 1
 	}
 	return max(1, h)
