@@ -973,6 +973,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command, cfg *config.Config) {
 	resource.NewOperationCmd(rExtendWorkflowsCmd.Cmd, &V2PreviewExtendWorkflowsList, cfg)
 	resource.NewOperationCmd(rExtendWorkflowsCmd.Cmd, &V2PreviewExtendWorkflowsRetrieve, cfg)
 	resource.NewOperationCmd(rIamActivityLogsCmd.Cmd, &V2PreviewIamActivityLogsList, cfg)
+	resource.NewOperationCmd(rIamActivityLogsCmd.Cmd, &V2PreviewIamActivityLogsRetrieve, cfg)
 	resource.NewOperationCmd(rMoneyManagementAdjustmentsCmd.Cmd, &V2PreviewMoneyManagementAdjustmentsList, cfg)
 	resource.NewOperationCmd(rMoneyManagementAdjustmentsCmd.Cmd, &V2PreviewMoneyManagementAdjustmentsRetrieve, cfg)
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, &V2PreviewMoneyManagementFinancialAccountsClose, cfg)
