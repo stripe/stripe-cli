@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"runtime"
 	"testing"
 	"time"
@@ -43,7 +44,7 @@ func TestNewClient_UserAgent(t *testing.T) {
 
 func TestNewClient_Defaults(t *testing.T) {
 	got := NewClient("0.1.0")
-	assert.Equal(t, defaultBaseURL, got.baseURL)
+	assert.Equal(t, defaultBaseURL, got.baseURL.String())
 	assert.Nil(t, got.cache)
 	assert.NotNil(t, got.http)
 }
@@ -58,7 +59,7 @@ func TestWithOptions(t *testing.T) {
 			name: "override base URL",
 			opts: []ClientOption{WithBaseURL("https://example.com")},
 			wantCheck: func(t *testing.T, c *Client) {
-				assert.Equal(t, "https://example.com", c.baseURL)
+				assert.Equal(t, "https://example.com", c.baseURL.String())
 			},
 		},
 		{
@@ -72,7 +73,7 @@ func TestWithOptions(t *testing.T) {
 			name: "multiple options applied in order",
 			opts: []ClientOption{WithBaseURL("https://first.com"), WithBaseURL("https://second.com")},
 			wantCheck: func(t *testing.T, c *Client) {
-				assert.Equal(t, "https://second.com", c.baseURL)
+				assert.Equal(t, "https://second.com", c.baseURL.String())
 			},
 		},
 	}
@@ -88,16 +89,14 @@ func TestWithOptions(t *testing.T) {
 func TestFetchPage(t *testing.T) {
 	tests := []struct {
 		name      string
-		route     string
-		params    map[string]string
+		ref       *url.URL
 		handler   http.HandlerFunc
 		wantErr   string
 		wantCheck func(t *testing.T, got Page)
 	}{
 		{
-			name:   "success with params",
-			route:  "/payments",
-			params: map[string]string{"api_version": "2024-06-30"},
+			name: "success with params",
+			ref:  &url.URL{Path: "/payments", RawQuery: "api_version=2024-06-30"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "text/markdown", r.Header.Get("Accept"))
 				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli docs-plugin/")
@@ -107,13 +106,13 @@ func TestFetchPage(t *testing.T) {
 			},
 			wantCheck: func(t *testing.T, got Page) {
 				assert.Equal(t, []byte("page content"), got.Content)
-				assert.Contains(t, got.URL, "/payments?api_version=2024-06-30")
+				assert.Contains(t, got.URL.String(), "/payments?api_version=2024-06-30")
 				assert.WithinDuration(t, time.Now(), got.FetchedAt, 2*time.Second)
-							},
+			},
 		},
 		{
-			name:  "success with nil params",
-			route: "/overview",
+			name: "success with no params",
+			ref:  &url.URL{Path: "/overview"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Empty(t, r.URL.RawQuery)
 				fmt.Fprint(w, "overview")
@@ -123,24 +122,24 @@ func TestFetchPage(t *testing.T) {
 			},
 		},
 		{
-			name:  "404 returns error",
-			route: "/missing",
+			name: "404 returns error",
+			ref:  &url.URL{Path: "/missing"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			},
 			wantErr: "returned 404",
 		},
 		{
-			name:  "500 returns error",
-			route: "/error",
+			name: "500 returns error",
+			ref:  &url.URL{Path: "/error"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 			},
 			wantErr: "returned 500",
 		},
 		{
-			name:  "unsupported content type returns error",
-			route: "/html",
+			name: "unsupported content type returns error",
+			ref:  &url.URL{Path: "/html"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				fmt.Fprint(w, "<html></html>")
@@ -148,8 +147,8 @@ func TestFetchPage(t *testing.T) {
 			wantErr: "unsupported content type",
 		},
 		{
-			name:  "text/plain with charset is accepted",
-			route: "/plain",
+			name: "text/plain with charset is accepted",
+			ref:  &url.URL{Path: "/plain"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 				fmt.Fprint(w, "plain content")
@@ -166,7 +165,7 @@ func TestFetchPage(t *testing.T) {
 			defer server.Close()
 
 			client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
-			got, err := client.FetchPage(context.Background(), tt.route, tt.params)
+			got, err := client.FetchPage(context.Background(), tt.ref)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -192,7 +191,7 @@ func TestFetchPage_ContextCanceled(t *testing.T) {
 	cancel()
 
 	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
-	_, err := client.FetchPage(ctx, "/slow", nil)
+	_, err := client.FetchPage(ctx, &url.URL{Path: "/slow"})
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled")
@@ -209,13 +208,13 @@ func TestFetchPage_CacheHit(t *testing.T) {
 	cache := newMockCache()
 	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache))
 
-	got, err := client.FetchPage(context.Background(), "/cached", nil)
+	got, err := client.FetchPage(context.Background(), &url.URL{Path: "/cached"})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("fresh content"), got.Content)
 	assert.WithinDuration(t, time.Now(), got.FetchedAt, 2*time.Second)
 	assert.Equal(t, 1, calls)
 
-	got, err = client.FetchPage(context.Background(), "/cached", nil)
+	got, err = client.FetchPage(context.Background(), &url.URL{Path: "/cached"})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("fresh content"), got.Content)
 	assert.WithinDuration(t, time.Now(), got.FetchedAt, 2*time.Second)
@@ -234,12 +233,12 @@ func TestFetchPage_CacheMissRefetches(t *testing.T) {
 	cache := &evictingMockCache{}
 	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache))
 
-	got, err := client.FetchPage(context.Background(), "/expiring", nil)
+	got, err := client.FetchPage(context.Background(), &url.URL{Path: "/expiring"})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("response 1"), got.Content)
 	assert.WithinDuration(t, time.Now(), got.FetchedAt, 2*time.Second)
 
-	got, err = client.FetchPage(context.Background(), "/expiring", nil)
+	got, err = client.FetchPage(context.Background(), &url.URL{Path: "/expiring"})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("response 2"), got.Content)
 	assert.WithinDuration(t, time.Now(), got.FetchedAt, 2*time.Second)
@@ -257,10 +256,10 @@ func TestFetchPage_DifferentParamsCacheSeparately(t *testing.T) {
 	cache := newMockCache()
 	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache))
 
-	_, err := client.FetchPage(context.Background(), "/api", map[string]string{"v": "1"})
+	_, err := client.FetchPage(context.Background(), &url.URL{Path: "/api", RawQuery: "v=1"})
 	require.NoError(t, err)
 
-	_, err = client.FetchPage(context.Background(), "/api", map[string]string{"v": "2"})
+	_, err = client.FetchPage(context.Background(), &url.URL{Path: "/api", RawQuery: "v=2"})
 	require.NoError(t, err)
 
 	assert.Equal(t, 2, calls)
