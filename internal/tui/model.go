@@ -1,0 +1,174 @@
+package tui
+
+import (
+	"fmt"
+
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
+	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
+	"github.com/stripe/stripe-cli-docs-plugin/markdown"
+)
+
+const statusBarHeight = 1
+
+// Model is the top-level Bubble Tea model for the docs TUI.
+type Model struct {
+	// Components
+	viewport viewport.Model
+	help     help.Model
+	keys     KeyMap
+
+	// Dependencies
+	client   *docs.Client
+	renderer markdown.Renderer
+
+	// Content
+	doc   *markdown.Document
+	title string
+
+	// State
+	width  int
+	height int
+	ready  bool
+}
+
+// Option configures a Model.
+type Option func(*Model)
+
+// WithClient sets the docs client used to fetch pages.
+func WithClient(c *docs.Client) Option {
+	return func(m *Model) { m.client = c }
+}
+
+// WithRenderer sets the markdown renderer.
+func WithRenderer(r markdown.Renderer) Option {
+	return func(m *Model) { m.renderer = r }
+}
+
+// WithDocument sets the initial document to display.
+func WithDocument(doc *markdown.Document) Option {
+	return func(m *Model) { m.doc = doc }
+}
+
+// WithKeyMap sets a custom keymap.
+func WithKeyMap(km KeyMap) Option {
+	return func(m *Model) { m.keys = km }
+}
+
+// WithTitle sets the title displayed in the status bar.
+func WithTitle(title string) Option {
+	return func(m *Model) { m.title = title }
+}
+
+// New creates a Model configured with the given options.
+func New(opts ...Option) Model {
+	m := Model{
+		keys: DefaultKeyMap(),
+		help: help.New(),
+	}
+	m.WithOptions(opts...)
+	return m
+}
+
+// WithOptions applies the given options to the Model.
+func (m *Model) WithOptions(opts ...Option) {
+	for _, opt := range opts {
+		opt(m)
+	}
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		viewportHeight := msg.Height - statusBarHeight
+		if !m.ready {
+			m.viewport = viewport.New(
+				viewport.WithWidth(msg.Width),
+				viewport.WithHeight(viewportHeight),
+			)
+			m.viewport.MouseWheelEnabled = true
+			m.viewport.KeyMap = viewport.KeyMap{}
+			m.help.SetWidth(msg.Width)
+			if m.doc != nil && m.renderer != nil {
+				if out, err := m.renderer.Render(m.doc); err == nil {
+					m.viewport.SetContent(out)
+				}
+			}
+			m.ready = true
+		} else {
+			m.viewport.SetWidth(msg.Width)
+			m.viewport.SetHeight(viewportHeight)
+			m.help.SetWidth(msg.Width)
+		}
+	case tea.KeyPressMsg:
+		switch {
+		case key.Matches(msg, m.keys.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, m.keys.Up):
+			m.viewport.ScrollUp(1)
+		case key.Matches(msg, m.keys.Down):
+			m.viewport.ScrollDown(1)
+		case key.Matches(msg, m.keys.PageUp):
+			m.viewport.PageUp()
+		case key.Matches(msg, m.keys.PageDown):
+			m.viewport.PageDown()
+		}
+	}
+
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
+func (m Model) View() tea.View {
+	if !m.ready {
+		return tea.NewView("loading...")
+	}
+
+	view := tea.NewView(m.viewport.View() + "\n" + m.status())
+	view.AltScreen = true
+	view.MouseMode = tea.MouseModeCellMotion
+	if m.title != "" {
+		view.WindowTitle = m.title
+	} else if m.doc != nil {
+		view.WindowTitle = m.doc.Title()
+	}
+	return view
+}
+
+func (m Model) status() string {
+	title := lipgloss.NewStyle().
+		Bold(true).
+		Background(lipgloss.Color("#7D56F4")).
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Padding(0, 1).
+		Render("Stripe")
+
+	titleWithName := title
+	if m.title != "" {
+		titleWithName += "  " + m.title
+	}
+
+	percent := fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
+	helpView := m.help.View(m.keys)
+	right := percent + "  " + helpView
+
+	gap := max(0, m.width-lipgloss.Width(titleWithName)-lipgloss.Width(right))
+
+	bar := lipgloss.NewStyle().
+		Width(m.width).
+		Render(titleWithName + lipgloss.NewStyle().Width(gap).Render("") + right)
+
+	return bar
+}
