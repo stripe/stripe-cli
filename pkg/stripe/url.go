@@ -2,7 +2,9 @@ package stripe
 
 import (
 	"errors"
+	"net/url"
 	"regexp"
+	"strings"
 )
 
 const (
@@ -62,4 +64,38 @@ func ValidateDashboardBaseURL(dashboardBaseURL string) error {
 		return nil
 	}
 	return errInvalidDashboardBaseURL
+}
+
+// DashboardBaseURLForAPIBaseURL derives the matching dashboard base URL for a
+// given API base URL. This keeps dev and QA hosts aligned without requiring a
+// separate dashboard override in the common case.
+func DashboardBaseURLForAPIBaseURL(apiBaseURL string) string {
+	if apiBaseURL == "" {
+		return DefaultDashboardBaseURL
+	}
+
+	parsedBaseURL, err := url.Parse(apiBaseURL)
+	if err != nil || parsedBaseURL.Host == "" {
+		return DefaultDashboardBaseURL
+	}
+
+	switch {
+	case parsedBaseURL.Host == "api.stripe.com":
+		parsedBaseURL.Host = "dashboard.stripe.com"
+	case parsedBaseURL.Host == "qa-api.stripe.com":
+		parsedBaseURL.Host = "qa-dashboard.stripe.com"
+	case strings.Contains(parsedBaseURL.Host, "--api-dev.dev.stripe.me"):
+		parsedBaseURL.Host = strings.Replace(parsedBaseURL.Host, "--api-dev.dev.stripe.me", "--dashboard-dev.dev.stripe.me", 1)
+	case strings.Contains(parsedBaseURL.Host, "--api-iso.dev.stripe.me"):
+		parsedBaseURL.Host = strings.Replace(parsedBaseURL.Host, "--api-iso.dev.stripe.me", "--dashboard-iso.dev.stripe.me", 1)
+	default:
+		parsedBaseURL.Host = strings.Replace(parsedBaseURL.Host, "api-", "manage-", 1)
+	}
+
+	parsedBaseURL.Path = ""
+	parsedBaseURL.RawPath = ""
+	parsedBaseURL.RawQuery = ""
+	parsedBaseURL.Fragment = ""
+
+	return parsedBaseURL.String()
 }

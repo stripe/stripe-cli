@@ -52,7 +52,7 @@ func TestInstall(t *testing.T) {
 	testServers := setUpServers(t, manifestContent, nil)
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
 	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, err := afero.Exists(fs, file)
@@ -74,7 +74,7 @@ func TestInstallRollsBackPersistedStateWhenConfigWriteFails(t *testing.T) {
 	defer testServers.CloseAll()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.ErrorIs(t, err, config.WriteErr)
 
 	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
@@ -122,7 +122,7 @@ func TestInstallUsesPluginMetadataEndpointWhenAPIKeyAvailable(t *testing.T) {
 	defer stripeServer.Close()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 }
 
@@ -143,9 +143,14 @@ func TestInstallUsesAnonymousPluginMetadataEndpointWhenAPIKeyUnavailable(t *test
 	}))
 	defer artifactoryServer.Close()
 
-	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous plugin metadata install should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/plugins_metadata":
+		case "/ajax/stripecli/plugins_metadata":
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
 				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
@@ -158,10 +163,10 @@ func TestInstallUsesAnonymousPluginMetadataEndpointWhenAPIKeyUnavailable(t *test
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
 	}))
-	defer stripeServer.Close()
+	defer dashboardServer.Close()
 
 	plugin := &Plugin{Shortname: "appA"}
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", apiServer.URL, dashboardServer.URL)
 	require.NoError(t, err)
 
 	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
@@ -202,7 +207,7 @@ func TestInstallFallsBackIfPluginMetadataEndpointFails(t *testing.T) {
 	defer fallbackServer.Close()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", fallbackServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", fallbackServer.URL, fallbackServer.URL)
 	require.NoError(t, err)
 }
 
@@ -250,7 +255,7 @@ func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 	defer stripeServer.Close()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, pluginURLLookups)
 
@@ -305,7 +310,7 @@ func TestInstallFallsBackIfMetadataBinaryURLVerificationFails(t *testing.T) {
 	defer stripeServer.Close()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, pluginURLLookups)
 
@@ -349,7 +354,7 @@ func TestInstallPersistsLocalMetadataWithoutManifest(t *testing.T) {
 	defer stripeServer.Close()
 
 	plugin := &Plugin{Shortname: "appA"}
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 
 	cachedPlugin, err := readLocalPluginMetadata(config, fs, "appA")
@@ -391,7 +396,7 @@ func TestResolvePluginForInstallUsesMetadataWithoutCachedManifest(t *testing.T) 
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -431,7 +436,7 @@ func TestResolvePluginForInstallResolvesLatestVersionFromMetadata(t *testing.T) 
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -469,7 +474,7 @@ func TestResolvePluginForInstallFallsBackToManifestLookupWhenMetadataFails(t *te
 	}))
 	defer fallbackServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", fallbackServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", fallbackServer.URL, fallbackServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -518,11 +523,11 @@ func TestResolvedPluginInstallUsesResolvedMetadataWithoutSecondLookup(t *testing
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, metadataLookups)
 
-	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL)
+	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, metadataLookups)
 }
@@ -610,12 +615,12 @@ func TestResolvedPluginInstallRetriesMetadataAfterManifestFallback(t *testing.T)
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, metadataLookups)
 	require.Equal(t, 1, pluginURLLookups)
 
-	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL)
+	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 2, metadataLookups)
 	require.Equal(t, 1, pluginURLLookups)
@@ -651,7 +656,7 @@ func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale
 	testServers := setUpServers(t, manifestContent, nil)
 	defer testServers.CloseAll()
 
-	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", testServers.StripeServer.URL)
+	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -689,7 +694,7 @@ func TestResolvePluginForAutoInstallFallsBackToCachedManifestWhenFreshLookupFail
 	}))
 	defer failingServer.Close()
 
-	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", failingServer.URL)
+	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", failingServer.URL, failingServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -756,7 +761,7 @@ func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
 	}()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
 	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, err := afero.Exists(fs, file)
@@ -774,7 +779,7 @@ func TestInstallFailsIfChecksumCouldNotBeFound(t *testing.T) {
 	testServers := setUpServers(t, manifestContent, nil)
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.EqualError(t, err, "could not locate a valid checksum for appA version 0.0.0")
 
 	// Require that we don't save the binary if checkum does not match
@@ -794,7 +799,7 @@ func TestInstallationFailsIfChecksumDoesNotMatch(t *testing.T) {
 	testServers := setUpServers(t, manifestContent, nil)
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appB")
-	err := plugin.Install(context.Background(), config, fs, "1.2.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "1.2.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.EqualError(t, err, "installed plugin 'appB' could not be verified, aborting installation")
 
 	// Require that we don't save the binary if checkum does not match
@@ -815,14 +820,14 @@ func TestInstallCleansOtherVersionsOfPlugin(t *testing.T) {
 
 	// Download plugin version 0.0.1
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "0.0.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "0.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
 	file := fmt.Sprintf("/plugins/appA/0.0.1/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, _ := afero.Exists(fs, file)
 	require.True(t, fileExists, "Test setup failed -- did not download plugin version 0.0.1")
 
 	// Download valid plugin
-	err = plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	err = plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
 	newFile := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, _ = afero.Exists(fs, newFile)
@@ -844,14 +849,14 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 
 	// Download valid plugin
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
 	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, _ := afero.Exists(fs, file)
 	require.True(t, fileExists, "Test setup failed -- did not download valid plugin")
 
 	// Install fails for the same plugin because the checksum could not be found in manifest
-	err = plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL)
+	err = plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.EqualError(t, err, "could not locate a valid checksum for appA version 0.0.0")
 	failedFile := fmt.Sprintf("/plugins/appA/0.0.0/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, _ = afero.Exists(fs, failedFile)
@@ -945,7 +950,7 @@ func TestUninstall(t *testing.T) {
 
 	// install a plugin to be uninstalled
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
 	metadataPath := getLocalPluginMetadataPath(config, "appA")
 	cacheExists, err := afero.Exists(fs, metadataPath)
