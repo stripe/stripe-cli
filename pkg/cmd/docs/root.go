@@ -164,7 +164,7 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 		tui.WithClient(r.client),
 		tui.WithRenderer(r.renderer),
 		tui.WithDocument(doc),
-		tui.WithTitle(path),
+		tui.WithTitle(path + ".md"),
 	)
 
 	p := tea.NewProgram(m)
