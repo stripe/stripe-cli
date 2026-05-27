@@ -78,9 +78,7 @@ func newClimateShowCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Comm
 func newClimateDisableCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
 	opCmd := NewOperationCmd(parentCmd, &climateDisableSpec, cfg)
 	opCmd.Cmd.Short = "Disable the current Climate commitment program"
-	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
-		return runClimateOperation(cmd, opCmd, nil)
-	}
+	opCmd.SuppressOutput = true
 	return opCmd.Cmd
 }
 
