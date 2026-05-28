@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -23,26 +24,24 @@ func TestNew_WithOptions(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)
 
-	doc, err := markdown.Parse([]byte("# Hello"))
-	require.NoError(t, err)
-
 	m := New(
 		WithClient(client),
 		WithRenderer(r),
-		WithDocument(doc),
-		WithTitle("Test Page"),
+		WithPage(Page{
+			Content: []byte("# Hello"),
+			URL:     &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/payments"},
+		}),
 	)
 
 	assert.Equal(t, client, m.client)
 	assert.Equal(t, r, m.renderer)
-	assert.Equal(t, doc, m.doc)
-	assert.Equal(t, "Test Page", m.title)
+	assert.NotNil(t, m.doc)
+	assert.Equal(t, "Hello", m.title)
 }
 
-func TestWithOptions_AppliesAfterConstruction(t *testing.T) {
-	m := New()
-	m.WithOptions(WithTitle("Late Title"))
-	assert.Equal(t, "Late Title", m.title)
+func TestNew_WithPage_ParsesTitle(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# My Page\n\nBody")}))
+	assert.Equal(t, "My Page", m.title)
 }
 
 func TestUpdate_WindowSizeMsg_InitializesViewport(t *testing.T) {
@@ -60,10 +59,11 @@ func TestUpdate_WindowSizeMsg_InitializesViewport(t *testing.T) {
 func TestUpdate_WindowSizeMsg_RendersDocument(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)
-	doc, err := markdown.Parse([]byte("# Hello\n\nWorld"))
-	require.NoError(t, err)
 
-	m := New(WithRenderer(r), WithDocument(doc))
+	m := New(
+		WithRenderer(r),
+		WithPage(Page{Content: []byte("# Hello\n\nWorld")}),
+	)
 	msg := tea.WindowSizeMsg{Width: 80, Height: 24}
 
 	result, _ := m.Update(msg)
@@ -91,10 +91,11 @@ func TestUpdate_ScrollKeys(t *testing.T) {
 	for i := range 50 {
 		long += fmt.Sprintf("Line %d\n", i)
 	}
-	doc, err := markdown.Parse([]byte(long))
-	require.NoError(t, err)
 
-	m := New(WithRenderer(r), WithDocument(doc))
+	m := New(
+		WithRenderer(r),
+		WithPage(Page{Content: []byte(long)}),
+	)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 	model := result.(Model)
 
@@ -120,26 +121,17 @@ func TestView_AltScreenEnabled(t *testing.T) {
 	assert.Equal(t, tea.MouseModeCellMotion, view.MouseMode)
 }
 
-func TestView_WindowTitle_FromOption(t *testing.T) {
-	m := New(WithTitle("Custom Title"))
+func TestView_WindowTitle_FromPage(t *testing.T) {
+	r, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	m := New(
+		WithRenderer(r),
+		WithPage(Page{Content: []byte("# Custom Title\n\nBody")}),
+	)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	model := result.(Model)
 
 	view := model.View()
 	assert.Equal(t, "Custom Title", view.WindowTitle)
-}
-
-func TestView_WindowTitle_FromDocument(t *testing.T) {
-	doc, err := markdown.Parse([]byte("# My Document\n\nContent"))
-	require.NoError(t, err)
-
-	r, err := markdown.NewRenderer()
-	require.NoError(t, err)
-
-	m := New(WithDocument(doc), WithRenderer(r))
-	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	model := result.(Model)
-
-	view := model.View()
-	assert.Equal(t, "My Document", view.WindowTitle)
 }

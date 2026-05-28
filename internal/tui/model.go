@@ -29,6 +29,7 @@ type Model struct {
 	renderer markdown.Renderer
 
 	// Content
+	page  Page
 	doc   *markdown.Document
 	title string
 
@@ -51,19 +52,15 @@ func WithRenderer(r markdown.Renderer) Option {
 	return func(m *Model) { m.renderer = r }
 }
 
-// WithDocument sets the initial document to display.
-func WithDocument(doc *markdown.Document) Option {
-	return func(m *Model) { m.doc = doc }
+// WithPage sets the page to display. The TUI parses the markdown content
+// internally and derives the title from the first h1 heading.
+func WithPage(p Page) Option {
+	return func(m *Model) { m.page = p }
 }
 
 // WithKeyMap sets a custom keymap.
 func WithKeyMap(km KeyMap) Option {
 	return func(m *Model) { m.keys = km }
-}
-
-// WithTitle sets the title displayed in the status bar.
-func WithTitle(title string) Option {
-	return func(m *Model) { m.title = title }
 }
 
 // WithStyles sets custom styles.
@@ -83,6 +80,14 @@ func New(opts ...Option) Model {
 		styles: s,
 	}
 	m.WithOptions(opts...)
+
+	if m.page.Content != nil {
+		if doc, err := markdown.Parse(m.page.Content); err == nil {
+			m.doc = doc
+			m.title = doc.Title()
+		}
+	}
+
 	return m
 }
 

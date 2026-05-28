@@ -155,20 +155,13 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 		return fmt.Errorf("fetching page: %w", err)
 	}
 
-	doc, err := markdown.Parse(page.Content)
-	if err != nil {
-		return fmt.Errorf("parsing markdown: %w", err)
-	}
-
-	title := doc.Title()
-	if title == "" {
-		title = path
-	}
 	m := tui.New(
 		tui.WithClient(r.client),
 		tui.WithRenderer(r.renderer),
-		tui.WithDocument(doc),
-		tui.WithTitle(title),
+		tui.WithPage(tui.Page{
+			Content: page.Content,
+			URL:     page.URL,
+		}),
 	)
 
 	p := tea.NewProgram(m)
