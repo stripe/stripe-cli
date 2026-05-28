@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -14,7 +15,14 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/markdown"
 )
 
-const statusBarHeight = 1
+const (
+	statusBarHeight      = 1
+	statusMessageTimeout = 2 * time.Second
+)
+
+type statusMsg string
+
+type clearStatusMsg struct{}
 
 // Model is the top-level Bubble Tea model for the docs TUI.
 type Model struct {
@@ -35,9 +43,10 @@ type Model struct {
 	title string
 
 	// State
-	width  int
-	height int
-	ready  bool
+	width         int
+	height        int
+	ready         bool
+	statusMessage string
 }
 
 // Option configures a Model.
@@ -139,6 +148,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.palette.Dismiss()
 		return m, nil
 
+	case statusMsg:
+		m.statusMessage = string(msg)
+		return m, tea.Tick(statusMessageTimeout, func(_ time.Time) tea.Msg {
+			return clearStatusMsg{}
+		})
+
+	case clearStatusMsg:
+		m.statusMessage = ""
+		return m, nil
+
 	case tea.KeyPressMsg:
 		if m.palette.Visible() {
 			if msg.String() == "esc" {
@@ -217,11 +236,16 @@ func (m Model) viewportHeight() int {
 
 func (m Model) status() string {
 	bar := m.styles.StatusBar
+	if m.statusMessage != "" {
+		bar = m.styles.StatusMessage
+	}
 
 	title := m.styles.StatusTitle.Render("Stripe")
 
 	name := ""
-	if m.title != "" {
+	if m.statusMessage != "" {
+		name = bar.Padding(0, 1).Render(m.statusMessage)
+	} else if m.title != "" {
 		name = bar.Padding(0, 1).Render(m.title)
 	}
 
