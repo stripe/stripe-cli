@@ -128,11 +128,6 @@ func PostProcessResourceCommands(rootCmd *cobra.Command, cfg *config.Config) err
 		return err
 	}
 
-	err = AddTerminalSubCmds(rootCmd, cfg)
-	if err != nil {
-		return err
-	}
-
 	AddApprovalRequestsSubCmds(rootCmd, cfg)
 	AddClimateCommitmentsSubCmds(rootCmd, cfg)
 

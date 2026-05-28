@@ -28,7 +28,6 @@ type Profile struct {
 	LiveModePublishableKey string
 	TestModeAPIKey         string
 	TestModePublishableKey string
-	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
 	SandboxClaimURL        string
@@ -343,14 +342,6 @@ func (p *Profile) GetDisplayName() string {
 	return ""
 }
 
-// GetTerminalPOSDeviceID returns the device id from the config for Terminal quickstart to use
-func (p *Profile) GetTerminalPOSDeviceID() string {
-	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("terminal_pos_device_id"))
-	}
-
-	return ""
-}
 
 // GetConfigField returns the configuration field for the specific profile
 func (p *Profile) GetConfigField(field string) string {
