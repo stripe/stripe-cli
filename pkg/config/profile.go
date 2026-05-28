@@ -342,7 +342,6 @@ func (p *Profile) GetDisplayName() string {
 	return ""
 }
 
-
 // GetConfigField returns the configuration field for the specific profile
 func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field
