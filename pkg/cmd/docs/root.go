@@ -160,11 +160,15 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 		return err
 	}
 
+	title := doc.Title()
+	if title == "" {
+		title = path
+	}
 	m := tui.New(
 		tui.WithClient(r.client),
 		tui.WithRenderer(r.renderer),
 		tui.WithDocument(doc),
-		tui.WithTitle(path + ".md"),
+		tui.WithTitle(title),
 	)
 
 	p := tea.NewProgram(m)
