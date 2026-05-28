@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -92,6 +93,34 @@ func TestAgentDetectionForcesNottyStyle(t *testing.T) {
 	result := out.String()
 	assert.Contains(t, result, "Payments")
 	assert.NotContains(t, result, "\x1b[", "should not contain ANSI escape codes when agent is detected")
+}
+
+func TestPreRun_LoggerFuncResolvesAfterFlagParsing(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "# Test\n\nContent.")
+	}))
+	defer server.Close()
+
+	called := false
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithRenderer(renderer),
+		cmd.WithLoggerFunc(func() *slog.Logger {
+			called = true
+			return slog.Default()
+		}),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"/test"})
+
+	err = root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+	assert.True(t, called, "LoggerFunc should be called during PersistentPreRunE")
 }
 
 func TestVersionCommand(t *testing.T) {

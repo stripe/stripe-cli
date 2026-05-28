@@ -75,7 +75,7 @@ func New() *RootCommand {
   stripe docs /connect/accounts
   stripe docs /api/customers`,
 		Args:              cobra.ArbitraryArgs,
-		PersistentPreRunE: r.initLogger,
+		PersistentPreRunE: r.preRun,
 		RunE:              r.run,
 		SilenceUsage:      true,
 	}
@@ -143,7 +143,7 @@ func (r *RootCommand) initRenderer() {
 	r.renderer, _ = markdown.NewRenderer(opts...)
 }
 
-func (r *RootCommand) initLogger(_ *cobra.Command, _ []string) error {
+func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	if r.logger == nil && r.loggerFn != nil {
 		r.logger = r.loggerFn()
 	}
