@@ -1,10 +1,12 @@
 package pager
 
 import (
+	"errors"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"golang.org/x/term"
 )
@@ -68,7 +70,11 @@ func defaultPager() string {
 
 func (p *Pager) Write(b []byte) (int, error) {
 	if p.pw != nil {
-		return p.pw.Write(b)
+		n, err := p.pw.Write(b)
+		if isBrokenPipe(err) {
+			return n, nil
+		}
+		return n, err
 	}
 	return p.w.Write(b)
 }
@@ -78,5 +84,13 @@ func (p *Pager) Close() error {
 		return nil
 	}
 	p.pw.Close()
-	return p.cmd.Wait()
+	err := p.cmd.Wait()
+	if isBrokenPipe(err) {
+		return nil
+	}
+	return err
+}
+
+func isBrokenPipe(err error) bool {
+	return errors.Is(err, syscall.EPIPE)
 }
