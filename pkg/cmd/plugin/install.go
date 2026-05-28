@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -93,6 +94,14 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	isLatest := len(version) == 0
 	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
+		var pluginNotFound *plugins.ErrPluginNotFound
+		if errors.As(err, &pluginNotFound) {
+			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
+			if aErr != nil || accountID == "" {
+				return fmt.Errorf("no plugin named %q found. If this is a private plugin, run 'stripe login' and try again", pluginName)
+			}
+			return fmt.Errorf("no plugin named %q exists", pluginName)
+		}
 		accountID, aErr := ic.cfg.GetProfile().GetAccountID()
 		if aErr != nil || accountID == "" {
 			fmt.Printf("You must be logged in to install the \"%s\" plugin.\n\n", pluginName)
