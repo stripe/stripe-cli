@@ -23,6 +23,7 @@ type Model struct {
 	help     help.Model
 	keys     KeyMap
 	styles   Styles
+	palette  Palette
 
 	// Dependencies
 	client   *docs.Client
@@ -88,6 +89,8 @@ func New(opts ...Option) Model {
 		}
 	}
 
+	m.palette = newPalette(m.page)
+
 	return m
 }
 
@@ -131,8 +134,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetHeight(m.viewportHeight())
 			m.help.SetWidth(msg.Width)
 		}
+
+	case closePaletteMsg:
+		m.palette.Dismiss()
+		return m, nil
+
 	case tea.KeyPressMsg:
+		if m.palette.Visible() {
+			if msg.String() == "esc" {
+				m.palette.Dismiss()
+				return m, nil
+			}
+			m.palette.Model, cmd = m.palette.Update(msg)
+			return m, cmd
+		}
+
 		switch {
+		case key.Matches(msg, m.keys.Palette):
+			focusCmd := m.palette.Open()
+			m.palette.Model, cmd = m.palette.Update(msg)
+			return m, tea.Batch(focusCmd, cmd)
 		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			m.viewport.SetHeight(m.viewportHeight())
@@ -149,6 +170,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	if m.palette.Visible() {
+		m.palette.Model, cmd = m.palette.Update(msg)
+		return m, cmd
+	}
+
 	m.viewport, cmd = m.viewport.Update(msg)
 	return m, cmd
 }
@@ -163,6 +189,10 @@ func (m Model) View() tea.View {
 	if m.help.ShowAll {
 		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
 		content += "\n" + helpView
+	}
+
+	if m.palette.Visible() {
+		content = m.palette.View(content, m.width, m.height)
 	}
 
 	view := tea.NewView(content)
