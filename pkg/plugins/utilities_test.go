@@ -325,7 +325,7 @@ func TestResolvePluginForInstallUsesLocalMetadataAsMetadataBase(t *testing.T) {
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -345,9 +345,14 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 
 	var metadataLookups int
-	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous install resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/plugins_metadata":
+		case "/ajax/stripecli/plugins_metadata":
 			metadataLookups++
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      "https://example.test/appA/2.0.1",
@@ -361,9 +366,9 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
 	}))
-	defer stripeServer.Close()
+	defer dashboardServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -397,7 +402,7 @@ func TestResolvePluginForInstallFallsBackToManifestLookupWhenAnonymousMetadataFa
 
 	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/plugins_metadata":
+		case "/ajax/stripecli/plugins_metadata":
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte(`{"error":{"message":"boom"}}`))
 		default:
@@ -406,7 +411,7 @@ func TestResolvePluginForInstallFallsBackToManifestLookupWhenAnonymousMetadataFa
 	}))
 	defer failingServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", failingServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", failingServer.URL, failingServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
@@ -477,7 +482,7 @@ func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) 
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
@@ -520,9 +525,14 @@ func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailab
 	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
 
 	var metadataLookups int
-	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous upgrade resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/plugins_metadata":
+		case "/ajax/stripecli/plugins_metadata":
 			metadataLookups++
 			require.Equal(t, "", req.URL.Query().Get("version"))
 			body, err := json.Marshal(requests.PluginMetadata{
@@ -548,9 +558,9 @@ func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailab
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
 	}))
-	defer stripeServer.Close()
+	defer dashboardServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", apiServer.URL, dashboardServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
@@ -597,7 +607,7 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	}))
 	defer failingServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", failingServer.URL)
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", failingServer.URL, failingServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	require.Equal(t, localPlugin, *plugin)
