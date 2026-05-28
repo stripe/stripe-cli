@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
 	"github.com/stripe/stripe-cli-docs-plugin/markdown"
@@ -77,7 +78,12 @@ func (r *RootCommand) WithOptions(opts ...Option) *RootCommand {
 		r.client = docs.NewClient(r.version)
 	}
 	if r.renderer == nil {
-		r.renderer, _ = markdown.NewRenderer()
+		var opts []markdown.RendererOption
+		if agent.Detect() {
+			opts = append(opts, markdown.WithStyle("notty"))
+			r.noPager = true
+		}
+		r.renderer, _ = markdown.NewRenderer(opts...)
 	}
 	return r
 }
