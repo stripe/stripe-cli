@@ -1,7 +1,9 @@
 package pager
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -39,11 +41,18 @@ func New(w io.Writer, enabled bool) *Pager {
 
 	// F = quit if content fits one screen, R = raw ANSI escapes, X = don't clear screen on exit.
 	if os.Getenv("LESS") == "" {
-		os.Setenv("LESS", "FRX")
+		_ = os.Setenv("LESS", "FRX")
 	}
 
 	parts := strings.Fields(pagerCmd)
-	cmd := exec.Command(parts[0], parts[1:]...)
+	bin, err := exec.LookPath(parts[0])
+	if err != nil {
+		return p
+	}
+	// G204: We intentionally execute the user's $PAGER. We validate the binary
+	// exists via LookPath but gosec's taint analysis still flags it. An allowlist
+	// would break users with custom pagers (bat, delta, most, etc.).
+	cmd := exec.CommandContext(context.Background(), bin, parts[1:]...) //nolint:gosec
 	cmd.Stdout = f
 	cmd.Stderr = os.Stderr
 
@@ -74,21 +83,32 @@ func (p *Pager) Write(b []byte) (int, error) {
 		if isBrokenPipe(err) {
 			return n, nil
 		}
-		return n, err
+		if err != nil {
+			return n, fmt.Errorf("writing to pager stdin: %w", err)
+		}
+		return n, nil
 	}
-	return p.w.Write(b)
+	n, err := p.w.Write(b)
+	if err != nil {
+		return n, fmt.Errorf("writing output: %w", err)
+	}
+	return n, nil
 }
 
+// Close closes the pager's stdin pipe and waits for the pager process to exit.
 func (p *Pager) Close() error {
 	if p.pw == nil {
 		return nil
 	}
-	p.pw.Close()
+	_ = p.pw.Close()
 	err := p.cmd.Wait()
 	if isBrokenPipe(err) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("waiting for pager: %w", err)
+	}
+	return nil
 }
 
 func isBrokenPipe(err error) bool {
