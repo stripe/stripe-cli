@@ -76,6 +76,9 @@ func (c *Client) WithOptions(opts ...ClientOption) *Client {
 //	page, err := c.FetchPage(ctx, &url.URL{Path: "/payments/accept-a-payment", RawQuery: "api_version=2024-06-30"})
 func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	resolvedURL := c.baseURL.ResolveReference(ref)
+	// url.Values.Encode() already sorts params, but we normalize here to ensure
+	// a consistent cache key regardless of how callers construct RawQuery.
+	resolvedURL.RawQuery = resolvedURL.Query().Encode()
 	rawURL := resolvedURL.String()
 
 	if c.cache != nil {

@@ -265,6 +265,27 @@ func TestFetchPage_DifferentParamsCacheSeparately(t *testing.T) {
 	assert.Equal(t, 2, calls)
 }
 
+func TestFetchPage_ParamOrderNormalized(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache))
+
+	_, err := client.FetchPage(context.Background(), &url.URL{Path: "/api", RawQuery: "lang=go&api_version=2024-06-30"})
+	require.NoError(t, err)
+
+	_, err = client.FetchPage(context.Background(), &url.URL{Path: "/api", RawQuery: "api_version=2024-06-30&lang=go"})
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, calls, "second call should hit cache despite different param order")
+	assert.Equal(t, 1, cache.hits)
+}
+
 // evictingMockCache always returns a miss, simulating TTL expiry.
 type evictingMockCache struct{}
 
