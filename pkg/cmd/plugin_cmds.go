@@ -123,6 +123,9 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 
 	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "")
 	plugins.CleanupAllClients()
+	if err == nil {
+		plugins.CheckLatestPluginVersion(ptc.cfg, fs, plugin)
+	}
 
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {
