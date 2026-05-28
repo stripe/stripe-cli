@@ -37,12 +37,7 @@ func WithRenderer(renderer markdown.Renderer) Option {
 
 // New creates a new RootCommand with sensible defaults.
 func New() *RootCommand {
-	r := &RootCommand{
-		client: docs.NewClient("unknown"),
-	}
-	if renderer, err := markdown.NewRenderer(); err == nil {
-		r.renderer = renderer
-	}
+	r := &RootCommand{}
 
 	r.cmd = &cobra.Command{
 		Use:   "docs <path>",
@@ -77,6 +72,12 @@ func WithVersion(v string) Option {
 func (r *RootCommand) WithOptions(opts ...Option) *RootCommand {
 	for _, opt := range opts {
 		opt(r)
+	}
+	if r.client == nil {
+		r.client = docs.NewClient(r.version)
+	}
+	if r.renderer == nil {
+		r.renderer, _ = markdown.NewRenderer()
 	}
 	return r
 }
