@@ -13,6 +13,30 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/markdown"
 )
 
+func TestUpdate_OpenInBrowser(t *testing.T) {
+	calls := stubBrowser(t)
+	u := &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/payments"}
+	m := New(WithPage(Page{Content: []byte("# Payments"), URL: u}))
+
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	require.Len(t, *calls, 1)
+	assert.Contains(t, (*calls)[0].Args, "https://docs.stripe.com/payments")
+}
+
+func TestUpdate_OpenInBrowser_NilURL(t *testing.T) {
+	calls := stubBrowser(t)
+	m := New(WithPage(Page{Content: []byte("# Hello")}))
+
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	assert.Empty(t, *calls)
+}
+
 func TestNew_Defaults(t *testing.T) {
 	m := New()
 	assert.Equal(t, DefaultKeyMap(), m.keys)
