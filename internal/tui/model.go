@@ -93,10 +93,12 @@ func (m *Model) WithOptions(opts ...Option) {
 	}
 }
 
+// Init returns the initial command to run when the TUI starts.
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles incoming messages and updates the model state.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -146,6 +148,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// View renders the current model state to the terminal.
 func (m Model) View() tea.View {
 	if !m.ready {
 		return tea.NewView("loading...")
