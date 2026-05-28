@@ -69,6 +69,31 @@ func TestFetchPage(t *testing.T) {
 	assert.Contains(t, out.String(), "Payments")
 }
 
+func TestAgentDetectionForcesNottyStyle(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "# Payments\n\nAccept **payments** with Stripe.")
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"/payments"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+
+	result := out.String()
+	assert.Contains(t, result, "Payments")
+	assert.NotContains(t, result, "\x1b[", "should not contain ANSI escape codes when agent is detected")
+}
+
 func TestVersionCommand(t *testing.T) {
 	root := cmd.New().WithOptions(cmd.WithVersion("0.0.1")).Root()
 
