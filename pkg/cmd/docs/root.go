@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -22,9 +23,13 @@ import (
 
 // RootCommand is the root command for the docs plugin.
 type RootCommand struct {
-	cmd       *cobra.Command
-	client    *docs.Client
-	renderer  markdown.Renderer
+	cmd *cobra.Command
+
+	client   *docs.Client
+	renderer markdown.Renderer
+	logger   *slog.Logger
+	loggerFn func() *slog.Logger
+
 	version   string
 	configDir string
 	noPager   bool
@@ -49,6 +54,16 @@ func WithConfigDirectory(dir string) Option {
 	return func(r *RootCommand) { r.configDir = dir }
 }
 
+// WithLogger sets the structured logger for the plugin.
+func WithLogger(logger *slog.Logger) Option {
+	return func(r *RootCommand) { r.logger = logger }
+}
+
+// WithLoggerFunc sets a deferred logger factory that is called after flag parsing.
+func WithLoggerFunc(fn func() *slog.Logger) Option {
+	return func(r *RootCommand) { r.loggerFn = fn }
+}
+
 // New creates a new RootCommand with sensible defaults.
 func New() *RootCommand {
 	r := &RootCommand{}
@@ -59,9 +74,10 @@ func New() *RootCommand {
 		Example: `  stripe docs /payments
   stripe docs /connect/accounts
   stripe docs /api/customers`,
-		Args:         cobra.ArbitraryArgs,
-		RunE:         r.run,
-		SilenceUsage: true,
+		Args:              cobra.ArbitraryArgs,
+		PersistentPreRunE: r.initLogger,
+		RunE:              r.run,
+		SilenceUsage:      true,
 	}
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", false, "Do not pipe output through a pager")
 	r.cmd.PersistentFlags().BoolVar(&r.noTUI, "no-tui", false, "Do not use the interactive TUI")
@@ -88,24 +104,53 @@ func (r *RootCommand) WithOptions(opts ...Option) *RootCommand {
 	for _, opt := range opts {
 		opt(r)
 	}
-	if r.client == nil {
-		r.client = docs.NewClient(r.version)
-		if r.configDir != "" {
-			if cache, err := docs.NewFSCache(filepath.Join(r.configDir, "docs", "cache")); err == nil {
-				r.client = r.client.WithOptions(docs.WithCache(cache))
-			}
-		}
-	}
-	if r.renderer == nil {
-		var opts []markdown.RendererOption
-		if agent.Detect() {
-			opts = append(opts, markdown.WithStyle("notty"))
-			r.noPager = true
-			r.noTUI = true
-		}
-		r.renderer, _ = markdown.NewRenderer(opts...)
-	}
+	r.initClient()
+	r.initRenderer()
 	return r
+}
+
+func (r *RootCommand) initClient() {
+	if r.client != nil {
+		if r.logger != nil {
+			r.client.WithOptions(docs.WithLogger(r.logger))
+		}
+		return
+	}
+	r.client = docs.NewClient(r.version)
+	var clientOpts []docs.ClientOption
+	if r.logger != nil {
+		clientOpts = append(clientOpts, docs.WithLogger(r.logger))
+	}
+	if r.configDir != "" {
+		if cache, err := docs.NewFSCache(filepath.Join(r.configDir, "docs", "cache")); err == nil {
+			clientOpts = append(clientOpts, docs.WithCache(cache))
+		}
+	}
+	if len(clientOpts) > 0 {
+		r.client.WithOptions(clientOpts...)
+	}
+}
+
+func (r *RootCommand) initRenderer() {
+	if r.renderer != nil {
+		return
+	}
+	var opts []markdown.RendererOption
+	if agent.Detect() {
+		opts = append(opts, markdown.WithStyle("notty"))
+		r.noPager = true
+	}
+	r.renderer, _ = markdown.NewRenderer(opts...)
+}
+
+func (r *RootCommand) initLogger(_ *cobra.Command, _ []string) error {
+	if r.logger == nil && r.loggerFn != nil {
+		r.logger = r.loggerFn()
+	}
+	if r.logger != nil && r.client != nil {
+		r.client.WithOptions(docs.WithLogger(r.logger))
+	}
+	return nil
 }
 
 // Root returns the cobra command, used by tools like the doc generator.
