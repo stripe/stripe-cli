@@ -29,7 +29,7 @@ func newPalette(page Page) Palette {
 			Run: func() tea.Cmd {
 				return func() tea.Msg {
 					_ = page.Copy()
-					return nil
+					return statusMsg("Copied!")
 				}
 			},
 		},

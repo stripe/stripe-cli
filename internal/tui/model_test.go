@@ -121,6 +121,87 @@ func TestView_AltScreenEnabled(t *testing.T) {
 	assert.Equal(t, tea.MouseModeCellMotion, view.MouseMode)
 }
 
+func TestUpdate_PaletteOpensOnGreaterThan(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model := result.(Model)
+
+	assert.True(t, model.palette.Visible())
+}
+
+func TestUpdate_PaletteDismissesOnEsc(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model := result.(Model)
+	assert.True(t, model.palette.Visible())
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape, Text: "esc"})
+	model = result.(Model)
+	assert.False(t, model.palette.Visible())
+}
+
+func TestUpdate_PaletteGatesInput(t *testing.T) {
+	r, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	long := "# Title\n"
+	for i := range 50 {
+		long += fmt.Sprintf("Line %d\n", i)
+	}
+
+	m := New(
+		WithRenderer(r),
+		WithPage(Page{Content: []byte(long)}),
+	)
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	model := result.(Model)
+
+	// Open palette
+	result, _ = model.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model = result.(Model)
+
+	// j should not scroll the viewport while palette is open
+	offset := model.viewport.YOffset()
+	result, _ = model.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	model = result.(Model)
+	assert.Equal(t, offset, model.viewport.YOffset())
+}
+
+func TestUpdate_StatusMsg(t *testing.T) {
+	m := New()
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, cmd := m.Update(statusMsg("Copied!"))
+	model := result.(Model)
+
+	assert.Equal(t, "Copied!", model.statusMessage)
+	assert.NotNil(t, cmd)
+}
+
+func TestUpdate_ClearStatusMsg(t *testing.T) {
+	m := New()
+	m.statusMessage = "Copied!"
+
+	result, _ := m.Update(clearStatusMsg{})
+	model := result.(Model)
+
+	assert.Empty(t, model.statusMessage)
+}
+
+func TestStatus_ShowsStatusMessage(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Title\n\nBody")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	model.statusMessage = "Copied!"
+	status := model.status()
+	assert.Contains(t, status, "Copied!")
+}
+
 func TestView_WindowTitle_FromPage(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)
