@@ -152,12 +152,12 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 	ref := &url.URL{Path: path}
 	page, err := r.client.FetchPage(ctx, ref)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetching page: %w", err)
 	}
 
 	doc, err := markdown.Parse(page.Content)
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing markdown: %w", err)
 	}
 
 	title := doc.Title()
@@ -172,8 +172,10 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 	)
 
 	p := tea.NewProgram(m)
-	_, err = p.Run()
-	return err
+	if _, err = p.Run(); err != nil {
+		return fmt.Errorf("running TUI: %w", err)
+	}
+	return nil
 }
 
 func (r *RootCommand) fetchPage(ctx context.Context, w io.Writer, path string) error {
