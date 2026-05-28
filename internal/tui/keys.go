@@ -6,13 +6,14 @@ import (
 
 // KeyMap defines the keybindings for the TUI.
 type KeyMap struct {
-	Quit     key.Binding
-	Up       key.Binding
-	Down     key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
-	Help     key.Binding
-	Palette  key.Binding
+	Quit          key.Binding
+	Up            key.Binding
+	Down          key.Binding
+	PageUp        key.Binding
+	PageDown      key.Binding
+	Help          key.Binding
+	Palette       key.Binding
+	OpenInBrowser key.Binding
 }
 
 // ShortHelp returns bindings for the short help view.
@@ -25,7 +26,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down},
 		{k.PageUp, k.PageDown},
-		{k.Palette, k.Quit},
+		{k.OpenInBrowser, k.Palette, k.Quit},
 	}
 }
 
@@ -59,6 +60,10 @@ func DefaultKeyMap() KeyMap {
 		Palette: key.NewBinding(
 			key.WithKeys(">"),
 			key.WithHelp(">", "commands"),
+		),
+		OpenInBrowser: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "open in browser"),
 		),
 	}
 }

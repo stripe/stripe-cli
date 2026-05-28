@@ -1,10 +1,13 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
 	"github.com/atotto/clipboard"
+
+	"github.com/stripe/stripe-cli-docs-plugin/internal/browser"
 )
 
 // Page holds the raw content and metadata needed by the TUI to display a
@@ -19,6 +22,17 @@ type Page struct {
 func (p Page) Copy() error {
 	if err := clipboard.WriteAll(string(p.Content)); err != nil {
 		return fmt.Errorf("copying to clipboard: %w", err)
+	}
+	return nil
+}
+
+// Open opens the page URL in the user's default browser.
+func (p Page) Open(ctx context.Context) error {
+	if p.URL == nil {
+		return nil
+	}
+	if err := browser.Open(ctx, p.URL); err != nil {
+		return fmt.Errorf("opening browser: %w", err)
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -186,6 +187,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.PageUp()
 		case key.Matches(msg, m.keys.PageDown):
 			m.viewport.PageDown()
+		case key.Matches(msg, m.keys.OpenInBrowser):
+			_ = m.page.Open(context.Background())
 		}
 	}
 
