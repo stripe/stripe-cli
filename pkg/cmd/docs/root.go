@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
@@ -105,7 +106,10 @@ func (r *RootCommand) Root() *cobra.Command { return r.cmd }
 
 func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return cmd.Help()
+		if err := cmd.Help(); err != nil {
+			return fmt.Errorf("showing help: %w", err)
+		}
+		return nil
 	}
 
 	path := args[0]
@@ -114,7 +118,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	}
 
 	w := pager.New(cmd.OutOrStdout(), !r.noPager)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 	return r.fetchPage(cmd.Context(), w, path)
 }
 
@@ -129,20 +133,21 @@ func (r *RootCommand) fetchPage(ctx context.Context, w io.Writer, path string) e
 	ref := &url.URL{Path: path}
 	page, err := r.client.FetchPage(ctx, ref)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetching page: %w", err)
 	}
 
 	doc, err := markdown.Parse(page.Content)
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing markdown: %w", err)
 	}
 
 	out, err := r.renderer.Render(doc)
 	if err != nil {
-		return err
+		return fmt.Errorf("rendering page: %w", err)
 	}
 
-	_, err = fmt.Fprint(w, out)
-	return err
+	if _, err = fmt.Fprint(w, out); err != nil {
+		return fmt.Errorf("writing output: %w", err)
+	}
+	return nil
 }
-
