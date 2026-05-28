@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,11 +17,12 @@ import (
 
 // RootCommand is the root command for the docs plugin.
 type RootCommand struct {
-	cmd      *cobra.Command
-	client   *docs.Client
-	renderer markdown.Renderer
-	version  string
-	noPager  bool
+	cmd       *cobra.Command
+	client    *docs.Client
+	renderer  markdown.Renderer
+	version   string
+	configDir string
+	noPager   bool
 }
 
 // Option is a functional option for configuring RootCommand.
@@ -34,6 +36,11 @@ func WithClient(client *docs.Client) Option {
 // WithRenderer sets the Markdown renderer used to display pages.
 func WithRenderer(renderer markdown.Renderer) Option {
 	return func(r *RootCommand) { r.renderer = renderer }
+}
+
+// WithConfigDirectory sets the Stripe config directory (e.g. ~/.config/stripe).
+func WithConfigDirectory(dir string) Option {
+	return func(r *RootCommand) { r.configDir = dir }
 }
 
 // New creates a new RootCommand with sensible defaults.
@@ -76,6 +83,11 @@ func (r *RootCommand) WithOptions(opts ...Option) *RootCommand {
 	}
 	if r.client == nil {
 		r.client = docs.NewClient(r.version)
+		if r.configDir != "" {
+			if cache, err := docs.NewFSCache(filepath.Join(r.configDir, "docs", "cache")); err == nil {
+				r.client = r.client.WithOptions(docs.WithCache(cache))
+			}
+		}
 	}
 	if r.renderer == nil {
 		var opts []markdown.RendererOption
@@ -133,3 +145,4 @@ func (r *RootCommand) fetchPage(ctx context.Context, w io.Writer, path string) e
 	_, err = fmt.Fprint(w, out)
 	return err
 }
+
