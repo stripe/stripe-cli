@@ -76,31 +76,37 @@ func (c *Client) WithOptions(opts ...ClientOption) *Client {
 //	page, err := c.FetchPage(ctx, &url.URL{Path: "/payments/accept-a-payment", RawQuery: "api_version=2024-06-30"})
 func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	resolvedURL := c.baseURL.ResolveReference(ref)
-	key := resolvedURL.String()
+	rawURL := resolvedURL.String()
 
 	if c.cache != nil {
-		if data, cachedAt, ok, err := c.cache.Get(key); err != nil {
-			c.logger.Error("cache read failed", "url", key, "err", err)
+		if data, cachedAt, ok, err := c.cache.Get(rawURL); err != nil {
+			c.logger.Error("cache read failed", "url", rawURL, "err", err)
 			return Page{}, fmt.Errorf("docs: cache read: %w", err)
 		} else if ok {
-			c.logger.Debug("cache hit", "url", key, "age", time.Since(cachedAt).Round(time.Second))
+			c.logger.Debug("cache hit", "url", rawURL, "age", time.Since(cachedAt).Round(time.Second))
 			return Page{
 				Content:   data,
 				URL:       resolvedURL,
 				FetchedAt: cachedAt,
 			}, nil
 		}
-		c.logger.Debug("cache miss", "url", key)
+		c.logger.Debug("cache miss", "url", rawURL)
 	}
 
-	body, err := c.do(ctx, key)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return Page{}, fmt.Errorf("docs: build request: %w", err)
+	}
+	req.Header.Set("Accept", "text/plain")
+
+	body, err := c.do(req)
 	if err != nil {
 		return Page{}, err
 	}
 
 	if c.cache != nil {
-		if err := c.cache.Set(key, body); err != nil {
-			c.logger.Error("cache write failed", "url", key, "err", err)
+		if err := c.cache.Set(rawURL, body); err != nil {
+			c.logger.Error("cache write failed", "url", rawURL, "err", err)
 			return Page{}, fmt.Errorf("docs: cache write: %w", err)
 		}
 	}
@@ -112,32 +118,29 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	}, nil
 }
 
-func (c *Client) do(ctx context.Context, rawURL string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("docs: build request: %w", err)
-	}
+func (c *Client) do(req *http.Request) ([]byte, error) {
 	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Accept", "text/markdown")
 
 	start := time.Now()
 	resp, err := c.http.Do(req)
 	if err != nil {
-		c.logger.Error("request failed", "url", rawURL, "err", err)
+		c.logger.Error("request failed", "url", req.URL, "err", err)
 		return nil, fmt.Errorf("docs: request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	c.logger.Debug("request complete", "url", rawURL, "status", resp.StatusCode, "duration", time.Since(start).Round(time.Millisecond))
+	c.logger.Debug("request complete", "url", req.URL, "status", resp.StatusCode, "duration", time.Since(start).Round(time.Millisecond))
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("docs: %s returned %d", rawURL, resp.StatusCode)
+		return nil, fmt.Errorf("docs: %s returned %d", req.URL, resp.StatusCode)
 	}
 
-	if ct := resp.Header.Get("Content-Type"); ct != "" {
+	accept := req.Header.Get("Accept")
+	if ct := resp.Header.Get("Content-Type"); ct != "" && accept != "" {
 		mediaType, _, _ := mime.ParseMediaType(ct)
-		if mediaType != "text/plain" && mediaType != "text/markdown" {
-			return nil, fmt.Errorf("docs: %s returned unsupported content type %q", rawURL, ct)
+		acceptMedia, _, _ := mime.ParseMediaType(accept)
+		if mediaType != acceptMedia {
+			return nil, fmt.Errorf("docs: %s returned unsupported content type %q", req.URL, ct)
 		}
 	}
 
