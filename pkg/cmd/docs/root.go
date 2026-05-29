@@ -143,13 +143,17 @@ func (r *RootCommand) initRenderer() {
 	r.renderer, _ = markdown.NewRenderer(opts...)
 }
 
-func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
+func (r *RootCommand) initLogger() {
 	if r.logger == nil && r.loggerFn != nil {
 		r.logger = r.loggerFn()
 	}
 	if r.logger != nil && r.client != nil {
 		r.client.WithOptions(docs.WithLogger(r.logger))
 	}
+}
+
+func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
+	r.initLogger()
 	return nil
 }
 
