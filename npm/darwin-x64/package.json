@@ -1,0 +1,23 @@
+{
+  "name": "@stripe/cli-darwin-x64",
+  "version": "1.42.1",
+  "description": "The Stripe CLI macOS x64 binary",
+  "homepage": "https://stripe.com/docs/stripe-cli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stripe/stripe-cli.git"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "bin": {
+    "stripe": "bin/stripe"
+  },
+  "files": [
+    "bin/stripe"
+  ]
+}

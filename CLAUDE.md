@@ -49,7 +49,9 @@ Templates live in `pkg/gen/*.go.tpl`. Build tags `gen_resources` and `events_lis
 
 ## GitHub CLI
 
-Always set `GH_HOST=github.com` when running `gh` commands to ensure they target public GitHub, not GitHub Enterprise:
+`GH_HOST` should be `github.com` to ensure `gh` commands target public GitHub, not GitHub Enterprise. This should already be configured through `.envrc`.  If `GH_HOST` isn't yet showing `github.com`, then run `direnv allow`.
+
+If `direnv` isn't installed, you can fallback by setting `GH_HOST` on all `gh` commands:
 
 ```bash
 GH_HOST=github.com gh pr create ...
