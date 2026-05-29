@@ -344,10 +344,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 	manifestPlugin, err := LookUpPluginInManifest(ctx, config, fs, pluginName)
 	if err != nil {
-		if apiKey == "" {
-			return nil, fmt.Errorf("could not find a plugin named %s. Run 'stripe login' and try again", pluginName)
-		}
-		return nil, err
+		return nil, &ErrPluginNotFound{Name: pluginName}
 	}
 
 	manifestVersion := version
@@ -919,6 +916,16 @@ type remoteResourceNotFoundError struct {
 
 func (e *remoteResourceNotFoundError) Error() string {
 	return fmt.Sprintf("remote resource not found: url=%s", e.URL)
+}
+
+// ErrPluginNotFound is returned when a plugin cannot be found in either the
+// metadata endpoint or the global manifest.
+type ErrPluginNotFound struct {
+	Name string
+}
+
+func (e *ErrPluginNotFound) Error() string {
+	return fmt.Sprintf("no plugin named %q exists", e.Name)
 }
 
 // FetchRemoteResource returns the remote resource body

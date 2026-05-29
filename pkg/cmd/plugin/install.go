@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -93,22 +94,45 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	isLatest := len(version) == 0
 	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
-		accountID, aErr := ic.cfg.GetProfile().GetAccountID()
-		if aErr != nil || accountID == "" {
-			fmt.Printf("You must be logged in to install the \"%s\" plugin.\n\n", pluginName)
-			fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
-			var input string
-			fmt.Fscanln(os.Stdin, &input)
-			if input != "" {
-				return fmt.Errorf("login canceled")
+		var pluginNotFound *plugins.ErrPluginNotFound
+		if errors.As(err, &pluginNotFound) {
+			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
+			if aErr != nil || accountID == "" {
+				fmt.Printf("No plugin named %q found. If this is a private plugin, you must be logged in to install it.\n\n", pluginName)
+				fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
+				var input string
+				fmt.Fscanln(os.Stdin, &input)
+				if input != "" {
+					return fmt.Errorf("login canceled")
+				}
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+					return lErr
+				}
+				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+				if err != nil {
+					return fmt.Errorf("no plugin named %q exists", pluginName)
+				}
+			} else {
+				return fmt.Errorf("no plugin named %q exists", pluginName)
 			}
-			if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
-				return lErr
+		} else {
+			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
+			if aErr != nil || accountID == "" {
+				fmt.Printf("You must be logged in to install the \"%s\" plugin.\n\n", pluginName)
+				fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
+				var input string
+				fmt.Fscanln(os.Stdin, &input)
+				if input != "" {
+					return fmt.Errorf("login canceled")
+				}
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+					return lErr
+				}
+				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 			}
-			resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
-		}
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 	}
 	plugin := resolvedPlugin.Plugin
