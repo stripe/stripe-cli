@@ -114,40 +114,45 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	}
 	req.Header.Set("Accept", "text/plain")
 
-	body, err := c.do(req)
+	res, err := c.do(req)
 	if err != nil {
 		return Page{}, err
 	}
 
 	if c.cache != nil {
-		if err := c.cache.Set(rawURL, body); err != nil {
+		if err := c.cache.Set(rawURL, res.body); err != nil {
 			c.logger.Error("cache write failed", "url", rawURL, "err", err)
 			return Page{}, fmt.Errorf("docs: cache write: %w", err)
 		}
 	}
 
 	return Page{
-		Content:   body,
-		URL:       resolvedURL,
+		Content:   res.body,
+		URL:       res.finalURL,
 		FetchedAt: time.Now(),
 	}, nil
 }
 
-func (c *Client) do(req *http.Request) ([]byte, error) {
+type response struct {
+	body     []byte
+	finalURL *url.URL
+}
+
+func (c *Client) do(req *http.Request) (response, error) {
 	req.Header.Set("User-Agent", c.userAgent)
 
 	start := time.Now()
 	resp, err := c.http.Do(req)
 	if err != nil {
 		c.logger.Error("request failed", "url", req.URL, "err", err)
-		return nil, fmt.Errorf("docs: request failed: %w", err)
+		return response{}, fmt.Errorf("docs: request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	c.logger.Debug("request complete", "url", req.URL, "status", resp.StatusCode, "duration", time.Since(start).Round(time.Millisecond))
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("docs: %s returned %d", req.URL, resp.StatusCode)
+		return response{}, fmt.Errorf("docs: %s returned %d", req.URL, resp.StatusCode)
 	}
 
 	accept := req.Header.Get("Accept")
@@ -155,16 +160,16 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		mediaType, _, _ := mime.ParseMediaType(ct)
 		acceptMedia, _, _ := mime.ParseMediaType(accept)
 		if mediaType != acceptMedia {
-			return nil, fmt.Errorf("docs: %s returned unsupported content type %q", req.URL, ct)
+			return response{}, fmt.Errorf("docs: %s returned unsupported content type %q", req.URL, ct)
 		}
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("docs: read body: %w", err)
+		return response{}, fmt.Errorf("docs: read body: %w", err)
 	}
 
-	return body, nil
+	return response{body: body, finalURL: resp.Request.URL}, nil
 }
 
 // Search sends the request to docs search endpoint and returns a list of search results.

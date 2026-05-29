@@ -89,6 +89,7 @@ func New() *RootCommand {
 		},
 	})
 	r.cmd.AddCommand(r.newSearchCommand())
+	r.cmd.AddCommand(r.newAPICmd())
 	return r
 }
 
@@ -202,13 +203,26 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 		path = "/" + strings.Join(args, "/")
 	}
 
+	if r.client == nil {
+		return fmt.Errorf("docs client not initialized")
+	}
+	if r.renderer == nil {
+		return fmt.Errorf("markdown renderer not initialized")
+	}
+
 	if r.useTUI(cmd) {
 		return r.runTUI(cmd.Context(), path)
 	}
 
+	ref := &url.URL{Path: path}
+	page, err := r.client.FetchPage(cmd.Context(), ref)
+	if err != nil {
+		return fmt.Errorf("fetching page: %w", err)
+	}
+
 	w := pager.New(cmd.OutOrStdout(), !r.noPager)
 	defer func() { _ = w.Close() }()
-	return r.fetchPage(cmd.Context(), w, path)
+	return r.renderPage(w, page)
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
@@ -251,20 +265,7 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 	return nil
 }
 
-func (r *RootCommand) fetchPage(ctx context.Context, w io.Writer, path string) error {
-	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
-	}
-	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
-	}
-
-	ref := &url.URL{Path: path}
-	page, err := r.client.FetchPage(ctx, ref)
-	if err != nil {
-		return fmt.Errorf("fetching page: %w", err)
-	}
-
+func (r *RootCommand) renderPage(w io.Writer, page docs.Page) error {
 	doc, err := markdown.Parse(page.Content)
 	if err != nil {
 		return fmt.Errorf("parsing markdown: %w", err)
