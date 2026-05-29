@@ -138,11 +138,25 @@ func (r *RootCommand) initRenderer() {
 		return
 	}
 	var opts []markdown.RendererOption
-	if agent.Detect() {
+	switch r.color() {
+	case "off":
 		opts = append(opts, markdown.WithStyle("notty"))
-		r.noPager = true
+	case "on":
+		// Use default styled rendering (auto-detect dark/light).
+	default:
+		if agent.Detect() {
+			opts = append(opts, markdown.WithStyle("notty"))
+			r.noPager = true
+		}
 	}
 	r.renderer, _ = markdown.NewRenderer(opts...)
+}
+
+func (r *RootCommand) color() string {
+	if r.cfg != nil && r.cfg.Color != "" {
+		return r.cfg.Color
+	}
+	return "auto"
 }
 
 func (r *RootCommand) initLogger() {
