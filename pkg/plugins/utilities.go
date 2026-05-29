@@ -274,7 +274,7 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 
 // GetPluginList builds a list of allowed plugins to be installed and run by the CLI
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
-	pluginList, err := getCachedPluginList(config, fs)
+	pluginList, err := getAvailablePluginList(config, fs)
 	if os.IsNotExist(err) {
 		log.Debug("The plugin manifest file does not exist. Downloading...")
 		err = RefreshPluginManifest(ctx, config, fs, stripe.DefaultAPIBaseURL)
@@ -282,7 +282,7 @@ func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (Plu
 			log.Debug("Could not download plugin manifest")
 			return pluginList, err
 		}
-		return getCachedPluginList(config, fs)
+		return getAvailablePluginList(config, fs)
 	}
 
 	if err != nil {
@@ -311,12 +311,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 
 // LookUpPluginInManifest returns plugin metadata from the cached global manifest.
 func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
-	pluginList, err := GetPluginList(ctx, config, fs)
-	if err != nil {
-		return Plugin{}, err
-	}
-
-	return findPlugin(pluginList, pluginName)
+	return lookUpPluginInCachedManifest(config, fs, pluginName)
 }
 
 // ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
@@ -470,6 +465,50 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 }
 
 func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
+	return getLegacyCachedPluginList(config, fs)
+}
+
+func getAvailablePluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
+	localPluginList, err := getLocalPluginMetadataList(config, fs)
+	if err != nil {
+		return localPluginList, err
+	}
+
+	manifestPluginList, err := getLegacyCachedPluginList(config, fs)
+	if err != nil {
+		if len(localPluginList.Plugins) != 0 {
+			return localPluginList, nil
+		}
+		return manifestPluginList, err
+	}
+
+	return mergeAvailablePluginLists(localPluginList, manifestPluginList), nil
+}
+
+func getLocalPluginMetadataList(config config.IConfig, fs afero.Fs) (PluginList, error) {
+	var pluginList PluginList
+	pluginNames, err := getLocalPluginMetadataNames(config, fs)
+	if err != nil {
+		return pluginList, err
+	}
+	if len(pluginNames) == 0 {
+		return pluginList, nil
+	}
+
+	pluginList.Plugins = make([]Plugin, 0, len(pluginNames))
+	for _, pluginName := range pluginNames {
+		plugin, err := readLocalPluginMetadata(config, fs, pluginName)
+		if err != nil {
+			return PluginList{}, err
+		}
+
+		pluginList.Plugins = append(pluginList.Plugins, plugin)
+	}
+
+	return pluginList, nil
+}
+
+func getLegacyCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
 	var pluginList PluginList
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
@@ -705,6 +744,27 @@ func getLocalPluginMetadataNames(config config.IConfig, fs afero.Fs) ([]string, 
 	return names, nil
 }
 
+func getInstalledPluginDirectoryNames(config config.IConfig, fs afero.Fs) ([]string, error) {
+	entries, err := afero.ReadDir(fs, getPluginsDir(config))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		names = append(names, entry.Name())
+	}
+	sort.Strings(names)
+
+	return names, nil
+}
+
 // RefreshPluginManifest refreshes the plugin manifest
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
 	apiKey, err := config.GetProfile().GetAPIKey(false)
@@ -723,6 +783,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 	pluginList, err := fetchAndMergeManifests(pluginData)
 	if err != nil {
+		return err
+	}
+
+	if err := syncLocalPluginMetadata(config, fs, *pluginList); err != nil {
 		return err
 	}
 
@@ -748,6 +812,53 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func syncLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginList PluginList) error {
+	expectedPluginNames := make(map[string]struct{}, len(pluginList.Plugins))
+	for _, plugin := range pluginList.Plugins {
+		expectedPluginNames[plugin.Shortname] = struct{}{}
+
+		existingPlugin, err := readLocalPluginMetadata(config, fs, plugin.Shortname)
+		if err == nil {
+			if mergedPlugin := mergePluginMetadata(&plugin, &existingPlugin); mergedPlugin != nil {
+				plugin = *mergedPlugin
+			}
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+
+		if err := writeLocalPluginMetadata(config, fs, plugin); err != nil {
+			return err
+		}
+	}
+
+	for _, pluginName := range config.GetInstalledPlugins() {
+		expectedPluginNames[pluginName] = struct{}{}
+	}
+
+	installedPluginDirs, err := getInstalledPluginDirectoryNames(config, fs)
+	if err != nil {
+		return err
+	}
+	for _, pluginName := range installedPluginDirs {
+		expectedPluginNames[pluginName] = struct{}{}
+	}
+
+	existingPluginNames, err := getLocalPluginMetadataNames(config, fs)
+	if err != nil {
+		return err
+	}
+	for _, pluginName := range existingPluginNames {
+		if _, ok := expectedPluginNames[pluginName]; ok {
+			continue
+		}
+		if err := removeLocalPluginMetadata(config, fs, pluginName); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -879,26 +990,71 @@ func mergePluginLists(pluginList *PluginList, additionalPluginLists []*PluginLis
 	}
 }
 
+func mergeAvailablePluginLists(localPluginList, manifestPluginList PluginList) PluginList {
+	switch {
+	case len(localPluginList.Plugins) == 0:
+		sortPluginListByName(&manifestPluginList)
+		return manifestPluginList
+	case len(manifestPluginList.Plugins) == 0:
+		sortPluginListByName(&localPluginList)
+		return localPluginList
+	}
+
+	mergedPluginList := PluginList{
+		Plugins: append([]Plugin(nil), manifestPluginList.Plugins...),
+	}
+
+	pluginIndexByName := make(map[string]int, len(mergedPluginList.Plugins))
+	for i, plugin := range mergedPluginList.Plugins {
+		pluginIndexByName[plugin.Shortname] = i
+	}
+
+	for _, localPlugin := range localPluginList.Plugins {
+		if idx, ok := pluginIndexByName[localPlugin.Shortname]; ok {
+			mergedPluginList.Plugins[idx] = mergeAvailablePluginMetadata(localPlugin, mergedPluginList.Plugins[idx])
+			continue
+		}
+
+		mergedPluginList.Plugins = append(mergedPluginList.Plugins, localPlugin)
+		pluginIndexByName[localPlugin.Shortname] = len(mergedPluginList.Plugins) - 1
+	}
+
+	sortPluginListByName(&mergedPluginList)
+	return mergedPluginList
+}
+
+func mergeAvailablePluginMetadata(localPlugin, manifestPlugin Plugin) Plugin {
+	mergedPlugin := mergePluginMetadata(&localPlugin, &manifestPlugin)
+	if mergedPlugin == nil {
+		return Plugin{}
+	}
+
+	releaseKeys := make(map[string]struct{}, len(mergedPlugin.Releases))
+	for _, release := range mergedPlugin.Releases {
+		releaseKeys[releaseIdentity(release)] = struct{}{}
+	}
+
+	for _, release := range manifestPlugin.Releases {
+		if _, ok := releaseKeys[releaseIdentity(release)]; ok {
+			continue
+		}
+		mergedPlugin.Releases = append(mergedPlugin.Releases, release)
+	}
+
+	sortPluginReleases(mergedPlugin.Releases)
+	return *mergedPlugin
+}
+
 func addPluginToList(pluginList *PluginList, pl Plugin) {
 	idx := findPluginIndex(pluginList, pl)
 	if idx == -1 {
 		pluginList.Plugins = append(pluginList.Plugins, pl)
+		idx = len(pluginList.Plugins) - 1
 	} else {
 		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
-
-		// Other code assumes the releases are sorted with latest version last.
-		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
-			vi, errI := version.NewVersion(pluginList.Plugins[idx].Releases[i].Version)
-			vj, errJ := version.NewVersion(pluginList.Plugins[idx].Releases[j].Version)
-
-			// If either version fails to parse, fall back to string comparison
-			if errI != nil || errJ != nil {
-				return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
-			}
-
-			return vi.LessThan(vj)
-		})
 	}
+
+	sortPluginReleases(pluginList.Plugins[idx].Releases)
 }
 
 func findPluginIndex(list *PluginList, p Plugin) int {
@@ -908,6 +1064,37 @@ func findPluginIndex(list *PluginList, p Plugin) int {
 		}
 	}
 	return -1
+}
+
+func releaseIdentity(release Release) string {
+	return strings.Join([]string{release.Version, release.OS, release.Arch}, "\x00")
+}
+
+func sortPluginReleases(releases []Release) {
+	sort.Slice(releases, func(i, j int) bool {
+		vi, errI := version.NewVersion(releases[i].Version)
+		vj, errJ := version.NewVersion(releases[j].Version)
+
+		if errI == nil && errJ == nil {
+			if !vi.Equal(vj) {
+				return vi.LessThan(vj)
+			}
+		} else if releases[i].Version != releases[j].Version {
+			return releases[i].Version < releases[j].Version
+		}
+
+		if releases[i].OS != releases[j].OS {
+			return releases[i].OS < releases[j].OS
+		}
+
+		return releases[i].Arch < releases[j].Arch
+	})
+}
+
+func sortPluginListByName(pluginList *PluginList) {
+	sort.Slice(pluginList.Plugins, func(i, j int) bool {
+		return pluginList.Plugins[i].Shortname < pluginList.Plugins[j].Shortname
+	})
 }
 
 type remoteResourceNotFoundError struct {
