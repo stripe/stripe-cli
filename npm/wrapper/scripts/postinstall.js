@@ -33,7 +33,7 @@ fs.mkdirSync(vendorDir, { recursive: true });
 const archivePath  = path.join(vendorDir, '..', archive);
 const checksumPath = path.join(vendorDir, '..', checksumFile);
 
-console.log(`@stripe/cli: platform package not found, downloading from GitHub Releases...`);
+console.log(`@stripe/cli: platform package not found, installation must have used --no-optional. Downloading from GitHub Releases...`);
 
 async function main() {
   await download(`${BASE}/${checksumFile}`, checksumPath);
