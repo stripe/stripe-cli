@@ -17,6 +17,7 @@ npm/*/bin/stripe.exe
 npm/*/README.md
 npm/wrapper/vendor/
 npm/_tmp/
+!npm/wrapper/bin
 
 # Claude Code local configuration (auto-added)
 .claude/*.local.*
