@@ -22,7 +22,7 @@ func TestKeyMap_FullHelp(t *testing.T) {
 	assert.Len(t, groups, 3)
 	assert.Equal(t, []key.Binding{km.Up, km.Down}, groups[0])
 	assert.Equal(t, []key.Binding{km.PageUp, km.PageDown}, groups[1])
-	assert.Equal(t, []key.Binding{km.Quit}, groups[2])
+	assert.Equal(t, []key.Binding{km.Palette, km.Quit}, groups[2])
 }
 
 func TestKeyMap_SatisfiesHelpInterface(t *testing.T) {
