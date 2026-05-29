@@ -1,6 +1,6 @@
 {
   "name": "@stripe/cli-linux-x64",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "The Stripe CLI Linux x64 binary",
   "homepage": "https://stripe.com/docs/stripe-cli",
   "license": "MIT",
@@ -8,10 +8,16 @@
     "type": "git",
     "url": "https://github.com/stripe/stripe-cli.git"
   },
-  "os": ["linux"],
-  "cpu": ["x64"],
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
   "bin": {
     "stripe": "bin/stripe"
   },
-  "files": ["bin/stripe"]
+  "files": [
+    "bin/stripe"
+  ]
 }

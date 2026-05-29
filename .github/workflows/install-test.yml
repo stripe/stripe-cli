@@ -114,7 +114,7 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - run: bash scripts/install-test.sh npm
@@ -129,7 +129,7 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - run: bash scripts/install-test.sh npm-no-optional
@@ -144,7 +144,7 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - run: bash scripts/install-test.sh npx

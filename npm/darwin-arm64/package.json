@@ -1,6 +1,6 @@
 {
   "name": "@stripe/cli-darwin-arm64",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "The Stripe CLI macOS arm64 binary",
   "homepage": "https://stripe.com/docs/stripe-cli",
   "license": "MIT",
@@ -8,10 +8,16 @@
     "type": "git",
     "url": "https://github.com/stripe/stripe-cli.git"
   },
-  "os": ["darwin"],
-  "cpu": ["arm64"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
   "bin": {
     "stripe": "bin/stripe"
   },
-  "files": ["bin/stripe"]
+  "files": [
+    "bin/stripe"
+  ]
 }
