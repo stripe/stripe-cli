@@ -1,6 +1,6 @@
 {
   "name": "@stripe/cli-win32-x64",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "The Stripe CLI Windows x64 binary",
   "homepage": "https://stripe.com/docs/stripe-cli",
   "license": "MIT",
@@ -8,10 +8,16 @@
     "type": "git",
     "url": "https://github.com/stripe/stripe-cli.git"
   },
-  "os": ["win32"],
-  "cpu": ["x64"],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
   "bin": {
     "stripe": "bin/stripe.exe"
   },
-  "files": ["bin/stripe.exe"]
+  "files": [
+    "bin/stripe.exe"
+  ]
 }
