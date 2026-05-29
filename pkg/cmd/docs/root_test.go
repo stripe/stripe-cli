@@ -106,22 +106,22 @@ func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 	renderer, err := markdown.NewRenderer()
 	require.NoError(t, err)
 
+	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
 	var out bytes.Buffer
 	root := cmd.New().WithOptions(
 		cmd.WithClient(client),
 		cmd.WithRenderer(renderer),
-		cmd.WithLoggerFunc(func() *slog.Logger {
-			return slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{
-				Level: slog.LevelDebug,
-			}))
-		}),
+		cmd.WithLogger(logger),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/test"})
 
 	err = root.ExecuteContext(context.Background())
 	require.NoError(t, err)
-	assert.NotEmpty(t, logBuf.String(), "debug-level logger from LoggerFunc should capture log output")
+	assert.NotEmpty(t, logBuf.String(), "injected debug-level logger should capture log output")
 }
 
 func TestVersionCommand(t *testing.T) {

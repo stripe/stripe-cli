@@ -10,8 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	charmlog "charm.land/log/v2"
+
 	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
+	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
@@ -25,15 +28,15 @@ import (
 type RootCommand struct {
 	cmd *cobra.Command
 
+	cfg *cliconfig.Config
+
 	client   *docs.Client
 	renderer markdown.Renderer
 	logger   *slog.Logger
-	loggerFn func() *slog.Logger
 
-	version   string
-	configDir string
-	noPager   bool
-	noTUI     bool
+	version string
+	noPager bool
+	noTUI   bool
 }
 
 // Option is a functional option for configuring RootCommand.
@@ -49,19 +52,15 @@ func WithRenderer(renderer markdown.Renderer) Option {
 	return func(r *RootCommand) { r.renderer = renderer }
 }
 
-// WithConfigDirectory sets the Stripe config directory (e.g. ~/.config/stripe).
-func WithConfigDirectory(dir string) Option {
-	return func(r *RootCommand) { r.configDir = dir }
-}
-
 // WithLogger sets the structured logger for the plugin.
 func WithLogger(logger *slog.Logger) Option {
 	return func(r *RootCommand) { r.logger = logger }
 }
 
-// WithLoggerFunc sets a deferred logger factory that is called after flag parsing.
-func WithLoggerFunc(fn func() *slog.Logger) Option {
-	return func(r *RootCommand) { r.loggerFn = fn }
+// WithConfig sets the shared Stripe CLI configuration whose fields are
+// populated by cobra flag parsing at runtime (e.g. --color, --log-level).
+func WithConfig(cfg *cliconfig.Config) Option {
+	return func(r *RootCommand) { r.cfg = cfg }
 }
 
 // New creates a new RootCommand with sensible defaults.
@@ -105,7 +104,9 @@ func (r *RootCommand) WithOptions(opts ...Option) *RootCommand {
 		opt(r)
 	}
 	r.initClient()
-	r.initRenderer()
+	if r.cfg == nil {
+		r.initRenderer()
+	}
 	return r
 }
 
@@ -121,8 +122,9 @@ func (r *RootCommand) initClient() {
 	if r.logger != nil {
 		clientOpts = append(clientOpts, docs.WithLogger(r.logger))
 	}
-	if r.configDir != "" {
-		if cache, err := docs.NewFSCache(filepath.Join(r.configDir, "docs", "cache")); err == nil {
+	if r.cfg != nil {
+		configDir := r.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		if cache, err := docs.NewFSCache(filepath.Join(configDir, "docs", "cache")); err == nil {
 			clientOpts = append(clientOpts, docs.WithCache(cache))
 		}
 	}
@@ -144,8 +146,16 @@ func (r *RootCommand) initRenderer() {
 }
 
 func (r *RootCommand) initLogger() {
-	if r.logger == nil && r.loggerFn != nil {
-		r.logger = r.loggerFn()
+	if r.logger == nil && r.cfg != nil {
+		level, err := charmlog.ParseLevel(r.cfg.LogLevel)
+		if err != nil {
+			level = charmlog.InfoLevel
+		}
+		handler := charmlog.NewWithOptions(os.Stderr, charmlog.Options{
+			Level:  level,
+			Prefix: "docs",
+		})
+		r.logger = slog.New(handler).With("version", r.version)
 	}
 	if r.logger != nil && r.client != nil {
 		r.client.WithOptions(docs.WithLogger(r.logger))
@@ -154,6 +164,7 @@ func (r *RootCommand) initLogger() {
 
 func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
+	r.initRenderer()
 	return nil
 }
 
