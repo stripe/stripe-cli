@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin"
-	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 type pluginCmd struct {
@@ -18,10 +17,8 @@ func newPluginCmd() *pluginCmd {
 	pc.cmd = &cobra.Command{
 		Use:    "plugin",
 		Hidden: true,
-		Args:   validators.NoArgs,
 		Short:  "Interact with Stripe CLI plugins",
 		Long:   "Interact with Stripe CLI plugins.",
-		RunE:   listCmd.Cmd.RunE,
 	}
 
 	pc.cmd.AddCommand(listCmd.Cmd)

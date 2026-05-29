@@ -3,6 +3,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,19 +14,40 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
-func TestListCmdPrintsAvailablePlugins(t *testing.T) {
+func TestListCmdPrintsAvailablePluginsAfterRefresh(t *testing.T) {
 	cfg, fs, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
 
-	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	manifestPath := filepath.Join(configPath, "plugins.toml")
-	require.NoError(t, fs.MkdirAll(configPath, 0755))
-	require.NoError(t, afero.WriteFile(fs, manifestPath, []byte(testListManifest()), 0644))
+	lc := NewListCmd(cfg)
+	lc.fs = fs
+	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
+		return writeListManifest(cfg, fs, testListManifest())
+	}
+
+	assertListOutput(t, executeListCmd(t, lc))
+}
+
+func TestListCmdFallsBackToCachedPluginsWhenRefreshFails(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+
+	require.NoError(t, writeListManifest(cfg, fs, testListManifest()))
 
 	lc := NewListCmd(cfg)
 	lc.fs = fs
+	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
+		return errors.New("refresh failed")
+	}
+
+	assertListOutput(t, executeListCmd(t, lc))
+}
+
+func executeListCmd(t *testing.T, lc *ListCmd) string {
+	t.Helper()
 
 	var output bytes.Buffer
 	lc.Cmd.SetOut(&output)
@@ -34,7 +56,23 @@ func TestListCmdPrintsAvailablePlugins(t *testing.T) {
 
 	require.NoError(t, lc.Cmd.Execute())
 
-	rendered := output.String()
+	return output.String()
+}
+
+func writeListManifest(cfg *config.Config, fs afero.Fs, manifest string) error {
+	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	manifestPath := filepath.Join(configPath, "plugins.toml")
+
+	if err := fs.MkdirAll(configPath, 0755); err != nil {
+		return err
+	}
+
+	return afero.WriteFile(fs, manifestPath, []byte(manifest), 0644)
+}
+
+func assertListOutput(t *testing.T, rendered string) {
+	t.Helper()
+
 	require.Contains(t, rendered, "Available Stripe plugins:")
 	require.Contains(t, rendered, "apps      Build and manage Stripe Apps")
 	require.Contains(t, rendered, "projects  Scaffold Stripe integration projects")
