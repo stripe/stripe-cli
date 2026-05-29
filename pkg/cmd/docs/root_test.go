@@ -95,13 +95,13 @@ func TestAgentDetectionForcesNottyStyle(t *testing.T) {
 	assert.NotContains(t, result, "\x1b[", "should not contain ANSI escape codes when agent is detected")
 }
 
-func TestPreRun_LoggerFuncResolvesAfterFlagParsing(t *testing.T) {
+func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, "# Test\n\nContent.")
 	}))
 	defer server.Close()
 
-	called := false
+	var logBuf bytes.Buffer
 	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
 	renderer, err := markdown.NewRenderer()
 	require.NoError(t, err)
@@ -111,8 +111,9 @@ func TestPreRun_LoggerFuncResolvesAfterFlagParsing(t *testing.T) {
 		cmd.WithClient(client),
 		cmd.WithRenderer(renderer),
 		cmd.WithLoggerFunc(func() *slog.Logger {
-			called = true
-			return slog.Default()
+			return slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}))
 		}),
 	).Root()
 	root.SetOut(&out)
@@ -120,7 +121,7 @@ func TestPreRun_LoggerFuncResolvesAfterFlagParsing(t *testing.T) {
 
 	err = root.ExecuteContext(context.Background())
 	require.NoError(t, err)
-	assert.True(t, called, "LoggerFunc should be called during PersistentPreRunE")
+	assert.NotEmpty(t, logBuf.String(), "debug-level logger from LoggerFunc should capture log output")
 }
 
 func TestVersionCommand(t *testing.T) {
