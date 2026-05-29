@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -30,6 +31,17 @@ func newPalette(page Page) Palette {
 				return func() tea.Msg {
 					_ = page.Copy()
 					return statusMsg("Copied!")
+				}
+			},
+		},
+		palette.Command{
+			ID:   "open-in-browser",
+			Name: "Open in browser",
+			Desc: "Open this page on docs.stripe.com",
+			Run: func() tea.Cmd {
+				return func() tea.Msg {
+					_ = page.Open(context.Background())
+					return statusMsg("Opened!")
 				}
 			},
 		},

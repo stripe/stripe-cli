@@ -37,6 +37,64 @@ func TestUpdate_OpenInBrowser_NilURL(t *testing.T) {
 	assert.Empty(t, *calls)
 }
 
+func TestPalette_ContainsOpenInBrowser(t *testing.T) {
+	u := &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/payments"}
+	m := New(WithPage(Page{Content: []byte("# Payments"), URL: u}))
+
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	// Open palette
+	result, _ = model.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model = result.(Model)
+
+	items := model.palette.Items()
+	var found bool
+	for _, item := range items {
+		if item.FilterValue() == "Open in browser" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "palette should contain 'Open in browser' command")
+}
+
+func TestPalette_OpenInBrowser_ExecutesCommand(t *testing.T) {
+	calls := stubBrowser(t)
+	u := &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/payments"}
+	m := New(WithPage(Page{Content: []byte("# Payments"), URL: u}))
+
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	// Open palette and filter to "open"
+	result, _ = model.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model = result.(Model)
+	for _, ch := range "open" {
+		result, _ = model.Update(tea.KeyPressMsg{Code: ch, Text: string(ch)})
+		model = result.(Model)
+	}
+
+	// Execute selected command with Enter
+	result, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Text: "enter"})
+	model = result.(Model)
+
+	// The command returns a batch; execute returned cmds to trigger the browser open
+	if cmd != nil {
+		msg := cmd()
+		if batchMsg, ok := msg.(tea.BatchMsg); ok {
+			for _, c := range batchMsg {
+				if c != nil {
+					c()
+				}
+			}
+		}
+	}
+
+	require.Len(t, *calls, 1)
+	assert.Contains(t, (*calls)[0].Args, "https://docs.stripe.com/payments")
+}
+
 func TestNew_Defaults(t *testing.T) {
 	m := New()
 	assert.Equal(t, DefaultKeyMap(), m.keys)
