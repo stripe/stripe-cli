@@ -1,6 +1,6 @@
 {
   "name": "@stripe/cli-linux-x64",
-  "version": "0.0.1",
+  "version": "1.42.1",
   "description": "The Stripe CLI Linux x64 binary",
   "homepage": "https://stripe.com/docs/stripe-cli",
   "license": "MIT",
