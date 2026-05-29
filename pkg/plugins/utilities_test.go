@@ -1175,3 +1175,107 @@ func TestRefreshPluginManifestRefusesSymlinkedParent(t *testing.T) {
 	_, err = os.Stat(filepath.Join(victimDir, "plugins.toml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
+
+func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			res.WriteHeader(http.StatusNotFound)
+			res.Write([]byte(`{"error":{"message":"not found"}}`))
+		case "/v1/stripecli/get-plugin-url":
+			body, _ := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+	require.Error(t, err)
+
+	var pluginNotFound *ErrPluginNotFound
+	require.ErrorAs(t, err, &pluginNotFound)
+	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	originalPluginData := requests.DefaultPluginData
+	requests.DefaultPluginData = requests.PluginData{
+		PluginBaseURL:       testServers.ArtifactoryServer.URL,
+		AdditionalManifests: nil,
+	}
+	defer func() {
+		requests.DefaultPluginData = originalPluginData
+	}()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			res.WriteHeader(http.StatusNotFound)
+			res.Write([]byte(`{"error":{"message":"not found"}}`))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+	require.Error(t, err)
+
+	var pluginNotFound *ErrPluginNotFound
+	require.ErrorAs(t, err, &pluginNotFound)
+	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallSucceedsForGAPluginWhenNotLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, resolvedPlugin.Plugin)
+	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
+	require.Equal(t, "2.0.1", resolvedPlugin.Version)
+}
