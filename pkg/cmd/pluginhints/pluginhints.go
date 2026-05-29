@@ -77,6 +77,7 @@ func withPrivatePreview() option {
 
 func newPluginHintCmd(cfg *config.Config, name, description string, opts ...option) *pluginHintCmd {
 	fs := afero.NewOsFs()
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
 
 	p := &pluginHintCmd{
 		name:        name,
@@ -94,10 +95,10 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 				return err
 			}
 			version := plugin.LookUpLatestVersion()
-			return plugin.Install(ctx, cfg, fs, version, stripe.DefaultAPIBaseURL)
+			return plugin.Install(ctx, cfg, fs, version, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 		},
 		loginFn: func(ctx context.Context) error {
-			return login.Login(ctx, stripe.DefaultDashboardBaseURL, cfg)
+			return login.Login(ctx, dashboardBaseURL, cfg)
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,

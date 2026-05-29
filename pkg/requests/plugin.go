@@ -34,10 +34,18 @@ var DefaultPluginData = PluginData{
 
 func getPluginMetadataPath(apiKey string) string {
 	if apiKey == "" {
-		return "/v1/stripecli/plugins_metadata"
+		return "/ajax/stripecli/plugins_metadata"
 	}
 
 	return "/v1/stripecli/get-plugin-metadata"
+}
+
+func getPluginMetadataBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) string {
+	if apiKey == "" && dashboardBaseURL != "" {
+		return dashboardBaseURL
+	}
+
+	return apiBaseURL
 }
 
 // GetPluginData returns the plugin download information
@@ -78,20 +86,33 @@ func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, prof
 // GetPluginMetadata returns plugin-specific manifest and binary information.
 // It uses the authenticated endpoint when an API key is available and the
 // anonymous endpoint otherwise.
-func GetPluginMetadata(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
+func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,
 	}
 
+	metadataBaseURL := getPluginMetadataBaseURL(apiKey, apiBaseURL, dashboardBaseURL)
+	metadataPath := getPluginMetadataPath(apiKey)
+
+	log.WithFields(log.Fields{
+		"prefix":   "requests.GetPluginMetadata",
+		"base_url": metadataBaseURL,
+		"endpoint": metadataPath,
+		"plugin":   pluginName,
+		"version":  version,
+		"os":       os,
+		"arch":     arch,
+	}).Debug("Fetching plugin metadata")
+
 	base := &Base{
 		Profile:        profile,
 		Method:         http.MethodGet,
 		SuppressOutput: true,
-		APIBaseURL:     baseURL,
+		APIBaseURL:     metadataBaseURL,
 	}
 
-	resp, err := base.MakeRequest(ctx, apiKey, getPluginMetadataPath(apiKey), params, map[string]interface{}{
+	resp, err := base.MakeRequest(ctx, apiKey, metadataPath, params, map[string]interface{}{
 		"plugin":  pluginName,
 		"version": version,
 		"os":      os,

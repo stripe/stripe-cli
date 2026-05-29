@@ -28,7 +28,8 @@ type InstallCmd struct {
 	Cmd *cobra.Command
 	fs  afero.Fs
 
-	apiBaseURL string
+	apiBaseURL       string
+	dashboardBaseURL string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -49,6 +50,8 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	// Hidden configuration flags, useful for dev/debugging
 	ic.Cmd.Flags().StringVar(&ic.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	ic.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+	ic.Cmd.Flags().StringVar(&ic.dashboardBaseURL, "dashboard-base", "", "Sets the dashboard base URL")
+	ic.Cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 
 	return ic
 }
@@ -67,8 +70,20 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
+func resolveDashboardBaseURL(apiBaseURL, dashboardBaseURL string) string {
+	if dashboardBaseURL != "" {
+		return dashboardBaseURL
+	}
+
+	return stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+}
+
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+		return err
+	}
+	dashboardBaseURL := resolveDashboardBaseURL(ic.apiBaseURL, ic.dashboardBaseURL)
+	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURL); err != nil {
 		return err
 	}
 
@@ -76,7 +91,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	pluginName, version := parseInstallArg(args[0])
 	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
 	isLatest := len(version) == 0
-	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
+	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
 		accountID, aErr := ic.cfg.GetProfile().GetAccountID()
 		if aErr != nil || accountID == "" {
@@ -87,10 +102,10 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 			if input != "" {
 				return fmt.Errorf("login canceled")
 			}
-			if lErr := login.Login(cmd.Context(), stripe.DefaultDashboardBaseURL, ic.cfg); lErr != nil {
+			if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
 				return lErr
 			}
-			resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
+			resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 		}
 		if err != nil {
 			return err
@@ -119,7 +134,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
+	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL, dashboardBaseURL); err != nil {
 		return err
 	}
 

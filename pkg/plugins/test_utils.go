@@ -127,7 +127,7 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 				t.Error(err)
 			}
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-metadata", "/v1/stripecli/plugins_metadata":
+		case "/v1/stripecli/get-plugin-metadata", "/ajax/stripecli/plugins_metadata":
 			pluginName := req.URL.Query().Get("plugin")
 			version := req.URL.Query().Get("version")
 			opsystem := req.URL.Query().Get("os")
