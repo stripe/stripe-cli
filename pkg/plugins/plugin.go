@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
 	"golang.org/x/term"
@@ -657,14 +658,29 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		Level: hclog.LevelFromString("ERROR"),
 	})
 
+	// go-plugin's gRPC stdio reader isn't synchronized with client.Kill(),
+	// so passing os.Stdout/os.Stderr directly drops buffered output at
+	// teardown (#1563). Drain through pipes we own and wait on Run exit.
+	stdoutR, stdoutW := io.Pipe()
+	stderrR, stderrW := io.Pipe()
+	var drainWG sync.WaitGroup
+	drainWG.Add(2)
+	go func() { defer drainWG.Done(); _, _ = io.Copy(os.Stdout, stdoutR) }()
+	go func() { defer drainWG.Done(); _, _ = io.Copy(os.Stderr, stderrR) }()
+	defer func() {
+		_ = stdoutW.Close()
+		_ = stderrW.Close()
+		drainWG.Wait()
+	}()
+
 	clientConfig := &hcplugin.ClientConfig{
 		HandshakeConfig:  handshakeConfig,
 		VersionedPlugins: pluginSetMap,
 		Cmd:              cmd,
-		SyncStdout:       os.Stdout,
-		SyncStderr:       os.Stderr,
+		SyncStdout:       stdoutW,
+		SyncStderr:       stderrW,
 		Logger:           pluginLogger,
-		Managed:          true,
+		Managed:          false,
 		StartTimeout:     timeout,
 		AllowedProtocols: []hcplugin.Protocol{
 			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
@@ -687,6 +703,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	// start by launching the plugin process / binary
 	client := hcplugin.NewClient(clientConfig)
+	defer client.Kill()
 
 	// Connect via RPC to the plugin
 	rpcClient, err := client.Client()
