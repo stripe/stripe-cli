@@ -63,8 +63,8 @@ func TestResourcesListAliasedName(t *testing.T) {
 
 	aliases := resource.GetAliases()
 	for principle, alias := range aliases {
-		aliasRegexp := fmt.Sprintf("\n\\s+%s(s?)\\s+\n", resource.GetResourceCmdName(alias))
-		principleRegexp := fmt.Sprintf("\n\\s+%s(s?)\\s+\n", resource.GetResourceCmdName(principle))
+		aliasRegexp := fmt.Sprintf(`\n\s+%s(s?)\s+[^\n]*\n`, resource.GetResourceCmdName(alias))
+		principleRegexp := fmt.Sprintf(`\n\s+%s(s?)\s+[^\n]*\n`, resource.GetResourceCmdName(principle))
 		assert.Regexp(t, regexp.MustCompile(aliasRegexp), output)
 		assert.NotRegexp(t, regexp.MustCompile(principleRegexp), output)
 	}
