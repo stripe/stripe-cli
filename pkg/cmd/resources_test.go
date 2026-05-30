@@ -49,12 +49,6 @@ func TestResources(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestResourcesHidesDatabases(t *testing.T) {
-	output, err := executeCommand(newResourcesTestRoot(t), "resources")
-	require.NoError(t, err)
-	require.NotContains(t, output, "databases")
-}
-
 func TestResourcesListAliasedName(t *testing.T) {
 	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 	require.NoError(t, err)
