@@ -38,18 +38,27 @@ run_install() {
         echo_help
         exit 1
         ;;
+
     esac
 
     stripe --version
 }
 
 trigger_pagerduty_alert() {
-    sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
-    pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
-    --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
-    --timestamp "\"$(date)\"" \
-    --source "Stripe CLI GitHub Actions" \
-    --severity critical
+    TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    curl -s -X POST "https://events.pagerduty.com/v2/enqueue" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"routing_key\": \"$PAGERDUTY_INTEGRATION_KEY\",
+            \"event_action\": \"trigger\",
+            \"payload\": {
+                \"summary\": \"Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml\",
+                \"severity\": \"critical\",
+                \"source\": \"Stripe CLI GitHub Actions\",
+                \"timestamp\": \"$TIMESTAMP\"
+            }
+        }" >/dev/null 2>&1 || echo "Warning: Failed to send PagerDuty alert"
 }
 
 if ! run_install
@@ -68,11 +77,10 @@ then
             then
                 echo "Install failed again. Retrying for the last time in 180 seconds..."
                 sleep 180
-                run_install
                 if ! run_install
                 then
-                trigger_pagerduty_alert
-                exit 1
+                    trigger_pagerduty_alert
+                    exit 1
                 fi
             fi
         fi
