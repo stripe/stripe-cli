@@ -10,7 +10,7 @@ on:
     - '.goreleaser/**'
   pull_request:
     paths:
-    - 'goreleaser/**'
+    - '.goreleaser/**'
 
 jobs:
   build-linux:
