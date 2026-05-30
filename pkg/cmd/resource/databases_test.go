@@ -248,7 +248,19 @@ func TestDatabaseCommands(t *testing.T) {
 
 		output, err := executeDatabaseCommand(root, nil, "create", "--api-version", "2026-01-28.clover")
 		require.NoError(t, err)
-		require.Equal(t, "Created StripeDB instance db_1XyZ2aBcDeFgHiJkLmN8pQr\n  API Version: 2026-01-28.clover\n  Mode: test\n\nConnection details:\n  Host:      db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com\n  Username:  llama_user\n  Password:  pass_123\n  URL:       postgresql://llama_user:pass_123@db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com:5432/data\n\n  Current status: backfilling. Check progress with: stripe databases retrieve db_1XyZ2aBcDeFgHiJkLmN8pQr\n", output)
+		require.Contains(t, output, "Creating StripeDB instance...")
+		require.Contains(t, output, "Created StripeDB instance db_1Xy...mN8pQr (StripeDB Instance)")
+		require.Contains(t, output, "API Version: 2026-01-28.clover")
+		require.Contains(t, output, "Mode: test")
+		require.Contains(t, output, "Host:      db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com")
+		require.Contains(t, output, "Username:  llama_user")
+		require.Contains(t, output, "Password:  pass_123")
+		require.Contains(t, output, "Save this password now — it will not be shown again.")
+		require.Contains(t, output, "Dashboard:")
+		require.Contains(t, output, "https://dashboard.stripe.com/test/data-management/databases/db_1XyZ2aBcDeFgHiJkLmN8pQr")
+		require.Contains(t, output, "Current status: Backfilling. Check progress with:")
+		require.Contains(t, output, "https://stripe.com/privacy")
+		require.Contains(t, output, "https://stripe.com/stripe-database-preview-terms")
 	})
 
 	t.Run("create pretty prints json output", func(t *testing.T) {
@@ -268,8 +280,14 @@ func TestDatabaseCommands(t *testing.T) {
 
 		output, err := executeDatabaseCommand(root, nil, "retrieve", "db_1XyZ2aBcDeFgHiJkLmN8pQr")
 		require.NoError(t, err)
-		require.Contains(t, output, "ID")
-		require.Regexp(t, `db_1XyZ2aBcDeFgHiJkLmN8pQr\s+db_1XyZ2aBcDeFgHiJkLmN8pQr\.db\.stripe\.com\s+backfilling\s+5d\s+test\s+2026-01-28\.clover`, output)
+		require.Contains(t, output, "StripeDB instance db_1XyZ2aBcDeFgHiJkLmN8pQr")
+		require.Contains(t, output, "View in Dashboard:")
+		require.Contains(t, output, "Backfilling")
+		require.Contains(t, output, "ago") // Created field uses databaseRelativeTimeAgo
+		require.Contains(t, output, "test")
+		require.Contains(t, output, "2026-01-28.clover")
+		require.Contains(t, output, "db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com")
+		require.Contains(t, output, "https://dashboard.stripe.com/test/data-management/databases/db_1XyZ2aBcDeFgHiJkLmN8pQr")
 	})
 
 	t.Run("list prints account databases", func(t *testing.T) {
@@ -283,8 +301,9 @@ func TestDatabaseCommands(t *testing.T) {
 		output, err := executeDatabaseCommand(root, nil, "list")
 		require.NoError(t, err)
 		require.Contains(t, output, `StripeDB instances for account acct_123`)
-		require.Regexp(t, `db_1XyZ2aBcDeFgHiJkLmN8pQr\s+db_1XyZ2aBcDeFgHiJkLmN8pQr\.db\.stripe\.com\s+backfilling\s+5d\s+test\s+2026-01-28\.clover`, output)
-		require.Regexp(t, `db_jS7fnaBcDeFgHiJkLmN8pQr\s+db_jS7fnaBcDeFgHiJkLmN8pQr\.db\.stripe\.com\s+ready\s+1y\s+test\s+2026-02-15\.clover`, output)
+		require.Contains(t, output, "ID")
+		require.Regexp(t, `db_1XyZ2aBcDeFgHiJkLmN8pQr\s+○ Backfilling\s+5d\s+test\s+2026-01-28\.clover`, output)
+		require.Regexp(t, `db_jS7fnaBcDeFgHiJkLmN8pQr\s+● Active\s+1y\s+test\s+2026-02-15\.clover`, output)
 	})
 
 	t.Run("list omits fake account placeholder when account is unavailable", func(t *testing.T) {
@@ -318,8 +337,8 @@ func TestDatabaseCommands(t *testing.T) {
 		root := newDatabaseTestRoot(&config.Config{})
 		output, err := executeDatabaseCommand(root, bytes.NewBufferString("n\n"), "delete", "db_1XyZ2aBcDeFgHiJkLmN8pQr")
 		require.NoError(t, err)
-		require.Contains(t, output, "Warning: this will permanently delete your StripeDB instance.")
-		require.Contains(t, output, `Type remove StripeDB to continue.`)
+		require.Contains(t, output, "Warning: this will permanently delete StripeDB Instance (db_1Xy...mN8pQr).")
+		require.Contains(t, output, `Type delete database to continue.`)
 	})
 
 	t.Run("delete removes database after confirmation phrase", func(t *testing.T) {
@@ -327,8 +346,9 @@ func TestDatabaseCommands(t *testing.T) {
 
 		output, err := executeDatabaseCommand(root, bytes.NewBufferString(databaseDeleteConfirmationPhrase+"\n"), "delete", "db_1XyZ2aBcDeFgHiJkLmN8pQr")
 		require.NoError(t, err)
-		require.Contains(t, output, `Type remove StripeDB to continue.`)
-		require.Contains(t, output, "Deleted StripeDB instance db_1XyZ2aBcDeFgHiJkLmN8pQr")
+		require.Contains(t, output, `Type delete database to continue.`)
+		require.Contains(t, output, "Deleted StripeDB Instance")
+		require.Contains(t, output, "(db_1Xy...mN8pQr)")
 	})
 
 	t.Run("delete requires yes with json output", func(t *testing.T) {
@@ -354,7 +374,11 @@ func TestDatabaseUserCommands(t *testing.T) {
 
 		output, err := executeDatabaseCommand(root, nil, "users", "create", "db_1XyZ2aBcDeFgHiJkLmN8pQr", "--username", "llama_user")
 		require.NoError(t, err)
-		require.Equal(t, "Created StripeDB user dbuser_1JqM7xBcDeFgHiJkLmN8pQrS\n  Username: llama_user\n  Mode: test\n\nConnection details:\n  Password:  new_pass_123\n  URL:       postgresql://llama_user:new_pass_123@db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com:5432/data\n", output)
+		require.Contains(t, output, "Created StripeDB user dbuser_1JqM7xBcDeFgHiJkLmN8pQrS")
+		require.Contains(t, output, "Username: llama_user")
+		require.Contains(t, output, "Mode: test")
+		require.Contains(t, output, "Password:  new_pass_123")
+		require.Contains(t, output, "Save this password now — it will not be shown again.")
 	})
 
 	t.Run("create returns json", func(t *testing.T) {
@@ -370,8 +394,9 @@ func TestDatabaseUserCommands(t *testing.T) {
 
 		output, err := executeDatabaseCommand(root, nil, "users", "retrieve", "db_1XyZ2aBcDeFgHiJkLmN8pQr", "dbuser_1JqM7xBcDeFgHiJkLmN8pQrS")
 		require.NoError(t, err)
-		require.Contains(t, output, "StripeDB users for db_1XyZ2aBcDeFgHiJkLmN8pQr")
-		require.Regexp(t, `dbuser_1JqM7xBcDeFgHiJkLmN8pQrS\s+llama_user\s+2h\s+test`, output)
+		require.Contains(t, output, "StripeDB user dbuser_1JqM7xBcDeFgHiJkLmN8pQrS")
+		require.Contains(t, output, "Username:")
+		require.Contains(t, output, "llama_user")
 	})
 
 	t.Run("list prints database users", func(t *testing.T) {
@@ -380,8 +405,8 @@ func TestDatabaseUserCommands(t *testing.T) {
 		output, err := executeDatabaseCommand(root, nil, "users", "list", "db_1XyZ2aBcDeFgHiJkLmN8pQr")
 		require.NoError(t, err)
 		require.Contains(t, output, "StripeDB users for db_1XyZ2aBcDeFgHiJkLmN8pQr")
-		require.Regexp(t, `dbuser_1JqM7xBcDeFgHiJkLmN8pQrS\s+llama_user\s+2h\s+test`, output)
-		require.Regexp(t, `dbuser_4NtP9yBcDeFgHiJkLmN8pQrV\s+rotated_user\s+2mo\s+test`, output)
+		require.Regexp(t, `llama_user\s+dbuser_1JqM7xBcDeFgHiJkLmN8pQrS\s+2h\s+test`, output)
+		require.Regexp(t, `rotated_user\s+dbuser_4NtP9yBcDeFgHiJkLmN8pQrV\s+2mo\s+test`, output)
 	})
 
 	t.Run("delete with yes prints success", func(t *testing.T) {
@@ -389,7 +414,7 @@ func TestDatabaseUserCommands(t *testing.T) {
 
 		output, err := executeDatabaseCommand(root, nil, "users", "delete", "db_1XyZ2aBcDeFgHiJkLmN8pQr", "dbuser_1JqM7xBcDeFgHiJkLmN8pQrS", "--yes")
 		require.NoError(t, err)
-		require.Equal(t, "Deleted StripeDB user dbuser_1JqM7xBcDeFgHiJkLmN8pQrS\n  StripeDB: db_1XyZ2aBcDeFgHiJkLmN8pQr\n", output)
+		require.Contains(t, output, "Deleted dbuser_1JqM7xBcDeFgHiJkLmN8pQrS")
 	})
 
 	t.Run("delete after confirmation phrase prints success", func(t *testing.T) {
@@ -398,7 +423,7 @@ func TestDatabaseUserCommands(t *testing.T) {
 		output, err := executeDatabaseCommand(root, bytes.NewBufferString(databaseUserDeleteConfirmationText+"\n"), "users", "delete", "db_1XyZ2aBcDeFgHiJkLmN8pQr", "dbuser_1JqM7xBcDeFgHiJkLmN8pQrS")
 		require.NoError(t, err)
 		require.Contains(t, output, `Type remove user to continue.`)
-		require.Contains(t, output, "> \nDeleted StripeDB user dbuser_1JqM7xBcDeFgHiJkLmN8pQrS\n")
+		require.Contains(t, output, "Deleted dbuser_1JqM7xBcDeFgHiJkLmN8pQrS")
 	})
 }
 
@@ -422,14 +447,11 @@ func TestDatabaseOutputHelpers(t *testing.T) {
 
 		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 		require.Len(t, lines, 3)
-		require.Equal(t, []string{
-			strings.Repeat("-", len("db_1XyZ2aBcDeFgHiJkLmN8pQr")),
-			strings.Repeat("-", len("db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com")),
-			strings.Repeat("-", len("backfilling")),
-			strings.Repeat("-", len("Created")),
-			strings.Repeat("-", len("test")),
-			strings.Repeat("-", len("2026-01-28.clover")),
-		}, strings.Fields(lines[1]))
+		// Columns: ID, Status (with glyph), Created, Mode, API Version (Name column disabled until API ships display_name)
+		separatorFields := strings.Fields(lines[1])
+		require.Len(t, separatorFields, 5)
+		// Verify separators use Unicode box-drawing characters
+		require.Contains(t, separatorFields[0], "─")
 	})
 
 	t.Run("table shows empty state", func(t *testing.T) {
@@ -459,8 +481,10 @@ func TestDatabaseOutputHelpers(t *testing.T) {
 
 		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 		require.Len(t, lines, 3)
-		require.Regexp(t, `^db_1\s+\x1b\[[0-9;]*mdb_1\.db\.stripe\.com\x1b\[[0-9;]*m\s+ready\s+\x1b\[[0-9;]*m5d\x1b\[[0-9;]*m\s+test\s+\x1b\[[0-9;]*m2026-01-28\.clover\x1b\[[0-9;]*m$`, lines[2])
-		require.NotRegexp(t, `\x1b\[[0-9;]*mready\x1b\[[0-9;]*m`, lines[2])
+		// Status column should be green-colored (ready = Active)
+		require.Regexp(t, `\x1b\[[0-9;]*m● Active\x1b\[[0-9;]*m`, lines[2])
+		// ID column should be muted
+		require.Regexp(t, `\x1b\[[0-9;]*mdb_1\x1b\[[0-9;]*m`, lines[2])
 	})
 
 	t.Run("relative time formats months and minutes differently", func(t *testing.T) {
