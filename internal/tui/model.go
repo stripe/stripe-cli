@@ -48,6 +48,11 @@ type Model struct {
 	height        int
 	ready         bool
 	statusMessage string
+
+	// Landing animation
+	shape      parallelogram
+	mouse      tea.Mouse
+	mouseReady bool
 }
 
 // Option configures a Model.
@@ -99,6 +104,10 @@ func New(opts ...Option) Model {
 		}
 	}
 
+	if m.doc == nil {
+		m.shape = newParallelogram(paraWidth, paraHeight)
+	}
+
 	m.palette = newPalette(m.page)
 
 	return m
@@ -113,7 +122,14 @@ func (m *Model) WithOptions(opts ...Option) {
 
 // Init returns the initial command to run when the TUI starts.
 func (m Model) Init() tea.Cmd {
+	if m.isLanding() {
+		return m.shape.tick
+	}
 	return nil
+}
+
+func (m Model) isLanding() bool {
+	return m.doc == nil
 }
 
 // Update handles incoming messages and updates the model state.
@@ -159,6 +175,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = ""
 		return m, nil
 
+	case animationFrameMsg:
+		if m.isLanding() {
+			if cmd, ok := m.shape.update(msg, m.mouse, m.width, m.height); ok {
+				return m, cmd
+			}
+		}
+		return m, nil
+	case tea.MouseMsg:
+		if m.isLanding() {
+			prev := m.mouse
+			m.mouse = msg.Mouse()
+			if m.mouseReady {
+				dx := float64(m.mouse.X - prev.X)
+				dy := float64(m.mouse.Y - prev.Y)
+				m.shape.addMotion(dx, dy)
+			} else {
+				m.mouseReady = true
+				m.shape.addMotion(5, 5) // initial impulse so the effect is visible on first interaction
+			}
+			return m, nil
+		}
 	case tea.KeyPressMsg:
 		if m.palette.Visible() {
 			if msg.String() == "esc" {
@@ -197,7 +234,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	m.viewport, cmd = m.viewport.Update(msg)
+	if !m.isLanding() {
+		m.viewport, cmd = m.viewport.Update(msg)
+	}
 	return m, cmd
 }
 
@@ -207,10 +246,15 @@ func (m Model) View() tea.View {
 		return tea.NewView("loading...")
 	}
 
-	content := m.viewport.View() + "\n" + m.status()
-	if m.help.ShowAll {
-		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
-		content += "\n" + helpView
+	var content string
+	if m.isLanding() {
+		content = m.landing()
+	} else {
+		content = m.viewport.View() + "\n" + m.status()
+		if m.help.ShowAll {
+			helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
+			content += "\n" + helpView
+		}
 	}
 
 	if m.palette.Visible() {
@@ -219,11 +263,17 @@ func (m Model) View() tea.View {
 
 	view := tea.NewView(content)
 	view.AltScreen = true
-	view.MouseMode = tea.MouseModeCellMotion
+	if m.isLanding() {
+		view.MouseMode = tea.MouseModeAllMotion
+	} else {
+		view.MouseMode = tea.MouseModeCellMotion
+	}
 	if m.title != "" {
 		view.WindowTitle = m.title
 	} else if m.doc != nil {
 		view.WindowTitle = m.doc.Title()
+	} else {
+		view.WindowTitle = "stripe docs"
 	}
 	return view
 }
@@ -263,4 +313,25 @@ func (m Model) status() string {
 		lipgloss.WithWhitespaceStyle(bar))
 
 	return left + fill + right
+}
+
+// Landing animation
+
+func (m Model) landing() string {
+	logo := m.shape.view(m.styles.LandingDotBright, m.styles.LandingDotMid, m.styles.LandingDotDim)
+	title := m.styles.LandingTitle.Render("stripe docs")
+	subtitle := m.styles.LandingSubtitle.Render("Search, browse, and read Stripe documentation from the terminal")
+	hint := m.styles.LandingHint.Render("stripe docs <path>  to get started")
+
+	block := lipgloss.JoinVertical(
+		lipgloss.Center,
+		logo,
+		"",
+		title,
+		subtitle,
+		"",
+		hint,
+	)
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, block)
 }

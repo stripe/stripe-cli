@@ -194,13 +194,45 @@ func TestView_BeforeReady(t *testing.T) {
 }
 
 func TestView_AltScreenEnabled(t *testing.T) {
-	m := New()
+	m := New(WithPage(Page{Content: []byte("# Hello")}))
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	model := result.(Model)
 
 	view := model.View()
 	assert.True(t, view.AltScreen)
 	assert.Equal(t, tea.MouseModeCellMotion, view.MouseMode)
+}
+
+func TestView_LandingMouseMode(t *testing.T) {
+	m := New()
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	view := model.View()
+	assert.True(t, view.AltScreen)
+	assert.Equal(t, tea.MouseModeAllMotion, view.MouseMode)
+}
+
+func TestInit_LandingReturnsTick(t *testing.T) {
+	m := New()
+	cmd := m.Init()
+	assert.NotNil(t, cmd)
+}
+
+func TestInit_WithDocReturnsNil(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Hello")}))
+	cmd := m.Init()
+	assert.Nil(t, cmd)
+}
+
+func TestUpdate_TickMsg_Landing(t *testing.T) {
+	m := New()
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	result, cmd := model.Update(animationFrameMsg{})
+	model = result.(Model)
+	assert.NotNil(t, cmd)
 }
 
 func TestUpdate_PaletteOpensOnGreaterThan(t *testing.T) {
