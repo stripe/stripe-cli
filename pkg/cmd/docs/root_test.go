@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cliconfig "github.com/stripe/stripe-cli/pkg/config"
+
 	"github.com/stripe/stripe-cli-docs-plugin/cmd"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/markdown"
@@ -93,6 +95,58 @@ func TestAgentDetectionForcesNottyStyle(t *testing.T) {
 	result := out.String()
 	assert.Contains(t, result, "Payments")
 	assert.NotContains(t, result, "\x1b[", "should not contain ANSI escape codes when agent is detected")
+}
+
+func TestColorOffForcesNottyStyle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "# Payments\n\nAccept **payments** with Stripe.")
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+	cfg := &cliconfig.Config{Color: "off"}
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithConfig(cfg),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"/payments"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+
+	result := out.String()
+	assert.Contains(t, result, "Payments")
+	assert.NotContains(t, result, "\x1b[", "should not contain ANSI escape codes when --color=off")
+}
+
+func TestColorOnForcesColorEvenWithAgent(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "# Payments\n\nAccept **payments** with Stripe.")
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+	cfg := &cliconfig.Config{Color: "on"}
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithConfig(cfg),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"/payments"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+
+	result := out.String()
+	assert.Contains(t, result, "Payments")
+	assert.Contains(t, result, "\x1b[", "should contain ANSI escape codes when --color=on even with agent")
 }
 
 func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
