@@ -15,7 +15,7 @@ import (
 
 	"github.com/stripe/stripe-cli-docs-plugin/cmd"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/markdown"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 )
 
 func TestNew(t *testing.T) {
