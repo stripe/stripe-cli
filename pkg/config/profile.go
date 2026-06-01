@@ -224,6 +224,58 @@ func (p *Profile) GetAccountID() (string, error) {
 	return "", validators.ErrAccountIDNotConfigured
 }
 
+// HasOverrideAPIKey reports whether an in-memory API key override is active
+// (via STRIPE_API_KEY env var or --api-key flag).
+func (p *Profile) HasOverrideAPIKey() bool {
+	return os.Getenv("STRIPE_API_KEY") != "" || p.APIKey != ""
+}
+
+// isLivemodeKey reports whether a key's prefix indicates live mode.
+func isLivemodeKey(key string) bool {
+	parts := strings.SplitN(key, "_", 3)
+	return len(parts) >= 2 && parts[1] == "live"
+}
+
+// HasAPIKey reports whether an API key is available for the given mode without
+// reading its value. For live mode this checks the keyring key list only,
+// avoiding OS-level auth prompts (e.g. macOS Keychain) that would be required
+// to access the secret data.
+func (p *Profile) HasAPIKey(livemode bool) bool {
+	if key := os.Getenv("STRIPE_API_KEY"); key != "" {
+		return isLivemodeKey(key) == livemode
+	}
+	if p.APIKey != "" {
+		return isLivemodeKey(p.APIKey) == livemode
+	}
+
+	if !livemode {
+		if err := viper.ReadInConfig(); err != nil {
+			return false
+		}
+		if viper.IsSet(p.GetConfigField("secret_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "secret_key")
+		} else if viper.IsSet(p.GetConfigField("api_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "api_key")
+		}
+		return viper.GetString(p.GetConfigField(TestModeAPIKeyName)) != ""
+	}
+
+	if KeyRing == nil {
+		return false
+	}
+	fieldID := p.GetConfigField(LiveModeAPIKeyName)
+	existingKeys, err := KeyRing.Keys()
+	if err != nil {
+		return false
+	}
+	for _, item := range existingKeys {
+		if item == fieldID {
+			return true
+		}
+	}
+	return false
+}
+
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	envKey := os.Getenv("STRIPE_API_KEY")
