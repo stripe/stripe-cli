@@ -47,6 +47,35 @@ func TestListCmdFallsBackToCachedPluginsWhenRefreshFails(t *testing.T) {
 	assertListOutput(t, executeListCmd(t, lc))
 }
 
+func TestListCmdIgnoresLocalPluginMetadata(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+
+	require.NoError(t, writeListManifest(cfg, fs, testListManifest()))
+	require.NoError(t, writeListPluginMetadata(cfg, fs, `[[Plugin]]
+  Shortname = "docs"
+  Shortdesc = "Local docs plugin"
+  Binary = "stripe-cli-docs"
+  MagicCookieValue = "DOCS-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "1.0.0"
+    Sum = "docs"
+`))
+
+	lc := NewListCmd(cfg)
+	lc.fs = fs
+	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
+		return errors.New("refresh failed")
+	}
+
+	rendered := executeListCmd(t, lc)
+	assertListOutput(t, rendered)
+	require.NotContains(t, rendered, "docs")
+}
+
 func executeListCmd(t *testing.T, lc *ListCmd) string {
 	t.Helper()
 
@@ -69,6 +98,17 @@ func writeListManifest(cfg *config.Config, fs afero.Fs, manifest string) error {
 	}
 
 	return afero.WriteFile(fs, manifestPath, []byte(manifest), 0644)
+}
+
+func writeListPluginMetadata(cfg *config.Config, fs afero.Fs, manifest string) error {
+	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	metadataPath := filepath.Join(configPath, "plugin-metadata", "docs.toml")
+
+	if err := fs.MkdirAll(filepath.Dir(metadataPath), 0755); err != nil {
+		return err
+	}
+
+	return afero.WriteFile(fs, metadataPath, []byte(manifest), 0644)
 }
 
 func assertListOutput(t *testing.T, rendered string) {

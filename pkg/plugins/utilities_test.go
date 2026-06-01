@@ -53,10 +53,9 @@ func TestGetPluginList(t *testing.T) {
 	require.Equal(t, "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238", release.Sum)
 }
 
-func TestGetPluginListMergesLocalPluginMetadataWithCachedManifest(t *testing.T) {
+func TestGetPluginListIgnoresLocalPluginMetadataOutsideManifest(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
-	config.InitConfig()
 
 	localPlugin := Plugin{
 		Shortname:        "docs",
@@ -76,12 +75,10 @@ func TestGetPluginListMergesLocalPluginMetadataWithCachedManifest(t *testing.T) 
 
 	pluginList, err := GetPluginList(context.Background(), config, fs)
 	require.NoError(t, err)
-	require.Len(t, pluginList.Plugins, 4)
+	require.Len(t, pluginList.Plugins, 3)
 
-	docsPlugin, err := findPlugin(pluginList, "docs")
-	require.NoError(t, err)
-	require.Equal(t, localPlugin, docsPlugin)
-
+	_, err = findPlugin(pluginList, "docs")
+	require.Error(t, err)
 	_, err = findPlugin(pluginList, "appA")
 	require.NoError(t, err)
 	_, err = findPlugin(pluginList, "appB")
@@ -90,10 +87,9 @@ func TestGetPluginListMergesLocalPluginMetadataWithCachedManifest(t *testing.T) 
 	require.NoError(t, err)
 }
 
-func TestGetPluginListPrefersLocalPluginMetadataForOverlappingPlugin(t *testing.T) {
+func TestGetPluginListUsesManifestMetadataForOverlappingPlugin(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
-	config.InitConfig()
 
 	localPlugin := Plugin{
 		Shortname:        "appA",
@@ -118,13 +114,13 @@ func TestGetPluginListPrefersLocalPluginMetadataForOverlappingPlugin(t *testing.
 
 	plugin, err := findPlugin(pluginList, "appA")
 	require.NoError(t, err)
-	require.Equal(t, localPlugin.Binary, plugin.Binary)
-	require.Equal(t, localPlugin.Shortdesc, plugin.Shortdesc)
+	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
+	require.Empty(t, plugin.Shortdesc)
 	require.Len(t, plugin.Releases, 12)
 
 	release := plugin.getReleaseForVersion("2.0.1")
 	require.NotNil(t, release)
-	require.Equal(t, "20", release.Runtime["node"])
+	require.Empty(t, release.Runtime)
 }
 
 func TestLookUpPlugin(t *testing.T) {
@@ -791,66 +787,6 @@ func TestRefreshPluginManifest(t *testing.T) {
 	require.Nil(t, err)
 
 	require.Equal(t, expectedPluginList, actualPluginList)
-}
-
-func TestRefreshPluginManifestWritesLocalPluginMetadata(t *testing.T) {
-	fs := afero.NewMemMapFs()
-	config := &TestConfig{}
-	config.InitConfig()
-	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent, nil)
-	defer func() { testServers.CloseAll() }()
-
-	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
-	require.NoError(t, err)
-
-	metadataPluginList, err := getLocalPluginMetadataList(config, fs)
-	require.NoError(t, err)
-	require.Len(t, metadataPluginList.Plugins, 3)
-	require.Equal(t, "appA", metadataPluginList.Plugins[0].Shortname)
-	require.Equal(t, "appB", metadataPluginList.Plugins[1].Shortname)
-	require.Equal(t, "appC", metadataPluginList.Plugins[2].Shortname)
-
-	pluginList, err := GetPluginList(context.Background(), config, fs)
-	require.NoError(t, err)
-	require.Equal(t, metadataPluginList, pluginList)
-
-	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "appA"))
-	require.NoError(t, err)
-	require.True(t, metadataExists)
-}
-
-func TestRefreshPluginManifestRemovesStaleNonInstalledLocalPluginMetadata(t *testing.T) {
-	fs := afero.NewMemMapFs()
-	config := &TestConfig{}
-	config.InitConfig()
-
-	stalePlugin := Plugin{
-		Shortname:        "stale-plugin",
-		Shortdesc:        "Stale plugin",
-		Binary:           "stripe-cli-stale-plugin",
-		MagicCookieValue: "STALE-COOKIE",
-		Releases: []Release{
-			{
-				Arch:    runtime.GOARCH,
-				OS:      runtime.GOOS,
-				Version: "0.0.1",
-				Sum:     "abc123",
-			},
-		},
-	}
-	require.NoError(t, writeLocalPluginMetadata(config, fs, stalePlugin))
-
-	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent, nil)
-	defer func() { testServers.CloseAll() }()
-
-	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
-	require.NoError(t, err)
-
-	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "stale-plugin"))
-	require.NoError(t, err)
-	require.False(t, metadataExists)
 }
 
 func TestRefreshPluginManifestMergesAdditionalManifest(t *testing.T) {
