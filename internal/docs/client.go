@@ -2,6 +2,7 @@ package docs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,8 @@ import (
 	"runtime"
 	"time"
 )
+
+const defaultBaseURL = "https://docs.stripe.com"
 
 // Page holds the content and metadata of a fetched documentation page.
 type Page struct {
@@ -22,7 +25,16 @@ type Page struct {
 	FetchedAt time.Time
 }
 
-const defaultBaseURL = "https://docs.stripe.com"
+// SearchResponse represents the response from the docs search endpoint.
+type SearchResponse struct {
+	Hits []Hit
+}
+
+// Hit represents a single search hit from docs.stripe.com.
+type Hit struct {
+	Title string `json:"title"`
+	Route string `json:"route"`
+}
 
 // Client fetches documentation pages and calls endpoints on docs.stripe.com.
 type Client struct {
@@ -153,4 +165,30 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, error) {
+	ref := &url.URL{Path: "/_endpoint/search"}
+	resolvedURL := c.baseURL.ResolveReference(ref)
+	params := resolvedURL.Query()
+	params.Set("query", query)
+	resolvedURL.RawQuery = params.Encode()
+
+	rawURL := resolvedURL.String()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("search: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	body, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var response SearchResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("search: unmarshal response: %w", err)
+	}
+	return &response, nil
 }

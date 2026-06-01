@@ -1,4 +1,4 @@
-package markdown_test
+package markdown
 
 import (
 	"flag"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli-docs-plugin/markdown"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 )
 
 var (
@@ -28,11 +28,11 @@ func TestRendererPreview(t *testing.T) {
 	src, err := os.ReadFile("testdata/showcase.md")
 	require.NoError(t, err)
 
-	doc, err := markdown.Parse(src)
+	doc, err := Parse(src)
 	require.NoError(t, err)
 
 	for _, style := range []string{"dark", "light", "notty"} {
-		r, err := markdown.NewRenderer(markdown.WithStyle(style))
+		r, err := NewRenderer(WithStyle(style))
 		require.NoError(t, err)
 
 		out, err := r.Render(doc)
@@ -45,17 +45,17 @@ func TestRendererPreview(t *testing.T) {
 func TestNewRenderer(t *testing.T) {
 	tests := []struct {
 		name string
-		opts []markdown.RendererOption
+		opts []RendererOption
 	}{
 		{name: "no options"},
-		{name: "with style", opts: []markdown.RendererOption{markdown.WithStyle("dark")}},
-		{name: "with word wrap", opts: []markdown.RendererOption{markdown.WithWordWrap(120)}},
-		{name: "with style and word wrap", opts: []markdown.RendererOption{markdown.WithStyle("light"), markdown.WithWordWrap(60)}},
+		{name: "with style", opts: []RendererOption{WithStyle("dark")}},
+		{name: "with word wrap", opts: []RendererOption{WithWordWrap(120)}},
+		{name: "with style and word wrap", opts: []RendererOption{WithStyle("light"), WithWordWrap(60)}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := markdown.NewRenderer(tt.opts...)
+			r, err := NewRenderer(tt.opts...)
 			require.NoError(t, err)
 			assert.NotNil(t, r)
 		})
@@ -66,12 +66,12 @@ func TestRendererRenderShowcase(t *testing.T) {
 	src, err := os.ReadFile("testdata/showcase.md")
 	require.NoError(t, err)
 
-	doc, err := markdown.Parse(src)
+	doc, err := Parse(src)
 	require.NoError(t, err)
 
 	for _, style := range []string{"dark", "light", "notty"} {
 		t.Run(style, func(t *testing.T) {
-			r, err := markdown.NewRenderer(markdown.WithStyle(style))
+			r, err := NewRenderer(WithStyle(style))
 			require.NoError(t, err)
 
 			out, err := r.Render(doc)
@@ -121,12 +121,12 @@ func TestRendererRender(t *testing.T) {
 		},
 	}
 
-	r, err := markdown.NewRenderer(markdown.WithStyle("notty"))
+	r, err := NewRenderer(WithStyle("notty"))
 	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			doc, err := markdown.Parse([]byte(tt.src))
+			doc, err := Parse([]byte(tt.src))
 			require.NoError(t, err)
 
 			out, err := r.Render(doc)
@@ -134,6 +134,45 @@ func TestRendererRender(t *testing.T) {
 			for _, want := range tt.wantContain {
 				assert.Contains(t, out, want)
 			}
+		})
+	}
+}
+
+func TestFormatSearchResponse(t *testing.T) {
+	tests := []struct {
+		name     string
+		response *docs.SearchResponse
+		want     string
+	}{
+		{
+			name: "multiple hits",
+			response: &docs.SearchResponse{
+				Hits: []docs.Hit{
+					{Title: "Accept a payment", Route: "/payments/accept-a-payment"},
+					{Title: "Webhooks", Route: "/webhooks"},
+				},
+			},
+			want: "- [Accept a payment](/payments/accept-a-payment)\n- [Webhooks](/webhooks)\n",
+		},
+		{
+			name: "single hit",
+			response: &docs.SearchResponse{
+				Hits: []docs.Hit{
+					{Title: "API keys", Route: "/keys"},
+				},
+			},
+			want: "- [API keys](/keys)\n",
+		},
+		{
+			name:     "empty hits",
+			response: &docs.SearchResponse{Hits: []docs.Hit{}},
+			want:     "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, formatSearchResponse(tt.response))
 		})
 	}
 }
