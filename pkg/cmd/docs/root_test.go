@@ -1,4 +1,4 @@
-package cmd_test
+package docs_test
 
 import (
 	"bytes"
@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	"github.com/stripe/stripe-cli-docs-plugin/cmd"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
+	docscmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/markdown"
 )
 
 func TestNew(t *testing.T) {
-	root := cmd.New().Root()
+	root := docscmd.New().Root()
 
 	assert.Equal(t, "docs <path>", root.Use)
 	assert.NotEmpty(t, root.Short)
@@ -37,9 +37,9 @@ func TestRootPrefixesPath(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	root := cmd.New().WithOptions(
-		cmd.WithClient(client),
-		cmd.WithRenderer(renderer),
+	root := docscmd.New().WithOptions(
+		docscmd.WithClient(client),
+		docscmd.WithRenderer(renderer),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"connect", "accounts"})
@@ -60,9 +60,9 @@ func TestFetchPage(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	root := cmd.New().WithOptions(
-		cmd.WithClient(client),
-		cmd.WithRenderer(renderer),
+	root := docscmd.New().WithOptions(
+		docscmd.WithClient(client),
+		docscmd.WithRenderer(renderer),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/payments"})
@@ -83,8 +83,8 @@ func TestAgentDetectionForcesNottyStyle(t *testing.T) {
 	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
 
 	var out bytes.Buffer
-	root := cmd.New().WithOptions(
-		cmd.WithClient(client),
+	root := docscmd.New().WithOptions(
+		docscmd.WithClient(client),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/payments"})
@@ -107,9 +107,9 @@ func TestColorOffForcesNottyStyle(t *testing.T) {
 	cfg := &cliconfig.Config{Color: "off"}
 
 	var out bytes.Buffer
-	root := cmd.New().WithOptions(
-		cmd.WithClient(client),
-		cmd.WithConfig(cfg),
+	root := docscmd.New().WithOptions(
+		docscmd.WithClient(client),
+		docscmd.WithConfig(cfg),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/payments"})
@@ -134,9 +134,9 @@ func TestColorOnForcesColorEvenWithAgent(t *testing.T) {
 	cfg := &cliconfig.Config{Color: "on"}
 
 	var out bytes.Buffer
-	root := cmd.New().WithOptions(
-		cmd.WithClient(client),
-		cmd.WithConfig(cfg),
+	root := docscmd.New().WithOptions(
+		docscmd.WithClient(client),
+		docscmd.WithConfig(cfg),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/payments"})
@@ -165,10 +165,10 @@ func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 	}))
 
 	var out bytes.Buffer
-	root := cmd.New().WithOptions(
-		cmd.WithClient(client),
-		cmd.WithRenderer(renderer),
-		cmd.WithLogger(logger),
+	root := docscmd.New().WithOptions(
+		docscmd.WithClient(client),
+		docscmd.WithRenderer(renderer),
+		docscmd.WithLogger(logger),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/test"})
@@ -179,7 +179,7 @@ func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 }
 
 func TestVersionCommand(t *testing.T) {
-	root := cmd.New().WithOptions(cmd.WithVersion("0.0.1")).Root()
+	root := docscmd.New().WithOptions(docscmd.WithVersion("0.0.1")).Root()
 
 	out := new(bytes.Buffer)
 	root.SetOut(out)

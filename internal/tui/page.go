@@ -7,7 +7,7 @@ import (
 
 	"github.com/atotto/clipboard"
 
-	"github.com/stripe/stripe-cli-docs-plugin/internal/browser"
+	"github.com/stripe/stripe-cli/internal/browser"
 )
 
 // Page holds the raw content and metadata needed by the TUI to display a

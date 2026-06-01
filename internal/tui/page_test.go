@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli-docs-plugin/internal/browser"
+	"github.com/stripe/stripe-cli/internal/browser"
 )
 
 func stubBrowser(t *testing.T) *[]*exec.Cmd {

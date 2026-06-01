@@ -5,7 +5,7 @@ Bubble Tea v2 TUI for browsing Stripe documentation in the terminal. Renders mar
 ## Usage
 
 ```go
-import "github.com/stripe/stripe-cli-docs-plugin/internal/tui"
+import "github.com/stripe/stripe-cli/internal/tui"
 
 // Create a TUI model with a document and renderer.
 doc, _ := markdown.Parse(page.Content)

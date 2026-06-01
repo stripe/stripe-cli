@@ -1,4 +1,4 @@
-package cmd
+package docs
 
 import (
 	"context"
@@ -17,11 +17,11 @@ import (
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 	"golang.org/x/term"
 
-	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/tui"
+	"github.com/stripe/stripe-cli/internal/agent"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/internal/pager"
+	"github.com/stripe/stripe-cli/internal/tui"
 )
 
 // RootCommand is the root command for the docs plugin.

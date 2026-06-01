@@ -8,7 +8,7 @@ By default, nothing is cached — caching must be explicitly enabled via `WithCa
 ```go
 import (
     "net/url"
-    "github.com/stripe/stripe-cli-docs-plugin/internal/docs"
+    "github.com/stripe/stripe-cli/internal/docs"
 )
 
 // Create a client with default settings.

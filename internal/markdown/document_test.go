@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
+	"github.com/stripe/stripe-cli/internal/markdown"
 	"github.com/yuin/goldmark/ast"
 )
 
