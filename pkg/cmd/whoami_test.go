@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/99designs/keyring"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,6 +23,7 @@ func runWhoami(t *testing.T, wc *whoamiCmd) (string, error) {
 }
 
 func TestWhoamiNotAuthenticated(t *testing.T) {
+	viper.Reset()
 	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	wc := newWhoamiCmd()
@@ -37,6 +39,7 @@ func TestWhoamiNotAuthenticated(t *testing.T) {
 }
 
 func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
+	viper.Reset()
 	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	wc := newWhoamiCmd()
@@ -82,6 +85,7 @@ func TestWhoamiWithTestKey(t *testing.T) {
 
 	assert.True(t, result.Authenticated)
 	assert.True(t, result.TestModeKey.Available)
+	assert.Nil(t, result.TestModeKey.ExpiresAt, "override keys have no expiry")
 	assert.False(t, result.LiveModeKey.Available)
 	assert.Equal(t, "acct_123", result.AccountID)
 }
@@ -106,6 +110,7 @@ func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
 	assert.True(t, result.Authenticated)
 	assert.False(t, result.TestModeKey.Available)
 	assert.True(t, result.LiveModeKey.Available)
+	assert.Nil(t, result.LiveModeKey.ExpiresAt, "override keys have no expiry")
 }
 
 func TestWhoamiWithEnvVarKey(t *testing.T) {
@@ -127,14 +132,74 @@ func TestWhoamiWithEnvVarKey(t *testing.T) {
 
 	assert.True(t, result.Authenticated)
 	assert.True(t, result.TestModeKey.Available)
+	assert.Nil(t, result.TestModeKey.ExpiresAt, "override keys have no expiry")
 	assert.False(t, result.LiveModeKey.Available)
 }
 
-func TestAPIKeyIsLivemode(t *testing.T) {
-	assert.False(t, apiKeyIsLivemode("sk_test_abc123"))
-	assert.True(t, apiKeyIsLivemode("sk_live_abc123"))
-	assert.False(t, apiKeyIsLivemode("rk_test_abc123"))
-	assert.True(t, apiKeyIsLivemode("rk_live_abc123"))
+func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
+	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	t.Setenv("STRIPE_API_KEY", "rk_live_envvar1234567890")
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{
+		ProfileName: "default",
+		DeviceName:  "test-device",
+	}
+	wc.format = "json"
+
+	out, err := runWhoami(t, wc)
+	require.NoError(t, err)
+
+	var result whoamiOutput
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	assert.True(t, result.Authenticated)
+	assert.False(t, result.TestModeKey.Available)
+	assert.True(t, result.LiveModeKey.Available)
+	assert.Nil(t, result.LiveModeKey.ExpiresAt, "override keys have no expiry")
+}
+
+// noPromptKeyring embeds ArrayKeyring for key storage but fails the test if
+// Get or GetMetadata are called — those operations would trigger an OS-level
+// auth prompt (e.g. macOS Keychain password dialog) on some platforms.
+type noPromptKeyring struct {
+	*keyring.ArrayKeyring
+	t *testing.T
+}
+
+func (k *noPromptKeyring) Get(key string) (keyring.Item, error) {
+	k.t.Fatal("Get would prompt for keychain password on some platforms")
+	return keyring.Item{}, nil
+}
+
+func (k *noPromptKeyring) GetMetadata(key string) (keyring.Metadata, error) {
+	k.t.Fatal("GetMetadata would prompt for keychain password on some platforms")
+	return keyring.Metadata{}, nil
+}
+
+func TestWhoamiLiveModeKeyDoesNotReadSecret(t *testing.T) {
+	kr := &noPromptKeyring{
+		ArrayKeyring: keyring.NewArrayKeyring([]keyring.Item{
+			{Key: "default.live_mode_api_key", Data: []byte("sk_live_1234567890abcdef")},
+		}),
+		t: t,
+	}
+	config.KeyRing = kr
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{
+		ProfileName: "default",
+	}
+	wc.format = "json"
+
+	out, err := runWhoami(t, wc)
+	require.NoError(t, err)
+
+	var result whoamiOutput
+	require.NoError(t, json.Unmarshal([]byte(out), &result))
+
+	assert.True(t, result.Authenticated)
+	assert.True(t, result.LiveModeKey.Available)
 }
 
 func TestKeyAvailabilityText(t *testing.T) {
