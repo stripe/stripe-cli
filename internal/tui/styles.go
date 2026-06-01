@@ -6,13 +6,6 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Brand colors used across the TUI.
-var (
-	colorBlurple    = lipgloss.Color("#635BFF")
-	colorBlurpleMid = lipgloss.Color("#463FB0")
-	colorBlurpleDim = lipgloss.Color("#2A2560")
-)
-
 // Styles defines the shared visual styles for the TUI.
 type Styles struct {
 	StatusBar     lipgloss.Style
@@ -33,30 +26,30 @@ type Styles struct {
 func DefaultStyles() Styles {
 	return Styles{
 		StatusBar: lipgloss.NewStyle().
-			Background(lipgloss.Color("#2D2D2D")).
-			Foreground(lipgloss.Color("#EEEEEE")),
+			Background(lipgloss.Color("#1A2C44")).
+			Foreground(lipgloss.Color("#ECF1F6")),
 		StatusTitle: lipgloss.NewStyle().
 			Bold(true).
-			Background(lipgloss.Color("#7D56F4")).
+			Background(lipgloss.Color("#533afd")).
 			Foreground(lipgloss.Color("#FFFFFF")).
 			Padding(0, 1),
 		StatusMessage: lipgloss.NewStyle().
-			Background(lipgloss.Color("#3B9C5E")).
+			Background(lipgloss.Color("#2b8700")).
 			Foreground(lipgloss.Color("#FFFFFF")),
 		StatusHelp: lipgloss.NewStyle().
-			Background(lipgloss.Color("#3D3D3D")).
-			Foreground(lipgloss.Color("#EEEEEE")).
+			Background(lipgloss.Color("#273951")).
+			Foreground(lipgloss.Color("#ECF1F6")).
 			Padding(0, 1),
 
 		LandingTitle: lipgloss.NewStyle().
 			Bold(true).
-			Foreground(colorBlurple),
+			Foreground(lipgloss.Color("#675dff")),
 		LandingSubtitle: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#999999")),
+			Foreground(lipgloss.Color("#667691")),
 		LandingHint: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#666666")),
-		LandingDotBright: colorBlurple,
-		LandingDotMid:    colorBlurpleMid,
-		LandingDotDim:    colorBlurpleDim,
+			Foreground(lipgloss.Color("#50617A")),
+		LandingDotBright: lipgloss.Color("#3c147c"),
+		LandingDotMid:    lipgloss.Color("#5f4cfe"),
+		LandingDotDim:    lipgloss.Color("#b1a7fd"),
 	}
 }
