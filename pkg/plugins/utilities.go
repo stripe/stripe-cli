@@ -272,7 +272,7 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 	return nil
 }
 
-// GetPluginList builds a list of allowed plugins to be installed and run by the CLI
+// GetPluginList builds a list of allowed plugins to be installed and run by the CLI.
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
 	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
@@ -311,12 +311,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 
 // LookUpPluginInManifest returns plugin metadata from the cached global manifest.
 func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
-	pluginList, err := GetPluginList(ctx, config, fs)
-	if err != nil {
-		return Plugin{}, err
-	}
-
-	return findPlugin(pluginList, pluginName)
+	return lookUpPluginInCachedManifest(config, fs, pluginName)
 }
 
 // ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
@@ -470,6 +465,10 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 }
 
 func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
+	return getLegacyCachedPluginList(config, fs)
+}
+
+func getLegacyCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
 	var pluginList PluginList
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
@@ -883,22 +882,12 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 	idx := findPluginIndex(pluginList, pl)
 	if idx == -1 {
 		pluginList.Plugins = append(pluginList.Plugins, pl)
+		idx = len(pluginList.Plugins) - 1
 	} else {
 		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
-
-		// Other code assumes the releases are sorted with latest version last.
-		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
-			vi, errI := version.NewVersion(pluginList.Plugins[idx].Releases[i].Version)
-			vj, errJ := version.NewVersion(pluginList.Plugins[idx].Releases[j].Version)
-
-			// If either version fails to parse, fall back to string comparison
-			if errI != nil || errJ != nil {
-				return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
-			}
-
-			return vi.LessThan(vj)
-		})
 	}
+
+	sortPluginReleases(pluginList.Plugins[idx].Releases)
 }
 
 func findPluginIndex(list *PluginList, p Plugin) int {
@@ -908,6 +897,27 @@ func findPluginIndex(list *PluginList, p Plugin) int {
 		}
 	}
 	return -1
+}
+
+func sortPluginReleases(releases []Release) {
+	sort.Slice(releases, func(i, j int) bool {
+		vi, errI := version.NewVersion(releases[i].Version)
+		vj, errJ := version.NewVersion(releases[j].Version)
+
+		if errI == nil && errJ == nil {
+			if !vi.Equal(vj) {
+				return vi.LessThan(vj)
+			}
+		} else if releases[i].Version != releases[j].Version {
+			return releases[i].Version < releases[j].Version
+		}
+
+		if releases[i].OS != releases[j].OS {
+			return releases[i].OS < releases[j].OS
+		}
+
+		return releases[i].Arch < releases[j].Arch
+	})
 }
 
 type remoteResourceNotFoundError struct {

@@ -53,6 +53,76 @@ func TestGetPluginList(t *testing.T) {
 	require.Equal(t, "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238", release.Sum)
 }
 
+func TestGetPluginListIgnoresLocalPluginMetadataOutsideManifest(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	pluginList, err := GetPluginList(context.Background(), config, fs)
+	require.NoError(t, err)
+	require.Len(t, pluginList.Plugins, 3)
+
+	_, err = findPlugin(pluginList, "docs")
+	require.Error(t, err)
+	_, err = findPlugin(pluginList, "appA")
+	require.NoError(t, err)
+	_, err = findPlugin(pluginList, "appB")
+	require.NoError(t, err)
+	_, err = findPlugin(pluginList, "appC")
+	require.NoError(t, err)
+}
+
+func TestGetPluginListUsesManifestMetadataForOverlappingPlugin(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "appA",
+		Shortdesc:        "Locally cached App A",
+		Binary:           "stripe-cli-local-app-a",
+		MagicCookieValue: "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "2.0.1",
+				Sum:     "abc123",
+				Runtime: map[string]string{"node": "20"},
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	pluginList, err := GetPluginList(context.Background(), config, fs)
+	require.NoError(t, err)
+	require.Len(t, pluginList.Plugins, 3)
+
+	plugin, err := findPlugin(pluginList, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
+	require.Empty(t, plugin.Shortdesc)
+	require.Len(t, plugin.Releases, 12)
+
+	release := plugin.getReleaseForVersion("2.0.1")
+	require.NotNil(t, release)
+	require.Empty(t, release.Runtime)
+}
+
 func TestLookUpPlugin(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
