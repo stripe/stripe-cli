@@ -37,11 +37,6 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
 	}
-	if !installedPluginSet["docs"] {
-		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "docs", "Browse Stripe documentation and API reference.").Command,
-		)
-	}
 	if !installedPluginSet["tools"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "tools", "Search, inspect, and execute Stripe operations not available in the public API.").Command,

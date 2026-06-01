@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
@@ -240,6 +241,7 @@ func init() {
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
+	rootCmd.AddCommand(docs.New().WithOptions(docs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
