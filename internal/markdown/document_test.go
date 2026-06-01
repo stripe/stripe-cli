@@ -5,30 +5,29 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 	"github.com/yuin/goldmark/ast"
-
-	"github.com/stripe/stripe-cli-docs-plugin/markdown"
 )
 
 func TestParse(t *testing.T) {
 	tests := []struct {
-		name        string
-		src         string
+		name         string
+		src          string
 		wantNodeKind ast.NodeKind
 	}{
 		{
-			name:        "valid markdown",
-			src:         "# Hello\n\nSome paragraph text.",
+			name:         "valid markdown",
+			src:          "# Hello\n\nSome paragraph text.",
 			wantNodeKind: ast.KindDocument,
 		},
 		{
-			name:        "empty input",
-			src:         "",
+			name:         "empty input",
+			src:          "",
 			wantNodeKind: ast.KindDocument,
 		},
 		{
-			name:        "whitespace only",
-			src:         "   \n\n\t",
+			name:         "whitespace only",
+			src:          "   \n\n\t",
 			wantNodeKind: ast.KindDocument,
 		},
 	}

@@ -13,7 +13,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/markdown"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 )
 
 const (

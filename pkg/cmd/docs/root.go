@@ -19,9 +19,9 @@ import (
 
 	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/tui"
-	"github.com/stripe/stripe-cli-docs-plugin/markdown"
 )
 
 // RootCommand is the root command for the docs plugin.
