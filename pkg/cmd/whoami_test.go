@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/99designs/keyring"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,6 +23,7 @@ func runWhoami(t *testing.T, wc *whoamiCmd) (string, error) {
 }
 
 func TestWhoamiNotAuthenticated(t *testing.T) {
+	viper.Reset()
 	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	wc := newWhoamiCmd()
@@ -37,6 +39,7 @@ func TestWhoamiNotAuthenticated(t *testing.T) {
 }
 
 func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
+	viper.Reset()
 	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	wc := newWhoamiCmd()
