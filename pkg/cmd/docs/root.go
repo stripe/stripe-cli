@@ -187,6 +187,9 @@ func (r *RootCommand) Root() *cobra.Command { return r.cmd }
 
 func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
+		if r.useTUI(cmd) {
+			return r.runTUI(cmd.Context(), "")
+		}
 		if err := cmd.Help(); err != nil {
 			return fmt.Errorf("showing help: %w", err)
 		}
@@ -223,23 +226,25 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 		return fmt.Errorf("markdown renderer not initialized")
 	}
 
-	ref := &url.URL{Path: path}
-	page, err := r.client.FetchPage(ctx, ref)
-	if err != nil {
-		return fmt.Errorf("fetching page: %w", err)
-	}
-
-	m := tui.New(
+	opts := []tui.Option{
 		tui.WithClient(r.client),
 		tui.WithRenderer(r.renderer),
-		tui.WithPage(tui.Page{
+	}
+
+	if path != "" {
+		ref := &url.URL{Path: path}
+		page, err := r.client.FetchPage(ctx, ref)
+		if err != nil {
+			return fmt.Errorf("fetching page: %w", err)
+		}
+		opts = append(opts, tui.WithPage(tui.Page{
 			Content: page.Content,
 			URL:     page.URL,
-		}),
-	)
+		}))
+	}
 
-	p := tea.NewProgram(m)
-	if _, err = p.Run(); err != nil {
+	p := tea.NewProgram(tui.New(opts...))
+	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("running TUI: %w", err)
 	}
 	return nil
