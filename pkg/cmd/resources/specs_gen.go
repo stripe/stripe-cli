@@ -504,6 +504,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
+		"capabilities.bizum_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
 		"capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
@@ -657,6 +661,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.satispay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.scalapay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -1639,6 +1647,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
+		"capabilities.bizum_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
 		"capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
@@ -1792,6 +1804,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.satispay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.scalapay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -2744,6 +2760,18 @@ var V1BalanceSettingsUpdate = resource.OperationSpec{
 		"payments.settlement_timing.delay_days_override": {
 			Type:             "integer",
 			ShortDescription: "Change `delay_days` for this account, which determines the number of days charge funds are held before becoming available",
+		},
+		"payments.settlement_timing.start_of_day.hour": {
+			Type:             "integer",
+			ShortDescription: "Hour at which the customized start of day begins according to the given timezone",
+		},
+		"payments.settlement_timing.start_of_day.minutes": {
+			Type:             "integer",
+			ShortDescription: "Minutes at which the customized start of day begins according to the given timezone",
+		},
+		"payments.settlement_timing.start_of_day.timezone": {
+			Type:             "string",
+			ShortDescription: "Timezone for the customized start of day",
 		},
 	},
 }
@@ -4091,6 +4119,10 @@ var V1ChargesCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The amount transferred to the destination account, if specified",
 		},
+		"transfer_data.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the transfer",
+		},
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "ID of an existing, connected Stripe account",
@@ -4949,7 +4981,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"payment_method_options.card.restrictions.brands_blocked": {
 			Type:             "array",
-			ShortDescription: "Specify the card brands to block in the Checkout Session",
+			ShortDescription: "The card brands to block",
 		},
 		"payment_method_options.card.setup_future_usage": {
 			Type:             "string",
@@ -5418,6 +5450,13 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.scalapay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
@@ -5451,6 +5490,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.upi.mandate_options.amount": {
@@ -5549,7 +5589,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"redirect_on_completion": {
 			Type:             "string",
-			ShortDescription: "This parameter applies to `ui_mode: embedded`",
+			ShortDescription: "This parameter applies to `ui_mode: embedded_page`",
 			Enum: []resource.EnumSpec{
 				{Value: "always"},
 				{Value: "if_required"},
@@ -6312,6 +6352,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -6344,6 +6385,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -7447,6 +7489,7 @@ var V1CustomersListPaymentMethods = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "card"},
@@ -7481,6 +7524,7 @@ var V1CustomersListPaymentMethods = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -14932,6 +14976,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -14964,6 +15009,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -16052,6 +16098,13 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.scalapay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
@@ -16106,6 +16159,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.upi.mandate_options.amount": {
@@ -16768,6 +16822,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -16800,6 +16855,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -17888,6 +17944,13 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.scalapay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
@@ -17942,6 +18005,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.upi.mandate_options.amount": {
@@ -18140,9 +18204,17 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The amount that will be transferred automatically when a charge succeeds",
 		},
+		"transfer_data.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the transfer",
+		},
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "If specified, successful charges will be attributed to the destination\naccount for tax reporting, and the funds from charges will be transferred\nto the destination account",
+		},
+		"transfer_data.payment_data.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the destination payment",
 		},
 		"transfer_group": {
 			Type:             "string",
@@ -18685,6 +18757,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -18717,6 +18790,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -19805,6 +19879,13 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.scalapay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
@@ -19859,6 +19940,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.upi.mandate_options.amount": {
@@ -20055,6 +20137,14 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"transfer_data.amount": {
 			Type:             "integer",
 			ShortDescription: "The amount that will be transferred automatically when a charge succeeds",
+		},
+		"transfer_data.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the transfer",
+		},
+		"transfer_data.payment_data.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the destination payment",
 		},
 		"transfer_group": {
 			Type:             "string",
@@ -20299,6 +20389,10 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 				{Value: "always"},
 				{Value: "if_required"},
 			},
+		},
+		"payment_method_options.card.restrictions.brands_blocked": {
+			Type:             "array",
+			ShortDescription: "The card brands to block",
 		},
 		"payment_method_types": {
 			Type:             "array",
@@ -20594,6 +20688,13 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 				{Value: "if_required"},
 			},
 		},
+		"payment_method_options": {
+			Type: "clearable_object",
+		},
+		"payment_method_options.card.restrictions.brands_blocked": {
+			Type:             "array",
+			ShortDescription: "The card brands to block",
+		},
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types that customers can use",
@@ -20772,6 +20873,15 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 			},
 		},
 		"billie.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
+		"bizum.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
 			Enum: []resource.EnumSpec{
@@ -21123,6 +21233,15 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 				{Value: "on"},
 			},
 		},
+		"scalapay.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
 		"sepa_debit.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
@@ -21212,6 +21331,10 @@ var V1PaymentMethodConfigurationsList = resource.OperationSpec{
 	Path:   "/v1/payment_method_configurations",
 	Method: "GET",
 	Params: map[string]*resource.ParamSpec{
+		"active": {
+			Type:             "boolean",
+			ShortDescription: "Whether the configuration is active",
+		},
 		"application": {
 			Type:             "string",
 			ShortDescription: "The Connect application to filter by",
@@ -21347,6 +21470,15 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 			},
 		},
 		"billie.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
+		"bizum.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
 			Enum: []resource.EnumSpec{
@@ -21685,6 +21817,15 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 			},
 		},
 		"satispay.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
+		"scalapay.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
 			Enum: []resource.EnumSpec{
@@ -22210,6 +22351,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "card"},
@@ -22244,6 +22386,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -22361,6 +22504,7 @@ var V1PaymentMethodsList = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "card"},
@@ -22395,6 +22539,7 @@ var V1PaymentMethodsList = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -26744,6 +26889,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -26776,6 +26922,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -27702,6 +27849,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -27734,6 +27882,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -28684,6 +28833,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -28716,6 +28866,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -29866,7 +30017,7 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 		},
 		"payment_behavior": {
 			Type:             "string",
-			ShortDescription: "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid",
+			ShortDescription: "Controls how Stripe handles payment when a subscription update requires payment and `collection_method=charge_automatically`",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
@@ -30013,7 +30164,7 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 		},
 		"payment_behavior": {
 			Type:             "string",
-			ShortDescription: "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid",
+			ShortDescription: "Controls how Stripe handles payment when a subscription update requires payment and `collection_method=charge_automatically`",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
@@ -30599,7 +30750,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		},
 		"payment_behavior": {
 			Type:             "string",
-			ShortDescription: "Only applies to subscriptions with `collection_method=charge_automatically`",
+			ShortDescription: "Controls how Stripe handles the first invoice when payment is required and `collection_method=charge_automatically`",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
@@ -31165,7 +31316,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		},
 		"payment_behavior": {
 			Type:             "string",
-			ShortDescription: "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid",
+			ShortDescription: "Controls how Stripe handles payment when a subscription update requires payment and `collection_method=charge_automatically`",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
@@ -33761,7 +33912,23 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
 		},
+		"verifone_m425.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
 		"verifone_p400.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"verifone_p630.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"verifone_ux700.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"verifone_v660p.splashscreen": {
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
 		},
@@ -34184,6 +34351,13 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
 		},
+		"verifone_m425": {
+			Type: "clearable_object",
+		},
+		"verifone_m425.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
 		"verifone_p400": {
 			Type:       "clearable_object",
 			MostCommon: true,
@@ -34192,6 +34366,27 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
 			MostCommon:       true,
+		},
+		"verifone_p630": {
+			Type: "clearable_object",
+		},
+		"verifone_p630.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"verifone_ux700": {
+			Type: "clearable_object",
+		},
+		"verifone_ux700.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"verifone_v660p": {
+			Type: "clearable_object",
+		},
+		"verifone_v660p.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
 		},
 		"wifi": {
 			Type: "clearable_object",
@@ -34656,11 +34851,19 @@ var V1TerminalReadersList = resource.OperationSpec{
 				{Value: "mobile_phone_reader"},
 				{Value: "simulated_stripe_s700"},
 				{Value: "simulated_stripe_s710"},
+				{Value: "simulated_verifone_m425"},
+				{Value: "simulated_verifone_p630"},
+				{Value: "simulated_verifone_ux700"},
+				{Value: "simulated_verifone_v660p"},
 				{Value: "simulated_wisepos_e"},
 				{Value: "stripe_m2"},
 				{Value: "stripe_s700"},
 				{Value: "stripe_s710"},
 				{Value: "verifone_P400"},
+				{Value: "verifone_m425"},
+				{Value: "verifone_p630"},
+				{Value: "verifone_ux700"},
+				{Value: "verifone_v660p"},
 			},
 		},
 		"ending_before": {
@@ -35228,6 +35431,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 				{Value: "bacs_debit"},
 				{Value: "bancontact"},
 				{Value: "billie"},
+				{Value: "bizum"},
 				{Value: "blik"},
 				{Value: "boleto"},
 				{Value: "cashapp"},
@@ -35260,6 +35464,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 				{Value: "revolut_pay"},
 				{Value: "samsung_pay"},
 				{Value: "satispay"},
+				{Value: "scalapay"},
 				{Value: "sepa_debit"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
@@ -37483,6 +37688,10 @@ var V1TestHelpersTestClocksCreate = resource.OperationSpec{
 	Path:   "/v1/test_helpers/test_clocks",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"customer": {
+			Type:             "string",
+			ShortDescription: "Existing customer this test clock will be attached to",
+		},
 		"frozen_time": {
 			Type:             "integer",
 			ShortDescription: "The initial frozen time for this test clock",
@@ -40361,6 +40570,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-02-25.clover"},
 				{Value: "2026-03-25.dahlia"},
 				{Value: "2026-04-22.dahlia"},
+				{Value: "2026-05-27.dahlia"},
 			},
 		},
 		"connect": {
@@ -41507,7 +41717,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"contact_email": {
 			Type:             "string",
-			ShortDescription: "The default contact email address for the Account",
+			ShortDescription: "The primary contact email address for the Account",
 		},
 		"contact_phone": {
 			Type:             "string",
@@ -41689,6 +41899,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 		},
+		"identity.business_details.documents.proof_of_registration.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
+		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
@@ -41699,6 +41913,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
@@ -42479,7 +42697,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"contact_email": {
 			Type:             "string",
-			ShortDescription: "The default contact email address for the Account",
+			ShortDescription: "The primary contact email address for the Account",
 		},
 		"contact_phone": {
 			Type:             "string",
@@ -42744,6 +42962,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 		},
+		"identity.business_details.documents.proof_of_registration.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
+		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
@@ -42754,6 +42976,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
@@ -42897,7 +43123,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.entity_type": {
 			Type:             "string",
-			ShortDescription: "The entity type",
+			ShortDescription: "The entity type represented by the Account",
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -43217,7 +43443,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"configuration.customer.billing.default_payment_method": {
 			Type:             "string",
-			ShortDescription: "ID of a PaymentMethod attached to the customer account to use as the default for invoices and subscriptions",
+			ShortDescription: "The ID of a `PaymentMethod` attached to this Account's `customer` configuration, used as the default payment method for invoices and subscriptions",
 		},
 		"configuration.customer.billing.invoice.footer": {
 			Type:             "string",
@@ -43585,7 +43811,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"contact_email": {
 			Type:             "string",
-			ShortDescription: "The default contact email address for the Account",
+			ShortDescription: "The primary contact email address for the Account",
 		},
 		"contact_phone": {
 			Type:             "string",
@@ -43876,6 +44102,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 		},
+		"identity.business_details.documents.proof_of_registration.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
+		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
@@ -43886,6 +44116,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
@@ -44029,7 +44263,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.entity_type": {
 			Type:             "string",
-			ShortDescription: "The entity type",
+			ShortDescription: "The entity type represented by the Account",
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -46286,7 +46520,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"contact_email": {
 			Type:             "string",
-			ShortDescription: "The default contact email address for the Account",
+			ShortDescription: "The primary contact email address for the Account",
 		},
 		"contact_phone": {
 			Type:             "string",
@@ -46472,6 +46706,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 		},
+		"identity.business_details.documents.proof_of_registration.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
+		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
@@ -46482,6 +46720,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
@@ -47336,7 +47578,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"contact_email": {
 			Type:             "string",
-			ShortDescription: "The default contact email address for the Account",
+			ShortDescription: "The primary contact email address for the Account",
 		},
 		"contact_phone": {
 			Type:             "string",
@@ -47618,6 +47860,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 		},
+		"identity.business_details.documents.proof_of_registration.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
+		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
@@ -47628,6 +47874,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
@@ -47771,7 +48021,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.entity_type": {
 			Type:             "string",
-			ShortDescription: "The entity type",
+			ShortDescription: "The entity type represented by the Account",
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -48104,7 +48354,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"configuration.customer.billing.default_payment_method": {
 			Type:             "string",
-			ShortDescription: "ID of a PaymentMethod attached to the customer account to use as the default for invoices and subscriptions",
+			ShortDescription: "The ID of a `PaymentMethod` attached to this Account's `customer` configuration, used as the default payment method for invoices and subscriptions",
 		},
 		"configuration.customer.billing.invoice.footer": {
 			Type:             "string",
@@ -48541,7 +48791,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"contact_email": {
 			Type:             "string",
-			ShortDescription: "The default contact email address for the Account",
+			ShortDescription: "The primary contact email address for the Account",
 		},
 		"contact_phone": {
 			Type:             "string",
@@ -48836,6 +49086,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 		},
+		"identity.business_details.documents.proof_of_registration.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
+		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
@@ -48846,6 +49100,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.signer.person": {
+			Type:             "string",
+			ShortDescription: "Person signing the document",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
@@ -48989,7 +49247,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.entity_type": {
 			Type:             "string",
-			ShortDescription: "The entity type",
+			ShortDescription: "The entity type represented by the Account",
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -49827,6 +50085,7 @@ var V2PreviewFinancialAddressCreditSimulationsTestHelpersCredit = resource.Opera
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
+				{Value: "chaps"},
 				{Value: "fps"},
 				{Value: "rtp"},
 				{Value: "wire"},
@@ -49869,6 +50128,13 @@ var V2PreviewIamActivityLogsList = resource.OperationSpec{
 			ShortDescription: "Pagination token from a previous request",
 		},
 	},
+}
+
+var V2PreviewIamActivityLogsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/iam/activity_logs/{id}",
+	Method:    "GET",
+	IsPreview: true,
 }
 
 var V2PreviewMoneyManagementAdjustmentsList = resource.OperationSpec{
@@ -50969,6 +51235,7 @@ var V2PreviewTestHelpersFinancialAddressCreditSimulationsCredit = resource.Opera
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
+				{Value: "chaps"},
 				{Value: "fps"},
 				{Value: "rtp"},
 				{Value: "wire"},

@@ -292,26 +292,40 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 	return ""
 }
 
-// Install installs the plugin of the given version
-func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
+// Install installs the plugin of the given version.
+func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string) error {
+	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false)
+}
+
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 	pluginToInstall := p
-	var pluginDownloadURL string
-	downloadURLFromMetadata := false
+	pluginDownloadURL := resolvedBinaryURL
+	downloadURLFromMetadata := resolvedBinaryURL != ""
+	metadataBaseURL := apiBaseURL
+	if apiKey == "" && dashboardBaseURL != "" {
+		metadataBaseURL = dashboardBaseURL
+	}
 
-	if apiKey != "" {
+	if !skipMetadataLookup {
+		metadataEndpoint := "/v1/stripecli/get-plugin-metadata"
+		if apiKey == "" {
+			metadataEndpoint = "/ajax/stripecli/plugins_metadata"
+		}
+
 		log.WithFields(log.Fields{
 			"prefix":   "plugins.plugin.Install",
-			"endpoint": "/v1/stripecli/get-plugin-metadata",
+			"base_url": metadataBaseURL,
+			"endpoint": metadataEndpoint,
 			"plugin":   p.Shortname,
 			"version":  version,
 			"os":       runtime.GOOS,
 			"arch":     runtime.GOARCH,
 		}).Debug("Fetching plugin metadata for install")
 
-		pluginMetadata, err := requests.GetPluginMetadata(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
+		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",
@@ -331,7 +345,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 	if pluginDownloadURL == "" {
 		var err error
-		pluginDownloadURL, err = getLegacyPluginDownloadURL(ctx, cfg, apiKey, baseURL, version, pluginToInstall)
+		pluginDownloadURL, err = getLegacyPluginDownloadURL(ctx, cfg, apiKey, apiBaseURL, version, pluginToInstall)
 		if err != nil {
 			ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
 
@@ -356,13 +370,14 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Pull down bin, verify, and save to disk
-	err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
+	var err error
+	err = pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 	if err != nil && downloadURLFromMetadata {
 		log.WithFields(log.Fields{
 			"prefix": "plugins.plugin.Install",
 		}).Debugf("could not download plugin from metadata URL, falling back to plugin URL lookup: %s", err)
 
-		fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, baseURL, version, pluginToInstall)
+		fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, apiBaseURL, version, pluginToInstall)
 		if fallbackErr != nil {
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",
@@ -587,15 +602,15 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		// before reinstalling so stale cached local metadata does not pin us to an
 		// older release.
 		if version == "" {
-			pluginToInstall, resolvedVersion, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, stripe.DefaultAPIBaseURL)
+			dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+			resolvedPlugin, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 			if err != nil {
 				return err
 			}
 
-			p = pluginToInstall
-			version = resolvedVersion
-			err = p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
-			if err != nil {
+			p = resolvedPlugin.Plugin
+			version = resolvedPlugin.Version
+			if err := resolvedPlugin.Install(ctx, config, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
 				return err
 			}
 		}

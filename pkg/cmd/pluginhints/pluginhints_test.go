@@ -15,12 +15,16 @@ import (
 )
 
 // newTestCmd builds a pluginHintCmd with all side effects mocked out.
+// By default accountIDFn reports a logged-in account; override in tests that
+// need to simulate an unauthenticated user.
 func newTestCmd(name string, opts ...option) *pluginHintCmd {
 	p := &pluginHintCmd{
 		name:        name,
 		description: "Test description.",
 		stdout:      &bytes.Buffer{},
 		stdin:       strings.NewReader(""),
+		accountIDFn: func() (string, error) { return "acct_test", nil },
+		loginFn:     func(ctx context.Context) error { return nil },
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -48,14 +52,44 @@ func TestRun_PluginFound_CallsPromptInstall(t *testing.T) {
 	assert.Contains(t, p.output(), "The \"generate\" plugin is required")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_ReturnsNil(t *testing.T) {
-	p := newTestCmd("apps")
+func TestRun_PluginNotFound_PrivatePreviewFalse_LoggedIn_PrintsInstallHint(t *testing.T) {
+	p := newTestCmd("apps") // accountIDFn returns "acct_test" by default
 	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
 
 	err := p.run(p.Command, nil)
 
 	require.NoError(t, err)
-	assert.Empty(t, p.output())
+	assert.Contains(t, p.output(), "stripe plugin install apps")
+}
+
+func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PromptsLogin(t *testing.T) {
+	p := newTestCmd("docs")
+	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.accountIDFn = func() (string, error) { return "", nil }
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+
+	err := p.run(p.Command, nil)
+
+	require.NoError(t, err)
+	assert.True(t, loginCalled)
+	assert.Contains(t, p.output(), "stripe login")
+	assert.NotContains(t, p.output(), "stripe plugin install")
+}
+
+func TestRun_PluginNotFound_PrivatePreviewFalse_AccountIDError_PromptsLogin(t *testing.T) {
+	p := newTestCmd("docs")
+	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+
+	err := p.run(p.Command, nil)
+
+	require.NoError(t, err)
+	assert.True(t, loginCalled)
+	assert.Contains(t, p.output(), "stripe login")
+	assert.NotContains(t, p.output(), "stripe plugin install")
 }
 
 func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
@@ -124,6 +158,43 @@ func TestPromptInstall_InstallError_ReturnsError(t *testing.T) {
 	err := p.promptInstall(context.Background())
 
 	assert.EqualError(t, err, "install failed")
+}
+
+// --- promptLogin ---
+
+func TestPromptLogin_EnterKey_LogsIn(t *testing.T) {
+	p := newTestCmd("docs")
+	p.stdin = strings.NewReader("\n")
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+
+	err := p.promptLogin(context.Background())
+
+	require.NoError(t, err)
+	assert.True(t, loginCalled)
+	assert.Contains(t, p.output(), "stripe login")
+}
+
+func TestPromptLogin_OtherInput_CancelsLogin(t *testing.T) {
+	p := newTestCmd("docs")
+	p.stdin = strings.NewReader("n\n")
+	loginCalled := false
+	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+
+	err := p.promptLogin(context.Background())
+
+	assert.EqualError(t, err, "login canceled")
+	assert.False(t, loginCalled)
+}
+
+func TestPromptLogin_LoginError_ReturnsError(t *testing.T) {
+	p := newTestCmd("docs")
+	p.stdin = strings.NewReader("\n")
+	p.loginFn = func(ctx context.Context) error { return errors.New("login failed") }
+
+	err := p.promptLogin(context.Background())
+
+	assert.EqualError(t, err, "login failed")
 }
 
 // --- suggestNotAvailable ---

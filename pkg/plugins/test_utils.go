@@ -127,17 +127,13 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 				t.Error(err)
 			}
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-metadata":
+		case "/v1/stripecli/get-plugin-metadata", "/ajax/stripecli/plugins_metadata":
 			pluginName := req.URL.Query().Get("plugin")
 			version := req.URL.Query().Get("version")
 			opsystem := req.URL.Query().Get("os")
 			arch := req.URL.Query().Get("arch")
 
-			pluginManifest := singlePluginManifest(t, pluginName, manifestContent, additionalManifests)
-			pd := requests.PluginMetadata{
-				BinaryURL:      artifactoryServer.URL + "/" + pluginName + "/" + version + "/" + opsystem + "/" + arch + "/stripe-cli-" + strings.ReplaceAll(pluginName, "_", "-"),
-				PluginManifest: string(pluginManifest),
-			}
+			pd := buildPluginMetadataResponse(t, artifactoryServer.URL, pluginName, version, opsystem, arch, manifestContent, additionalManifests)
 			body, err := json.Marshal(pd)
 			if err != nil {
 				t.Error(err)
@@ -151,6 +147,34 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 	return TestServers{
 		ArtifactoryServer: artifactoryServer,
 		StripeServer:      stripeServer,
+	}
+}
+
+func buildPluginMetadataResponse(t *testing.T, artifactoryBaseURL, pluginName, version, opsystem, arch string, manifestContent []byte, additionalManifests map[string][]byte) requests.PluginMetadata {
+	t.Helper()
+
+	pluginManifest := singlePluginManifest(t, pluginName, manifestContent, additionalManifests)
+	resolvedVersion := version
+	if resolvedVersion == "" {
+		pluginList, err := validatePluginManifest(pluginManifest)
+		requireNoError(t, err)
+
+		plugin, err := findPlugin(*pluginList, pluginName)
+		requireNoError(t, err)
+
+		for _, release := range plugin.Releases {
+			if release.OS == opsystem && release.Arch == arch {
+				resolvedVersion = release.Version
+			}
+		}
+		if resolvedVersion == "" {
+			t.Fatalf("plugin %s did not contain a release for %s/%s", pluginName, opsystem, arch)
+		}
+	}
+
+	return requests.PluginMetadata{
+		BinaryURL:      artifactoryBaseURL + "/" + pluginName + "/" + resolvedVersion + "/" + opsystem + "/" + arch + "/stripe-cli-" + strings.ReplaceAll(pluginName, "_", "-"),
+		PluginManifest: string(pluginManifest),
 	}
 }
 

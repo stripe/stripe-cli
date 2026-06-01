@@ -3,6 +3,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -27,7 +29,8 @@ type InstallCmd struct {
 	Cmd *cobra.Command
 	fs  afero.Fs
 
-	apiBaseURL string
+	apiBaseURL       string
+	dashboardBaseURL string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -48,6 +51,8 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	// Hidden configuration flags, useful for dev/debugging
 	ic.Cmd.Flags().StringVar(&ic.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	ic.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+	ic.Cmd.Flags().StringVar(&ic.dashboardBaseURL, "dashboard-base", "", "Sets the dashboard base URL")
+	ic.Cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 
 	return ic
 }
@@ -66,8 +71,20 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
+func resolveDashboardBaseURL(apiBaseURL, dashboardBaseURL string) string {
+	if dashboardBaseURL != "" {
+		return dashboardBaseURL
+	}
+
+	return stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+}
+
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+		return err
+	}
+	dashboardBaseURL := resolveDashboardBaseURL(ic.apiBaseURL, ic.dashboardBaseURL)
+	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURL); err != nil {
 		return err
 	}
 
@@ -75,10 +92,51 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	pluginName, version := parseInstallArg(args[0])
 	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
 	isLatest := len(version) == 0
-	plugin, version, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL)
+	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
-		return err
+		var pluginNotFound *plugins.ErrPluginNotFound
+		if errors.As(err, &pluginNotFound) {
+			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
+			if aErr != nil || accountID == "" {
+				fmt.Printf("No plugin named %q found. If this is a private plugin, you must be logged in to install it.\n\n", pluginName)
+				fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
+				var input string
+				fmt.Fscanln(os.Stdin, &input)
+				if input != "" {
+					return fmt.Errorf("login canceled")
+				}
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+					return lErr
+				}
+				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+				if err != nil {
+					return fmt.Errorf("no plugin named %q exists", pluginName)
+				}
+			} else {
+				return fmt.Errorf("no plugin named %q exists", pluginName)
+			}
+		} else {
+			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
+			if aErr != nil || accountID == "" {
+				fmt.Printf("You must be logged in to install the \"%s\" plugin.\n\n", pluginName)
+				fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
+				var input string
+				fmt.Fscanln(os.Stdin, &input)
+				if input != "" {
+					return fmt.Errorf("login canceled")
+				}
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+					return lErr
+				}
+				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+			}
+			if err != nil {
+				return err
+			}
+		}
 	}
+	plugin := resolvedPlugin.Plugin
+	version = resolvedPlugin.Version
 
 	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
 		if err := plugins.PersistInstalledPluginState(ic.cfg, ic.fs, *plugin); err != nil {
@@ -100,7 +158,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	if err := plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL); err != nil {
+	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL, dashboardBaseURL); err != nil {
 		return err
 	}
 

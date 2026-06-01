@@ -119,8 +119,8 @@ release:
 # persist. Instead, grab the version and run the `tag` command in the same
 # subprocess by escaping the newline
 	@read -p "Enter new version (of the format vN.N.N): " version; \
-	git tag $$version
-	git push --tags
+	git tag $$version && \
+	git push origin refs/tags/$$version
 .PHONY: release
 
 clean:

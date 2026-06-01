@@ -325,8 +325,10 @@ func TestResolvePluginForInstallUsesLocalMetadataAsMetadataBase(t *testing.T) {
 	}))
 	defer stripeServer.Close()
 
-	plugin, version, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 	require.Equal(t, "1.0.0", version)
 	require.Len(t, plugin.Commands, 1)
 	require.Equal(t, "create", plugin.Commands[0].Name)
@@ -335,7 +337,285 @@ func TestResolvePluginForInstallUsesLocalMetadataAsMetadataBase(t *testing.T) {
 	require.Equal(t, "20", release.Runtime["node"])
 }
 
-func TestResolvePluginForUpgradeUsesLocalMetadataWhenManifestMissing(t *testing.T) {
+func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	var metadataLookups int
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous install resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			metadataLookups++
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when anonymous metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
+	require.NotNil(t, plugin)
+	require.Equal(t, "appA", plugin.Shortname)
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
+	require.Equal(t, 1, metadataLookups)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestResolvePluginForInstallFallsBackToManifestLookupWhenAnonymousMetadataFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	originalPluginData := requests.DefaultPluginData
+	requests.DefaultPluginData = requests.PluginData{
+		PluginBaseURL:       testServers.ArtifactoryServer.URL,
+		AdditionalManifests: nil,
+	}
+	defer func() {
+		requests.DefaultPluginData = originalPluginData
+	}()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(`{"error":{"message":"boom"}}`))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", failingServer.URL, failingServer.URL)
+	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
+	require.NotNil(t, plugin)
+	require.Equal(t, "appA", plugin.Shortname)
+	require.Equal(t, "2.0.1", version)
+	require.Empty(t, resolvedPlugin.BinaryURL)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.NoError(t, err)
+}
+
+func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "search",
+				Desc: "Search docs",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "0.1.25",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	var metadataLookups int
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			metadataLookups++
+			require.Equal(t, "", req.URL.Query().Get("version"))
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL: "https://example.test/docs/latest",
+				PluginManifest: fmt.Sprintf(`[[Plugin]]
+  Shortname = "docs"
+  Shortdesc = "Docs plugin"
+  Binary = "stripe-cli-docs"
+  MagicCookieValue = "DOCS-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "0.1.26"
+    Sum = "def456"
+`, runtime.GOARCH, runtime.GOOS),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("upgrade resolution should not fall back to /v1/stripecli/get-plugin-url when plugin metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", stripeServer.URL, stripeServer.URL)
+	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
+	require.Equal(t, "0.1.26", resolvedPlugin.Version)
+	require.Equal(t, "https://example.test/docs/latest", resolvedPlugin.BinaryURL)
+	require.Len(t, plugin.Commands, 1)
+	require.Equal(t, "search", plugin.Commands[0].Name)
+	require.Equal(t, 1, metadataLookups)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailable(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "search",
+				Desc: "Search docs",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "0.1.25",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	var metadataLookups int
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous upgrade resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			metadataLookups++
+			require.Equal(t, "", req.URL.Query().Get("version"))
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL: "https://example.test/docs/latest",
+				PluginManifest: fmt.Sprintf(`[[Plugin]]
+  Shortname = "docs"
+  Shortdesc = "Docs plugin"
+  Binary = "stripe-cli-docs"
+  MagicCookieValue = "DOCS-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "0.1.26"
+    Sum = "def456"
+`, runtime.GOARCH, runtime.GOOS),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		case "/v1/stripecli/get-plugin-url":
+			t.Fatalf("upgrade resolution should not fall back to /v1/stripecli/get-plugin-url when anonymous plugin metadata is available")
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
+	require.Equal(t, "0.1.26", resolvedPlugin.Version)
+	require.Equal(t, "https://example.test/docs/latest", resolvedPlugin.BinaryURL)
+	require.Len(t, plugin.Commands, 1)
+	require.Equal(t, "search", plugin.Commands[0].Name)
+	require.Equal(t, 1, metadataLookups)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "search",
+				Desc: "Search docs",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "0.1.25",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusInternalServerError)
+		_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+	}))
+	defer failingServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", failingServer.URL, failingServer.URL)
+	require.NoError(t, err)
+	plugin := resolvedPlugin.Plugin
+	require.Equal(t, localPlugin, *plugin)
+	require.Equal(t, "0.1.25", resolvedPlugin.Version)
+	require.Empty(t, resolvedPlugin.BinaryURL)
+}
+
+func TestResolveCachedPluginForUpgradeUsesLocalMetadataWhenManifestMissing(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 
@@ -361,12 +641,12 @@ func TestResolvePluginForUpgradeUsesLocalMetadataWhenManifestMissing(t *testing.
 	}
 	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
 
-	plugin, err := ResolvePluginForUpgrade(config, fs, "docs")
+	plugin, err := resolveCachedPluginForUpgrade(config, fs, "docs")
 	require.NoError(t, err)
 	require.Equal(t, localPlugin, *plugin)
 }
 
-func TestResolvePluginForUpgradePrefersNewerManifestVersion(t *testing.T) {
+func TestResolveCachedPluginForUpgradePrefersNewerManifestVersion(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 
@@ -406,7 +686,7 @@ func TestResolvePluginForUpgradePrefersNewerManifestVersion(t *testing.T) {
 `, runtime.GOARCH, runtime.GOOS)
 	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(manifestContent), os.ModePerm))
 
-	plugin, err := ResolvePluginForUpgrade(config, fs, "docs")
+	plugin, err := resolveCachedPluginForUpgrade(config, fs, "docs")
 	require.NoError(t, err)
 	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
 	require.Len(t, plugin.Commands, 1)
@@ -894,4 +1174,108 @@ func TestRefreshPluginManifestRefusesSymlinkedParent(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(victimDir, "plugins.toml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			res.WriteHeader(http.StatusNotFound)
+			res.Write([]byte(`{"error":{"message":"not found"}}`))
+		case "/v1/stripecli/get-plugin-url":
+			body, _ := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+	require.Error(t, err)
+
+	var pluginNotFound *ErrPluginNotFound
+	require.ErrorAs(t, err, &pluginNotFound)
+	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	originalPluginData := requests.DefaultPluginData
+	requests.DefaultPluginData = requests.PluginData{
+		PluginBaseURL:       testServers.ArtifactoryServer.URL,
+		AdditionalManifests: nil,
+	}
+	defer func() {
+		requests.DefaultPluginData = originalPluginData
+	}()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			res.WriteHeader(http.StatusNotFound)
+			res.Write([]byte(`{"error":{"message":"not found"}}`))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+	require.Error(t, err)
+
+	var pluginNotFound *ErrPluginNotFound
+	require.ErrorAs(t, err, &pluginNotFound)
+	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallSucceedsForGAPluginWhenNotLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, resolvedPlugin.Plugin)
+	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
+	require.Equal(t, "2.0.1", resolvedPlugin.Version)
 }

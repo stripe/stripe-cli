@@ -21,7 +21,8 @@ type UpgradeCmd struct {
 	Cmd *cobra.Command
 	fs  afero.Fs
 
-	apiBaseURL string
+	apiBaseURL       string
+	dashboardBaseURL string
 }
 
 // NewUpgradeCmd creates a new command for upgrading plugins
@@ -41,12 +42,18 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 	// Hidden configuration flags, useful for dev/debugging
 	uc.Cmd.Flags().StringVar(&uc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	uc.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+	uc.Cmd.Flags().StringVar(&uc.dashboardBaseURL, "dashboard-base", "", "Sets the dashboard base URL")
+	uc.Cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 
 	return uc
 }
 
 func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateAPIBaseURL(uc.apiBaseURL); err != nil {
+		return err
+	}
+	dashboardBaseURL := resolveDashboardBaseURL(uc.apiBaseURL, uc.dashboardBaseURL)
+	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURL); err != nil {
 		return err
 	}
 
@@ -56,19 +63,12 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	// Refresh the plugin info before proceeding
-	refreshErr := plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, uc.apiBaseURL)
-	if refreshErr != nil {
-		log.Debug(refreshErr)
-		fmt.Println("Unable to refresh plugin manifest, continuing with cached plugin metadata or manifest...")
-	}
-
-	plugin, err := plugins.ResolvePluginForUpgrade(uc.cfg, uc.fs, args[0])
+	resolvedPlugin, err := plugins.ResolvePluginForUpgrade(ctx, uc.cfg, uc.fs, args[0], uc.apiBaseURL, dashboardBaseURL)
 	if err != nil {
 		return err
 	}
-
-	version := plugin.LookUpLatestVersion()
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
 
 	color := ansi.Color(os.Stdout)
 
@@ -82,7 +82,7 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	prevVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
 
-	if err := plugin.Install(ctx, uc.cfg, uc.fs, version, uc.apiBaseURL); err != nil {
+	if err := resolvedPlugin.Install(ctx, uc.cfg, uc.fs, uc.apiBaseURL, dashboardBaseURL); err != nil {
 		return err
 	}
 
