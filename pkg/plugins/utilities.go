@@ -981,6 +981,36 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	return body, nil
 }
 
+// CheckLatestPluginVersion prints an upgrade hint to stderr if the cached manifest
+// has a newer version of the plugin than what is currently installed.
+// It is a no-op in local development mode (PluginsPath set) or when the manifest
+// has no version information for the current platform.
+func CheckLatestPluginVersion(config config.IConfig, fs afero.Fs, plugin Plugin) {
+	if PluginsPath != "" {
+		return
+	}
+
+	installedVersion := plugin.InstalledVersion(config, fs)
+	if installedVersion == "" {
+		return
+	}
+
+	manifestPlugin, err := lookUpPluginInCachedManifest(config, fs, plugin.Shortname)
+	if err != nil {
+		return
+	}
+
+	latestVersion := manifestPlugin.LookUpLatestVersion()
+	if latestVersion == "" {
+		return
+	}
+
+	if comparePluginVersions(installedVersion, latestVersion) < 0 {
+		fmt.Fprintf(os.Stderr, "A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.\n",
+			plugin.Shortname, installedVersion, latestVersion, plugin.Shortname)
+	}
+}
+
 // CleanupAllClients tears down and disconnects all "managed" plugin clients
 func CleanupAllClients() {
 	log.Debug("Tearing down plugin before exit")
