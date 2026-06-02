@@ -19,3 +19,9 @@ func TestNewResourceCmd(t *testing.T) {
 	require.Equal(t, "resource", val)
 	require.Contains(t, rc.Cmd.UsageTemplate(), "Available Operations")
 }
+
+func TestResourceUsageTemplate_ExcludesProfileFlags(t *testing.T) {
+	tmpl := resourceUsageTemplate()
+	require.Contains(t, tmpl, "WrappedNonProfileInheritedFlagUsages")
+	require.NotContains(t, tmpl, "WrappedInheritedFlagUsages .")
+}
