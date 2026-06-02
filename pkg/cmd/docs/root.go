@@ -20,6 +20,7 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/tui"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
 )
 
 // RootCommand is the root command for the docs plugin.
@@ -240,6 +241,7 @@ func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
 		opts := []tui.Option{
 			tui.WithClient(r.client),
 			tui.WithRenderer(r.renderer),
+			tui.WithStyles(ui.DefaultStyles()),
 		}
 		if page != nil {
 			opts = append(opts, tui.WithPage(tui.Page{

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
 )
 
 func (r *RootCommand) newAPICmd() *cobra.Command {
@@ -27,13 +29,19 @@ func (r *RootCommand) runAPI(cmd *cobra.Command, args []string) error {
 	q := strings.Join(args, " ")
 
 	ref := &url.URL{
-		Path:     "/_endpoint/api-reference-locate",
+		Path:     "/_endpoint/api-reference-locator",
 		RawQuery: url.Values{"q": {q}}.Encode(),
 	}
 
 	page, err := r.client.FetchPage(cmd.Context(), ref)
 	if err != nil {
-		return fmt.Errorf("looking up API reference: %w", err)
+		s := ui.DefaultStyles()
+		fmt.Fprintf(cmd.ErrOrStderr(), "%s Unable to locate API Reference documentation for %q\n", s.Error.Render("✗"), q)
+		if r.logger != nil {
+			r.logger.Debug("api reference lookup failed", "query", q, "error", err)
+		}
+		cmd.SilenceErrors = true
+		return err
 	}
 
 	return r.show(cmd, &page)

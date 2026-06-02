@@ -27,7 +27,7 @@ func TestAPICommand_MissingArgs(t *testing.T) {
 func TestAPICommand_FollowsRedirect(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/_endpoint/api-reference-locate":
+		case "/_endpoint/api-reference-locator":
 			assert.Equal(t, "GET /v1/products", r.URL.Query().Get("q"))
 			http.Redirect(w, r, "/api/products/list", http.StatusFound)
 		case "/api/products/list":
@@ -58,7 +58,7 @@ func TestAPICommand_FollowsRedirect(t *testing.T) {
 func TestAPICommand_ResourceLookup(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/_endpoint/api-reference-locate":
+		case "/_endpoint/api-reference-locator":
 			assert.Equal(t, "product", r.URL.Query().Get("q"))
 			http.Redirect(w, r, "/api/products", http.StatusFound)
 		case "/api/products":
