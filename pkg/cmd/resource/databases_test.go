@@ -28,6 +28,9 @@ func ensureDatabaseTemplateFuncs() {
 		cobra.AddTemplateFunc("WrappedInheritedFlagUsages", func(cmd *cobra.Command) string {
 			return cmd.InheritedFlags().FlagUsagesWrapped(80)
 		})
+		cobra.AddTemplateFunc("WrappedNonProfileInheritedFlagUsages", func(cmd *cobra.Command) string {
+			return cmd.InheritedFlags().FlagUsagesWrapped(80)
+		})
 		cobra.AddTemplateFunc("WrappedLocalFlagUsages", func(cmd *cobra.Command) string {
 			return cmd.LocalFlags().FlagUsagesWrapped(80)
 		})
