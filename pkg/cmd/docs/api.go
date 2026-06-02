@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-
-	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
 )
 
 func (r *RootCommand) newAPICmd() *cobra.Command {
@@ -38,11 +36,5 @@ func (r *RootCommand) runAPI(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("looking up API reference: %w", err)
 	}
 
-	if r.useTUI(cmd) {
-		return r.runTUI(cmd.Context(), page.URL.Path)
-	}
-
-	w := pager.New(cmd.OutOrStdout(), !r.noPager)
-	defer func() { _ = w.Close() }()
-	return r.renderPage(w, page)
+	return r.show(cmd, &page)
 }

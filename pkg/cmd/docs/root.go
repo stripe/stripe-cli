@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/url"
 	"os"
@@ -190,7 +188,7 @@ func (r *RootCommand) Root() *cobra.Command { return r.cmd }
 func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		if r.useTUI(cmd) {
-			return r.runTUI(cmd.Context(), "")
+			return r.show(cmd, nil)
 		}
 		if err := cmd.Help(); err != nil {
 			return fmt.Errorf("showing help: %w", err)
@@ -210,19 +208,13 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("markdown renderer not initialized")
 	}
 
-	if r.useTUI(cmd) {
-		return r.runTUI(cmd.Context(), path)
-	}
-
 	ref := &url.URL{Path: path}
 	page, err := r.client.FetchPage(cmd.Context(), ref)
 	if err != nil {
 		return fmt.Errorf("fetching page: %w", err)
 	}
 
-	w := pager.New(cmd.OutOrStdout(), !r.noPager)
-	defer func() { _ = w.Close() }()
-	return r.renderPage(w, page)
+	return r.show(cmd, &page)
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
@@ -233,7 +225,10 @@ func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
 	return ok && term.IsTerminal(int(f.Fd()))
 }
 
-func (r *RootCommand) runTUI(ctx context.Context, path string) error {
+// show displays a page to the user. When a TTY is detected it launches the
+// interactive TUI; otherwise it renders markdown and pipes it through a pager.
+// A nil page starts the TUI at the home screen.
+func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
 	if r.client == nil {
 		return fmt.Errorf("docs client not initialized")
 	}
@@ -241,31 +236,27 @@ func (r *RootCommand) runTUI(ctx context.Context, path string) error {
 		return fmt.Errorf("markdown renderer not initialized")
 	}
 
-	opts := []tui.Option{
-		tui.WithClient(r.client),
-		tui.WithRenderer(r.renderer),
-	}
-
-	if path != "" {
-		ref := &url.URL{Path: path}
-		page, err := r.client.FetchPage(ctx, ref)
-		if err != nil {
-			return fmt.Errorf("fetching page: %w", err)
+	if r.useTUI(cmd) {
+		opts := []tui.Option{
+			tui.WithClient(r.client),
+			tui.WithRenderer(r.renderer),
 		}
-		opts = append(opts, tui.WithPage(tui.Page{
-			Content: page.Content,
-			URL:     page.URL,
-		}))
+		if page != nil {
+			opts = append(opts, tui.WithPage(tui.Page{
+				Content: page.Content,
+				URL:     page.URL,
+			}))
+		}
+		p := tea.NewProgram(tui.New(opts...))
+		if _, err := p.Run(); err != nil {
+			return fmt.Errorf("running TUI: %w", err)
+		}
+		return nil
 	}
 
-	p := tea.NewProgram(tui.New(opts...))
-	if _, err := p.Run(); err != nil {
-		return fmt.Errorf("running TUI: %w", err)
-	}
-	return nil
-}
+	w := pager.New(cmd.OutOrStdout(), !r.noPager)
+	defer func() { _ = w.Close() }()
 
-func (r *RootCommand) renderPage(w io.Writer, page docs.Page) error {
 	doc, err := markdown.Parse(page.Content)
 	if err != nil {
 		return fmt.Errorf("parsing markdown: %w", err)
