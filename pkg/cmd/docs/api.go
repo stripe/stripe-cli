@@ -10,6 +10,20 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
 )
 
+// errAPINotFound indicates a failed API reference lookup.
+type errAPINotFound struct {
+	query string
+	cause error
+}
+
+func (e *errAPINotFound) Error() string {
+	return fmt.Sprintf("API reference not found for %q: %v", e.query, e.cause)
+}
+
+func (e *errAPINotFound) Unwrap() error {
+	return e.cause
+}
+
 func (r *RootCommand) newAPICmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "api <method|resource|event>",
@@ -36,12 +50,12 @@ func (r *RootCommand) runAPI(cmd *cobra.Command, args []string) error {
 	page, err := r.client.FetchPage(cmd.Context(), ref)
 	if err != nil {
 		s := ui.DefaultStyles()
-		fmt.Fprintf(cmd.ErrOrStderr(), "%s Unable to locate API Reference documentation for %q\n", s.Error.Render("✗"), q)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s Unable to locate API Reference documentation for %q\n", s.Error.Render("✗"), q)
 		if r.logger != nil {
 			r.logger.Debug("api reference lookup failed", "query", q, "error", err)
 		}
 		cmd.SilenceErrors = true
-		return err
+		return &errAPINotFound{query: q, cause: err}
 	}
 
 	return r.show(cmd, &page)
