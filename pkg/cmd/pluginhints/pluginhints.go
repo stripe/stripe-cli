@@ -39,7 +39,13 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 	}
 	if !installedPluginSet["directory"] {
 		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
-		directoryCmd.Aliases = []string{"search", "directry", "directary", "direcotry", "diretory"}
+		directoryCmd.Aliases = []string{
+			"search",
+			"directry",
+			"directary",
+			"direcotry", //nolint:misspell // Intentional typo alias.
+			"diretory",
+		}
 		rootCmd.AddCommand(
 			directoryCmd,
 		)
