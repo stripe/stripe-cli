@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func noStat(string) error { return errors.New("not found") }
-func yesStat(string) error { return nil }
+func noStat(string) error     { return errors.New("not found") }
+func yesStat(string) error    { return nil }
 func errExe() (string, error) { return "", errors.New("error") }
 
 func exe(path string) func() (string, error) {
