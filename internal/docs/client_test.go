@@ -307,7 +307,7 @@ func TestSearch(t *testing.T) {
 			wantCheck: func(t *testing.T, got *SearchResponse) {
 				require.Len(t, got.Hits, 1)
 				assert.Equal(t, "Accept a payment", got.Hits[0].Title)
-				assert.Equal(t, "https://docs.stripe.com/payments/accept-a-payment", got.Hits[0].Url)
+				assert.Equal(t, "https://docs.stripe.com/payments/accept-a-payment", got.Hits[0].URL)
 			},
 		},
 		{

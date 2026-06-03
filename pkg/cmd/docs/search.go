@@ -42,9 +42,6 @@ func (r *RootCommand) search(ctx context.Context, w io.Writer, query string) err
 	if r.client == nil {
 		return fmt.Errorf("search: docs client not initialized")
 	}
-	if r.renderer == nil {
-		return fmt.Errorf("search: markdown renderer not initialized")
-	}
 
 	response, err := r.client.Search(ctx, query)
 	if err != nil {
@@ -54,8 +51,12 @@ func (r *RootCommand) search(ctx context.Context, w io.Writer, query string) err
 	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9D97FF"))
 	routeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#4A9EFF"))
 	for _, hit := range response.Hits {
-		route := strings.TrimPrefix(hit.Url, "https://docs.stripe.com")
-		fmt.Fprintf(w, "%s\n  %s\n\n", titleStyle.Render(hit.Title), routeStyle.Render("stripe docs "+route))
+		route := strings.TrimPrefix(hit.URL, "https://docs.stripe.com")
+		lineOutput := fmt.Sprintf("%s\n  %s\n\n", titleStyle.Render(hit.Title), routeStyle.Render("stripe docs "+route))
+
+		if _, err := fmt.Fprint(w, lineOutput); err != nil {
+			return fmt.Errorf("search: writing output: %w", err)
+		}
 	}
 
 	return nil

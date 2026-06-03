@@ -14,7 +14,6 @@ import (
 
 	"github.com/stripe/stripe-cli-docs-plugin/cmd"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/markdown"
 )
 
 func stripANSI(s string) string {
@@ -33,18 +32,15 @@ func TestSearchCommand(t *testing.T) {
 	defer server.Close()
 
 	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
-	renderer, err := markdown.NewRenderer(markdown.WithStyle("notty"))
-	require.NoError(t, err)
 
 	var out bytes.Buffer
 	root := cmd.New().WithOptions(
 		cmd.WithClient(client),
-		cmd.WithRenderer(renderer),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"search", "payment methods"})
 
-	err = root.ExecuteContext(context.Background())
+	err := root.ExecuteContext(context.Background())
 	require.NoError(t, err)
 
 	plainOutput := stripANSI(out.String())
