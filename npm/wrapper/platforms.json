@@ -1,0 +1,32 @@
+{
+  "darwin-arm64": {
+    "pkg": "@stripe/cli-darwin-arm64",
+    "archiveTemplate": "stripe_${VERSION}_mac-os_arm64.tar.gz",
+    "checksums": "stripe-mac-checksums.txt",
+    "bin": "stripe"
+  },
+  "darwin-x64": {
+    "pkg": "@stripe/cli-darwin-x64",
+    "archiveTemplate": "stripe_${VERSION}_mac-os_x86_64.tar.gz",
+    "checksums": "stripe-mac-checksums.txt",
+    "bin": "stripe"
+  },
+  "linux-x64": {
+    "pkg": "@stripe/cli-linux-x64",
+    "archiveTemplate": "stripe_${VERSION}_linux_x86_64.tar.gz",
+    "checksums": "stripe-linux-checksums.txt",
+    "bin": "stripe"
+  },
+  "linux-arm64": {
+    "pkg": "@stripe/cli-linux-arm64",
+    "archiveTemplate": "stripe_${VERSION}_linux_arm64.tar.gz",
+    "checksums": "stripe-linux-checksums.txt",
+    "bin": "stripe"
+  },
+  "win32-x64": {
+    "pkg": "@stripe/cli-win32-x64",
+    "archiveTemplate": "stripe_${VERSION}_windows_x86_64.zip",
+    "checksums": "stripe-windows-checksums.txt",
+    "bin": "stripe.exe"
+  }
+}

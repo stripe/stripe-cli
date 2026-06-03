@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # Required for OIDC to npm
 
 jobs:
   canary-tests:
@@ -108,3 +109,44 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+
+  publish-npm:
+    needs: [build-mac, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Derive version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Download and extract platform binaries from GitHub Release
+        run: node npm/scripts/fetch-binaries.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+
+      - name: Stamp version into all package.json files
+        run: node npm/scripts/stamp-version.js ${{ env.VERSION }}
+
+      - name: Copy README into each package
+        run: |
+          for dir in wrapper darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            cp README.md npm/$dir/README.md
+          done
+
+      - name: Publish platform packages
+        run: |
+          for dir in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            npm publish ./npm/$dir --access public
+          done
+
+      - name: Publish wrapper package
+        run: npm publish ./npm/wrapper --access public
