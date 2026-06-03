@@ -14,6 +14,7 @@ import (
 
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
 )
 
 const (
@@ -31,7 +32,7 @@ type Model struct {
 	viewport viewport.Model
 	help     help.Model
 	keys     KeyMap
-	styles   Styles
+	styles   ui.Styles
 	palette  Palette
 
 	// Dependencies
@@ -80,7 +81,7 @@ func WithKeyMap(km KeyMap) Option {
 }
 
 // WithStyles sets custom styles.
-func WithStyles(s Styles) Option {
+func WithStyles(s ui.Styles) Option {
 	return func(m *Model) { m.styles = s }
 }
 
@@ -88,12 +89,10 @@ func WithStyles(s Styles) Option {
 func New(opts ...Option) Model {
 	h := help.New()
 	h.FullSeparator = " • "
-	s := DefaultStyles()
 
 	m := Model{
-		keys:   DefaultKeyMap(),
-		help:   h,
-		styles: s,
+		keys: DefaultKeyMap(),
+		help: h,
 	}
 	m.WithOptions(opts...)
 

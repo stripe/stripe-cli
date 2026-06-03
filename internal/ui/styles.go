@@ -1,4 +1,5 @@
-package tui
+// Package ui provides shared visual styles and components for the TUI.
+package ui
 
 import (
 	"image/color"
@@ -20,6 +21,9 @@ type Styles struct {
 	LandingDotBright color.Color
 	LandingDotMid    color.Color
 	LandingDotDim    color.Color
+
+	// CLI output
+	Error lipgloss.Style
 }
 
 // DefaultStyles returns the default set of styles.
@@ -51,5 +55,8 @@ func DefaultStyles() Styles {
 		LandingDotBright: lipgloss.Color("#3c147c"),
 		LandingDotMid:    lipgloss.Color("#5f4cfe"),
 		LandingDotDim:    lipgloss.Color("#b1a7fd"),
+
+		Error: lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FF0000")),
 	}
 }
