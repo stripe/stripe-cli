@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,13 +17,18 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/markdown"
 )
 
+func stripANSI(s string) string {
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return re.ReplaceAllString(s, "")
+}
+
 func TestSearchCommand(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/_endpoint/search", r.URL.Path)
 		assert.Equal(t, "payment methods", r.URL.Query().Get("query"))
 
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"hits":[{"title":"Accept a payment","route":"/payments/accept-a-payment"},{"title":"Payment Element","route":"/payments/elements"}]}`)
+		fmt.Fprint(w, `{"hits":[{"title":"Accept a payment","url":"https://docs.stripe.com/payments/accept-a-payment"},{"title":"Payment Element","url":"https://docs.stripe.com/payments/elements"}]}`)
 	}))
 	defer server.Close()
 
@@ -40,10 +46,12 @@ func TestSearchCommand(t *testing.T) {
 
 	err = root.ExecuteContext(context.Background())
 	require.NoError(t, err)
-	assert.Contains(t, out.String(), "Accept a payment")
-	assert.Contains(t, out.String(), "/payments/accept-a-payment")
-	assert.Contains(t, out.String(), "Payment Element")
-	assert.Contains(t, out.String(), "/payments/elements")
+
+	plainOutput := stripANSI(out.String())
+	assert.Contains(t, plainOutput, "Accept a payment")
+	assert.Contains(t, plainOutput, "stripe docs /payments/accept-a-payment")
+	assert.Contains(t, plainOutput, "Payment Element")
+	assert.Contains(t, plainOutput, "stripe docs /payments/elements")
 }
 
 func TestSearchCommand_MissingQuery(t *testing.T) {
