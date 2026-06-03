@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/joelzwarrington/foam/palette"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
@@ -28,6 +30,11 @@ type statusMsg string
 type clearStatusMsg struct{}
 
 type quitAfterMouseResetMsg struct{}
+
+type pageReadyMsg struct {
+	page Page
+	doc  *markdown.Document
+}
 
 // Model is the top-level Bubble Tea model for the docs TUI.
 type Model struct {
@@ -111,7 +118,7 @@ func New(opts ...Option) Model {
 		m.shape = newParallelogram(paraWidth, paraHeight)
 	}
 
-	m.palette = newPalette(m.page)
+	m.palette = newPalette(m.page, m.client)
 
 	return m
 }
@@ -185,6 +192,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.palette.Dismiss()
 		return m, nil
 
+	case palette.SelectedMsg:
+		if hit, ok := msg.Item.(searchHit); ok {
+			m.palette.Dismiss()
+			client := m.client
+			renderer := m.renderer
+			return m, func() tea.Msg {
+				u, err := url.Parse(hit.url)
+				if err != nil {
+					return statusMsg("Invalid URL")
+				}
+				fetched, err := client.FetchPage(context.Background(), u)
+				if err != nil {
+					return statusMsg("Failed to load page")
+				}
+				doc, err := markdown.Parse(fetched.Content)
+				if err != nil {
+					return statusMsg("Failed to parse page")
+				}
+				_ = renderer
+				return pageReadyMsg{
+					page: Page{Content: fetched.Content, URL: fetched.URL},
+					doc:  doc,
+				}
+			}
+		}
+
+	case pageReadyMsg:
+		m.page = msg.page
+		m.doc = msg.doc
+		m.title = msg.doc.Title()
+		m.palette = newPalette(m.page, m.client)
+		if m.renderer != nil {
+			if out, err := m.renderer.Render(msg.doc); err == nil {
+				m.viewport.SetContent(out)
+			}
+		}
+		return m, nil
+
 	case statusMsg:
 		m.statusMessage = string(msg)
 		return m, tea.Tick(statusMessageTimeout, func(_ time.Time) tea.Msg {
@@ -226,6 +271,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			default:
 				m.palette.Model, cmd = m.palette.Update(msg)
+				m.palette.syncKeyMap()
 				return m, cmd
 			}
 		}
@@ -234,7 +280,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Palette):
 			focusCmd := m.palette.Open()
 			m.palette.Model, cmd = m.palette.Update(msg)
+			m.palette.syncKeyMap()
 			return m, tea.Batch(focusCmd, cmd)
+		case key.Matches(msg, m.keys.Search):
+			focusCmd := m.palette.Open()
+			m.palette.syncKeyMap()
+			return m, focusCmd
 		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			m.viewport.SetHeight(m.viewportHeight())
@@ -255,6 +306,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.palette.Visible() {
 		m.palette.Model, cmd = m.palette.Update(msg)
+		m.palette.syncKeyMap()
 		return m, cmd
 	}
 

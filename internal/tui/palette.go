@@ -3,16 +3,33 @@ package tui
 import (
 	"context"
 	"strings"
+	"time"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/joelzwarrington/foam/palette"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 )
 
-const paletteWidth = 60
+const (
+	paletteWidth       = 60
+	searchModeName     = "search"
+	searchModeDebounce = 300 * time.Millisecond
+)
 
 type closePaletteMsg struct{}
+
+// searchHit is a docs search result item displayed in the palette.
+type searchHit struct {
+	title string
+	url   string
+}
+
+func (h searchHit) FilterValue() string { return h.title }
+func (h searchHit) Title() string       { return h.title }
+func (h searchHit) Description() string { return h.url }
 
 // Palette wraps the foam palette model with visibility state and
 // overlay rendering.
@@ -21,7 +38,7 @@ type Palette struct {
 	visible bool
 }
 
-func newPalette(page Page) Palette {
+func newPalette(page Page, client *docs.Client) Palette {
 	commands := []palette.Item{
 		palette.Command{
 			ID:   "copy-markdown",
@@ -47,16 +64,49 @@ func newPalette(page Page) Palette {
 		},
 	}
 
+	commandsMode := palette.Mode{
+		Name:  "commands",
+		Match: func(s string) bool { return strings.HasPrefix(s, ">") },
+		Query: func(s string) string { return strings.TrimSpace(strings.TrimPrefix(s, ">")) },
+		Items: func(_ palette.Model, q string) []palette.Item {
+			return palette.FilterFuzzy(commands, q)
+		},
+	}
+
+	searchMode := palette.Mode{
+		Name:         searchModeName,
+		Placeholder:  "Search...",
+		EmptyMessage: "No results",
+		Debounce:     searchModeDebounce,
+		Match:        nil, // catch-all
+		Items: func(m palette.Model, _ string) []palette.Item {
+			return m.Results(searchModeName)
+		},
+		Search: func(ctx context.Context, q string) tea.Cmd {
+			if client == nil || q == "" {
+				return func() tea.Msg {
+					return palette.SearchResultMsg{Mode: searchModeName, Query: q}
+				}
+			}
+			return func() tea.Msg {
+				resp, err := client.Search(ctx, q)
+				if err != nil {
+					if ctx.Err() != nil {
+						return nil
+					}
+					return palette.SearchResultMsg{Mode: searchModeName, Query: q, Err: err}
+				}
+				items := make([]palette.Item, 0, len(resp.Hits))
+				for _, h := range resp.Hits {
+					items = append(items, searchHit{title: h.Title, url: h.URL})
+				}
+				return palette.SearchResultMsg{Mode: searchModeName, Query: q, Results: items}
+			}
+		},
+	}
+
 	p := palette.New(
-		palette.WithModes(
-			palette.Mode{
-				Name:  "commands",
-				Match: func(s string) bool { return strings.HasPrefix(s, ">") },
-				Query: func(s string) string { return strings.TrimSpace(strings.TrimPrefix(s, ">")) },
-				Items: func(_ palette.Model, q string) []palette.Item {
-					return palette.FilterFuzzy(commands, q)
-				},
-			}),
+		palette.WithModes(commandsMode, searchMode),
 		palette.WithPageSize(5),
 		palette.WithOnExecute(func(_ palette.Item) tea.Cmd {
 			return func() tea.Msg { return closePaletteMsg{} }
@@ -73,6 +123,20 @@ func (p Palette) Visible() bool { return p.visible }
 func (p *Palette) Open() tea.Cmd {
 	p.visible = true
 	return p.Focus()
+}
+
+// syncKeyMap updates the Execute binding label and enabled state to match
+// the active mode and whether an item is currently selected.
+func (p *Palette) syncKeyMap() {
+	label := "execute"
+	if p.Mode().Name == searchModeName {
+		label = "view"
+	}
+	p.KeyMap.Execute = key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", label),
+	)
+	p.KeyMap.Execute.SetEnabled(p.Selected() != nil)
 }
 
 // Dismiss hides the palette and resets its state.
