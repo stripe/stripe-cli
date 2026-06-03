@@ -185,13 +185,13 @@ func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, err
 	}
 	req.Header.Set("Accept", "application/json")
 
-	body, err := c.do(req)
+	res, err := c.do(req)
 	if err != nil {
 		return nil, err
 	}
 
 	var response SearchResponse
-	if err := json.Unmarshal(body, &response); err != nil {
+	if err := json.Unmarshal(res.body, &response); err != nil {
 		return nil, fmt.Errorf("search: unmarshal response: %w", err)
 	}
 	return &response, nil
