@@ -382,6 +382,16 @@ func TestSearch(t *testing.T) {
 			},
 		},
 		{
+			name:  "empty query returns empty response without calling server",
+			query: "",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				t.Error("server should not be called for empty query")
+			},
+			wantCheck: func(t *testing.T, got *SearchResponse) {
+				assert.Empty(t, got.Hits)
+			},
+		},
+		{
 			name:  "empty search response",
 			query: "no matches",
 			handler: func(w http.ResponseWriter, r *http.Request) {

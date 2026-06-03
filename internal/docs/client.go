@@ -180,6 +180,9 @@ func (c *Client) do(req *http.Request) (response, error) {
 //
 //	response, err := c.Search(ctx, "payment methods")
 func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, error) {
+	if query == "" {
+		return &SearchResponse{}, nil
+	}
 	u := c.baseURL.JoinPath("/_endpoint/search")
 	u.RawQuery = url.Values{"query": {query}}.Encode()
 
