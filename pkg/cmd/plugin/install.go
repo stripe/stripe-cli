@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -167,6 +168,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 	}
+	postinstall.PrintTips(os.Stdout, plugin.Shortname)
 
 	return nil
 }

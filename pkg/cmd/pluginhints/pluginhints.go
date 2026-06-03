@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
@@ -178,6 +179,7 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 
 	color := ansi.Color(p.stdout)
 	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
+	postinstall.PrintTips(p.stdout, p.name)
 
 	return nil
 }

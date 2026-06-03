@@ -138,6 +138,15 @@ func TestPromptInstall_EnterKey_InstallsPlugin(t *testing.T) {
 	assert.Contains(t, p.output(), "installation complete")
 }
 
+func TestPromptInstall_Directory_PrintsNextSteps(t *testing.T) {
+	p := newTestCmd("directory")
+	p.stdin = strings.NewReader("\n")
+	p.installFn = func(ctx context.Context) error { return nil }
+	err := p.promptInstall(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, p.output(), "directory@stripe.com")
+}
+
 func TestPromptInstall_OtherInput_CancelsInstall(t *testing.T) {
 	p := newTestCmd("generate", withPrivatePreview())
 	p.stdin = strings.NewReader("n\n")
