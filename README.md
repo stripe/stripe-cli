@@ -18,6 +18,20 @@ The Stripe CLI helps you build, test, and manage your Stripe integration right f
 
 Stripe CLI is available for macOS, Windows, and Linux for distros like Ubuntu, Debian, RedHat and CentOS.
 
+### npm (macOS, Linux, Windows)
+
+If you have Node.js >= 18 installed, you can install via `npm`:
+
+```sh
+npm install -g @stripe/cli
+```
+
+You can also directly execute commands via `npx`, although this won't add `stripe` to your `PATH`:
+
+```sh
+npx @stripe/cli login
+```
+
 ### macOS
 
 Stripe CLI is available on macOS via [Homebrew](https://brew.sh/):
@@ -97,7 +111,7 @@ docker build -t stripe-cli -f Dockerfile-cli .
 
 ```sh
 docker run --rm -it -v stripe-config://root/.config/stripe/ -v stripe-gpg://root/.gnupg/ -v stripe-pass://root/.password-store/ stripe-cli $command
-``` 
+```
 
 > For live mode requests append `--live` after `$command`.
 
