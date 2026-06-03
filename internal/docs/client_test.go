@@ -286,6 +286,82 @@ func TestFetchPage_ParamOrderNormalized(t *testing.T) {
 	assert.Equal(t, 1, cache.hits)
 }
 
+func TestSearch(t *testing.T) {
+	tests := []struct {
+		name      string
+		query     string
+		handler   http.HandlerFunc
+		wantErr   string
+		wantCheck func(t *testing.T, got *SearchResponse)
+	}{
+		{
+			name:  "success",
+			query: "payments search",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/_endpoint/search", r.URL.Path)
+				assert.Equal(t, "payments search", r.URL.Query().Get("query"))
+				assert.Equal(t, "application/json", r.Header.Get("Accept"))
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"hits":[{"title":"Accept a payment","url":"https://docs.stripe.com/payments/accept-a-payment"}]}`)
+			},
+			wantCheck: func(t *testing.T, got *SearchResponse) {
+				require.Len(t, got.Hits, 1)
+				assert.Equal(t, "Accept a payment", got.Hits[0].Title)
+				assert.Equal(t, "https://docs.stripe.com/payments/accept-a-payment", got.Hits[0].URL)
+			},
+		},
+		{
+			name:  "empty search response",
+			query: "no matches",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"hits":[]}`)
+			},
+			wantCheck: func(t *testing.T, got *SearchResponse) {
+				assert.Empty(t, got.Hits)
+			},
+		},
+		{
+			name:  "non-200 response returns error",
+			query: "fails",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadGateway)
+			},
+			wantErr: "returned 502",
+		},
+		{
+			name:  "invalid json returns error",
+			query: "bad json",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"hits":[`)
+			},
+			wantErr: "search: unmarshal response",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(tt.handler)
+			defer server.Close()
+
+			client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
+			got, err := client.Search(context.Background(), tt.query)
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.wantCheck != nil {
+				tt.wantCheck(t, got)
+			}
+		})
+	}
+}
+
 // evictingMockCache always returns a miss, simulating TTL expiry.
 type evictingMockCache struct{}
 
