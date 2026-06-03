@@ -3,16 +3,51 @@ package docs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// capturingHandler collects slog records for assertions.
+type capturingHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *capturingHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+
+func (h *capturingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.records = append(h.records, r)
+	return nil
+}
+
+func (h *capturingHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+func (h *capturingHandler) WithGroup(_ string) slog.Handler      { return h }
+
+func (h *capturingHandler) maxLevel() (slog.Level, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.records) == 0 {
+		return 0, false
+	}
+	max := h.records[0].Level
+	for _, r := range h.records[1:] {
+		if r.Level > max {
+			max = r.Level
+		}
+	}
+	return max, true
+}
 
 type mockCache struct {
 	data map[string][]byte
@@ -195,6 +230,42 @@ func TestFetchPage_ContextCanceled(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "context canceled")
+}
+
+func TestFetchPage_ContextCanceled_LoggedAtDebug(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second)
+	}))
+	defer server.Close()
+
+	h := &capturingHandler{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithLogger(slog.New(h)))
+	_, err := client.FetchPage(ctx, &url.URL{Path: "/slow"})
+	require.Error(t, err)
+
+	if level, ok := h.maxLevel(); ok {
+		assert.Less(t, level, slog.LevelError, "context cancellation must not produce an error-level log")
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	var found bool
+	for _, r := range h.records {
+		if r.Level != slog.LevelDebug {
+			continue
+		}
+		r.Attrs(func(a slog.Attr) bool {
+			if a.Key == "cause" {
+				found = true
+				return false
+			}
+			return true
+		})
+	}
+	assert.True(t, found, "expected a debug log with a cause attribute")
 }
 
 func TestFetchPage_CacheHit(t *testing.T) {
