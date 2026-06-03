@@ -29,9 +29,10 @@ type RootCommand struct {
 
 	cfg *cliconfig.Config
 
-	client   *docs.Client
-	renderer markdown.Renderer
-	logger   *slog.Logger
+	client       *docs.Client
+	renderer     markdown.Renderer
+	rendererOpts []markdown.RendererOption
+	logger       *slog.Logger
 
 	version string
 	noPager bool
@@ -150,6 +151,7 @@ func (r *RootCommand) initRenderer() {
 			r.noPager = true
 		}
 	}
+	r.rendererOpts = opts
 	r.renderer, _ = markdown.NewRenderer(opts...)
 }
 
@@ -240,7 +242,7 @@ func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
 	if r.useTUI(cmd) {
 		opts := []tui.Option{
 			tui.WithClient(r.client),
-			tui.WithRenderer(r.renderer),
+			tui.WithRendererOptions(r.rendererOpts...),
 			tui.WithStyles(ui.DefaultStyles()),
 		}
 		if page != nil {
