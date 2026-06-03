@@ -291,12 +291,12 @@ func (m Model) viewportHeight() int {
 }
 
 func (m Model) status() string {
-	bar := m.styles.StatusBar
+	bar := m.styles.Bar
 	if m.statusMessage != "" {
-		bar = m.styles.StatusMessage
+		bar = m.styles.Success
 	}
 
-	title := m.styles.StatusTitle.Render("Stripe")
+	title := m.styles.Brand.Render("Stripe")
 
 	name := ""
 	if m.statusMessage != "" {
@@ -306,7 +306,7 @@ func (m Model) status() string {
 	}
 
 	percent := bar.Padding(0, 1).Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	helpPill := m.styles.StatusHelp.Render("? help")
+	helpPill := m.styles.Help.Render("? help")
 
 	left := title + name
 	right := percent + helpPill
@@ -321,10 +321,10 @@ func (m Model) status() string {
 // Landing animation
 
 func (m Model) landing() string {
-	logo := m.shape.view(m.styles.LandingDotBright, m.styles.LandingDotMid, m.styles.LandingDotDim)
-	title := m.styles.LandingTitle.Render("stripe docs")
-	subtitle := m.styles.LandingSubtitle.Render("Search, browse, and read Stripe documentation from the terminal")
-	hint := m.styles.LandingHint.Render("stripe docs <path>  to get started")
+	logo := m.shape.view(m.styles.DotBright, m.styles.DotMid, m.styles.DotDim)
+	title := m.styles.Title.Render("stripe docs")
+	subtitle := m.styles.Description.Render("Search, browse, and read Stripe documentation from the terminal")
+	hint := m.styles.Muted.Render("stripe docs <path>  to get started")
 
 	block := lipgloss.JoinVertical(
 		lipgloss.Center,

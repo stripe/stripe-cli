@@ -1,18 +1,29 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/list"
 	"github.com/spf13/cobra"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/spinner"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
+	"golang.org/x/term"
 )
 
+func isStdoutTTY(cmd *cobra.Command) bool {
+	f, ok := cmd.OutOrStdout().(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}
+
 func (r *RootCommand) newSearchCommand() *cobra.Command {
-	searchCmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search on docs.stripe.com from the terminal",
 		Example: `  stripe docs search "Payment methods"
@@ -20,7 +31,6 @@ func (r *RootCommand) newSearchCommand() *cobra.Command {
 		Args: cobra.ArbitraryArgs,
 		RunE: r.runSearch,
 	}
-	return searchCmd
 }
 
 func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
@@ -29,35 +39,55 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	}
 
 	query := args[0]
-	noPager, err := cmd.Flags().GetBool("no-pager")
-	if err != nil {
-		return fmt.Errorf("search: getting no-pager flag: %w", err)
-	}
-	w := pager.New(cmd.OutOrStdout(), !noPager)
-	defer func() { _ = w.Close() }()
-	return r.search(cmd.Context(), w, query)
-}
+	styles := ui.DefaultStyles()
 
-func (r *RootCommand) search(ctx context.Context, w io.Writer, query string) error {
-	if r.client == nil {
-		return fmt.Errorf("search: docs client not initialized")
-	}
+	checkmark := styles.SuccessText.Render("✓")
+	disabled := agent.Detect() || !isStdoutTTY(cmd)
 
-	response, err := r.client.Search(ctx, query)
+	var response *docs.SearchResponse
+	err := spinner.New().
+		WithLabel("Searching Stripe documentation...").
+		WithFinalMsg(checkmark + " Searching Stripe documentation...\n").
+		WithOutput(cmd.ErrOrStderr()).
+		WithDisabled(disabled).
+		Run(func() error {
+			var searchErr error
+			response, searchErr = r.client.Search(cmd.Context(), query)
+			if searchErr != nil {
+				return fmt.Errorf("search: %w", searchErr)
+			}
+			return nil
+		})
 	if err != nil {
 		return fmt.Errorf("search: %w", err)
 	}
 
-	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9D97FF"))
-	routeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#4A9EFF"))
+	w := pager.New(cmd.OutOrStdout(), !r.noPager)
+	defer func() { _ = w.Close() }()
+	return r.renderSearch(w, response)
+}
+
+func (r *RootCommand) renderSearch(w io.Writer, response *docs.SearchResponse) error {
+	styles := ui.DefaultStyles()
+	colorOff := r.color() == "off"
+
+	l := list.New().
+		Enumerator(list.Bullet).
+		ItemStyle(lipgloss.NewStyle().MarginBottom(1))
 	for _, hit := range response.Hits {
 		route := strings.TrimPrefix(hit.URL, "https://docs.stripe.com")
-		lineOutput := fmt.Sprintf("%s\n  %s\n\n", titleStyle.Render(hit.Title), routeStyle.Render("stripe docs "+route))
-
-		if _, err := fmt.Fprint(w, lineOutput); err != nil {
-			return fmt.Errorf("search: writing output: %w", err)
+		cmdStr := "stripe docs " + route
+		if colorOff {
+			l.Item(hit.Title + "\n" + cmdStr)
+		} else {
+			title := styles.Title.Render(hit.Title)
+			routeStr := styles.Muted.Render(cmdStr)
+			l.Item(title + "\n" + routeStr)
 		}
 	}
 
+	if _, err := fmt.Fprintln(w, l.String()); err != nil {
+		return fmt.Errorf("search: writing output: %w", err)
+	}
 	return nil
 }
