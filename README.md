@@ -20,7 +20,7 @@ Stripe CLI is available for macOS, Windows, and Linux for distros like Ubuntu, D
 
 ### npm (macOS, Linux, Windows)
 
-If you have Node.js >= 18 installed, you can install via npm:
+If you have Node.js >= 18 installed, you can install via `npm`:
 
 ```sh
 npm install -g @stripe/cli
