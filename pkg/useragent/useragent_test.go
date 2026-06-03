@@ -30,7 +30,8 @@ func TestDetectInstallMethod(t *testing.T) {
 		hasStat  bool
 		expected string
 	}{
-		{"npm via env", "npm", "/any/path", false, false, "npm"},
+		{"npm_global via env", "npm_global", "/any/path", false, false, "npm_global"},
+		{"npm_run via env", "npm_run", "/any/path", false, false, "npm_run"},
 		{"npx via env", "npx", "/any/path", false, false, "npx"},
 		{"homebrew cellar", "", "/opt/homebrew/Cellar/stripe/1.0/bin/stripe", false, false, "homebrew"},
 		{"homebrew usr local cellar", "", "/usr/local/Cellar/stripe/1.0/bin/stripe", false, false, "homebrew"},

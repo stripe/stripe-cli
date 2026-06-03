@@ -29,7 +29,7 @@ func GetEncodedUserAgent() string {
 }
 
 // DetectInstallMethod detects how the CLI was installed.
-// Returns one of: "npm", "npx", "homebrew", "scoop", "apt", or "unknown".
+// Returns one of: "npm_global", "npm_run", "npx", "homebrew", "scoop", "apt", or "unknown".
 func DetectInstallMethod(
 	getEnv func(string) string,
 	getExecutable func() (string, error),

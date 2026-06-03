@@ -20,9 +20,21 @@ try {
   binPath = path.join(__dirname, '..', 'vendor', 'bin', platform.bin);
 }
 
-const isNpx = !!process.env.npm_config_user_agent;
+// Detect invocation method using npm-injected env vars:
+// - npm_config_user_agent is set by npm/npx at invocation time but never by a direct shell exec,
+//   so its absence means the user ran `stripe` directly (global install, PATH symlink).
+// - npm_lifecycle_event is set to the script name during `npm run` but not by npx,
+//   so its presence distinguishes `npm run` scripts from a bare `npx @stripe/cli` call.
+let installMethod;
+if (!process.env.npm_config_user_agent) {
+  installMethod = 'npm_global';
+} else if (process.env.npm_lifecycle_event) {
+  installMethod = 'npm_run';
+} else {
+  installMethod = 'npx';
+}
 const result = spawnSync(binPath, process.argv.slice(2), {
   stdio: 'inherit',
-  env: { ...process.env, STRIPE_INSTALL_METHOD: isNpx ? 'npx' : 'npm' },
+  env: { ...process.env, STRIPE_INSTALL_METHOD: installMethod },
 });
 process.exit(result.status ?? 1);
