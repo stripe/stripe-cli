@@ -26,7 +26,7 @@ func newPalette(page Page) Palette {
 		palette.Command{
 			ID:   "copy-markdown",
 			Name: "Copy page as Markdown",
-			Desc: "Copy the raw markdown source to clipboard",
+			Desc: "Copy the raw Markdown source to clipboard",
 			Run: func() tea.Cmd {
 				return func() tea.Msg {
 					_ = page.Copy()
