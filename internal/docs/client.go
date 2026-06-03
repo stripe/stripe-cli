@@ -33,7 +33,7 @@ type SearchResponse struct {
 // Hit represents a single search hit from docs.stripe.com.
 type Hit struct {
 	Title string `json:"title"`
-	Route string `json:"route"`
+	Url   string `json:"url"`
 }
 
 // Client fetches documentation pages and calls endpoints on docs.stripe.com.
@@ -168,14 +168,10 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 }
 
 func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, error) {
-	ref := &url.URL{Path: "/_endpoint/search"}
-	resolvedURL := c.baseURL.ResolveReference(ref)
-	params := resolvedURL.Query()
-	params.Set("query", query)
-	resolvedURL.RawQuery = params.Encode()
+	u := c.baseURL.JoinPath("/_endpoint/search")
+	u.RawQuery = url.Values{"query": {query}}.Encode()
 
-	rawURL := resolvedURL.String()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("search: build request: %w", err)
 	}

@@ -67,7 +67,7 @@ func New() *RootCommand {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "stripe docs version %s\n", r.version)
 		},
 	})
-	r.cmd.AddCommand(r.newSearchCommand().cmd)
+	r.cmd.AddCommand(r.newSearchCommand())
 	return r
 }
 

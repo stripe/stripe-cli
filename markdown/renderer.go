@@ -3,12 +3,10 @@ package markdown
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"charm.land/glamour/v2"
 	"charm.land/glamour/v2/ansi"
 	"charm.land/lipgloss/v2"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 )
 
 const (
@@ -18,7 +16,6 @@ const (
 // Renderer renders a Document to a terminal-friendly string.
 type Renderer interface {
 	Render(doc *Document) (string, error)
-	RenderSearchResponse(response *docs.SearchResponse) (string, error)
 }
 
 // WithStyle sets a built-in glamour style by name (e.g. "dark", "light", "dracula", "notty").
@@ -79,27 +76,6 @@ func (r *glamourRenderer) Render(doc *Document) (string, error) {
 	out, err := r.tr.Render(string(doc.Source))
 	if err != nil {
 		return "", fmt.Errorf("rendering markdown: %w", err)
-	}
-	return out, nil
-}
-
-func formatSearchResponse(response *docs.SearchResponse) string {
-	var md strings.Builder
-	for _, hit := range response.Hits {
-		fmt.Fprintf(&md, "- [%s](%s)\n", hit.Title, hit.Route)
-	}
-	return md.String()
-}
-
-func (r *glamourRenderer) RenderSearchResponse(response *docs.SearchResponse) (string, error) {
-	if len(response.Hits) == 0 {
-		r.tr.Render("No results found")
-		return "", nil
-	}
-
-	out, err := r.tr.Render(formatSearchResponse(response))
-	if err != nil {
-		return "", fmt.Errorf("rendering search response: %w", err)
 	}
 	return out, nil
 }

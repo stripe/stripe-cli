@@ -4,33 +4,26 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
 )
 
-type searchCommand struct {
-	cmd  *cobra.Command
-	root *RootCommand
-}
-
-func (r *RootCommand) newSearchCommand() *searchCommand {
-	searchCmd := &searchCommand{
-		root: r,
-	}
-
-	searchCmd.cmd = &cobra.Command{
+func (r *RootCommand) newSearchCommand() *cobra.Command {
+	searchCmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search on docs.stripe.com from the terminal",
 		Example: `  stripe docs search "Payment methods"
   stripe docs search "API keys"`,
 		Args: cobra.ArbitraryArgs,
-		RunE: searchCmd.run,
+		RunE: r.runSearch,
 	}
 	return searchCmd
 }
 
-func (s *searchCommand) run(cmd *cobra.Command, args []string) error {
+func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("search: missing search query argument")
 	}
@@ -42,29 +35,28 @@ func (s *searchCommand) run(cmd *cobra.Command, args []string) error {
 	}
 	w := pager.New(cmd.OutOrStdout(), !noPager)
 	defer func() { _ = w.Close() }()
-	return s.search(cmd.Context(), w, query)
+	return r.search(cmd.Context(), w, query)
 }
 
-func (s *searchCommand) search(ctx context.Context, w io.Writer, query string) error {
-	if s.root.client == nil {
+func (r *RootCommand) search(ctx context.Context, w io.Writer, query string) error {
+	if r.client == nil {
 		return fmt.Errorf("search: docs client not initialized")
 	}
-	if s.root.renderer == nil {
+	if r.renderer == nil {
 		return fmt.Errorf("search: markdown renderer not initialized")
 	}
 
-	response, err := s.root.client.Search(ctx, query)
+	response, err := r.client.Search(ctx, query)
 	if err != nil {
 		return fmt.Errorf("search: %w", err)
 	}
 
-	out, err := s.root.renderer.RenderSearchResponse(response)
-	if err != nil {
-		return fmt.Errorf("search: rendering search response: %w", err)
+	titleStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9D97FF"))
+	routeStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#4A9EFF"))
+	for _, hit := range response.Hits {
+		route := strings.TrimPrefix(hit.Url, "https://docs.stripe.com")
+		fmt.Fprintf(w, "%s\n  %s\n\n", titleStyle.Render(hit.Title), routeStyle.Render("stripe docs "+route))
 	}
 
-	if _, err = fmt.Fprint(w, out); err != nil {
-		return fmt.Errorf("search: writing output: %w", err)
-	}
 	return nil
 }
