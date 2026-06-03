@@ -20,5 +20,9 @@ try {
   binPath = path.join(__dirname, '..', 'vendor', 'bin', platform.bin);
 }
 
-const result = spawnSync(binPath, process.argv.slice(2), { stdio: 'inherit' });
+const isNpx = __dirname.includes('_npx');
+const result = spawnSync(binPath, process.argv.slice(2), {
+  stdio: 'inherit',
+  env: { ...process.env, STRIPE_INSTALL_METHOD: isNpx ? 'npx' : 'npm' },
+});
 process.exit(result.status ?? 1);

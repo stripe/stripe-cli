@@ -47,6 +47,7 @@ type CLIAnalyticsEventMetadata struct {
 	OS                string `url:"os"`                    // the OS of the system
 	GeneratedResource bool   `url:"generated_resource"`    // whether or not this was a generated resource
 	AIAgent           string `url:"ai_agent,omitempty"`    // the AI coding agent that invoked the CLI, if any
+	InstallMethod     string `url:"install_method,omitempty"` // how the CLI was installed
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
@@ -77,6 +78,11 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
 		AIAgent:      useragent.DetectAIAgent(os.Getenv),
+		InstallMethod: useragent.DetectInstallMethod(
+			os.Getenv,
+			os.Executable,
+			func(p string) error { _, err := os.Stat(p); return err },
+		),
 	}
 }
 

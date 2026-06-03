@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -24,6 +26,34 @@ func GetEncodedStripeUserAgent() string {
 // the `User-Agent` HTTP header.
 func GetEncodedUserAgent() string {
 	return encodedUserAgent
+}
+
+// DetectInstallMethod detects how the CLI was installed.
+// Returns one of: "npm", "npx", "homebrew", "scoop", "apt", or "unknown".
+func DetectInstallMethod(
+	getEnv func(string) string,
+	getExecutable func() (string, error),
+	statFile func(string) error,
+) string {
+	if method := getEnv("STRIPE_INSTALL_METHOD"); method != "" {
+		return method
+	}
+
+	if exe, err := getExecutable(); err == nil {
+		exeLower := strings.ToLower(filepath.ToSlash(exe))
+		if strings.Contains(exeLower, "/cellar/") || strings.Contains(exeLower, "/homebrew/") {
+			return "homebrew"
+		}
+		if strings.Contains(exeLower, "/scoop/apps/") {
+			return "scoop"
+		}
+	}
+
+	if err := statFile("/var/lib/dpkg/info/stripe.list"); err == nil {
+		return "apt"
+	}
+
+	return "unknown"
 }
 
 // DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
