@@ -33,10 +33,18 @@ type Styles struct {
 	SuccessText lipgloss.Style
 
 	// Status bar
-	Bar     lipgloss.Style
-	Brand   lipgloss.Style
-	Success lipgloss.Style
-	Help    lipgloss.Style
+	Bar        lipgloss.Style
+	Brand      lipgloss.Style
+	Success    lipgloss.Style
+	Help       lipgloss.Style
+	StatusHelp lipgloss.Style
+
+	// Landing page
+	LandingTitle     lipgloss.Style
+	LandingSubtitle  lipgloss.Style
+	LandingDotBright color.Color
+	LandingDotMid    color.Color
+	LandingDotDim    color.Color
 
 	// Logo animation dot colors
 	DotBright color.Color
@@ -53,10 +61,17 @@ func DefaultStyles() Styles {
 		Error:       lipgloss.NewStyle().Foreground(danger),
 		SuccessText: lipgloss.NewStyle().Foreground(success),
 
-		Bar:     lipgloss.NewStyle().Background(surface).Foreground(text),
-		Brand:   lipgloss.NewStyle().Bold(true).Background(accent).Foreground(text).Padding(0, 1),
-		Success: lipgloss.NewStyle().Background(success).Foreground(text),
-		Help:    lipgloss.NewStyle().Background(overlay).Foreground(text).Padding(0, 1),
+		Bar:        lipgloss.NewStyle().Background(surface).Foreground(text),
+		Brand:      lipgloss.NewStyle().Bold(true).Background(accent).Foreground(text).Padding(0, 1),
+		Success:    lipgloss.NewStyle().Background(success).Foreground(text),
+		Help:       lipgloss.NewStyle().Background(overlay).Foreground(text).Padding(0, 1),
+		StatusHelp: lipgloss.NewStyle().Background(overlay).Foreground(text).Padding(0, 1),
+
+		LandingTitle:     lipgloss.NewStyle().Bold(true).Foreground(primary),
+		LandingSubtitle:  lipgloss.NewStyle().Foreground(subdued),
+		LandingDotBright: dotBright,
+		LandingDotMid:    dotMid,
+		LandingDotDim:    dotDim,
 
 		DotBright: dotBright,
 		DotMid:    dotMid,

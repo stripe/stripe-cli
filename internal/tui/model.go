@@ -14,6 +14,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/joelzwarrington/foam/palette"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/browser"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
@@ -35,6 +36,15 @@ type quitAfterMouseResetMsg struct{}
 type pageReadyMsg struct {
 	page Page
 	doc  *markdown.Document
+}
+
+type pageLoadedMsg struct {
+	page Page
+	doc  *markdown.Document
+}
+
+type pageLoadErrMsg struct {
+	err error
 }
 
 // Model is the top-level Bubble Tea model for the docs TUI.
@@ -61,6 +71,7 @@ type Model struct {
 	width         int
 	height        int
 	ready         bool
+	loading       bool
 	statusMessage string
 	quitting      bool
 
@@ -132,8 +143,16 @@ func New(opts ...Option) Model {
 	}
 
 	m.palette = newPalette(m.page, m.client)
+	m.setScrollEnabled(!m.isLanding())
 
 	return m
+}
+
+func (m *Model) setScrollEnabled(enabled bool) {
+	m.keys.Up.SetEnabled(enabled)
+	m.keys.Down.SetEnabled(enabled)
+	m.keys.PageUp.SetEnabled(enabled)
+	m.keys.PageDown.SetEnabled(enabled)
 }
 
 // WithOptions applies the given options to the Model.
@@ -204,6 +223,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case pageLoadedMsg:
+		m.loading = false
+		m.page = msg.page
+		m.doc = msg.doc
+		m.title = msg.doc.Title()
+		m.palette = newPalette(m.page, m.client)
+		m.setScrollEnabled(true)
+		if m.ready && m.renderer != nil {
+			if out, err := m.renderer.Render(msg.doc); err == nil {
+				m.viewport.SetContent(out)
+			}
+		}
+		return m, nil
+
+	case pageLoadErrMsg:
+		m.loading = false
+		return m, func() tea.Msg { return statusMsg("Error loading page") }
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -318,6 +355,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
+		case key.Matches(msg, m.keys.Enter):
+			if m.isLanding() && !m.loading {
+				m.loading = true
+				return m, m.fetchPageCmd("/")
+			}
 		case key.Matches(msg, m.keys.Palette):
 			focusCmd := m.palette.Open()
 			m.palette.Model, cmd = m.palette.Update(msg)
@@ -341,7 +383,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.PageDown):
 			m.viewport.PageDown()
 		case key.Matches(msg, m.keys.OpenInBrowser):
-			_ = m.page.Open(context.Background())
+			if m.isLanding() {
+				_ = browser.Open(context.Background(), &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/"})
+			} else {
+				_ = m.page.Open(context.Background())
+			}
 		}
 	}
 
@@ -421,11 +467,21 @@ func (m Model) status() string {
 		name = bar.Padding(0, 1).Render(m.title)
 	}
 
-	percent := bar.Padding(0, 1).Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	helpPill := m.styles.Help.Render("? help")
+	var rightLabel string
+	if m.isLanding() {
+		if m.loading {
+			rightLabel = "Loading..."
+		} else {
+			rightLabel = "↵ browse"
+		}
+	} else {
+		rightLabel = fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
+	}
+	rightPill := bar.Padding(0, 1).Render(rightLabel)
+	helpPill := m.styles.StatusHelp.Render("? help")
 
 	left := title + name
-	right := percent + helpPill
+	right := rightPill + helpPill
 
 	gap := max(0, m.width-lipgloss.Width(left)-lipgloss.Width(right))
 	fill := lipgloss.PlaceHorizontal(gap, lipgloss.Left, "",
@@ -460,13 +516,30 @@ func (m Model) rerenderCmd() tea.Cmd {
 	}
 }
 
+func (m Model) fetchPageCmd(path string) tea.Cmd {
+	return func() tea.Msg {
+		ref := &url.URL{Path: path}
+		p, err := m.client.FetchPage(context.Background(), ref)
+		if err != nil {
+			return pageLoadErrMsg{err: err}
+		}
+		doc, err := markdown.Parse(p.Content)
+		if err != nil {
+			return pageLoadErrMsg{err: err}
+		}
+		return pageLoadedMsg{
+			page: Page{Content: p.Content, URL: p.URL},
+			doc:  doc,
+		}
+	}
+}
+
 // Landing animation
 
 func (m Model) landing() string {
-	logo := m.shape.view(m.styles.DotBright, m.styles.DotMid, m.styles.DotDim)
-	title := m.styles.Title.Render("stripe docs")
-	subtitle := m.styles.Description.Render("Search, browse, and read Stripe documentation from the terminal")
-	hint := m.styles.Muted.Render("stripe docs <path>  to get started")
+	logo := m.shape.view(m.styles.LandingDotBright, m.styles.LandingDotMid, m.styles.LandingDotDim)
+	title := m.styles.LandingTitle.Render("stripe docs")
+	subtitle := m.styles.LandingSubtitle.Render("Search, browse, and read Stripe documentation from the terminal")
 
 	block := lipgloss.JoinVertical(
 		lipgloss.Center,
@@ -474,9 +547,19 @@ func (m Model) landing() string {
 		"",
 		title,
 		subtitle,
-		"",
-		hint,
 	)
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, block)
+	bodyHeight := m.height - statusBarHeight
+	if m.help.ShowAll {
+		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
+		bodyHeight -= strings.Count(helpView, "\n") + 1
+	}
+
+	out := lipgloss.Place(m.width, max(1, bodyHeight), lipgloss.Center, lipgloss.Center, block)
+	out += "\n" + m.status()
+	if m.help.ShowAll {
+		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
+		out += "\n" + helpView
+	}
+	return out
 }

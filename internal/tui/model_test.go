@@ -97,8 +97,17 @@ func TestPalette_OpenInBrowser_ExecutesCommand(t *testing.T) {
 
 func TestNew_Defaults(t *testing.T) {
 	m := New()
-	assert.Equal(t, DefaultKeyMap(), m.keys)
 	assert.False(t, m.ready)
+	// Scroll bindings are disabled on the landing screen.
+	assert.False(t, m.keys.Up.Enabled())
+	assert.False(t, m.keys.Down.Enabled())
+	assert.False(t, m.keys.PageUp.Enabled())
+	assert.False(t, m.keys.PageDown.Enabled())
+	// Non-scroll bindings are always enabled.
+	assert.True(t, m.keys.Quit.Enabled())
+	assert.True(t, m.keys.Help.Enabled())
+	assert.True(t, m.keys.Palette.Enabled())
+	assert.True(t, m.keys.OpenInBrowser.Enabled())
 }
 
 func TestNew_WithOptions(t *testing.T) {
