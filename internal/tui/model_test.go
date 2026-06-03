@@ -157,12 +157,26 @@ func TestUpdate_WindowSizeMsg_RendersDocument(t *testing.T) {
 func TestUpdate_QuitKey(t *testing.T) {
 	m := New()
 	// Initialize viewport first
-	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
 
-	result, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
-	_ = result
+	result, cmd := model.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	model = result.(Model)
 
-	assert.NotNil(t, cmd)
+	require.NotNil(t, cmd)
+	assert.True(t, model.quitting)
+}
+
+func TestUpdate_QuitCtrlC(t *testing.T) {
+	m := New()
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	result, cmd := model.Update(tea.KeyPressMsg{Text: "ctrl+c"})
+	model = result.(Model)
+
+	require.NotNil(t, cmd)
+	assert.True(t, model.quitting)
 }
 
 func TestUpdate_ScrollKeys(t *testing.T) {

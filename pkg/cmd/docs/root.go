@@ -249,7 +249,7 @@ func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
 				URL:     page.URL,
 			}))
 		}
-		p := tea.NewProgram(tui.New(opts...))
+		p := tea.NewProgram(tui.New(opts...), tea.WithFilter(tui.NewMouseEventFilter()))
 		if _, err := p.Run(); err != nil {
 			return fmt.Errorf("running TUI: %w", err)
 		}
