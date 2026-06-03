@@ -20,7 +20,7 @@ try {
   binPath = path.join(__dirname, '..', 'vendor', 'bin', platform.bin);
 }
 
-const isNpx = __dirname.includes('_npx');
+const isNpx = !!process.env.npm_config_user_agent;
 const result = spawnSync(binPath, process.argv.slice(2), {
   stdio: 'inherit',
   env: { ...process.env, STRIPE_INSTALL_METHOD: isNpx ? 'npx' : 'npm' },
