@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"time"
 
@@ -11,12 +12,15 @@ import (
 
 	"github.com/joelzwarrington/foam/palette"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 )
 
 const (
 	paletteWidth       = 60
 	searchModeName     = "search"
 	searchModeDebounce = 300 * time.Millisecond
+	referenceModeName  = "reference"
+	docsHost           = "docs.stripe.com"
 )
 
 type closePaletteMsg struct{}
@@ -30,11 +34,30 @@ type searchHit struct {
 func (h searchHit) FilterValue() string { return h.title }
 func (h searchHit) Title() string       { return h.title }
 func (h searchHit) Description() string {
-	const docsOrigin = "https://docs.stripe.com"
+	const docsOrigin = "https://" + docsHost
 	if strings.HasPrefix(h.url, docsOrigin) {
 		return h.url[len(docsOrigin):]
 	}
 	return h.url
+}
+
+// reference is a link extracted from the current document.
+type reference struct {
+	title    string
+	url      *url.URL
+	external bool
+}
+
+func (r reference) FilterValue() string { return r.title + " " + r.url.Path }
+func (r reference) Title() string       { return r.title }
+func (r reference) Description() string {
+	if r.url.Host == docsHost {
+		return r.url.RequestURI()
+	}
+	if r.url.Host != "" {
+		return r.url.Host + r.url.RequestURI()
+	}
+	return r.url.String()
 }
 
 // Palette wraps the foam palette model with visibility state and
@@ -44,7 +67,7 @@ type Palette struct {
 	visible bool
 }
 
-func newPalette(page Page, client *docs.Client) Palette {
+func newPalette(page Page, doc *markdown.Document, client *docs.Client) Palette {
 	commands := []palette.Item{
 		palette.Command{
 			ID:   "copy-markdown",
@@ -76,6 +99,23 @@ func newPalette(page Page, client *docs.Client) Palette {
 		Query: func(s string) string { return strings.TrimSpace(strings.TrimPrefix(s, ">")) },
 		Items: func(_ palette.Model, q string) []palette.Item {
 			return palette.FilterFuzzy(commands, q)
+		},
+	}
+
+	var refs []palette.Item
+	if doc != nil {
+		for _, r := range doc.References() {
+			refs = append(refs, reference{title: r.Title, url: r.URL, external: r.External})
+		}
+	}
+	referenceMode := palette.Mode{
+		Name:         referenceModeName,
+		Placeholder:  "References...",
+		EmptyMessage: "No references",
+		Match:        func(s string) bool { return strings.HasPrefix(s, "@") },
+		Query:        func(s string) string { return strings.TrimSpace(strings.TrimPrefix(s, "@")) },
+		Items: func(_ palette.Model, q string) []palette.Item {
+			return palette.FilterFuzzy(refs, q)
 		},
 	}
 
@@ -112,7 +152,7 @@ func newPalette(page Page, client *docs.Client) Palette {
 	}
 
 	p := palette.New(
-		palette.WithModes(commandsMode, searchMode),
+		palette.WithModes(commandsMode, referenceMode, searchMode),
 		palette.WithPageSize(5),
 		palette.WithOnExecute(func(_ palette.Item) tea.Cmd {
 			return func() tea.Msg { return closePaletteMsg{} }
@@ -135,7 +175,7 @@ func (p *Palette) Open() tea.Cmd {
 // the active mode and whether an item is currently selected.
 func (p *Palette) syncKeyMap() {
 	label := "execute"
-	if p.Mode().Name == searchModeName {
+	if p.Mode().Name == searchModeName || p.Mode().Name == referenceModeName {
 		label = "view"
 	}
 	p.KeyMap.Execute = key.NewBinding(

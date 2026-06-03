@@ -14,6 +14,7 @@ type KeyMap struct {
 	Help          key.Binding
 	Palette       key.Binding
 	Search        key.Binding
+	Reference     key.Binding
 	OpenInBrowser key.Binding
 	Enter         key.Binding
 }
@@ -29,7 +30,7 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down},
 		{k.PageUp, k.PageDown},
 		{k.OpenInBrowser},
-		{k.Search, k.Palette},
+		{k.Search, k.Palette, k.Reference},
 		{k.Quit},
 	}
 }
@@ -68,6 +69,10 @@ func DefaultKeyMap() KeyMap {
 		Search: key.NewBinding(
 			key.WithKeys("/"),
 			key.WithHelp("/", "search"),
+		),
+		Reference: key.NewBinding(
+			key.WithKeys("@"),
+			key.WithHelp("@", "references"),
 		),
 		OpenInBrowser: key.NewBinding(
 			key.WithKeys("o"),

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os/exec"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli-docs-plugin/internal/browser"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
 )
 
 func stubBrowser(t *testing.T) *[]*exec.Cmd {
@@ -22,6 +24,19 @@ func stubBrowser(t *testing.T) *[]*exec.Cmd {
 	}
 	t.Cleanup(func() { browser.StartCommand = original })
 	return &calls
+}
+
+// docWithReferences builds a minimal markdown.Document containing a link to each of the given URLs.
+func docWithReferences(urls ...*url.URL) *markdown.Document {
+	src := "# Title\n\n"
+	for i, u := range urls {
+		src += fmt.Sprintf("[Link %d](%s)\n\n", i, u.String())
+	}
+	doc, err := markdown.Parse([]byte(src))
+	if err != nil {
+		panic(err)
+	}
+	return doc
 }
 
 func TestPage_Open_NilURL(t *testing.T) {
