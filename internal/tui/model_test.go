@@ -258,6 +258,18 @@ func TestUpdate_PaletteDismissesOnEsc(t *testing.T) {
 	assert.False(t, model.palette.Visible())
 }
 
+func TestUpdate_PaletteQuitsOnCtrlC(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model := result.(Model)
+	assert.True(t, model.palette.Visible())
+
+	_, cmd := model.Update(tea.KeyPressMsg{Code: 'c', Text: "c", Mod: tea.ModCtrl})
+	assert.NotNil(t, cmd)
+}
+
 func TestUpdate_PaletteGatesInput(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)

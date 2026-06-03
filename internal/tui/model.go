@@ -198,12 +198,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		if m.palette.Visible() {
-			if msg.String() == "esc" {
+			switch {
+			case key.Matches(msg, m.keys.Quit):
+				return m, tea.Quit
+			case msg.String() == "esc":
 				m.palette.Dismiss()
 				return m, nil
+			default:
+				m.palette.Model, cmd = m.palette.Update(msg)
+				return m, cmd
 			}
-			m.palette.Model, cmd = m.palette.Update(msg)
-			return m, cmd
 		}
 
 		switch {
