@@ -20,11 +20,14 @@ import (
 const (
 	statusBarHeight      = 1
 	statusMessageTimeout = 2 * time.Second
+	quitMouseResetDelay  = 50 * time.Millisecond
 )
 
 type statusMsg string
 
 type clearStatusMsg struct{}
+
+type quitAfterMouseResetMsg struct{}
 
 // Model is the top-level Bubble Tea model for the docs TUI.
 type Model struct {
@@ -49,6 +52,7 @@ type Model struct {
 	height        int
 	ready         bool
 	statusMessage string
+	quitting      bool
 
 	// Landing animation
 	shape      parallelogram
@@ -131,9 +135,26 @@ func (m Model) isLanding() bool {
 	return m.doc == nil
 }
 
+func (m Model) beginQuit() (tea.Model, tea.Cmd) {
+	if m.quitting {
+		return m, nil
+	}
+	m.quitting = true
+	return m, tea.Tick(quitMouseResetDelay, func(_ time.Time) tea.Msg {
+		return quitAfterMouseResetMsg{}
+	})
+}
+
 // Update handles incoming messages and updates the model state.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+
+	if m.quitting {
+		if _, ok := msg.(quitAfterMouseResetMsg); ok {
+			return m, tea.Quit
+		}
+		return m, nil
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -199,7 +220,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.palette.Visible() {
 			switch {
 			case key.Matches(msg, m.keys.Quit):
-				return m, tea.Quit
+				return m.beginQuit()
 			case msg.String() == "esc":
 				m.palette.Dismiss()
 				return m, nil
@@ -218,7 +239,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = !m.help.ShowAll
 			m.viewport.SetHeight(m.viewportHeight())
 		case key.Matches(msg, m.keys.Quit):
-			return m, tea.Quit
+			return m.beginQuit()
 		case key.Matches(msg, m.keys.Up):
 			m.viewport.ScrollUp(1)
 		case key.Matches(msg, m.keys.Down):
@@ -266,7 +287,9 @@ func (m Model) View() tea.View {
 
 	view := tea.NewView(content)
 	view.AltScreen = true
-	if m.isLanding() {
+	if m.quitting {
+		view.MouseMode = tea.MouseModeNone
+	} else if m.isLanding() {
 		view.MouseMode = tea.MouseModeAllMotion
 	} else {
 		view.MouseMode = tea.MouseModeCellMotion
