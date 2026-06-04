@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // CustomTestConfig is a test config that allows overriding the config folder path
@@ -121,6 +122,76 @@ func TestGetPluginListUsesManifestMetadataForOverlappingPlugin(t *testing.T) {
 	release := plugin.getReleaseForVersion("2.0.1")
 	require.NotNil(t, release)
 	require.Empty(t, release.Runtime)
+}
+
+func TestListPluginsUsesAuthenticatedEndpoint(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+
+	var authenticatedLookups int
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/list-plugins":
+			authenticatedLookups++
+			require.Equal(t, runtime.GOOS, req.URL.Query().Get("os"))
+			require.Equal(t, runtime.GOARCH, req.URL.Query().Get("arch"))
+			require.Equal(t, "Bearer "+config.Profile.APIKey, req.Header.Get("Authorization"))
+			require.Equal(t, stripe.APIVersion, req.Header.Get("Stripe-Version"))
+			_, _ = res.Write(testListEndpointResponseJSON())
+		case "/ajax/stripecli/list-plugins":
+			t.Fatalf("authenticated list should not hit the anonymous endpoint: %s", req.URL.String())
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer apiServer.Close()
+
+	pluginList, err := ListPlugins(context.Background(), config, apiServer.URL, "")
+	require.NoError(t, err)
+	require.Equal(t, 1, authenticatedLookups)
+	require.Len(t, pluginList.Plugins, 1)
+	require.Equal(t, "apps", pluginList.Plugins[0].Shortname)
+	require.Equal(t, "Build and manage Stripe Apps", pluginList.Plugins[0].Shortdesc)
+	require.Len(t, pluginList.Plugins[0].Commands, 1)
+	require.Equal(t, "create", pluginList.Plugins[0].Commands[0].Name)
+	require.Len(t, pluginList.Plugins[0].Releases, 1)
+	require.Equal(t, "1.12.0", pluginList.Plugins[0].Releases[0].Version)
+	require.Equal(t, "20", pluginList.Plugins[0].Releases[0].Runtime["node"])
+}
+
+func TestListPluginsUsesAnonymousEndpointWhenAPIKeyNotConfigured(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous list should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	var anonymousLookups int
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/list-plugins":
+			anonymousLookups++
+			require.Equal(t, runtime.GOOS, req.URL.Query().Get("os"))
+			require.Equal(t, runtime.GOARCH, req.URL.Query().Get("arch"))
+			require.Empty(t, req.Header.Get("Authorization"))
+			require.Equal(t, stripe.APIVersion, req.Header.Get("Stripe-Version"))
+			_, _ = res.Write(testListEndpointResponseJSON())
+		case "/v1/stripecli/list-plugins":
+			t.Fatalf("anonymous list should not hit the authenticated endpoint: %s", req.URL.String())
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	pluginList, err := ListPlugins(context.Background(), config, apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, anonymousLookups)
+	require.Len(t, pluginList.Plugins, 1)
+	require.Equal(t, "apps", pluginList.Plugins[0].Shortname)
 }
 
 func TestLookUpPlugin(t *testing.T) {
@@ -1348,4 +1419,33 @@ func TestResolvePluginForInstallSucceedsForGAPluginWhenNotLoggedIn(t *testing.T)
 	require.NotNil(t, resolvedPlugin.Plugin)
 	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
 	require.Equal(t, "2.0.1", resolvedPlugin.Version)
+}
+
+func testListEndpointResponseJSON() []byte {
+	return []byte(fmt.Sprintf(`{
+  "plugins": [
+    {
+      "shortname": "apps",
+      "shortdesc": "Build and manage Stripe Apps",
+      "binary": "stripe-cli-apps",
+      "commands": [
+        {
+          "name": "create",
+          "desc": "Create an app"
+        }
+      ],
+      "releases": [
+        {
+          "os": "%s",
+          "arch": "%s",
+          "version": "1.12.0",
+          "runtime": {
+            "node": "20"
+          }
+        }
+      ],
+      "binary_url": null
+    }
+  ]
+}`, runtime.GOOS, runtime.GOARCH))
 }

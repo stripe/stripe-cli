@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -17,20 +15,18 @@ import (
 
 // ListCmd is the struct used for configuring the plugin list command.
 type ListCmd struct {
-	cfg             *config.Config
-	Cmd             *cobra.Command
-	fs              afero.Fs
-	refreshManifest func(context.Context, afero.Fs) error
+	cfg              *config.Config
+	Cmd              *cobra.Command
+	listPlugins      func(context.Context, config.IConfig, string, string) (plugins.PluginList, error)
+	apiBaseURL       string
+	dashboardBaseURL string
 }
 
 // NewListCmd creates a command for listing available plugins.
 func NewListCmd(config *config.Config) *ListCmd {
 	lc := &ListCmd{}
-	lc.fs = afero.NewOsFs()
 	lc.cfg = config
-	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
-		return plugins.RefreshPluginManifest(ctx, lc.cfg, fs, stripe.DefaultAPIBaseURL)
-	}
+	lc.listPlugins = plugins.ListPlugins
 
 	lc.Cmd = &cobra.Command{
 		Use:   "list",
@@ -40,24 +36,30 @@ func NewListCmd(config *config.Config) *ListCmd {
 		RunE:  lc.runListCmd,
 	}
 
+	// Hidden configuration flags, useful for dev/debugging
+	lc.Cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	lc.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+	lc.Cmd.Flags().StringVar(&lc.dashboardBaseURL, "dashboard-base", "", "Sets the dashboard base URL")
+	lc.Cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
+
 	return lc
 }
 
 func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
+		return err
+	}
+	dashboardBaseURL := resolveDashboardBaseURL(lc.apiBaseURL, lc.dashboardBaseURL)
+	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURL); err != nil {
+		return err
+	}
+
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	if lc.refreshManifest != nil {
-		if err := lc.refreshManifest(ctx, lc.fs); err != nil {
-			log.WithFields(log.Fields{
-				"prefix": "cmd.plugin.ListCmd",
-			}).Debugf("could not refresh plugin manifest, falling back to cached plugin list: %s", err)
-		}
-	}
-
-	pluginList, err := plugins.GetPluginList(ctx, lc.cfg, lc.fs)
+	pluginList, err := lc.listPlugins(ctx, lc.cfg, lc.apiBaseURL, dashboardBaseURL)
 	if err != nil {
 		return err
 	}

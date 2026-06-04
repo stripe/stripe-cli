@@ -40,7 +40,15 @@ func getPluginMetadataPath(apiKey string) string {
 	return "/v1/stripecli/get-plugin-metadata"
 }
 
-func getPluginMetadataBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) string {
+func getPluginListPath(apiKey string) string {
+	if apiKey == "" {
+		return "/ajax/stripecli/list-plugins"
+	}
+
+	return "/v1/stripecli/list-plugins"
+}
+
+func getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) string {
 	if apiKey == "" && dashboardBaseURL != "" {
 		return dashboardBaseURL
 	}
@@ -92,7 +100,7 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		version: apiVersion,
 	}
 
-	metadataBaseURL := getPluginMetadataBaseURL(apiKey, apiBaseURL, dashboardBaseURL)
+	metadataBaseURL := getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL)
 	metadataPath := getPluginMetadataPath(apiKey)
 
 	log.WithFields(log.Fields{
@@ -128,4 +136,42 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 	}
 
 	return metadata, nil
+}
+
+// GetPluginList returns the list of plugins visible to the current caller for
+// the requested platform. It uses the authenticated endpoint when an API key is
+// available and the anonymous endpoint otherwise.
+func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, os, arch string) ([]byte, error) {
+	params := &RequestParameters{
+		data:    []string{},
+		version: apiVersion,
+	}
+
+	listBaseURL := getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL)
+	listPath := getPluginListPath(apiKey)
+
+	log.WithFields(log.Fields{
+		"prefix":   "requests.GetPluginList",
+		"base_url": listBaseURL,
+		"endpoint": listPath,
+		"os":       os,
+		"arch":     arch,
+	}).Debug("Fetching plugin list")
+
+	base := &Base{
+		Profile:        profile,
+		Method:         http.MethodGet,
+		SuppressOutput: true,
+		APIBaseURL:     listBaseURL,
+	}
+
+	resp, err := base.MakeRequest(ctx, apiKey, listPath, params, map[string]interface{}{
+		"os":   os,
+		"arch": arch,
+	}, true, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }

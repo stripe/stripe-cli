@@ -5,75 +5,41 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
-func TestListCmdPrintsAvailablePluginsAfterRefresh(t *testing.T) {
-	cfg, fs, cleanup := setupPluginCommandTest(t)
+func TestListCmdPrintsAvailablePlugins(t *testing.T) {
+	cfg, _, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
 
 	lc := NewListCmd(cfg)
-	lc.fs = fs
-	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
-		return writeListManifest(cfg, fs, testListManifest())
+	lc.listPlugins = func(ctx context.Context, cfg config.IConfig, apiBaseURL, dashboardBaseURL string) (plugins.PluginList, error) {
+		return testListPluginList(), nil
 	}
 
 	assertListOutput(t, executeListCmd(t, lc))
 }
 
-func TestListCmdFallsBackToCachedPluginsWhenRefreshFails(t *testing.T) {
-	cfg, fs, cleanup := setupPluginCommandTest(t)
+func TestListCmdReturnsEndpointErrorWithoutFallback(t *testing.T) {
+	cfg, _, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
 
-	require.NoError(t, writeListManifest(cfg, fs, testListManifest()))
-
 	lc := NewListCmd(cfg)
-	lc.fs = fs
-	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
-		return errors.New("refresh failed")
+	lc.listPlugins = func(ctx context.Context, cfg config.IConfig, apiBaseURL, dashboardBaseURL string) (plugins.PluginList, error) {
+		return plugins.PluginList{}, errors.New("list failed")
 	}
 
-	assertListOutput(t, executeListCmd(t, lc))
-}
-
-func TestListCmdIgnoresLocalPluginMetadata(t *testing.T) {
-	cfg, fs, cleanup := setupPluginCommandTest(t)
-	defer cleanup()
-
-	require.NoError(t, writeListManifest(cfg, fs, testListManifest()))
-	require.NoError(t, writeListPluginMetadata(cfg, fs, `[[Plugin]]
-  Shortname = "docs"
-  Shortdesc = "Local docs plugin"
-  Binary = "stripe-cli-docs"
-  MagicCookieValue = "DOCS-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "arm64"
-    OS = "darwin"
-    Version = "1.0.0"
-    Sum = "docs"
-`))
-
-	lc := NewListCmd(cfg)
-	lc.fs = fs
-	lc.refreshManifest = func(ctx context.Context, fs afero.Fs) error {
-		return errors.New("refresh failed")
-	}
-
-	rendered := executeListCmd(t, lc)
-	assertListOutput(t, rendered)
-	require.NotContains(t, rendered, "docs")
+	err := executeListCmdErr(t, lc)
+	require.EqualError(t, err, "list failed")
 }
 
 func executeListCmd(t *testing.T, lc *ListCmd) string {
@@ -89,26 +55,15 @@ func executeListCmd(t *testing.T, lc *ListCmd) string {
 	return output.String()
 }
 
-func writeListManifest(cfg *config.Config, fs afero.Fs, manifest string) error {
-	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	manifestPath := filepath.Join(configPath, "plugins.toml")
+func executeListCmdErr(t *testing.T, lc *ListCmd) error {
+	t.Helper()
 
-	if err := fs.MkdirAll(configPath, 0755); err != nil {
-		return err
-	}
+	var output bytes.Buffer
+	lc.Cmd.SetOut(&output)
+	lc.Cmd.SetErr(&output)
+	lc.Cmd.SetContext(context.Background())
 
-	return afero.WriteFile(fs, manifestPath, []byte(manifest), 0644)
-}
-
-func writeListPluginMetadata(cfg *config.Config, fs afero.Fs, manifest string) error {
-	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	metadataPath := filepath.Join(configPath, "plugin-metadata", "docs.toml")
-
-	if err := fs.MkdirAll(filepath.Dir(metadataPath), 0755); err != nil {
-		return err
-	}
-
-	return afero.WriteFile(fs, metadataPath, []byte(manifest), 0644)
+	return lc.Cmd.Execute()
 }
 
 func assertListOutput(t *testing.T, rendered string) {
@@ -142,53 +97,57 @@ func requirePluginRow(t *testing.T, rendered, shortname, shortdesc string) {
 	)
 }
 
-func testListManifest() string {
-	return fmt.Sprintf(`[[Plugin]]
-  Shortname = "tools"
-  Shortdesc = "Search internal Stripe operations"
-  Binary = "stripe-cli-tools"
-  MagicCookieValue = "TOOLS-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "%s"
-    OS = "%s"
-    Version = "1.0.0"
-    Sum = "tools"
-
-[[Plugin]]
-  Shortname = "apps"
-  Shortdesc = "Build and manage Stripe Apps"
-  Binary = "stripe-cli-apps"
-  MagicCookieValue = "APPS-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "%s"
-    OS = "%s"
-    Version = "2.0.0"
-    Sum = "apps"
-
-[[Plugin]]
-  Shortname = "projects"
-  Shortdesc = "Scaffold Stripe integration projects"
-  Binary = "stripe-cli-projects"
-  MagicCookieValue = "PROJECTS-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "%s"
-    OS = "%s"
-    Version = "3.0.0"
-    Sum = "projects"
-
-[[Plugin]]
-  Shortname = "windows-only"
-  Shortdesc = "Should be filtered on non-Windows platforms"
-  Binary = "stripe-cli-windows-only"
-  MagicCookieValue = "WINDOWS-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "amd64"
-    OS = "windows"
-    Version = "1.0.0"
-    Sum = "windows-only"
-`, runtime.GOARCH, runtime.GOOS, runtime.GOARCH, runtime.GOOS, runtime.GOARCH, runtime.GOOS)
+func testListPluginList() plugins.PluginList {
+	return plugins.PluginList{
+		Plugins: []plugins.Plugin{
+			{
+				Shortname: "tools",
+				Shortdesc: "Search internal Stripe operations",
+				Binary:    "stripe-cli-tools",
+				Releases: []plugins.Release{
+					{
+						Arch:    runtime.GOARCH,
+						OS:      runtime.GOOS,
+						Version: "1.0.0",
+					},
+				},
+			},
+			{
+				Shortname: "apps",
+				Shortdesc: "Build and manage Stripe Apps",
+				Binary:    "stripe-cli-apps",
+				Releases: []plugins.Release{
+					{
+						Arch:    runtime.GOARCH,
+						OS:      runtime.GOOS,
+						Version: "2.0.0",
+					},
+				},
+			},
+			{
+				Shortname: "projects",
+				Shortdesc: "Scaffold Stripe integration projects",
+				Binary:    "stripe-cli-projects",
+				Releases: []plugins.Release{
+					{
+						Arch:    runtime.GOARCH,
+						OS:      runtime.GOOS,
+						Version: "3.0.0",
+					},
+				},
+			},
+			{
+				Shortname: "windows-only",
+				Shortdesc: "Should be filtered on non-Windows platforms",
+				Binary:    "stripe-cli-windows-only",
+				Releases: []plugins.Release{
+					{
+						Arch:    "amd64",
+						OS:      "windows",
+						Version: "1.0.0",
+					},
+				},
+			},
+		},
+	}
 }
