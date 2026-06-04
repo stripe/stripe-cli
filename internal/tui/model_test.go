@@ -180,16 +180,13 @@ func TestUpdate_QuitCtrlC(t *testing.T) {
 }
 
 func TestUpdate_ScrollKeys(t *testing.T) {
-	r, err := markdown.NewRenderer()
-	require.NoError(t, err)
-
 	long := "# Title\n"
 	for i := range 50 {
 		long += fmt.Sprintf("Line %d\n", i)
 	}
 
 	m := New(
-		WithRenderer(r),
+		WithRendererOptions(),
 		WithPage(Page{Content: []byte(long)}),
 	)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})

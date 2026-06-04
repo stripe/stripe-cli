@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	defaultWordWrap = 80
+	defaultWordWrap = 140
 )
 
 // Renderer renders a Document to a terminal-friendly string.
@@ -40,7 +40,7 @@ type glamourRenderer struct {
 }
 
 // NewRenderer constructs a Renderer backed by glamour with sensible defaults
-// (auto-detected dark/light using our own style configs, 80-column word wrap).
+// (auto-detected dark/light using our own style configs, 140-column word wrap).
 // Options override individual defaults.
 func NewRenderer(opts ...RendererOption) (Renderer, error) {
 	cfg := rendererConfig{wordWrap: defaultWordWrap}

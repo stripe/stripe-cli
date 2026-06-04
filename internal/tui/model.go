@@ -21,6 +21,7 @@ const (
 	statusBarHeight      = 1
 	statusMessageTimeout = 2 * time.Second
 	quitMouseResetDelay  = 50 * time.Millisecond
+	maxWordWrap          = 140
 )
 
 type statusMsg string
@@ -39,8 +40,10 @@ type Model struct {
 	palette  Palette
 
 	// Dependencies
-	client   *docs.Client
-	renderer markdown.Renderer
+	client           *docs.Client
+	renderer         markdown.Renderer
+	rendererOpts     []markdown.RendererOption
+	adaptiveWordWrap bool
 
 	// Content
 	page  Page
@@ -71,6 +74,16 @@ func WithClient(c *docs.Client) Option {
 // WithRenderer sets the markdown renderer.
 func WithRenderer(r markdown.Renderer) Option {
 	return func(m *Model) { m.renderer = r }
+}
+
+// WithRendererOptions sets the options used to build the markdown renderer.
+// The TUI rebuilds the renderer on each window resize, capping word wrap at
+// maxWordWrap or the terminal width, whichever is smaller.
+func WithRendererOptions(opts ...markdown.RendererOption) Option {
+	return func(m *Model) {
+		m.rendererOpts = opts
+		m.adaptiveWordWrap = true
+	}
 }
 
 // WithPage sets the page to display. The TUI parses the markdown content
@@ -145,6 +158,33 @@ func (m Model) beginQuit() (tea.Model, tea.Cmd) {
 	})
 }
 
+// initViewport performs first-frame setup: builds the renderer at the correct
+// word-wrap width, creates the viewport, and renders the initial content.
+func (m Model) initViewport(msg tea.WindowSizeMsg) Model {
+	if m.adaptiveWordWrap {
+		renderWidth := min(msg.Width, maxWordWrap)
+		opts := append(append([]markdown.RendererOption(nil), m.rendererOpts...), markdown.WithWordWrap(renderWidth))
+		if r, err := markdown.NewRenderer(opts...); err == nil {
+			m.renderer = r
+		}
+	}
+	m.viewport = viewport.New(
+		viewport.WithWidth(msg.Width),
+		viewport.WithHeight(m.viewportHeight()),
+	)
+	m.viewport.MouseWheelEnabled = true
+	m.viewport.MouseWheelDelta = 1
+	m.viewport.KeyMap = viewport.KeyMap{}
+	m.help.SetWidth(msg.Width)
+	if m.doc != nil && m.renderer != nil {
+		if out, err := m.renderer.Render(m.doc); err == nil {
+			m.viewport.SetContent(out)
+		}
+	}
+	m.ready = true
+	return m
+}
+
 // Update handles incoming messages and updates the model state.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -161,25 +201,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		if !m.ready {
-			m.viewport = viewport.New(
-				viewport.WithWidth(msg.Width),
-				viewport.WithHeight(m.viewportHeight()),
-			)
-			m.viewport.MouseWheelEnabled = true
-			m.viewport.MouseWheelDelta = 1
-			m.viewport.KeyMap = viewport.KeyMap{}
-			m.help.SetWidth(msg.Width)
-			if m.doc != nil && m.renderer != nil {
-				if out, err := m.renderer.Render(m.doc); err == nil {
-					m.viewport.SetContent(out)
-				}
-			}
-			m.ready = true
+			// Initial setup: rebuild renderer and render synchronously so
+			// content is ready before the first frame.
+			m = m.initViewport(msg)
 		} else {
 			m.viewport.SetWidth(msg.Width)
 			m.viewport.SetHeight(m.viewportHeight())
 			m.help.SetWidth(msg.Width)
+			// Re-render with the new word wrap out-of-band to avoid blocking
+			// the resize. The result is discarded if the width changed again
+			// before it arrives.
+			if m.adaptiveWordWrap && m.doc != nil {
+				return m, m.rerenderCmd()
+			}
 		}
+
+	case rerenderMsg:
+		if msg.forWidth == m.width {
+			m.viewport.SetContent(msg.content)
+		}
+		return m, nil
 
 	case closePaletteMsg:
 		m.palette.Dismiss()
@@ -339,6 +380,32 @@ func (m Model) status() string {
 		lipgloss.WithWhitespaceStyle(bar))
 
 	return left + fill + right
+}
+
+// rerenderMsg carries the result of an out-of-band word-wrap re-render.
+type rerenderMsg struct {
+	content  string
+	forWidth int
+}
+
+// rerenderCmd rebuilds the renderer with an adaptive word-wrap width and
+// re-renders the document in a goroutine, returning a rerenderMsg.
+func (m Model) rerenderCmd() tea.Cmd {
+	width := m.width
+	renderWidth := min(width, maxWordWrap)
+	opts := append(append([]markdown.RendererOption(nil), m.rendererOpts...), markdown.WithWordWrap(renderWidth))
+	doc := m.doc
+	return func() tea.Msg {
+		r, err := markdown.NewRenderer(opts...)
+		if err != nil {
+			return nil
+		}
+		out, err := r.Render(doc)
+		if err != nil {
+			return nil
+		}
+		return rerenderMsg{content: out, forWidth: width}
+	}
 }
 
 // Landing animation
