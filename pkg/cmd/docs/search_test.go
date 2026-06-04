@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
 	"github.com/stripe/stripe-cli-docs-plugin/cmd"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
@@ -48,6 +50,40 @@ func TestSearchCommand(t *testing.T) {
 	assert.Contains(t, plainOutput, "stripe docs /payments/accept-a-payment")
 	assert.Contains(t, plainOutput, "Payment Element")
 	assert.Contains(t, plainOutput, "stripe docs /payments/elements")
+
+	// Results should be formatted as a bullet list.
+	assert.Contains(t, plainOutput, "•")
+
+	// Each title should appear before its corresponding route.
+	paymentIdx := strings.Index(plainOutput, "Accept a payment")
+	routeIdx := strings.Index(plainOutput, "stripe docs /payments/accept-a-payment")
+	assert.Less(t, paymentIdx, routeIdx)
+}
+
+func TestSearchCommand_ColorOff(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"hits":[{"title":"API Keys","url":"https://docs.stripe.com/keys"}]}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithConfig(&cliconfig.Config{Color: "off"}),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"search", "api keys"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+
+	output := out.String()
+	assert.NotContains(t, output, "\x1b[", "expected no ANSI escape codes with --color off")
+	assert.Contains(t, output, "API Keys")
+	assert.Contains(t, output, "stripe docs /keys")
 }
 
 func TestSearchCommand_MissingQuery(t *testing.T) {
