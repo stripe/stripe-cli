@@ -144,7 +144,11 @@ func (c *Client) do(req *http.Request) (response, error) {
 	start := time.Now()
 	resp, err := c.http.Do(req)
 	if err != nil {
-		c.logger.Error("request failed", "url", req.URL, "err", err)
+		if req.Context().Err() != nil {
+			c.logger.Debug("request cancelled", "url", req.URL, "cause", req.Context().Err())
+		} else {
+			c.logger.Error("request failed", "url", req.URL, "err", err)
+		}
 		return response{}, fmt.Errorf("docs: request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -176,6 +180,9 @@ func (c *Client) do(req *http.Request) (response, error) {
 //
 //	response, err := c.Search(ctx, "payment methods")
 func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, error) {
+	if query == "" {
+		return &SearchResponse{}, nil
+	}
 	u := c.baseURL.JoinPath("/_endpoint/search")
 	u.RawQuery = url.Values{"query": {query}}.Encode()
 

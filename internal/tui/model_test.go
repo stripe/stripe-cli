@@ -339,6 +339,61 @@ func TestStatus_ShowsStatusMessage(t *testing.T) {
 	assert.Contains(t, status, "Copied!")
 }
 
+func TestUpdate_PaletteOpensOnSlash(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	model := result.(Model)
+
+	assert.True(t, model.palette.Visible())
+}
+
+func TestUpdate_PaletteOpenSlash_EmptyInput(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	model := result.(Model)
+
+	// Slash must not be forwarded to the palette input — search mode has no prefix.
+	assert.Empty(t, model.palette.Value())
+}
+
+func TestUpdate_PaletteOpenSlash_SyncKeyMap(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	model := result.(Model)
+
+	// syncKeyMap must be called immediately on open, not deferred to next keystroke.
+	assert.Equal(t, "view", model.palette.KeyMap.Execute.Help().Desc)
+}
+
+func TestUpdate_PageReadyMsg(t *testing.T) {
+	r, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	m := New(
+		WithRenderer(r),
+		WithPage(Page{Content: []byte("# Original")}),
+	)
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	newDoc, err := markdown.Parse([]byte("# New Page\n\nBody"))
+	require.NoError(t, err)
+
+	newPage := Page{Content: []byte("# New Page\n\nBody"), URL: &url.URL{Path: "/new"}}
+	result, _ = model.Update(pageReadyMsg{page: newPage, doc: newDoc})
+	model = result.(Model)
+
+	assert.Equal(t, "New Page", model.title)
+	assert.Equal(t, newDoc, model.doc)
+	assert.NotEmpty(t, model.viewport.GetContent())
+}
+
 func TestView_WindowTitle_FromPage(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)

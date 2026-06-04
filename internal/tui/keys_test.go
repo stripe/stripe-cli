@@ -19,10 +19,12 @@ func TestKeyMap_FullHelp(t *testing.T) {
 	km := DefaultKeyMap()
 	groups := km.FullHelp()
 
-	assert.Len(t, groups, 3)
+	assert.Len(t, groups, 5)
 	assert.Equal(t, []key.Binding{km.Up, km.Down}, groups[0])
 	assert.Equal(t, []key.Binding{km.PageUp, km.PageDown}, groups[1])
-	assert.Equal(t, []key.Binding{km.OpenInBrowser, km.Palette, km.Quit}, groups[2])
+	assert.Equal(t, []key.Binding{km.OpenInBrowser}, groups[2])
+	assert.Equal(t, []key.Binding{km.Search, km.Palette}, groups[3])
+	assert.Equal(t, []key.Binding{km.Quit}, groups[4])
 }
 
 func TestKeyMap_SatisfiesHelpInterface(t *testing.T) {
