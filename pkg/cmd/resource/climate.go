@@ -41,7 +41,6 @@ func AddClimateCommitmentsSubCmds(rootCmd *cobra.Command, cfg *config.Config) {
 	}
 
 	rCommitmentCmd := NewResourceCmd(climateCmd, "commitment")
-	rCommitmentCmd.Cmd.Hidden = true
 
 	newClimateEnableCmd(rCommitmentCmd.Cmd, cfg)
 	newClimateShowCmd(rCommitmentCmd.Cmd, cfg)

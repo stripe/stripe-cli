@@ -311,7 +311,8 @@ func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboa
 	return pluginList, nil
 }
 
-// GetPluginList reads the cached global plugin manifest from disk.
+// GetPluginList reads the cached global plugin manifest from disk and refreshes
+// it when the cache is missing.
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
 	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
@@ -350,7 +351,12 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 
 // LookUpPluginInManifest returns plugin metadata from the cached global manifest.
 func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
-	return lookUpPluginInCachedManifest(config, fs, pluginName)
+	pluginList, err := GetPluginList(ctx, config, fs)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	return findPlugin(pluginList, pluginName)
 }
 
 // ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
@@ -504,10 +510,6 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 }
 
 func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
-	return getLegacyCachedPluginList(config, fs)
-}
-
-func getLegacyCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
 	var pluginList PluginList
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
@@ -841,6 +843,20 @@ func validatePluginListResponse(pluginList *PluginList) error {
 	return nil
 }
 
+func sortPluginReleases(releases []Release) {
+	sort.Slice(releases, func(i, j int) bool {
+		vi, errI := version.NewVersion(releases[i].Version)
+		vj, errJ := version.NewVersion(releases[j].Version)
+
+		// If either version fails to parse, fall back to string comparison.
+		if errI != nil || errJ != nil {
+			return releases[i].Version < releases[j].Version
+		}
+
+		return vi.LessThan(vj)
+	})
+}
+
 // validateRuntimeVersions validates that Runtime specifications only contain valid LTS Node.js versions
 func validateRuntimeVersions(pluginList *PluginList) error {
 	for _, plugin := range pluginList.Plugins {
@@ -937,12 +953,10 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 	idx := findPluginIndex(pluginList, pl)
 	if idx == -1 {
 		pluginList.Plugins = append(pluginList.Plugins, pl)
-		idx = len(pluginList.Plugins) - 1
 	} else {
 		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
+		sortPluginReleases(pluginList.Plugins[idx].Releases)
 	}
-
-	sortPluginReleases(pluginList.Plugins[idx].Releases)
 }
 
 func findPluginIndex(list *PluginList, p Plugin) int {
@@ -952,27 +966,6 @@ func findPluginIndex(list *PluginList, p Plugin) int {
 		}
 	}
 	return -1
-}
-
-func sortPluginReleases(releases []Release) {
-	sort.Slice(releases, func(i, j int) bool {
-		vi, errI := version.NewVersion(releases[i].Version)
-		vj, errJ := version.NewVersion(releases[j].Version)
-
-		if errI == nil && errJ == nil {
-			if !vi.Equal(vj) {
-				return vi.LessThan(vj)
-			}
-		} else if releases[i].Version != releases[j].Version {
-			return releases[i].Version < releases[j].Version
-		}
-
-		if releases[i].OS != releases[j].OS {
-			return releases[i].OS < releases[j].OS
-		}
-
-		return releases[i].Arch < releases[j].Arch
-	})
 }
 
 type remoteResourceNotFoundError struct {
@@ -1034,6 +1027,36 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// CheckLatestPluginVersion prints an upgrade hint to stderr if the cached manifest
+// has a newer version of the plugin than what is currently installed.
+// It is a no-op in local development mode (PluginsPath set) or when the manifest
+// has no version information for the current platform.
+func CheckLatestPluginVersion(config config.IConfig, fs afero.Fs, plugin Plugin) {
+	if PluginsPath != "" {
+		return
+	}
+
+	installedVersion := plugin.InstalledVersion(config, fs)
+	if installedVersion == "" {
+		return
+	}
+
+	manifestPlugin, err := lookUpPluginInCachedManifest(config, fs, plugin.Shortname)
+	if err != nil {
+		return
+	}
+
+	latestVersion := manifestPlugin.LookUpLatestVersion()
+	if latestVersion == "" {
+		return
+	}
+
+	if comparePluginVersions(installedVersion, latestVersion) < 0 {
+		fmt.Fprintf(os.Stderr, "A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.\n",
+			plugin.Shortname, installedVersion, latestVersion, plugin.Shortname)
+	}
 }
 
 // CleanupAllClients tears down and disconnects all "managed" plugin clients

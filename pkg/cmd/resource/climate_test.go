@@ -33,10 +33,6 @@ func setupCommitmentsCmd(t *testing.T) *cobra.Command {
 	return nil
 }
 
-func TestAddClimateCommitmentSubCmds_IsHidden(t *testing.T) {
-	assert.True(t, setupCommitmentsCmd(t).Hidden)
-}
-
 func TestAddClimateCommitmentSubCmds_HasExpectedOperations(t *testing.T) {
 	ops := make(map[string]bool)
 	for _, c := range setupCommitmentsCmd(t).Commands() {

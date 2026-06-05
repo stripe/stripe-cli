@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1448,4 +1449,159 @@ func testListEndpointResponseJSON() []byte {
     }
   ]
 }`, runtime.GOOS, runtime.GOARCH))
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	orig := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+
+	fn()
+
+	w.Close()
+	os.Stderr = orig
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
+func makeManifestWithPlugin(shortname, version string) string {
+	return fmt.Sprintf(`[[Plugin]]
+  Shortname = "%s"
+  Binary = "stripe-cli-%s"
+  MagicCookieValue = "TEST-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "%s"
+    Sum = "abc123"
+`, shortname, shortname, runtime.GOARCH, runtime.GOOS, version)
+}
+
+func TestCheckLatestPluginVersionPrintsWhenUpgradeAvailable(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	// Simulate v1.0.0 installed on disk.
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	// Manifest has v1.1.0.
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+	require.Contains(t, output, "v1.0.0")
+	require.Contains(t, output, "v1.1.0")
+	require.Contains(t, output, "stripe plugin upgrade myplugin")
+}
+
+func TestCheckLatestPluginVersionSilentWhenUpToDate(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.1.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentWhenNoInstalledVersion(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentWhenNoManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
+	orig := PluginsPath
+	PluginsPath = "/some/local/dev/path"
+	defer func() { PluginsPath = orig }()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
 }
