@@ -196,6 +196,29 @@ func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 	assert.NotEmpty(t, logBuf.String(), "injected debug-level logger should capture log output")
 }
 
+func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "# Payments\n\nAccept payments with Stripe.")
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"--no-tui", "/payments"})
+
+	err = root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Payments")
+}
+
 func TestVersionCommand(t *testing.T) {
 	root := cmd.New().WithOptions(cmd.WithVersion("0.0.1")).Root()
 

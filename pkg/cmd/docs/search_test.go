@@ -95,3 +95,42 @@ func TestSearchCommand_MissingQuery(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "search: missing search query argument")
 }
+
+func TestSearchCommand_MultiWordArgs(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "payment methods", r.URL.Query().Get("query"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"hits":[]}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(cmd.WithClient(client)).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"search", "payment", "methods"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+}
+
+func TestSearchCommand_NoTUI_FallsBackToHTTP(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/_endpoint/search", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"hits":[{"title":"Payments","url":"https://docs.stripe.com/payments"}]}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(cmd.WithClient(client)).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"--no-tui", "search", "payments"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, stripANSI(out.String()), "Payments")
+}

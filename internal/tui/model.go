@@ -27,6 +27,8 @@ const (
 	maxWordWrap          = 140
 )
 
+type openWithQueryMsg string
+
 type statusMsg string
 
 type clearStatusMsg struct{}
@@ -62,6 +64,9 @@ type Model struct {
 	page  Page
 	doc   *markdown.Document
 	title string
+
+	// Initial palette input (set via WithPaletteInput)
+	initialQuery string
 
 	// State
 	width         int
@@ -104,6 +109,13 @@ func WithRendererOptions(opts ...markdown.RendererOption) Option {
 // internally and derives the title from the first h1 heading.
 func WithPage(p Page) Option {
 	return func(m *Model) { m.page = p }
+}
+
+// WithPaletteInput opens the command palette on startup with the given text
+// pre-filled. Useful for launching the TUI from a search subcommand so the
+// user lands directly in the search palette.
+func WithPaletteInput(q string) Option {
+	return func(m *Model) { m.initialQuery = q }
 }
 
 // WithKeyMap sets a custom keymap.
@@ -174,6 +186,11 @@ func (m *Model) WithOptions(opts ...Option) {
 // Init returns the initial command to run when the TUI starts.
 func (m Model) Init() tea.Cmd {
 	if m.isLanding() {
+		if m.initialQuery != "" {
+			return tea.Batch(m.shape.tick, func() tea.Msg {
+				return openWithQueryMsg(m.initialQuery)
+			})
+		}
 		return m.shape.tick
 	}
 	return nil
@@ -270,6 +287,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(msg.content)
 		}
 		return m, nil
+
+	case openWithQueryMsg:
+		focusCmd := m.palette.Open()
+		m.palette.syncKeyMap()
+		query := string(msg)
+		return m, tea.Batch(focusCmd, func() tea.Msg {
+			return tea.PasteMsg{Content: query}
+		})
 
 	case closePaletteMsg:
 		m.palette.Dismiss()
