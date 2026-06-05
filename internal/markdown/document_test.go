@@ -1,6 +1,7 @@
 package markdown_test
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,10 +87,19 @@ func TestTitle(t *testing.T) {
 }
 
 func TestReferences(t *testing.T) {
+	mustURL := func(raw string) *url.URL {
+		u, err := url.Parse(raw)
+		if err != nil {
+			panic(err)
+		}
+		return u
+	}
+
 	tests := []struct {
-		name string
-		src  string
-		want []struct {
+		name       string
+		src        string
+		currentURL *url.URL
+		want       []struct {
 			title    string
 			url      string
 			external bool
@@ -145,6 +155,47 @@ func TestReferences(t *testing.T) {
 			src:  "# Just a heading\n\nSome text.",
 			want: nil,
 		},
+		{
+			name: "pure anchor filtered",
+			src:  "[Jump](#section-id)",
+			want: nil,
+		},
+		{
+			name:       "relative same-page anchor filtered",
+			src:        "[Jump](/payments/accept-a-payment#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment"),
+			want:       nil,
+		},
+		{
+			name:       "absolute same-page anchor filtered",
+			src:        "[Jump](https://docs.stripe.com/payments/accept-a-payment#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment"),
+			want:       nil,
+		},
+		{
+			name:       "different page anchor kept",
+			src:        "[Other](/other-page#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment"),
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "Other", url: "/other-page#section", external: false},
+			},
+		},
+		{
+			name:       "external site same-path anchor kept",
+			src:        "[Ext](https://stripe.com/payments/accept-a-payment#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment"),
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "Ext", url: "https://stripe.com/payments/accept-a-payment#section", external: true},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -152,7 +203,7 @@ func TestReferences(t *testing.T) {
 			doc, err := markdown.Parse([]byte(tt.src))
 			require.NoError(t, err)
 
-			refs := doc.References()
+			refs := doc.References(tt.currentURL)
 			require.Len(t, refs, len(tt.want))
 			for i, w := range tt.want {
 				assert.Equal(t, w.title, refs[i].Title)

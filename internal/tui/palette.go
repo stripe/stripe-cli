@@ -104,7 +104,7 @@ func newPalette(page Page, doc *markdown.Document, client *docs.Client) Palette 
 
 	var refs []palette.Item
 	if doc != nil {
-		for _, r := range doc.References() {
+		for _, r := range doc.References(page.URL) {
 			refs = append(refs, reference{title: r.Title, url: r.URL, external: r.External})
 		}
 	}
