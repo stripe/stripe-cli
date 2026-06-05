@@ -85,6 +85,84 @@ func TestTitle(t *testing.T) {
 	}
 }
 
+func TestReferences(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want []struct {
+			title    string
+			url      string
+			external bool
+		}
+	}{
+		{
+			name: "internal docs.stripe.com link",
+			src:  "[Accept a payment](https://docs.stripe.com/payments/accept-a-payment)",
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "Accept a payment", url: "https://docs.stripe.com/payments/accept-a-payment", external: false},
+			},
+		},
+		{
+			name: "relative link",
+			src:  "[Get started](/get-started)",
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "Get started", url: "/get-started", external: false},
+			},
+		},
+		{
+			name: "external link",
+			src:  "[Stripe](https://stripe.com/blog)",
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "Stripe", url: "https://stripe.com/blog", external: true},
+			},
+		},
+		{
+			name: "multiple links",
+			src:  "[A](/a)\n\n[B](https://stripe.com/b)",
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "A", url: "/a", external: false},
+				{title: "B", url: "https://stripe.com/b", external: true},
+			},
+		},
+		{
+			name: "no links",
+			src:  "# Just a heading\n\nSome text.",
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := markdown.Parse([]byte(tt.src))
+			require.NoError(t, err)
+
+			refs := doc.References()
+			require.Len(t, refs, len(tt.want))
+			for i, w := range tt.want {
+				assert.Equal(t, w.title, refs[i].Title)
+				assert.Equal(t, w.url, refs[i].URL.String())
+				assert.Equal(t, w.external, refs[i].External)
+			}
+		})
+	}
+}
+
 func TestParseAST(t *testing.T) {
 	src := "# Hello\n\nParagraph."
 	doc, err := markdown.Parse([]byte(src))

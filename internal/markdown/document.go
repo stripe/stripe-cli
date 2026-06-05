@@ -1,10 +1,19 @@
 package markdown
 
 import (
+	"net/url"
+
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 )
+
+// Reference is a hyperlink extracted from a markdown document.
+type Reference struct {
+	Title    string
+	URL      *url.URL
+	External bool // true when the URL points outside docs.stripe.com
+}
 
 // Document holds a parsed markdown document, including the goldmark AST root and
 // the original source bytes. Callers can walk Node to extract headings, links,
@@ -29,6 +38,27 @@ func (d *Document) Title() string {
 		return ast.WalkContinue, nil
 	})
 	return title
+}
+
+// References returns all hyperlinks found in the document, in document order.
+func (d *Document) References() []Reference {
+	var refs []Reference
+	_ = ast.Walk(d.Node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if link, ok := n.(*ast.Link); ok {
+			if u, err := url.Parse(string(link.Destination)); err == nil {
+				refs = append(refs, Reference{
+					Title:    string(nodeText(link, d.Source)),
+					URL:      u,
+					External: u.Host != "" && u.Host != "docs.stripe.com",
+				})
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	return refs
 }
 
 func nodeText(n ast.Node, source []byte) []byte {

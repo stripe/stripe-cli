@@ -380,6 +380,48 @@ func TestUpdate_PaletteOpenSlash_SyncKeyMap(t *testing.T) {
 	assert.Equal(t, "view", model.palette.KeyMap.Execute.Help().Desc)
 }
 
+func TestUpdate_PaletteOpensOnAt(t *testing.T) {
+	u := mustParseURL("https://docs.stripe.com/payments")
+	doc := docWithReferences(u)
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody"), URL: &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/test"}}))
+	m.doc = doc
+	m.palette = newPalette(m.page, m.doc, m.client)
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '@', Text: "@"})
+	model := result.(Model)
+
+	assert.True(t, model.palette.Visible())
+}
+
+func TestUpdate_PaletteOpenAt_InputContainsAt(t *testing.T) {
+	u := mustParseURL("https://docs.stripe.com/payments")
+	doc := docWithReferences(u)
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody"), URL: &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/test"}}))
+	m.doc = doc
+	m.palette = newPalette(m.page, m.doc, m.client)
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '@', Text: "@"})
+	model := result.(Model)
+
+	assert.Equal(t, "@", model.palette.Value())
+}
+
+func TestUpdate_PaletteOpenAt_SyncKeyMap(t *testing.T) {
+	u := mustParseURL("https://docs.stripe.com/payments")
+	doc := docWithReferences(u)
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody"), URL: &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/test"}}))
+	m.doc = doc
+	m.palette = newPalette(m.page, m.doc, m.client)
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: '@', Text: "@"})
+	model := result.(Model)
+
+	assert.Equal(t, "view", model.palette.KeyMap.Execute.Help().Desc)
+}
+
 func TestUpdate_PageReadyMsg(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)

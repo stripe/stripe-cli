@@ -43,10 +43,6 @@ type pageLoadedMsg struct {
 	doc  *markdown.Document
 }
 
-type pageLoadErrMsg struct {
-	err error
-}
-
 // Model is the top-level Bubble Tea model for the docs TUI.
 type Model struct {
 	// Components
@@ -142,7 +138,7 @@ func New(opts ...Option) Model {
 		m.shape = newParallelogram(paraWidth, paraHeight)
 	}
 
-	m.palette = newPalette(m.page, m.client)
+	m.palette = newPalette(m.page, m.doc, m.client)
 	m.setScrollEnabled(!m.isLanding())
 
 	return m
@@ -228,7 +224,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.page = msg.page
 		m.doc = msg.doc
 		m.title = msg.doc.Title()
-		m.palette = newPalette(m.page, m.client)
+		m.palette = newPalette(m.page, m.doc, m.client)
 		m.setScrollEnabled(true)
 		if m.ready && m.renderer != nil {
 			if out, err := m.renderer.Render(msg.doc); err == nil {
@@ -236,10 +232,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
-
-	case pageLoadErrMsg:
-		m.loading = false
-		return m, func() tea.Msg { return statusMsg("Error loading page") }
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -295,12 +287,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+		if hit, ok := msg.Item.(reference); ok {
+			m.palette.Dismiss()
+			if hit.external {
+				u := hit.url
+				return m, func() tea.Msg {
+					_ = browser.Open(context.Background(), u)
+					return statusMsg("Opened!")
+				}
+			}
+			return m, m.fetchPageCmd(hit.url)
+		}
 
 	case pageReadyMsg:
 		m.page = msg.page
 		m.doc = msg.doc
 		m.title = msg.doc.Title()
-		m.palette = newPalette(m.page, m.client)
+		m.palette = newPalette(m.page, m.doc, m.client)
 		if m.renderer != nil {
 			if out, err := m.renderer.Render(msg.doc); err == nil {
 				m.viewport.SetContent(out)
@@ -358,7 +361,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Enter):
 			if m.isLanding() && !m.loading {
 				m.loading = true
-				return m, m.fetchPageCmd("/")
+				return m, m.fetchPageCmd(&url.URL{Path: "/"})
 			}
 		case key.Matches(msg, m.keys.Palette):
 			focusCmd := m.palette.Open()
@@ -369,6 +372,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			focusCmd := m.palette.Open()
 			m.palette.syncKeyMap()
 			return m, focusCmd
+		case key.Matches(msg, m.keys.Reference):
+			focusCmd := m.palette.Open()
+			m.palette.Model, cmd = m.palette.Update(msg)
+			m.palette.syncKeyMap()
+			return m, tea.Batch(focusCmd, cmd)
 		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			m.viewport.SetHeight(m.viewportHeight())
@@ -384,7 +392,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.PageDown()
 		case key.Matches(msg, m.keys.OpenInBrowser):
 			if m.isLanding() {
-				_ = browser.Open(context.Background(), &url.URL{Scheme: "https", Host: "docs.stripe.com", Path: "/"})
+				_ = browser.Open(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"})
 			} else {
 				_ = m.page.Open(context.Background())
 			}
@@ -516,19 +524,27 @@ func (m Model) rerenderCmd() tea.Cmd {
 	}
 }
 
-func (m Model) fetchPageCmd(path string) tea.Cmd {
+func (m Model) fetchPageCmd(dest *url.URL) tea.Cmd {
+	client := m.client
+	base := m.page.URL
 	return func() tea.Msg {
-		ref := &url.URL{Path: path}
-		p, err := m.client.FetchPage(context.Background(), ref)
-		if err != nil {
-			return pageLoadErrMsg{err: err}
+		u := dest
+		if !u.IsAbs() {
+			if base == nil {
+				base = &url.URL{Scheme: "https", Host: docsHost}
+			}
+			u = base.ResolveReference(u)
 		}
-		doc, err := markdown.Parse(p.Content)
+		fetched, err := client.FetchPage(context.Background(), u)
 		if err != nil {
-			return pageLoadErrMsg{err: err}
+			return statusMsg("Failed to load page")
 		}
-		return pageLoadedMsg{
-			page: Page{Content: p.Content, URL: p.URL},
+		doc, err := markdown.Parse(fetched.Content)
+		if err != nil {
+			return statusMsg("Failed to parse page")
+		}
+		return pageReadyMsg{
+			page: Page{Content: fetched.Content, URL: fetched.URL},
 			doc:  doc,
 		}
 	}
