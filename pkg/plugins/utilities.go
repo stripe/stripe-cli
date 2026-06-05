@@ -313,6 +313,8 @@ func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboa
 
 // GetPluginList reads the cached global plugin manifest from disk and refreshes
 // it when the cache is missing.
+// TODO: Remove this legacy plugins.toml path once the minimum supported CLI
+// version no longer depends on the cached manifest for backward compatibility.
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
 	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
@@ -350,6 +352,8 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 }
 
 // LookUpPluginInManifest returns plugin metadata from the cached global manifest.
+// TODO: Keep this only while older plugin flows still require plugins.toml for
+// backward compatibility.
 func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
 	pluginList, err := GetPluginList(ctx, config, fs)
 	if err != nil {
@@ -378,6 +382,8 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		"version": version,
 	}).Debugf("could not resolve plugin via plugin metadata endpoint, falling back to manifest lookup: %s", err)
 
+	// TODO: Remove this manifest fallback after the backward-compatibility
+	// window for clients that still rely on plugins.toml has ended.
 	if err := RefreshPluginManifest(ctx, config, fs, apiBaseURL); err != nil {
 		return nil, err
 	}
@@ -420,6 +426,8 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		"plugin": pluginName,
 	}).Debugf("could not resolve latest plugin via plugin metadata endpoint, falling back to cached plugin metadata or manifest: %s", endpointErr)
 
+	// TODO: Remove this manifest refresh once backward compatibility for
+	// plugins.toml-dependent clients is no longer required.
 	refreshErr := RefreshPluginManifest(ctx, config, fs, apiBaseURL)
 	if refreshErr != nil {
 		log.WithFields(log.Fields{
@@ -745,7 +753,9 @@ func getLocalPluginMetadataNames(config config.IConfig, fs afero.Fs) ([]string, 
 	return names, nil
 }
 
-// RefreshPluginManifest refreshes the plugin manifest
+// RefreshPluginManifest refreshes the legacy cached plugin manifest.
+// TODO: Remove this once all supported clients use the metadata/list endpoints
+// and no longer require plugins.toml for backward compatibility.
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
 	apiKey, err := config.GetProfile().GetAPIKey(false)
 
@@ -1033,6 +1043,8 @@ func FetchRemoteResource(url string) ([]byte, error) {
 // has a newer version of the plugin than what is currently installed.
 // It is a no-op in local development mode (PluginsPath set) or when the manifest
 // has no version information for the current platform.
+// TODO: Switch this to the metadata/list endpoints once the legacy
+// plugins.toml compatibility path can be retired.
 func CheckLatestPluginVersion(config config.IConfig, fs afero.Fs, plugin Plugin) {
 	if PluginsPath != "" {
 		return

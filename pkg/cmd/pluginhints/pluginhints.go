@@ -78,24 +78,25 @@ func withPrivatePreview() option {
 func newPluginHintCmd(cfg *config.Config, name, description string, opts ...option) *pluginHintCmd {
 	fs := afero.NewOsFs()
 	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+	resolvePlugin := func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
+		// Reuse the main install resolution path so metadata-first lookup and
+		// backward-compatible manifest fallback stay centralized in plugins.
+		return plugins.ResolvePluginForInstall(ctx, cfg, fs, name, "", stripe.DefaultAPIBaseURL, dashboardBaseURL)
+	}
 
 	p := &pluginHintCmd{
 		name:        name,
 		description: description,
 		lookupFn: func(ctx context.Context) error {
-			if err := plugins.RefreshPluginManifest(ctx, cfg, fs, stripe.DefaultAPIBaseURL); err != nil {
-				return err
-			}
-			_, err := plugins.LookUpPlugin(ctx, cfg, fs, name)
+			_, err := resolvePlugin(ctx)
 			return err
 		},
 		installFn: func(ctx context.Context) error {
-			plugin, err := plugins.LookUpPlugin(ctx, cfg, fs, name)
+			resolvedPlugin, err := resolvePlugin(ctx)
 			if err != nil {
 				return err
 			}
-			version := plugin.LookUpLatestVersion()
-			return plugin.Install(ctx, cfg, fs, version, stripe.DefaultAPIBaseURL, dashboardBaseURL)
+			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 		},
 		loginFn: func(ctx context.Context) error {
 			return login.Login(ctx, dashboardBaseURL, cfg)
