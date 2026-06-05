@@ -62,6 +62,16 @@ func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = ca
 // WithLogger sets a custom logger.
 func WithLogger(logger *slog.Logger) ClientOption { return func(c *Client) { c.logger = logger } }
 
+// WithAgent appends an AIAgent token to the User-Agent header. Pass the result
+// of string(agent.Detect()) — a non-empty value is appended as " AIAgent/<name>".
+func WithAgent(a string) ClientOption {
+	return func(c *Client) {
+		if a != "" {
+			c.userAgent += fmt.Sprintf(" AIAgent/%s", a)
+		}
+	}
+}
+
 // NewClient creates a Client configured with the given plugin version.
 func NewClient(version string) *Client {
 	base, _ := url.Parse(defaultBaseURL)

@@ -121,6 +121,9 @@ func (r *RootCommand) initClient() {
 	}
 	r.client = docs.NewClient(r.version)
 	var clientOpts []docs.ClientOption
+	if a := agent.Detect(); a != agent.NotDetected {
+		clientOpts = append(clientOpts, docs.WithAgent(string(a)))
+	}
 	if r.logger != nil {
 		clientOpts = append(clientOpts, docs.WithLogger(r.logger))
 	}
@@ -146,7 +149,7 @@ func (r *RootCommand) initRenderer() {
 	case "on":
 		// Use default styled rendering (auto-detect dark/light).
 	default:
-		if agent.Detect() {
+		if agent.Detect() != agent.NotDetected {
 			opts = append(opts, markdown.WithStyle("notty"))
 			r.noPager = true
 		}
