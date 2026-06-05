@@ -213,6 +213,12 @@ func TestView_BeforeReady(t *testing.T) {
 	assert.Equal(t, "loading...", view.Content)
 }
 
+func TestNew_WithWindowSize_ReadyImmediately(t *testing.T) {
+	m := New(WithWindowSize(80, 24))
+	view := m.View()
+	assert.NotEqual(t, "loading...", view.Content)
+}
+
 func TestView_AltScreenEnabled(t *testing.T) {
 	m := New(WithPage(Page{Content: []byte("# Hello")}))
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})

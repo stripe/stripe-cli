@@ -228,6 +228,16 @@ func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
 	return ok && term.IsTerminal(int(f.Fd()))
 }
 
+// terminalSize returns the current terminal dimensions, if available.
+func terminalSize(cmd *cobra.Command) (w, h int, ok bool) {
+	f, isFile := cmd.OutOrStdout().(*os.File)
+	if !isFile {
+		return 0, 0, false
+	}
+	w, h, err := term.GetSize(int(f.Fd()))
+	return w, h, err == nil
+}
+
 // show displays a page to the user. When a TTY is detected it launches the
 // interactive TUI; otherwise it renders markdown and pipes it through a pager.
 // A nil page starts the TUI at the home screen.
@@ -250,6 +260,9 @@ func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
 				Content: page.Content,
 				URL:     page.URL,
 			}))
+		}
+		if w, h, ok := terminalSize(cmd); ok {
+			opts = append(opts, tui.WithWindowSize(w, h))
 		}
 		p := tea.NewProgram(tui.New(opts...), tea.WithFilter(tui.NewMouseEventFilter()))
 		if _, err := p.Run(); err != nil {
