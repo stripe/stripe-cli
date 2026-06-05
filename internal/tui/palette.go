@@ -29,7 +29,13 @@ type searchHit struct {
 
 func (h searchHit) FilterValue() string { return h.title }
 func (h searchHit) Title() string       { return h.title }
-func (h searchHit) Description() string { return h.url }
+func (h searchHit) Description() string {
+	const docsOrigin = "https://docs.stripe.com"
+	if strings.HasPrefix(h.url, docsOrigin) {
+		return h.url[len(docsOrigin):]
+	}
+	return h.url
+}
 
 // Palette wraps the foam palette model with visibility state and
 // overlay rendering.

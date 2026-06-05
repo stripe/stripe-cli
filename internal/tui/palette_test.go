@@ -14,6 +14,16 @@ func TestSearchHit_Item(t *testing.T) {
 	assert.Equal(t, "/payments/accept-a-payment", h.Description())
 }
 
+func TestSearchHit_Description_StripsDocsOrigin(t *testing.T) {
+	h := searchHit{title: "Payments", url: "https://docs.stripe.com/payments"}
+	assert.Equal(t, "/payments", h.Description())
+}
+
+func TestSearchHit_Description_PreservesExternalURL(t *testing.T) {
+	h := searchHit{title: "GitHub", url: "https://github.com/stripe"}
+	assert.Equal(t, "https://github.com/stripe", h.Description())
+}
+
 func TestSyncKeyMap_SearchMode_LabelIsView(t *testing.T) {
 	p := newPalette(Page{Content: []byte("# Test")}, nil)
 	// Empty input activates the catch-all search mode.
