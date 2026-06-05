@@ -185,6 +185,11 @@ func (r *RootCommand) initLogger() {
 func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
+	if r.logger != nil {
+		if a := agent.Detect(); a != agent.NotDetected {
+			r.logger.Debug("agent detected", "name", string(a))
+		}
+	}
 	return nil
 }
 
