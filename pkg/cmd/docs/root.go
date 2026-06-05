@@ -224,7 +224,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
-	if r.noTUI {
+	if r.noTUI || agent.Detect() != agent.NotDetected {
 		return false
 	}
 	f, ok := cmd.OutOrStdout().(*os.File)

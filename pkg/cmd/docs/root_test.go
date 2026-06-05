@@ -72,6 +72,24 @@ func TestFetchPage(t *testing.T) {
 	assert.Contains(t, out.String(), "Payments")
 }
 
+// TestAgentDetectionDisablesTUI verifies that when an agent env var is set,
+// running with no arguments prints help rather than launching the interactive
+// TUI. In a real terminal (where term.IsTerminal is true) this would otherwise
+// open BubbleTea; the test environment uses a bytes.Buffer so it also confirms
+// no panic or hang occurs through the non-TUI code path.
+func TestAgentDetectionDisablesTUI(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	var out bytes.Buffer
+	root := cmd.New().Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Usage:", "expected help output, not TUI")
+}
+
 func TestAgentDetectionForcesNottyStyle(t *testing.T) {
 	t.Setenv("CLAUDECODE", "1")
 
