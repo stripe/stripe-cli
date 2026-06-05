@@ -17,6 +17,14 @@ import (
 var openBrowser = open.Browser
 var canOpenBrowser = open.CanOpenBrowser
 
+// SetOpenBrowserForTesting overrides the browser-opening function used by
+// the login flow. It returns a restore function that resets to the default.
+func SetOpenBrowserForTesting(fn func(string) error) (restore func()) {
+	orig := openBrowser
+	openBrowser = fn
+	return func() { openBrowser = orig }
+}
+
 const stripeCLIAuthPath = "/stripecli/auth"
 
 // TODO
