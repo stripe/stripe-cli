@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -272,7 +273,46 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 	return nil
 }
 
-// GetPluginList builds a list of allowed plugins to be installed and run by the CLI
+// ListPlugins fetches the live plugin list visible to the current caller for
+// the current platform using the list-plugins API endpoints.
+func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboardBaseURL string) (PluginList, error) {
+	apiKey, err := config.GetProfile().GetAPIKey(false)
+	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
+		return PluginList{}, err
+	}
+
+	if dashboardBaseURL == "" {
+		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+	}
+
+	body, err := requests.GetPluginList(
+		ctx,
+		apiBaseURL,
+		dashboardBaseURL,
+		stripe.APIVersion,
+		apiKey,
+		config.GetProfile(),
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
+	if err != nil {
+		return PluginList{}, err
+	}
+
+	var pluginList PluginList
+	if err := json.Unmarshal(body, &pluginList); err != nil {
+		return PluginList{}, fmt.Errorf("failed to decode plugin list response: %w", err)
+	}
+
+	if err := validatePluginListResponse(&pluginList); err != nil {
+		return PluginList{}, err
+	}
+
+	return pluginList, nil
+}
+
+// GetPluginList reads the cached global plugin manifest from disk and refreshes
+// it when the cache is missing.
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
 	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
@@ -787,6 +827,36 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 	return validatePluginManifest(body)
 }
 
+func validatePluginListResponse(pluginList *PluginList) error {
+	if pluginList == nil {
+		return errors.New("received an empty plugin list response")
+	}
+	if pluginList.Plugins == nil {
+		pluginList.Plugins = []Plugin{}
+	}
+	if err := validateRuntimeVersions(pluginList); err != nil {
+		return err
+	}
+	for i := range pluginList.Plugins {
+		sortPluginReleases(pluginList.Plugins[i].Releases)
+	}
+	return nil
+}
+
+func sortPluginReleases(releases []Release) {
+	sort.Slice(releases, func(i, j int) bool {
+		vi, errI := version.NewVersion(releases[i].Version)
+		vj, errJ := version.NewVersion(releases[j].Version)
+
+		// If either version fails to parse, fall back to string comparison.
+		if errI != nil || errJ != nil {
+			return releases[i].Version < releases[j].Version
+		}
+
+		return vi.LessThan(vj)
+	})
+}
+
 // validateRuntimeVersions validates that Runtime specifications only contain valid LTS Node.js versions
 func validateRuntimeVersions(pluginList *PluginList) error {
 	for _, plugin := range pluginList.Plugins {
@@ -885,19 +955,7 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 		pluginList.Plugins = append(pluginList.Plugins, pl)
 	} else {
 		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
-
-		// Other code assumes the releases are sorted with latest version last.
-		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
-			vi, errI := version.NewVersion(pluginList.Plugins[idx].Releases[i].Version)
-			vj, errJ := version.NewVersion(pluginList.Plugins[idx].Releases[j].Version)
-
-			// If either version fails to parse, fall back to string comparison
-			if errI != nil || errJ != nil {
-				return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
-			}
-
-			return vi.LessThan(vj)
-		})
+		sortPluginReleases(pluginList.Plugins[idx].Releases)
 	}
 }
 
