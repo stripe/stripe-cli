@@ -69,7 +69,7 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 
 func (r *RootCommand) renderSearch(w io.Writer, response *docs.SearchResponse) error {
 	styles := ui.DefaultStyles()
-	colorOff := r.color() == "off"
+	colorOff := r.color() == colorValueOff
 
 	l := list.New().
 		Enumerator(list.Bullet).
