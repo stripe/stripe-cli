@@ -15,6 +15,7 @@ type KeyMap struct {
 	Palette       key.Binding
 	Search        key.Binding
 	OpenInBrowser key.Binding
+	Enter         key.Binding
 }
 
 // ShortHelp returns bindings for the short help view.
@@ -71,6 +72,10 @@ func DefaultKeyMap() KeyMap {
 		OpenInBrowser: key.NewBinding(
 			key.WithKeys("o"),
 			key.WithHelp("o", "open in browser"),
+		),
+		Enter: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("↵", "browse"),
 		),
 	}
 }
