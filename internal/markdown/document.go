@@ -1,12 +1,27 @@
 package markdown
 
 import (
+	"bytes"
 	"net/url"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 )
+
+// ParseOption configures Parse behaviour.
+type ParseOption func(*parseConfig)
+
+type parseConfig struct {
+	relativeOrigins []string
+}
+
+// WithRelativeURLs strips the given origin (e.g. "https://docs.stripe.com")
+// from absolute URLs in the document source before parsing, converting them to
+// root-relative paths. It may be passed multiple times to strip multiple origins.
+func WithRelativeURLs(origin string) ParseOption {
+	return func(c *parseConfig) { c.relativeOrigins = append(c.relativeOrigins, origin) }
+}
 
 // Reference is a hyperlink extracted from a markdown document.
 type Reference struct {
@@ -76,7 +91,14 @@ func nodeText(n ast.Node, source []byte) []byte {
 // Parse parses src as markdown and returns a Document containing the goldmark AST
 // root and the original source bytes. The source is required for extracting text
 // from AST nodes via Node.Text(source).
-func Parse(src []byte) (*Document, error) {
+func Parse(src []byte, opts ...ParseOption) (*Document, error) {
+	cfg := parseConfig{}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	for _, origin := range cfg.relativeOrigins {
+		src = bytes.ReplaceAll(src, []byte(origin), []byte(""))
+	}
 	reader := text.NewReader(src)
 	parser := goldmark.DefaultParser()
 	node := parser.Parse(reader)

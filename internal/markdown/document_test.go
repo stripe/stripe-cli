@@ -163,6 +163,61 @@ func TestReferences(t *testing.T) {
 	}
 }
 
+func TestParseWithRelativeURLs(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      string
+		wantURLs []string
+	}{
+		{
+			name:     "strips docs.stripe.com origin",
+			src:      "[Payments](https://docs.stripe.com/payments)",
+			wantURLs: []string{"/payments"},
+		},
+		{
+			name:     "preserves external links unchanged",
+			src:      "[Stripe](https://stripe.com/blog)",
+			wantURLs: []string{"https://stripe.com/blog"},
+		},
+		{
+			name:     "preserves already-relative links",
+			src:      "[Get started](/get-started)",
+			wantURLs: []string{"/get-started"},
+		},
+		{
+			name: "handles mixed links",
+			src:  "[A](https://docs.stripe.com/a)\n\n[B](https://stripe.com/b)\n\n[C](/c)",
+			wantURLs: []string{"/a", "https://stripe.com/b", "/c"},
+		},
+	}
+
+	t.Run("strips multiple origins", func(t *testing.T) {
+		src := "[A](https://docs.stripe.com/a)\n\n[B](https://stripe.com/b)"
+		doc, err := markdown.Parse([]byte(src),
+			markdown.WithRelativeURLs("https://docs.stripe.com"),
+			markdown.WithRelativeURLs("https://stripe.com"),
+		)
+		require.NoError(t, err)
+		refs := doc.References()
+		require.Len(t, refs, 2)
+		assert.Equal(t, "/a", refs[0].URL.String())
+		assert.Equal(t, "/b", refs[1].URL.String())
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := markdown.Parse([]byte(tt.src), markdown.WithRelativeURLs("https://docs.stripe.com"))
+
+			require.NoError(t, err)
+			refs := doc.References()
+			require.Len(t, refs, len(tt.wantURLs))
+			for i, want := range tt.wantURLs {
+				assert.Equal(t, want, refs[i].URL.String())
+			}
+		})
+	}
+}
+
 func TestParseAST(t *testing.T) {
 	src := "# Hello\n\nParagraph."
 	doc, err := markdown.Parse([]byte(src))

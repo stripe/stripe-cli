@@ -128,7 +128,7 @@ func New(opts ...Option) Model {
 	m.WithOptions(opts...)
 
 	if m.page.Content != nil {
-		if doc, err := markdown.Parse(m.page.Content); err == nil {
+		if doc, err := markdown.Parse(m.page.Content, markdown.WithRelativeURLs("https://docs.stripe.com")); err == nil {
 			m.doc = doc
 			m.title = doc.Title()
 		}
@@ -276,7 +276,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if err != nil {
 					return statusMsg("Failed to load page")
 				}
-				doc, err := markdown.Parse(fetched.Content)
+				doc, err := markdown.Parse(fetched.Content, markdown.WithRelativeURLs("https://docs.stripe.com"))
 				if err != nil {
 					return statusMsg("Failed to parse page")
 				}
@@ -539,7 +539,7 @@ func (m Model) fetchPageCmd(dest *url.URL) tea.Cmd {
 		if err != nil {
 			return statusMsg("Failed to load page")
 		}
-		doc, err := markdown.Parse(fetched.Content)
+		doc, err := markdown.Parse(fetched.Content, markdown.WithRelativeURLs("https://docs.stripe.com"))
 		if err != nil {
 			return statusMsg("Failed to parse page")
 		}
