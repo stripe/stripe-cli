@@ -1,0 +1,109 @@
+{
+  "chapters": [
+    {
+      "description": "Create a product and price in your Stripe account.",
+      "key": "setup-chapter",
+      "nodes": [
+        {
+          "description": "Write code that creates a Stripe product with a price using the API. The product and price IDs should be used in subsequent steps — store them in a variable or constant in your code, NOT in .env files.",
+          "key": "create-product",
+          "request": {
+            "key": "create-product-request",
+            "method": "post",
+            "params": {
+              "default_price_data": {
+                "currency": "usd",
+                "unit_amount": 2000
+              },
+              "name": "T-shirt"
+            },
+            "path": "/v1/products"
+          },
+          "title": "Create a product",
+          "type": "apiRequest"
+        }
+      ],
+      "required": true,
+      "title": "Set up your product catalog"
+    },
+    {
+      "description": "Build a server endpoint that creates a Checkout Session and redirects the customer.",
+      "key": "checkout-chapter",
+      "nodes": [
+        {
+          "description": "Create a Checkout Session with the price from the previous step.",
+          "key": "create-checkout-session",
+          "request": {
+            "key": "create-checkout-session-request",
+            "method": "post",
+            "params": {
+              "cancel_url": "https://example.com/cancel",
+              "line_items": [
+                {
+                  "price": "${node.setup-chapter.create-product.create-product-request:default_price}",
+                  "quantity": 1
+                }
+              ],
+              "mode": "payment",
+              "success_url": "https://example.com/success"
+            },
+            "path": "/v1/checkout/sessions"
+          },
+          "title": "Create a Checkout Session",
+          "type": "apiRequest"
+        },
+        {
+          "description": "Add a button or link that redirects the customer to the Checkout page.",
+          "key": "redirect-to-checkout",
+          "title": "Redirect to Checkout",
+          "type": "uiComponent"
+        },
+        {
+          "description": "Create a page to show after the customer completes payment.",
+          "key": "add-success-page",
+          "title": "Add a success page",
+          "type": "uiComponent"
+        }
+      ],
+      "title": "Create a Checkout Session"
+    },
+    {
+      "description": "Listen for webhook events to handle fulfillment.",
+      "key": "webhook-chapter",
+      "nodes": [
+        {
+          "description": "Set up a webhook endpoint to receive the checkout.session.completed event and fulfill the order.",
+          "events": [
+            "checkout.session.completed"
+          ],
+          "key": "handle-checkout-completed",
+          "title": "Handle checkout.session.completed",
+          "type": "asyncHandler"
+        }
+      ],
+      "title": "Handle post-payment events"
+    },
+    {
+      "description": "Verify the complete flow works end to end.",
+      "key": "test-chapter",
+      "nodes": [
+        {
+          "description": "Run through the complete payment flow using a test card number.",
+          "key": "test-payment-flow",
+          "title": "Make a test payment",
+          "type": "testHelper"
+        }
+      ],
+      "title": "Test the integration"
+    }
+  ],
+  "description": "Set up Checkout to accept a one-time payment with a prebuilt, hosted payment page.",
+  "id": "one-time-payment",
+  "products": [
+    "Payments",
+    "Checkout"
+  ],
+  "settings": [],
+  "title": "Accept a one-time payment",
+  "type": "learning"
+}

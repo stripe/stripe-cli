@@ -1,0 +1,118 @@
+{
+  "id": "flat-subscription-with-entitlements",
+  "title": "Flat rate subscription with entitlements",
+  "description": "Learn how to create a flat rate subscription with entitlements to manage customer feature access.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Flat rate subscription with entitlements",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-basic-product",
+          "title": "Create a Basic product tier",
+          "request": {
+            "path": "/v1/products",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-basic-feature",
+          "title": "Create a feature for the Basic tier",
+          "request": {
+            "path": "/v1/entitlements/features",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attach-feature-to-product",
+          "title": "Attach the feature to the product",
+          "request": {
+            "path": "/v1/products/${node.create-products-chapter.create-basic-product.create-basic-product-request:id}/features",
+            "method": "post"
+          }
+        },
+        {
+          "type": "testHelper",
+          "key": "create-test-clock",
+          "title": "Create a test clock"
+        },
+        {
+          "type": "testHelper",
+          "key": "create-customer",
+          "title": "Create a customer"
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create a checkout session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete the checkout process"
+        },
+        {
+          "type": "asyncHandler",
+          "key": "track-subscription-creation",
+          "title": "Track subscription creation",
+          "events": [
+            "customer.subscription.created"
+          ]
+        },
+        {
+          "type": "asyncHandler",
+          "key": "check-entitlements",
+          "title": "Check customer entitlements",
+          "events": [
+            "entitlements.active_entitlement_summary.updated"
+          ]
+        },
+        {
+          "type": "testHelper",
+          "key": "advance-time",
+          "title": "Advance time to billing date"
+        },
+        {
+          "type": "asyncHandler",
+          "key": "wait-for-invoice-created",
+          "title": "View the invoice created",
+          "events": [
+            "invoice.created"
+          ]
+        },
+        {
+          "type": "apiRequest",
+          "key": "view-invoice",
+          "title": "View the invoice created",
+          "request": {
+            "path": "/v1/invoices/${node.next-billing-cycle-chapter.wait-for-invoice-created.0:id}",
+            "method": "get"
+          }
+        },
+        {
+          "type": "asyncHandler",
+          "key": "test-clock-advanced",
+          "title": "Wait for test clock to be ready.",
+          "events": [
+            "test_helpers.test_clock.ready"
+          ]
+        },
+        {
+          "type": "testHelper",
+          "key": "delete-test-clock",
+          "title": "Delete the test clock"
+        }
+      ]
+    }
+  ]
+}

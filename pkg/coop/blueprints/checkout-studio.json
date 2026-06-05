@@ -1,0 +1,30 @@
+{
+  "id": "checkout-studio",
+  "title": "Build your Integration",
+  "description": "",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Build your Integration",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create a checkout session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "setup-stripe-elements-html-snippet",
+          "title": "Set up your frontend"
+        }
+      ]
+    }
+  ]
+}

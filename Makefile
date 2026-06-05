@@ -184,4 +184,9 @@ protoc-gen-plugin:
 	@echo "Successfully compiled proto files for plugins"
 .PHONY: protoc-plugin
 
+sync-blueprints:
+	@echo "Exporting blueprints from pay-server..."
+	@python3 scripts/export-blueprints/export-blueprints.py
+.PHONY: sync-blueprints
+
 .DEFAULT_GOAL := build

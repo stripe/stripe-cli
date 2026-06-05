@@ -1,0 +1,34 @@
+{
+  "id": "usage-recording",
+  "title": "Record usage events for billing",
+  "description": "Record usage events to track customer consumption for usage-based billing.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Record usage events for billing",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-meter",
+          "title": "Create a meter",
+          "request": {
+            "path": "/v1/billing/meters",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "record-usage",
+          "title": "Record usage event",
+          "request": {
+            "path": "/v1/billing/meter_events",
+            "method": "post"
+          }
+        }
+      ]
+    }
+  ]
+}

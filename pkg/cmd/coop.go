@@ -1,0 +1,44 @@
+package cmd
+
+import (
+	"github.com/spf13/cobra"
+)
+
+type coopCmd struct {
+	cmd *cobra.Command
+}
+
+func newCoopCmd() *coopCmd {
+	cc := &coopCmd{}
+	cc.cmd = &cobra.Command{
+		Use:   "coop",
+		Short: "Collaborative integration mode (AI agent + human developer)",
+		Long: `Co-op mode enables AI agents and human developers to collaborate on Stripe
+integrations in real time. The agent writes code and reports progress via CLI
+commands; the developer watches live in a terminal UI.
+
+Start a session with a blueprint, then let the agent work through it step by step.
+The developer confirms each step before the agent moves on.`,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: `  Workflow: start a session, then use step commands to progress through it.
+  1. stripe coop run <blueprint-id> — begin a session
+  2. stripe coop step <n> start --note="..." — mark step as active
+  3. stripe coop step <n> done --file=... --note="..." — mark step complete
+  4. stripe coop step <n> verify --check="..." --passed — add verification
+  All commands output JSON with a "next" field suggesting the next command.
+  Run "stripe coop recommend --query=..." to discover available blueprints.`,
+		},
+	}
+
+	cc.cmd.AddCommand(newCoopRunCmd().cmd)
+	cc.cmd.AddCommand(newCoopStartCmd().cmd)
+	cc.cmd.AddCommand(newCoopJoinCmd().cmd)
+	cc.cmd.AddCommand(newCoopStepCmd().cmd)
+	cc.cmd.AddCommand(newCoopStatusCmd().cmd)
+	cc.cmd.AddCommand(newCoopStopCmd().cmd)
+	cc.cmd.AddCommand(newCoopNextStepsCmd().cmd)
+	cc.cmd.AddCommand(newCoopRecommendCmd().cmd)
+	cc.cmd.AddCommand(newCoopRecoverCmd().cmd)
+
+	return cc
+}

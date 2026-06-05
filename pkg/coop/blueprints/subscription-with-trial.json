@@ -1,0 +1,46 @@
+{
+  "id": "subscription-with-trial",
+  "title": "Create subscription with trial period",
+  "description": "Learn how to create a subscription with a trial period using Stripe Checkout.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Create subscription with trial period",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create Checkout Session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete checkout"
+        },
+        {
+          "type": "asyncHandler",
+          "key": "handle-checkout-completed",
+          "title": "Wait for checkout.session.completed event",
+          "events": [
+            "checkout.session.completed"
+          ]
+        },
+        {
+          "type": "asyncHandler",
+          "key": "handle-subscription-created",
+          "title": "Wait for customer.subscription.created event",
+          "events": [
+            "customer.subscription.created"
+          ]
+        }
+      ]
+    }
+  ]
+}

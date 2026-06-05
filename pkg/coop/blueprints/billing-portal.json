@@ -1,0 +1,21 @@
+{
+  "id": "billing-portal",
+  "title": "Give customers access to billing portal",
+  "description": "Create a billing portal session to allow customers to manage their billing and subscription information.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Give customers access to billing portal",
+      "nodes": [
+        {
+          "type": "uiComponent",
+          "key": "redirect-to-portal",
+          "title": "Open billing portal"
+        }
+      ]
+    }
+  ]
+}

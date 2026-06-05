@@ -1,0 +1,277 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/charmbracelet/huh"
+	"github.com/google/uuid"
+
+	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/tui"
+)
+
+type agentInfo struct {
+	name string // "claude" or "codex"
+	path string
+}
+
+func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
+	if rc.agent != "" {
+		path, err := exec.LookPath(rc.agent)
+		if err != nil {
+			return nil, fmt.Errorf("agent %q not found in PATH", rc.agent)
+		}
+		name := rc.agent
+		if strings.Contains(path, "claude") {
+			name = "claude"
+		} else if strings.Contains(path, "codex") {
+			name = "codex"
+		}
+		return &agentInfo{name: name, path: path}, nil
+	}
+
+	claudePath, claudeErr := exec.LookPath("claude")
+	codexPath, codexErr := exec.LookPath("codex")
+
+	hasClaude := claudeErr == nil
+	hasCodex := codexErr == nil
+
+	switch {
+	case hasClaude && hasCodex:
+		var choice string
+		err := huh.NewSelect[string]().
+			Title("Multiple agents detected. Which would you like to use?").
+			Options(
+				huh.NewOption("Claude Code", "claude"),
+				huh.NewOption("Codex", "codex"),
+			).
+			Value(&choice).
+			WithTheme(tui.HuhTheme()).
+			Run()
+		if err != nil {
+			return &agentInfo{name: "claude", path: claudePath}, nil
+		}
+		if choice == "codex" {
+			return &agentInfo{name: "codex", path: codexPath}, nil
+		}
+		return &agentInfo{name: "claude", path: claudePath}, nil
+
+	case hasClaude:
+		return &agentInfo{name: "claude", path: claudePath}, nil
+	case hasCodex:
+		return &agentInfo{name: "codex", path: codexPath}, nil
+	default:
+		return nil, fmt.Errorf("no AI agent found in PATH.\n  Install Claude Code: https://docs.anthropic.com/en/docs/claude-code\n  Or specify a custom agent: --agent=<command>")
+	}
+}
+
+func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) bool {
+	var choice string
+
+	var title string
+	switch agent.name {
+	case "claude":
+		title = "Permission mode for Claude Code:"
+	case "codex":
+		title = "Permission mode for Codex:"
+	default:
+		return false
+	}
+
+	err := huh.NewSelect[string]().
+		Title(title).
+		Options(
+			huh.NewOption("Normal — agent asks before running commands", "normal"),
+			huh.NewOption("Auto-approve — skip all permission prompts (faster, less safe)", "auto"),
+		).
+		Value(&choice).
+		WithTheme(tui.HuhTheme()).
+		Run()
+	if err != nil {
+		return false
+	}
+	return choice == "auto"
+}
+
+func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) string {
+	launcherPath := promptPath + ".sh"
+	var script string
+
+	switch agent.name {
+	case "claude":
+		flags := ""
+		if autoApprove {
+			flags = " --dangerously-skip-permissions"
+		}
+		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
+			promptPath, promptPath, launcherPath, agent.path, flags)
+
+	case "codex":
+		flags := ""
+		if autoApprove {
+			flags = " --dangerously-bypass-approvals-and-sandbox"
+		}
+		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
+			promptPath, promptPath, launcherPath, agent.path, flags)
+
+	default:
+		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s \"$prompt\"\n",
+			promptPath, promptPath, launcherPath, agent.path)
+	}
+
+	os.WriteFile(launcherPath, []byte(script), 0700)
+	return launcherPath
+}
+
+func (rc *coopRunCmd) hasTmux() bool {
+	_, err := exec.LookPath("tmux")
+	return err == nil
+}
+
+func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
+	promptPath, err := writePromptFile(agentPrompt)
+	if err != nil {
+		return err
+	}
+
+	if blueprintID != "" {
+		rc.startSessionQuietly(blueprintID)
+	}
+
+	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+
+	split := exec.Command("tmux", "split-window", "-h", "-p", "60", "bash", "-c", agentCmd)
+	if err := split.Run(); err != nil {
+		os.Remove(promptPath)
+		return fmt.Errorf("tmux split failed: %w", err)
+	}
+
+	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	if err != nil {
+		return err
+	}
+
+	if blueprintID != "" {
+		session, err := store.LatestActiveSession()
+		if err != nil {
+			return fmt.Errorf("session not found after creation: %w", err)
+		}
+		return runCoopTUI(store, session.ID)
+	}
+
+	return runCoopTUIWait(store)
+}
+
+func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
+	sessionName := "stripe-coop"
+
+	// Check for existing session
+	if err := exec.Command("tmux", "has-session", "-t", sessionName).Run(); err == nil {
+		var choice string
+		huh.NewSelect[string]().
+			Title("A co-op tmux session already exists. What would you like to do?").
+			Options(
+				huh.NewOption("Reattach to existing session", "attach"),
+				huh.NewOption("Start fresh (kills existing session)", "fresh"),
+			).
+			Value(&choice).
+			WithTheme(tui.HuhTheme()).
+			Run()
+
+		if choice == "attach" {
+			attach := exec.Command("tmux", "attach-session", "-t", sessionName)
+			attach.Stdin = os.Stdin
+			attach.Stdout = os.Stdout
+			attach.Stderr = os.Stderr
+			return attach.Run()
+		}
+		exec.Command("tmux", "kill-session", "-t", sessionName).Run()
+	}
+
+	promptPath, err := writePromptFile(agentPrompt)
+	if err != nil {
+		return err
+	}
+
+	if blueprintID != "" {
+		rc.startSessionQuietly(blueprintID)
+	}
+
+	tuiCmd := fmt.Sprintf("%s coop join", stripeBin)
+	if blueprintID == "" {
+		tuiCmd += " --wait"
+	}
+	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+
+	create := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-x", "200", "-y", "50",
+		"bash", "-c", tuiCmd)
+	if err := create.Run(); err != nil {
+		os.Remove(promptPath)
+		return fmt.Errorf("tmux new-session failed: %w", err)
+	}
+
+	split := exec.Command("tmux", "split-window", "-h", "-t", sessionName, "-p", "60",
+		"bash", "-c", agentCmd)
+	if err := split.Run(); err != nil {
+		os.Remove(promptPath)
+		return fmt.Errorf("tmux split-window failed: %w", err)
+	}
+
+	exec.Command("tmux", "select-pane", "-t", sessionName+":0.1").Run()
+
+	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
+	attach.Stdin = os.Stdin
+	attach.Stdout = os.Stdout
+	attach.Stderr = os.Stderr
+	return attach.Run()
+}
+
+func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
+	fmt.Println("tmux not found — running agent in this terminal.")
+	fmt.Println("Open another terminal and run: stripe coop join")
+	fmt.Println()
+
+	if blueprintID != "" {
+		rc.startSessionQuietly(blueprintID)
+	}
+
+	promptPath, err := writePromptFile(agentPrompt)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promptPath)
+
+	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+	agentExec := exec.Command("bash", "-c", agentCmd)
+	agentExec.Stdin = os.Stdin
+	agentExec.Stdout = os.Stdout
+	agentExec.Stderr = os.Stderr
+	return agentExec.Run()
+}
+
+func generateShortID() string {
+	return uuid.New().String()[:8]
+}
+
+func writePromptFile(prompt string) (string, error) {
+	f, err := os.CreateTemp("", "stripe-coop-prompt-*.txt")
+	if err != nil {
+		return "", fmt.Errorf("creating prompt file: %w", err)
+	}
+	f.WriteString(prompt)
+	f.Close()
+	return f.Name(), nil
+}
+
+func runCoopTUIWait(store *coop.Store) error {
+	existingIDs := make(map[string]bool)
+	if ids, err := store.List(); err == nil {
+		for _, id := range ids {
+			existingIDs[id] = true
+		}
+	}
+	return tui.RunWaiting(store, existingIDs)
+}

@@ -1,0 +1,53 @@
+{
+  "id": "managed-payments",
+  "title": "Set up Managed Payments",
+  "description": "",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Set up Managed Payments",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-subscription-product",
+          "title": "API request",
+          "request": {
+            "path": "/v1/products",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-one-time-product",
+          "title": "API request",
+          "request": {
+            "path": "/v1/products",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "API request",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete a test payment"
+        },
+        {
+          "type": "asyncHandler",
+          "key": "wait-for-checkout-completed",
+          "title": "Listen for checkout.session.completed"
+        }
+      ]
+    }
+  ]
+}

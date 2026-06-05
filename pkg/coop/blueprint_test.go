@@ -1,0 +1,192 @@
+package coop
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestLoadBlueprint(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+	assert.Equal(t, "one-time-payment", bp.ID)
+	assert.Equal(t, "Accept a one-time payment", bp.Title)
+	assert.Contains(t, bp.Products, "Payments")
+	assert.Len(t, bp.Chapters, 4)
+	assert.Equal(t, "setup-chapter", bp.Chapters[0].Key)
+	assert.Equal(t, NodeAPIRequest, bp.Chapters[0].Nodes[0].Type)
+}
+
+func TestLoadBlueprintNotFound(t *testing.T) {
+	_, err := LoadBlueprint("nonexistent-blueprint")
+	assert.Error(t, err)
+}
+
+func TestLoadBlueprintPrefixMatch(t *testing.T) {
+	bp, err := LoadBlueprint("deploy")
+	require.NoError(t, err)
+	assert.Equal(t, "deploy-stripe-projects", bp.ID)
+}
+
+func TestLoadBlueprintPrefixMatchUnique(t *testing.T) {
+	bp, err := LoadBlueprint("one-time")
+	require.NoError(t, err)
+	assert.Equal(t, "one-time-payment", bp.ID)
+}
+
+func TestLoadBlueprintPrefixMatchAmbiguous(t *testing.T) {
+	// "flat" matches both "flat-fee-and-overages" and "flat-subscription-with-entitlements"
+	_, err := LoadBlueprint("flat")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ambiguous")
+}
+
+func TestListBlueprints(t *testing.T) {
+	ids, err := ListBlueprints()
+	require.NoError(t, err)
+	assert.Contains(t, ids, "one-time-payment")
+	assert.Contains(t, ids, "setup-future-payments")
+}
+
+func TestNewSessionFromBlueprint(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	session := NewSessionFromBlueprint(bp, "coop_test123", map[string]string{"language": "node"})
+
+	assert.Equal(t, "coop_test123", session.ID)
+	assert.Equal(t, "one-time-payment", session.Blueprint)
+	assert.Equal(t, SessionActive, session.Status)
+	assert.Equal(t, "node", session.Settings["language"])
+	// 4 blueprint chapters + 1 prepended context chapter
+	assert.Len(t, session.Chapters, 5)
+
+	// First chapter is always the context-gathering step
+	assert.Equal(t, "context-chapter", session.Chapters[0].Key)
+	assert.Equal(t, "Understand the project", session.Chapters[0].Nodes[0].Title)
+
+	// All nodes should be pending
+	for _, ch := range session.Chapters {
+		for _, n := range ch.Nodes {
+			assert.Equal(t, StepPending, n.State)
+		}
+	}
+
+	// Total steps = blueprint steps (6) + context step (1)
+	assert.Equal(t, 7, session.TotalSteps())
+}
+
+func TestListBlueprintsWithMetadata(t *testing.T) {
+	bps, err := ListBlueprintsWithMetadata()
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, len(bps), 2)
+
+	found := false
+	for _, bp := range bps {
+		if bp.ID == "setup-future-payments" {
+			found = true
+			assert.Equal(t, "Save a card for future payments", bp.Title)
+		}
+	}
+	assert.True(t, found, "expected to find setup-future-payments")
+}
+
+func TestLoadBlueprintChapterStructure(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	// Verify chapter keys are unique
+	keys := make(map[string]bool)
+	for _, ch := range bp.Chapters {
+		assert.False(t, keys[ch.Key], "duplicate chapter key: %s", ch.Key)
+		keys[ch.Key] = true
+		assert.NotEmpty(t, ch.Title)
+		assert.NotEmpty(t, ch.Nodes)
+
+		// Verify node keys are unique within chapter
+		nodeKeys := make(map[string]bool)
+		for _, n := range ch.Nodes {
+			assert.False(t, nodeKeys[n.Key], "duplicate node key: %s", n.Key)
+			nodeKeys[n.Key] = true
+			assert.NotEmpty(t, n.Title)
+			assert.NotEmpty(t, n.Type)
+		}
+	}
+}
+
+func TestLoadBlueprintNodeTypes(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	typesSeen := make(map[NodeType]bool)
+	for _, ch := range bp.Chapters {
+		for _, n := range ch.Nodes {
+			typesSeen[n.Type] = true
+		}
+	}
+
+	assert.True(t, typesSeen[NodeAPIRequest], "expected apiRequest nodes")
+	assert.True(t, typesSeen[NodeUIComponent], "expected uiComponent nodes")
+	assert.True(t, typesSeen[NodeAsyncHandler], "expected asyncHandler nodes")
+}
+
+func TestLoadBlueprintAPIRequestHasRequest(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	for _, ch := range bp.Chapters {
+		for _, n := range ch.Nodes {
+			if n.Type == NodeAPIRequest {
+				assert.NotNil(t, n.Request, "apiRequest node %q should have request field", n.Key)
+				assert.NotEmpty(t, n.Request.Path)
+				assert.NotEmpty(t, n.Request.Method)
+			}
+		}
+	}
+}
+
+func TestLoadBlueprintAsyncHandlerHasEvents(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	for _, ch := range bp.Chapters {
+		for _, n := range ch.Nodes {
+			if n.Type == NodeAsyncHandler {
+				assert.NotEmpty(t, n.Events, "asyncHandler node %q should have events", n.Key)
+			}
+		}
+	}
+}
+
+func TestNewSessionFromBlueprintPreservesRequest(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	session := NewSessionFromBlueprint(bp, "test_123", nil)
+
+	// First blueprint node (after context chapter) is apiRequest — should preserve the request
+	firstBlueprintNode := session.Chapters[1].Nodes[0]
+	assert.Equal(t, NodeAPIRequest, firstBlueprintNode.Type)
+	assert.NotNil(t, firstBlueprintNode.Request)
+	assert.Equal(t, "/v1/products", firstBlueprintNode.Request.Path)
+	assert.Equal(t, "post", firstBlueprintNode.Request.Method)
+}
+
+func TestNewSessionFromBlueprintPreservesEvents(t *testing.T) {
+	bp, err := LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	session := NewSessionFromBlueprint(bp, "test_123", nil)
+
+	// Find the asyncHandler node
+	for _, ch := range session.Chapters {
+		for _, n := range ch.Nodes {
+			if n.Type == NodeAsyncHandler {
+				assert.Contains(t, n.Events, "checkout.session.completed")
+				return
+			}
+		}
+	}
+	t.Fatal("expected to find asyncHandler node")
+}

@@ -63,7 +63,7 @@ func TestHelpFlag(t *testing.T) {
 func TestExampleCommands(t *testing.T) {
 	{
 		_, err := executeCommand(rootCmd, "foo")
-		require.Equal(t, err.Error(), "unknown command \"foo\" for \"stripe\"")
+		require.Contains(t, err.Error(), "unknown command \"foo\" for \"stripe\"")
 	}
 	{
 		_, err := executeCommand(rootCmd, "listen", "foo")

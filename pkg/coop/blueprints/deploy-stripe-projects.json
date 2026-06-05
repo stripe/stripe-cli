@@ -1,0 +1,98 @@
+{
+  "id": "deploy-stripe-projects",
+  "title": "Deploy with Stripe Projects",
+  "description": "Configure and deploy your local project using the Stripe Projects CLI plugin.",
+  "prompt": "The developer wants to configure their local project for deployment using the Stripe Projects CLI plugin. You will walk them through the setup using `stripe projects` commands. Use `stripe projects --help` and `stripe projects <subcommand> --help` to discover available options. All stripe CLI commands output JSON when passed --json. Report command output to the developer via the coop step commands.\n\nIMPORTANT: If any step fails because the account is a claimable sandbox (errors mentioning 'claim', 'unclaimed', or permission issues), tell the developer they need to claim their sandbox first. Show them the claim URL from `stripe coop status` (the claim_url field) or from `stripe whoami`. Once they've claimed it, tell them to re-run the session with: stripe coop start deploy",
+  "type": "learning",
+  "products": ["Projects"],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "detect-chapter",
+      "title": "Detect project setup",
+      "description": "Ensure the projects plugin is available and scan the codebase.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "cliCommand",
+          "key": "install-projects-plugin",
+          "title": "Check for Stripe Projects plugin",
+          "description": "Run `stripe projects --help`. If it returns 'unknown command', install it with `stripe plugin install projects`. Confirm it's available before proceeding.",
+          "auto_confirm": true
+        },
+        {
+          "type": "testHelper",
+          "key": "scan-project",
+          "title": "Scan project and plan deployment",
+          "description": "Explore the codebase: identify framework, existing hosting config, database usage, auth providers, env vars. Summarize findings — don't ask the developer to explain what you can read from the code.",
+          "auto_confirm": true
+        }
+      ]
+    },
+    {
+      "key": "init-chapter",
+      "title": "Initialize project",
+      "description": "Link your code to Stripe Projects.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "cliCommand",
+          "key": "init-project",
+          "title": "Initialize Stripe Project",
+          "description": "Run `stripe projects init --help` to see available flags, then run `stripe projects init` with appropriate options for the detected framework. Report what was detected and what stripe.json contains."
+        }
+      ]
+    },
+    {
+      "key": "secrets-chapter",
+      "title": "Configure secrets",
+      "description": "Set production API keys and environment variables.",
+      "nodes": [
+        {
+          "type": "cliCommand",
+          "key": "stripe-keys",
+          "title": "Set Stripe keys as project secrets",
+          "description": "Run `stripe projects secrets --help` to discover the command interface. Set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY using the keys from `stripe whoami --json`. Tell the developer which keys you're using."
+        },
+        {
+          "type": "cliCommand",
+          "key": "other-secrets",
+          "title": "Set additional secrets",
+          "description": "Scan .env, .env.local, .env.example for variables NOT already handled (not STRIPE_ keys). If NONE remain → SKIP. If found → use `stripe projects secrets set` to configure them. Ask the developer for production values only if they differ from what's in .env."
+        }
+      ]
+    },
+    {
+      "key": "deploy-chapter",
+      "title": "Deploy",
+      "description": "Push to production and verify.",
+      "nodes": [
+        {
+          "type": "cliCommand",
+          "key": "first-deploy",
+          "title": "Run first deployment",
+          "description": "Run `stripe projects deploy --help` to check available flags, then run `stripe projects deploy`. Report the build output and deployment URL."
+        },
+        {
+          "type": "testHelper",
+          "key": "verify-live",
+          "title": "Verify deployment is live",
+          "description": "Ask the developer to visit the deployment URL and confirm it works. If it's a payment flow, suggest testing with card number 4242424242424242."
+        }
+      ]
+    },
+    {
+      "key": "webhooks-chapter",
+      "title": "Configure production webhooks",
+      "description": "Register webhook endpoint for the deployed app.",
+      "nodes": [
+        {
+          "type": "cliCommand",
+          "key": "register-endpoint",
+          "title": "Register webhook endpoint",
+          "description": "Look for webhook handling code (stripe.webhooks.constructEvent, /webhook routes). If found → construct the production URL (deployment URL + webhook path) and use `stripe projects webhooks --help` to discover how to register it. Set STRIPE_WEBHOOK_SECRET as a project secret. If NOT found → SKIP."
+        }
+      ]
+    }
+  ]
+}

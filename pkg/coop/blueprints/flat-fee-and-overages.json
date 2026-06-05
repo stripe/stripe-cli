@@ -1,0 +1,137 @@
+{
+  "id": "flat-fee-and-overages",
+  "title": "Set up flat fee and overages pricing",
+  "description": "Charge customers a flat recurring fee with overage charges for usage beyond included limits.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Set up flat fee and overages pricing",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createCustomer",
+          "title": "Create a customer",
+          "request": {
+            "path": "/v1/customers",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createEmptyPricingPlan",
+          "title": "Create a Pricing Plan",
+          "request": {
+            "path": "/v2/billing/pricing_plans",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createMeter",
+          "title": "Create a meter",
+          "request": {
+            "path": "/v1/billing/meters",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createRateCard",
+          "title": "Create a rate card",
+          "request": {
+            "path": "/v2/billing/rate_cards",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createMeteredItem",
+          "title": "Create a metered item",
+          "request": {
+            "path": "/v2/billing/metered_items",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "addGraduatedRateToRateCard",
+          "title": "Add graduated rate to rate card",
+          "request": {
+            "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard.createRateCardRequest:id}/rates",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachRateCardToPricingPlan",
+          "title": "Attach rate card to Pricing Plan",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createLicensedItem",
+          "title": "Create a licensed item",
+          "request": {
+            "path": "/v2/billing/licensed_items",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createLicenseFee",
+          "title": "Create a license fee",
+          "request": {
+            "path": "/v2/billing/license_fees",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachLicenseFeeToPricingPlan",
+          "title": "Attach license fee to Pricing Plan",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "setLiveVersion",
+          "title": "Set live version to latest",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}",
+            "method": "post"
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCheckoutSession",
+          "title": "Create checkout session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "completeCheckout",
+          "title": "Complete the checkout"
+        },
+        {
+          "type": "asyncHandler",
+          "key": "waitForServicingActivated",
+          "title": "Wait for servicing activated event",
+          "events": [
+            "v2.billing.pricing_plan_subscription.servicing_activated"
+          ]
+        }
+      ]
+    }
+  ]
+}

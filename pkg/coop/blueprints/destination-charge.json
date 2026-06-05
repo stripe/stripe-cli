@@ -1,0 +1,25 @@
+{
+  "id": "destination-charge",
+  "title": "Create a destination charge",
+  "description": "",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Create a destination charge",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createCharge",
+          "title": "Create a PaymentIntent",
+          "request": {
+            "path": "/v1/payment_intents",
+            "method": "post"
+          }
+        }
+      ]
+    }
+  ]
+}
