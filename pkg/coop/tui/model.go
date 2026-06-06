@@ -26,6 +26,10 @@ type Model struct {
 	height    int
 	userMoved bool
 
+	rejecting      bool
+	rejectionInput string
+	statusMessage  string
+
 	viewport viewport.Model
 	ready    bool
 
@@ -37,6 +41,7 @@ type Model struct {
 	sdkLoadingStep int
 
 	waiting        bool
+	waitingMessage string
 	existingIDs    map[string]bool
 	lastUpdateTime time.Time
 }
@@ -102,10 +107,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sessionDiscoveredMsg:
 		m.waiting = false
+		m.waitingMessage = ""
 		m.sessionID = msg.sessionID
 		m.cursor = 0
 		m.expanded = false
 		m.userMoved = false
+		m.rejecting = false
+		m.rejectionInput = ""
+		m.statusMessage = ""
 		m.sdkSnippet = ""
 		m.sdkSnippetStep = -1
 		m.sdkLoading = false
@@ -127,6 +136,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !wasComplete && m.session.IsComplete() {
 			m.cursor = 0
 			m.expanded = false
+			m.userMoved = false
 		}
 		m.resizeViewport()
 		if !m.userMoved {
@@ -192,6 +202,9 @@ func (m *Model) resizeViewport() {
 	}
 	headerH := lipgloss.Height(m.renderHeader()) + 1
 	footerH := lipgloss.Height(m.renderFooter()) + 1
+	if m.session != nil && m.session.IsComplete() {
+		footerH = lipgloss.Height(m.renderCompletionFooter()) + 1
+	}
 	vpHeight := m.height - headerH - footerH
 	if vpHeight < 3 {
 		vpHeight = 3
@@ -205,12 +218,18 @@ func (m *Model) syncViewport() {
 		return
 	}
 	content := m.renderStepList()
+	if m.session.IsComplete() {
+		content = m.renderCompletionBody()
+	}
 	m.viewport.SetContent(content)
 	m.scrollToCursor()
 }
 
 func (m *Model) scrollToCursor() {
 	allContent := m.renderStepList()
+	if m.session != nil && m.session.IsComplete() {
+		allContent = m.renderCompletionBody()
+	}
 	allLines := strings.Split(allContent, "\n")
 	targetLine := 0
 	for i, line := range allLines {
@@ -256,6 +275,10 @@ func (m *Model) autoScroll() {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.rejecting {
+		return m.handleRejectionKey(msg)
+	}
+
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -276,6 +299,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.handleEnter()
+	case "f":
+		m.userMoved = false
+		m.autoScroll()
+		m.syncViewport()
+		return m, nil
 	case "c":
 		m.handleConfirm()
 		return m, nil
@@ -285,7 +313,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "r":
-		m.handleReject()
+		m.startReject()
 		return m, nil
 	}
 	return m, nil
@@ -294,6 +322,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) moveCursorUp() {
 	if m.session != nil && m.session.IsComplete() {
 		suggestions := m.getCompletionSuggestions()
+		if len(suggestions) == 0 {
+			return
+		}
 		if m.cursor > 0 {
 			m.cursor--
 		} else {
@@ -308,6 +339,9 @@ func (m *Model) moveCursorUp() {
 func (m *Model) moveCursorDown() {
 	if m.session != nil && m.session.IsComplete() {
 		suggestions := m.getCompletionSuggestions()
+		if len(suggestions) == 0 {
+			return
+		}
 		if m.cursor < len(suggestions)-1 {
 			m.cursor++
 		} else {
@@ -327,10 +361,17 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			cmd := m.selectCompletionOption()
 
 			switch selected.id {
-			case "deploy", "deploy-update", "add-integration":
-				m.enterWaitingMode()
+			case "deploy", "deploy-update":
+				m.enterWaitingMode("Waiting for agent to start the deploy session...")
+				return m, cmd
+			case "add-integration":
+				m.enterWaitingMode("Waiting for agent to ask which Stripe feature to add...")
 				return m, cmd
 			default:
+				if selected.id == "summarize" {
+					m.statusMessage = "Waiting for agent to write STRIPE.md..."
+					m.syncViewport()
+				}
 				return m, cmd
 			}
 		}
@@ -344,12 +385,15 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) enterWaitingMode() {
+func (m *Model) enterWaitingMode(message string) {
 	m.waiting = true
+	m.waitingMessage = message
 	m.session = nil
 	m.cursor = 0
 	m.expanded = false
 	m.userMoved = false
+	m.rejecting = false
+	m.rejectionInput = ""
 	m.existingIDs = make(map[string]bool)
 	if ids, err := m.store.List(); err == nil {
 		for _, id := range ids {
@@ -369,6 +413,7 @@ func (m *Model) handleConfirm() {
 			m.err = fmt.Errorf("failed to save confirmation: %w", err)
 		}
 		m.lastVersion = m.session.Version
+		m.statusMessage = "Waiting for agent to continue..."
 		if m.session.IsComplete() {
 			m.cursor = 0
 			m.expanded = false
@@ -378,20 +423,66 @@ func (m *Model) handleConfirm() {
 	}
 }
 
-func (m *Model) handleReject() {
+func (m *Model) startReject() {
+	if m.session == nil {
+		return
+	}
+	node, _ := m.session.NodeByNumber(m.cursor + 1)
+	if node != nil && node.State == coop.StepReview {
+		m.rejecting = true
+		m.rejectionInput = ""
+		m.expanded = true
+		m.statusMessage = ""
+		m.syncViewport()
+	}
+}
+
+func (m Model) handleRejectionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "ctrl+c":
+		m.rejecting = false
+		m.rejectionInput = ""
+		m.statusMessage = "Rejection canceled."
+		m.syncViewport()
+		return m, nil
+	case "enter":
+		m.handleReject(strings.TrimSpace(m.rejectionInput))
+		return m, nil
+	case "backspace", "ctrl+h":
+		if len(m.rejectionInput) > 0 {
+			runes := []rune(m.rejectionInput)
+			m.rejectionInput = string(runes[:len(runes)-1])
+		}
+		m.syncViewport()
+		return m, nil
+	}
+	if msg.Type == tea.KeyRunes {
+		m.rejectionInput += string(msg.Runes)
+		m.syncViewport()
+	}
+	return m, nil
+}
+
+func (m *Model) handleReject(note string) {
 	if m.session == nil {
 		return
 	}
 	node, _ := m.session.NodeByNumber(m.cursor + 1)
 	if node != nil && node.State == coop.StepReview {
 		m.session.TransitionStep(m.cursor+1, coop.StepActive)
-		node.RejectionNote = "Rejected by developer — please redo"
+		if note == "" {
+			note = "Rejected by developer. Please redo this step."
+		}
+		node.RejectionNote = note
 		node.Implementation = nil
 		node.Verifications = nil
 		if err := m.store.Write(m.session); err != nil {
 			m.err = fmt.Errorf("failed to save rejection: %w", err)
 		}
 		m.lastVersion = m.session.Version
+		m.rejecting = false
+		m.rejectionInput = ""
+		m.statusMessage = "Waiting for agent to address your feedback..."
 		m.syncViewport()
 	}
 }

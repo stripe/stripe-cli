@@ -122,11 +122,36 @@ func TestUpdateKeyReject(t *testing.T) {
 
 	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
 	updated := result.(Model)
+	assert.True(t, updated.rejecting)
+
+	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Needs tests")})
+	updated = result.(Model)
+	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
 	assert.Equal(t, coop.StepActive, node.State)
 	assert.Nil(t, node.Implementation)
-	assert.NotEmpty(t, node.RejectionNote)
+	assert.Equal(t, "Needs tests", node.RejectionNote)
+	assert.False(t, updated.rejecting)
+}
+
+func TestUpdateKeyRejectCancel(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.cursor = 0
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	updated := result.(Model)
+	assert.True(t, updated.rejecting)
+
+	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated = result.(Model)
+
+	node, _ := updated.session.NodeByNumber(1)
+	assert.Equal(t, coop.StepReview, node.State)
+	assert.False(t, updated.rejecting)
+	assert.Contains(t, updated.statusMessage, "canceled")
 }
 
 func TestUpdateKeyQuit(t *testing.T) {
@@ -221,6 +246,20 @@ func TestAutoScrollReviewPriority(t *testing.T) {
 	assert.Equal(t, 0, m.cursor)
 }
 
+func TestFollowKeyResumesAutoFollow(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].Nodes[0].State = coop.StepDone
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.cursor = 0
+	m.userMoved = true
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
+	updated := result.(Model)
+
+	assert.False(t, updated.userMoved)
+	assert.Equal(t, 1, updated.cursor)
+}
+
 func TestCompletionViewKeyDown(t *testing.T) {
 	m := readyModel()
 	// Make session complete
@@ -235,6 +274,31 @@ func TestCompletionViewKeyDown(t *testing.T) {
 	updated := result.(Model)
 
 	assert.Equal(t, 1, updated.cursor)
+}
+
+func TestCompletionViewportScrollsToCursor(t *testing.T) {
+	m := readyModel()
+	m.height = 10
+	m.viewport.Height = 3
+	for i := range m.session.Chapters {
+		for j := range m.session.Chapters[i].Nodes {
+			m.session.Chapters[i].Nodes[j].State = coop.StepDone
+		}
+	}
+	m.session.NextSteps = &coop.NextStepsState{
+		Suggestions: []coop.NextStepSuggestion{
+			{ID: "a", Title: "First", Description: "Long first option"},
+			{ID: "b", Title: "Second", Description: "Long second option"},
+			{ID: "c", Title: "Third", Description: "Long third option"},
+			{ID: "d", Title: "Fourth", Description: "Long fourth option"},
+			{ID: "done", Title: "I'm done", Description: "End the session"},
+		},
+	}
+	m.cursor = 4
+
+	m.syncViewport()
+
+	assert.Greater(t, m.viewport.YOffset, 0)
 }
 
 func TestCompletionViewKeyDownWraps(t *testing.T) {
