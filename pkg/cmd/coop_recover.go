@@ -30,7 +30,7 @@ func newCoopRecoverCmd() *coopRecoverCmd {
 		Long: `Inspects the current session for common issues and attempts to fix them.
 
 Common issues detected:
-- Step stuck in "active" with no agent polling (agent crashed)
+- Step currently in "active" (agent may still be working)
 - All steps done but session not marked complete
 - No active steps and no pending steps (session is stuck)
 
@@ -45,7 +45,7 @@ Use --fix to automatically apply repairs. Without --fix, only reports the diagno
 }
 
 func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error {
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}
@@ -74,7 +74,9 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 	if session.IsComplete() {
 		if rc.fix {
 			session.Status = coop.SessionCompleted
-			store.Write(session)
+			if err := store.Write(session); err != nil {
+				return fmt.Errorf("writing session: %w", err)
+			}
 			return outputJSON(recoverResponse{
 				OK:        true,
 				SessionID: session.ID,
@@ -94,35 +96,21 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 	// Check: step stuck in active with no heartbeat
 	activeNode, activeNum := session.ActiveNode()
 	if activeNode != nil {
-		age := store.HeartbeatAge(session.ID)
-		agentPolling := age >= 0 && age < 5*1e9 // 5 seconds in nanoseconds
-
-		if !agentPolling {
-			if rc.fix {
-				session.TransitionStep(activeNum, coop.StepReview)
-				activeNode.Activity = ""
-				store.Write(session)
-				return outputJSON(recoverResponse{
-					OK:        true,
-					SessionID: session.ID,
-					Diagnosis: fmt.Sprintf("Step %d (%s) was stuck in active with no agent polling.", activeNum, activeNode.Title),
-					Action:    "Moved step to review. You can confirm it in the TUI (press c) or reject it (press r) to retry.",
-					Next:      fmt.Sprintf("stripe coop join %s", session.ID),
-				})
-			}
+		if rc.fix {
 			return outputJSON(recoverResponse{
 				OK:        true,
 				SessionID: session.ID,
-				Diagnosis: fmt.Sprintf("Step %d (%s) appears stuck — no agent is polling. The agent may have crashed.", activeNum, activeNode.Title),
-				Next:      "stripe coop recover --fix",
+				Diagnosis: fmt.Sprintf("Step %d (%s) is active. Recovery will not move active work into review automatically because that can discard in-progress agent work.", activeNum, activeNode.Title),
+				Action:    "No changes made.",
+				Next:      fmt.Sprintf("stripe coop join %s", session.ID),
 			})
 		}
 
-		// Agent is polling — nothing wrong
 		return outputJSON(recoverResponse{
 			OK:        true,
 			SessionID: session.ID,
-			Diagnosis: fmt.Sprintf("Step %d (%s) is active and the agent is polling. Session looks healthy.", activeNum, activeNode.Title),
+			Diagnosis: fmt.Sprintf("Step %d (%s) is active. Check the agent pane; if it crashed, restart the agent or manually skip/retry the step.", activeNum, activeNode.Title),
+			Next:      fmt.Sprintf("stripe coop join %s", session.ID),
 		})
 	}
 

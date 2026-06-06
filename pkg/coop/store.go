@@ -46,6 +46,11 @@ func (s *Store) sessionPath(id string) string {
 // the session's version before writing. Returns an error on conflict.
 func (s *Store) Write(session *Session) error {
 	path := s.sessionPath(session.ID)
+	unlock, err := s.acquireSessionLock(path)
+	if err != nil {
+		return err
+	}
+	defer unlock()
 
 	// Optimistic lock: if file exists, verify version hasn't changed
 	if existing, err := os.ReadFile(path); err == nil {
@@ -66,18 +71,52 @@ func (s *Store) Write(session *Session) error {
 		return fmt.Errorf("marshaling session: %w", err)
 	}
 
-	tmpPath := path + ".tmp"
+	tmp, err := os.CreateTemp(s.baseDir, filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
 
-	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
 		return fmt.Errorf("writing temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
 	}
 
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
 		return fmt.Errorf("renaming temp file: %w", err)
 	}
 
 	return nil
+}
+
+func (s *Store) acquireSessionLock(path string) (func(), error) {
+	lockPath := path + ".lock"
+	deadline := time.Now().Add(5 * time.Second)
+
+	for {
+		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		if err == nil {
+			f.Close()
+			return func() { os.Remove(lockPath) }, nil
+		}
+		if !os.IsExist(err) {
+			return nil, fmt.Errorf("creating lock file: %w", err)
+		}
+
+		if info, statErr := os.Stat(lockPath); statErr == nil && time.Since(info.ModTime()) > 30*time.Second {
+			os.Remove(lockPath)
+			continue
+		}
+
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("timed out waiting for session lock")
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 }
 
 // Read loads a session from disk.

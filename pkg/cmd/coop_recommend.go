@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -44,6 +46,7 @@ func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) e
 		Products    []string `json:"products,omitempty"`
 		StepCount   int      `json:"step_count"`
 		Command     string   `json:"command"`
+		Score       int      `json:"score,omitempty"`
 	}
 
 	var catalog []bpEntry
@@ -52,13 +55,26 @@ func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) e
 		for _, ch := range bp.Chapters {
 			steps += len(ch.Nodes)
 		}
-		catalog = append(catalog, bpEntry{
+		entry := bpEntry{
 			ID:          bp.ID,
 			Title:       bp.Title,
 			Description: bp.Description,
 			Products:    bp.Products,
 			StepCount:   steps,
 			Command:     fmt.Sprintf("stripe coop run %s", bp.ID),
+		}
+		if rc.query != "" {
+			entry.Score = blueprintMatchScore(bp, rc.query)
+			if entry.Score == 0 {
+				continue
+			}
+		}
+		catalog = append(catalog, entry)
+	}
+
+	if rc.query != "" {
+		sort.SliceStable(catalog, func(i, j int) bool {
+			return catalog[i].Score > catalog[j].Score
 		})
 	}
 
@@ -75,4 +91,39 @@ Once decided, run the "command" field for that blueprint.`,
 	}
 
 	return outputJSON(response)
+}
+
+func blueprintMatchScore(bp coop.Blueprint, query string) int {
+	query = strings.ToLower(query)
+	terms := strings.FieldsFunc(query, func(r rune) bool {
+		return r == ' ' || r == '-' || r == '_' || r == ',' || r == '.' || r == '/'
+	})
+	if len(terms) == 0 {
+		return 0
+	}
+
+	id := strings.ToLower(bp.ID)
+	title := strings.ToLower(bp.Title)
+	description := strings.ToLower(bp.Description)
+	products := strings.ToLower(strings.Join(bp.Products, " "))
+
+	score := 0
+	for _, term := range terms {
+		switch {
+		case term == "":
+			continue
+		case strings.Contains(id, term):
+			score += 5
+		case strings.Contains(title, term):
+			score += 4
+		case strings.Contains(products, term):
+			score += 3
+		case strings.Contains(description, term):
+			score += 2
+		}
+	}
+	if strings.Contains(title, query) || strings.Contains(description, query) || strings.Contains(id, strings.ReplaceAll(query, " ", "-")) {
+		score += 5
+	}
+	return score
 }

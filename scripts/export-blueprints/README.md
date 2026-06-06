@@ -7,9 +7,7 @@ Converts Workbench Blueprint TypeScript definitions into CLI-friendly JSON for c
 ```
 pay-server/blueprintDefinitions/*.tsx
     ↓  (this script)
-api/blueprints/*.json  (checked into stripe-cli)
-    ↓  (go generate)
-pkg/coop/blueprints/*.json  (embedded via //go:embed)
+pkg/coop/blueprints/*.json  (checked into stripe-cli and embedded via //go:embed)
 ```
 
 ## Usage
@@ -21,7 +19,7 @@ If someone has already exported the raw blueprint objects as JSON:
 ```bash
 cd scripts/export-blueprints
 npm install
-npm run export -- --source ./raw-exports --out ../../api/blueprints
+npm run export -- --source ./raw-exports --out ../../pkg/coop/blueprints
 ```
 
 ### From pay-server source (requires module context)
@@ -35,10 +33,10 @@ that require pay-server's module resolution. To export from source:
 
 ### After exporting
 
-Run the Go generator to copy and validate the blueprints into the embed directory:
+Run the Make target from the repository root to update the embedded blueprints:
 
 ```bash
-make generate-blueprints
+BLUEPRINT_SOURCE=/path/to/raw-exports make sync-blueprints
 ```
 
 ## What gets stripped

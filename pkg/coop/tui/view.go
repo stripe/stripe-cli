@@ -228,7 +228,8 @@ func (m Model) renderDetail() string {
 		md.WriteString("3. Confirm your handler processes the event\n\n")
 	}
 
-	if node.Type == coop.NodeAPIRequest && m.sdkSnippetStep == m.cursor && m.sdkSnippet != "" {
+	currentSnippet := m.sdkSnippetStep == m.cursor && m.sdkSnippet != ""
+	if node.Type == coop.NodeAPIRequest && currentSnippet {
 		lang := m.session.Settings["language"]
 		if lang == "" {
 			lang = "javascript"
@@ -237,13 +238,13 @@ func (m Model) renderDetail() string {
 		md.WriteString("```" + lang + "\n")
 		md.WriteString(m.sdkSnippet + "\n")
 		md.WriteString("```\n\n")
-	} else if node.Type == coop.NodeAPIRequest && m.sdkLoading {
+	} else if node.Type == coop.NodeAPIRequest && m.sdkLoading && m.sdkLoadingStep == m.cursor {
 		md.WriteString("*Loading reference...*\n\n")
 	}
 
 	if node.Implementation != nil {
 		imp := node.Implementation
-		if m.sdkSnippet != "" {
+		if currentSnippet {
 			md.WriteString("---\n\n")
 		}
 		fileLabel := ""
@@ -331,7 +332,10 @@ func (m Model) renderFooter() string {
 		}
 	}
 
-	parts := []string{"↑↓ navigate", "e details"}
+	parts := []string{"↑↓ navigate", "enter/e details"}
+	if m.session != nil && m.session.ClaimURL != "" {
+		parts = append(parts, "o open claim URL")
+	}
 	if m.session != nil {
 		node, _ := m.session.NodeByNumber(m.cursor + 1)
 		if node != nil && node.State == coop.StepReview {
@@ -383,7 +387,11 @@ func (m Model) renderCompletionView() string {
 	}
 
 	content += "\n\n" + ChapterTitleStyle.Render("  What's next?")
-	content += "\n  " + ChapterRuleStyle.Render(strings.Repeat("─", min(w-4, 50)))
+	ruleWidth := min(w-4, 50)
+	if ruleWidth < 0 {
+		ruleWidth = 0
+	}
+	content += "\n  " + ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth))
 
 	suggestions := m.getCompletionSuggestions()
 	completed := m.getCompletedSuggestionIDs()

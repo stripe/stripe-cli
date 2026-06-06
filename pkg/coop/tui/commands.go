@@ -57,7 +57,7 @@ func (m Model) discoverNewSession() tea.Cmd {
 	}
 }
 
-func (m Model) fetchSnippetIfNeeded() tea.Cmd {
+func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 	if m.session == nil || m.sdkSnippetStep == m.cursor {
 		return nil
 	}
@@ -73,47 +73,34 @@ func (m Model) fetchSnippetIfNeeded() tea.Cmd {
 	method := node.Request.Method
 	params := node.Request.Params
 	cursor := m.cursor
+	m.sdkLoading = true
+	m.sdkLoadingStep = cursor
 	return func() tea.Msg {
 		snippet, err := coop.FetchSDKSnippet(path, method, params, lang)
 		return sdkSnippetMsg{step: cursor, snippet: snippet, err: err}
 	}
 }
 
-func (m Model) selectCompletionOption() tea.Cmd {
+func (m *Model) selectCompletionOption() tea.Cmd {
 	suggestions := m.getCompletionSuggestions()
 	if m.cursor >= len(suggestions) {
 		return nil
 	}
 	selected := suggestions[m.cursor]
-	if selected.id == "done" {
-		return tea.Quit
-	}
 	if m.session != nil {
 		if m.session.NextSteps == nil {
 			m.session.NextSteps = &coop.NextStepsState{}
 		}
 		m.session.NextSteps.Selected = selected.id
-		m.store.Write(m.session)
+		if err := m.store.Write(m.session); err != nil {
+			m.err = err
+			return nil
+		}
 		m.lastVersion = m.session.Version
 	}
 
-	// Deploy: create the session directly (only one deploy blueprint)
-	if selected.id == "deploy" || selected.id == "deploy-update" {
-		bp, err := coop.LoadBlueprint("deploy-stripe-projects")
-		if err == nil {
-			lang := ""
-			if m.session != nil {
-				lang = m.session.Settings["language"]
-			}
-			settings := map[string]string{}
-			if lang != "" {
-				settings["language"] = lang
-			}
-			newSession := coop.NewSessionFromBlueprint(bp, "coop_deploy", settings)
-			newSession.ParentSessionID = m.session.ID
-			newSession.ParentStepID = selected.id
-			m.store.Write(newSession)
-		}
+	if selected.id == "done" {
+		return tea.Quit
 	}
 
 	return nil
@@ -144,7 +131,9 @@ func (m Model) returnToParent() tea.Cmd {
 		if !found {
 			parent.NextSteps.Completed = append(parent.NextSteps.Completed, stepID)
 		}
-		store.Write(parent)
+		if err := store.Write(parent); err != nil {
+			return errMsg{err: err}
+		}
 
 		return sessionDiscoveredMsg{sessionID: parentID}
 	}

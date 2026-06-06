@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -107,7 +108,7 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 			flags = " --dangerously-skip-permissions"
 		}
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			promptPath, promptPath, launcherPath, agent.path, flags)
+			strconv.Quote(promptPath), strconv.Quote(promptPath), strconv.Quote(launcherPath), strconv.Quote(agent.path), flags)
 
 	case "codex":
 		flags := ""
@@ -115,14 +116,16 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 			flags = " --dangerously-bypass-approvals-and-sandbox"
 		}
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			promptPath, promptPath, launcherPath, agent.path, flags)
+			strconv.Quote(promptPath), strconv.Quote(promptPath), strconv.Quote(launcherPath), strconv.Quote(agent.path), flags)
 
 	default:
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s \"$prompt\"\n",
-			promptPath, promptPath, launcherPath, agent.path)
+			strconv.Quote(promptPath), strconv.Quote(promptPath), strconv.Quote(launcherPath), strconv.Quote(agent.path))
 	}
 
-	os.WriteFile(launcherPath, []byte(script), 0700)
+	if err := os.WriteFile(launcherPath, []byte(script), 0700); err != nil {
+		return ""
+	}
 	return launcherPath
 }
 
@@ -137,11 +140,21 @@ func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPr
 		return err
 	}
 
+	sessionID := ""
 	if blueprintID != "" {
-		rc.startSessionQuietly(blueprintID)
+		var err error
+		sessionID, err = rc.startSessionQuietly(blueprintID)
+		if err != nil {
+			os.Remove(promptPath)
+			return err
+		}
 	}
 
 	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+	if agentCmd == "" {
+		os.Remove(promptPath)
+		return fmt.Errorf("failed to create agent launcher")
+	}
 
 	split := exec.Command("tmux", "split-window", "-h", "-p", "60", "bash", "-c", agentCmd)
 	if err := split.Run(); err != nil {
@@ -149,17 +162,13 @@ func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPr
 		return fmt.Errorf("tmux split failed: %w", err)
 	}
 
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return err
 	}
 
 	if blueprintID != "" {
-		session, err := store.LatestActiveSession()
-		if err != nil {
-			return fmt.Errorf("session not found after creation: %w", err)
-		}
-		return runCoopTUI(store, session.ID)
+		return runCoopTUI(store, sessionID)
 	}
 
 	return runCoopTUIWait(store)
@@ -196,15 +205,27 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 		return err
 	}
 
+	sessionID := ""
 	if blueprintID != "" {
-		rc.startSessionQuietly(blueprintID)
+		var err error
+		sessionID, err = rc.startSessionQuietly(blueprintID)
+		if err != nil {
+			os.Remove(promptPath)
+			return err
+		}
 	}
 
-	tuiCmd := fmt.Sprintf("%s coop join", stripeBin)
+	tuiCmd := fmt.Sprintf("%s coop join", strconv.Quote(stripeBin))
 	if blueprintID == "" {
 		tuiCmd += " --wait"
+	} else {
+		tuiCmd += " " + sessionID
 	}
 	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+	if agentCmd == "" {
+		os.Remove(promptPath)
+		return fmt.Errorf("failed to create agent launcher")
+	}
 
 	create := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-x", "200", "-y", "50",
 		"bash", "-c", tuiCmd)
@@ -231,12 +252,18 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 
 func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
 	fmt.Println("tmux not found — running agent in this terminal.")
-	fmt.Println("Open another terminal and run: stripe coop join")
-	fmt.Println()
 
 	if blueprintID != "" {
-		rc.startSessionQuietly(blueprintID)
+		sessionID, err := rc.startSessionQuietly(blueprintID)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Session started: %s\n", sessionID)
+		fmt.Printf("Open another terminal and run: stripe coop join %s\n", sessionID)
+	} else {
+		fmt.Println("Open another terminal and run: stripe coop join --wait")
 	}
+	fmt.Println()
 
 	promptPath, err := writePromptFile(agentPrompt)
 	if err != nil {
@@ -245,6 +272,9 @@ func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPromp
 	defer os.Remove(promptPath)
 
 	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+	if agentCmd == "" {
+		return fmt.Errorf("failed to create agent launcher")
+	}
 	agentExec := exec.Command("bash", "-c", agentCmd)
 	agentExec.Stdin = os.Stdin
 	agentExec.Stdout = os.Stdout
@@ -261,8 +291,13 @@ func writePromptFile(prompt string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("creating prompt file: %w", err)
 	}
-	f.WriteString(prompt)
-	f.Close()
+	if _, err := f.WriteString(prompt); err != nil {
+		f.Close()
+		return "", fmt.Errorf("writing prompt file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("closing prompt file: %w", err)
+	}
 	return f.Name(), nil
 }
 

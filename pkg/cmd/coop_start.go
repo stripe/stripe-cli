@@ -83,7 +83,7 @@ A developer is watching your progress in a live terminal UI (the other pane).
 
 The session is already created. Run "stripe coop status" to see the current state and steps, then start from step 1.
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandboxes create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`
+Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`
 	}
 
 	langHint := ""
@@ -112,13 +112,13 @@ Steps:
 
 The developer will confirm each step in the TUI before you proceed.
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandboxes create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, langHint)
+Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, langHint)
 }
 
-func (rc *coopRunCmd) startSessionQuietly(blueprintID string) {
+func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (string, error) {
 	bp, err := coop.LoadBlueprint(blueprintID)
 	if err != nil {
-		return
+		return "", err
 	}
 
 	settings := make(map[string]string)
@@ -134,11 +134,15 @@ func (rc *coopRunCmd) startSessionQuietly(blueprintID string) {
 		}
 	}
 
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
-		return
+		return "", err
 	}
 
-	session := coop.NewSessionFromBlueprint(bp, "coop_"+generateShortID(), settings)
-	store.Write(session)
+	sessionID := "coop_" + generateShortID()
+	session := coop.NewSessionFromBlueprint(bp, sessionID, settings)
+	if err := store.Write(session); err != nil {
+		return "", err
+	}
+	return sessionID, nil
 }

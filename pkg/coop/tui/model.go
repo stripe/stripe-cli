@@ -34,6 +34,7 @@ type Model struct {
 	sdkSnippet     string
 	sdkSnippetStep int
 	sdkLoading     bool
+	sdkLoadingStep int
 
 	waiting        bool
 	existingIDs    map[string]bool
@@ -51,6 +52,7 @@ func NewModel(store *coop.Store, sessionID string) Model {
 		sessionID:      sessionID,
 		spinner:        s,
 		sdkSnippetStep: -1,
+		sdkLoadingStep: -1,
 	}
 }
 
@@ -64,6 +66,7 @@ func NewWaitingModel(store *coop.Store, existingIDs map[string]bool) Model {
 		store:          store,
 		spinner:        s,
 		sdkSnippetStep: -1,
+		sdkLoadingStep: -1,
 		waiting:        true,
 		existingIDs:    existingIDs,
 	}
@@ -105,6 +108,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.userMoved = false
 		m.sdkSnippet = ""
 		m.sdkSnippetStep = -1
+		m.sdkLoading = false
+		m.sdkLoadingStep = -1
 		return m, m.loadSession()
 
 	case sessionUpdatedMsg:
@@ -135,7 +140,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 
 	case sdkSnippetMsg:
-		m.sdkLoading = false
+		if msg.step == m.sdkLoadingStep {
+			m.sdkLoading = false
+			m.sdkLoadingStep = -1
+		}
 		if msg.err == nil && msg.step == m.cursor {
 			m.sdkSnippet = msg.snippet
 			m.sdkSnippetStep = msg.step
@@ -319,22 +327,8 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			cmd := m.selectCompletionOption()
 
 			switch selected.id {
-			case "deploy", "deploy-update":
-				m.sessionID = "coop_deploy"
-				m.session = nil
-				m.cursor = 0
-				m.expanded = false
-				m.userMoved = false
-				return m, m.loadSession()
-			case "add-integration":
-				m.waiting = true
-				m.session = nil
-				m.existingIDs = make(map[string]bool)
-				if ids, err := m.store.List(); err == nil {
-					for _, id := range ids {
-						m.existingIDs[id] = true
-					}
-				}
+			case "deploy", "deploy-update", "add-integration":
+				m.enterWaitingMode()
 				return m, cmd
 			default:
 				return m, cmd
@@ -348,6 +342,20 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		return m, m.fetchSnippetIfNeeded()
 	}
 	return m, nil
+}
+
+func (m *Model) enterWaitingMode() {
+	m.waiting = true
+	m.session = nil
+	m.cursor = 0
+	m.expanded = false
+	m.userMoved = false
+	m.existingIDs = make(map[string]bool)
+	if ids, err := m.store.List(); err == nil {
+		for _, id := range ids {
+			m.existingIDs[id] = true
+		}
+	}
 }
 
 func (m *Model) handleConfirm() {

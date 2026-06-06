@@ -30,7 +30,7 @@ func newCoopStatusCmd() *coopStatusCmd {
 }
 
 func (sc *coopStatusCmd) runStatusCmd(cmd *cobra.Command, args []string) error {
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}

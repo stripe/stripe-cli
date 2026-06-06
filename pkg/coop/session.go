@@ -82,8 +82,10 @@ func (s *Session) TransitionStep(n int, to StepState) error {
 	switch to {
 	case StepActive:
 		node.StartedAt = &now
+		node.CompletedAt = nil
 	case StepDone:
 		node.CompletedAt = &now
+		node.RejectionNote = ""
 	case StepReview:
 		node.CompletedAt = &now
 	}

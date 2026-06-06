@@ -52,7 +52,7 @@ Projects configuration to make relevant suggestions.`,
 }
 
 func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) error {
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}
@@ -87,11 +87,15 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 	session.NextSteps.Suggestions = tuiSuggestions
 	session.NextSteps.Selected = ""
 	session.Status = coop.SessionCompleted
-	store.Write(session)
+	if err := store.Write(session); err != nil {
+		return fmt.Errorf("writing next-step suggestions: %w", err)
+	}
 
 	if nc.completed != "" {
 		session.NextSteps.Completed = append(session.NextSteps.Completed, nc.completed)
-		store.Write(session)
+		if err := store.Write(session); err != nil {
+			return fmt.Errorf("marking next-step completed: %w", err)
+		}
 	}
 
 	// Block until the user selects something in the TUI
@@ -110,7 +114,9 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 
 	// Clear selection so we can await again if needed
 	session.NextSteps.Selected = ""
-	store.Write(session)
+	if err := store.Write(session); err != nil {
+		return fmt.Errorf("clearing next-step selection: %w", err)
+	}
 
 	switch selected {
 	case "summarize":
@@ -120,7 +126,7 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: buildSummarizePrompt(session),
-			Next:        "Write STRIPE.md, then run: stripe coop next-steps --completed=summarize",
+			Next:        fmt.Sprintf("Write STRIPE.md, then run: stripe coop next-steps --session=%s --completed=summarize", session.ID),
 		})
 	case "deploy", "deploy-update":
 		lang := session.Settings["language"]
@@ -150,7 +156,7 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			AgentPrompt: "The developer is done. End the session.",
-			Next:        "stripe coop stop",
+			Next:        fmt.Sprintf("stripe coop stop --session=%s", session.ID),
 		})
 	default:
 		return outputJSON(nextStepsResponse{

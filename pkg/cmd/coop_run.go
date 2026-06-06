@@ -49,7 +49,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 		return outputCoopError(fmt.Sprintf("Blueprint %q not found. Run 'stripe coop recommend' to see available blueprints.", blueprintID), "stripe coop recommend")
 	}
 
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}
@@ -104,7 +104,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 			Step:      1,
 			State:     "created",
 			Message:   fmt.Sprintf("Session started: %s (%d steps)", bp.Title, session.TotalSteps()),
-			Next:      fmt.Sprintf("stripe coop step 1 start --note=\"Beginning: %s\"", session.Chapters[0].Nodes[0].Title),
+			Next:      fmt.Sprintf("stripe coop step 1 start --session=%s --note=\"Beginning: %s\"", sessionID, session.Chapters[0].Nodes[0].Title),
 		},
 		AgentInstructions: agentInstructions(bp, session),
 		Steps:             steps,
@@ -138,7 +138,7 @@ func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
 BEFORE YOU START — ensure you have API access:
 1. Run "stripe whoami" to check if you're authenticated.
 2. If not authenticated OR if the output shows "Test mode key: not available",
-   run "stripe sandboxes create --from-git" to provision a sandbox.
+   run "stripe sandbox create --from-git" to provision a sandbox.
    This gives you a working API key without requiring browser login.
    The claim URL will appear automatically in the TUI for the developer.
 
@@ -151,21 +151,21 @@ Each step has a description that tells you what to do. Follow the description �
 
 Step 1 is always "Understand the project" — scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining steps to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
-Step lifecycle commands:
-1. stripe coop step <n> start --note="<what you're about to do>"
+Step lifecycle commands (use this session id: %s):
+1. stripe coop step <n> start --session=%s --note="<what you're about to do>"
 2. Write the code and run it to verify it works
-3. stripe coop step <n> verify --check="<what you verified>" --passed
-4. stripe coop step <n> done --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
-5. stripe coop step <n> await   ← BLOCKS until the human confirms or rejects
+3. stripe coop step <n> verify --session=%s --check="<what you verified>" --passed
+4. stripe coop step <n> done --session=%s --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
+5. stripe coop step <n> await --session=%s   ← BLOCKS until the human confirms or rejects
 6. If confirmed: move to next step. If rejected: redo the step (check the message for feedback).
-7. When the final step is confirmed: IMMEDIATELY run "stripe coop next-steps". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
+7. When the final step is confirmed: IMMEDIATELY run "stripe coop next-steps --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
 
 The "await" command is critical — it blocks until the developer acts. Do NOT proceed to the next step without running await first. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If rejected, ask the developer what they'd like you to change before redoing the step.
 
 Some steps are marked auto_confirm — await returns immediately for these (no human review needed). You still must call await for every step; the system handles the rest.
 
 For values containing special characters ($, quotes, etc.), use --stdin to pipe JSON:
-  echo '{"file":"app.js","lines":"1-10","snippet":"code here","note":"Created $99 product"}' | stripe coop step <n> done --stdin
+  echo '{"file":"app.js","lines":"1-10","snippet":"code here","note":"Created $99 product"}' | stripe coop step <n> done --session=%s --stdin
 
 Important:
 - The human is watching your progress live in a terminal UI.
@@ -174,7 +174,7 @@ Important:
 - If a step doesn't apply to the user's setup, skip it: stripe coop step <n> skip --note="<reason>"
 - Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
   Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
-  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble)
+  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
 }
 
 func outputJSON(v interface{}) error {

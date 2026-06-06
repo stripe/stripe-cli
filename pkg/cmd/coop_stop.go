@@ -34,7 +34,7 @@ Ended sessions won't be picked up by "stripe coop join" or "stripe coop step".`,
 }
 
 func (sc *coopStopCmd) runStopCmd(cmd *cobra.Command, args []string) error {
-	store, err := coop.NewStore(Config.GetConfigFolder(""))
+	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}

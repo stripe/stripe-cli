@@ -1,7 +1,11 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,14 +39,7 @@ func setupStepTest(t *testing.T) (*coop.Store, *coop.Session) {
 	}
 	require.NoError(t, store.Write(session))
 
-	// Point config to temp dir
-	origConfigFolder := Config.GetConfigFolder("")
-	os.Setenv("XDG_CONFIG_HOME", dir)
-	t.Cleanup(func() {
-		if origConfigFolder != "" {
-			os.Unsetenv("XDG_CONFIG_HOME")
-		}
-	})
+	t.Setenv("XDG_CONFIG_HOME", dir)
 
 	return store, session
 }
@@ -209,4 +206,71 @@ func TestHeartbeatAgeNoFile(t *testing.T) {
 
 	age := store.HeartbeatAge("nonexistent")
 	assert.True(t, age < 0)
+}
+
+func TestCoopConfigFolderUsesXDGConfigHome(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	assert.Equal(t, filepath.Join(dir, "stripe"), coopConfigFolder())
+}
+
+func TestAgentPromptsUseSandboxCommand(t *testing.T) {
+	rc := &coopRunCmd{language: "node"}
+	assert.Contains(t, rc.buildAgentPrompt("one-time-payment"), "stripe sandbox create --from-git")
+	assert.NotContains(t, rc.buildAgentPrompt("one-time-payment"), "stripe sandboxes create")
+	assert.Contains(t, rc.buildAgentPrompt(""), "stripe sandbox create --from-git")
+
+	bp := &coop.Blueprint{Title: "Test integration"}
+	session := &coop.Session{}
+	assert.Contains(t, agentInstructions(bp, session), "stripe sandbox create --from-git")
+	assert.NotContains(t, agentInstructions(bp, session), "stripe sandboxes create")
+}
+
+func TestBlueprintMatchScoreRanksRelevantBlueprints(t *testing.T) {
+	oneTime, err := coop.LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+	deploy, err := coop.LoadBlueprint("deploy-stripe-projects")
+	require.NoError(t, err)
+
+	assert.Greater(t, blueprintMatchScore(*oneTime, "accept payments"), 0)
+	assert.Equal(t, 0, blueprintMatchScore(*deploy, "accept payments"))
+}
+
+func TestDoSkipFinalStepRoutesToNextSteps(t *testing.T) {
+	store, session := setupStepTest(t)
+	for i := 1; i <= session.TotalSteps(); i++ {
+		require.NoError(t, session.TransitionStep(i, coop.StepActive))
+		if i < session.TotalSteps() {
+			require.NoError(t, session.TransitionStep(i, coop.StepDone))
+		}
+	}
+	require.NoError(t, store.Write(session))
+
+	sc := &coopStepCmd{}
+	output := captureStdout(t, func() {
+		require.NoError(t, sc.doSkip(store, session, session.TotalSteps()))
+	})
+
+	assert.Contains(t, output, `"state": "skipped"`)
+	assert.Contains(t, output, `"next": "stripe coop next-steps --session=step_test_session"`)
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	orig := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	fn()
+
+	require.NoError(t, w.Close())
+	os.Stdout = orig
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return strings.TrimSpace(buf.String())
 }

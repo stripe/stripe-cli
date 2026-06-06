@@ -190,3 +190,60 @@ func TestNewSessionFromBlueprintPreservesEvents(t *testing.T) {
 	}
 	t.Fatal("expected to find asyncHandler node")
 }
+
+func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {
+	ids, err := ListBlueprints()
+	require.NoError(t, err)
+	require.NotEmpty(t, ids)
+
+	allowedTypes := map[NodeType]bool{
+		NodeAPIRequest:    true,
+		NodeAsyncHandler:  true,
+		NodeUIComponent:   true,
+		NodeTestHelper:    true,
+		NodeCLICommand:    true,
+		NodeDashboard:     true,
+		NodeSetUpWebhooks: true,
+	}
+
+	for _, id := range ids {
+		t.Run(id, func(t *testing.T) {
+			bp, err := LoadBlueprint(id)
+			require.NoError(t, err)
+			assert.Equal(t, id, bp.ID)
+			assert.NotEmpty(t, bp.Title)
+			require.NotEmpty(t, bp.Chapters)
+
+			chapterKeys := make(map[string]bool)
+			for _, ch := range bp.Chapters {
+				assert.NotEmpty(t, ch.Key)
+				assert.False(t, chapterKeys[ch.Key], "duplicate chapter key: %s", ch.Key)
+				chapterKeys[ch.Key] = true
+				assert.NotEmpty(t, ch.Title)
+				require.NotEmpty(t, ch.Nodes)
+
+				nodeKeys := make(map[string]bool)
+				for _, n := range ch.Nodes {
+					assert.NotEmpty(t, n.Key)
+					assert.False(t, nodeKeys[n.Key], "duplicate node key: %s", n.Key)
+					nodeKeys[n.Key] = true
+					assert.NotEmpty(t, n.Title)
+					assert.True(t, allowedTypes[n.Type], "unsupported node type: %s", n.Type)
+
+					if n.Type == NodeAPIRequest {
+						require.NotNil(t, n.Request, "apiRequest node %q should have request field", n.Key)
+						assert.NotEmpty(t, n.Request.Path)
+						assert.NotEmpty(t, n.Request.Method)
+					}
+				}
+			}
+
+			session := NewSessionFromBlueprint(bp, "test_"+id, map[string]string{"language": "node"})
+			assert.Equal(t, id, session.Blueprint)
+			require.NotEmpty(t, session.Chapters)
+			require.NotEmpty(t, session.Chapters[0].Nodes)
+			assert.Equal(t, "Understand the project", session.Chapters[0].Nodes[0].Title)
+			assert.Equal(t, len(bp.Chapters)+1, len(session.Chapters))
+		})
+	}
+}

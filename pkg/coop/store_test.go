@@ -179,6 +179,22 @@ func TestStoreAtomicWrite(t *testing.T) {
 	}
 }
 
+func TestStoreWriteCleansLockAndTempFiles(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	session := &Session{ID: "clean_test", Status: SessionActive}
+	require.NoError(t, store.Write(session))
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	for _, e := range entries {
+		assert.False(t, strings.HasSuffix(e.Name(), ".tmp"), "temp file should be cleaned up")
+		assert.False(t, strings.HasSuffix(e.Name(), ".lock"), "lock file should be cleaned up")
+	}
+}
+
 func TestStoreListIgnoresTmpFiles(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStoreAt(dir)

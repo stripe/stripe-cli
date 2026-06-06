@@ -185,8 +185,13 @@ protoc-gen-plugin:
 .PHONY: protoc-plugin
 
 sync-blueprints:
-	@echo "Exporting blueprints from pay-server..."
-	@python3 scripts/export-blueprints/export-blueprints.py
+	@if [ -z "$$BLUEPRINT_SOURCE" ]; then \
+		echo "Set BLUEPRINT_SOURCE to a directory of exported blueprint JSON files."; \
+		echo "Example: BLUEPRINT_SOURCE=/path/to/raw-exports make sync-blueprints"; \
+		exit 1; \
+	fi
+	@echo "Exporting blueprints from $$BLUEPRINT_SOURCE..."
+	@cd scripts/export-blueprints && npm install && npm run export -- --source "$$BLUEPRINT_SOURCE" --out ../../pkg/coop/blueprints
 .PHONY: sync-blueprints
 
 .DEFAULT_GOAL := build

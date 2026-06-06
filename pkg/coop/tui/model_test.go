@@ -254,12 +254,18 @@ func TestCompletionViewKeyDownWraps(t *testing.T) {
 }
 
 func TestCompletionEnterSelectsDone(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+
 	m := readyModel()
+	m.store = store
 	for i := range m.session.Chapters {
 		for j := range m.session.Chapters[i].Nodes {
 			m.session.Chapters[i].Nodes[j].State = coop.StepDone
 		}
 	}
+	m.session.ID = "done_selection"
+	store.Write(m.session)
 	// "I'm done" is the last suggestion
 	suggestions := m.getCompletionSuggestions()
 	m.cursor = len(suggestions) - 1
@@ -267,6 +273,10 @@ func TestCompletionEnterSelectsDone(t *testing.T) {
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	// Should return tea.Quit
 	assert.NotNil(t, cmd)
+
+	session, err := store.Read("done_selection")
+	require.NoError(t, err)
+	assert.Equal(t, "done", session.NextSteps.Selected)
 }
 
 func TestCompletionEnterWritesSelection(t *testing.T) {
@@ -312,7 +322,7 @@ func TestSpinnerTickDoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestSelectCompletionOptionDeploy(t *testing.T) {
+func TestCompletionEnterDeployWaitsForAgentSession(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
 
@@ -335,13 +345,16 @@ func TestSelectCompletionOptionDeploy(t *testing.T) {
 		}
 	}
 
-	m.selectCompletionOption()
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated := result.(Model)
 
-	// Should have created a deploy session
-	deploySession, err := store.Read("coop_deploy")
+	session, err := store.Read("parent_session")
 	require.NoError(t, err)
-	assert.Equal(t, "deploy-stripe-projects", deploySession.Blueprint)
-	assert.Equal(t, "parent_session", deploySession.ParentSessionID)
+	assert.Equal(t, suggestions[m.cursor].id, session.NextSteps.Selected)
+	assert.True(t, updated.waiting)
+
+	_, err = store.Read("coop_deploy")
+	assert.Error(t, err)
 }
 
 func TestSelectCompletionOptionSummarize(t *testing.T) {
