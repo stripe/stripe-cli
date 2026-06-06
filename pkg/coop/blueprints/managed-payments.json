@@ -1,9 +1,12 @@
 {
   "id": "managed-payments",
   "title": "Set up Managed Payments",
-  "description": "",
+  "description": "Set up Checkout for managed payments with subscription and one-time product options, then listen for completed checkout events.",
   "type": "learning",
-  "products": [],
+  "products": [
+    "Checkout",
+    "Payments"
+  ],
   "settings": [],
   "chapters": [
     {
@@ -13,7 +16,7 @@
         {
           "type": "apiRequest",
           "key": "create-subscription-product",
-          "title": "API request",
+          "title": "Create subscription product",
           "request": {
             "path": "/v1/products",
             "method": "post"
@@ -22,7 +25,7 @@
         {
           "type": "apiRequest",
           "key": "create-one-time-product",
-          "title": "API request",
+          "title": "Create one-time product",
           "request": {
             "path": "/v1/products",
             "method": "post"
@@ -31,7 +34,7 @@
         {
           "type": "apiRequest",
           "key": "create-checkout-session",
-          "title": "API request",
+          "title": "Create managed Checkout Session",
           "request": {
             "path": "/v1/checkout/sessions",
             "method": "post"
@@ -45,7 +48,10 @@
         {
           "type": "asyncHandler",
           "key": "wait-for-checkout-completed",
-          "title": "Listen for checkout.session.completed"
+          "title": "Listen for checkout.session.completed",
+          "events": [
+            "checkout.session.completed"
+          ]
         }
       ]
     }

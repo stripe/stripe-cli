@@ -1,6 +1,7 @@
 package coop
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,80 @@ func TestLoadBlueprint(t *testing.T) {
 	assert.Len(t, bp.Chapters, 4)
 	assert.Equal(t, "setup-chapter", bp.Chapters[0].Key)
 	assert.Equal(t, NodeAPIRequest, bp.Chapters[0].Nodes[0].Type)
+}
+
+func TestAllEmbeddedBlueprintsHaveQualityMetadata(t *testing.T) {
+	ids, err := ListBlueprints()
+	require.NoError(t, err)
+	require.NotEmpty(t, ids)
+
+	weakPhrases := []string{
+		"do the thing",
+		"verify it works",
+		"todo",
+		"tbd",
+		"placeholder",
+		"lorem ipsum",
+	}
+
+	for _, id := range ids {
+		t.Run(id, func(t *testing.T) {
+			bp, err := LoadBlueprint(id)
+			require.NoError(t, err)
+
+			assertQualityText(t, "blueprint title", bp.Title, 4, weakPhrases)
+			if bp.Description != "" {
+				assertQualityText(t, "blueprint description", bp.Description, 20, weakPhrases)
+			}
+			assert.True(t, bp.Description != "" || len(bp.Products) > 0, "blueprint should include description or product metadata")
+
+			for _, ch := range bp.Chapters {
+				assertQualityText(t, "chapter title "+ch.Key, ch.Title, 4, weakPhrases)
+				for _, n := range ch.Nodes {
+					assertQualityText(t, "node title "+n.Key, n.Title, 4, weakPhrases)
+					assert.NotEqual(t, "api request", strings.ToLower(strings.TrimSpace(n.Title)), "node %q should have a product-specific title", n.Key)
+					if n.Description != "" {
+						assertQualityText(t, "node description "+n.Key, n.Description, 20, weakPhrases)
+					}
+
+					switch n.Type {
+					case NodeAPIRequest:
+						require.NotNil(t, n.Request, "apiRequest node %q should have request metadata", n.Key)
+					case NodeAsyncHandler:
+						assert.NotEmpty(t, n.Events, "asyncHandler node %q should name webhook events to verify", n.Key)
+					case NodeCLICommand, NodeTestHelper, NodeSetUpWebhooks:
+						if n.Description != "" {
+							assertObservableGuidance(t, n.Key, n.Description)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func assertQualityText(t *testing.T, label, value string, minLen int, weakPhrases []string) {
+	t.Helper()
+	trimmed := strings.TrimSpace(value)
+	require.NotEmpty(t, trimmed, "%s should not be empty", label)
+	assert.GreaterOrEqual(t, len(trimmed), minLen, "%s should be specific enough", label)
+
+	lower := strings.ToLower(trimmed)
+	for _, phrase := range weakPhrases {
+		assert.NotContains(t, lower, phrase, "%s contains weak placeholder text", label)
+	}
+}
+
+func assertObservableGuidance(t *testing.T, key, description string) {
+	t.Helper()
+	lower := strings.ToLower(description)
+	observableTerms := []string{"verify", "confirm", "report", "check", "run", "summarize", "ask"}
+	for _, term := range observableTerms {
+		if strings.Contains(lower, term) {
+			return
+		}
+	}
+	assert.Failf(t, "weak verification guidance", "node %q should name an observable check or reported outcome", key)
 }
 
 func TestLoadBlueprintNotFound(t *testing.T) {

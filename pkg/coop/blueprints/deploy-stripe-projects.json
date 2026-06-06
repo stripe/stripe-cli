@@ -90,7 +90,7 @@
           "type": "cliCommand",
           "key": "register-endpoint",
           "title": "Register webhook endpoint",
-          "description": "Look for webhook handling code (stripe.webhooks.constructEvent, /webhook routes). If found → construct the production URL (deployment URL + webhook path) and use `stripe projects webhooks --help` to discover how to register it. Set STRIPE_WEBHOOK_SECRET as a project secret. If NOT found → SKIP."
+          "description": "Look for webhook handling code (stripe.webhooks.constructEvent, /webhook routes). If found → construct the production URL (deployment URL + webhook path) and use `stripe projects webhooks --help` to discover how to register it. Set STRIPE_WEBHOOK_SECRET as a project secret and report the registered endpoint. If NOT found → SKIP."
         }
       ]
     }

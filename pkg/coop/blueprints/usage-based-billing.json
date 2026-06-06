@@ -152,7 +152,10 @@
         {
           "type": "asyncHandler",
           "key": "waitForCreditGrantCreated",
-          "title": "Wait for credit grant created event"
+          "title": "Wait for credit grant created event",
+          "events": [
+            "v2.billing.credit_grant.created"
+          ]
         }
       ]
     }

@@ -1,9 +1,12 @@
 {
   "id": "destination-charge",
   "title": "Create a destination charge",
-  "description": "",
+  "description": "Create a Connect destination charge by collecting payment on the platform and transferring funds to a connected account.",
   "type": "learning",
-  "products": [],
+  "products": [
+    "Connect",
+    "Payments"
+  ],
   "settings": [],
   "chapters": [
     {

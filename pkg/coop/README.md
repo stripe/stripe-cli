@@ -31,7 +31,7 @@ No server, no HTTP, no WebSocket. Communication is through a shared JSON session
 ```
 pending ──→ active ──→ review ──→ done     (normal flow)
    │          │          │
-   │          │          └──→ active        (rejection: developer pressed 'r')
+   │          │          └──→ active        (rejection: developer entered feedback)
    │          │
    │          └──→ done                     (auto_confirm nodes skip review)
    │          └──→ skipped                  (agent decides step doesn't apply)
@@ -84,9 +84,12 @@ All agent commands output JSON with an `ok` field and a `next` field suggesting 
 | `↓`/`j` | Move cursor down |
 | `e` / `Enter` | Toggle detail panel for selected step |
 | `c` | Confirm step (review → done) |
-| `r` | Reject step (review → active, agent redoes it) |
+| `r` | Type rejection feedback for a review step |
+| `f` | Resume following the active/review step after manual navigation |
 | `o` | Open claim URL in browser (when sandbox is unclaimed) |
 | `q` / `Ctrl+C` | Quit TUI |
+
+When rejecting a step, `r` opens a feedback prompt. Press `Enter` to submit the note and move the step back to `active`; press `Esc` to cancel.
 
 In the completion view:
 | Key | Action |
@@ -110,12 +113,14 @@ $ stripe coop start one-time-payment --language=node
 #      stripe coop step 1 done --note="Found Next.js app"
 #      stripe coop step 2 start --note="Creating product"
 #      stripe coop step 2 done --file=server.js --lines=5-20 --note="Created product"
-#      stripe coop step 2 await   ← blocks until developer confirms
+#      stripe coop step 2 await --session=coop_abc123   ← blocks until developer confirms
 # 5. Developer sees progress live, presses 'c' to confirm
 # 6. Agent continues to next step
-# 7. After all steps: agent runs "stripe coop next-steps"
+# 7. After all steps: agent runs "stripe coop next-steps --session=coop_abc123"
 # 8. Developer picks what to do next from TUI suggestions
 ```
+
+Post-completion choices are written into the session file for the agent. Deploy follow-ups use `stripe coop run deploy-stripe-projects --parent-session=<id> --parent-step=<selection>` so the child session can return to the completed parent and mark that next step done.
 
 ## Auto-Confirm
 
@@ -139,7 +144,7 @@ The heartbeat file is cleaned up when `await` exits.
 
 | Issue | Detection | Fix |
 |-------|-----------|-----|
-| Step stuck in `active` | No heartbeat, step is active | `--fix` moves to `review` |
+| Step stuck in `active` | No heartbeat, step is active | Recovery reports the active step; it does not move in-progress work automatically |
 | Session done but not marked | All steps done, status=active | `--fix` marks completed |
 | No active step | No active/review steps found | Shows next pending step number |
 | Agent crashed | Heartbeat stale | TUI shows warning, user runs `recover --fix` |
@@ -231,3 +236,7 @@ pkg/cmd/
   coop_recover.go   — Diagnose and fix stuck sessions
   coop_recommend.go — Blueprint discovery
 ```
+
+## Local Harness Artifacts
+
+The repository-level `bin/` directory remains ignored. Tmux harness isolation files under `bin/` are treated as local development artifacts unless a specific script or fixture is moved into a tracked source path with tests. Do not commit the ignored `bin/` directory wholesale.
