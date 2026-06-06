@@ -17,7 +17,11 @@ func (m Model) renderWaitingView() string {
 		w = 25
 	}
 
-	waitingLines := strings.Split(wordWrap("Waiting for the agent to explore your codebase and pick an integration...", w), "\n")
+	waitingText := m.waitingMessage
+	if waitingText == "" {
+		waitingText = "Waiting for agent to explore your codebase and pick an integration..."
+	}
+	waitingLines := strings.Split(wordWrap(waitingText, w), "\n")
 	subtitleLines := strings.Split(wordWrap("The agent will ask what you want to build, then start a session. You'll see progress here.", w), "\n")
 
 	var content string
@@ -144,6 +148,9 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 		}
 		annText = ann
 		annStyle = func(s string) string { return FileAnnotationStyle.Render(s) }
+	case node.State == coop.StepReview:
+		annText = "Waiting for you to review"
+		annStyle = func(s string) string { return AttentionStyle.Render(s) }
 	case node.State == coop.StepActive && node.Activity != "":
 		elapsed := ""
 		if node.StartedAt != nil {
@@ -152,7 +159,7 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 				elapsed = " [" + formatDuration(dur) + "]"
 			}
 		}
-		annText = node.Activity + elapsed
+		annText = "Agent working: " + node.Activity + elapsed
 		annStyle = func(s string) string { return DimmedStyle.Render(s) }
 	case node.State == coop.StepSkipped && node.Activity != "":
 		annText = "— " + node.Activity
@@ -282,7 +289,14 @@ func (m Model) renderDetail() string {
 
 	var suffix string
 	if node.State == coop.StepReview {
-		suffix = "\n" + AttentionStyle.Render("  ▶ Press c to confirm")
+		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm or r to reject")
+	}
+	if m.rejecting {
+		input := m.rejectionInput
+		if input == "" {
+			input = "<type feedback>"
+		}
+		suffix += "\n" + ErrorStyle.Render("  Rejection note: ") + input
 	}
 
 	content := md.String()
@@ -322,17 +336,28 @@ func (m Model) renderFooter() string {
 
 	// Agent disconnected warning
 	if m.agentIdle() {
-		footer += AttentionStyle.Render("  ⚠ Agent appears idle. Reconnect: stripe coop status") + "\n"
+		footer += AttentionStyle.Render("  Waiting for agent: no recent updates. Reconnect: stripe coop status") + "\n"
+	}
+
+	if m.statusMessage != "" {
+		footer += AttentionStyle.Render("  "+m.statusMessage) + "\n"
 	}
 
 	if m.session != nil {
 		summary := m.session.StepSummary()
 		if summary[coop.StepReview] > 0 {
-			footer += AttentionStyle.Render(fmt.Sprintf("  ◆ %d step(s) awaiting your confirmation", summary[coop.StepReview])) + "\n"
+			footer += AttentionStyle.Render(fmt.Sprintf("  Waiting for you: %d step(s) need confirmation", summary[coop.StepReview])) + "\n"
 		}
 	}
 
+	if m.rejecting {
+		return footer + FooterStyle.Render("  type feedback  ·  enter reject  ·  esc cancel")
+	}
+
 	parts := []string{"↑↓ navigate", "enter/e details"}
+	if m.userMoved {
+		parts = append(parts, "f follow")
+	}
 	if m.session != nil && m.session.ClaimURL != "" {
 		parts = append(parts, "o open claim URL")
 	}
@@ -368,6 +393,15 @@ func (m Model) agentIdle() bool {
 }
 
 func (m Model) renderCompletionView() string {
+	header := m.renderHeader()
+	footer := m.renderCompletionFooter()
+	if !m.ready {
+		return header + "\n" + m.pinFooter(m.renderCompletionBody(), footer)
+	}
+	return header + "\n" + m.viewport.View() + "\n" + footer
+}
+
+func (m Model) renderCompletionBody() string {
 	w := m.contentWidth() - 4
 
 	summary := m.session.StepSummary()
@@ -380,6 +414,10 @@ func (m Model) renderCompletionView() string {
 		box += MutedStyle.Render(fmt.Sprintf(" (%d skipped)", total-done))
 	}
 	content := DetailBoxStyle.Width(min(w, 70)).Render(box)
+
+	if m.statusMessage != "" {
+		content += "\n" + AttentionStyle.Render("  "+m.statusMessage)
+	}
 
 	if m.session.ClaimURL != "" {
 		content += "\n" + DimmedStyle.Render("  ⚡ Claim your sandbox: ") + BrandStyle.Render(m.session.ClaimURL)
@@ -421,8 +459,11 @@ func (m Model) renderCompletionView() string {
 		}
 	}
 
-	footer := FooterStyle.Render("  ↑↓ navigate  ·  enter select  ·  q quit")
-	return m.pinFooter(content, footer)
+	return content
+}
+
+func (m Model) renderCompletionFooter() string {
+	return FooterStyle.Render("  ↑↓ navigate  ·  enter select  ·  q quit")
 }
 
 func (m Model) getCompletedSuggestionIDs() map[string]bool {

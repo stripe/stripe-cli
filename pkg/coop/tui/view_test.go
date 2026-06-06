@@ -168,7 +168,8 @@ func TestRenderFooterReviewNotice(t *testing.T) {
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	footer := m.renderFooter()
 
-	assert.Contains(t, footer, "awaiting your confirmation")
+	assert.Contains(t, footer, "Waiting for you")
+	assert.Contains(t, footer, "need confirmation")
 }
 
 func TestRenderCompletionView(t *testing.T) {
@@ -312,6 +313,30 @@ func TestRenderFooterComplete(t *testing.T) {
 	footer := m.renderFooter()
 	// Completion view has its own footer — step footer returns empty
 	assert.Equal(t, "", footer)
+}
+
+func TestRenderFooterShowsFollowWhenUserMoved(t *testing.T) {
+	m := testModel()
+	m.userMoved = true
+
+	footer := m.renderFooter()
+
+	assert.Contains(t, footer, "f follow")
+}
+
+func TestRenderFooterRejectionInput(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.cursor = 0
+	m.rejecting = true
+	m.rejectionInput = "Missing webhook test"
+
+	footer := m.renderFooter()
+	detail := m.renderDetail()
+
+	assert.Contains(t, footer, "enter reject")
+	assert.Contains(t, footer, "esc cancel")
+	assert.Contains(t, detail, "Missing webhook test")
 }
 
 func TestStepIconAllStates(t *testing.T) {
