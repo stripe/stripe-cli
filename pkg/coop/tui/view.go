@@ -207,14 +207,7 @@ func (m Model) renderDetail() string {
 		return ""
 	}
 
-	w := m.contentWidth() - 6
-	if w < 30 {
-		w = m.contentWidth() - 2
-	}
-	innerW := w - 4
-	if innerW < 20 {
-		innerW = 20
-	}
+	w, innerW := m.detailWidths()
 
 	var md strings.Builder
 
@@ -228,65 +221,113 @@ func (m Model) renderDetail() string {
 		return "    " + DetailBoxStyle.Width(w).Render(rendered)
 	}
 
-	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-		md.WriteString("**How to verify:**\n\n")
-		md.WriteString("1. `stripe listen --forward-to localhost:<port>/webhook`\n")
-		md.WriteString("2. `stripe trigger " + node.Events[0] + "`\n")
-		md.WriteString("3. Confirm your handler processes the event\n\n")
-	}
+	m.writeAsyncHandlerDetail(&md, node)
 
 	currentSnippet := m.sdkSnippetStep == m.cursor && m.sdkSnippet != ""
-	if node.Type == coop.NodeAPIRequest && currentSnippet {
-		lang := m.session.Settings["language"]
-		if lang == "" {
-			lang = "javascript"
-		}
+	m.writeSDKReferenceDetail(&md, node, currentSnippet)
+	m.writeImplementationDetail(&md, node, currentSnippet)
+	m.writeVerificationDetail(&md, node)
+
+	content := md.String()
+	suffix := m.renderDetailSuffix(node)
+	if content == "" && suffix == "" {
+		return ""
+	}
+
+	rendered := m.renderMarkdown(content, innerW)
+	return "    " + DetailBoxStyle.Width(w).Render(rendered+suffix)
+}
+
+func (m Model) detailWidths() (int, int) {
+	w := m.contentWidth() - 6
+	if w < 30 {
+		w = m.contentWidth() - 2
+	}
+	innerW := w - 4
+	if innerW < 20 {
+		innerW = 20
+	}
+	return w, innerW
+}
+
+func (m Model) detailLanguage() string {
+	lang := m.session.Settings["language"]
+	if lang == "" {
+		lang = "javascript"
+	}
+	return lang
+}
+
+func (m Model) writeAsyncHandlerDetail(md *strings.Builder, node *coop.SessionNode) {
+	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
+		return
+	}
+	md.WriteString("**How to verify:**\n\n")
+	md.WriteString("1. `stripe listen --forward-to localhost:<port>/webhook`\n")
+	md.WriteString("2. `stripe trigger " + node.Events[0] + "`\n")
+	md.WriteString("3. Confirm your handler processes the event\n\n")
+}
+
+func (m Model) writeSDKReferenceDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
+	if node.Type != coop.NodeAPIRequest {
+		return
+	}
+	if currentSnippet {
 		md.WriteString("**Reference:**\n\n")
-		md.WriteString("```" + lang + "\n")
+		md.WriteString("```" + m.detailLanguage() + "\n")
 		md.WriteString(m.sdkSnippet + "\n")
 		md.WriteString("```\n\n")
-	} else if node.Type == coop.NodeAPIRequest && m.sdkLoading && m.sdkLoadingStep == m.cursor {
+		return
+	}
+	if m.sdkLoading && m.sdkLoadingStep == m.cursor {
 		md.WriteString("*Loading reference...*\n\n")
 	}
+}
 
-	if node.Implementation != nil {
-		imp := node.Implementation
-		if currentSnippet {
-			md.WriteString("---\n\n")
-		}
-		fileLabel := ""
-		if imp.File != "" {
-			fileLabel = imp.File
-			if imp.Lines != "" {
-				fileLabel += ":" + imp.Lines
-			}
-		}
-		md.WriteString("**Agent wrote:** `" + fileLabel + "`\n\n")
-		if imp.Snippet != "" {
-			lang := m.session.Settings["language"]
-			if lang == "" {
-				lang = "javascript"
-			}
-			md.WriteString("```" + lang + "\n")
-			md.WriteString(imp.Snippet + "\n")
-			md.WriteString("```\n\n")
-		}
-		if imp.Note != "" {
-			md.WriteString("> " + imp.Note + "\n\n")
+func (m Model) writeImplementationDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
+	if node.Implementation == nil {
+		return
+	}
+	if currentSnippet {
+		md.WriteString("---\n\n")
+	}
+	imp := node.Implementation
+	md.WriteString("**Agent wrote:** `" + implementationFileLabel(imp) + "`\n\n")
+	if imp.Snippet != "" {
+		md.WriteString("```" + m.detailLanguage() + "\n")
+		md.WriteString(imp.Snippet + "\n")
+		md.WriteString("```\n\n")
+	}
+	if imp.Note != "" {
+		md.WriteString("> " + imp.Note + "\n\n")
+	}
+}
+
+func implementationFileLabel(imp *coop.Implementation) string {
+	if imp.File == "" {
+		return ""
+	}
+	if imp.Lines == "" {
+		return imp.File
+	}
+	return imp.File + ":" + imp.Lines
+}
+
+func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNode) {
+	if len(node.Verifications) == 0 {
+		return
+	}
+	for _, v := range node.Verifications {
+		if v.Passed {
+			md.WriteString("- ✓ " + v.Check + "\n")
+		} else {
+			md.WriteString("- ✗ " + v.Check + "\n")
 		}
 	}
+	md.WriteString("\n")
+}
 
-	if len(node.Verifications) > 0 {
-		for _, v := range node.Verifications {
-			if v.Passed {
-				md.WriteString("- ✓ " + v.Check + "\n")
-			} else {
-				md.WriteString("- ✗ " + v.Check + "\n")
-			}
-		}
-		md.WriteString("\n")
-	}
-
+func (m Model) renderDetailSuffix(node *coop.SessionNode) string {
 	var suffix string
 	if node.State == coop.StepReview {
 		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm or r to reject")
@@ -298,14 +339,7 @@ func (m Model) renderDetail() string {
 		}
 		suffix += "\n" + ErrorStyle.Render("  Rejection note: ") + input
 	}
-
-	content := md.String()
-	if content == "" && suffix == "" {
-		return ""
-	}
-
-	rendered := m.renderMarkdown(content, innerW)
-	return "    " + DetailBoxStyle.Width(w).Render(rendered+suffix)
+	return suffix
 }
 
 func (m Model) renderMarkdown(content string, width int) string {
