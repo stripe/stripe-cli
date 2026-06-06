@@ -61,22 +61,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 
 	sessionID := "coop_" + uuid.New().String()[:8]
 
-	settings := make(map[string]string)
-	if sc.language != "" {
-		settings["language"] = sc.language
-	}
-	for _, s := range sc.settings {
-		for i := range s {
-			if s[i] == '=' {
-				settings[s[:i]] = s[i+1:]
-				break
-			}
-		}
-	}
-
-	session := coop.NewSessionFromBlueprint(bp, sessionID, settings)
-	session.ParentSessionID = sc.parentSession
-	session.ParentStepID = sc.parentStep
+	session := sc.newSession(bp, sessionID)
 	session.CreatedAt = time.Now().UTC()
 
 	// Populate claim URL from config if sandbox was provisioned
@@ -118,6 +103,26 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return outputJSON(resp)
+}
+
+func (sc *coopStartCmd) newSession(bp *coop.Blueprint, sessionID string) *coop.Session {
+	settings := make(map[string]string)
+	if sc.language != "" {
+		settings["language"] = sc.language
+	}
+	for _, s := range sc.settings {
+		for i := range s {
+			if s[i] == '=' {
+				settings[s[:i]] = s[i+1:]
+				break
+			}
+		}
+	}
+
+	session := coop.NewSessionFromBlueprint(bp, sessionID, settings)
+	session.ParentSessionID = sc.parentSession
+	session.ParentStepID = sc.parentStep
+	return session
 }
 
 type coopStartResponse struct {

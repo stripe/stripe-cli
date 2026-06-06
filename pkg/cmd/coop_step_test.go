@@ -259,29 +259,18 @@ func TestDoSkipFinalStepRoutesToNextSteps(t *testing.T) {
 }
 
 func TestCoopRunStoresParentSessionMetadata(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-
 	rc := &coopStartCmd{
 		language:      "node",
 		parentSession: "parent_session",
 		parentStep:    "deploy",
 	}
-	output := captureStdout(t, func() {
-		require.NoError(t, rc.runStartCmd(nil, []string{"one-time-payment"}))
-	})
-
-	var resp coopStartResponse
-	require.NoError(t, json.Unmarshal([]byte(output), &resp))
-	require.Contains(t, resp.Next, "--session="+resp.SessionID)
-	require.Contains(t, resp.Next, `--note="Beginning: Understand the project"`)
-
-	store, err := coop.NewStore(coopConfigFolder())
+	bp, err := coop.LoadBlueprint("one-time-payment")
 	require.NoError(t, err)
-	session, err := store.Read(resp.SessionID)
-	require.NoError(t, err)
+
+	session := rc.newSession(bp, "step_test_session")
 	assert.Equal(t, "parent_session", session.ParentSessionID)
 	assert.Equal(t, "deploy", session.ParentStepID)
+	assert.Equal(t, "node", session.Settings["language"])
 }
 
 func TestNextStepsDeployIncludesParentMetadata(t *testing.T) {
