@@ -118,54 +118,58 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 		return fmt.Errorf("clearing next-step selection: %w", err)
 	}
 
+	return outputJSON(buildNextStepsResponse(session, suggestions, selected))
+}
+
+func buildNextStepsResponse(session *coop.Session, suggestions []suggestion, selected string) nextStepsResponse {
 	switch selected {
 	case "summarize":
-		return outputJSON(nextStepsResponse{
+		return nextStepsResponse{
 			OK:          true,
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: buildSummarizePrompt(session),
 			Next:        fmt.Sprintf("Write STRIPE.md, then run: stripe coop next-steps --session=%s --completed=summarize", session.ID),
-		})
+		}
 	case "deploy", "deploy-update":
 		lang := session.Settings["language"]
 		if lang == "" {
 			lang = "node"
 		}
 		next := fmt.Sprintf("stripe coop run deploy-stripe-projects --language=%s --parent-session=%s --parent-step=%s", lang, session.ID, selected)
-		return outputJSON(nextStepsResponse{
+		return nextStepsResponse{
 			OK:          true,
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: "The developer wants to deploy. Start a new co-op session with the deploy blueprint.",
 			Next:        next,
-		})
+		}
 	case "add-integration":
-		return outputJSON(nextStepsResponse{
+		return nextStepsResponse{
 			OK:          true,
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: fmt.Sprintf("The developer wants to add another Stripe feature. Run 'stripe coop recommend' and ask what they need, then start a new session with --parent-session=%s --parent-step=add-integration.", session.ID),
 			Next:        "stripe coop recommend",
-		})
+		}
 	case "done":
-		return outputJSON(nextStepsResponse{
+		return nextStepsResponse{
 			OK:          true,
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			AgentPrompt: "The developer is done. End the session.",
 			Next:        fmt.Sprintf("stripe coop stop --session=%s", session.ID),
-		})
+		}
 	default:
-		return outputJSON(nextStepsResponse{
+		return nextStepsResponse{
 			OK:          true,
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			AgentPrompt: fmt.Sprintf("The developer selected: %s", selected),
 			Next:        "stripe coop stop",
-		})
+		}
 	}
 }

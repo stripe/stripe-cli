@@ -285,30 +285,11 @@ func TestCoopRunStoresParentSessionMetadata(t *testing.T) {
 }
 
 func TestNextStepsDeployIncludesParentMetadata(t *testing.T) {
-	store, session := setupCompletedNextStepsSession(t)
+	_, session := setupCompletedNextStepsSession(t)
+	suggestions := buildSuggestions(session, projectEnvironment{})
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			current, err := store.Read(session.ID)
-			if err == nil && current.NextSteps != nil && len(current.NextSteps.Suggestions) > 0 {
-				current.NextSteps.Selected = "deploy"
-				require.NoError(t, store.Write(current))
-				return
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}()
+	resp := buildNextStepsResponse(session, suggestions, "deploy")
 
-	nc := &coopNextStepsCmd{session: session.ID}
-	output := captureStdout(t, func() {
-		require.NoError(t, nc.runNextStepsCmd(nil, nil))
-	})
-	<-done
-
-	var resp nextStepsResponse
-	require.NoError(t, json.Unmarshal([]byte(output), &resp))
 	assert.Equal(t, session.ID, resp.SessionID)
 	assert.Equal(t, "stripe coop run deploy-stripe-projects --language=node --parent-session=step_test_session --parent-step=deploy", resp.Next)
 }
