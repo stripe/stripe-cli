@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -256,6 +258,76 @@ func TestDoSkipFinalStepRoutesToNextSteps(t *testing.T) {
 	assert.Contains(t, output, `"next": "stripe coop next-steps --session=step_test_session"`)
 }
 
+func TestCoopRunStoresParentSessionMetadata(t *testing.T) {
+	rc := &coopStartCmd{
+		language:      "node",
+		parentSession: "parent_session",
+		parentStep:    "deploy",
+	}
+	bp, err := coop.LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+
+	session := rc.newSession(bp, "step_test_session")
+	assert.Equal(t, "parent_session", session.ParentSessionID)
+	assert.Equal(t, "deploy", session.ParentStepID)
+	assert.Equal(t, "node", session.Settings["language"])
+}
+
+func TestNextStepsDeployIncludesParentMetadata(t *testing.T) {
+	_, session := setupCompletedNextStepsSession(t)
+	suggestions := buildSuggestions(session, projectEnvironment{})
+
+	resp := buildNextStepsResponse(session, suggestions, "deploy")
+
+	assert.Equal(t, session.ID, resp.SessionID)
+	assert.Equal(t, "stripe coop run deploy-stripe-projects --language=node --parent-session=step_test_session --parent-step=deploy", resp.Next)
+}
+
+func TestOutputCoopErrorReturnsRenderedError(t *testing.T) {
+	output := captureStderr(t, func() {
+		err := outputCoopError("No session found.", "stripe coop run <blueprint>")
+		var rendered coopRenderedError
+		require.True(t, errors.As(err, &rendered))
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	assert.False(t, resp.OK)
+	assert.Equal(t, "No session found.", resp.Error)
+	assert.Equal(t, "stripe coop run <blueprint>", resp.Hint)
+}
+
+func setupCompletedNextStepsSession(t *testing.T) (*coop.Store, *coop.Session) {
+	t.Helper()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+
+	session := &coop.Session{
+		ID:       "step_test_session",
+		Status:   coop.SessionActive,
+		Settings: map[string]string{"language": "node"},
+		Chapters: []coop.SessionChapter{
+			{
+				Key:   "ch1",
+				Title: "Chapter 1",
+				Nodes: []coop.SessionNode{
+					{Key: "n1", Title: "Step 1", State: coop.StepDone, Type: coop.NodeAPIRequest},
+					{Key: "n2", Title: "Step 2", State: coop.StepDone, Type: coop.NodeTestHelper},
+				},
+			},
+		},
+	}
+	for i := range session.Chapters {
+		for j := range session.Chapters[i].Nodes {
+			session.Chapters[i].Nodes[j].State = coop.StepDone
+		}
+	}
+	require.NoError(t, store.Write(session))
+	return store, session
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
@@ -268,6 +340,25 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	require.NoError(t, w.Close())
 	os.Stdout = orig
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	return strings.TrimSpace(buf.String())
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+
+	orig := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+
+	fn()
+
+	require.NoError(t, w.Close())
+	os.Stderr = orig
 
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, r)

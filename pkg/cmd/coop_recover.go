@@ -82,14 +82,14 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 				SessionID: session.ID,
 				Diagnosis: "All steps were done but session was still marked active.",
 				Action:    "Marked session as completed.",
-				Next:      "stripe coop next-steps",
+				Next:      fmt.Sprintf("stripe coop next-steps --session=%s", session.ID),
 			})
 		}
 		return outputJSON(recoverResponse{
 			OK:        true,
 			SessionID: session.ID,
 			Diagnosis: "All steps are done but session is still marked active.",
-			Next:      "stripe coop recover --fix",
+			Next:      fmt.Sprintf("stripe coop recover --session=%s --fix", session.ID),
 		})
 	}
 
@@ -136,7 +136,7 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 			OK:        true,
 			SessionID: session.ID,
 			Diagnosis: fmt.Sprintf("No step is active. Next pending step is %d (%s). The agent needs to start it.", nextStep, node.Title),
-			Next:      fmt.Sprintf("stripe coop step %d start --note=\"Resuming\"", nextStep),
+			Next:      fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Resuming")),
 		})
 	}
 
@@ -144,6 +144,6 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 		OK:        true,
 		SessionID: session.ID,
 		Diagnosis: "Session is in an unexpected state. Consider aborting and starting over.",
-		Next:      "stripe coop stop --abort",
+		Next:      fmt.Sprintf("stripe coop stop --session=%s --abort", session.ID),
 	})
 }
