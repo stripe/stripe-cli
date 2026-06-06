@@ -1,9 +1,12 @@
 {
   "id": "checkout-studio",
   "title": "Build your Integration",
-  "description": "",
+  "description": "Create a Checkout Session and add the frontend entry point for a hosted Checkout payment flow.",
   "type": "learning",
-  "products": [],
+  "products": [
+    "Checkout",
+    "Payments"
+  ],
   "settings": [],
   "chapters": [
     {
