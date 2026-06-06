@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,9 +15,11 @@ import (
 )
 
 type coopStartCmd struct {
-	cmd      *cobra.Command
-	language string
-	settings []string
+	cmd           *cobra.Command
+	language      string
+	settings      []string
+	parentSession string
+	parentStep    string
 }
 
 func newCoopStartCmd() *coopStartCmd {
@@ -37,6 +40,8 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 
 	sc.cmd.Flags().StringVar(&sc.language, "language", "", "Programming language for the integration")
 	sc.cmd.Flags().StringArrayVar(&sc.settings, "setting", nil, "Blueprint settings as key=value pairs")
+	sc.cmd.Flags().StringVar(&sc.parentSession, "parent-session", "", "Parent co-op session ID for follow-up work")
+	sc.cmd.Flags().StringVar(&sc.parentStep, "parent-step", "", "Parent next-step ID this session fulfills")
 
 	return sc
 }
@@ -70,6 +75,8 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	session := coop.NewSessionFromBlueprint(bp, sessionID, settings)
+	session.ParentSessionID = sc.parentSession
+	session.ParentStepID = sc.parentStep
 	session.CreatedAt = time.Now().UTC()
 
 	// Populate claim URL from config if sandbox was provisioned
@@ -104,7 +111,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 			Step:      1,
 			State:     "created",
 			Message:   fmt.Sprintf("Session started: %s (%d steps)", bp.Title, session.TotalSteps()),
-			Next:      fmt.Sprintf("stripe coop step 1 start --session=%s --note=\"Beginning: %s\"", sessionID, session.Chapters[0].Nodes[0].Title),
+			Next:      fmt.Sprintf("stripe coop step 1 start --session=%s --note=%s", sessionID, quoteArg("Beginning: "+session.Chapters[0].Nodes[0].Title)),
 		},
 		AgentInstructions: agentInstructions(bp, session),
 		Steps:             steps,
@@ -186,6 +193,10 @@ func outputJSON(v interface{}) error {
 	return nil
 }
 
+func quoteArg(value string) string {
+	return strconv.Quote(value)
+}
+
 func outputCoopError(msg, hint string) error {
 	resp := coop.CommandResponse{
 		OK:    false,
@@ -194,6 +205,11 @@ func outputCoopError(msg, hint string) error {
 	}
 	data, _ := json.MarshalIndent(resp, "", "  ")
 	fmt.Fprintln(os.Stderr, string(data))
-	os.Exit(1)
-	return nil // unreachable
+	return coopRenderedError{}
+}
+
+type coopRenderedError struct{}
+
+func (coopRenderedError) Error() string {
+	return "coop command failed"
 }

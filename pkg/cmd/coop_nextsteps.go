@@ -133,13 +133,14 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 		if lang == "" {
 			lang = "node"
 		}
+		next := fmt.Sprintf("stripe coop run deploy-stripe-projects --language=%s --parent-session=%s --parent-step=%s", lang, session.ID, selected)
 		return outputJSON(nextStepsResponse{
 			OK:          true,
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: "The developer wants to deploy. Start a new co-op session with the deploy blueprint.",
-			Next:        "stripe coop run deploy-stripe-projects --language=" + lang,
+			Next:        next,
 		})
 	case "add-integration":
 		return outputJSON(nextStepsResponse{
@@ -147,7 +148,7 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
-			AgentPrompt: "The developer wants to add another Stripe feature. Run 'stripe coop recommend' and ask what they need, then start a new session.",
+			AgentPrompt: fmt.Sprintf("The developer wants to add another Stripe feature. Run 'stripe coop recommend' and ask what they need, then start a new session with --parent-session=%s --parent-step=add-integration.", session.ID),
 			Next:        "stripe coop recommend",
 		})
 	case "done":

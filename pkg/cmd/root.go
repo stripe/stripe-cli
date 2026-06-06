@@ -140,11 +140,14 @@ func Execute(ctx context.Context) {
 
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
+		var renderedCoopError coopRenderedError
 
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
+		case errors.As(err, &renderedCoopError):
+			// Co-op agent-facing commands already rendered structured JSON.
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):

@@ -171,7 +171,7 @@ func (sc *coopStepCmd) doDone(store *coop.Store, session *coop.Session, stepNum 
 		msg = fmt.Sprintf("Completed: %s", node.Title)
 		if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
 			nextNode, _ := session.NodeByNumber(nextStep)
-			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=\"Beginning: %s\"", nextStep, session.ID, nextNode.Title)
+			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
 		} else if session.IsComplete() {
 			msg += " All steps complete! Run next-steps — developer picks from TUI."
 			next = fmt.Sprintf("stripe coop next-steps --session=%s", session.ID)
@@ -242,7 +242,7 @@ func (sc *coopStepCmd) doAwait(store *coop.Store, session *coop.Session, stepNum
 		msg := fmt.Sprintf("Step %d auto-confirmed. Proceed to next step.", stepNum)
 		if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
 			nextNode, _ := session.NodeByNumber(nextStep)
-			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=\"Beginning: %s\"", nextStep, session.ID, nextNode.Title)
+			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
 		} else if session.IsComplete() {
 			msg = fmt.Sprintf("Step %d auto-confirmed. All steps complete!", stepNum)
 			next = fmt.Sprintf("stripe coop next-steps --session=%s", session.ID)
@@ -266,7 +266,7 @@ func (sc *coopStepCmd) doAwait(store *coop.Store, session *coop.Session, stepNum
 		} else if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
 			nextNode, _ := session.NodeByNumber(nextStep)
 			msg = fmt.Sprintf("Step %d is done. Proceed to next step.", stepNum)
-			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=\"Beginning: %s\"", nextStep, session.ID, nextNode.Title)
+			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
 		}
 		return outputJSON(coop.CommandResponse{
 			OK:        true,
@@ -318,7 +318,7 @@ func (sc *coopStepCmd) doAwait(store *coop.Store, session *coop.Session, stepNum
 			msg := fmt.Sprintf("Step %d confirmed by developer. Proceed to next step.", stepNum)
 			if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
 				nextNode, _ := session.NodeByNumber(nextStep)
-				next = fmt.Sprintf("stripe coop step %d start --session=%s --note=\"Beginning: %s\"", nextStep, session.ID, nextNode.Title)
+				next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
 			} else if session.IsComplete() {
 				msg = fmt.Sprintf("Step %d confirmed. All steps complete! You MUST run the next command immediately — it shows the developer their options and blocks until they choose.", stepNum)
 				next = fmt.Sprintf("stripe coop next-steps --session=%s", session.ID)
@@ -423,7 +423,7 @@ func (sc *coopStepCmd) doSkip(store *coop.Store, session *coop.Session, stepNum 
 	next := ""
 	if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
 		nextNode, _ := session.NodeByNumber(nextStep)
-		next = fmt.Sprintf("stripe coop step %d start --session=%s --note=\"Beginning: %s\"", nextStep, session.ID, nextNode.Title)
+		next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
 	} else if session.IsComplete() {
 		next = fmt.Sprintf("stripe coop next-steps --session=%s", session.ID)
 	} else {
