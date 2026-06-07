@@ -129,6 +129,7 @@ func TestRenderDetailWebhook(t *testing.T) {
 	detail := m.renderDetail()
 
 	assert.Contains(t, detail, "Checks")
+	assert.Contains(t, detail, "Review command")
 	assert.Contains(t, detail, "How to verify")
 	assert.Contains(t, detail, "stripe listen")
 	assert.Contains(t, detail, "stripe trigger checkout.session.completed")
@@ -153,8 +154,8 @@ func TestRenderFooter(t *testing.T) {
 	footer := m.renderFooter()
 
 	// Step 0 is done — no review actions
-	assert.Contains(t, footer, "navigate")
-	assert.Contains(t, footer, "details")
+	assert.Contains(t, footer, "↑↓")
+	assert.Contains(t, footer, "enter/e")
 	assert.NotContains(t, footer, "confirm")
 }
 
@@ -165,7 +166,7 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	footer := m.renderFooter()
 
 	assert.Contains(t, footer, "confirm")
-	assert.Contains(t, footer, "request changes")
+	assert.Contains(t, footer, "changes")
 	assert.Contains(t, footer, "Review:")
 	assert.Contains(t, footer, "Agent changed")
 	assert.Contains(t, footer, "You check")
@@ -200,6 +201,17 @@ func TestRenderReviewCardFallbackCheck(t *testing.T) {
 	card := m.renderReviewCard()
 
 	assert.Contains(t, card, "Confirm the completed work matches this step")
+}
+
+func TestRenderFooterReviewCommand(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[1].Nodes[0].State = coop.StepReview
+	m.cursor = 2
+	footer := m.renderFooter()
+
+	assert.Contains(t, footer, "Run:")
+	assert.Contains(t, footer, "stripe trigger checkout.session.completed")
+	assert.Contains(t, footer, "y copy")
 }
 
 func TestRenderFooterReviewNotice(t *testing.T) {
@@ -280,7 +292,7 @@ func TestCompletionImportantChecksDedupesDoneOnlyAndCaps(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, []string{"Check one", "Check two", "Check three", "Check four"}, m.completionImportantChecks())
+	assert.Equal(t, []string{"Check one", "Check two"}, m.completionImportantChecks())
 }
 
 func TestGetCompletionSuggestionsDefault(t *testing.T) {
@@ -429,9 +441,21 @@ func TestRenderFooterRejectionInput(t *testing.T) {
 
 	footer := m.renderFooter()
 
-	assert.Contains(t, footer, "enter send feedback")
+	assert.Contains(t, footer, "enter send")
 	assert.Contains(t, footer, "esc cancel")
 	assert.Contains(t, footer, "Missing webhook test")
+}
+
+func TestRenderFooterRejectionPlaceholder(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[1].Nodes[0].State = coop.StepReview
+	m.cursor = 2
+	m.rejecting = true
+
+	footer := m.renderFooter()
+
+	assert.Contains(t, footer, "signature verification")
+	assert.Contains(t, footer, "event handling")
 }
 
 func TestStepIconAllStates(t *testing.T) {

@@ -84,7 +84,8 @@
           "key": "handle-checkout-completed",
           "title": "Handle checkout.session.completed",
           "type": "asyncHandler",
-          "review_prompt": "Run stripe trigger checkout.session.completed and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run `stripe trigger checkout.session.completed` and confirm fulfillment happens only after verifying the Stripe signature.",
+          "review_command": "stripe trigger checkout.session.completed"
         }
       ],
       "title": "Handle post-payment events"

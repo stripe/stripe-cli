@@ -415,7 +415,7 @@ func TestCompletionViewKeyDown(t *testing.T) {
 	assert.Equal(t, 1, updated.cursor)
 }
 
-func TestCompletionViewportScrollsToCursor(t *testing.T) {
+func TestCompletionViewportKeepsReceiptAtTop(t *testing.T) {
 	m := readyModel()
 	m.height = 10
 	m.viewport.Height = 3
@@ -437,7 +437,8 @@ func TestCompletionViewportScrollsToCursor(t *testing.T) {
 
 	m.syncViewport()
 
-	assert.Greater(t, m.viewport.YOffset, 0)
+	assert.Equal(t, 0, m.viewport.YOffset)
+	assert.Contains(t, m.viewport.View(), "Integration complete")
 }
 
 func TestCompletionViewKeyDownWraps(t *testing.T) {
@@ -612,6 +613,26 @@ func TestHandleKeyOpenBrowser(t *testing.T) {
 	updated := result.(Model)
 	assert.NotNil(t, updated)
 	assert.Equal(t, "https://example.com", opened)
+}
+
+func TestHandleKeyCopyReviewCommand(t *testing.T) {
+	orig := copyTextFn
+	var copied string
+	copyTextFn = func(text string) error {
+		copied = text
+		return nil
+	}
+	defer func() { copyTextFn = orig }()
+
+	m := readyModel()
+	m.session.Chapters[1].Nodes[0].State = coop.StepReview
+	m.cursor = 2
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	updated := result.(Model)
+
+	assert.Equal(t, "stripe trigger checkout.session.completed", copied)
+	assert.Contains(t, updated.statusMessage, "Copied")
 }
 
 func TestHandleKeyQuestionMark(t *testing.T) {

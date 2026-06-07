@@ -241,8 +241,10 @@ func TestAgentPromptsUseSandboxCommand(t *testing.T) {
 
 	bp := &coop.Blueprint{Title: "Test integration"}
 	session := &coop.Session{}
-	assert.Contains(t, agentInstructions(bp, session), "stripe sandbox create --from-git")
-	assert.NotContains(t, agentInstructions(bp, session), "stripe sandboxes create")
+	instructions := agentInstructions(bp, session)
+	assert.Contains(t, instructions, "stripe sandbox create --from-git")
+	assert.Contains(t, instructions, "review_command")
+	assert.NotContains(t, instructions, "stripe sandboxes create")
 }
 
 func TestBlueprintMatchScoreRanksRelevantBlueprints(t *testing.T) {
@@ -394,6 +396,7 @@ func TestCoopRunStoresParentSessionMetadata(t *testing.T) {
 	assert.Equal(t, "parent_session", session.ParentSessionID)
 	assert.Equal(t, "deploy", session.ParentStepID)
 	assert.Equal(t, "node", session.Settings["language"])
+	assert.Equal(t, "stripe trigger checkout.session.completed", session.Chapters[3].Nodes[0].ReviewCommand)
 }
 
 func TestNextStepsDeployIncludesParentMetadata(t *testing.T) {

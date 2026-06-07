@@ -157,6 +157,7 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 
 	assert.Equal(t, ReviewGranularityChapter, session.Chapters[2].ReviewGranularity)
 	assert.NotEmpty(t, session.Chapters[1].Nodes[0].ReviewPrompt)
+	assert.Equal(t, "stripe trigger checkout.session.completed", session.Chapters[3].Nodes[0].ReviewCommand)
 }
 
 func TestListBlueprintsWithMetadata(t *testing.T) {

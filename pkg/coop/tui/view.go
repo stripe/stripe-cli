@@ -242,6 +242,7 @@ func (m Model) renderDetail() string {
 	case "Files":
 		m.writeImplementationDetail(&md, node, false)
 	case "Checks":
+		m.writeReviewCommandDetail(&md, node)
 		m.writeAsyncHandlerCheckDetail(&md, node)
 		m.writeVerificationDetail(&md, node)
 	case "Reference":
@@ -326,6 +327,15 @@ func (m Model) writeAsyncHandlerReferenceDetail(md *strings.Builder, node *coop.
 	}
 	md.WriteString("**Webhook trigger:**\n\n")
 	md.WriteString("`stripe trigger " + node.Events[0] + "`\n\n")
+}
+
+func (m Model) writeReviewCommandDetail(md *strings.Builder, node *coop.SessionNode) {
+	command := reviewCommandForNode(node)
+	if command == "" {
+		return
+	}
+	md.WriteString("**Review command:**\n\n")
+	md.WriteString("`" + strings.ReplaceAll(command, "`", "'") + "`\n\n")
 }
 
 func (m Model) writeSDKReferenceDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
@@ -441,30 +451,33 @@ func (m Model) renderFooter() string {
 	}
 
 	if m.rejecting {
-		return footer + FooterStyle.Render("  enter send feedback  ·  esc cancel")
+		return footer + FooterStyle.Render("  enter send · esc cancel")
 	}
 
 	var parts []string
 	if m.userMoved {
-		parts = append(parts, "Viewing earlier steps", "f follow latest")
+		parts = append(parts, "earlier", "f follow")
 	} else {
-		parts = append(parts, "↑↓ navigate")
+		parts = append(parts, "↑↓")
 	}
-	parts = append(parts, "enter/e details")
+	parts = append(parts, "enter/e")
 	if m.expanded {
-		parts = append(parts, "tab section", "esc close")
+		parts = append(parts, "tab", "esc")
 	}
 	if m.session != nil && m.session.ClaimURL != "" {
-		parts = append(parts, "o open claim URL")
+		parts = append(parts, "o claim")
 	}
 	if m.session != nil {
 		if _, ok := m.selectedReviewTarget(); ok {
+			if m.selectedReviewCommand() != "" {
+				parts = append(parts, "y copy")
+			}
 			parts = append(parts, SuccessStyle.Render("c confirm"))
-			parts = append(parts, ErrorStyle.Render("r request changes"))
+			parts = append(parts, ErrorStyle.Render("r changes"))
 		}
 	}
 	parts = append(parts, "q quit")
-	footer += FooterStyle.Render("  " + strings.Join(parts, "  ·  "))
+	footer += FooterStyle.Render("  " + strings.Join(parts, " · "))
 	return footer
 }
 
@@ -494,10 +507,13 @@ func (m Model) renderReviewCard() string {
 	if check != "" {
 		lines = append(lines, MutedStyle.Render("You check: ")+check)
 	}
+	if command := m.reviewCommandLabel(target.steps); command != "" {
+		lines = append(lines, MutedStyle.Render("Run: ")+command)
+	}
 	if m.rejecting {
 		input := m.rejectionInput
 		if input == "" {
-			input = DimmedStyle.Render("Describe what should change")
+			input = DimmedStyle.Render(m.requestChangesPlaceholder(target))
 		}
 		lines = append(lines, ErrorStyle.Render("Request changes: ")+input)
 		if m.rejectionError != "" {
@@ -510,6 +526,29 @@ func (m Model) renderReviewCard() string {
 		wrapped = append(wrapped, strings.Split(wordWrap(line, w-4), "\n")...)
 	}
 	return ReviewCardStyle.Width(w).Render(strings.Join(wrapped, "\n"))
+}
+
+func (m Model) requestChangesPlaceholder(target reviewTarget) string {
+	if target.kind == "chapter" {
+		return "Describe what should change in this chapter"
+	}
+	for _, step := range target.steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil {
+			continue
+		}
+		switch node.Type {
+		case coop.NodeAsyncHandler, coop.NodeSetUpWebhooks:
+			return "Describe what should change in signature verification or event handling"
+		case coop.NodeAPIRequest:
+			return "Describe what should change in the API call, IDs, or stored values"
+		case coop.NodeUIComponent:
+			return "Describe what should change in the user-facing flow"
+		case coop.NodeTestHelper:
+			return "Describe the failing path or expected result"
+		}
+	}
+	return "Describe what should change"
 }
 
 func (m Model) reviewChangedLabel(steps []int) string {
@@ -577,6 +616,40 @@ func (m Model) reviewPromptLabel(steps []int) string {
 		return strings.Join(prompts[:2], " ") + " Open details for the remaining checks."
 	}
 	return strings.Join(prompts, " ")
+}
+
+func (m Model) reviewCommandLabel(steps []int) string {
+	var commands []string
+	seen := map[string]bool{}
+	for _, step := range steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil {
+			continue
+		}
+		command := reviewCommandForNode(node)
+		if command == "" || seen[command] {
+			continue
+		}
+		seen[command] = true
+		commands = append(commands, command)
+	}
+	if len(commands) == 0 {
+		return ""
+	}
+	if len(commands) > 2 {
+		return strings.Join(commands[:2], " && ") + fmt.Sprintf(" && # +%d more", len(commands)-2)
+	}
+	return strings.Join(commands, " && ")
+}
+
+func reviewCommandForNode(node *coop.SessionNode) string {
+	if node.ReviewCommand != "" {
+		return node.ReviewCommand
+	}
+	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
+		return "stripe trigger " + node.Events[0]
+	}
+	return ""
 }
 
 func (m Model) actionableReviewCount() int {
@@ -707,8 +780,16 @@ func (m Model) renderCompletionReceipt(width int) string {
 	built := m.completionBuiltItems()
 	if len(built) > 0 {
 		content.WriteString(ChapterTitleStyle.Render("  Built") + "\n")
-		for _, item := range built {
-			content.WriteString("  " + SuccessStyle.Render("✓") + " " + item + "\n")
+		builtW := min(width-4, 76)
+		if builtW < 20 {
+			builtW = 20
+		}
+		for i, line := range strings.Split(wordWrap(strings.Join(built, " · "), builtW), "\n") {
+			prefix := "  " + SuccessStyle.Render("✓") + " "
+			if i > 0 {
+				prefix = "    "
+			}
+			content.WriteString(prefix + line + "\n")
 		}
 	}
 
@@ -771,7 +852,7 @@ func (m Model) completionImportantChecks() []string {
 			}
 			seen[node.ReviewPrompt] = true
 			checks = append(checks, node.ReviewPrompt)
-			if len(checks) == 4 {
+			if len(checks) == 2 {
 				return checks
 			}
 		}

@@ -234,6 +234,9 @@ func (m *Model) syncViewport() {
 	content := m.renderStepList()
 	if m.session.IsComplete() {
 		content = m.renderCompletionBody()
+		m.viewport.SetContent(content)
+		m.viewport.SetYOffset(0)
+		return
 	}
 	m.viewport.SetContent(content)
 	m.scrollToCursor()
@@ -255,10 +258,14 @@ func (m *Model) scrollToCursor() {
 
 	vpTop := m.viewport.YOffset
 	vpBottom := vpTop + m.viewport.Height
+	scrollThreshold := vpBottom - 2
+	if m.session != nil && m.session.IsComplete() {
+		scrollThreshold = vpBottom
+	}
 
 	if targetLine < vpTop {
 		m.viewport.SetYOffset(targetLine)
-	} else if targetLine >= vpBottom-2 {
+	} else if targetLine >= scrollThreshold {
 		offset := targetLine - m.viewport.Height/2
 		if offset < 0 {
 			offset = 0
@@ -344,6 +351,16 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "o":
 		if m.session != nil && m.session.ClaimURL != "" {
 			openBrowser(m.session.ClaimURL)
+		}
+		return m, nil
+	case "y":
+		if command := m.selectedReviewCommand(); command != "" {
+			if err := copyText(command); err != nil {
+				m.setStatus("Could not copy command: "+err.Error(), 4*time.Second)
+			} else {
+				m.setStatus("Copied review command.", 3*time.Second)
+			}
+			m.syncViewport()
 		}
 		return m, nil
 	case "r":
@@ -603,6 +620,14 @@ func (m Model) reviewIsActionable(stepNum int) bool {
 	}
 	_, chapterIndex, _, err := m.session.ChapterByStepNumber(stepNum)
 	return err == nil && m.session.ChapterReadyForReview(chapterIndex)
+}
+
+func (m Model) selectedReviewCommand() string {
+	target, ok := m.selectedReviewTarget()
+	if !ok {
+		return ""
+	}
+	return m.reviewCommandLabel(target.steps)
 }
 
 func (m *Model) setStatus(message string, ttl time.Duration) {
