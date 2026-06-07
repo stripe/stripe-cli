@@ -448,14 +448,14 @@ func (m Model) renderReviewCard() string {
 	}
 	lines = append(lines, AttentionStyle.Render(prefix+": ")+target.title)
 	if changed := m.reviewChangedLabel(target.steps); changed != "" {
-		lines = append(lines, MutedStyle.Render("Changed: ")+changed)
+		lines = append(lines, MutedStyle.Render("Agent changed: ")+changed)
 	}
 	if verified := m.reviewVerificationLabel(target.steps); verified != "" {
-		lines = append(lines, MutedStyle.Render("Verified: ")+verified)
+		lines = append(lines, MutedStyle.Render("Agent verified: ")+verified)
 	}
 	check := m.reviewPromptLabel(target.steps)
 	if check != "" {
-		lines = append(lines, MutedStyle.Render("Check: ")+check)
+		lines = append(lines, MutedStyle.Render("You check: ")+check)
 	}
 	if m.rejecting {
 		input := m.rejectionInput

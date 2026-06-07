@@ -25,6 +25,7 @@ func testModel() Model {
 					Title: "Set up product",
 					Nodes: []coop.SessionNode{
 						{Key: "n1", Title: "Create product", State: coop.StepDone, Type: coop.NodeAPIRequest,
+							ReviewPrompt:   "Confirm the saved price ID is reused by Checkout.",
 							Implementation: &coop.Implementation{File: "server.js", Lines: "5-20", Note: "Created product"}},
 						{Key: "n2", Title: "Create checkout", State: coop.StepActive, Type: coop.NodeAPIRequest,
 							Activity: "Writing endpoint"},
@@ -162,6 +163,8 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	assert.Contains(t, footer, "confirm")
 	assert.Contains(t, footer, "request changes")
 	assert.Contains(t, footer, "Review:")
+	assert.Contains(t, footer, "Agent changed")
+	assert.Contains(t, footer, "You check")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -177,11 +180,11 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	card := m.renderReviewCard()
 
 	assert.Contains(t, card, "Review: Create product")
-	assert.Contains(t, card, "Changed:")
+	assert.Contains(t, card, "Agent changed:")
 	assert.Contains(t, card, "server.js:5-20")
-	assert.Contains(t, card, "Verified:")
+	assert.Contains(t, card, "Agent verified:")
 	assert.Contains(t, card, "1/2 check(s) passed")
-	assert.Contains(t, card, "Check:")
+	assert.Contains(t, card, "You check:")
 	assert.Contains(t, card, "Confirm Checkout uses the saved price ID.")
 }
 
