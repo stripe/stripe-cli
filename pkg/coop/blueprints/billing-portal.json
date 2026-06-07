@@ -14,7 +14,8 @@
           "type": "uiComponent",
           "key": "redirect-to-portal",
           "title": "Open billing portal",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Open the app and confirm the user-facing flow works as described.",
+          "review_risk": "A UI mismatch can make a working backend unreachable or send users through the wrong flow."
         }
       ]
     }

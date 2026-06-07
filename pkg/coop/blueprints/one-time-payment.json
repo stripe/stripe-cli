@@ -21,7 +21,8 @@
           },
           "title": "Create a product",
           "type": "apiRequest",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the product has a default price and that the product or price ID is stored in code for the Checkout Session step.",
+          "review_risk": "If the price ID is missing or stale, Checkout can charge the wrong amount or fail later in the flow."
         }
       ],
       "required": true,
@@ -53,21 +54,24 @@
           },
           "title": "Create a Checkout Session",
           "type": "apiRequest",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the Checkout Session uses the price created in product setup and has the intended success and cancel URLs.",
+          "review_risk": "A mismatched price or redirect URL creates a payment flow that works technically but sends customers to the wrong purchase or page."
         },
         {
           "description": "Add a button or link that redirects the customer to the Checkout page.",
           "key": "redirect-to-checkout",
           "title": "Redirect to Checkout",
           "type": "uiComponent",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Open the app and confirm the checkout button redirects to Stripe Checkout instead of staying on a local route.",
+          "review_risk": "If the button points at the wrong route, customers cannot reach the hosted Checkout flow even when the backend works."
         },
         {
           "description": "Create a page to show after the customer completes payment.",
           "key": "add-success-page",
           "title": "Add a success page",
           "type": "uiComponent",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Complete a test Checkout Session and confirm the success page renders after returning from Stripe.",
+          "review_risk": "A broken return page makes completed payments look failed to customers and increases support burden."
         }
       ],
       "title": "Create a Checkout Session"
@@ -84,7 +88,8 @@
           "key": "handle-checkout-completed",
           "title": "Handle checkout.session.completed",
           "type": "asyncHandler",
-          "review_prompt": "Run stripe trigger checkout.session.completed and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run `stripe trigger checkout.session.completed` and confirm fulfillment happens only after verifying the Stripe signature.",
+          "review_risk": "Webhook signature mistakes can fulfill orders from spoofed events or miss real completed payments."
         }
       ],
       "title": "Handle post-payment events"
@@ -98,7 +103,8 @@
           "key": "test-payment-flow",
           "title": "Make a test payment",
           "type": "testHelper",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Run the full test-card payment flow and confirm it reaches Checkout, returns to success, and records fulfillment.",
+          "review_risk": "The individual pieces can pass independently while the end-to-end customer path still fails."
         }
       ],
       "title": "Test the integration"

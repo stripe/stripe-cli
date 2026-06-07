@@ -18,7 +18,8 @@
             "path": "/v1/billing/meters",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -28,7 +29,8 @@
             "path": "/v1/billing/meter_events",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         }
       ]
     }

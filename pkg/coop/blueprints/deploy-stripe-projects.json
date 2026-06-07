@@ -42,7 +42,8 @@
           "key": "init-project",
           "title": "Initialize Stripe Project",
           "description": "Run `stripe projects init --help` to see available flags, then run `stripe projects init` with appropriate options for the detected framework. Report what was detected and what stripe.json contains.",
-          "review_prompt": "Confirm the command completed successfully and the reported output matches the step description."
+          "review_prompt": "Confirm `stripe.json` exists, names the expected project, and matches the framework or build settings the agent reported.",
+          "review_risk": "An incorrect project link or build setting can deploy the wrong app shape even if initialization succeeds."
         }
       ]
     },
@@ -56,14 +57,16 @@
           "key": "stripe-keys",
           "title": "Set Stripe keys as project secrets",
           "description": "Run `stripe projects secrets --help` to discover the command interface. Set STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY using the keys from `stripe whoami --json`. Tell the developer which keys you're using.",
-          "review_prompt": "Confirm the command completed successfully and the reported output matches the step description."
+          "review_prompt": "Confirm Stripe keys were added as project secrets and no test or production secret values were committed to the repo.",
+          "review_risk": "Misplaced API keys can leak credentials or make the deployed app use the wrong Stripe environment."
         },
         {
           "type": "cliCommand",
           "key": "other-secrets",
           "title": "Set additional secrets",
           "description": "Scan .env, .env.local, .env.example for variables NOT already handled (not STRIPE_ keys). If NONE remain → SKIP. If found → use `stripe projects secrets set` to configure them. Ask the developer for production values only if they differ from what's in .env.",
-          "review_prompt": "Confirm the command completed successfully and the reported output matches the step description."
+          "review_prompt": "Confirm each additional secret came from the expected environment variable and was configured through Stripe Projects, not committed.",
+          "review_risk": "Missing or incorrect non-Stripe secrets can make the deployed app fail only after launch."
         }
       ]
     },
@@ -77,14 +80,16 @@
           "key": "first-deploy",
           "title": "Run first deployment",
           "description": "Run `stripe projects deploy --help` to check available flags, then run `stripe projects deploy`. Report the build output and deployment URL.",
-          "review_prompt": "Confirm the command completed successfully and the reported output matches the step description."
+          "review_prompt": "Confirm the deployment command completed and the reported URL belongs to the intended project.",
+          "review_risk": "A successful build can still publish to the wrong target or leave the developer without the live URL they need to verify."
         },
         {
           "type": "testHelper",
           "key": "verify-live",
           "title": "Verify deployment is live",
           "description": "Ask the developer to visit the deployment URL and confirm it works. If it's a payment flow, suggest testing with card number 4242424242424242.",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Open the deployment URL and confirm the key payment or Stripe flow works with test data.",
+          "review_risk": "A deployment can pass build checks while the live environment is missing secrets, routes, or webhooks."
         }
       ]
     },
@@ -98,7 +103,8 @@
           "key": "register-endpoint",
           "title": "Register webhook endpoint",
           "description": "Look for webhook handling code (stripe.webhooks.constructEvent, /webhook routes). If found → construct the production URL (deployment URL + webhook path) and use `stripe projects webhooks --help` to discover how to register it. Set STRIPE_WEBHOOK_SECRET as a project secret and report the registered endpoint. If NOT found → SKIP.",
-          "review_prompt": "Confirm the command completed successfully and the reported output matches the step description."
+          "review_prompt": "Confirm the production webhook endpoint matches the deployed route and that `STRIPE_WEBHOOK_SECRET` is configured as a project secret.",
+          "review_risk": "A wrong endpoint or missing webhook secret can silently break fulfillment in production."
         }
       ]
     }

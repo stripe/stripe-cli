@@ -55,6 +55,7 @@ func TestAllEmbeddedBlueprintsHaveQualityMetadata(t *testing.T) {
 					if !n.AutoConfirm {
 						assertQualityText(t, "node review prompt "+n.Key, n.ReviewPrompt, 20, weakPhrases)
 						assertObservableGuidance(t, n.Key, n.ReviewPrompt)
+						assertQualityText(t, "node review risk "+n.Key, n.ReviewRisk, 20, weakPhrases)
 					}
 
 					switch n.Type {
@@ -157,6 +158,7 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 
 	assert.Equal(t, ReviewGranularityChapter, session.Chapters[2].ReviewGranularity)
 	assert.NotEmpty(t, session.Chapters[1].Nodes[0].ReviewPrompt)
+	assert.NotEmpty(t, session.Chapters[1].Nodes[0].ReviewRisk)
 }
 
 func TestListBlueprintsWithMetadata(t *testing.T) {

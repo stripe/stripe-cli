@@ -85,6 +85,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 				Type:              string(n.Type),
 				Description:       n.Description,
 				ReviewPrompt:      n.ReviewPrompt,
+				ReviewRisk:        n.ReviewRisk,
 				ReviewGranularity: string(ch.ReviewGranularity),
 				AutoConfirm:       n.AutoConfirm,
 			})
@@ -139,6 +140,7 @@ type stepBrief struct {
 	Type              string `json:"type"`
 	Description       string `json:"description,omitempty"`
 	ReviewPrompt      string `json:"review_prompt,omitempty"`
+	ReviewRisk        string `json:"review_risk,omitempty"`
 	ReviewGranularity string `json:"review_granularity,omitempty"`
 	AutoConfirm       bool   `json:"auto_confirm,omitempty"`
 }
@@ -165,7 +167,7 @@ Each step has a description that tells you what to do. Follow the description â€
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). Report the output.
 - "testHelper": Verify something works end-to-end. Run the flow and confirm the expected outcome.
 
-If a step includes review_prompt, that is what the human will use as the acceptance check. Make your implementation note and verifications directly answer it.
+If a step includes review_prompt, that is what the human will use as the acceptance check. If it includes review_risk, that is why the check matters. Make your implementation note and verifications directly answer both.
 
 Step 1 is always "Understand the project" â€” scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining steps to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 

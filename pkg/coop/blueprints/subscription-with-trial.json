@@ -18,13 +18,15 @@
             "path": "/v1/checkout/sessions",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "uiComponent",
           "key": "complete-checkout",
           "title": "Complete checkout",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Open the app and confirm the user-facing flow works as described.",
+          "review_risk": "A UI mismatch can make a working backend unreachable or send users through the wrong flow."
         },
         {
           "type": "asyncHandler",
@@ -33,7 +35,8 @@
           "events": [
             "checkout.session.completed"
           ],
-          "review_prompt": "Run stripe trigger checkout.session.completed and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run stripe trigger checkout.session.completed and confirm the handler processes the signed event correctly.",
+          "review_risk": "Webhook mistakes can fulfill work from spoofed or unhandled events."
         },
         {
           "type": "asyncHandler",
@@ -42,7 +45,8 @@
           "events": [
             "customer.subscription.created"
           ],
-          "review_prompt": "Run stripe trigger customer.subscription.created and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run stripe trigger customer.subscription.created and confirm the handler processes the signed event correctly.",
+          "review_risk": "Webhook mistakes can fulfill work from spoofed or unhandled events."
         }
       ]
     }

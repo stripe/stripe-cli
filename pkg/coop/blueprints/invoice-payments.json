@@ -14,7 +14,8 @@
           "type": "testHelper",
           "key": "create-test-clock",
           "title": "Create a test clock",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Run the described test flow and confirm the expected result is observable.",
+          "review_risk": "Skipping this check can hide an integration that compiles but fails in the customer path."
         },
         {
           "type": "apiRequest",
@@ -24,7 +25,8 @@
             "path": "/v1/products",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -34,7 +36,8 @@
             "path": "/v1/customers",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -44,7 +47,8 @@
             "path": "/v1/invoices",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -54,7 +58,8 @@
             "path": "/v1/invoiceitems",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -64,13 +69,15 @@
             "path": "/v1/invoices/${node.create-invoice-chapter.create-invoice.create-invoice-request:id}/send",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "uiComponent",
           "key": "view-invoice",
           "title": "View and pay the invoice",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Open the app and confirm the user-facing flow works as described.",
+          "review_risk": "A UI mismatch can make a working backend unreachable or send users through the wrong flow."
         },
         {
           "type": "asyncHandler",
@@ -79,7 +86,8 @@
           "events": [
             "invoice.paid"
           ],
-          "review_prompt": "Run stripe trigger invoice.paid and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run stripe trigger invoice.paid and confirm the handler processes the signed event correctly.",
+          "review_risk": "Webhook mistakes can fulfill work from spoofed or unhandled events."
         }
       ]
     }

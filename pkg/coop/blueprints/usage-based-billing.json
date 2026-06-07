@@ -18,7 +18,8 @@
             "path": "/v1/customers",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -28,7 +29,8 @@
             "path": "/v2/billing/pricing_plans",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -38,7 +40,8 @@
             "path": "/v1/billing/meters",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -48,7 +51,8 @@
             "path": "/v2/billing/rate_cards",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -58,7 +62,8 @@
             "path": "/v2/billing/metered_items",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -68,7 +73,8 @@
             "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard.createRateCardRequest:id}/rates",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -78,7 +84,8 @@
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -88,7 +95,8 @@
             "path": "/v2/billing/licensed_items",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -98,7 +106,8 @@
             "path": "/v2/billing/license_fees",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -108,7 +117,8 @@
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -118,7 +128,8 @@
             "path": "/v2/billing/service_actions",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -128,7 +139,8 @@
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -138,7 +150,8 @@
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "apiRequest",
@@ -148,13 +161,15 @@
             "path": "/v1/checkout/sessions",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "uiComponent",
           "key": "completeCheckout",
           "title": "Complete the checkout",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Open the app and confirm the user-facing flow works as described.",
+          "review_risk": "A UI mismatch can make a working backend unreachable or send users through the wrong flow."
         },
         {
           "type": "asyncHandler",
@@ -163,7 +178,8 @@
           "events": [
             "v2.billing.pricing_plan_subscription.servicing_activated"
           ],
-          "review_prompt": "Run stripe trigger v2.billing.pricing_plan_subscription.servicing_activated and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run stripe trigger v2.billing.pricing_plan_subscription.servicing_activated and confirm the handler processes the signed event correctly.",
+          "review_risk": "Webhook mistakes can fulfill work from spoofed or unhandled events."
         },
         {
           "type": "asyncHandler",
@@ -172,7 +188,8 @@
           "events": [
             "v2.billing.credit_grant.created"
           ],
-          "review_prompt": "Run stripe trigger v2.billing.credit_grant.created and confirm the handler processes the signed event correctly."
+          "review_prompt": "Run stripe trigger v2.billing.credit_grant.created and confirm the handler processes the signed event correctly.",
+          "review_risk": "Webhook mistakes can fulfill work from spoofed or unhandled events."
         }
       ]
     }

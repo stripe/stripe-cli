@@ -21,13 +21,15 @@
             "path": "/v1/checkout/sessions",
             "method": "post"
           },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "review_risk": "A wrong API call or stale Stripe ID can make later steps work against the wrong resource."
         },
         {
           "type": "uiComponent",
           "key": "setup-stripe-elements-html-snippet",
           "title": "Set up your frontend",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+          "review_prompt": "Open the app and confirm the user-facing flow works as described.",
+          "review_risk": "A UI mismatch can make a working backend unreachable or send users through the wrong flow."
         }
       ]
     }

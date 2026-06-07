@@ -17,6 +17,7 @@ type BlueprintNode struct {
 	Title        string      `json:"title"`
 	Description  string      `json:"description,omitempty"`
 	ReviewPrompt string      `json:"review_prompt,omitempty"`
+	ReviewRisk   string      `json:"review_risk,omitempty"`
 	AutoConfirm  bool        `json:"auto_confirm,omitempty"`
 	Request      *APIRequest `json:"request,omitempty"`
 	Events       []string    `json:"events,omitempty"`
@@ -168,6 +169,7 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings map[strin
 				Title:        n.Title,
 				Description:  n.Description,
 				ReviewPrompt: n.ReviewPrompt,
+				ReviewRisk:   n.ReviewRisk,
 				AutoConfirm:  n.AutoConfirm,
 				State:        StepPending,
 				Request:      n.Request,

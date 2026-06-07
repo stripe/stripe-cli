@@ -75,6 +75,7 @@ type SessionNode struct {
 	Title          string          `json:"title"`
 	Description    string          `json:"description,omitempty"`
 	ReviewPrompt   string          `json:"review_prompt,omitempty"`
+	ReviewRisk     string          `json:"review_risk,omitempty"`
 	AutoConfirm    bool            `json:"auto_confirm,omitempty"`
 	State          StepState       `json:"state"`
 	Activity       string          `json:"activity,omitempty"`
