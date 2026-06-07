@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
 
@@ -42,6 +43,9 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	openBrowserFunc = func(url string) error { return nil }
 	canOpenBrowserFunc = func() bool { return true }
 
+	// Also mock the login package's browser opener (used by fallback flow)
+	restoreLoginBrowser := login.SetOpenBrowserForTesting(func(string) error { return nil })
+
 	// Mock git config
 	origGit := sandbox.GitConfigFunc
 	sandbox.GitConfigFunc = func(key string) string { return "" }
@@ -51,6 +55,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 		Config.Profile.ProfileName = origProfileName
 		openBrowserFunc = origOpen
 		canOpenBrowserFunc = origCanOpen
+		restoreLoginBrowser()
 		sandbox.GitConfigFunc = origGit
 		viper.Reset()
 	}

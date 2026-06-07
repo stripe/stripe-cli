@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -272,7 +273,48 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 	return nil
 }
 
-// GetPluginList builds a list of allowed plugins to be installed and run by the CLI
+// ListPlugins fetches the live plugin list visible to the current caller for
+// the current platform using the list-plugins API endpoints.
+func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboardBaseURL string) (PluginList, error) {
+	apiKey, err := config.GetProfile().GetAPIKey(false)
+	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
+		return PluginList{}, err
+	}
+
+	if dashboardBaseURL == "" {
+		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+	}
+
+	body, err := requests.GetPluginList(
+		ctx,
+		apiBaseURL,
+		dashboardBaseURL,
+		stripe.APIVersion,
+		apiKey,
+		config.GetProfile(),
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
+	if err != nil {
+		return PluginList{}, err
+	}
+
+	var pluginList PluginList
+	if err := json.Unmarshal(body, &pluginList); err != nil {
+		return PluginList{}, fmt.Errorf("failed to decode plugin list response: %w", err)
+	}
+
+	if err := validatePluginListResponse(&pluginList); err != nil {
+		return PluginList{}, err
+	}
+
+	return pluginList, nil
+}
+
+// GetPluginList reads the cached global plugin manifest from disk and refreshes
+// it when the cache is missing.
+// TODO: Remove this legacy plugins.toml path once the minimum supported CLI
+// version no longer depends on the cached manifest for backward compatibility.
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
 	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
@@ -310,6 +352,8 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 }
 
 // LookUpPluginInManifest returns plugin metadata from the cached global manifest.
+// TODO: Keep this only while older plugin flows still require plugins.toml for
+// backward compatibility.
 func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
 	pluginList, err := GetPluginList(ctx, config, fs)
 	if err != nil {
@@ -338,6 +382,8 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		"version": version,
 	}).Debugf("could not resolve plugin via plugin metadata endpoint, falling back to manifest lookup: %s", err)
 
+	// TODO: Remove this manifest fallback after the backward-compatibility
+	// window for clients that still rely on plugins.toml has ended.
 	if err := RefreshPluginManifest(ctx, config, fs, apiBaseURL); err != nil {
 		return nil, err
 	}
@@ -380,6 +426,8 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		"plugin": pluginName,
 	}).Debugf("could not resolve latest plugin via plugin metadata endpoint, falling back to cached plugin metadata or manifest: %s", endpointErr)
 
+	// TODO: Remove this manifest refresh once backward compatibility for
+	// plugins.toml-dependent clients is no longer required.
 	refreshErr := RefreshPluginManifest(ctx, config, fs, apiBaseURL)
 	if refreshErr != nil {
 		log.WithFields(log.Fields{
@@ -705,7 +753,9 @@ func getLocalPluginMetadataNames(config config.IConfig, fs afero.Fs) ([]string, 
 	return names, nil
 }
 
-// RefreshPluginManifest refreshes the plugin manifest
+// RefreshPluginManifest refreshes the legacy cached plugin manifest.
+// TODO: Remove this once all supported clients use the metadata/list endpoints
+// and no longer require plugins.toml for backward compatibility.
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
 	apiKey, err := config.GetProfile().GetAPIKey(false)
 
@@ -785,6 +835,36 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 		return nil, err
 	}
 	return validatePluginManifest(body)
+}
+
+func validatePluginListResponse(pluginList *PluginList) error {
+	if pluginList == nil {
+		return errors.New("received an empty plugin list response")
+	}
+	if pluginList.Plugins == nil {
+		pluginList.Plugins = []Plugin{}
+	}
+	if err := validateRuntimeVersions(pluginList); err != nil {
+		return err
+	}
+	for i := range pluginList.Plugins {
+		sortPluginReleases(pluginList.Plugins[i].Releases)
+	}
+	return nil
+}
+
+func sortPluginReleases(releases []Release) {
+	sort.Slice(releases, func(i, j int) bool {
+		vi, errI := version.NewVersion(releases[i].Version)
+		vj, errJ := version.NewVersion(releases[j].Version)
+
+		// If either version fails to parse, fall back to string comparison.
+		if errI != nil || errJ != nil {
+			return releases[i].Version < releases[j].Version
+		}
+
+		return vi.LessThan(vj)
+	})
 }
 
 // validateRuntimeVersions validates that Runtime specifications only contain valid LTS Node.js versions
@@ -885,19 +965,7 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 		pluginList.Plugins = append(pluginList.Plugins, pl)
 	} else {
 		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
-
-		// Other code assumes the releases are sorted with latest version last.
-		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
-			vi, errI := version.NewVersion(pluginList.Plugins[idx].Releases[i].Version)
-			vj, errJ := version.NewVersion(pluginList.Plugins[idx].Releases[j].Version)
-
-			// If either version fails to parse, fall back to string comparison
-			if errI != nil || errJ != nil {
-				return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
-			}
-
-			return vi.LessThan(vj)
-		})
+		sortPluginReleases(pluginList.Plugins[idx].Releases)
 	}
 }
 
@@ -969,6 +1037,38 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// CheckLatestPluginVersion prints an upgrade hint to stderr if the cached manifest
+// has a newer version of the plugin than what is currently installed.
+// It is a no-op in local development mode (PluginsPath set) or when the manifest
+// has no version information for the current platform.
+// TODO: Switch this to the metadata/list endpoints once the legacy
+// plugins.toml compatibility path can be retired.
+func CheckLatestPluginVersion(config config.IConfig, fs afero.Fs, plugin Plugin) {
+	if PluginsPath != "" {
+		return
+	}
+
+	installedVersion := plugin.InstalledVersion(config, fs)
+	if installedVersion == "" {
+		return
+	}
+
+	manifestPlugin, err := lookUpPluginInCachedManifest(config, fs, plugin.Shortname)
+	if err != nil {
+		return
+	}
+
+	latestVersion := manifestPlugin.LookUpLatestVersion()
+	if latestVersion == "" {
+		return
+	}
+
+	if comparePluginVersions(installedVersion, latestVersion) < 0 {
+		fmt.Fprintf(os.Stderr, "A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.\n",
+			plugin.Shortname, installedVersion, latestVersion, plugin.Shortname)
+	}
 }
 
 // CleanupAllClients tears down and disconnects all "managed" plugin clients
