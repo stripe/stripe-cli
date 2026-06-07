@@ -229,6 +229,91 @@ func TestNodeByNumberAcrossChapters(t *testing.T) {
 	assert.Equal(t, 6, s.TotalSteps())
 }
 
+func TestChapterByStepNumber(t *testing.T) {
+	s := newTestSession()
+
+	ch, chapterIndex, nodeIndex, err := s.ChapterByStepNumber(3)
+	require.NoError(t, err)
+	assert.Equal(t, "chapter-2", ch.Key)
+	assert.Equal(t, 1, chapterIndex)
+	assert.Equal(t, 0, nodeIndex)
+
+	ch, chapterIndex, nodeIndex, err = s.ChapterByStepNumber(0)
+	assert.Nil(t, ch)
+	assert.Equal(t, -1, chapterIndex)
+	assert.Equal(t, -1, nodeIndex)
+	assert.Error(t, err)
+
+	ch, chapterIndex, nodeIndex, err = s.ChapterByStepNumber(4)
+	assert.Nil(t, ch)
+	assert.Equal(t, -1, chapterIndex)
+	assert.Equal(t, -1, nodeIndex)
+	assert.Error(t, err)
+}
+
+func TestReviewGranularityForStep(t *testing.T) {
+	s := newTestSession()
+	s.Chapters[0].ReviewGranularity = ReviewGranularityChapter
+	s.Chapters[1].ReviewGranularity = ReviewGranularityAuto
+
+	assert.Equal(t, ReviewGranularityChapter, s.ReviewGranularityForStep(1))
+	assert.Equal(t, ReviewGranularityChapter, s.ReviewGranularityForStep(2))
+	assert.Equal(t, ReviewGranularityAuto, s.ReviewGranularityForStep(3))
+	assert.Equal(t, ReviewGranularityStep, s.ReviewGranularityForStep(4))
+}
+
+func TestChapterReadyForReview(t *testing.T) {
+	s := newTestSession()
+	assert.False(t, s.ChapterReadyForReview(-1))
+	assert.False(t, s.ChapterReadyForReview(99))
+
+	s.Chapters[0].Nodes[0].State = StepReview
+	s.Chapters[0].Nodes[1].State = StepPending
+	assert.False(t, s.ChapterReadyForReview(0))
+
+	s.Chapters[0].Nodes[1].State = StepSkipped
+	assert.True(t, s.ChapterReadyForReview(0))
+
+	s.Chapters[0].Nodes[0].State = StepActive
+	assert.False(t, s.ChapterReadyForReview(0))
+}
+
+func TestChapterReadyForReviewIgnoresAutoConfirmNodes(t *testing.T) {
+	s := &Session{
+		Chapters: []SessionChapter{
+			{Nodes: []SessionNode{
+				{Key: "a", State: StepReview},
+				{Key: "auto", State: StepPending, AutoConfirm: true},
+			}},
+			{Nodes: []SessionNode{
+				{Key: "only-auto", State: StepPending, AutoConfirm: true},
+			}},
+		},
+	}
+
+	assert.True(t, s.ChapterReadyForReview(0))
+	assert.False(t, s.ChapterReadyForReview(1))
+}
+
+func TestChapterReviewStateHelpers(t *testing.T) {
+	s := newTestSession()
+	s.Chapters[0].Nodes[0].State = StepDone
+	s.Chapters[0].Nodes[1].State = StepReview
+	s.Chapters[1].Nodes[0].State = StepActive
+
+	assert.True(t, s.ChapterHasReview(0))
+	assert.False(t, s.ChapterHasReview(1))
+	assert.False(t, s.ChapterHasReview(-1))
+
+	assert.Equal(t, 2, s.FirstReviewStepInChapter(0))
+	assert.Equal(t, 0, s.FirstReviewStepInChapter(1))
+	assert.Equal(t, 0, s.FirstReviewStepInChapter(99))
+
+	assert.Equal(t, 0, s.FirstActiveStepInChapter(0))
+	assert.Equal(t, 3, s.FirstActiveStepInChapter(1))
+	assert.Equal(t, 0, s.FirstActiveStepInChapter(-1))
+}
+
 func TestActiveNodeReturnsFirst(t *testing.T) {
 	s := newTestSession()
 	s.TransitionStep(1, StepActive)

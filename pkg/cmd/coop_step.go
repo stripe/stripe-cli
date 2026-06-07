@@ -138,7 +138,7 @@ func (sc *coopStepCmd) doStart(store *coop.Store, session *coop.Session, stepNum
 func (sc *coopStepCmd) doDone(store *coop.Store, session *coop.Session, stepNum int) error {
 	targetState := coop.StepReview
 	node, _ := session.NodeByNumber(stepNum)
-	if sc.autoConfirm || (node != nil && node.AutoConfirm) {
+	if sc.autoConfirm || (node != nil && node.AutoConfirm) || session.ReviewGranularityForStep(stepNum) == coop.ReviewGranularityAuto {
 		targetState = coop.StepDone
 	}
 
@@ -257,6 +257,32 @@ func (sc *coopStepCmd) doAwait(store *coop.Store, session *coop.Session, stepNum
 		})
 	}
 
+	if session.ReviewGranularityForStep(stepNum) == coop.ReviewGranularityChapter && node.State == coop.StepReview {
+		chapter, chapterIndex, _, err := session.ChapterByStepNumber(stepNum)
+		if err != nil {
+			return outputCoopError(err.Error(), fmt.Sprintf("stripe coop status --session=%s", session.ID))
+		}
+		if !session.ChapterReadyForReview(chapterIndex) {
+			next := ""
+			msg := fmt.Sprintf("Step %d is ready. Continue the chapter before asking for human review.", stepNum)
+			if nextStep := nextPendingStepInChapter(session, chapterIndex, stepNum); nextStep > 0 {
+				nextNode, _ := session.NodeByNumber(nextStep)
+				next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
+			} else {
+				next = fmt.Sprintf("stripe coop status --session=%s", session.ID)
+			}
+			return outputJSON(coop.CommandResponse{
+				OK:        true,
+				SessionID: session.ID,
+				Step:      stepNum,
+				State:     string(coop.StepReview),
+				Message:   msg,
+				Next:      next,
+			})
+		}
+		return sc.awaitChapterReview(store, session, chapter.Title, chapterIndex, stepNum)
+	}
+
 	if node.State != coop.StepReview {
 		next := ""
 		msg := fmt.Sprintf("Step %d is already %s.", stepNum, node.State)
@@ -360,6 +386,86 @@ func (sc *coopStepCmd) doAwait(store *coop.Store, session *coop.Session, stepNum
 			Message:   fmt.Sprintf("Step %d is now %s", stepNum, node.State),
 		})
 	}
+}
+
+func (sc *coopStepCmd) awaitChapterReview(store *coop.Store, session *coop.Session, chapterTitle string, chapterIndex, stepNum int) error {
+	store.WriteHeartbeat(session.ID)
+	defer store.RemoveHeartbeat(session.ID)
+
+	deadline := time.Now().Add(10 * time.Minute)
+	for {
+		if time.Now().After(deadline) {
+			return outputJSON(coop.CommandResponse{
+				OK:        true,
+				SessionID: session.ID,
+				Step:      stepNum,
+				State:     "timeout",
+				Message:   "Timed out waiting for developer confirmation (10 minutes). The developer may still be reviewing. Re-run this command to wait again.",
+				Next:      fmt.Sprintf("stripe coop step %d await --session=%s", stepNum, session.ID),
+			})
+		}
+
+		time.Sleep(500 * time.Millisecond)
+		store.WriteHeartbeat(session.ID)
+
+		var err error
+		session, err = store.Read(session.ID)
+		if err != nil {
+			return fmt.Errorf("reading session: %w", err)
+		}
+
+		if session.ChapterHasReview(chapterIndex) {
+			continue
+		}
+
+		if activeStep := session.FirstActiveStepInChapter(chapterIndex); activeStep > 0 {
+			activeNode, _ := session.NodeByNumber(activeStep)
+			msg := fmt.Sprintf("Chapter %q requested changes.", chapterTitle)
+			if activeNode != nil && activeNode.RejectionNote != "" {
+				msg += fmt.Sprintf("\nFeedback: %s", activeNode.RejectionNote)
+			}
+			msg += "\nRedo the chapter from the first affected step."
+			return outputJSON(coop.CommandResponse{
+				OK:        true,
+				SessionID: session.ID,
+				Step:      activeStep,
+				State:     "rejected",
+				Message:   msg,
+				Next:      fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", activeStep, session.ID, quoteArg("Redoing: "+activeNode.Title)),
+			})
+		}
+
+		next := ""
+		msg := fmt.Sprintf("Chapter %q confirmed by developer. Proceed to next step.", chapterTitle)
+		if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
+			nextNode, _ := session.NodeByNumber(nextStep)
+			next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
+		} else if session.IsComplete() {
+			msg = fmt.Sprintf("Chapter %q confirmed. All steps complete! You MUST run the next command immediately — it shows the developer their options and blocks until they choose.", chapterTitle)
+			next = fmt.Sprintf("stripe coop next-steps --session=%s", session.ID)
+		}
+		return outputJSON(coop.CommandResponse{
+			OK:        true,
+			SessionID: session.ID,
+			Step:      stepNum,
+			State:     "confirmed",
+			Message:   msg,
+			Next:      next,
+		})
+	}
+}
+
+func nextPendingStepInChapter(session *coop.Session, chapterIndex, afterStep int) int {
+	step := 0
+	for i := range session.Chapters {
+		for j := range session.Chapters[i].Nodes {
+			step++
+			if i == chapterIndex && step > afterStep && session.Chapters[i].Nodes[j].State == coop.StepPending {
+				return step
+			}
+		}
+	}
+	return 0
 }
 
 // readFromStdin reads implementation data from stdin as JSON.

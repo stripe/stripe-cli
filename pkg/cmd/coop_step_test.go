@@ -95,6 +95,22 @@ func TestDoDoneAutoConfirmNode(t *testing.T) {
 	assert.Equal(t, coop.StepDone, node.State)
 }
 
+func TestDoDoneReviewGranularityAuto(t *testing.T) {
+	store, session := setupStepTest(t)
+	session.Chapters[0].ReviewGranularity = coop.ReviewGranularityAuto
+	require.NoError(t, session.TransitionStep(1, coop.StepActive))
+
+	sc := &coopStepCmd{}
+	output := captureStdout(t, func() {
+		require.NoError(t, sc.doDone(store, session, 1))
+	})
+
+	node, _ := session.NodeByNumber(1)
+	assert.Equal(t, coop.StepDone, node.State)
+	assert.Contains(t, output, `"state": "done"`)
+	assert.NotContains(t, output, `"state": "review"`)
+}
+
 func TestSkipDoneStepFails(t *testing.T) {
 	_, session := setupStepTest(t)
 
@@ -256,6 +272,113 @@ func TestDoSkipFinalStepRoutesToNextSteps(t *testing.T) {
 
 	assert.Contains(t, output, `"state": "skipped"`)
 	assert.Contains(t, output, `"next": "stripe coop next-steps --session=step_test_session"`)
+}
+
+func TestDoAwaitChapterReviewContinuesUntilChapterReady(t *testing.T) {
+	store, session := setupStepTest(t)
+	session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	require.NoError(t, session.TransitionStep(1, coop.StepActive))
+	require.NoError(t, session.TransitionStep(1, coop.StepReview))
+	require.NoError(t, store.Write(session))
+
+	sc := &coopStepCmd{}
+	output := captureStdout(t, func() {
+		require.NoError(t, sc.doAwait(store, session, 1))
+	})
+
+	assert.Contains(t, output, `"state": "review"`)
+	assert.Contains(t, output, `stripe coop step 2 start`)
+}
+
+func TestNextPendingStepInChapterDoesNotLeaveChapter(t *testing.T) {
+	session := &coop.Session{
+		Chapters: []coop.SessionChapter{
+			{Nodes: []coop.SessionNode{
+				{Key: "a", State: coop.StepReview},
+				{Key: "b", State: coop.StepDone},
+			}},
+			{Nodes: []coop.SessionNode{
+				{Key: "c", State: coop.StepPending},
+			}},
+		},
+	}
+
+	assert.Equal(t, 0, nextPendingStepInChapter(session, 0, 1))
+	assert.Equal(t, 3, nextPendingStepInChapter(session, 1, 2))
+	assert.Equal(t, 0, nextPendingStepInChapter(session, 99, 1))
+}
+
+func TestDoAwaitChapterReviewConfirmed(t *testing.T) {
+	store, session := setupStepTest(t)
+	session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	require.NoError(t, session.TransitionStep(1, coop.StepActive))
+	require.NoError(t, session.TransitionStep(1, coop.StepReview))
+	require.NoError(t, session.TransitionStep(2, coop.StepActive))
+	require.NoError(t, session.TransitionStep(2, coop.StepDone))
+	require.NoError(t, session.TransitionStep(3, coop.StepActive))
+	require.NoError(t, session.TransitionStep(3, coop.StepReview))
+	require.NoError(t, store.Write(session))
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		must := func(err error) {
+			if err != nil {
+				panic(err)
+			}
+		}
+		updated, err := store.Read(session.ID)
+		must(err)
+		must(updated.TransitionStep(1, coop.StepDone))
+		must(updated.TransitionStep(3, coop.StepDone))
+		must(store.Write(updated))
+	}()
+
+	sc := &coopStepCmd{}
+	output := captureStdout(t, func() {
+		require.NoError(t, sc.doAwait(store, session, 1))
+	})
+
+	assert.Contains(t, output, `"state": "confirmed"`)
+	assert.Contains(t, output, `stripe coop next-steps --session=step_test_session`)
+}
+
+func TestDoAwaitChapterReviewRejected(t *testing.T) {
+	store, session := setupStepTest(t)
+	session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	require.NoError(t, session.TransitionStep(1, coop.StepActive))
+	require.NoError(t, session.TransitionStep(1, coop.StepReview))
+	require.NoError(t, session.TransitionStep(2, coop.StepActive))
+	require.NoError(t, session.TransitionStep(2, coop.StepDone))
+	require.NoError(t, session.TransitionStep(3, coop.StepActive))
+	require.NoError(t, session.TransitionStep(3, coop.StepReview))
+	require.NoError(t, store.Write(session))
+
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		must := func(err error) {
+			if err != nil {
+				panic(err)
+			}
+		}
+		updated, err := store.Read(session.ID)
+		must(err)
+		must(updated.TransitionStep(1, coop.StepDone))
+		must(updated.TransitionStep(3, coop.StepActive))
+		node, err := updated.NodeByNumber(3)
+		must(err)
+		node.RejectionNote = "Webhook does not verify signatures"
+		must(store.Write(updated))
+	}()
+
+	sc := &coopStepCmd{}
+	output := captureStdout(t, func() {
+		require.NoError(t, sc.doAwait(store, session, 1))
+	})
+
+	assert.Contains(t, output, `"state": "rejected"`)
+	assert.Contains(t, output, `"step": 3`)
+	assert.Contains(t, output, `Webhook does not verify signatures`)
+	assert.Contains(t, output, `stripe coop step 3 start`)
 }
 
 func TestCoopRunStoresParentSessionMetadata(t *testing.T) {
