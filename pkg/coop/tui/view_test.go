@@ -112,9 +112,10 @@ func TestRenderDetail(t *testing.T) {
 	m := testModel()
 	m.cursor = 0
 	m.expanded = true
+	m.detailTab = 1
 	detail := m.renderDetail()
 
-	// Should show implementation info via glamour
+	assert.Contains(t, detail, "Files")
 	assert.Contains(t, detail, "Agent wrote")
 	assert.Contains(t, detail, "server.js:5-20")
 	assert.Contains(t, detail, "Created product")
@@ -124,8 +125,10 @@ func TestRenderDetailWebhook(t *testing.T) {
 	m := testModel()
 	m.cursor = 2 // asyncHandler node
 	m.expanded = true
+	m.detailTab = 2
 	detail := m.renderDetail()
 
+	assert.Contains(t, detail, "Checks")
 	assert.Contains(t, detail, "How to verify")
 	assert.Contains(t, detail, "stripe listen")
 	assert.Contains(t, detail, "stripe trigger checkout.session.completed")
@@ -135,6 +138,7 @@ func TestRenderDetailWithSDKSnippet(t *testing.T) {
 	m := testModel()
 	m.cursor = 0
 	m.expanded = true
+	m.detailTab = 3
 	m.sdkSnippet = "const product = await stripe.products.create({});"
 	m.sdkSnippetStep = 0
 	detail := m.renderDetail()

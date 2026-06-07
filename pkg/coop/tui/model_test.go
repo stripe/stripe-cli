@@ -80,6 +80,27 @@ func TestUpdateKeyExpandToggle(t *testing.T) {
 	assert.False(t, updated.expanded)
 }
 
+func TestUpdateKeyTabCyclesDetailSection(t *testing.T) {
+	m := readyModel()
+	m.expanded = true
+	m.detailTab = 0
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated := result.(Model)
+
+	assert.Equal(t, 1, updated.detailTab)
+}
+
+func TestUpdateKeyEscClosesDetails(t *testing.T) {
+	m := readyModel()
+	m.expanded = true
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated := result.(Model)
+
+	assert.False(t, updated.expanded)
+}
+
 func TestUpdateKeyConfirm(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)

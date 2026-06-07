@@ -22,6 +22,7 @@ type Model struct {
 
 	cursor    int
 	expanded  bool
+	detailTab int
 	width     int
 	height    int
 	userMoved bool
@@ -305,6 +306,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "e", "?":
 		m.expanded = !m.expanded
+		if m.expanded {
+			m.setStatus("Details opened", 2*time.Second)
+		} else {
+			m.setStatus("Details collapsed", 2*time.Second)
+		}
 		m.syncViewport()
 		if m.expanded {
 			return m, m.fetchSnippetIfNeeded()
@@ -312,6 +318,20 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter":
 		return m.handleEnter()
+	case "tab":
+		if m.expanded {
+			m.detailTab = (m.detailTab + 1) % len(detailSections)
+			m.syncViewport()
+			return m, m.fetchSnippetIfNeeded()
+		}
+		return m, nil
+	case "esc":
+		if m.expanded {
+			m.expanded = false
+			m.setStatus("Details collapsed", 2*time.Second)
+			m.syncViewport()
+		}
+		return m, nil
 	case "f":
 		m.userMoved = false
 		m.autoScroll()
@@ -392,6 +412,11 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.expanded = !m.expanded
+	if m.expanded {
+		m.setStatus("Details opened", 2*time.Second)
+	} else {
+		m.setStatus("Details collapsed", 2*time.Second)
+	}
 	m.syncViewport()
 	if m.expanded {
 		return m, m.fetchSnippetIfNeeded()

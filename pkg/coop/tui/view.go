@@ -11,6 +11,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
+var detailSections = []string{"Summary", "Files", "Checks", "Reference"}
+
 func (m Model) renderWaitingView() string {
 	w := m.contentWidth() - 8
 	if w < 25 {
@@ -230,29 +232,27 @@ func (m Model) renderDetail() string {
 	w, innerW := m.detailWidths()
 
 	var md strings.Builder
+	section := detailSections[m.detailTab%len(detailSections)]
+	md.WriteString("**Details: " + node.Title + "**\n\n")
+	md.WriteString(m.renderDetailTabs(section) + "\n\n")
 
-	if node.Description != "" {
-		md.WriteString("**Summary**\n\n")
-		md.WriteString(node.Description + "\n\n")
-	}
-
-	if node.ReviewPrompt != "" {
-		md.WriteString("**What to check**\n\n")
-		md.WriteString(node.ReviewPrompt + "\n\n")
+	switch section {
+	case "Summary":
+		m.writeSummaryDetail(&md, node)
+	case "Files":
+		m.writeImplementationDetail(&md, node, false)
+	case "Checks":
+		m.writeAsyncHandlerCheckDetail(&md, node)
+		m.writeVerificationDetail(&md, node)
+	case "Reference":
+		currentSnippet := m.sdkSnippetStep == m.cursor && m.sdkSnippet != ""
+		m.writeSDKReferenceDetail(&md, node, currentSnippet)
+		m.writeAsyncHandlerReferenceDetail(&md, node)
 	}
 
 	if node.State == coop.StepSkipped && node.Activity != "" {
-		md.WriteString("*Skipped: " + node.Activity + "*\n")
-		rendered := m.renderMarkdown(md.String(), innerW)
-		return "    " + DetailBoxStyle.Width(w).Render(rendered)
+		md.WriteString("*Skipped: " + node.Activity + "*\n\n")
 	}
-
-	m.writeAsyncHandlerDetail(&md, node)
-
-	currentSnippet := m.sdkSnippetStep == m.cursor && m.sdkSnippet != ""
-	m.writeSDKReferenceDetail(&md, node, currentSnippet)
-	m.writeImplementationDetail(&md, node, currentSnippet)
-	m.writeVerificationDetail(&md, node)
 
 	content := md.String()
 	suffix := m.renderDetailSuffix(node)
@@ -262,6 +262,18 @@ func (m Model) renderDetail() string {
 
 	rendered := m.renderMarkdown(content, innerW)
 	return "    " + DetailBoxStyle.Width(w).Render(rendered+suffix)
+}
+
+func (m Model) renderDetailTabs(active string) string {
+	var parts []string
+	for _, section := range detailSections {
+		if section == active {
+			parts = append(parts, "["+section+"]")
+		} else {
+			parts = append(parts, section)
+		}
+	}
+	return strings.Join(parts, "  ")
 }
 
 func (m Model) detailWidths() (int, int) {
@@ -284,7 +296,21 @@ func (m Model) detailLanguage() string {
 	return lang
 }
 
-func (m Model) writeAsyncHandlerDetail(md *strings.Builder, node *coop.SessionNode) {
+func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
+	if node.Description != "" {
+		md.WriteString("**Summary**\n\n")
+		md.WriteString(node.Description + "\n\n")
+	}
+	if node.ReviewPrompt != "" {
+		md.WriteString("**You check**\n\n")
+		md.WriteString(node.ReviewPrompt + "\n\n")
+	}
+	if node.Description == "" && node.ReviewPrompt == "" {
+		md.WriteString("*No summary available for this step.*\n\n")
+	}
+}
+
+func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.SessionNode) {
 	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
 		return
 	}
@@ -292,6 +318,14 @@ func (m Model) writeAsyncHandlerDetail(md *strings.Builder, node *coop.SessionNo
 	md.WriteString("1. `stripe listen --forward-to localhost:<port>/webhook`\n")
 	md.WriteString("2. `stripe trigger " + node.Events[0] + "`\n")
 	md.WriteString("3. Confirm your handler processes the event\n\n")
+}
+
+func (m Model) writeAsyncHandlerReferenceDetail(md *strings.Builder, node *coop.SessionNode) {
+	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
+		return
+	}
+	md.WriteString("**Webhook trigger:**\n\n")
+	md.WriteString("`stripe trigger " + node.Events[0] + "`\n\n")
 }
 
 func (m Model) writeSDKReferenceDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
@@ -417,6 +451,9 @@ func (m Model) renderFooter() string {
 		parts = append(parts, "↑↓ navigate")
 	}
 	parts = append(parts, "enter/e details")
+	if m.expanded {
+		parts = append(parts, "tab section", "esc close")
+	}
 	if m.session != nil && m.session.ClaimURL != "" {
 		parts = append(parts, "o open claim URL")
 	}
