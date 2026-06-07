@@ -656,6 +656,10 @@ func (m Model) renderCompletionBody() string {
 		content += "\n" + DimmedStyle.Render("    Press o to open in browser")
 	}
 
+	if receipt := m.renderCompletionReceipt(w); receipt != "" {
+		content += "\n\n" + receipt
+	}
+
 	content += "\n\n" + ChapterTitleStyle.Render("  Next steps")
 	ruleWidth := min(w-4, 50)
 	if ruleWidth < 0 {
@@ -692,6 +696,87 @@ func (m Model) renderCompletionBody() string {
 	}
 
 	return content
+}
+
+func (m Model) renderCompletionReceipt(width int) string {
+	if m.session == nil {
+		return ""
+	}
+
+	var content strings.Builder
+	built := m.completionBuiltItems()
+	if len(built) > 0 {
+		content.WriteString(ChapterTitleStyle.Render("  Built") + "\n")
+		for _, item := range built {
+			content.WriteString("  " + SuccessStyle.Render("✓") + " " + item + "\n")
+		}
+	}
+
+	checks := m.completionImportantChecks()
+	if len(checks) > 0 {
+		if content.Len() > 0 {
+			content.WriteString("\n")
+		}
+		content.WriteString(ChapterTitleStyle.Render("  Important checks") + "\n")
+		checkW := min(width-8, 72)
+		if checkW < 20 {
+			checkW = 20
+		}
+		for _, check := range checks {
+			wrapped := strings.Split(wordWrap(check, checkW), "\n")
+			for i, line := range wrapped {
+				prefix := "  - "
+				if i > 0 {
+					prefix = "    "
+				}
+				content.WriteString(prefix + line + "\n")
+			}
+		}
+	}
+
+	return strings.TrimRight(content.String(), "\n")
+}
+
+func (m Model) completionBuiltItems() []string {
+	var items []string
+	for _, ch := range m.session.Chapters {
+		if ch.Key == "context-chapter" {
+			continue
+		}
+		done := 0
+		relevant := 0
+		for _, node := range ch.Nodes {
+			if node.State == coop.StepSkipped {
+				continue
+			}
+			relevant++
+			if node.State == coop.StepDone {
+				done++
+			}
+		}
+		if relevant > 0 && done == relevant {
+			items = append(items, ch.Title)
+		}
+	}
+	return items
+}
+
+func (m Model) completionImportantChecks() []string {
+	var checks []string
+	seen := map[string]bool{}
+	for _, ch := range m.session.Chapters {
+		for _, node := range ch.Nodes {
+			if node.State != coop.StepDone || node.ReviewPrompt == "" || seen[node.ReviewPrompt] {
+				continue
+			}
+			seen[node.ReviewPrompt] = true
+			checks = append(checks, node.ReviewPrompt)
+			if len(checks) == 4 {
+				return checks
+			}
+		}
+	}
+	return checks
 }
 
 func (m Model) renderCompletionFooter() string {

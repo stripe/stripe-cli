@@ -220,10 +220,67 @@ func TestRenderCompletionView(t *testing.T) {
 	view := m.renderCompletionView()
 
 	assert.Contains(t, view, "Integration complete")
+	assert.Contains(t, view, "Built")
+	assert.Contains(t, view, "Set up product")
+	assert.Contains(t, view, "Handle webhooks")
+	assert.Contains(t, view, "Important checks")
+	assert.Contains(t, view, "Confirm the saved price ID is reused by Checkout.")
 	assert.Contains(t, view, "Next steps")
 	assert.Contains(t, view, "STRIPE.md")
 	assert.Contains(t, view, "Deploy")
 	assert.Contains(t, view, "Finish")
+}
+
+func TestCompletionBuiltItemsFiltersContextSkippedAndIncomplete(t *testing.T) {
+	m := testModel()
+	m.session.Chapters = []coop.SessionChapter{
+		{
+			Key:   "context-chapter",
+			Title: "Project context",
+			Nodes: []coop.SessionNode{
+				{Title: "Understand project", State: coop.StepDone},
+			},
+		},
+		{
+			Key:   "built-with-skipped",
+			Title: "Built with skipped optional work",
+			Nodes: []coop.SessionNode{
+				{Title: "Required", State: coop.StepDone},
+				{Title: "Optional", State: coop.StepSkipped},
+			},
+		},
+		{
+			Key:   "incomplete",
+			Title: "Incomplete chapter",
+			Nodes: []coop.SessionNode{
+				{Title: "Done", State: coop.StepDone},
+				{Title: "Still active", State: coop.StepActive},
+			},
+		},
+	}
+
+	assert.Equal(t, []string{"Built with skipped optional work"}, m.completionBuiltItems())
+}
+
+func TestCompletionImportantChecksDedupesDoneOnlyAndCaps(t *testing.T) {
+	m := testModel()
+	m.session.Chapters = []coop.SessionChapter{
+		{
+			Key:   "checks",
+			Title: "Checks",
+			Nodes: []coop.SessionNode{
+				{Title: "First", State: coop.StepDone, ReviewPrompt: "Check one"},
+				{Title: "Duplicate", State: coop.StepDone, ReviewPrompt: "Check one"},
+				{Title: "Active", State: coop.StepActive, ReviewPrompt: "Do not include active"},
+				{Title: "Second", State: coop.StepDone, ReviewPrompt: "Check two"},
+				{Title: "Third", State: coop.StepDone, ReviewPrompt: "Check three"},
+				{Title: "Fourth", State: coop.StepDone, ReviewPrompt: "Check four"},
+				{Title: "Fifth", State: coop.StepDone, ReviewPrompt: "Do not include after cap"},
+			},
+		},
+	}
+
+	assert.Equal(t, []string{"Check one", "Check two", "Check three", "Check four"}, m.completionImportantChecks())
 }
 
 func TestGetCompletionSuggestionsDefault(t *testing.T) {
