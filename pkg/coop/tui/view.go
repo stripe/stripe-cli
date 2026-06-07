@@ -19,10 +19,10 @@ func (m Model) renderWaitingView() string {
 
 	waitingText := m.waitingMessage
 	if waitingText == "" {
-		waitingText = "Waiting for agent to explore your codebase and pick an integration..."
+		waitingText = "Waiting for agent"
 	}
 	waitingLines := strings.Split(wordWrap(waitingText, w), "\n")
-	subtitleLines := strings.Split(wordWrap("The agent will ask what you want to build, then start a session. You'll see progress here.", w), "\n")
+	subtitleLines := strings.Split(wordWrap("The agent is scanning the project and will start a session here. You can leave this open.", w), "\n")
 
 	var content string
 	content = HeaderStyle.Render("● Stripe Co-op") + "\n\n"
@@ -167,6 +167,9 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 	}
 
 	line := fmt.Sprintf("  %s%s %s", cursor, icon, title)
+	if label, style := m.stepStatusLabel(node); label != "" {
+		line += "  " + style(label)
+	}
 
 	if annText != "" {
 		wrapW := m.contentWidth() - 8
@@ -180,6 +183,23 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 	}
 
 	return line
+}
+
+func (m Model) stepStatusLabel(node coop.SessionNode) (string, func(string) string) {
+	switch node.State {
+	case coop.StepDone:
+		return "Done", func(s string) string { return SuccessStyle.Render(s) }
+	case coop.StepActive:
+		return "Agent working", func(s string) string { return MutedStyle.Render(s) }
+	case coop.StepReview:
+		return "Needs review", func(s string) string { return AttentionStyle.Render(s) }
+	case coop.StepSkipped:
+		return "Skipped", func(s string) string { return DimmedStyle.Render(s) }
+	case coop.StepPending:
+		return "Pending", func(s string) string { return MutedStyle.Render(s) }
+	default:
+		return "", func(s string) string { return s }
+	}
 }
 
 func (m Model) stepIcon(node coop.SessionNode) string {
@@ -212,7 +232,13 @@ func (m Model) renderDetail() string {
 	var md strings.Builder
 
 	if node.Description != "" {
+		md.WriteString("**Summary**\n\n")
 		md.WriteString(node.Description + "\n\n")
+	}
+
+	if node.ReviewPrompt != "" {
+		md.WriteString("**What to check**\n\n")
+		md.WriteString(node.ReviewPrompt + "\n\n")
 	}
 
 	if node.State == coop.StepSkipped && node.Activity != "" {
@@ -330,14 +356,7 @@ func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNo
 func (m Model) renderDetailSuffix(node *coop.SessionNode) string {
 	var suffix string
 	if node.State == coop.StepReview {
-		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm or r to reject")
-	}
-	if m.rejecting {
-		input := m.rejectionInput
-		if input == "" {
-			input = "<type feedback>"
-		}
-		suffix += "\n" + ErrorStyle.Render("  Rejection note: ") + input
+		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm or r to request changes")
 	}
 	return suffix
 }
@@ -378,33 +397,175 @@ func (m Model) renderFooter() string {
 	}
 
 	if m.session != nil {
-		summary := m.session.StepSummary()
-		if summary[coop.StepReview] > 0 {
-			footer += AttentionStyle.Render(fmt.Sprintf("  Waiting for you: %d step(s) need confirmation", summary[coop.StepReview])) + "\n"
+		if count := m.actionableReviewCount(); count > 0 {
+			footer += AttentionStyle.Render(fmt.Sprintf("  Waiting for you: %d item(s) need review", count)) + "\n"
 		}
 	}
 
-	if m.rejecting {
-		return footer + FooterStyle.Render("  type feedback  ·  enter reject  ·  esc cancel")
+	if card := m.renderReviewCard(); card != "" {
+		footer += card + "\n"
 	}
 
-	parts := []string{"↑↓ navigate", "enter/e details"}
-	if m.userMoved {
-		parts = append(parts, "f follow")
+	if m.rejecting {
+		return footer + FooterStyle.Render("  enter send feedback  ·  esc cancel")
 	}
+
+	var parts []string
+	if m.userMoved {
+		parts = append(parts, "Viewing earlier steps", "f follow latest")
+	} else {
+		parts = append(parts, "↑↓ navigate")
+	}
+	parts = append(parts, "enter/e details")
 	if m.session != nil && m.session.ClaimURL != "" {
 		parts = append(parts, "o open claim URL")
 	}
 	if m.session != nil {
-		node, _ := m.session.NodeByNumber(m.cursor + 1)
-		if node != nil && node.State == coop.StepReview {
+		if _, ok := m.selectedReviewTarget(); ok {
 			parts = append(parts, SuccessStyle.Render("c confirm"))
-			parts = append(parts, ErrorStyle.Render("r reject"))
+			parts = append(parts, ErrorStyle.Render("r request changes"))
 		}
 	}
 	parts = append(parts, "q quit")
 	footer += FooterStyle.Render("  " + strings.Join(parts, "  ·  "))
 	return footer
+}
+
+func (m Model) renderReviewCard() string {
+	target, ok := m.selectedReviewTarget()
+	if !ok {
+		return ""
+	}
+	w := min(m.contentWidth()-4, 84)
+	if w < 30 {
+		w = m.contentWidth()
+	}
+
+	var lines []string
+	prefix := "Review"
+	if target.kind == "chapter" {
+		prefix = "Review chapter"
+	}
+	lines = append(lines, AttentionStyle.Render(prefix+": ")+target.title)
+	if changed := m.reviewChangedLabel(target.steps); changed != "" {
+		lines = append(lines, MutedStyle.Render("Changed: ")+changed)
+	}
+	if verified := m.reviewVerificationLabel(target.steps); verified != "" {
+		lines = append(lines, MutedStyle.Render("Verified: ")+verified)
+	}
+	check := m.reviewPromptLabel(target.steps)
+	if check != "" {
+		lines = append(lines, MutedStyle.Render("Check: ")+check)
+	}
+	if m.rejecting {
+		input := m.rejectionInput
+		if input == "" {
+			input = DimmedStyle.Render("Describe what should change")
+		}
+		lines = append(lines, ErrorStyle.Render("Request changes: ")+input)
+		if m.rejectionError != "" {
+			lines = append(lines, ErrorStyle.Render(m.rejectionError))
+		}
+	}
+
+	var wrapped []string
+	for _, line := range lines {
+		wrapped = append(wrapped, strings.Split(wordWrap(line, w-4), "\n")...)
+	}
+	return ReviewCardStyle.Width(w).Render(strings.Join(wrapped, "\n"))
+}
+
+func (m Model) reviewChangedLabel(steps []int) string {
+	var labels []string
+	seen := map[string]bool{}
+	for _, step := range steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil || node.Implementation == nil || node.Implementation.File == "" {
+			continue
+		}
+		label := implementationFileLabel(node.Implementation)
+		if !seen[label] {
+			seen[label] = true
+			labels = append(labels, label)
+		}
+	}
+	if len(labels) == 0 {
+		return ""
+	}
+	if len(labels) > 3 {
+		return strings.Join(labels[:3], ", ") + fmt.Sprintf(" +%d more", len(labels)-3)
+	}
+	return strings.Join(labels, ", ")
+}
+
+func (m Model) reviewVerificationLabel(steps []int) string {
+	passed := 0
+	total := 0
+	for _, step := range steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil {
+			continue
+		}
+		for _, v := range node.Verifications {
+			total++
+			if v.Passed {
+				passed++
+			}
+		}
+	}
+	if total == 0 {
+		return ""
+	}
+	if passed == total {
+		return fmt.Sprintf("%d check(s) passed", passed)
+	}
+	return fmt.Sprintf("%d/%d check(s) passed", passed, total)
+}
+
+func (m Model) reviewPromptLabel(steps []int) string {
+	var prompts []string
+	seen := map[string]bool{}
+	for _, step := range steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil || node.ReviewPrompt == "" || seen[node.ReviewPrompt] {
+			continue
+		}
+		seen[node.ReviewPrompt] = true
+		prompts = append(prompts, node.ReviewPrompt)
+	}
+	if len(prompts) == 0 {
+		return "Confirm the completed work matches this step and its verification evidence."
+	}
+	if len(prompts) > 2 {
+		return strings.Join(prompts[:2], " ") + " Open details for the remaining checks."
+	}
+	return strings.Join(prompts, " ")
+}
+
+func (m Model) actionableReviewCount() int {
+	if m.session == nil {
+		return 0
+	}
+	count := 0
+	countedChapters := map[int]bool{}
+	step := 0
+	for i := range m.session.Chapters {
+		for j := range m.session.Chapters[i].Nodes {
+			step++
+			if m.session.Chapters[i].Nodes[j].State != coop.StepReview || !m.reviewIsActionable(step) {
+				continue
+			}
+			if m.session.ReviewGranularityForStep(step) == coop.ReviewGranularityChapter {
+				if !countedChapters[i] {
+					count++
+					countedChapters[i] = true
+				}
+				continue
+			}
+			count++
+		}
+	}
+	return count
 }
 
 func (m Model) agentIdle() bool {
@@ -458,7 +619,7 @@ func (m Model) renderCompletionBody() string {
 		content += "\n" + DimmedStyle.Render("    Press o to open in browser")
 	}
 
-	content += "\n\n" + ChapterTitleStyle.Render("  What's next?")
+	content += "\n\n" + ChapterTitleStyle.Render("  Next steps")
 	ruleWidth := min(w-4, 50)
 	if ruleWidth < 0 {
 		ruleWidth = 0
@@ -547,7 +708,7 @@ func (m Model) getCompletionSuggestions() []completionSuggestion {
 	}
 
 	suggestions = append(suggestions, completionSuggestion{id: "add-integration", title: "Add another Stripe feature", desc: "Subscriptions, Connect, billing portal, and more"})
-	suggestions = append(suggestions, completionSuggestion{id: "done", title: "I'm done", desc: "End the session"})
+	suggestions = append(suggestions, completionSuggestion{id: "done", title: "Finish", desc: "Close this session"})
 
 	return suggestions
 }

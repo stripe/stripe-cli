@@ -72,6 +72,11 @@ var (
 			Padding(0, 1).
 			MarginTop(1)
 
+	ReviewCardStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(HueOrange400).
+			Padding(0, 1)
+
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(HueGray500)
 

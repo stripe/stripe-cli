@@ -55,8 +55,8 @@ func buildSuggestions(session *coop.Session, env projectEnvironment) []suggestio
 
 	suggestions = append(suggestions, suggestion{
 		ID:          "done",
-		Title:       "I'm done",
-		Description: "End the co-op session",
+		Title:       "Finish",
+		Description: "Close this session",
 		Available:   true,
 	})
 

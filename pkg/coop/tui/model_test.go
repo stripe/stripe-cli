@@ -136,6 +136,105 @@ func TestUpdateKeyReject(t *testing.T) {
 	assert.False(t, updated.rejecting)
 }
 
+func TestUpdateKeyRejectRequiresNote(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+
+	m := readyModel()
+	m.store = store
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.cursor = 0
+	store.Write(m.session)
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	updated := result.(Model)
+	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated = result.(Model)
+
+	node, _ := updated.session.NodeByNumber(1)
+	assert.Equal(t, coop.StepReview, node.State)
+	assert.True(t, updated.rejecting)
+	assert.Contains(t, updated.rejectionError, "short note")
+}
+
+func TestUpdateKeyConfirmChapterReview(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+
+	m := readyModel()
+	m.store = store
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.cursor = 0
+	store.Write(m.session)
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	updated := result.(Model)
+
+	node1, _ := updated.session.NodeByNumber(1)
+	node2, _ := updated.session.NodeByNumber(2)
+	assert.Equal(t, coop.StepDone, node1.State)
+	assert.Equal(t, coop.StepDone, node2.State)
+}
+
+func TestSelectedReviewTargetChapterRequiresReadyChapter(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepPending
+	m.cursor = 0
+
+	_, ok := m.selectedReviewTarget()
+	assert.False(t, ok)
+	assert.False(t, m.reviewIsActionable(1))
+
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	target, ok := m.selectedReviewTarget()
+
+	assert.True(t, ok)
+	assert.Equal(t, "chapter", target.kind)
+	assert.Equal(t, "Set up product", target.title)
+	assert.Equal(t, []int{1, 2}, target.steps)
+	assert.True(t, m.reviewIsActionable(1))
+}
+
+func TestUpdateKeyRejectChapterReview(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+
+	m := readyModel()
+	m.store = store
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].Implementation = &coop.Implementation{File: "product.js"}
+	m.session.Chapters[0].Nodes[0].Verifications = []coop.Verification{{Check: "product test", Passed: true}}
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].Implementation = &coop.Implementation{File: "checkout.js"}
+	m.session.Chapters[0].Nodes[1].Verifications = []coop.Verification{{Check: "checkout test", Passed: true}}
+	m.cursor = 0
+	store.Write(m.session)
+
+	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	updated := result.(Model)
+	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Rework both steps")})
+	updated = result.(Model)
+	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated = result.(Model)
+
+	node1, _ := updated.session.NodeByNumber(1)
+	node2, _ := updated.session.NodeByNumber(2)
+	assert.Equal(t, coop.StepActive, node1.State)
+	assert.Equal(t, coop.StepActive, node2.State)
+	assert.Equal(t, "Rework both steps", node1.RejectionNote)
+	assert.Equal(t, "Rework both steps", node2.RejectionNote)
+	assert.Nil(t, node1.Implementation)
+	assert.Nil(t, node2.Implementation)
+	assert.Nil(t, node1.Verifications)
+	assert.Nil(t, node2.Verifications)
+	assert.False(t, updated.rejecting)
+}
+
 func TestUpdateKeyRejectCancel(t *testing.T) {
 	m := readyModel()
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
@@ -260,6 +359,25 @@ func TestFollowKeyResumesAutoFollow(t *testing.T) {
 	assert.Equal(t, 1, updated.cursor)
 }
 
+func TestActionableReviewCountCollapsesChapterReview(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.session.Chapters[1].Nodes[0].State = coop.StepReview
+
+	assert.Equal(t, 2, m.actionableReviewCount())
+}
+
+func TestActionableReviewCountIgnoresUnreadyChapterReview(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepPending
+
+	assert.Equal(t, 0, m.actionableReviewCount())
+}
+
 func TestCompletionViewKeyDown(t *testing.T) {
 	m := readyModel()
 	// Make session complete
@@ -291,7 +409,7 @@ func TestCompletionViewportScrollsToCursor(t *testing.T) {
 			{ID: "b", Title: "Second", Description: "Long second option"},
 			{ID: "c", Title: "Third", Description: "Long third option"},
 			{ID: "d", Title: "Fourth", Description: "Long fourth option"},
-			{ID: "done", Title: "I'm done", Description: "End the session"},
+			{ID: "done", Title: "Finish", Description: "Close this session"},
 		},
 	}
 	m.cursor = 4
@@ -330,7 +448,7 @@ func TestCompletionEnterSelectsDone(t *testing.T) {
 	}
 	m.session.ID = "done_selection"
 	store.Write(m.session)
-	// "I'm done" is the last suggestion
+	// "Finish" is the last suggestion
 	suggestions := m.getCompletionSuggestions()
 	m.cursor = len(suggestions) - 1
 
@@ -484,20 +602,21 @@ func TestHandleKeyQuestionMark(t *testing.T) {
 	assert.True(t, updated.expanded)
 }
 
-func TestAutoScrollExpandsOnReview(t *testing.T) {
+func TestAutoScrollFocusesReviewWithoutExpanding(t *testing.T) {
 	m := readyModel()
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.expanded = false
 
 	m.autoScroll()
 
-	assert.True(t, m.expanded)
+	assert.False(t, m.expanded)
 	assert.Equal(t, 0, m.cursor)
 }
 
 func TestCompletionTransitionResetsCursor(t *testing.T) {
 	m := readyModel()
 	m.cursor = 2
+	m.viewport.SetYOffset(5)
 
 	// Simulate session becoming complete
 	newSession := &coop.Session{
@@ -518,6 +637,29 @@ func TestCompletionTransitionResetsCursor(t *testing.T) {
 
 	assert.Equal(t, 0, updated.cursor)
 	assert.False(t, updated.expanded)
+	assert.Equal(t, 0, updated.viewport.YOffset)
+}
+
+func TestStatusExpiresOnTick(t *testing.T) {
+	m := readyModel()
+	m.setStatus("Temporary status", time.Second)
+
+	assert.Equal(t, "Temporary status", m.statusMessage)
+
+	m.clearExpiredStatus(time.Now().Add(2 * time.Second))
+
+	assert.Equal(t, "", m.statusMessage)
+	assert.True(t, m.statusExpiresAt.IsZero())
+}
+
+func TestStatusWithoutTTLDoesNotExpire(t *testing.T) {
+	m := readyModel()
+	m.setStatus("Persistent status", 0)
+
+	m.clearExpiredStatus(time.Now().Add(2 * time.Second))
+
+	assert.Equal(t, "Persistent status", m.statusMessage)
+	assert.True(t, m.statusExpiresAt.IsZero())
 }
 
 func TestShouldTransitionToNewSession(t *testing.T) {
@@ -539,7 +681,7 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 		}
 	}
 
-	// Find "I'm done" — should NOT transition
+	// Find "Finish" — should NOT transition
 	for i, s := range suggestions {
 		if s.id == "done" {
 			m.cursor = i

@@ -147,7 +147,7 @@ func TestRenderFooter(t *testing.T) {
 	m.cursor = 0
 	footer := m.renderFooter()
 
-	// Step 0 is done — no confirm/reject
+	// Step 0 is done — no review actions
 	assert.Contains(t, footer, "navigate")
 	assert.Contains(t, footer, "details")
 	assert.NotContains(t, footer, "confirm")
@@ -160,7 +160,39 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	footer := m.renderFooter()
 
 	assert.Contains(t, footer, "confirm")
-	assert.Contains(t, footer, "reject")
+	assert.Contains(t, footer, "request changes")
+	assert.Contains(t, footer, "Review:")
+}
+
+func TestRenderReviewCardEvidence(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Confirm Checkout uses the saved price ID."
+	m.session.Chapters[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "unit test", Passed: true},
+		{Check: "manual test", Passed: false},
+	}
+	m.cursor = 0
+
+	card := m.renderReviewCard()
+
+	assert.Contains(t, card, "Review: Create product")
+	assert.Contains(t, card, "Changed:")
+	assert.Contains(t, card, "server.js:5-20")
+	assert.Contains(t, card, "Verified:")
+	assert.Contains(t, card, "1/2 check(s) passed")
+	assert.Contains(t, card, "Check:")
+	assert.Contains(t, card, "Confirm Checkout uses the saved price ID.")
+}
+
+func TestRenderReviewCardFallbackCheck(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[1].Nodes[0].State = coop.StepReview
+	m.cursor = 2
+
+	card := m.renderReviewCard()
+
+	assert.Contains(t, card, "Confirm the completed work matches this step")
 }
 
 func TestRenderFooterReviewNotice(t *testing.T) {
@@ -169,7 +201,7 @@ func TestRenderFooterReviewNotice(t *testing.T) {
 	footer := m.renderFooter()
 
 	assert.Contains(t, footer, "Waiting for you")
-	assert.Contains(t, footer, "need confirmation")
+	assert.Contains(t, footer, "need review")
 }
 
 func TestRenderCompletionView(t *testing.T) {
@@ -181,10 +213,10 @@ func TestRenderCompletionView(t *testing.T) {
 	view := m.renderCompletionView()
 
 	assert.Contains(t, view, "Integration complete")
-	assert.Contains(t, view, "What's next")
+	assert.Contains(t, view, "Next steps")
 	assert.Contains(t, view, "STRIPE.md")
 	assert.Contains(t, view, "Deploy")
-	assert.Contains(t, view, "I'm done")
+	assert.Contains(t, view, "Finish")
 }
 
 func TestGetCompletionSuggestionsDefault(t *testing.T) {
@@ -193,7 +225,7 @@ func TestGetCompletionSuggestionsDefault(t *testing.T) {
 
 	assert.Len(t, suggestions, 4)
 	assert.Equal(t, "Write a STRIPE.md summary", suggestions[0].title)
-	assert.Equal(t, "I'm done", suggestions[3].title)
+	assert.Equal(t, "Finish", suggestions[3].title)
 }
 
 func TestGetCompletionSuggestionsFromSession(t *testing.T) {
@@ -332,11 +364,10 @@ func TestRenderFooterRejectionInput(t *testing.T) {
 	m.rejectionInput = "Missing webhook test"
 
 	footer := m.renderFooter()
-	detail := m.renderDetail()
 
-	assert.Contains(t, footer, "enter reject")
+	assert.Contains(t, footer, "enter send feedback")
 	assert.Contains(t, footer, "esc cancel")
-	assert.Contains(t, detail, "Missing webhook test")
+	assert.Contains(t, footer, "Missing webhook test")
 }
 
 func TestStepIconAllStates(t *testing.T) {
