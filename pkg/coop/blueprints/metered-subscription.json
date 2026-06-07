@@ -17,7 +17,8 @@
           "request": {
             "path": "/v1/billing/meters",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -26,7 +27,8 @@
           "request": {
             "path": "/v1/products",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -35,7 +37,8 @@
           "request": {
             "path": "/v1/prices",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -44,7 +47,8 @@
           "request": {
             "path": "/v1/entitlements/features",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -53,17 +57,20 @@
           "request": {
             "path": "/v1/products/${node.metering-setup-chapter.create-usage-product.create-usage-product-request:id}/features",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "testHelper",
           "key": "create-test-clock",
-          "title": "Create a test clock"
+          "title": "Create a test clock",
+          "review_prompt": "Run the described test flow and confirm the expected result is observable."
         },
         {
           "type": "testHelper",
           "key": "create-customer",
-          "title": "Create a customer"
+          "title": "Create a customer",
+          "review_prompt": "Run the described test flow and confirm the expected result is observable."
         },
         {
           "type": "apiRequest",
@@ -72,12 +79,14 @@
           "request": {
             "path": "/v1/checkout/sessions",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "uiComponent",
           "key": "complete-checkout",
-          "title": "Complete the checkout process"
+          "title": "Complete the checkout process",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
         },
         {
           "type": "asyncHandler",
@@ -85,7 +94,8 @@
           "title": "Check customer entitlements",
           "events": [
             "entitlements.active_entitlement_summary.updated"
-          ]
+          ],
+          "review_prompt": "Run stripe trigger entitlements.active_entitlement_summary.updated and confirm the handler processes the signed event correctly."
         },
         {
           "type": "asyncHandler",
@@ -93,7 +103,8 @@
           "title": "Track subscription creation",
           "events": [
             "customer.subscription.created"
-          ]
+          ],
+          "review_prompt": "Run stripe trigger customer.subscription.created and confirm the handler processes the signed event correctly."
         },
         {
           "type": "apiRequest",
@@ -102,12 +113,14 @@
           "request": {
             "path": "/v1/billing/meter_events",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "testHelper",
           "key": "advance-time",
-          "title": "Advance time to billing date"
+          "title": "Advance time to billing date",
+          "review_prompt": "Run the described test flow and confirm the expected result is observable."
         },
         {
           "type": "asyncHandler",
@@ -115,7 +128,8 @@
           "title": "Wait for the invoice to be created",
           "events": [
             "invoice.created"
-          ]
+          ],
+          "review_prompt": "Run stripe trigger invoice.created and confirm the handler processes the signed event correctly."
         },
         {
           "type": "apiRequest",
@@ -124,7 +138,8 @@
           "request": {
             "path": "/v1/invoices/${node.usage-chapter.wait-for-invoice-created.0:id}",
             "method": "get"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "asyncHandler",
@@ -132,12 +147,14 @@
           "title": "Wait for test clock to be ready.",
           "events": [
             "test_helpers.test_clock.ready"
-          ]
+          ],
+          "review_prompt": "Run stripe trigger test_helpers.test_clock.ready and confirm the handler processes the signed event correctly."
         },
         {
           "type": "testHelper",
           "key": "delete-test-clock",
-          "title": "Delete the test clock"
+          "title": "Delete the test clock",
+          "review_prompt": "Run the described test flow and confirm the expected result is observable."
         }
       ]
     }

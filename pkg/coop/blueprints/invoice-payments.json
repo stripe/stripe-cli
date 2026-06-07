@@ -13,7 +13,8 @@
         {
           "type": "testHelper",
           "key": "create-test-clock",
-          "title": "Create a test clock"
+          "title": "Create a test clock",
+          "review_prompt": "Run the described test flow and confirm the expected result is observable."
         },
         {
           "type": "apiRequest",
@@ -22,7 +23,8 @@
           "request": {
             "path": "/v1/products",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -31,7 +33,8 @@
           "request": {
             "path": "/v1/customers",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -40,7 +43,8 @@
           "request": {
             "path": "/v1/invoices",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -49,7 +53,8 @@
           "request": {
             "path": "/v1/invoiceitems",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -58,12 +63,14 @@
           "request": {
             "path": "/v1/invoices/${node.create-invoice-chapter.create-invoice.create-invoice-request:id}/send",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "uiComponent",
           "key": "view-invoice",
-          "title": "View and pay the invoice"
+          "title": "View and pay the invoice",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
         },
         {
           "type": "asyncHandler",
@@ -71,7 +78,8 @@
           "title": "Handle invoice payment events",
           "events": [
             "invoice.paid"
-          ]
+          ],
+          "review_prompt": "Run stripe trigger invoice.paid and confirm the handler processes the signed event correctly."
         }
       ]
     }

@@ -13,7 +13,8 @@
         {
           "type": "uiComponent",
           "key": "redirect-to-portal",
-          "title": "Open billing portal"
+          "title": "Open billing portal",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
         }
       ]
     }

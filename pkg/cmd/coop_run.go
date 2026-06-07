@@ -80,11 +80,13 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 		for _, n := range ch.Nodes {
 			stepNum++
 			steps = append(steps, stepBrief{
-				Number:      stepNum,
-				Title:       n.Title,
-				Type:        string(n.Type),
-				Description: n.Description,
-				AutoConfirm: n.AutoConfirm,
+				Number:            stepNum,
+				Title:             n.Title,
+				Type:              string(n.Type),
+				Description:       n.Description,
+				ReviewPrompt:      n.ReviewPrompt,
+				ReviewGranularity: string(ch.ReviewGranularity),
+				AutoConfirm:       n.AutoConfirm,
 			})
 		}
 	}
@@ -132,11 +134,13 @@ type coopStartResponse struct {
 }
 
 type stepBrief struct {
-	Number      int    `json:"number"`
-	Title       string `json:"title"`
-	Type        string `json:"type"`
-	Description string `json:"description,omitempty"`
-	AutoConfirm bool   `json:"auto_confirm,omitempty"`
+	Number            int    `json:"number"`
+	Title             string `json:"title"`
+	Type              string `json:"type"`
+	Description       string `json:"description,omitempty"`
+	ReviewPrompt      string `json:"review_prompt,omitempty"`
+	ReviewGranularity string `json:"review_granularity,omitempty"`
+	AutoConfirm       bool   `json:"auto_confirm,omitempty"`
 }
 
 func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
@@ -161,6 +165,8 @@ Each step has a description that tells you what to do. Follow the description �
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). Report the output.
 - "testHelper": Verify something works end-to-end. Run the flow and confirm the expected outcome.
 
+If a step includes review_prompt, that is what the human will use as the acceptance check. Make your implementation note and verifications directly answer it.
+
 Step 1 is always "Understand the project" — scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining steps to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
 Step lifecycle commands (use this session id: %s):
@@ -168,11 +174,11 @@ Step lifecycle commands (use this session id: %s):
 2. Write the code and run it to verify it works
 3. stripe coop step <n> verify --session=%s --check="<what you verified>" --passed
 4. stripe coop step <n> done --session=%s --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
-5. stripe coop step <n> await --session=%s   ← BLOCKS until the human confirms or rejects
+5. stripe coop step <n> await --session=%s   ← BLOCKS until the human confirms or requests changes
 6. If confirmed: move to next step. If rejected: redo the step (check the message for feedback).
 7. When the final step is confirmed: IMMEDIATELY run "stripe coop next-steps --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
 
-The "await" command is critical — it blocks until the developer acts. Do NOT proceed to the next step without running await first. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If rejected, ask the developer what they'd like you to change before redoing the step.
+The "await" command is critical — it blocks until the developer acts, or returns the next step if this step belongs to a chapter-level review that is not ready yet. Do NOT proceed to the next step without running await first. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the step.
 
 Some steps are marked auto_confirm — await returns immediately for these (no human review needed). You still must call await for every step; the system handles the rest.
 

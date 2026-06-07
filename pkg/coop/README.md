@@ -31,7 +31,7 @@ No server, no HTTP, no WebSocket. Communication is through a shared JSON session
 ```
 pending ──→ active ──→ review ──→ done     (normal flow)
    │          │          │
-   │          │          └──→ active        (rejection: developer entered feedback)
+   │          │          └──→ active        (request changes: developer entered feedback)
    │          │
    │          └──→ done                     (auto_confirm nodes skip review)
    │          └──→ skipped                  (agent decides step doesn't apply)
@@ -71,7 +71,7 @@ active ──→ completed    (all steps done/skipped, or "stripe coop stop")
 | `stripe coop step <n> done` | Mark step as complete (→ review or → done if auto_confirm) |
 | `stripe coop step <n> verify` | Add a verification check |
 | `stripe coop step <n> skip` | Skip a step |
-| `stripe coop step <n> await` | Block until developer confirms/rejects |
+| `stripe coop step <n> await` | Block until developer confirms or requests changes |
 | `stripe coop next-steps` | Show post-completion options (blocks until selection) |
 
 All agent commands output JSON with an `ok` field and a `next` field suggesting the next command.
@@ -83,13 +83,13 @@ All agent commands output JSON with an `ok` field and a `next` field suggesting 
 | `↑`/`k` | Move cursor up |
 | `↓`/`j` | Move cursor down |
 | `e` / `Enter` | Toggle detail panel for selected step |
-| `c` | Confirm step (review → done) |
-| `r` | Type rejection feedback for a review step |
+| `c` | Confirm the selected review item |
+| `r` | Request changes for the selected review item |
 | `f` | Resume following the active/review step after manual navigation |
 | `o` | Open claim URL in browser (when sandbox is unclaimed) |
 | `q` / `Ctrl+C` | Quit TUI |
 
-When rejecting a step, `r` opens a feedback prompt. Press `Enter` to submit the note and move the step back to `active`; press `Esc` to cancel.
+When requesting changes, `r` opens a feedback prompt. Press `Enter` to submit a note and move the reviewed step or chapter back to `active`; press `Esc` to cancel.
 
 In the completion view:
 | Key | Action |
@@ -161,8 +161,11 @@ Each node has:
 - `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `testHelper`
 - `auto_confirm` — skip human review for this step
 - `description` — what the agent should do (source of truth)
+- `review_prompt` — what the human should check before confirming
 - `request` — API request details (for `apiRequest` nodes with SDK snippet support)
 - `events` — webhook events (for `asyncHandler` nodes)
+
+Chapters may set `review_granularity` to `chapter` to group multiple reviewable nodes into one human approval milestone.
 
 ### Custom Agent Prompt
 
@@ -190,7 +193,7 @@ Without `prompt`, the agent gets: "You are building a working Stripe integration
 | Problem | Cause | Solution |
 |---------|-------|----------|
 | TUI shows "Agent appears idle" | Agent crashed or stopped | Check the agent pane; restart with `stripe coop start` |
-| Agent stuck on "await" | Developer hasn't confirmed | Press `c` in TUI to confirm, or `r` to reject |
+| Agent stuck on "await" | Developer hasn't confirmed | Press `c` in TUI to confirm, or `r` to request changes |
 | "Version conflict" error | TUI and agent wrote simultaneously | Agent retries the command (safe to re-run) |
 | TUI shows wrong session | Multiple sessions exist | Use `stripe coop join <session-id>` with the correct ID |
 | Steps not updating in TUI | Agent created a duplicate session | Check `stripe coop status` for the correct session ID |

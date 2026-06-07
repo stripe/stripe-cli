@@ -28,6 +28,15 @@ const (
 	NodeSetUpWebhooks NodeType = "setUpWebhooks"
 )
 
+// ReviewGranularity controls where human approval happens.
+type ReviewGranularity string
+
+const (
+	ReviewGranularityStep    ReviewGranularity = "step"
+	ReviewGranularityChapter ReviewGranularity = "chapter"
+	ReviewGranularityAuto    ReviewGranularity = "auto"
+)
+
 // SessionStatus represents the overall session lifecycle.
 type SessionStatus string
 
@@ -65,6 +74,7 @@ type SessionNode struct {
 	Type           NodeType        `json:"type"`
 	Title          string          `json:"title"`
 	Description    string          `json:"description,omitempty"`
+	ReviewPrompt   string          `json:"review_prompt,omitempty"`
 	AutoConfirm    bool            `json:"auto_confirm,omitempty"`
 	State          StepState       `json:"state"`
 	Activity       string          `json:"activity,omitempty"`
@@ -79,9 +89,10 @@ type SessionNode struct {
 
 // SessionChapter groups nodes under a titled section.
 type SessionChapter struct {
-	Key   string        `json:"key"`
-	Title string        `json:"title"`
-	Nodes []SessionNode `json:"nodes"`
+	Key               string            `json:"key"`
+	Title             string            `json:"title"`
+	ReviewGranularity ReviewGranularity `json:"review_granularity,omitempty"`
+	Nodes             []SessionNode     `json:"nodes"`
 }
 
 // Session is the shared state file between agent and TUI.

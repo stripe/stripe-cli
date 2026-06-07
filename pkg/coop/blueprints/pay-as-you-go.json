@@ -17,7 +17,8 @@
           "request": {
             "path": "/v1/customers",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -26,7 +27,8 @@
           "request": {
             "path": "/v2/billing/pricing_plans",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -35,7 +37,8 @@
           "request": {
             "path": "/v1/billing/meters",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -44,7 +47,8 @@
           "request": {
             "path": "/v2/billing/rate_cards",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -53,7 +57,8 @@
           "request": {
             "path": "/v2/billing/metered_items",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -62,7 +67,8 @@
           "request": {
             "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard.createRateCardRequest:id}/rates",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -71,7 +77,8 @@
           "request": {
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -80,7 +87,8 @@
           "request": {
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "apiRequest",
@@ -89,12 +97,14 @@
           "request": {
             "path": "/v1/checkout/sessions",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "uiComponent",
           "key": "completeCheckout",
-          "title": "Complete the checkout"
+          "title": "Complete the checkout",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
         },
         {
           "type": "asyncHandler",
@@ -102,7 +112,8 @@
           "title": "Wait for servicing activated event",
           "events": [
             "v2.billing.pricing_plan_subscription.servicing_activated"
-          ]
+          ],
+          "review_prompt": "Run stripe trigger v2.billing.pricing_plan_subscription.servicing_activated and confirm the handler processes the signed event correctly."
         }
       ]
     }

@@ -17,7 +17,8 @@
             "path": "/v1/customers"
           },
           "title": "Create a customer",
-          "type": "apiRequest"
+          "type": "apiRequest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "description": "Create a Checkout Session with mode=setup to save a payment method.",
@@ -37,7 +38,8 @@
             "path": "/v1/checkout/sessions"
           },
           "title": "Create a Checkout Session (setup mode)",
-          "type": "apiRequest"
+          "type": "apiRequest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         }
       ],
       "required": true,
@@ -51,7 +53,8 @@
           "description": "Redirect the customer to the Checkout Session URL.",
           "key": "redirect-to-setup",
           "title": "Redirect to setup page",
-          "type": "uiComponent"
+          "type": "uiComponent",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
         },
         {
           "description": "Listen for the setup_intent.succeeded event to confirm the payment method was saved.",
@@ -60,7 +63,8 @@
           ],
           "key": "handle-setup-completed",
           "title": "Handle setup_intent.succeeded",
-          "type": "asyncHandler"
+          "type": "asyncHandler",
+          "review_prompt": "Run stripe trigger setup_intent.succeeded and confirm the handler processes the signed event correctly."
         }
       ],
       "title": "Complete the setup"
@@ -86,7 +90,8 @@
             "path": "/v1/payment_intents"
           },
           "title": "Create a PaymentIntent off-session",
-          "type": "apiRequest"
+          "type": "apiRequest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         }
       ],
       "title": "Charge the saved card"

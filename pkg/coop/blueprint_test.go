@@ -52,6 +52,10 @@ func TestAllEmbeddedBlueprintsHaveQualityMetadata(t *testing.T) {
 					if n.Description != "" {
 						assertQualityText(t, "node description "+n.Key, n.Description, 20, weakPhrases)
 					}
+					if !n.AutoConfirm {
+						assertQualityText(t, "node review prompt "+n.Key, n.ReviewPrompt, 20, weakPhrases)
+						assertObservableGuidance(t, n.Key, n.ReviewPrompt)
+					}
 
 					switch n.Type {
 					case NodeAPIRequest:
@@ -84,7 +88,7 @@ func assertQualityText(t *testing.T, label, value string, minLen int, weakPhrase
 func assertObservableGuidance(t *testing.T, key, description string) {
 	t.Helper()
 	lower := strings.ToLower(description)
-	observableTerms := []string{"verify", "confirm", "report", "check", "run", "summarize", "ask"}
+	observableTerms := []string{"verify", "confirm", "report", "check", "run", "summarize", "ask", "open"}
 	for _, term := range observableTerms {
 		if strings.Contains(lower, term) {
 			return
@@ -150,6 +154,9 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 
 	// Total steps = blueprint steps (6) + context step (1)
 	assert.Equal(t, 7, session.TotalSteps())
+
+	assert.Equal(t, ReviewGranularityChapter, session.Chapters[2].ReviewGranularity)
+	assert.NotEmpty(t, session.Chapters[1].Nodes[0].ReviewPrompt)
 }
 
 func TestListBlueprintsWithMetadata(t *testing.T) {

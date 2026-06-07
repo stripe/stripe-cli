@@ -20,12 +20,14 @@
           "request": {
             "path": "/v1/checkout/sessions",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         },
         {
           "type": "uiComponent",
           "key": "setup-stripe-elements-html-snippet",
-          "title": "Set up your frontend"
+          "title": "Set up your frontend",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
         }
       ]
     }

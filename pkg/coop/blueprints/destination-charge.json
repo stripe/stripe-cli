@@ -20,7 +20,8 @@
           "request": {
             "path": "/v1/payment_intents",
             "method": "post"
-          }
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
         }
       ]
     }

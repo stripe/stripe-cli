@@ -12,22 +12,24 @@ var blueprintFS embed.FS
 
 // BlueprintNode is a node definition within a blueprint chapter.
 type BlueprintNode struct {
-	Type        NodeType    `json:"type"`
-	Key         string      `json:"key"`
-	Title       string      `json:"title"`
-	Description string      `json:"description,omitempty"`
-	AutoConfirm bool        `json:"auto_confirm,omitempty"`
-	Request     *APIRequest `json:"request,omitempty"`
-	Events      []string    `json:"events,omitempty"`
+	Type         NodeType    `json:"type"`
+	Key          string      `json:"key"`
+	Title        string      `json:"title"`
+	Description  string      `json:"description,omitempty"`
+	ReviewPrompt string      `json:"review_prompt,omitempty"`
+	AutoConfirm  bool        `json:"auto_confirm,omitempty"`
+	Request      *APIRequest `json:"request,omitempty"`
+	Events       []string    `json:"events,omitempty"`
 }
 
 // BlueprintChapter is a chapter definition within a blueprint.
 type BlueprintChapter struct {
-	Key         string          `json:"key"`
-	Title       string          `json:"title"`
-	Description string          `json:"description,omitempty"`
-	Required    bool            `json:"required,omitempty"`
-	Nodes       []BlueprintNode `json:"nodes"`
+	Key               string            `json:"key"`
+	Title             string            `json:"title"`
+	Description       string            `json:"description,omitempty"`
+	ReviewGranularity ReviewGranularity `json:"review_granularity,omitempty"`
+	Required          bool              `json:"required,omitempty"`
+	Nodes             []BlueprintNode   `json:"nodes"`
 }
 
 // Blueprint is the CLI-friendly representation of a Workbench Blueprint.
@@ -161,20 +163,22 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings map[strin
 		nodes := make([]SessionNode, len(ch.Nodes))
 		for j, n := range ch.Nodes {
 			nodes[j] = SessionNode{
-				Key:         n.Key,
-				Type:        n.Type,
-				Title:       n.Title,
-				Description: n.Description,
-				AutoConfirm: n.AutoConfirm,
-				State:       StepPending,
-				Request:     n.Request,
-				Events:      n.Events,
+				Key:          n.Key,
+				Type:         n.Type,
+				Title:        n.Title,
+				Description:  n.Description,
+				ReviewPrompt: n.ReviewPrompt,
+				AutoConfirm:  n.AutoConfirm,
+				State:        StepPending,
+				Request:      n.Request,
+				Events:       n.Events,
 			}
 		}
 		chapters = append(chapters, SessionChapter{
-			Key:   ch.Key,
-			Title: ch.Title,
-			Nodes: nodes,
+			Key:               ch.Key,
+			Title:             ch.Title,
+			ReviewGranularity: ch.ReviewGranularity,
+			Nodes:             nodes,
 		})
 	}
 
