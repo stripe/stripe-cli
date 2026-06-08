@@ -116,6 +116,15 @@ func WithStyles(s ui.Styles) Option {
 	return func(m *Model) { m.styles = s }
 }
 
+// WithWindowSize pre-seeds the terminal dimensions so the viewport can be
+// initialised in New() without waiting for the first tea.WindowSizeMsg.
+func WithWindowSize(width, height int) Option {
+	return func(m *Model) {
+		m.width = width
+		m.height = height
+	}
+}
+
 // New creates a Model configured with the given options.
 func New(opts ...Option) Model {
 	h := help.New()
@@ -140,6 +149,10 @@ func New(opts ...Option) Model {
 
 	m.palette = newPalette(m.page, m.doc, m.client)
 	m.setScrollEnabled(!m.isLanding())
+
+	if m.width > 0 && m.height > 0 {
+		m = m.initViewport(tea.WindowSizeMsg{Width: m.width, Height: m.height})
+	}
 
 	return m
 }
