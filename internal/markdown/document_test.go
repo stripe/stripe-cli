@@ -196,6 +196,30 @@ func TestReferences(t *testing.T) {
 				{title: "Ext", url: "https://stripe.com/payments/accept-a-payment#section", external: true},
 			},
 		},
+		{
+			name:       "same path same query anchor filtered",
+			src:        "[Jump](/payments/accept-a-payment?client=ios#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment?client=ios"),
+			want:       nil,
+		},
+		{
+			name:       "same path different query anchor kept",
+			src:        "[Jump](/payments/accept-a-payment?client=ios#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment?client=web"),
+			want: []struct {
+				title    string
+				url      string
+				external bool
+			}{
+				{title: "Jump", url: "/payments/accept-a-payment?client=ios#section", external: false},
+			},
+		},
+		{
+			name:       "same path same query different order anchor filtered",
+			src:        "[Jump](/payments/accept-a-payment?lang=en&client=ios#section)",
+			currentURL: mustURL("https://docs.stripe.com/payments/accept-a-payment?client=ios&lang=en"),
+			want:       nil,
+		},
 	}
 
 	for _, tt := range tests {

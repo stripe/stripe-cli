@@ -79,7 +79,7 @@ func isSamePageAnchor(u, currentURL *url.URL) bool {
 	if u.Host != "" && u.Host != currentURL.Host {
 		return false // different site
 	}
-	return u.Path == currentURL.Path
+	return u.Path == currentURL.Path && u.Query().Encode() == currentURL.Query().Encode()
 }
 
 func nodeText(n ast.Node, source []byte) []byte {
