@@ -84,9 +84,7 @@ func TestSaveLoginDetails_UserInfo(t *testing.T) {
 		}
 	}
 	assert.Equal(t, "acct_live_456", liveComp.CompartmentID)
-	assert.Equal(t, "account", liveComp.CompartmentType)
 	assert.Equal(t, "acct_test_789", testComp.CompartmentID)
-	assert.Equal(t, "account", testComp.CompartmentType)
 }
 
 func TestSaveLoginDetails_UserInfoEmpty(t *testing.T) {

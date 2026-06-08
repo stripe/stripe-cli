@@ -21,22 +21,14 @@ import (
 
 // Compartment represents a Stripe compartment from the OIDC userinfo response.
 type Compartment struct {
-	CompartmentID   string   `json:"compartment_id"   mapstructure:"compartment_id"   toml:"compartment_id"`
-	CompartmentType string   `json:"compartment_type" mapstructure:"compartment_type" toml:"compartment_type"`
-	Livemode        bool     `json:"livemode"         mapstructure:"livemode"         toml:"livemode"`
-	Permissions     []string `json:"permissions"      mapstructure:"permissions"      toml:"permissions"`
+	CompartmentID string `json:"compartment_id" mapstructure:"compartment_id" toml:"compartment_id"`
+	Livemode      bool   `json:"livemode"        mapstructure:"livemode"        toml:"livemode"`
 }
 
 // UserInfo mirrors the OIDC userinfo endpoint response and is persisted as a
 // nested table in the profile config.
 type UserInfo struct {
-	Sub                    string        `json:"sub"                                              mapstructure:"sub"                       toml:"sub"`
-	Email                  string        `json:"email"                                            mapstructure:"email"                     toml:"email"`
-	EmailVerified          bool          `json:"email_verified"                                   mapstructure:"email_verified"             toml:"email_verified"`
-	Name                   string        `json:"name"                                             mapstructure:"name"                      toml:"name"`
-	Compartments           []Compartment `json:"https://stripe.com/compartments"                  mapstructure:"compartments"               toml:"compartments"`
-	InheritUserPermissions bool          `json:"https://stripe.com/inherit_user_permissions"      mapstructure:"inherit_user_permissions"   toml:"inherit_user_permissions"`
-	PermissionsUpdatedAt   string        `json:"https://stripe.com/permissions_updated_at"        mapstructure:"permissions_updated_at"     toml:"permissions_updated_at"`
+	Compartments []Compartment `json:"https://stripe.com/compartments" mapstructure:"compartments" toml:"compartments"`
 }
 
 // Profile handles all things related to managing the project specific configurations

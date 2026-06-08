@@ -46,16 +46,14 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 	var compartments []config.Compartment
 	if response.LiveContext != "" {
 		compartments = append(compartments, config.Compartment{
-			CompartmentID:   response.LiveContext,
-			CompartmentType: "account",
-			Livemode:        true,
+			CompartmentID: response.LiveContext,
+			Livemode:      true,
 		})
 	}
 	if response.TestWorkspaceID != "" {
 		compartments = append(compartments, config.Compartment{
-			CompartmentID:   response.TestWorkspaceID,
-			CompartmentType: "account",
-			Livemode:        false,
+			CompartmentID: response.TestWorkspaceID,
+			Livemode:      false,
 		})
 	}
 	if len(compartments) > 0 {
