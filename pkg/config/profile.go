@@ -53,8 +53,8 @@ type Profile struct {
 	AccountID              string
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
-	UAT      string
-	UserInfo *UserInfo
+	UAT                    string
+	UserInfo               *UserInfo
 }
 
 // config key names
