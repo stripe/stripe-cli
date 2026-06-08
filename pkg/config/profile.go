@@ -19,6 +19,26 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// Compartment represents a Stripe compartment from the OIDC userinfo response.
+type Compartment struct {
+	CompartmentID   string   `json:"compartment_id"   mapstructure:"compartment_id"   toml:"compartment_id"`
+	CompartmentType string   `json:"compartment_type" mapstructure:"compartment_type" toml:"compartment_type"`
+	Livemode        bool     `json:"livemode"         mapstructure:"livemode"         toml:"livemode"`
+	Permissions     []string `json:"permissions"      mapstructure:"permissions"      toml:"permissions"`
+}
+
+// UserInfo mirrors the OIDC userinfo endpoint response and is persisted as a
+// nested table in the profile config.
+type UserInfo struct {
+	Sub                    string        `json:"sub"                                              mapstructure:"sub"                       toml:"sub"`
+	Email                  string        `json:"email"                                            mapstructure:"email"                     toml:"email"`
+	EmailVerified          bool          `json:"email_verified"                                   mapstructure:"email_verified"             toml:"email_verified"`
+	Name                   string        `json:"name"                                             mapstructure:"name"                      toml:"name"`
+	Compartments           []Compartment `json:"https://stripe.com/compartments"                  mapstructure:"compartments"               toml:"compartments"`
+	InheritUserPermissions bool          `json:"https://stripe.com/inherit_user_permissions"      mapstructure:"inherit_user_permissions"   toml:"inherit_user_permissions"`
+	PermissionsUpdatedAt   string        `json:"https://stripe.com/permissions_updated_at"        mapstructure:"permissions_updated_at"     toml:"permissions_updated_at"`
+}
+
 // Profile handles all things related to managing the project specific configurations
 type Profile struct {
 	DeviceName             string
@@ -33,9 +53,8 @@ type Profile struct {
 	AccountID              string
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
-	UAT                    string
-	LiveContext            string
-	TestWorkspaceID        string
+	UAT      string
+	UserInfo *UserInfo
 }
 
 // config key names
@@ -52,10 +71,10 @@ const (
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 	SandboxClaimURLName        = "sandbox_claim_url"
 	SandboxExpiresAtName       = "sandbox_expires_at"
-	UATName                    = "uat"
-	LiveContextName            = "live_context"
-	TestWorkspaceIDName        = "test_workspace_id"
+	UserInfoName               = "user_info"
 )
+
+const UATKeychainItemKey = "uat"
 
 const (
 	// DateStringFormat is the format for expiredAt date
@@ -136,8 +155,6 @@ var authFieldNames = []string{
 	LiveModeAPIKeyName,
 	LiveModePubKeyName,
 	LiveModeKeyExpiresAtName,
-	LiveContextName,
-	TestWorkspaceIDName,
 	"profile_name",
 	// sandbox-specific fields from stripe sandbox create
 	SandboxClaimURLName,
@@ -158,6 +175,15 @@ func (p *Profile) CreateProfile() error {
 
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
+
+	// user_info is top-level; remove it before re-writing so stale data is never kept
+	if v.IsSet(UserInfoName) {
+		var err error
+		v, err = removeKey(v, UserInfoName)
+		if err != nil {
+			return err
+		}
+	}
 
 	writeErr := p.writeProfile(v)
 	if writeErr != nil {
@@ -498,15 +524,15 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.UAT != "" {
-		p.saveLivemodeValue(UATName, strings.TrimSpace(p.UAT), "UAT")
+		_ = KeyRing.Set(keyring.Item{
+			Key:   UATKeychainItemKey,
+			Data:  []byte(strings.TrimSpace(p.UAT)),
+			Label: "Stripe CLI user access token",
+		})
 	}
 
-	if p.LiveContext != "" {
-		runtimeViper.Set(p.GetConfigField(LiveContextName), strings.TrimSpace(p.LiveContext))
-	}
-
-	if p.TestWorkspaceID != "" {
-		runtimeViper.Set(p.GetConfigField(TestWorkspaceIDName), strings.TrimSpace(p.TestWorkspaceID))
+	if p.UserInfo != nil {
+		runtimeViper.Set(UserInfoName, p.UserInfo)
 	}
 
 	runtimeViper.MergeInConfig()
@@ -640,6 +666,25 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 		}
 	}
 	return nil
+}
+
+// GetUserInfo reads the stored UserInfo from the profile config.
+// Returns nil, nil when no user_info has been saved yet.
+func (p *Profile) GetUserInfo() (*UserInfo, error) {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	if !viper.IsSet(UserInfoName) {
+		return nil, nil
+	}
+
+	var ui UserInfo
+	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
+		return nil, err
+	}
+
+	return &ui, nil
 }
 
 // SessionCredentials are the credentials needed for this session

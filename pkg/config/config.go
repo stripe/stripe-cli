@@ -414,9 +414,14 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 				p := &Profile{ProfileName: field}
 				runtimeViper = p.deleteAuthFields(runtimeViper)
 				deleteLivemodeKey(LiveModeAPIKeyName, field)
-				deleteLivemodeKey(UATName, field)
 			}
 		}
+	}
+
+	deleteTopLevelLivemodeKey(UATKeychainItemKey)
+
+	if runtimeViper.IsSet(UserInfoName) {
+		runtimeViper, _ = removeKey(runtimeViper, UserInfoName)
 	}
 
 	return writeConfig(runtimeViper)
@@ -432,8 +437,13 @@ func (c *Config) RemoveAllAuthFields() error {
 			p := &Profile{ProfileName: field}
 			runtimeViper = p.deleteAuthFields(runtimeViper)
 			deleteLivemodeKey(LiveModeAPIKeyName, field)
-			deleteLivemodeKey(UATName, field)
 		}
+	}
+
+	deleteTopLevelLivemodeKey(UATKeychainItemKey)
+
+	if runtimeViper.IsSet(UserInfoName) {
+		runtimeViper, _ = removeKey(runtimeViper, UserInfoName)
 	}
 
 	return writeConfig(runtimeViper)
@@ -448,6 +458,20 @@ func deleteLivemodeKey(key string, profile string) error {
 	for _, item := range existingKeys {
 		if item == fieldID {
 			KeyRing.Remove(fieldID)
+			return nil
+		}
+	}
+	return nil
+}
+
+func deleteTopLevelLivemodeKey(key string) error {
+	existingKeys, err := KeyRing.Keys()
+	if err != nil {
+		return err
+	}
+	for _, item := range existingKeys {
+		if item == key {
+			KeyRing.Remove(key)
 			return nil
 		}
 	}
