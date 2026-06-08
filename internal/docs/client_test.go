@@ -77,6 +77,24 @@ func TestNewClient_UserAgent(t *testing.T) {
 	assert.Equal(t, want, got.userAgent)
 }
 
+func TestWithAgent(t *testing.T) {
+	base := fmt.Sprintf("stripe-cli docs-plugin/1.2.3 (%s; %s; %s)", runtime.GOOS, runtime.GOARCH, runtime.Version())
+	tests := []struct {
+		name  string
+		agent string
+		want  string
+	}{
+		{"appends agent", "claude_code", base + " AIAgent/claude_code"},
+		{"empty agent is no-op", "", base},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewClient("1.2.3").WithOptions(WithAgent(tt.agent))
+			assert.Equal(t, tt.want, got.userAgent)
+		})
+	}
+}
+
 func TestNewClient_Defaults(t *testing.T) {
 	got := NewClient("0.1.0")
 	assert.Equal(t, defaultBaseURL, got.baseURL.String())

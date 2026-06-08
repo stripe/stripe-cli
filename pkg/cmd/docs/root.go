@@ -121,6 +121,9 @@ func (r *RootCommand) initClient() {
 	}
 	r.client = docs.NewClient(r.version)
 	var clientOpts []docs.ClientOption
+	if a := agent.Detect(); a != agent.NotDetected {
+		clientOpts = append(clientOpts, docs.WithAgent(string(a)))
+	}
 	if r.logger != nil {
 		clientOpts = append(clientOpts, docs.WithLogger(r.logger))
 	}
@@ -146,7 +149,7 @@ func (r *RootCommand) initRenderer() {
 	case "on":
 		// Use default styled rendering (auto-detect dark/light).
 	default:
-		if agent.Detect() {
+		if agent.Detect() != agent.NotDetected {
 			opts = append(opts, markdown.WithStyle("notty"))
 			r.noPager = true
 		}
@@ -182,6 +185,11 @@ func (r *RootCommand) initLogger() {
 func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
+	if r.logger != nil {
+		if a := agent.Detect(); a != agent.NotDetected {
+			r.logger.Debug("agent detected", "name", string(a))
+		}
+	}
 	return nil
 }
 
@@ -221,7 +229,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
-	if r.noTUI {
+	if r.noTUI || agent.Detect() != agent.NotDetected {
 		return false
 	}
 	f, ok := cmd.OutOrStdout().(*os.File)
