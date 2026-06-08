@@ -60,6 +60,8 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		c.cfg.Profile.UserInfo = &config.UserInfo{
 			Compartments: compartments,
 		}
+	} else {
+		c.cfg.Profile.UserInfo = nil
 	}
 
 	// TODO: AccountDisplayName appears to be empty for test mode accounts; is there a better default?

@@ -515,12 +515,16 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
 	}
 
-	if p.UAT != "" {
-		_ = KeyRing.Set(keyring.Item{
-			Key:   UATKeychainItemKey,
-			Data:  []byte(strings.TrimSpace(p.UAT)),
-			Label: "Stripe CLI user access token",
-		})
+	if KeyRing != nil {
+		if p.UAT != "" {
+			_ = KeyRing.Set(keyring.Item{
+				Key:   UATKeychainItemKey,
+				Data:  []byte(strings.TrimSpace(p.UAT)),
+				Label: "Stripe CLI user access token",
+			})
+		} else {
+			_ = KeyRing.Remove(UATKeychainItemKey)
+		}
 	}
 
 	if p.UserInfo != nil {
