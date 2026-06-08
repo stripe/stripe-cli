@@ -106,7 +106,8 @@ func TestDetectTerminalProgram(t *testing.T) {
 		envs     map[string]string
 		expected string
 	}{
-		{"term program", map[string]string{"TERM_PROGRAM": "iTerm.app"}, "iTerm.app"},
+		{"lc terminal", map[string]string{"LC_TERMINAL": "iTerm2"}, "iTerm2"},
+		{"warp", map[string]string{"WARP_CLIENT_VERSION": "v0.2026.06.01"}, "warp"},
 		{"windows terminal", map[string]string{"WT_SESSION": "abc"}, "windows_terminal"},
 		{"kitty", map[string]string{"KITTY_WINDOW_ID": "1"}, "kitty"},
 		{"alacritty window id", map[string]string{"ALACRITTY_WINDOW_ID": "123"}, "alacritty"},
@@ -114,6 +115,8 @@ func TestDetectTerminalProgram(t *testing.T) {
 		{"wezterm executable", map[string]string{"WEZTERM_EXECUTABLE": "/Applications/WezTerm.app"}, "wezterm"},
 		{"wezterm pane", map[string]string{"WEZTERM_PANE": "1"}, "wezterm"},
 		{"ghostty", map[string]string{"GHOSTTY_RESOURCES_DIR": "/Applications/Ghostty.app/Contents/Resources"}, "ghostty"},
+		{"term program fallback", map[string]string{"TERM_PROGRAM": "Apple_Terminal"}, "Apple_Terminal"},
+		{"specific env wins over term program", map[string]string{"TERM_PROGRAM": "tmux", "LC_TERMINAL": "iTerm2"}, "iTerm2"},
 		{"unknown", map[string]string{}, ""},
 	}
 

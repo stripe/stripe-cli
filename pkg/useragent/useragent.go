@@ -68,8 +68,11 @@ func DetectInScreen(getEnv func(string) string) bool {
 
 // DetectTerminalProgram detects the terminal program the CLI was invoked from, when available.
 func DetectTerminalProgram(getEnv func(string) string) string {
-	if program := getEnv("TERM_PROGRAM"); program != "" {
-		return program
+	if terminal := getEnv("LC_TERMINAL"); terminal != "" {
+		return terminal
+	}
+	if getEnv("WARP_CLIENT_VERSION") != "" {
+		return "warp"
 	}
 	if getEnv("WT_SESSION") != "" {
 		return "windows_terminal"
@@ -85,6 +88,9 @@ func DetectTerminalProgram(getEnv func(string) string) string {
 	}
 	if getEnv("GHOSTTY_RESOURCES_DIR") != "" {
 		return "ghostty"
+	}
+	if program := getEnv("TERM_PROGRAM"); program != "" {
+		return program
 	}
 	return ""
 }
