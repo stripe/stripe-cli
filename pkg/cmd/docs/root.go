@@ -23,6 +23,8 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
 )
 
+const colorValueOff = "off"
+
 // RootCommand is the root command for the docs plugin.
 type RootCommand struct {
 	cmd *cobra.Command
@@ -90,6 +92,7 @@ func New() *RootCommand {
 	})
 	r.cmd.AddCommand(r.newSearchCommand())
 	r.cmd.AddCommand(r.newAPICmd())
+	r.cmd.AddCommand(r.newSkillsCommand())
 	return r
 }
 
@@ -144,7 +147,7 @@ func (r *RootCommand) initRenderer() {
 	}
 	var opts []markdown.RendererOption
 	switch r.color() {
-	case "off":
+	case colorValueOff:
 		opts = append(opts, markdown.WithStyle("notty"))
 	case "on":
 		// Use default styled rendering (auto-detect dark/light).

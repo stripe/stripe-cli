@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"runtime"
 	"time"
+
+	"github.com/stripe/stripe-cli-docs-plugin/internal/agentskills"
 )
 
 const defaultBaseURL = "https://docs.stripe.com"
@@ -184,6 +186,28 @@ func (c *Client) do(req *http.Request) (response, error) {
 	}
 
 	return response{body: body, finalURL: resp.Request.URL}, nil
+}
+
+// FetchSkills retrieves the skills index from docs.stripe.com.
+func (c *Client) FetchSkills(ctx context.Context) (*agentskills.Index, error) {
+	u := c.baseURL.JoinPath(agentskills.IndexPath)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("skills: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	res, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var response agentskills.Index
+	if err := json.Unmarshal(res.body, &response); err != nil {
+		return nil, fmt.Errorf("skills: unmarshal response: %w", err)
+	}
+	return &response, nil
 }
 
 // Search sends the request to docs search endpoint and returns a list of search results.
