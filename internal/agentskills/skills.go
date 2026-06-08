@@ -3,6 +3,9 @@
 // /.well-known/skills/index.json following this standard.
 package agentskills
 
+// IndexPath is the well-known path for the agent skills index, as defined by the agentskills.io standard.
+const IndexPath = "/.well-known/skills/index.json"
+
 // Index represents the skills index from a /.well-known/skills/index.json.
 type Index struct {
 	Skills []Skill `json:"skills"`
@@ -10,7 +13,6 @@ type Index struct {
 
 // Skill represents a single skill entry from the skills index.
 type Skill struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Files       []string `json:"files"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }

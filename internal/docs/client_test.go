@@ -473,24 +473,23 @@ func TestFetchSkills(t *testing.T) {
 		{
 			name: "success",
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, "/.well-known/skills/index.json", r.URL.Path)
+				assert.Equal(t, agentskills.IndexPath, r.URL.Path)
 				assert.Equal(t, "application/json", r.Header.Get("Accept"))
 				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli docs-plugin/")
 				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `{"skills":[{"name":"stripe-best-practices","description":"Guides Stripe integration decisions","files":["SKILL.md","references/payments.md"]}]}`)
+				fmt.Fprint(w, `{"skills":[{"name":"stripe-best-practices","description":"Guides Stripe integration decisions"}]}`)
 			},
 			wantCheck: func(t *testing.T, got *agentskills.Index) {
 				require.Len(t, got.Skills, 1)
 				assert.Equal(t, "stripe-best-practices", got.Skills[0].Name)
 				assert.Equal(t, "Guides Stripe integration decisions", got.Skills[0].Description)
-				assert.Equal(t, []string{"SKILL.md", "references/payments.md"}, got.Skills[0].Files)
 			},
 		},
 		{
 			name: "multiple skills",
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `{"skills":[{"name":"skill-a","description":"desc a","files":["a.md"]},{"name":"skill-b","description":"desc b","files":["b.md"]}]}`)
+				fmt.Fprint(w, `{"skills":[{"name":"skill-a","description":"desc a"},{"name":"skill-b","description":"desc b"}]}`)
 			},
 			wantCheck: func(t *testing.T, got *agentskills.Index) {
 				require.Len(t, got.Skills, 2)

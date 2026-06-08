@@ -190,7 +190,7 @@ func (c *Client) do(req *http.Request) (response, error) {
 
 // FetchSkills retrieves the skills index from docs.stripe.com.
 func (c *Client) FetchSkills(ctx context.Context) (*agentskills.Index, error) {
-	u := c.baseURL.JoinPath("/.well-known/skills/index.json")
+	u := c.baseURL.JoinPath(agentskills.IndexPath)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {

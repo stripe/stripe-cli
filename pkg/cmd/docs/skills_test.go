@@ -14,14 +14,15 @@ import (
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
 	"github.com/stripe/stripe-cli-docs-plugin/cmd"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/agentskills"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 )
 
 func TestSkillsListCommand(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/.well-known/skills/index.json", r.URL.Path)
+		assert.Equal(t, agentskills.IndexPath, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"skills":[{"name":"stripe-best-practices","description":"Guides Stripe integration decisions.","files":["SKILL.md"]},{"name":"upgrade-stripe","description":"Guide for upgrading Stripe API versions and SDKs","files":["SKILL.md"]}]}`)
+		fmt.Fprint(w, `{"skills":[{"name":"stripe-best-practices","description":"Guides Stripe integration decisions."},{"name":"upgrade-stripe","description":"Guide for upgrading Stripe API versions and SDKs"}]}`)
 	}))
 	defer server.Close()
 
