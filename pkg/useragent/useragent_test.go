@@ -63,3 +63,70 @@ func TestDetectInstallMethod(t *testing.T) {
 		})
 	}
 }
+
+func TestDetectInTmux(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected bool
+	}{
+		{"tmux", map[string]string{"TMUX": "/tmp/tmux-501/default,123,0"}, true},
+		{"not tmux", map[string]string{}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectInTmux(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetectInScreen(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected bool
+	}{
+		{"screen", map[string]string{"STY": "1234.pts-0.host"}, true},
+		{"not screen", map[string]string{}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectInScreen(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetectTerminalProgram(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected string
+	}{
+		{"term program", map[string]string{"TERM_PROGRAM": "iTerm.app"}, "iTerm.app"},
+		{"windows terminal", map[string]string{"WT_SESSION": "abc"}, "windows_terminal"},
+		{"kitty", map[string]string{"KITTY_WINDOW_ID": "1"}, "kitty"},
+		{"alacritty window id", map[string]string{"ALACRITTY_WINDOW_ID": "123"}, "alacritty"},
+		{"alacritty log", map[string]string{"ALACRITTY_LOG": "/tmp/alacritty.log"}, "alacritty"},
+		{"wezterm executable", map[string]string{"WEZTERM_EXECUTABLE": "/Applications/WezTerm.app"}, "wezterm"},
+		{"wezterm pane", map[string]string{"WEZTERM_PANE": "1"}, "wezterm"},
+		{"ghostty", map[string]string{"GHOSTTY_RESOURCES_DIR": "/Applications/Ghostty.app/Contents/Resources"}, "ghostty"},
+		{"unknown", map[string]string{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectTerminalProgram(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func mapEnv(envs map[string]string) func(string) string {
+	return func(key string) string {
+		return envs[key]
+	}
+}
