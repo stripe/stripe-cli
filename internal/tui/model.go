@@ -480,7 +480,7 @@ func (m Model) status() string {
 		if m.loading {
 			rightLabel = "Loading..."
 		} else {
-			rightLabel = "↵ browse"
+			rightLabel = "/ search • ↵ browse"
 		}
 	} else {
 		rightLabel = fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100)
