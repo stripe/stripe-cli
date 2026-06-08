@@ -37,7 +37,7 @@ func (r *RootCommand) newSkillsListCommand() *cobra.Command {
 func (r *RootCommand) runSkillsList(cmd *cobra.Command, _ []string) error {
 	styles := ui.DefaultStyles()
 	checkmark := styles.SuccessText.Render("✓")
-	disabled := agent.Detect() || !isStdoutTTY(cmd)
+	disabled := agent.Detect() != agent.NotDetected || !isStdoutTTY(cmd)
 
 	var index *agentskills.Index
 	err := spinner.New().
