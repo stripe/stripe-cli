@@ -264,6 +264,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.rerenderCmd()
 			}
 		}
+		return m, nil
 
 	case rerenderMsg:
 		if msg.forWidth == m.width {
