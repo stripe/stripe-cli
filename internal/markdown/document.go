@@ -56,7 +56,10 @@ func (d *Document) Title() string {
 }
 
 // References returns all hyperlinks found in the document, in document order.
-func (d *Document) References() []Reference {
+// currentURL is the URL of the page being viewed; links that resolve to the
+// same page (with or without a fragment) are excluded so that on-page anchors
+// do not clutter the reference palette.
+func (d *Document) References(currentURL *url.URL) []Reference {
 	var refs []Reference
 	_ = ast.Walk(d.Node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
@@ -64,6 +67,9 @@ func (d *Document) References() []Reference {
 		}
 		if link, ok := n.(*ast.Link); ok {
 			if u, err := url.Parse(string(link.Destination)); err == nil {
+				if isSamePageAnchor(u, currentURL) {
+					return ast.WalkContinue, nil
+				}
 				refs = append(refs, Reference{
 					Title:    string(nodeText(link, d.Source)),
 					URL:      u,
@@ -74,6 +80,21 @@ func (d *Document) References() []Reference {
 		return ast.WalkContinue, nil
 	})
 	return refs
+}
+
+// isSamePageAnchor reports whether u is an anchor link that resolves to the
+// same page as currentURL. Pure fragment-only links (#section) always match.
+func isSamePageAnchor(u, currentURL *url.URL) bool {
+	if u.Host == "" && u.Path == "" {
+		return true // pure #fragment
+	}
+	if u.Fragment == "" || currentURL == nil {
+		return false
+	}
+	if u.Host != "" && u.Host != currentURL.Host {
+		return false // different site
+	}
+	return u.Path == currentURL.Path && u.Query().Encode() == currentURL.Query().Encode()
 }
 
 func nodeText(n ast.Node, source []byte) []byte {
