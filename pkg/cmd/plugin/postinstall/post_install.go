@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-// Prints optional next steps after plugin has been installed
+// PrintTips prints optional next steps after the plugin has been installed.
 func PrintTips(out io.Writer, pluginName string) {
 	switch pluginName {
 	case "directory":
