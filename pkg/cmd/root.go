@@ -52,7 +52,8 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"status":    "stripe",
 		"resources": "resources",
-		AIAgentHelpAnnotationKey: "  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
+		AIAgentHelpAnnotationKey: "  If not authenticated, run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>` to get API keys instantly.\n" +
+			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
 			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
 			"  Additional commands (apps, docs, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},

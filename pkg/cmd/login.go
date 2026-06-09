@@ -74,8 +74,9 @@ For agents and scripts, use the two-step non-interactive flow:
   #   Step 2 – after the user approves in the browser, complete login
   stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Prefer setting STRIPE_API_KEY or using `--api-key` over `stripe login` for non-interactive use.\n" +
-				"  If authentication is required, run `stripe login` — in agent contexts it automatically outputs\n" +
+			AIAgentHelpAnnotationKey: "  If no API key is available, run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>` to provision keys instantly without user action.\n" +
+				"  Alternatively, set STRIPE_API_KEY or use `--api-key` if you already have a key.\n" +
+				"  If authentication to an existing account is required, run `stripe login` — in agent contexts it outputs\n" +
 				"  a browser URL and a `next_step` command to complete login with user action.",
 		},
 		RunE: lc.runLoginCmd,
