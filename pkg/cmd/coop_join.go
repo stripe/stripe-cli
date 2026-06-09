@@ -126,14 +126,9 @@ func (jc *coopJoinCmd) pickSession(store *coop.Store) (*coop.Session, error) {
 
 	var choice string
 
-	err = huh.NewSelect[string]().
-		Title("Pick a session to resume:").
-		Options(options...).
-		Value(&choice).
-		WithTheme(tui.HuhTheme()).
-		Run()
+	err = runCoopSelect("Pick a session to resume:", options, &choice)
 	if err != nil {
-		return nil, fmt.Errorf("canceled")
+		return nil, err
 	}
 
 	return store.Read(choice)

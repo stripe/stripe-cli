@@ -45,17 +45,15 @@ func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	switch {
 	case hasClaude && hasCodex:
 		var choice string
-		err := huh.NewSelect[string]().
-			Title("Multiple agents detected. Which would you like to use?").
-			Options(
+		err := runCoopSelect("Multiple agents detected. Which would you like to use?",
+			[]huh.Option[string]{
 				huh.NewOption("Claude Code", "claude"),
 				huh.NewOption("Codex", "codex"),
-			).
-			Value(&choice).
-			WithTheme(tui.HuhTheme()).
-			Run()
+			},
+			&choice,
+		)
 		if err != nil {
-			return &agentInfo{name: "claude", path: claudePath}, nil
+			return nil, err
 		}
 		if choice == "codex" {
 			return &agentInfo{name: "codex", path: codexPath}, nil
@@ -84,15 +82,13 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) bool {
 		return false
 	}
 
-	err := huh.NewSelect[string]().
-		Title(title).
-		Options(
+	err := runCoopSelect(title,
+		[]huh.Option[string]{
 			huh.NewOption("Normal — agent asks before running commands", "normal"),
 			huh.NewOption("Auto-approve — skip all permission prompts (faster, less safe)", "auto"),
-		).
-		Value(&choice).
-		WithTheme(tui.HuhTheme()).
-		Run()
+		},
+		&choice,
+	)
 	if err != nil {
 		return false
 	}
@@ -211,15 +207,15 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	// Check for existing session
 	if err := exec.Command("tmux", "has-session", "-t", sessionName).Run(); err == nil {
 		var choice string
-		huh.NewSelect[string]().
-			Title("A co-op tmux session already exists. What would you like to do?").
-			Options(
+		if err := runCoopSelect("A co-op tmux session already exists. What would you like to do?",
+			[]huh.Option[string]{
 				huh.NewOption("Reattach to existing session", "attach"),
 				huh.NewOption("Start fresh (kills existing session)", "fresh"),
-			).
-			Value(&choice).
-			WithTheme(tui.HuhTheme()).
-			Run()
+			},
+			&choice,
+		); err != nil {
+			return err
+		}
 
 		if choice == "attach" {
 			attach := exec.Command("tmux", "attach-session", "-t", sessionName)
