@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -36,7 +36,7 @@ func TestReviewInteractionJourney(t *testing.T) {
 
 	m = updateWithRunes(t, m, "r")
 	assert.True(t, m.rejecting)
-	assert.Contains(t, m.renderFooter(), "esc cancel")
+	assertContainsPlain(t, m.renderFooter(), "esc cancel")
 	assertInteractionLayout(t, m, "request changes input")
 
 	m = updateWithKey(t, m, tea.KeyEnter)
@@ -100,7 +100,7 @@ func TestCompletionInteractionJourney(t *testing.T) {
 	m = attachTestStore(t, m)
 	m = prepareInteractiveModel(m, 56, 18)
 
-	assert.Contains(t, m.View(), "Integration complete")
+	assert.Contains(t, m.View().Content, "Integration complete")
 	assertInteractionLayout(t, m, "completion initial")
 
 	m = updateWithRunes(t, m, "j")
@@ -123,11 +123,11 @@ func TestDetailsToggleKeepsChromePinned(t *testing.T) {
 
 			for i := 0; i < 4; i++ {
 				m = updateWithKey(t, m, tea.KeyEnter)
-				assertLayoutFits(t, m.View(), size)
-				assertHeaderIsPinned(t, m.View())
-				assertFooterIsPinned(t, m.View(), "q quit")
-				assert.NotContains(t, m.View(), "Details opened")
-				assert.NotContains(t, m.View(), "Details collapsed")
+				assertLayoutFits(t, m.View().Content, size)
+				assertHeaderIsPinned(t, m.View().Content)
+				assertFooterIsPinned(t, m.View().Content, "enter")
+				assert.NotContains(t, m.View().Content, "Details opened")
+				assert.NotContains(t, m.View().Content, "Details collapsed")
 			}
 		})
 	}
@@ -137,11 +137,11 @@ func TestExpandedReviewConfirmationKeepsChromePinned(t *testing.T) {
 	m := expandedDetailsLayoutModel()
 	m = prepareInteractiveModel(m, 69, 50)
 
-	rendered := m.View()
+	rendered := m.View().Content
 
 	assertLayoutFits(t, rendered, layoutSize{name: "expanded_review_confirmation", width: 69, height: 50})
 	assertHeaderIsPinned(t, rendered)
-	assertFooterIsPinned(t, rendered, "q quit")
+	assertFooterIsPinned(t, rendered, "enter")
 	assert.Contains(t, rendered, "Review")
 	assert.Contains(t, rendered, "confirm")
 	assert.Contains(t, rendered, "Waiting for you")
@@ -176,9 +176,9 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	m = updateWithRunes(t, m, "j")
 	assert.Equal(t, 2, m.cursor)
 	assertInteractionLayout(t, m, "moved onto review card")
-	assert.Equal(t, m.height-1, lineIndexContaining(m.View(), "q quit"))
-	assert.Contains(t, m.View(), "Review")
-	assert.Contains(t, m.View(), "f follow")
+	assert.Equal(t, m.height-1, lineIndexContaining(m.View().Content, "enter"))
+	assert.Contains(t, m.View().Content, "Review")
+	assertContainsPlain(t, m.View().Content, "f follow")
 }
 
 func attachTestStore(t *testing.T, m Model) Model {
@@ -194,7 +194,7 @@ func prepareInteractiveModel(m Model, width, height int) Model {
 	m.ready = true
 	m.width = width
 	m.height = height
-	m.viewport = viewport.New(width, 10)
+	m.viewport = viewport.New(viewport.WithWidth(width), viewport.WithHeight(10))
 	m.resizeViewport()
 	m.syncViewport()
 	return m
@@ -202,23 +202,24 @@ func prepareInteractiveModel(m Model, width, height int) Model {
 
 func updateWithRunes(t *testing.T, m Model, text string) Model {
 	t.Helper()
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(text)})
+	runes := []rune(text)
+	updated, _ := m.Update(tea.KeyPressMsg{Code: runes[0], Text: text})
 	return updated.(Model)
 }
 
-func updateWithKey(t *testing.T, m Model, key tea.KeyType) Model {
+func updateWithKey(t *testing.T, m Model, key rune) Model {
 	t.Helper()
-	updated, _ := m.Update(tea.KeyMsg{Type: key})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: key})
 	return updated.(Model)
 }
 
 func assertInteractionLayout(t *testing.T, m Model, label string) {
 	t.Helper()
-	rendered := m.View()
+	rendered := m.View().Content
 	size := layoutSize{name: strings.ReplaceAll(label, " ", "_"), width: m.width, height: m.height}
 	assertLayoutFits(t, rendered, size)
 	assertHeaderIsPinned(t, rendered)
-	footerToken := "q quit"
+	footerToken := "enter"
 	if m.rejecting {
 		footerToken = "esc cancel"
 	}

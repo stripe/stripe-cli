@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -49,20 +50,20 @@ func TestUILayoutMatrix(t *testing.T) {
 		{
 			name:         "active_step",
 			model:        activeStepLayoutModel,
-			footerToken:  "q quit",
+			footerToken:  "enter",
 			expectCursor: true,
 		},
 		{
 			name:             "review_step_long_prompt",
 			model:            reviewStepLongPromptLayoutModel,
-			footerToken:      "q quit",
+			footerToken:      "enter",
 			expectCursor:     true,
 			expectReviewCard: true,
 		},
 		{
 			name:             "chapter_review_many_changes",
 			model:            chapterReviewLayoutModel,
-			footerToken:      "q quit",
+			footerToken:      "enter",
 			expectCursor:     true,
 			expectReviewCard: true,
 		},
@@ -82,14 +83,14 @@ func TestUILayoutMatrix(t *testing.T) {
 		{
 			name:             "expanded_details",
 			model:            expandedDetailsLayoutModel,
-			footerToken:      "q quit",
+			footerToken:      "enter",
 			expectCursor:     true,
 			expectReviewCard: true,
 		},
 		{
 			name:             "completion",
 			model:            completionLayoutModel,
-			footerToken:      "q quit",
+			footerToken:      "enter",
 			expectCompletion: true,
 		},
 	}
@@ -125,7 +126,7 @@ func TestCompletionTransitionClearsTransientStatus(t *testing.T) {
 	m.ready = true
 	m.width = 80
 	m.height = 24
-	m.viewport = viewport.New(80, 10)
+	m.viewport = viewport.New(viewport.WithWidth(80), viewport.WithHeight(10))
 	m.statusMessage = "Waiting for agent to continue..."
 	m.statusExpiresAt = m.lastUpdateTime.Add(10)
 
@@ -148,7 +149,7 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	m.ready = true
 	m.width = 56
 	m.height = 18
-	m.viewport = viewport.New(m.width, 10)
+	m.viewport = viewport.New(viewport.WithWidth(m.width), viewport.WithHeight(10))
 	m.cursor = 0
 	m.session.Chapters[0].Nodes[0].State = coop.StepDone
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
@@ -165,12 +166,12 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 
 	updatedModel, _ := m.Update(sessionUpdatedMsg{session: m.session})
 	updated := updatedModel.(Model)
-	rendered := updated.View()
+	rendered := updated.View().Content
 
 	assert.Equal(t, 1, updated.cursor)
 	assertLayoutFits(t, rendered, layoutSize{name: "narrow_acceptance", width: 56, height: 18})
 	assertHeaderIsPinned(t, rendered)
-	assertFooterIsPinned(t, rendered, "q quit")
+	assertFooterIsPinned(t, rendered, "enter")
 	assert.Contains(t, rendered, "Review")
 	assert.Contains(t, rendered, "You check")
 }
@@ -182,8 +183,8 @@ func TestFooterActionRowStaysPinnedAcrossFooterModes(t *testing.T) {
 		model func() Model
 		token string
 	}{
-		{name: "active", model: activeStepLayoutModel, token: "q quit"},
-		{name: "review", model: reviewStepLongPromptLayoutModel, token: "q quit"},
+		{name: "active", model: activeStepLayoutModel, token: "enter"},
+		{name: "review", model: reviewStepLongPromptLayoutModel, token: "enter"},
 		{name: "manual", model: manualNavigationLayoutModel, token: "f follow"},
 		{name: "request_changes", model: requestChangesLayoutModel, token: "esc cancel"},
 	}
@@ -208,24 +209,24 @@ func TestPinnedViewportCapsStaleViewportHeight(t *testing.T) {
 	size := layoutSize{name: "coop_start_split", width: 69, height: 50}
 	m := reviewStepLongPromptLayoutModel()
 	m = prepareInteractiveModel(m, size.width, size.height)
-	m.viewport.Height = size.height
+	m.viewport.SetHeight(size.height)
 
-	rendered := m.View()
+	rendered := m.View().Content
 
 	assertLayoutFits(t, rendered, size)
 	assertHeaderIsPinned(t, rendered)
-	assertFooterIsPinned(t, rendered, "q quit")
-	assert.Equal(t, size.height-1, lineIndexContaining(rendered, "q quit"))
+	assertFooterIsPinned(t, rendered, "enter")
+	assert.Equal(t, size.height-1, lineIndexContaining(rendered, "enter"))
 }
 
 func renderLayoutScenario(m *Model, size layoutSize) string {
 	m.ready = true
 	m.width = size.width
 	m.height = size.height
-	m.viewport = viewport.New(size.width, 10)
+	m.viewport = viewport.New(viewport.WithWidth(size.width), viewport.WithHeight(10))
 	m.resizeViewport()
 	m.syncViewport()
-	return m.View()
+	return m.View().Content
 }
 
 func assertLayoutFits(t *testing.T, rendered string, size layoutSize) {
@@ -246,13 +247,13 @@ func assertFooterIsPinned(t *testing.T, rendered, token string) {
 	t.Helper()
 	lines := strings.Split(strings.TrimRight(rendered, "\n"), "\n")
 	require.NotEmpty(t, lines)
-	window := strings.Join(lines[max(len(lines)-4, 0):], "\n")
+	window := ansi.Strip(strings.Join(lines[max(len(lines)-4, 0):], "\n"))
 	assert.Contains(t, window, token, "primary footer action should stay near the bottom")
 }
 
 func lineIndexContaining(rendered, token string) int {
 	for i, line := range strings.Split(rendered, "\n") {
-		if strings.Contains(line, token) {
+		if strings.Contains(ansi.Strip(line), token) {
 			return i
 		}
 	}
@@ -324,7 +325,7 @@ func chapterReviewLayoutModel() Model {
 func requestChangesLayoutModel() Model {
 	m := reviewStepLongPromptLayoutModel()
 	m.rejecting = true
-	m.rejectionInput = "The Checkout Session should use the persisted price ID instead of creating a new price for every request."
+	m.rejectionInput.SetValue("The Checkout Session should use the persisted price ID instead of creating a new price for every request.")
 	return m
 }
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
@@ -38,7 +38,7 @@ func TestUILayoutStressSessions(t *testing.T) {
 				if m.rejecting {
 					assertFooterIsPinned(t, rendered, "esc cancel")
 				} else {
-					assertFooterIsPinned(t, rendered, "q quit")
+					assertFooterIsPinned(t, rendered, "enter")
 				}
 				if scenario.expectReviewCard {
 					assert.Contains(t, rendered, "Review")
@@ -173,6 +173,6 @@ func stressManyStepsManualNavigationModel() Model {
 func stressLongRejectionInputModel() Model {
 	m := stressLongReviewModel()
 	m.rejecting = true
-	m.rejectionInput = "Please rework the endpoint so it validates the stored price ID, handles missing environment variables with a useful error, preserves webhook signature verification, and includes a manual test path I can run locally before confirming."
+	m.rejectionInput.SetValue("Please rework the endpoint so it validates the stored price ID, handles missing environment variables with a useful error, preserves webhook signature verification, and includes a manual test path I can run locally before confirming.")
 	return m
 }

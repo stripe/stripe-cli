@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +15,7 @@ import (
 func readyModel() Model {
 	m := testModel()
 	m.ready = true
-	m.viewport = viewport.New(80, 20)
+	m.viewport = viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	return m
 }
 
@@ -23,7 +23,7 @@ func TestUpdateKeyDown(t *testing.T) {
 	m := readyModel()
 	m.cursor = 0
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
 	assert.Equal(t, 1, updated.cursor)
@@ -34,7 +34,7 @@ func TestUpdateKeyUp(t *testing.T) {
 	m := readyModel()
 	m.cursor = 2
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
 
 	assert.Equal(t, 1, updated.cursor)
@@ -44,7 +44,7 @@ func TestUpdateKeyUpAtTop(t *testing.T) {
 	m := readyModel()
 	m.cursor = 0
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("k")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
 
 	assert.Equal(t, 0, updated.cursor)
@@ -54,7 +54,7 @@ func TestUpdateKeyDownAtBottom(t *testing.T) {
 	m := readyModel()
 	m.cursor = m.session.TotalSteps() - 1
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
 	assert.Equal(t, m.session.TotalSteps()-1, updated.cursor)
@@ -64,7 +64,7 @@ func TestUpdateKeyExpand(t *testing.T) {
 	m := readyModel()
 	m.expanded = false
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	updated := result.(Model)
 
 	assert.True(t, updated.expanded)
@@ -74,7 +74,7 @@ func TestUpdateKeyExpandToggle(t *testing.T) {
 	m := readyModel()
 	m.expanded = true
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	updated := result.(Model)
 
 	assert.False(t, updated.expanded)
@@ -85,7 +85,7 @@ func TestUpdateKeyTabCyclesDetailSection(t *testing.T) {
 	m.expanded = true
 	m.detailTab = 0
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	updated := result.(Model)
 
 	assert.Equal(t, 1, updated.detailTab)
@@ -95,7 +95,7 @@ func TestUpdateKeyEscClosesDetails(t *testing.T) {
 	m := readyModel()
 	m.expanded = true
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	updated := result.(Model)
 
 	assert.False(t, updated.expanded)
@@ -111,7 +111,7 @@ func TestUpdateKeyConfirm(t *testing.T) {
 	m.cursor = 0
 	store.Write(m.session)
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	updated := result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
@@ -122,7 +122,7 @@ func TestUpdateKeyConfirmNotOnReviewStep(t *testing.T) {
 	m := readyModel()
 	m.cursor = 0 // step is Done, not Review
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	updated := result.(Model)
 
 	// Should not change
@@ -141,13 +141,13 @@ func TestUpdateKeyReject(t *testing.T) {
 	m.cursor = 0
 	store.Write(m.session)
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	updated := result.(Model)
 	assert.True(t, updated.rejecting)
 
-	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Needs tests")})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: 'N', Text: "Needs tests"})
 	updated = result.(Model)
-	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
@@ -167,9 +167,9 @@ func TestUpdateKeyRejectRequiresNote(t *testing.T) {
 	m.cursor = 0
 	store.Write(m.session)
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	updated := result.(Model)
-	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
@@ -190,7 +190,7 @@ func TestUpdateKeyConfirmChapterReview(t *testing.T) {
 	m.cursor = 0
 	store.Write(m.session)
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("c")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	updated := result.(Model)
 
 	node1, _ := updated.session.NodeByNumber(1)
@@ -236,11 +236,11 @@ func TestUpdateKeyRejectChapterReview(t *testing.T) {
 	m.cursor = 0
 	store.Write(m.session)
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	updated := result.(Model)
-	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("Rework both steps")})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: 'R', Text: "Rework both steps"})
 	updated = result.(Model)
-	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = result.(Model)
 
 	node1, _ := updated.session.NodeByNumber(1)
@@ -261,11 +261,11 @@ func TestUpdateKeyRejectCancel(t *testing.T) {
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.cursor = 0
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	updated := result.(Model)
 	assert.True(t, updated.rejecting)
 
-	result, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
@@ -277,7 +277,7 @@ func TestUpdateKeyRejectCancel(t *testing.T) {
 func TestUpdateKeyQuit(t *testing.T) {
 	m := readyModel()
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	// tea.Quit returns a special command
 	assert.NotNil(t, cmd)
 }
@@ -290,7 +290,7 @@ func TestUpdateWindowSize(t *testing.T) {
 
 	assert.Equal(t, 120, updated.width)
 	assert.Equal(t, 40, updated.height)
-	assert.Equal(t, 120, updated.viewport.Width)
+	assert.Equal(t, 120, updated.viewport.Width())
 }
 
 func TestUpdateSessionUpdated(t *testing.T) {
@@ -373,7 +373,7 @@ func TestFollowKeyResumesAutoFollow(t *testing.T) {
 	m.cursor = 0
 	m.userMoved = true
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	updated := result.(Model)
 
 	assert.False(t, updated.userMoved)
@@ -409,7 +409,7 @@ func TestCompletionViewKeyDown(t *testing.T) {
 	}
 	m.cursor = 0
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
 	assert.Equal(t, 1, updated.cursor)
@@ -418,7 +418,7 @@ func TestCompletionViewKeyDown(t *testing.T) {
 func TestCompletionViewportKeepsReceiptAtTop(t *testing.T) {
 	m := readyModel()
 	m.height = 10
-	m.viewport.Height = 3
+	m.viewport.SetHeight(3)
 	for i := range m.session.Chapters {
 		for j := range m.session.Chapters[i].Nodes {
 			m.session.Chapters[i].Nodes[j].State = coop.StepDone
@@ -437,7 +437,7 @@ func TestCompletionViewportKeepsReceiptAtTop(t *testing.T) {
 
 	m.syncViewport()
 
-	assert.Equal(t, 0, m.viewport.YOffset)
+	assert.Equal(t, 0, m.viewport.YOffset())
 	assert.Contains(t, m.viewport.View(), "Integration complete")
 }
 
@@ -451,7 +451,7 @@ func TestCompletionViewKeyDownWraps(t *testing.T) {
 	suggestions := m.getCompletionSuggestions()
 	m.cursor = len(suggestions) - 1
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
 	assert.Equal(t, 0, updated.cursor)
@@ -474,7 +474,7 @@ func TestCompletionEnterSelectsDone(t *testing.T) {
 	suggestions := m.getCompletionSuggestions()
 	m.cursor = len(suggestions) - 1
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	// Should return tea.Quit
 	assert.NotNil(t, cmd)
 
@@ -498,7 +498,7 @@ func TestCompletionEnterWritesSelection(t *testing.T) {
 	store.Write(m.session)
 	m.cursor = 0 // "Write a STRIPE.md summary"
 
-	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	// Read back from store
 	session, err := store.Read("completion_test")
@@ -549,7 +549,7 @@ func TestCompletionEnterDeployWaitsForAgentSession(t *testing.T) {
 		}
 	}
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
 	session, err := store.Read("parent_session")
@@ -609,29 +609,21 @@ func TestHandleKeyOpenBrowser(t *testing.T) {
 
 	m := readyModel()
 	m.session.ClaimURL = "https://example.com"
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("o")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
 	updated := result.(Model)
 	assert.NotNil(t, updated)
 	assert.Equal(t, "https://example.com", opened)
 }
 
 func TestHandleKeyCopyReviewCommand(t *testing.T) {
-	orig := copyTextFn
-	var copied string
-	copyTextFn = func(text string) error {
-		copied = text
-		return nil
-	}
-	defer func() { copyTextFn = orig }()
-
 	m := readyModel()
 	m.session.Chapters[1].Nodes[0].State = coop.StepReview
 	m.cursor = 2
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("y")})
+	result, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	updated := result.(Model)
 
-	assert.Equal(t, "stripe trigger checkout.session.completed", copied)
+	assert.NotNil(t, cmd, "should return a clipboard command")
 	assert.Contains(t, updated.statusMessage, "Copied")
 }
 
@@ -639,7 +631,7 @@ func TestHandleKeyQuestionMark(t *testing.T) {
 	m := readyModel()
 	m.expanded = false
 
-	result, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")})
+	result, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	updated := result.(Model)
 	assert.True(t, updated.expanded)
 }
@@ -679,7 +671,7 @@ func TestCompletionTransitionResetsCursor(t *testing.T) {
 
 	assert.Equal(t, 0, updated.cursor)
 	assert.False(t, updated.expanded)
-	assert.Equal(t, 0, updated.viewport.YOffset)
+	assert.Equal(t, 0, updated.viewport.YOffset())
 }
 
 func TestStatusExpiresOnTick(t *testing.T) {
@@ -808,12 +800,12 @@ func TestResizeViewportOnSessionUpdate(t *testing.T) {
 	m.height = 25
 	m.resizeViewport()
 
-	initialHeight := m.viewport.Height
+	initialHeight := m.viewport.Height()
 
 	// Simulate a session with a review step (footer grows by 1 line)
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.resizeViewport()
 
 	// Footer now has the review notice line — viewport should shrink
-	assert.True(t, m.viewport.Height <= initialHeight)
+	assert.True(t, m.viewport.Height() <= initialHeight)
 }
