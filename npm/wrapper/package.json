@@ -12,6 +12,11 @@
   "bin": {
     "stripe": "bin/shim.js"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
+  },
   "scripts": {
     "postinstall": "node scripts/postinstall.js"
   },
