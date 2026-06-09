@@ -106,8 +106,10 @@ assert_tui_visible "You check" "review acceptance check visible"
 assert_agent_visible "\\[debug-agent\\]" "debug agent logs visible"
 
 tmux send-keys -t "$tui_pane" "r"
+sleep 0.5
+tmux send-keys -t "$tui_pane" "Please tighten the debug checkout path"
 sleep 0.25
-tmux send-keys -t "$tui_pane" "Please tighten the debug checkout path" C-m
+tmux send-keys -t "$tui_pane" Enter
 if wait_for_tui "Review" 10; then
   record_pass "debug agent reruns after request changes"
 else

@@ -1,0 +1,121 @@
+package tui
+
+import (
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+)
+
+type keyMap struct {
+	Quit      key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	Expand    key.Binding
+	Enter     key.Binding
+	Tab       key.Binding
+	Escape    key.Binding
+	Follow    key.Binding
+	Confirm   key.Binding
+	Reject    key.Binding
+	Copy      key.Binding
+	OpenClaim key.Binding
+}
+
+func newKeyMap() keyMap {
+	return keyMap{
+		Quit: key.NewBinding(
+			key.WithKeys("q", "ctrl+c"),
+			key.WithHelp("q", "quit"),
+		),
+		Up: key.NewBinding(
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "up"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "down"),
+		),
+		Expand: key.NewBinding(
+			key.WithKeys("e", "?"),
+			key.WithHelp("e/?", "details"),
+		),
+		Enter: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "expand"),
+		),
+		Tab: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "next tab"),
+		),
+		Escape: key.NewBinding(
+			key.WithKeys("esc"),
+			key.WithHelp("esc", "close"),
+		),
+		Follow: key.NewBinding(
+			key.WithKeys("f"),
+			key.WithHelp("f", "follow"),
+		),
+		Confirm: key.NewBinding(
+			key.WithKeys("c"),
+			key.WithHelp("c", "confirm"),
+		),
+		Reject: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "request changes"),
+		),
+		Copy: key.NewBinding(
+			key.WithKeys("y"),
+			key.WithHelp("y", "copy"),
+		),
+		OpenClaim: key.NewBinding(
+			key.WithKeys("o"),
+			key.WithHelp("o", "claim"),
+		),
+	}
+}
+
+func (m Model) ShortHelp() []key.Binding {
+	if m.rejecting {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "send")),
+			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+		}
+	}
+
+	var bindings []key.Binding
+
+	if m.userMoved {
+		bindings = append(bindings, m.keys.Follow)
+	}
+
+	if target, ok := m.selectedReviewTarget(); ok {
+		if m.selectedReviewCommand() != "" {
+			bindings = append(bindings, m.keys.Copy)
+		}
+		confirm := m.keys.Confirm
+		reject := m.keys.Reject
+		if target.kind == "chapter" {
+			confirm.SetHelp("c", "confirm chapter")
+			reject.SetHelp("r", "chapter changes")
+		}
+		bindings = append(bindings, confirm, reject)
+	}
+
+	bindings = append(bindings, m.keys.Enter)
+
+	if m.expanded {
+		bindings = append(bindings, m.keys.Tab, m.keys.Escape)
+	}
+
+	if m.session != nil && m.session.ClaimURL != "" {
+		bindings = append(bindings, m.keys.OpenClaim)
+	}
+
+	bindings = append(bindings, m.keys.Quit)
+	return bindings
+}
+
+func (m Model) FullHelp() [][]key.Binding {
+	return [][]key.Binding{m.ShortHelp()}
+}
+
+var _ help.KeyMap = Model{}

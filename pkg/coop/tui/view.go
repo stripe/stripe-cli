@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/glamour/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -482,8 +483,9 @@ func (m Model) renderMarkdown(content string, width int) string {
 		return ""
 	}
 	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
+		glamour.WithEnvironmentConfig(),
 		glamour.WithWordWrap(width),
+		glamour.WithEmoji(),
 	)
 	if err != nil {
 		return content
@@ -519,52 +521,10 @@ func (m Model) renderFooter() string {
 		}
 	}
 
-	actionLine := ""
-	if m.rejecting {
-		actionLine = FooterStyle.Render("  enter send · esc cancel")
-	} else {
-		var parts, shortParts []string
-		if m.userMoved {
-			parts = append(parts, "Viewing earlier steps", "f follow latest", "enter/e")
-			shortParts = append(shortParts, "Earlier", "f follow", "enter/e")
-		} else if m.session != nil {
-			if target, ok := m.selectedReviewTarget(); ok {
-				if m.selectedReviewCommand() != "" {
-					parts = append(parts, "y copy")
-					shortParts = append(shortParts, "y copy")
-				}
-				confirm := "c confirm"
-				reject := "r request changes"
-				shortReject := "r changes"
-				if target.kind == "chapter" {
-					confirm = "c confirm chapter"
-					reject = "r request chapter changes"
-					shortReject = "r chapter changes"
-				}
-				parts = append(parts, SuccessStyle.Render(confirm))
-				parts = append(parts, ErrorStyle.Render(reject))
-				parts = append(parts, "enter/e")
-				shortParts = append(shortParts, SuccessStyle.Render(confirm), ErrorStyle.Render(shortReject), "enter/e")
-			} else {
-				parts = append(parts, "↑↓ navigate", "enter/e")
-				shortParts = parts
-			}
-		} else {
-			parts = append(parts, "↑↓ navigate", "enter/e")
-			shortParts = parts
-		}
-		if m.expanded {
-			parts = append(parts, "tab", "esc")
-			shortParts = append(shortParts, "tab", "esc")
-		}
-		if m.session != nil && m.session.ClaimURL != "" {
-			parts = append(parts, "o claim")
-			shortParts = append(shortParts, "o claim")
-		}
-		parts = append(parts, "q quit")
-		shortParts = append(shortParts, "q quit")
-		actionLine = m.renderFooterActionLine(parts, shortParts)
-	}
+	h := m.help
+	h.SetWidth(m.width - 2)
+	h.ShortSeparator = " · "
+	actionLine := FooterStyle.MaxWidth(m.width).Render("  " + h.View(m))
 
 	if _, ok := m.selectedReviewTarget(); ok {
 		budget := m.footerHeightBudget()
@@ -595,26 +555,6 @@ func (m Model) renderFooter() string {
 	return strings.Join(lines, "\n")
 }
 
-func (m Model) renderFooterActionLine(parts, shortParts []string) string {
-	line := FooterStyle.Render("  " + strings.Join(parts, " · "))
-	if m.width <= 0 || lipgloss.Width(line) <= m.width {
-		return line
-	}
-	line = FooterStyle.Render("  " + strings.Join(shortParts, " · "))
-	if lipgloss.Width(line) <= m.width {
-		return line
-	}
-	essential := []string{"enter/e", "q quit"}
-	if m.rejecting {
-		essential = []string{"esc cancel"}
-	}
-	line = FooterStyle.Render("  " + strings.Join(essential, " · "))
-	if lipgloss.Width(line) <= m.width {
-		return line
-	}
-	return FooterStyle.MaxWidth(m.width).Render(line)
-}
-
 func (m Model) renderReviewCard() string {
 	return m.renderReviewCardWithMaxHeight(0)
 }
@@ -628,8 +568,8 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		return ""
 	}
 	w := min(m.contentWidth()-4, 84)
-	if w < 30 {
-		w = m.contentWidth()
+	if w < 20 {
+		w = m.contentWidth() - 4
 	}
 
 	var lines []string
@@ -657,11 +597,11 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		lines = append(lines, MutedStyle.Render("Run: ")+command)
 	}
 	if m.rejecting {
-		input := m.rejectionInput
-		if input == "" {
-			input = DimmedStyle.Render(m.requestChangesPlaceholder(target))
+		inputView := m.rejectionInput.View()
+		if m.rejectionInput.Value() == "" {
+			inputView = DimmedStyle.Render(m.rejectionInput.Placeholder)
 		}
-		lines = append(lines, ErrorStyle.Render("Request changes: ")+input)
+		lines = append(lines, ErrorStyle.Render("Request changes: ")+inputView)
 		if m.rejectionError != "" {
 			lines = append(lines, ErrorStyle.Render(m.rejectionError))
 		}
@@ -691,20 +631,21 @@ func footerLinesFit(lines []string, budget int) bool {
 
 func renderReviewCardLines(width, maxHeight int, lines []string) string {
 	more := DimmedStyle.Render("Review: more checks available")
+	style := ReviewCardStyle.Width(width).MaxWidth(width + 4)
 	for {
-		rendered := ReviewCardStyle.Width(width).Render(strings.Join(lines, "\n"))
+		rendered := style.Render(strings.Join(lines, "\n"))
 		if maxHeight <= 0 || lipgloss.Height(rendered) <= maxHeight {
 			return rendered
 		}
 		if len(lines) <= 2 {
-			return ReviewCardStyle.Width(width).MaxHeight(maxHeight).Render(strings.Join(lines, "\n"))
+			return style.MaxHeight(maxHeight).Render(strings.Join(lines, "\n"))
 		}
 		lines = append(lines[:len(lines)-2], more)
 	}
 }
 
 func (m Model) renderViewportRegion() string {
-	return m.renderViewportRegionWithHeight(m.viewport.Height)
+	return m.renderViewportRegionWithHeight(m.viewport.Height())
 }
 
 func (m Model) renderViewportRegionWithHeight(height int) string {
@@ -717,7 +658,7 @@ func (m Model) renderViewportRegionWithHeight(height int) string {
 		Height(height).
 		MaxHeight(height).
 		Render(view)
-	if height >= 3 && m.viewport.YOffset+height < m.viewport.TotalLineCount() {
+	if height >= 3 && m.viewport.YOffset()+height < m.viewport.TotalLineCount() {
 		lines := strings.Split(rendered, "\n")
 		if len(lines) > 0 {
 			indicator := MutedStyle.Render("  ↓ more below")
@@ -730,7 +671,7 @@ func (m Model) renderViewportRegionWithHeight(height int) string {
 
 func (m Model) renderPinnedViewport(header, footer string) string {
 	footerGap := 2
-	viewHeight := m.viewport.Height
+	viewHeight := m.viewport.Height()
 	if m.height > 0 {
 		headerH := lipgloss.Height(header) + 1
 		footerH := lipgloss.Height(footer)
@@ -1141,10 +1082,15 @@ func (m Model) completionImportantChecks() []string {
 }
 
 func (m Model) renderCompletionFooter() string {
-	return m.renderFooterActionLine(
-		[]string{"↑↓ navigate", "enter select", "q quit"},
-		[]string{"↑↓ navigate", "enter", "q quit"},
-	)
+	h := m.help
+	h.SetWidth(m.width)
+	h.ShortSeparator = " · "
+	bindings := []key.Binding{
+		key.NewBinding(key.WithKeys("up", "down"), key.WithHelp("↑↓", "navigate")),
+		key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "select")),
+		m.keys.Quit,
+	}
+	return FooterStyle.Render("  " + h.ShortHelpView(bindings))
 }
 
 func (m Model) getCompletedSuggestionIDs() map[string]bool {

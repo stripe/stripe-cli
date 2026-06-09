@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/huh"
+	"charm.land/huh/v2"
 	"github.com/google/uuid"
 
 	"github.com/stripe/stripe-cli/pkg/coop"

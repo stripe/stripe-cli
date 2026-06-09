@@ -7,20 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/wordwrap"
-	"github.com/muesli/reflow/wrap"
+	"charm.land/lipgloss/v2"
 )
 
 var openBrowserFn = openBrowserDefault
-var copyTextFn = copyTextDefault
-
 func openBrowser(url string) {
 	openBrowserFn(url)
-}
-
-func copyText(text string) error {
-	return copyTextFn(text)
 }
 
 func openBrowserDefault(url string) {
@@ -32,22 +24,6 @@ func openBrowserDefault(url string) {
 	case "windows":
 		exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start() //nolint:gosec
 	}
-}
-
-func copyTextDefault(text string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("pbcopy") //nolint:gosec
-	case "linux":
-		cmd = exec.Command("wl-copy") //nolint:gosec
-	case "windows":
-		cmd = exec.Command("clip") //nolint:gosec
-	default:
-		return fmt.Errorf("clipboard unsupported on %s", runtime.GOOS)
-	}
-	cmd.Stdin = strings.NewReader(text)
-	return cmd.Run()
 }
 
 func (m Model) contentWidth() int {
@@ -90,7 +66,7 @@ func wordWrap(s string, width int) string {
 	if width <= 0 || lipgloss.Width(s) <= width {
 		return s
 	}
-	return wrap.String(wordwrap.String(s, width), width)
+	return lipgloss.Wrap(s, width, " ")
 }
 
 func formatDuration(d time.Duration) string {

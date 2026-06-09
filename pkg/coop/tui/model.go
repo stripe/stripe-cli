@@ -5,10 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -28,10 +31,13 @@ type Model struct {
 	userMoved bool
 
 	rejecting       bool
-	rejectionInput  string
+	rejectionInput  textinput.Model
 	rejectionError  string
 	statusMessage   string
 	statusExpiresAt time.Time
+
+	keys keyMap
+	help help.Model
 
 	viewport viewport.Model
 	ready    bool
@@ -47,18 +53,40 @@ type Model struct {
 	waitingMessage string
 	existingIDs    map[string]bool
 	lastUpdateTime time.Time
+
+	isDark  bool
+	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
+}
+
+func newRejectionInput() textinput.Model {
+	ti := textinput.New()
+	ti.Prompt = ""
+	ti.Placeholder = "Describe what to change..."
+	ti.CharLimit = 500
+	ti.SetVirtualCursor(false)
+	styles := ti.Styles()
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(HueGray500).Italic(true)
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff"))
+	ti.SetStyles(styles)
+	return ti
 }
 
 // NewModel creates a TUI model for a known session.
 func NewModel(store *coop.Store, sessionID string) Model {
-	s := spinner.New()
-	s.Spinner = spinner.MiniDot
-	s.Style = lipgloss.NewStyle().Foreground(HuePurple500)
+	s := spinner.New(
+		spinner.WithSpinner(spinner.MiniDot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(HuePurple500)),
+	)
 
 	return Model{
 		store:          store,
 		sessionID:      sessionID,
 		spinner:        s,
+		rejectionInput: newRejectionInput(),
+		keys:           newKeyMap(),
+		help:           help.New(),
+		isDark:         true,
+		focused:        true,
 		sdkSnippetStep: -1,
 		sdkLoadingStep: -1,
 	}
@@ -66,13 +94,19 @@ func NewModel(store *coop.Store, sessionID string) Model {
 
 // NewWaitingModel creates a TUI model that waits for a new session to appear.
 func NewWaitingModel(store *coop.Store, existingIDs map[string]bool) Model {
-	s := spinner.New()
-	s.Spinner = spinner.MiniDot
-	s.Style = lipgloss.NewStyle().Foreground(HuePurple500)
+	s := spinner.New(
+		spinner.WithSpinner(spinner.MiniDot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(HuePurple500)),
+	)
 
 	return Model{
 		store:          store,
 		spinner:        s,
+		rejectionInput: newRejectionInput(),
+		keys:           newKeyMap(),
+		help:           help.New(),
+		isDark:         true,
+		focused:        true,
 		sdkSnippetStep: -1,
 		sdkLoadingStep: -1,
 		waiting:        true,
@@ -82,23 +116,27 @@ func NewWaitingModel(store *coop.Store, existingIDs map[string]bool) Model {
 
 func (m Model) Init() tea.Cmd {
 	if m.waiting {
-		return tea.Batch(m.spinner.Tick, tickCmd())
+		return tea.Batch(m.spinner.Tick, tickCmd(), tea.RequestBackgroundColor)
 	}
-	return tea.Batch(m.loadSession(), m.spinner.Tick, tickCmd())
+	return tea.Batch(m.loadSession(), m.spinner.Tick, tickCmd(), tea.RequestBackgroundColor)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		if !m.ready {
-			m.viewport = viewport.New(msg.Width, 10)
+			m.viewport = viewport.New(viewport.WithWidth(msg.Width), viewport.WithHeight(10))
+			m.viewport.MouseWheelEnabled = true
+			m.viewport.MouseWheelDelta = 3
+			m.viewport.FillHeight = true
+			m.viewport.SoftWrap = true
 			m.ready = true
 		}
 		m.resizeViewport()
@@ -107,6 +145,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		m.clearExpiredStatus(time.Now())
+		if !m.focused {
+			return m, tickCmd()
+		}
 		return m, m.checkForUpdates()
 
 	case sessionDiscoveredMsg:
@@ -117,7 +158,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.expanded = false
 		m.userMoved = false
 		m.rejecting = false
-		m.rejectionInput = ""
+		m.rejectionInput.SetValue("")
 		m.rejectionError = ""
 		m.statusMessage = ""
 		m.statusExpiresAt = time.Time{}
@@ -146,7 +187,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = ""
 			m.statusExpiresAt = time.Time{}
 			m.rejecting = false
-			m.rejectionInput = ""
+			m.rejectionInput.SetValue("")
 			m.rejectionError = ""
 			if m.ready {
 				m.viewport.SetYOffset(0)
@@ -181,30 +222,58 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncViewport()
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
+
+	case tea.BackgroundColorMsg:
+		m.isDark = msg.IsDark()
+		return m, nil
+
+	case tea.FocusMsg:
+		m.focused = true
+		return m, nil
+
+	case tea.BlurMsg:
+		m.focused = false
+		return m, nil
 	}
 
 	return m, nil
 }
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	var content string
 	if m.err != nil {
-		return ErrorStyle.Render(fmt.Sprintf("Error: %s", m.err))
-	}
-	if !m.ready {
-		return m.spinner.View() + " Loading..."
-	}
-	if m.waiting {
-		return m.renderWaitingView()
-	}
-	if m.session == nil {
-		return m.renderWaitingView()
-	}
-	if m.session.IsComplete() {
-		return m.renderCompletionView()
+		content = ErrorStyle.Render(fmt.Sprintf("Error: %s", m.err))
+	} else if !m.ready {
+		content = m.spinner.View() + " Loading..."
+	} else if m.waiting {
+		content = m.renderWaitingView()
+	} else if m.session == nil {
+		content = m.renderWaitingView()
+	} else if m.session.IsComplete() {
+		content = m.renderCompletionView()
+	} else {
+		header := m.renderHeader()
+		content = m.renderPinnedViewport(header, m.renderFooter())
 	}
 
-	header := m.renderHeader()
-	return m.renderPinnedViewport(header, m.renderFooter())
+	v := tea.NewView(content)
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+	v.ReportFocus = true
+	if m.session != nil {
+		done := 0
+		for _, ch := range m.session.Chapters {
+			for _, n := range ch.Nodes {
+				if n.State == coop.StepDone || n.State == coop.StepSkipped {
+					done++
+				}
+			}
+		}
+		v.WindowTitle = fmt.Sprintf("Co-op: %s (%d/%d)", m.session.Blueprint, done, m.session.TotalSteps())
+	} else {
+		v.WindowTitle = "Stripe Co-op"
+	}
+	return v
 }
 
 // --- State management ---
@@ -222,8 +291,8 @@ func (m *Model) resizeViewport() {
 	if vpHeight < minViewportHeight {
 		vpHeight = minViewportHeight
 	}
-	m.viewport.Width = m.width
-	m.viewport.Height = vpHeight
+	m.viewport.SetWidth(m.width)
+	m.viewport.SetHeight(vpHeight)
 }
 
 func (m *Model) syncViewport() {
@@ -255,8 +324,8 @@ func (m *Model) scrollToCursor() {
 		}
 	}
 
-	vpTop := m.viewport.YOffset
-	vpBottom := vpTop + m.viewport.Height
+	vpTop := m.viewport.YOffset()
+	vpBottom := vpTop + m.viewport.Height()
 	scrollThreshold := vpBottom - 2
 	if m.session != nil && m.session.IsComplete() {
 		scrollThreshold = vpBottom
@@ -265,7 +334,7 @@ func (m *Model) scrollToCursor() {
 	if targetLine < vpTop {
 		m.viewport.SetYOffset(targetLine)
 	} else if targetLine >= scrollThreshold {
-		offset := targetLine - m.viewport.Height/2
+		offset := targetLine - m.viewport.Height()/2
 		if offset < 0 {
 			offset = 0
 		}
@@ -294,25 +363,25 @@ func (m *Model) autoScroll() {
 	}
 }
 
-func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.rejecting {
 		return m.handleRejectionKey(msg)
 	}
 
-	switch msg.String() {
-	case "q", "ctrl+c":
+	switch {
+	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
-	case "up", "k":
+	case key.Matches(msg, m.keys.Up):
 		m.moveCursorUp()
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
-	case "down", "j":
+	case key.Matches(msg, m.keys.Down):
 		m.moveCursorDown()
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
-	case "e", "?":
+	case key.Matches(msg, m.keys.Expand):
 		m.expanded = !m.expanded
 		m.resizeViewport()
 		m.syncViewport()
@@ -320,49 +389,46 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.fetchSnippetIfNeeded()
 		}
 		return m, nil
-	case "enter":
+	case key.Matches(msg, m.keys.Enter):
 		return m.handleEnter()
-	case "tab":
+	case key.Matches(msg, m.keys.Tab):
 		if m.expanded {
 			m.detailTab = (m.detailTab + 1) % len(detailSections)
 			m.syncViewport()
 			return m, m.fetchSnippetIfNeeded()
 		}
 		return m, nil
-	case "esc":
+	case key.Matches(msg, m.keys.Escape):
 		if m.expanded {
 			m.expanded = false
 			m.resizeViewport()
 			m.syncViewport()
 		}
 		return m, nil
-	case "f":
+	case key.Matches(msg, m.keys.Follow):
 		m.userMoved = false
 		m.autoScroll()
 		m.setStatus("Following the current review step", 3*time.Second)
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
-	case "c":
+	case key.Matches(msg, m.keys.Confirm):
 		m.handleConfirm()
 		return m, nil
-	case "o":
+	case key.Matches(msg, m.keys.OpenClaim):
 		if m.session != nil && m.session.ClaimURL != "" {
 			openBrowser(m.session.ClaimURL)
 		}
 		return m, nil
-	case "y":
+	case key.Matches(msg, m.keys.Copy):
 		if command := m.selectedReviewCommand(); command != "" {
-			if err := copyText(command); err != nil {
-				m.setStatus("Could not copy command: "+err.Error(), 4*time.Second)
-			} else {
-				m.setStatus("Copied review command.", 3*time.Second)
-			}
+			m.setStatus("Copied review command.", 3*time.Second)
 			m.resizeViewport()
 			m.syncViewport()
+			return m, tea.SetClipboard(command)
 		}
 		return m, nil
-	case "r":
+	case key.Matches(msg, m.keys.Reject):
 		m.startReject()
 		return m, nil
 	}
@@ -444,7 +510,7 @@ func (m *Model) enterWaitingMode(message string) {
 	m.expanded = false
 	m.userMoved = false
 	m.rejecting = false
-	m.rejectionInput = ""
+	m.rejectionInput.SetValue("")
 	m.rejectionError = ""
 	m.statusMessage = ""
 	m.statusExpiresAt = time.Time{}
@@ -476,7 +542,7 @@ func (m *Model) handleConfirm() {
 	m.lastVersion = m.session.Version
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
 	m.rejecting = false
-	m.rejectionInput = ""
+	m.rejectionInput.SetValue("")
 	m.rejectionError = ""
 	if m.session.IsComplete() {
 		m.cursor = 0
@@ -492,9 +558,11 @@ func (m *Model) startReject() {
 	if m.session == nil {
 		return
 	}
-	if _, ok := m.selectedReviewTarget(); ok {
+	if target, ok := m.selectedReviewTarget(); ok {
 		m.rejecting = true
-		m.rejectionInput = ""
+		m.rejectionInput.SetValue("")
+		m.rejectionInput.Placeholder = m.requestChangesPlaceholder(target)
+		m.rejectionInput.Focus()
 		m.rejectionError = ""
 		m.statusMessage = ""
 		m.statusExpiresAt = time.Time{}
@@ -503,35 +571,27 @@ func (m *Model) startReject() {
 	}
 }
 
-func (m Model) handleRejectionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc", "ctrl+c":
+func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Escape):
 		m.rejecting = false
-		m.rejectionInput = ""
+		m.rejectionInput.SetValue("")
+		m.rejectionInput.Blur()
 		m.rejectionError = ""
 		m.setStatus("Request changes canceled.", 3*time.Second)
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
-	case "enter":
-		m.handleReject(strings.TrimSpace(m.rejectionInput))
-		return m, nil
-	case "backspace", "ctrl+h":
-		if len(m.rejectionInput) > 0 {
-			runes := []rune(m.rejectionInput)
-			m.rejectionInput = string(runes[:len(runes)-1])
-		}
-		m.resizeViewport()
-		m.syncViewport()
+	case key.Matches(msg, m.keys.Enter):
+		m.handleReject(strings.TrimSpace(m.rejectionInput.Value()))
 		return m, nil
 	}
-	if msg.Type == tea.KeyRunes {
-		m.rejectionInput += string(msg.Runes)
-		m.rejectionError = ""
-		m.resizeViewport()
-		m.syncViewport()
-	}
-	return m, nil
+	var cmd tea.Cmd
+	m.rejectionInput, cmd = m.rejectionInput.Update(msg)
+	m.rejectionError = ""
+	m.resizeViewport()
+	m.syncViewport()
+	return m, cmd
 }
 
 func (m *Model) handleReject(note string) {
@@ -563,7 +623,7 @@ func (m *Model) handleReject(note string) {
 	}
 	m.lastVersion = m.session.Version
 	m.rejecting = false
-	m.rejectionInput = ""
+	m.rejectionInput.SetValue("")
 	m.rejectionError = ""
 	m.setStatus("Feedback sent. Waiting for agent...", 5*time.Second)
 	m.resizeViewport()

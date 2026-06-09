@@ -1,13 +1,14 @@
 package tui
 
 import (
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/huh/v2"
+	"charm.land/lipgloss/v2"
 )
 
-// HuhTheme returns a Sail-styled huh theme for interactive prompts.
-func HuhTheme() *huh.Theme {
-	t := huh.ThemeBase()
+type sailTheme struct{}
+
+func (sailTheme) Theme(isDark bool) *huh.Styles {
+	t := huh.ThemeBase(isDark)
 
 	t.Focused.Base = t.Focused.Base.BorderForeground(HueGray700)
 	t.Focused.Title = t.Focused.Title.Foreground(HuePurple500).Bold(true)
@@ -25,6 +26,11 @@ func HuhTheme() *huh.Theme {
 	t.Blurred = t.Focused
 
 	return t
+}
+
+// HuhTheme returns a Sail-styled huh theme for interactive prompts.
+func HuhTheme() huh.Theme {
+	return sailTheme{}
 }
 
 // Sail Design System hue palette (from tokensColor.ts)
