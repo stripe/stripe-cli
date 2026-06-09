@@ -251,8 +251,9 @@ func terminalSize(cmd *cobra.Command) (w, h int, ok bool) {
 
 // show displays a page to the user. When a TTY is detected it launches the
 // interactive TUI; otherwise it renders markdown and pipes it through a pager.
-// A nil page starts the TUI at the home screen.
-func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
+// A nil page starts the TUI at the home screen. Extra TUI options (e.g.
+// tui.WithPaletteInput) are forwarded to the model constructor.
+func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page, extraOpts ...tui.Option) error {
 	if r.client == nil {
 		return fmt.Errorf("docs client not initialized")
 	}
@@ -275,6 +276,7 @@ func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page) error {
 		if w, h, ok := terminalSize(cmd); ok {
 			opts = append(opts, tui.WithWindowSize(w, h))
 		}
+		opts = append(opts, extraOpts...)
 		p := tea.NewProgram(tui.New(opts...), tea.WithFilter(tui.NewMouseEventFilter()))
 		if _, err := p.Run(); err != nil {
 			return fmt.Errorf("running TUI: %w", err)

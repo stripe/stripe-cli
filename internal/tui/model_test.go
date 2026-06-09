@@ -251,6 +251,41 @@ func TestInit_WithDocReturnsNil(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+func TestInit_WithPaletteInput_ReturnsCmd(t *testing.T) {
+	m := New(WithPaletteInput("payment methods"))
+	cmd := m.Init()
+	assert.NotNil(t, cmd)
+}
+
+func TestUpdate_OpenWithQueryMsg_OpensPaletteWithQuery(t *testing.T) {
+	m := New()
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	result, batchCmd := model.Update(openWithQueryMsg("payment methods"))
+	model = result.(Model)
+
+	assert.True(t, model.palette.Visible())
+
+	// The batch cmd contains focus + paste; execute it to deliver the paste message.
+	if batchCmd != nil {
+		if msg := batchCmd(); msg != nil {
+			if batchMsg, ok := msg.(tea.BatchMsg); ok {
+				for _, c := range batchMsg {
+					if c != nil {
+						if pasteMsg, ok := c().(tea.PasteMsg); ok {
+							result, _ = model.Update(pasteMsg)
+							model = result.(Model)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	assert.Equal(t, "payment methods", model.palette.Value())
+}
+
 func TestUpdate_TickMsg_Landing(t *testing.T) {
 	m := New()
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})

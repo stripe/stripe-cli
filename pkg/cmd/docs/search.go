@@ -13,6 +13,7 @@ import (
 	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/spinner"
+	"github.com/stripe/stripe-cli-docs-plugin/internal/tui"
 	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
 	"golang.org/x/term"
 )
@@ -38,7 +39,12 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("search: missing search query argument")
 	}
 
-	query := args[0]
+	query := strings.Join(args, " ")
+
+	if r.useTUI(cmd) {
+		return r.show(cmd, nil, tui.WithPaletteInput(query))
+	}
+
 	styles := ui.DefaultStyles()
 
 	checkmark := styles.SuccessText.Render("✓")
