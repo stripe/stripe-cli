@@ -447,6 +447,9 @@ func (m Model) View() tea.View {
 
 	view := tea.NewView(content)
 	view.AltScreen = true
+	if m.palette.Visible() && m.palette.Loading() {
+		view.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 0)
+	}
 	if m.quitting {
 		view.MouseMode = tea.MouseModeNone
 	} else if m.isLanding() {
