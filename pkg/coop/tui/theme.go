@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"charm.land/bubbles/v2/help"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -31,6 +32,18 @@ func (sailTheme) Theme(isDark bool) *huh.Styles {
 // HuhTheme returns a Sail-styled huh theme for interactive prompts.
 func HuhTheme() huh.Theme {
 	return sailTheme{}
+}
+
+func newHelp() help.Model {
+	h := help.New()
+	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(HuePurple400).Bold(true)
+	h.Styles.ShortDesc = lipgloss.NewStyle().Foreground(HueGray300)
+	h.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(HueGray500)
+	h.Styles.Ellipsis = lipgloss.NewStyle().Foreground(HueGray400)
+	h.Styles.FullKey = h.Styles.ShortKey
+	h.Styles.FullDesc = h.Styles.ShortDesc
+	h.Styles.FullSeparator = h.Styles.ShortSeparator
+	return h
 }
 
 // Sail Design System hue palette (from tokensColor.ts)
@@ -84,7 +97,7 @@ var (
 			Padding(0, 1)
 
 	FooterStyle = lipgloss.NewStyle().
-			Foreground(HueGray500)
+			Foreground(HueGray300)
 
 	FileAnnotationStyle = lipgloss.NewStyle().
 				Foreground(HueGray500).

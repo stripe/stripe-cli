@@ -9,6 +9,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/glamour/v2"
+	glamouransi "charm.land/glamour/v2/ansi"
 	"charm.land/lipgloss/v2"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
@@ -522,10 +523,8 @@ func markdownRenderer(width int, isDark bool) (*glamour.TermRenderer, error) {
 	var styleOpt glamour.TermRendererOption
 	if style != "" {
 		styleOpt = glamour.WithEnvironmentConfig()
-	} else if isDark {
-		styleOpt = glamour.WithStandardStyle("dark")
 	} else {
-		styleOpt = glamour.WithStandardStyle("light")
+		styleOpt = glamour.WithStyles(compactMarkdownStyle(isDark))
 	}
 	renderer, err := glamour.NewTermRenderer(
 		styleOpt,
@@ -538,6 +537,114 @@ func markdownRenderer(width int, isDark bool) (*glamour.TermRenderer, error) {
 	}
 	markdownRenderers.byKey[key] = renderer
 	return renderer, nil
+}
+
+func compactMarkdownStyle(isDark bool) glamouransi.StyleConfig {
+	text := "252"
+	muted := "245"
+	accent := "141"
+	rule := "240"
+	codeBG := "236"
+	if !isDark {
+		text = "236"
+		muted = "244"
+		accent = "63"
+		rule = "250"
+		codeBG = "255"
+	}
+
+	return glamouransi.StyleConfig{
+		Document: glamouransi.StyleBlock{
+			StylePrimitive: glamouransi.StylePrimitive{
+				Color: stringPtr(text),
+			},
+			Margin: uintPtr(0),
+		},
+		Heading: glamouransi.StyleBlock{
+			StylePrimitive: glamouransi.StylePrimitive{
+				Color: stringPtr(accent),
+				Bold:  boolPtr(true),
+			},
+		},
+		List: glamouransi.StyleList{
+			StyleBlock: glamouransi.StyleBlock{
+				Margin: uintPtr(0),
+			},
+			LevelIndent: 2,
+		},
+		BlockQuote: glamouransi.StyleBlock{
+			StylePrimitive: glamouransi.StylePrimitive{
+				Color: stringPtr(muted),
+			},
+			Indent:      uintPtr(1),
+			IndentToken: stringPtr("│ "),
+			Margin:      uintPtr(0),
+		},
+		Strong: glamouransi.StylePrimitive{
+			Bold: boolPtr(true),
+		},
+		Emph: glamouransi.StylePrimitive{
+			Italic: boolPtr(true),
+			Color:  stringPtr(muted),
+		},
+		HorizontalRule: glamouransi.StylePrimitive{
+			Color:  stringPtr(rule),
+			Format: "\n--------\n",
+		},
+		Item: glamouransi.StylePrimitive{
+			BlockPrefix: "• ",
+		},
+		Enumeration: glamouransi.StylePrimitive{
+			BlockPrefix: ". ",
+		},
+		Task: glamouransi.StyleTask{
+			Ticked:   "[✓] ",
+			Unticked: "[ ] ",
+		},
+		Link: glamouransi.StylePrimitive{
+			Color:     stringPtr(accent),
+			Underline: boolPtr(true),
+		},
+		LinkText: glamouransi.StylePrimitive{
+			Color: stringPtr(accent),
+			Bold:  boolPtr(true),
+		},
+		Code: glamouransi.StyleBlock{
+			StylePrimitive: glamouransi.StylePrimitive{
+				Color:           stringPtr(text),
+				BackgroundColor: stringPtr(codeBG),
+			},
+		},
+		CodeBlock: glamouransi.StyleCodeBlock{
+			StyleBlock: glamouransi.StyleBlock{
+				StylePrimitive: glamouransi.StylePrimitive{
+					Color: stringPtr(text),
+				},
+				Margin: uintPtr(0),
+			},
+			Theme: "monokai",
+		},
+		Table: glamouransi.StyleTable{
+			StyleBlock: glamouransi.StyleBlock{
+				Margin: uintPtr(0),
+			},
+			CenterSeparator: stringPtr("|"),
+			ColumnSeparator: stringPtr("|"),
+			RowSeparator:    stringPtr("-"),
+		},
+	}
+}
+
+func stringPtr(v string) *string {
+	return &v
+}
+
+func boolPtr(v bool) *bool {
+	return &v
+}
+
+func uintPtr(v uint) *uint {
+	return &v
 }
 
 func (m Model) renderFooter() string {

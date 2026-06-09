@@ -85,7 +85,7 @@ func NewModel(store *coop.Store, sessionID string) Model {
 		spinner:        s,
 		rejectionInput: newRejectionInput(),
 		keys:           newKeyMap(),
-		help:           help.New(),
+		help:           newHelp(),
 		isDark:         true,
 		focused:        true,
 		sdkSnippetStep: -1,
@@ -105,7 +105,7 @@ func NewWaitingModel(store *coop.Store, existingIDs map[string]bool) Model {
 		spinner:        s,
 		rejectionInput: newRejectionInput(),
 		keys:           newKeyMap(),
-		help:           help.New(),
+		help:           newHelp(),
 		isDark:         true,
 		focused:        true,
 		sdkSnippetStep: -1,
@@ -134,6 +134,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
+
+	case tea.MouseClickMsg:
+		if action, ok := m.mouseActionFor(tea.Mouse(msg)); ok {
+			return m.handleMouseAction(action)
+		}
+		return m, nil
 
 	case mouseActionMsg:
 		return m.handleMouseAction(msg)
@@ -273,7 +279,6 @@ func (m Model) View() tea.View {
 	v.KeyboardEnhancements.ReportEventTypes = true
 	v.ProgressBar = m.progressBar()
 	v.Cursor = m.rejectionCursor(content)
-	v.OnMouse = m.mouseHandler()
 	if m.session != nil {
 		done := 0
 		for _, ch := range m.session.Chapters {

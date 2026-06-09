@@ -15,29 +15,16 @@ type mouseTarget struct {
 	index  int
 }
 
-func (m Model) mouseHandler() func(tea.MouseMsg) tea.Cmd {
-	targets := m.mouseTargets()
-	return func(msg tea.MouseMsg) tea.Cmd {
-		mouse := msg.Mouse()
-		if mouse.Button == tea.MouseWheelUp || mouse.Button == tea.MouseWheelDown || mouse.Button == tea.MouseWheelLeft || mouse.Button == tea.MouseWheelRight {
-			return func() tea.Msg {
-				return msg
-			}
-		}
-		if mouse.Button != tea.MouseLeft {
-			return nil
-		}
-		for _, target := range targets {
-			if mouse.Y == target.y {
-				action := target.action
-				index := target.index
-				return func() tea.Msg {
-					return mouseActionMsg{action: action, index: index}
-				}
-			}
-		}
-		return nil
+func (m Model) mouseActionFor(mouse tea.Mouse) (mouseActionMsg, bool) {
+	if mouse.Button != tea.MouseLeft {
+		return mouseActionMsg{}, false
 	}
+	for _, target := range m.mouseTargets() {
+		if mouse.Y == target.y {
+			return mouseActionMsg{action: target.action, index: target.index}, true
+		}
+	}
+	return mouseActionMsg{}, false
 }
 
 func (m Model) mouseTargets() []mouseTarget {

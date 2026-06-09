@@ -160,7 +160,7 @@ func TestViewProgressBarReflectsSessionProgress(t *testing.T) {
 	assert.Equal(t, 33, view.ProgressBar.Value)
 }
 
-func TestViewMouseHandlerOpensClaimURL(t *testing.T) {
+func TestUpdateMouseClickOpensClaimURL(t *testing.T) {
 	m := readyModel()
 	m.session.ClaimURL = "https://dashboard.stripe.com/sandbox/claim_abc"
 	var opened string
@@ -168,27 +168,32 @@ func TestViewMouseHandlerOpensClaimURL(t *testing.T) {
 	openBrowserFn = func(url string) { opened = url }
 	t.Cleanup(func() { openBrowserFn = oldOpen })
 
-	view := m.View()
-	require.NotNil(t, view.OnMouse)
-	cmd := view.OnMouse(tea.MouseClickMsg(tea.Mouse{Y: 1, Button: tea.MouseLeft}))
-	require.NotNil(t, cmd)
-
-	result, _ := m.Update(cmd())
+	result, _ := m.Update(tea.MouseClickMsg(tea.Mouse{Y: 1, Button: tea.MouseLeft}))
 	_ = result.(Model)
 
 	assert.Equal(t, m.session.ClaimURL, opened)
 }
 
-func TestViewMouseHandlerPassesWheelToViewport(t *testing.T) {
+func TestUpdateMouseWheelScrollsViewport(t *testing.T) {
 	m := readyModel()
+	m.viewport.SetHeight(3)
+	m.viewport.SetContent(strings.Join([]string{
+		"one", "two", "three", "four", "five", "six", "seven",
+	}, "\n"))
+
+	result, _ := m.Update(tea.MouseWheelMsg(tea.Mouse{Button: tea.MouseWheelDown}))
+	updated := result.(Model)
+
+	assert.True(t, updated.userMoved)
+	assert.Greater(t, updated.viewport.YOffset(), 0)
+}
+
+func TestViewDoesNotInstallMouseHandler(t *testing.T) {
+	m := readyModel()
+
 	view := m.View()
-	require.NotNil(t, view.OnMouse)
 
-	cmd := view.OnMouse(tea.MouseWheelMsg(tea.Mouse{Button: tea.MouseWheelDown}))
-	require.NotNil(t, cmd)
-
-	_, ok := cmd().(tea.MouseWheelMsg)
-	assert.True(t, ok)
+	assert.Nil(t, view.OnMouse)
 }
 
 func TestMouseActionSelectsVisibleStep(t *testing.T) {

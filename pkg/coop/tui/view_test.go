@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -30,7 +29,7 @@ func testModel() Model {
 		sdkSnippetStep: -1,
 		rejectionInput: newRejectionInput(),
 		keys:           newKeyMap(),
-		help:           help.New(),
+		help:           newHelp(),
 		session: &coop.Session{
 			ID:        "test_123",
 			Blueprint: "one-time-payment",
@@ -207,6 +206,18 @@ func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
 
 	assertLinesWithinWidth(t, detail, m.width)
 	assertContainsPlain(t, detail, "Waiting for you")
+}
+
+func TestRenderMarkdownDoesNotIndentSubsequentLines(t *testing.T) {
+	m := testModel()
+	rendered := ansi.Strip(m.renderMarkdown("first line\n\nsecond line\n\nthird line", 40))
+
+	for _, line := range strings.Split(rendered, "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		assert.NotRegexp(t, `^ {2,}`, line)
+	}
 }
 
 func TestRenderFooter(t *testing.T) {
