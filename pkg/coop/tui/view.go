@@ -13,6 +13,13 @@ import (
 
 var detailSections = []string{"Summary", "Files", "Checks", "Reference"}
 
+const (
+	minViewportHeight   = 1
+	terminalScrollGuard = 1
+	detailIndent        = 1
+	detailFrameWidth    = 4
+)
+
 func (m Model) renderWaitingView() string {
 	w := m.contentWidth() - 8
 	if w < 25 {
@@ -106,14 +113,26 @@ func (m Model) renderStepList() string {
 		ruleWidth = 80
 	}
 
-	for _, ch := range m.session.Chapters {
+	selectedChapterReview := -1
+	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
+		selectedChapterReview = target.chapterIndex
+	}
+
+	for chIdx, ch := range m.session.Chapters {
+		chapterSelected := chIdx == selectedChapterReview
+		chapterReviewReady := m.chapterReviewReady(chIdx)
 		lines = append(lines, "")
-		lines = append(lines, "  "+ChapterTitleStyle.Render(ch.Title))
+		lines = append(lines, m.renderChapterLine(ch, chIdx, chapterSelected))
 		lines = append(lines, "  "+ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth)))
+		if m.expanded && chapterSelected {
+			if detail := m.renderDetail(); detail != "" {
+				lines = append(lines, detail)
+			}
+		}
 
 		for _, node := range ch.Nodes {
-			lines = append(lines, m.renderStepLine(node, stepIdx))
-			if m.expanded && stepIdx == m.cursor {
+			lines = append(lines, m.renderStepLine(node, stepIdx, chapterReviewReady))
+			if m.expanded && stepIdx == m.cursor && !chapterSelected {
 				if detail := m.renderDetail(); detail != "" {
 					lines = append(lines, detail)
 				}
@@ -125,18 +144,55 @@ func (m Model) renderStepList() string {
 	return strings.Join(lines, "\n")
 }
 
-func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
+func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selected bool) string {
+	cursor := "  "
+	if selected {
+		cursor = BrandStyle.Render("▸ ")
+	}
+	title := ch.Title
+	if selected {
+		title = lipgloss.NewStyle().Bold(true).Render(title)
+	}
+	line := "  " + cursor + ChapterTitleStyle.Render(title)
+	if count := m.chapterReviewCount(chapterIndex); count > 0 {
+		line += "  " + AttentionStyle.Render(fmt.Sprintf("Needs chapter review (%d steps)", count))
+	}
+	return line
+}
+
+func (m Model) chapterReviewReady(chapterIndex int) bool {
+	return m.session != nil &&
+		chapterIndex >= 0 &&
+		chapterIndex < len(m.session.Chapters) &&
+		m.session.Chapters[chapterIndex].ReviewGranularity == coop.ReviewGranularityChapter &&
+		m.session.ChapterReadyForReview(chapterIndex)
+}
+
+func (m Model) chapterReviewCount(chapterIndex int) int {
+	if !m.chapterReviewReady(chapterIndex) {
+		return 0
+	}
+	count := 0
+	for _, node := range m.session.Chapters[chapterIndex].Nodes {
+		if node.State == coop.StepReview {
+			count++
+		}
+	}
+	return count
+}
+
+func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterReview bool) string {
 	icon := m.stepIcon(node)
 
 	cursor := "  "
-	if idx == m.cursor {
+	if idx == m.cursor && !includedInChapterReview {
 		cursor = BrandStyle.Render("▸ ")
 	}
 
 	title := node.Title
 	if node.State == coop.StepSkipped {
 		title = DimmedStyle.Render(title)
-	} else if idx == m.cursor {
+	} else if idx == m.cursor && !includedInChapterReview {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
 
@@ -150,7 +206,7 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 		}
 		annText = ann
 		annStyle = func(s string) string { return FileAnnotationStyle.Render(s) }
-	case node.State == coop.StepReview:
+	case node.State == coop.StepReview && !includedInChapterReview:
 		annText = "Waiting for you to review"
 		annStyle = func(s string) string { return AttentionStyle.Render(s) }
 	case node.State == coop.StepActive && node.Activity != "":
@@ -169,7 +225,7 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 	}
 
 	line := fmt.Sprintf("  %s%s %s", cursor, icon, title)
-	if label, style := m.stepStatusLabel(node); label != "" {
+	if label, style := m.stepStatusLabel(node, includedInChapterReview); label != "" {
 		line += "  " + style(label)
 	}
 
@@ -187,13 +243,16 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int) string {
 	return line
 }
 
-func (m Model) stepStatusLabel(node coop.SessionNode) (string, func(string) string) {
+func (m Model) stepStatusLabel(node coop.SessionNode, includedInChapterReview bool) (string, func(string) string) {
 	switch node.State {
 	case coop.StepDone:
 		return "Done", func(s string) string { return SuccessStyle.Render(s) }
 	case coop.StepActive:
 		return "Agent working", func(s string) string { return MutedStyle.Render(s) }
 	case coop.StepReview:
+		if includedInChapterReview {
+			return "Included", func(s string) string { return MutedStyle.Render(s) }
+		}
 		return "Needs review", func(s string) string { return AttentionStyle.Render(s) }
 	case coop.StepSkipped:
 		return "Skipped", func(s string) string { return DimmedStyle.Render(s) }
@@ -233,8 +292,6 @@ func (m Model) renderDetail() string {
 
 	var md strings.Builder
 	section := detailSections[m.detailTab%len(detailSections)]
-	md.WriteString("**Details: " + node.Title + "**\n\n")
-	md.WriteString(m.renderDetailTabs(section) + "\n\n")
 
 	switch section {
 	case "Summary":
@@ -255,38 +312,54 @@ func (m Model) renderDetail() string {
 		md.WriteString("*Skipped: " + node.Activity + "*\n\n")
 	}
 
-	content := md.String()
+	content := strings.TrimSpace(md.String())
 	suffix := m.renderDetailSuffix(node)
 	if content == "" && suffix == "" {
 		return ""
 	}
 
-	rendered := m.renderMarkdown(content, innerW)
-	return "    " + DetailBoxStyle.Width(w).Render(rendered+suffix)
+	parts := []string{m.renderDetailHeader(section)}
+	if content != "" {
+		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
+	}
+	if suffix != "" {
+		parts = append(parts, suffix)
+	}
+	body := clampLines(strings.Join(parts, "\n"), innerW)
+	box := DetailBoxStyle.Width(w).Render(body)
+	return indentBlock(box, detailIndent)
 }
 
-func (m Model) renderDetailTabs(active string) string {
-	var parts []string
-	for _, section := range detailSections {
-		if section == active {
-			parts = append(parts, "["+section+"]")
-		} else {
-			parts = append(parts, section)
-		}
-	}
-	return strings.Join(parts, "  ")
+func (m Model) renderDetailHeader(section string) string {
+	return lipgloss.NewStyle().
+		Foreground(HuePurple400).
+		Bold(true).
+		Render(section)
 }
 
 func (m Model) detailWidths() (int, int) {
-	w := m.contentWidth() - 6
-	if w < 30 {
-		w = m.contentWidth() - 2
+	contentW := m.contentWidth()
+	w := contentW - detailIndent - detailFrameWidth - terminalScrollGuard
+	if w < 12 {
+		w = max(contentW-detailFrameWidth-terminalScrollGuard, 1)
 	}
-	innerW := w - 4
-	if innerW < 20 {
-		innerW = 20
+	innerW := w - 2
+	if innerW < 8 {
+		innerW = 8
 	}
 	return w, innerW
+}
+
+func indentBlock(s string, spaces int) string {
+	if spaces <= 0 || s == "" {
+		return s
+	}
+	prefix := strings.Repeat(" ", spaces)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) detailLanguage() string {
@@ -299,7 +372,6 @@ func (m Model) detailLanguage() string {
 
 func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
 	if node.Description != "" {
-		md.WriteString("**Summary**\n\n")
 		md.WriteString(node.Description + "\n\n")
 	}
 	if node.ReviewPrompt != "" {
@@ -420,7 +492,7 @@ func (m Model) renderMarkdown(content string, width int) string {
 	if err != nil {
 		return content
 	}
-	return strings.TrimRight(rendered, "\n ")
+	return strings.TrimSpace(rendered)
 }
 
 func (m Model) renderFooter() string {
@@ -429,61 +501,130 @@ func (m Model) renderFooter() string {
 		return ""
 	}
 
-	var footer string
+	var lines []string
 
 	// Agent disconnected warning
 	if m.agentIdle() {
-		footer += AttentionStyle.Render("  Waiting for agent: no recent updates. Reconnect: stripe coop status") + "\n"
+		lines = append(lines, AttentionStyle.Render("  Waiting for agent: no recent updates. Reconnect: stripe coop status"))
 	}
 
 	if m.statusMessage != "" {
-		footer += AttentionStyle.Render("  "+m.statusMessage) + "\n"
+		lines = append(lines, AttentionStyle.Render("  "+m.statusMessage))
 	}
 
 	if m.session != nil {
 		if count := m.actionableReviewCount(); count > 0 {
-			footer += AttentionStyle.Render(fmt.Sprintf("  Waiting for you: %d item(s) need review", count)) + "\n"
+			lines = append(lines, "")
+			lines = append(lines, AttentionStyle.Render(fmt.Sprintf("  Waiting for you: %d item(s) need review", count)))
 		}
 	}
 
-	if card := m.renderReviewCard(); card != "" {
-		footer += card + "\n"
-	}
-
+	actionLine := ""
 	if m.rejecting {
-		return footer + FooterStyle.Render("  enter send · esc cancel")
+		actionLine = FooterStyle.Render("  enter send · esc cancel")
+	} else {
+		var parts, shortParts []string
+		if m.userMoved {
+			parts = append(parts, "Viewing earlier steps", "f follow latest", "enter/e")
+			shortParts = append(shortParts, "Earlier", "f follow", "enter/e")
+		} else if m.session != nil {
+			if target, ok := m.selectedReviewTarget(); ok {
+				if m.selectedReviewCommand() != "" {
+					parts = append(parts, "y copy")
+					shortParts = append(shortParts, "y copy")
+				}
+				confirm := "c confirm"
+				reject := "r request changes"
+				shortReject := "r changes"
+				if target.kind == "chapter" {
+					confirm = "c confirm chapter"
+					reject = "r request chapter changes"
+					shortReject = "r chapter changes"
+				}
+				parts = append(parts, SuccessStyle.Render(confirm))
+				parts = append(parts, ErrorStyle.Render(reject))
+				parts = append(parts, "enter/e")
+				shortParts = append(shortParts, SuccessStyle.Render(confirm), ErrorStyle.Render(shortReject), "enter/e")
+			} else {
+				parts = append(parts, "↑↓ navigate", "enter/e")
+				shortParts = parts
+			}
+		} else {
+			parts = append(parts, "↑↓ navigate", "enter/e")
+			shortParts = parts
+		}
+		if m.expanded {
+			parts = append(parts, "tab", "esc")
+			shortParts = append(shortParts, "tab", "esc")
+		}
+		if m.session != nil && m.session.ClaimURL != "" {
+			parts = append(parts, "o claim")
+			shortParts = append(shortParts, "o claim")
+		}
+		parts = append(parts, "q quit")
+		shortParts = append(shortParts, "q quit")
+		actionLine = m.renderFooterActionLine(parts, shortParts)
 	}
 
-	var parts []string
-	if m.userMoved {
-		parts = append(parts, "earlier", "f follow")
-	} else {
-		parts = append(parts, "↑↓")
-	}
-	parts = append(parts, "enter/e")
-	if m.expanded {
-		parts = append(parts, "tab", "esc")
-	}
-	if m.session != nil && m.session.ClaimURL != "" {
-		parts = append(parts, "o claim")
-	}
-	if m.session != nil {
-		if _, ok := m.selectedReviewTarget(); ok {
-			if m.selectedReviewCommand() != "" {
-				parts = append(parts, "y copy")
+	if _, ok := m.selectedReviewTarget(); ok {
+		budget := m.footerHeightBudget()
+		cardGapH := 1
+		actionH := lipgloss.Height(actionLine)
+		prefixH := lipgloss.Height(strings.Join(lines, "\n"))
+		cardMaxHeight := budget - prefixH - cardGapH - actionH
+		card := m.renderReviewCardWithMaxHeight(cardMaxHeight)
+		if card != "" {
+			result := append(append([]string{}, lines...), card, "", actionLine)
+			if footerLinesFit(result, budget) {
+				return strings.Join(result, "\n")
 			}
-			parts = append(parts, SuccessStyle.Render("c confirm"))
-			parts = append(parts, ErrorStyle.Render("r changes"))
+		}
+
+		cardMaxHeight = budget - cardGapH - actionH
+		card = m.renderReviewCardWithMaxHeight(cardMaxHeight)
+		if card != "" {
+			return strings.Join([]string{card, "", actionLine}, "\n")
 		}
 	}
-	parts = append(parts, "q quit")
-	footer += FooterStyle.Render("  " + strings.Join(parts, " · "))
-	return footer
+
+	lines = append(lines, actionLine)
+	if budget := m.footerHeightBudget(); budget > 0 && lipgloss.Height(strings.Join(lines, "\n")) > budget {
+		lines = append(lines[:max(len(lines)-2, 0)], actionLine)
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func (m Model) renderFooterActionLine(parts, shortParts []string) string {
+	line := FooterStyle.Render("  " + strings.Join(parts, " · "))
+	if m.width <= 0 || lipgloss.Width(line) <= m.width {
+		return line
+	}
+	line = FooterStyle.Render("  " + strings.Join(shortParts, " · "))
+	if lipgloss.Width(line) <= m.width {
+		return line
+	}
+	essential := []string{"enter/e", "q quit"}
+	if m.rejecting {
+		essential = []string{"esc cancel"}
+	}
+	line = FooterStyle.Render("  " + strings.Join(essential, " · "))
+	if lipgloss.Width(line) <= m.width {
+		return line
+	}
+	return FooterStyle.MaxWidth(m.width).Render(line)
 }
 
 func (m Model) renderReviewCard() string {
+	return m.renderReviewCardWithMaxHeight(0)
+}
+
+func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	target, ok := m.selectedReviewTarget()
 	if !ok {
+		return ""
+	}
+	if maxHeight > 0 && maxHeight < 3 {
 		return ""
 	}
 	w := min(m.contentWidth()-4, 84)
@@ -494,9 +635,14 @@ func (m Model) renderReviewCard() string {
 	var lines []string
 	prefix := "Review"
 	if target.kind == "chapter" {
-		prefix = "Review chapter"
+		prefix = fmt.Sprintf("Review chapter (%d steps)", len(target.steps))
 	}
 	lines = append(lines, AttentionStyle.Render(prefix+": ")+target.title)
+	if target.kind == "chapter" {
+		if included := m.reviewStepTitleLabel(target.steps); included != "" {
+			lines = append(lines, MutedStyle.Render("Includes: ")+included)
+		}
+	}
 	if changed := m.reviewChangedLabel(target.steps); changed != "" {
 		lines = append(lines, MutedStyle.Render("Agent changed: ")+changed)
 	}
@@ -525,7 +671,98 @@ func (m Model) renderReviewCard() string {
 	for _, line := range lines {
 		wrapped = append(wrapped, strings.Split(wordWrap(line, w-4), "\n")...)
 	}
-	return ReviewCardStyle.Width(w).Render(strings.Join(wrapped, "\n"))
+	if maxHeight > 0 {
+		maxContentLines := maxHeight - 2
+		if len(wrapped) > maxContentLines {
+			if maxContentLines <= 1 {
+				wrapped = []string{DimmedStyle.Render("Review: more checks available")}
+			} else {
+				more := DimmedStyle.Render("You check: enter/e for more")
+				wrapped = append(wrapped[:maxContentLines-1], more)
+			}
+		}
+	}
+	return renderReviewCardLines(w, maxHeight, wrapped)
+}
+
+func footerLinesFit(lines []string, budget int) bool {
+	return budget <= 0 || lipgloss.Height(strings.Join(lines, "\n")) <= budget
+}
+
+func renderReviewCardLines(width, maxHeight int, lines []string) string {
+	more := DimmedStyle.Render("Review: more checks available")
+	for {
+		rendered := ReviewCardStyle.Width(width).Render(strings.Join(lines, "\n"))
+		if maxHeight <= 0 || lipgloss.Height(rendered) <= maxHeight {
+			return rendered
+		}
+		if len(lines) <= 2 {
+			return ReviewCardStyle.Width(width).MaxHeight(maxHeight).Render(strings.Join(lines, "\n"))
+		}
+		lines = append(lines[:len(lines)-2], more)
+	}
+}
+
+func (m Model) renderViewportRegion() string {
+	return m.renderViewportRegionWithHeight(m.viewport.Height)
+}
+
+func (m Model) renderViewportRegionWithHeight(height int) string {
+	view := m.viewport.View()
+	if m.width <= 0 || height <= 0 {
+		return view
+	}
+	rendered := lipgloss.NewStyle().
+		Width(m.width).
+		Height(height).
+		MaxHeight(height).
+		Render(view)
+	if height >= 3 && m.viewport.YOffset+height < m.viewport.TotalLineCount() {
+		lines := strings.Split(rendered, "\n")
+		if len(lines) > 0 {
+			indicator := MutedStyle.Render("  ↓ more below")
+			lines[len(lines)-1] = lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(indicator)
+			rendered = strings.Join(lines, "\n")
+		}
+	}
+	return rendered
+}
+
+func (m Model) renderPinnedViewport(header, footer string) string {
+	footerGap := 2
+	viewHeight := m.viewport.Height
+	if m.height > 0 {
+		headerH := lipgloss.Height(header) + 1
+		footerH := lipgloss.Height(footer)
+		available := m.height - headerH - footerH - footerGap
+		if available < minViewportHeight {
+			available = minViewportHeight
+		}
+		if viewHeight <= 0 || viewHeight > available {
+			viewHeight = available
+		}
+	}
+	view := m.renderViewportRegionWithHeight(viewHeight)
+	rendered := header + "\n" + view + strings.Repeat("\n", footerGap) + footer
+	if m.height <= 0 {
+		return rendered
+	}
+	if pad := m.height - lipgloss.Height(rendered); pad > 0 {
+		rendered = header + "\n" + view + strings.Repeat("\n", footerGap+pad) + footer
+	}
+	return rendered
+}
+
+func (m Model) footerHeightBudget() int {
+	if m.height <= 0 {
+		return 0
+	}
+	headerHeight := lipgloss.Height(m.renderHeader())
+	budget := m.height - headerHeight - minViewportHeight - 2 - terminalScrollGuard
+	if budget < 1 {
+		return 1
+	}
+	return budget
 }
 
 func (m Model) requestChangesPlaceholder(target reviewTarget) string {
@@ -596,6 +833,27 @@ func (m Model) reviewVerificationLabel(steps []int) string {
 		return fmt.Sprintf("%d check(s) passed", passed)
 	}
 	return fmt.Sprintf("%d/%d check(s) passed", passed, total)
+}
+
+func (m Model) reviewStepTitleLabel(steps []int) string {
+	if m.session == nil {
+		return ""
+	}
+	var titles []string
+	for _, step := range steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil || node.Title == "" {
+			continue
+		}
+		titles = append(titles, node.Title)
+	}
+	if len(titles) == 0 {
+		return ""
+	}
+	if len(titles) > 3 {
+		return strings.Join(titles[:3], ", ") + fmt.Sprintf(" +%d more", len(titles)-3)
+	}
+	return strings.Join(titles, ", ")
 }
 
 func (m Model) reviewPromptLabel(steps []int) string {
@@ -703,7 +961,7 @@ func (m Model) renderCompletionView() string {
 	if !m.ready {
 		return header + "\n" + m.pinFooter(m.renderCompletionBody(), footer)
 	}
-	return header + "\n" + m.viewport.View() + "\n" + footer
+	return m.renderPinnedViewport(header, footer)
 }
 
 func (m Model) renderCompletionBody() string {
@@ -713,8 +971,8 @@ func (m Model) renderCompletionBody() string {
 	done := summary[coop.StepDone]
 	total := m.session.TotalSteps()
 
-	box := SuccessStyle.Render(fmt.Sprintf("  ✓ Integration complete: %s", m.session.Blueprint)) +
-		"\n" + MutedStyle.Render(fmt.Sprintf("  All %d steps done.", done))
+	box := SuccessStyle.Render(fmt.Sprintf("✓ Integration complete: %s", m.session.Blueprint)) +
+		"\n" + MutedStyle.Render(fmt.Sprintf("All %d steps done.", done))
 	if total != done {
 		box += MutedStyle.Render(fmt.Sprintf(" (%d skipped)", total-done))
 	}
@@ -762,7 +1020,7 @@ func (m Model) renderCompletionBody() string {
 		content += "\n" + fmt.Sprintf("  %s%s %s", cur, icon, title)
 		if s.desc != "" && !isDone {
 			descW := min(w-10, 55)
-			for _, dl := range strings.Split(wordWrap(s.desc, descW), "\n") {
+			for _, dl := range wrapPlainText(s.desc, descW) {
 				content += "\n      " + DimmedStyle.Render(dl)
 			}
 		}
@@ -804,7 +1062,7 @@ func (m Model) renderCompletionReceipt(width int) string {
 			checkW = 20
 		}
 		for _, check := range checks {
-			wrapped := strings.Split(wordWrap(check, checkW), "\n")
+			wrapped := wrapPlainText(check, checkW)
 			for i, line := range wrapped {
 				prefix := "  - "
 				if i > 0 {
@@ -816,6 +1074,28 @@ func (m Model) renderCompletionReceipt(width int) string {
 	}
 
 	return strings.TrimRight(content.String(), "\n")
+}
+
+func wrapPlainText(s string, width int) []string {
+	if width <= 0 {
+		return []string{s}
+	}
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return []string{""}
+	}
+	var lines []string
+	line := words[0]
+	for _, word := range words[1:] {
+		if lipgloss.Width(line)+1+lipgloss.Width(word) <= width {
+			line += " " + word
+			continue
+		}
+		lines = append(lines, line)
+		line = word
+	}
+	lines = append(lines, line)
+	return lines
 }
 
 func (m Model) completionBuiltItems() []string {
@@ -861,7 +1141,10 @@ func (m Model) completionImportantChecks() []string {
 }
 
 func (m Model) renderCompletionFooter() string {
-	return FooterStyle.Render("  ↑↓ navigate  ·  enter select  ·  q quit")
+	return m.renderFooterActionLine(
+		[]string{"↑↓ navigate", "enter select", "q quit"},
+		[]string{"↑↓ navigate", "enter", "q quit"},
+	)
 }
 
 func (m Model) getCompletedSuggestionIDs() map[string]bool {

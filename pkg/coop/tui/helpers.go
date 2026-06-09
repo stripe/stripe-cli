@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
+	"github.com/muesli/reflow/wrap"
 )
 
 var openBrowserFn = openBrowserDefault
@@ -85,26 +87,10 @@ func clampLines(s string, width int) string {
 }
 
 func wordWrap(s string, width int) string {
-	if width <= 0 || len(s) <= width {
+	if width <= 0 || lipgloss.Width(s) <= width {
 		return s
 	}
-	var result strings.Builder
-	line := ""
-	for _, word := range strings.Fields(s) {
-		switch {
-		case line == "":
-			line = word
-		case len(line)+1+len(word) > width:
-			result.WriteString(line + "\n")
-			line = word
-		default:
-			line += " " + word
-		}
-	}
-	if line != "" {
-		result.WriteString(line)
-	}
-	return result.String()
+	return wrap.String(wordwrap.String(s, width), width)
 }
 
 func formatDuration(d time.Duration) string {

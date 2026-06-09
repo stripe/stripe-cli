@@ -19,6 +19,8 @@ type agentInfo struct {
 	path string
 }
 
+type coopPaneCommandBuilder func(sessionID string) (string, func(), error)
+
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	if rc.agent != "" {
 		path, err := exec.LookPath(rc.agent)
@@ -134,31 +136,56 @@ func (rc *coopRunCmd) hasTmux() bool {
 	return err == nil
 }
 
-func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
-	promptPath, err := writePromptFile(agentPrompt)
-	if err != nil {
-		return err
-	}
+func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, agentPrompt string, autoApprove bool) coopPaneCommandBuilder {
+	return func(sessionID string) (string, func(), error) {
+		promptPath, err := writePromptFile(agentPrompt)
+		if err != nil {
+			return "", nil, err
+		}
 
+		agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
+		if agentCmd == "" {
+			os.Remove(promptPath)
+			return "", nil, fmt.Errorf("failed to create agent launcher")
+		}
+		return agentCmd, func() { os.Remove(promptPath) }, nil
+	}
+}
+
+func (rc *coopRunCmd) debugAgentPaneCommandBuilder(stripeBin string) coopPaneCommandBuilder {
+	return func(sessionID string) (string, func(), error) {
+		cmd := fmt.Sprintf("%s coop debug-agent --session %s", strconv.Quote(stripeBin), strconv.Quote(sessionID))
+		if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
+			cmd = fmt.Sprintf("XDG_CONFIG_HOME=%s %s", strconv.Quote(xdgConfigHome), cmd)
+		}
+		return cmd, nil, nil
+	}
+}
+
+func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
+	return rc.runInTmuxSplitWithCommand(stripeBin, blueprintID, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+}
+
+func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID string, buildPaneCmd coopPaneCommandBuilder) error {
 	sessionID := ""
 	if blueprintID != "" {
 		var err error
 		sessionID, err = rc.startSessionQuietly(blueprintID)
 		if err != nil {
-			os.Remove(promptPath)
 			return err
 		}
 	}
 
-	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
-	if agentCmd == "" {
-		os.Remove(promptPath)
-		return fmt.Errorf("failed to create agent launcher")
+	paneCmd, cleanup, err := buildPaneCmd(sessionID)
+	if err != nil {
+		return err
 	}
 
-	split := exec.Command("tmux", "split-window", "-h", "-p", "60", "bash", "-c", agentCmd)
+	split := exec.Command("tmux", "split-window", "-h", "-p", "60", "bash", "-c", paneCmd)
 	if err := split.Run(); err != nil {
-		os.Remove(promptPath)
+		if cleanup != nil {
+			cleanup()
+		}
 		return fmt.Errorf("tmux split failed: %w", err)
 	}
 
@@ -175,6 +202,10 @@ func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPr
 }
 
 func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
+	return rc.runInNewTmuxWithCommand(stripeBin, blueprintID, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+}
+
+func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID string, buildPaneCmd coopPaneCommandBuilder) error {
 	sessionName := "stripe-coop"
 
 	// Check for existing session
@@ -200,17 +231,11 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 		exec.Command("tmux", "kill-session", "-t", sessionName).Run()
 	}
 
-	promptPath, err := writePromptFile(agentPrompt)
-	if err != nil {
-		return err
-	}
-
 	sessionID := ""
 	if blueprintID != "" {
 		var err error
 		sessionID, err = rc.startSessionQuietly(blueprintID)
 		if err != nil {
-			os.Remove(promptPath)
 			return err
 		}
 	}
@@ -221,23 +246,26 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 	} else {
 		tuiCmd += " " + sessionID
 	}
-	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
-	if agentCmd == "" {
-		os.Remove(promptPath)
-		return fmt.Errorf("failed to create agent launcher")
+	paneCmd, cleanup, err := buildPaneCmd(sessionID)
+	if err != nil {
+		return err
 	}
 
 	create := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-x", "200", "-y", "50",
 		"bash", "-c", tuiCmd)
 	if err := create.Run(); err != nil {
-		os.Remove(promptPath)
+		if cleanup != nil {
+			cleanup()
+		}
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
 	split := exec.Command("tmux", "split-window", "-h", "-t", sessionName, "-p", "60",
-		"bash", "-c", agentCmd)
+		"bash", "-c", paneCmd)
 	if err := split.Run(); err != nil {
-		os.Remove(promptPath)
+		if cleanup != nil {
+			cleanup()
+		}
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
@@ -251,10 +279,16 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 }
 
 func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
+	return rc.runFallbackWithCommand(stripeBin, blueprintID, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+}
+
+func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprintID string, buildPaneCmd coopPaneCommandBuilder) error {
 	fmt.Println("tmux not found — running agent in this terminal.")
 
+	sessionID := ""
 	if blueprintID != "" {
-		sessionID, err := rc.startSessionQuietly(blueprintID)
+		var err error
+		sessionID, err = rc.startSessionQuietly(blueprintID)
 		if err != nil {
 			return err
 		}
@@ -265,17 +299,14 @@ func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPromp
 	}
 	fmt.Println()
 
-	promptPath, err := writePromptFile(agentPrompt)
+	paneCmd, cleanup, err := buildPaneCmd(sessionID)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(promptPath)
-
-	agentCmd := rc.buildAgentCmd(agent, promptPath, autoApprove)
-	if agentCmd == "" {
-		return fmt.Errorf("failed to create agent launcher")
+	if cleanup != nil {
+		defer cleanup()
 	}
-	agentExec := exec.Command("bash", "-c", agentCmd)
+	agentExec := exec.Command("bash", "-c", paneCmd)
 	agentExec.Stdin = os.Stdin
 	agentExec.Stdout = os.Stdout
 	agentExec.Stderr = os.Stderr

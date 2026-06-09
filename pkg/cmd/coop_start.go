@@ -10,10 +10,11 @@ import (
 )
 
 type coopRunCmd struct {
-	cmd      *cobra.Command
-	language string
-	settings []string
-	agent    string
+	cmd        *cobra.Command
+	language   string
+	settings   []string
+	agent      string
+	debugAgent bool
 }
 
 func newCoopRunCmd() *coopRunCmd {
@@ -39,19 +40,13 @@ splits the current window. Otherwise creates a new tmux session.`,
 	rc.cmd.Flags().StringVar(&rc.language, "language", "", "Programming language for the integration")
 	rc.cmd.Flags().StringArrayVar(&rc.settings, "setting", nil, "Blueprint settings as key=value pairs")
 	rc.cmd.Flags().StringVar(&rc.agent, "agent", "", "Agent to use (default: auto-detect claude/codex)")
+	rc.cmd.Flags().BoolVar(&rc.debugAgent, "debug-agent", false, "Use a deterministic fake agent for local TUI debugging")
+	rc.cmd.Flags().MarkHidden("debug-agent") //nolint:gosec
 
 	return rc
 }
 
 func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
-	agent, err := rc.detectAgent()
-	if err != nil {
-		return err
-	}
-
-	autoApprove := rc.promptAutoApprove(agent)
-	fmt.Println()
-
 	hasTmux := rc.hasTmux()
 	inTmux := os.Getenv("TMUX") != ""
 
@@ -63,8 +58,29 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	agentPrompt := rc.buildAgentPrompt(blueprintID)
 	stripeBin, _ := os.Executable()
+	if rc.debugAgent {
+		if blueprintID == "" {
+			return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
+		}
+		buildDebugPane := rc.debugAgentPaneCommandBuilder(stripeBin)
+		if inTmux {
+			return rc.runInTmuxSplitWithCommand(stripeBin, blueprintID, buildDebugPane)
+		} else if hasTmux {
+			return rc.runInNewTmuxWithCommand(stripeBin, blueprintID, buildDebugPane)
+		}
+		return rc.runFallbackWithCommand(stripeBin, blueprintID, buildDebugPane)
+	}
+
+	agent, err := rc.detectAgent()
+	if err != nil {
+		return err
+	}
+
+	autoApprove := rc.promptAutoApprove(agent)
+	fmt.Println()
+
+	agentPrompt := rc.buildAgentPrompt(blueprintID)
 
 	if inTmux {
 		return rc.runInTmuxSplit(stripeBin, agent, agentPrompt, autoApprove, blueprintID)

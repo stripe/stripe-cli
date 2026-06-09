@@ -152,10 +152,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.SetYOffset(0)
 			}
 		}
-		m.resizeViewport()
 		if !m.userMoved {
 			m.autoScroll()
 		}
+		m.resizeViewport()
 		m.syncViewport()
 		return m, tickCmd()
 
@@ -204,8 +204,7 @@ func (m Model) View() string {
 	}
 
 	header := m.renderHeader()
-	footer := "\n" + m.renderFooter()
-	return header + "\n" + m.viewport.View() + "\n" + footer
+	return m.renderPinnedViewport(header, m.renderFooter())
 }
 
 // --- State management ---
@@ -219,9 +218,9 @@ func (m *Model) resizeViewport() {
 	if m.session != nil && m.session.IsComplete() {
 		footerH = lipgloss.Height(m.renderCompletionFooter()) + 1
 	}
-	vpHeight := m.height - headerH - footerH
-	if vpHeight < 3 {
-		vpHeight = 3
+	vpHeight := m.height - headerH - footerH - terminalScrollGuard
+	if vpHeight < minViewportHeight {
+		vpHeight = minViewportHeight
 	}
 	m.viewport.Width = m.width
 	m.viewport.Height = vpHeight
@@ -305,19 +304,17 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "up", "k":
 		m.moveCursorUp()
+		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
 	case "down", "j":
 		m.moveCursorDown()
+		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
 	case "e", "?":
 		m.expanded = !m.expanded
-		if m.expanded {
-			m.setStatus("Details opened", 2*time.Second)
-		} else {
-			m.setStatus("Details collapsed", 2*time.Second)
-		}
+		m.resizeViewport()
 		m.syncViewport()
 		if m.expanded {
 			return m, m.fetchSnippetIfNeeded()
@@ -335,7 +332,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		if m.expanded {
 			m.expanded = false
-			m.setStatus("Details collapsed", 2*time.Second)
+			m.resizeViewport()
 			m.syncViewport()
 		}
 		return m, nil
@@ -343,6 +340,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.userMoved = false
 		m.autoScroll()
 		m.setStatus("Following the current review step", 3*time.Second)
+		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
 	case "c":
@@ -360,6 +358,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.setStatus("Copied review command.", 3*time.Second)
 			}
+			m.resizeViewport()
 			m.syncViewport()
 		}
 		return m, nil
@@ -429,11 +428,7 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.expanded = !m.expanded
-	if m.expanded {
-		m.setStatus("Details opened", 2*time.Second)
-	} else {
-		m.setStatus("Details collapsed", 2*time.Second)
-	}
+	m.resizeViewport()
 	m.syncViewport()
 	if m.expanded {
 		return m, m.fetchSnippetIfNeeded()
@@ -503,6 +498,7 @@ func (m *Model) startReject() {
 		m.rejectionError = ""
 		m.statusMessage = ""
 		m.statusExpiresAt = time.Time{}
+		m.resizeViewport()
 		m.syncViewport()
 	}
 }
@@ -514,6 +510,7 @@ func (m Model) handleRejectionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.rejectionInput = ""
 		m.rejectionError = ""
 		m.setStatus("Request changes canceled.", 3*time.Second)
+		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
 	case "enter":
@@ -524,12 +521,14 @@ func (m Model) handleRejectionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			runes := []rune(m.rejectionInput)
 			m.rejectionInput = string(runes[:len(runes)-1])
 		}
+		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
 	}
 	if msg.Type == tea.KeyRunes {
 		m.rejectionInput += string(msg.Runes)
 		m.rejectionError = ""
+		m.resizeViewport()
 		m.syncViewport()
 	}
 	return m, nil
@@ -541,6 +540,7 @@ func (m *Model) handleReject(note string) {
 	}
 	if note == "" {
 		m.rejectionError = "Add a short note so the agent knows what to change."
+		m.resizeViewport()
 		m.syncViewport()
 		return
 	}
@@ -566,13 +566,15 @@ func (m *Model) handleReject(note string) {
 	m.rejectionInput = ""
 	m.rejectionError = ""
 	m.setStatus("Feedback sent. Waiting for agent...", 5*time.Second)
+	m.resizeViewport()
 	m.syncViewport()
 }
 
 type reviewTarget struct {
-	title string
-	kind  string
-	steps []int
+	title        string
+	kind         string
+	steps        []int
+	chapterIndex int
 }
 
 func (m Model) selectedReviewTarget() (reviewTarget, bool) {
@@ -585,7 +587,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 		return reviewTarget{}, false
 	}
 	if m.session.ReviewGranularityForStep(stepNum) != coop.ReviewGranularityChapter {
-		return reviewTarget{title: node.Title, kind: "step", steps: []int{stepNum}}, true
+		return reviewTarget{title: node.Title, kind: "step", steps: []int{stepNum}, chapterIndex: -1}, true
 	}
 	ch, chapterIndex, _, err := m.session.ChapterByStepNumber(stepNum)
 	if err != nil || !m.session.ChapterReadyForReview(chapterIndex) {
@@ -604,7 +606,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if len(steps) == 0 {
 		return reviewTarget{}, false
 	}
-	return reviewTarget{title: ch.Title, kind: "chapter", steps: steps}, true
+	return reviewTarget{title: ch.Title, kind: "chapter", steps: steps, chapterIndex: chapterIndex}, true
 }
 
 func (m Model) reviewIsActionable(stepNum int) bool {

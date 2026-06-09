@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
@@ -74,10 +76,25 @@ func TestRenderStepList(t *testing.T) {
 	assert.Contains(t, list, "Handle event")
 }
 
+func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+
+	list := m.renderStepList()
+
+	assert.Contains(t, list, "Needs chapter review (2 steps)")
+	assert.Contains(t, list, "▸")
+	assert.Contains(t, list, "Create product  Included")
+	assert.Contains(t, list, "Create checkout  Included")
+	assert.NotContains(t, list, "Create product  Needs review")
+}
+
 func TestRenderStepLineAnnotation(t *testing.T) {
 	m := testModel()
 	node := m.session.Chapters[0].Nodes[0]
-	line := m.renderStepLine(node, 0)
+	line := m.renderStepLine(node, 0, false)
 
 	assert.Contains(t, line, "server.js:5-20")
 }
@@ -85,7 +102,7 @@ func TestRenderStepLineAnnotation(t *testing.T) {
 func TestRenderStepLineActivity(t *testing.T) {
 	m := testModel()
 	node := m.session.Chapters[0].Nodes[1]
-	line := m.renderStepLine(node, 1)
+	line := m.renderStepLine(node, 1, false)
 
 	assert.Contains(t, line, "Writing endpoint")
 }
@@ -94,7 +111,7 @@ func TestRenderStepLineCursor(t *testing.T) {
 	m := testModel()
 	m.cursor = 1
 	node := m.session.Chapters[0].Nodes[1]
-	line := m.renderStepLine(node, 1)
+	line := m.renderStepLine(node, 1, false)
 
 	assert.Contains(t, line, "▸")
 }
@@ -103,7 +120,7 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 	m := testModel()
 	m.cursor = 0
 	node := m.session.Chapters[0].Nodes[1]
-	line := m.renderStepLine(node, 1)
+	line := m.renderStepLine(node, 1, false)
 
 	assert.NotContains(t, line, "▸")
 }
@@ -119,6 +136,20 @@ func TestRenderDetail(t *testing.T) {
 	assert.Contains(t, detail, "Agent wrote")
 	assert.Contains(t, detail, "server.js:5-20")
 	assert.Contains(t, detail, "Created product")
+}
+
+func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
+	m := testModel()
+	m.cursor = 0
+	m.expanded = true
+	m.detailTab = 0
+
+	detail := m.renderDetail()
+
+	assert.NotContains(t, detail, "Details:")
+	assert.Equal(t, 1, strings.Count(detail, "Summary"))
+	assert.NotContains(t, detail, "Files  Checks  Reference")
+	assert.Contains(t, detail, "Confirm the saved price ID is reused")
 }
 
 func TestRenderDetailWebhook(t *testing.T) {
@@ -146,6 +177,21 @@ func TestRenderDetailWithSDKSnippet(t *testing.T) {
 
 	assert.Contains(t, detail, "Reference")
 	assert.Contains(t, detail, "stripe.products.create")
+}
+
+func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
+	m := testModel()
+	m.width = 69
+	m.cursor = 0
+	m.expanded = true
+	m.detailTab = 1
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].Implementation.Snippet = strings.Repeat("const createdCheckoutSessionWithLongIdentifier = await stripe.checkout.sessions.create({ mode: 'payment' })\n", 5)
+
+	detail := m.renderDetail()
+
+	assertLinesWithinWidth(t, detail, m.width)
+	assert.Contains(t, detail, "Waiting for you")
 }
 
 func TestRenderFooter(t *testing.T) {
@@ -191,6 +237,22 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	assert.Contains(t, card, "1/2 check(s) passed")
 	assert.Contains(t, card, "You check:")
 	assert.Contains(t, card, "Confirm Checkout uses the saved price ID.")
+}
+
+func TestRenderChapterReviewCardNamesCoveredSteps(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.cursor = 0
+
+	card := m.renderReviewCard()
+	footer := m.renderFooter()
+
+	assert.Contains(t, card, "Review chapter (2 steps): Set up product")
+	assert.Contains(t, card, "Includes: Create product, Create checkout")
+	assert.Contains(t, footer, "confirm chapter")
+	assert.Contains(t, footer, "chapter changes")
 }
 
 func TestRenderReviewCardFallbackCheck(t *testing.T) {
@@ -241,6 +303,14 @@ func TestRenderCompletionView(t *testing.T) {
 	assert.Contains(t, view, "STRIPE.md")
 	assert.Contains(t, view, "Deploy")
 	assert.Contains(t, view, "Finish")
+}
+
+func TestCompletionSummaryBoxUsesSinglePaddingSpace(t *testing.T) {
+	m := completionLayoutModel()
+	body := m.renderCompletionBody()
+
+	assert.Contains(t, body, "│ ✓ Integration complete")
+	assert.NotContains(t, body, "│  ✓ Integration complete")
 }
 
 func TestCompletionBuiltItemsFiltersContextSkippedAndIncomplete(t *testing.T) {
@@ -295,6 +365,18 @@ func TestCompletionImportantChecksDedupesDoneOnlyAndCaps(t *testing.T) {
 	assert.Equal(t, []string{"Check one", "Check two"}, m.completionImportantChecks())
 }
 
+func TestCompletionImportantChecksWrapOnWordBoundaries(t *testing.T) {
+	m := completionLayoutModel()
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Open the app and confirm the user-facing flow works as described."
+
+	receipt := m.renderCompletionReceipt(65)
+
+	assert.NotContains(t, receipt, "a\n    s")
+	assert.NotContains(t, receipt, "\n    s                                                                described.")
+	assert.Contains(t, receipt, "as\n    described.")
+	assertLinesWithinWidth(t, receipt, 69)
+}
+
 func TestGetCompletionSuggestionsDefault(t *testing.T) {
 	m := testModel()
 	suggestions := m.getCompletionSuggestions()
@@ -324,7 +406,7 @@ func TestAnnotationWrapsAtNarrowWidth(t *testing.T) {
 		Key: "test", Title: "Step", State: coop.StepActive,
 		Activity: "This is a very long activity note that should wrap",
 	}
-	line := m.renderStepLine(node, 0)
+	line := m.renderStepLine(node, 0, false)
 
 	// Should have a newline (wrapped)
 	assert.True(t, strings.Contains(line, "\n"))
@@ -337,7 +419,7 @@ func TestAnnotationInlineAtWideWidth(t *testing.T) {
 		Key: "test", Title: "Step", State: coop.StepActive,
 		Activity: "Short note",
 	}
-	line := m.renderStepLine(node, 0)
+	line := m.renderStepLine(node, 0, false)
 
 	// Should contain the annotation inline (not wrapped to next line)
 	assert.Contains(t, line, "Short note")
@@ -381,7 +463,7 @@ func TestRenderStepLineSkipped(t *testing.T) {
 		Key: "skipped", Title: "Skipped step", State: coop.StepSkipped,
 		Activity: "Not needed for this project",
 	}
-	line := m.renderStepLine(node, 0)
+	line := m.renderStepLine(node, 0, false)
 	assert.Contains(t, line, "Not needed")
 }
 
@@ -456,6 +538,125 @@ func TestRenderFooterRejectionPlaceholder(t *testing.T) {
 
 	assert.Contains(t, footer, "signature verification")
 	assert.Contains(t, footer, "event handling")
+}
+
+func TestReviewCardFitsWithinShortViewport(t *testing.T) {
+	m := testModel()
+	m.ready = true
+	m.width = 56
+	m.height = 18
+	m.viewport = viewport.New(56, 10)
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Open the local application, complete the Checkout flow, confirm the redirect lands on the success page, confirm the saved price ID is reused, and confirm no secret keys or generated IDs are committed."
+	m.session.Chapters[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Created product and price", Passed: true},
+		{Check: "Saved price ID for Checkout", Passed: true},
+		{Check: "Ran local Checkout flow", Passed: true},
+	}
+	m.cursor = 0
+
+	m.resizeViewport()
+	m.syncViewport()
+	view := m.View()
+
+	assert.LessOrEqual(t, lipgloss.Height(view), m.height)
+	assertLinesWithinWidth(t, view, m.width)
+	assert.Contains(t, view, "Stripe Co-op")
+	assert.Contains(t, view, "q quit")
+}
+
+func TestReviewCardShowsDetailsHintWhenClipped(t *testing.T) {
+	m := testModel()
+	m.ready = true
+	m.width = 56
+	m.height = 12
+	m.viewport = viewport.New(56, 10)
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Confirm the Checkout flow, success page, saved price ID, webhook event handling, and environment variable setup all match the intended integration."
+	m.session.Chapters[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Created product", Passed: true},
+		{Check: "Created price", Passed: true},
+		{Check: "Created Checkout Session", Passed: true},
+	}
+	m.cursor = 0
+
+	footer := m.renderFooter()
+
+	assert.LessOrEqual(t, lipgloss.Height(footer), m.footerHeightBudget())
+	assertLinesWithinWidth(t, footer, m.width)
+	assert.Contains(t, footer, "more checks available")
+}
+
+func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {
+	m := testModel()
+	m.ready = true
+	m.width = 69
+	m.height = 50
+	m.viewport = viewport.New(69, 10)
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Confirm the product, price, Checkout Session, redirect URL, success page, saved price ID, webhook event handling, and environment variable setup all match the intended integration."
+	m.session.Chapters[0].Nodes[0].Implementation = &coop.Implementation{File: "server/routes/payments/checkout/session/handler/with/a/long/path.js", Lines: "42-118"}
+	m.session.Chapters[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Created product", Passed: true},
+		{Check: "Created price", Passed: true},
+		{Check: "Created Checkout Session", Passed: true},
+	}
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].ReviewPrompt = "Open the app locally, click the Checkout button, complete payment, and confirm the redirect lands on the expected success page without exposing secret keys."
+	m.session.Chapters[0].Nodes[1].Implementation = &coop.Implementation{File: "client/src/components/payments/checkout-button-with-long-name.tsx", Lines: "9-88"}
+	m.session.Chapters[0].Nodes[1].Verifications = []coop.Verification{
+		{Check: "Rendered Checkout button", Passed: true},
+		{Check: "Confirmed redirect", Passed: true},
+	}
+	m.cursor = 0
+
+	m.resizeViewport()
+	m.syncViewport()
+	view := m.View()
+
+	assert.LessOrEqual(t, lipgloss.Height(view), m.height)
+	assertLinesWithinWidth(t, view, m.width)
+	assert.Contains(t, view, "Stripe Co-op")
+	assert.Contains(t, view, "Review chapter")
+	assert.Contains(t, view, "q quit")
+}
+
+func TestViewportShowsMoreBelowIndicator(t *testing.T) {
+	m := testModel()
+	m.ready = true
+	m.width = 69
+	m.height = 12
+	m.viewport = viewport.New(69, 4)
+	m.session.Chapters = []coop.SessionChapter{{
+		Key:   "long",
+		Title: "Long chapter",
+		Nodes: []coop.SessionNode{
+			{Title: "One", State: coop.StepDone},
+			{Title: "Two", State: coop.StepDone},
+			{Title: "Three", State: coop.StepDone},
+			{Title: "Four", State: coop.StepDone},
+			{Title: "Five", State: coop.StepDone},
+			{Title: "Six", State: coop.StepDone},
+		},
+	}}
+	m.cursor = 0
+	m.resizeViewport()
+	m.syncViewport()
+	m.viewport.Height = 4
+	m.viewport.SetYOffset(0)
+
+	rendered := m.renderViewportRegionWithHeight(4)
+
+	assert.Contains(t, rendered, "more below")
+	assertLinesWithinWidth(t, rendered, m.width)
+}
+
+func assertLinesWithinWidth(t *testing.T, rendered string, width int) {
+	t.Helper()
+	for _, line := range strings.Split(rendered, "\n") {
+		assert.LessOrEqual(t, lipgloss.Width(line), width, "line exceeds width: %q", line)
+	}
 }
 
 func TestStepIconAllStates(t *testing.T) {

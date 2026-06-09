@@ -5,7 +5,7 @@
       "key": "setup-chapter",
       "nodes": [
         {
-          "description": "Write code that creates a Stripe product with a price using the API. The product and price IDs should be used in subsequent steps — store them in a variable or constant in your code, NOT in .env files.",
+          "description": "Create a Stripe Product with inline default_price_data, then save the returned default_price ID for the Checkout Session. Do not put generated IDs in .env files.",
           "key": "create-product",
           "request": {
             "key": "create-product-request",
