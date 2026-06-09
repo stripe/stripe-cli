@@ -45,8 +45,9 @@ run_install() {
     ;;
 
     docker)
-        docker pull stripe/stripe-cli:latest
-        docker run --rm stripe/stripe-cli:latest --version
+        # The workflow runs this script inside the stripe/stripe-cli:latest container,
+        # so the stripe binary is already present. No install step needed.
+        stripe --version
     ;;
 
     npm)
@@ -60,7 +61,7 @@ run_install() {
     ;;
 
     npx)
-        npx --yes @stripe/cli --version
+        npx --include=optional --yes @stripe/cli --version
         return $?
     ;;
 
