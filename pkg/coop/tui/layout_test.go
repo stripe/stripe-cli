@@ -81,11 +81,10 @@ func TestUILayoutMatrix(t *testing.T) {
 			expectCursor: true,
 		},
 		{
-			name:             "expanded_details",
-			model:            expandedDetailsLayoutModel,
-			footerToken:      "enter",
-			expectCursor:     true,
-			expectReviewCard: true,
+			name:         "expanded_details",
+			model:        expandedDetailsLayoutModel,
+			footerToken:  "enter",
+			expectCursor: true,
 		},
 		{
 			name:             "completion",

@@ -113,14 +113,17 @@ func (m Model) ShortHelp() []key.Binding {
 		}
 		confirm := m.keys.Confirm
 		reject := m.keys.Reject
-		if target.kind == "chapter" {
+		if m.width > 0 && m.width < 56 {
+			confirm.SetHelp("c", "confirm")
+			reject.SetHelp("r", "changes")
+		} else if target.kind == "chapter" {
 			confirm.SetHelp("c", "confirm chapter")
 			reject.SetHelp("r", "chapter changes")
 		}
 		bindings = append(bindings, confirm, reject)
 	}
 
-	bindings = append(bindings, m.keys.Enter)
+	bindings = append(bindings, m.keys.Enter, m.keys.Quit)
 
 	if m.expanded {
 		bindings = append(bindings, m.keys.Tab, m.keys.Escape)
@@ -130,7 +133,6 @@ func (m Model) ShortHelp() []key.Binding {
 		bindings = append(bindings, m.keys.OpenClaim)
 	}
 
-	bindings = append(bindings, m.keys.Quit)
 	return bindings
 }
 

@@ -569,7 +569,7 @@ func (m Model) renderFooter() string {
 	h.ShortSeparator = " · "
 	actionLine := FooterStyle.MaxWidth(m.width).Render("  " + h.View(m))
 
-	if _, ok := m.selectedReviewTarget(); ok {
+	if _, ok := m.selectedReviewTarget(); ok && !m.expanded {
 		budget := m.footerHeightBudget()
 		cardGapH := 1
 		actionH := lipgloss.Height(actionLine)

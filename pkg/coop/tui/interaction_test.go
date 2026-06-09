@@ -142,7 +142,7 @@ func TestExpandedReviewConfirmationKeepsChromePinned(t *testing.T) {
 	assertLayoutFits(t, rendered, layoutSize{name: "expanded_review_confirmation", width: 69, height: 50})
 	assertHeaderIsPinned(t, rendered)
 	assertFooterIsPinned(t, rendered, "enter")
-	assert.Contains(t, rendered, "Review")
+	assert.Contains(t, rendered, "Files")
 	assert.Contains(t, rendered, "confirm")
 	assert.Contains(t, rendered, "Waiting for you")
 }
