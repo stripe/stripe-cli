@@ -169,4 +169,3 @@ jobs:
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
           DRYRUN: ${{ inputs.dryrun }}
-          npm_config_optional: "true"

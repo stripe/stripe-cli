@@ -61,6 +61,9 @@ run_install() {
     ;;
 
     npx)
+        echo "node: $(node --version)"
+        echo "npm: $(npm --version)"
+        echo "platform: $(uname -s) $(uname -m)"
         npx --yes @stripe/cli --version
     ;;
 
