@@ -6,7 +6,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/stripe/stripe-cli.git"
+    "url": "git+https://github.com/stripe/stripe-cli.git",
+    "directory": "npm/linux-arm64"
   },
   "os": [
     "linux"
