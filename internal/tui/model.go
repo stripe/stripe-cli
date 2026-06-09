@@ -278,6 +278,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case palette.SelectedMsg:
 		if hit, ok := msg.Item.(searchHit); ok {
 			m.palette.Dismiss()
+			m.loading = true
 			client := m.client
 			renderer := m.renderer
 			return m, func() tea.Msg {
@@ -309,10 +310,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return statusMsg("Opened!")
 				}
 			}
+			m.loading = true
 			return m, m.fetchPageCmd(hit.url)
 		}
 
 	case pageReadyMsg:
+		m.loading = false
 		m.page = msg.page
 		m.doc = msg.doc
 		m.title = msg.doc.Title()
@@ -325,6 +328,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case statusMsg:
+		m.loading = false
 		m.statusMessage = string(msg)
 		return m, tea.Tick(statusMessageTimeout, func(_ time.Time) tea.Msg {
 			return clearStatusMsg{}
@@ -447,7 +451,7 @@ func (m Model) View() tea.View {
 
 	view := tea.NewView(content)
 	view.AltScreen = true
-	if m.palette.Visible() && m.palette.Loading() {
+	if m.loading || (m.palette.Visible() && m.palette.Loading()) {
 		view.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 0)
 	}
 	if m.quitting {
