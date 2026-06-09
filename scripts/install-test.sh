@@ -7,10 +7,17 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
+if [ "${DRYRUN:-false}" = "true" ]; then
+    echo "Dry run mode: PagerDuty alerts will be suppressed"
+else
+    echo "Live mode: PagerDuty alerts are enabled"
+fi
+
 run_install() {
     case $PACKAGE_MANAGER in
     homebrew)
         brew install stripe/stripe-cli/stripe
+        stripe --version
     ;;
 
     apt)
@@ -18,31 +25,43 @@ run_install() {
         echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
         sudo apt update
         sudo apt install stripe
+        stripe --version
     ;;
 
     yum)
         yum -y install stripe
+        stripe --version
     ;;
 
     scoop)
         scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
         scoop install stripe
+        stripe --version
+    ;;
+
+    winget)
+        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        stripe --version
     ;;
 
     docker)
+        docker pull stripe/stripe-cli:latest
+        docker run --rm stripe/stripe-cli:latest --version
     ;;
 
     npm)
         npm install -g @stripe/cli
+        stripe --version
     ;;
 
     npm-no-optional)
         npm install -g @stripe/cli --no-optional
+        stripe --version
     ;;
 
     npx)
         npx --yes @stripe/cli --version
-        exit $?
+        return $?
     ;;
 
     *)
@@ -52,11 +71,17 @@ run_install() {
         exit 1
         ;;
     esac
-
-    stripe --version
 }
 
 trigger_pagerduty_alert() {
+    if [ "${DRYRUN:-false}" = "true" ]; then
+        echo "Dry run: PagerDuty alert would have fired with:"
+        echo "  summary:  Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+        echo "  timestamp: $(date)"
+        echo "  source:   Stripe CLI GitHub Actions"
+        echo "  severity: critical"
+        return 0
+    fi
     sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
     pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
     --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \

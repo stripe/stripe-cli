@@ -1,5 +1,10 @@
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
   schedule:
     - cron: '0 * * * *' # Every hour
 name: Package manager test
@@ -17,6 +22,7 @@ jobs:
       - run: bash scripts/install-test.sh homebrew
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
   apt:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +34,7 @@ jobs:
       - run: bash scripts/install-test.sh apt
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
   yum:
     runs-on: ubuntu-latest
     container: fedora:latest
@@ -50,6 +57,7 @@ jobs:
       - run: bash scripts/install-test.sh yum
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
   scoop:
     runs-on: windows-latest
     steps:
@@ -63,6 +71,7 @@ jobs:
       run: bash scripts/install-test.sh scoop
       env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
   winget:
     runs-on: windows-latest
     steps:
@@ -90,6 +99,12 @@ jobs:
         run: |
           $manifestDir = Get-ChildItem -Path dist/winget/manifests -Recurse -Directory | Where-Object { $_.GetFiles("*.yaml").Count -gt 0 } | Select-Object -First 1
           winget validate --ignore-warnings $manifestDir.FullName
+      - name: Test winget install
+        shell: powershell
+        run: bash scripts/install-test.sh winget
+        env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
@@ -102,6 +117,7 @@ jobs:
       - run: sh scripts/install-test.sh docker
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
 
   npm:
     strategy:
@@ -120,6 +136,7 @@ jobs:
       - run: bash scripts/install-test.sh npm
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
 
   npm-no-optional:
     runs-on: ubuntu-latest
@@ -135,6 +152,7 @@ jobs:
       - run: bash scripts/install-test.sh npm-no-optional
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
 
   npx:
     runs-on: ubuntu-latest
@@ -150,3 +168,4 @@ jobs:
       - run: bash scripts/install-test.sh npx
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
