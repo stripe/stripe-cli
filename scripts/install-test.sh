@@ -62,7 +62,6 @@ run_install() {
 
     npx)
         npx --yes @stripe/cli --version
-        return $?
     ;;
 
     *)
