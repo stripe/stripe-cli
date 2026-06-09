@@ -56,6 +56,45 @@ func DetectInstallMethod(
 	return "unknown"
 }
 
+// DetectInTmux detects whether the CLI was invoked from within a tmux session.
+func DetectInTmux(getEnv func(string) string) bool {
+	return getEnv("TMUX") != ""
+}
+
+// DetectInScreen detects whether the CLI was invoked from within a GNU Screen session.
+func DetectInScreen(getEnv func(string) string) bool {
+	return getEnv("STY") != ""
+}
+
+// DetectTerminalProgram detects the terminal program the CLI was invoked from, when available.
+func DetectTerminalProgram(getEnv func(string) string) string {
+	if terminal := getEnv("LC_TERMINAL"); terminal != "" {
+		return terminal
+	}
+	if getEnv("WARP_CLIENT_VERSION") != "" {
+		return "warp"
+	}
+	if getEnv("WT_SESSION") != "" {
+		return "windows_terminal"
+	}
+	if getEnv("KITTY_WINDOW_ID") != "" {
+		return "kitty"
+	}
+	if getEnv("ALACRITTY_WINDOW_ID") != "" || getEnv("ALACRITTY_LOG") != "" {
+		return "alacritty"
+	}
+	if getEnv("WEZTERM_EXECUTABLE") != "" || getEnv("WEZTERM_PANE") != "" {
+		return "wezterm"
+	}
+	if getEnv("GHOSTTY_RESOURCES_DIR") != "" {
+		return "ghostty"
+	}
+	if program := getEnv("TERM_PROGRAM"); program != "" {
+		return program
+	}
+	return ""
+}
+
 // DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
 // It accepts an environment getter function to allow testing without modifying the actual environment.
 func DetectAIAgent(getEnv func(string) string) string {
