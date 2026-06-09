@@ -58,7 +58,14 @@ func TestAddHintCommands_DirectoryHintRoutesAliasesWhenPluginMissing(t *testing.
 	directoryCmd := findChildCommand(rootCmd, "directory")
 	require.NotNil(t, directoryCmd)
 
-	for _, name := range []string{"directory", "search", "directry", "directary", "direcotry", "diretory"} {
+	for _, name := range []string{
+		"directory",
+		"search",
+		"directry",
+		"directary",
+		"direcotry", //nolint:misspell // Intentional typo alias.
+		"diretory",
+	} {
 		t.Run(name, func(t *testing.T) {
 			resolvedCmd, _, err := rootCmd.Find([]string{name})
 
