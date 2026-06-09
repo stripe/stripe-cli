@@ -61,7 +61,7 @@ run_install() {
     ;;
 
     npx)
-        npx --include=optional --yes @stripe/cli --version
+        npx --yes @stripe/cli --version
         return $?
     ;;
 
