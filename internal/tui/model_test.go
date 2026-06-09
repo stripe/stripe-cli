@@ -486,6 +486,66 @@ func TestUpdate_PageReadyMsg(t *testing.T) {
 	assert.NotEmpty(t, model.viewport.GetContent())
 }
 
+func TestView_ProgressBar_IndeterminateWhenPageLoading(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	model.loading = true
+	assert.Equal(t, tea.ProgressBarIndeterminate, model.View().ProgressBar.State)
+}
+
+func TestUpdate_PageReadyMsg_ClearsLoading(t *testing.T) {
+	r, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	m := New(WithRenderer(r), WithPage(Page{Content: []byte("# Original")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+	model.loading = true
+
+	doc, err := markdown.Parse([]byte("# New\n\nBody"))
+	require.NoError(t, err)
+	result, _ = model.Update(pageReadyMsg{page: Page{Content: []byte("# New\n\nBody")}, doc: doc})
+	model = result.(Model)
+
+	assert.False(t, model.loading)
+}
+
+func TestUpdate_StatusMsg_ClearsLoading(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+	model.loading = true
+
+	result, _ = model.Update(statusMsg("Failed to load page"))
+	model = result.(Model)
+
+	assert.False(t, model.loading)
+}
+
+func TestView_ProgressBar_NilWhenPaletteHidden(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	assert.False(t, model.palette.Visible())
+	assert.Nil(t, model.View().ProgressBar)
+}
+
+func TestView_ProgressBar_NilWhenPaletteVisibleButNotLoading(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
+	model = result.(Model)
+
+	assert.True(t, model.palette.Visible())
+	assert.False(t, model.palette.Loading())
+	assert.Nil(t, model.View().ProgressBar)
+}
+
 func TestView_WindowTitle_FromPage(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)
