@@ -64,6 +64,13 @@ run_install() {
         echo "node: $(node --version)"
         echo "npm: $(npm --version)"
         echo "platform: $(uname -s) $(uname -m)"
+        _tmpdir=$(mktemp -d)
+        npm install --prefix "$_tmpdir" @stripe/cli 2>&1
+        echo "=== installed @stripe/* packages ==="
+        npm ls --prefix "$_tmpdir" --depth=1 2>/dev/null
+        echo "=== platform binary ==="
+        find "$_tmpdir/node_modules/@stripe" \( -name "stripe" -o -name "stripe.exe" \) -exec ls -la {} + 2>/dev/null || echo "no binary found"
+        rm -rf "$_tmpdir"
         npx --yes @stripe/cli --version
     ;;
 
