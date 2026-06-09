@@ -145,8 +145,8 @@ jobs:
       - name: Publish platform packages
         run: |
           for dir in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
-            npm publish ./npm/$dir --access public
+            NODE_AUTH_TOKEN="" npm publish ./npm/$dir --access public
           done
 
       - name: Publish wrapper package
-        run: npm publish ./npm/wrapper --access public
+        run: NODE_AUTH_TOKEN="" npm publish ./npm/wrapper --access public
