@@ -273,7 +273,7 @@ func TestParseWithRelativeURLs(t *testing.T) {
 			markdown.WithRelativeURLs("https://stripe.com"),
 		)
 		require.NoError(t, err)
-		refs := doc.References()
+		refs := doc.References(nil)
 		require.Len(t, refs, 2)
 		assert.Equal(t, "/a", refs[0].URL.String())
 		assert.Equal(t, "/b", refs[1].URL.String())
@@ -284,7 +284,7 @@ func TestParseWithRelativeURLs(t *testing.T) {
 			doc, err := markdown.Parse([]byte(tt.src), markdown.WithRelativeURLs("https://docs.stripe.com"))
 
 			require.NoError(t, err)
-			refs := doc.References()
+			refs := doc.References(nil)
 			require.Len(t, refs, len(tt.wantURLs))
 			for i, want := range tt.wantURLs {
 				assert.Equal(t, want, refs[i].URL.String())
