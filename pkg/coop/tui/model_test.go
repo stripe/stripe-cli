@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +59,20 @@ func TestUpdateKeyDownAtBottom(t *testing.T) {
 	updated := result.(Model)
 
 	assert.Equal(t, m.session.TotalSteps()-1, updated.cursor)
+}
+
+func TestUpdatePageKeysMoveViewport(t *testing.T) {
+	m := readyModel()
+	m.viewport.SetContent(strings.Join([]string{
+		"one", "two", "three", "four", "five", "six", "seven", "eight",
+	}, "\n"))
+	m.viewport.SetHeight(3)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: ' '})
+	updated := result.(Model)
+
+	assert.True(t, updated.viewport.YOffset() > 0)
+	assert.True(t, updated.userMoved)
 }
 
 func TestUpdateKeyExpand(t *testing.T) {
@@ -118,6 +133,79 @@ func TestUpdateKeyConfirm(t *testing.T) {
 	assert.Equal(t, coop.StepDone, node.State)
 }
 
+func TestUpdateKeyConfirmIgnoresRepeat(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+
+	m := readyModel()
+	m.store = store
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.cursor = 0
+	store.Write(m.session)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c", IsRepeat: true})
+	updated := result.(Model)
+
+	node, _ := updated.session.NodeByNumber(1)
+	assert.Equal(t, coop.StepReview, node.State)
+}
+
+func TestViewProgressBarReflectsSessionProgress(t *testing.T) {
+	m := readyModel()
+
+	view := m.View()
+
+	require.NotNil(t, view.ProgressBar)
+	assert.Equal(t, tea.ProgressBarDefault, view.ProgressBar.State)
+	assert.Equal(t, 33, view.ProgressBar.Value)
+}
+
+func TestViewMouseHandlerOpensClaimURL(t *testing.T) {
+	m := readyModel()
+	m.session.ClaimURL = "https://dashboard.stripe.com/sandbox/claim_abc"
+	var opened string
+	oldOpen := openBrowserFn
+	openBrowserFn = func(url string) { opened = url }
+	t.Cleanup(func() { openBrowserFn = oldOpen })
+
+	view := m.View()
+	require.NotNil(t, view.OnMouse)
+	cmd := view.OnMouse(tea.MouseClickMsg(tea.Mouse{Y: 1, Button: tea.MouseLeft}))
+	require.NotNil(t, cmd)
+
+	result, _ := m.Update(cmd())
+	_ = result.(Model)
+
+	assert.Equal(t, m.session.ClaimURL, opened)
+}
+
+func TestViewMouseHandlerPassesWheelToViewport(t *testing.T) {
+	m := readyModel()
+	view := m.View()
+	require.NotNil(t, view.OnMouse)
+
+	cmd := view.OnMouse(tea.MouseWheelMsg(tea.Mouse{Button: tea.MouseWheelDown}))
+	require.NotNil(t, cmd)
+
+	_, ok := cmd().(tea.MouseWheelMsg)
+	assert.True(t, ok)
+}
+
+func TestMouseActionSelectsVisibleStep(t *testing.T) {
+	m := readyModel()
+	m.ready = true
+	m.width = 80
+	m.height = 24
+	m.resizeViewport()
+	m.syncViewport()
+
+	result, _ := m.Update(mouseActionMsg{action: mouseActionSelectStep, index: 1})
+	updated := result.(Model)
+
+	assert.Equal(t, 1, updated.cursor)
+	assert.True(t, updated.userMoved)
+}
+
 func TestUpdateKeyConfirmNotOnReviewStep(t *testing.T) {
 	m := readyModel()
 	m.cursor = 0 // step is Done, not Review
@@ -176,6 +264,23 @@ func TestUpdateKeyRejectRequiresNote(t *testing.T) {
 	assert.Equal(t, coop.StepReview, node.State)
 	assert.True(t, updated.rejecting)
 	assert.Contains(t, updated.rejectionError, "short note")
+}
+
+func TestRejectingViewSetsRealCursor(t *testing.T) {
+	m := readyModel()
+	m.ready = true
+	m.width = 69
+	m.height = 20
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.cursor = 0
+	m.startReject()
+
+	view := m.View()
+
+	require.NotNil(t, view.Cursor)
+	assert.GreaterOrEqual(t, view.Cursor.Position.X, 0)
+	assert.GreaterOrEqual(t, view.Cursor.Position.Y, 0)
+	assert.Equal(t, tea.CursorBar, view.Cursor.Shape)
 }
 
 func TestUpdateKeyConfirmChapterReview(t *testing.T) {

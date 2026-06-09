@@ -9,6 +9,10 @@ type keyMap struct {
 	Quit      key.Binding
 	Up        key.Binding
 	Down      key.Binding
+	PageUp    key.Binding
+	PageDown  key.Binding
+	Top       key.Binding
+	Bottom    key.Binding
 	Expand    key.Binding
 	Enter     key.Binding
 	Tab       key.Binding
@@ -33,6 +37,22 @@ func newKeyMap() keyMap {
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
 			key.WithHelp("↓/j", "down"),
+		),
+		PageUp: key.NewBinding(
+			key.WithKeys("pgup", "b"),
+			key.WithHelp("pgup/b", "page up"),
+		),
+		PageDown: key.NewBinding(
+			key.WithKeys("pgdown", "space"),
+			key.WithHelp("pgdn/space", "page down"),
+		),
+		Top: key.NewBinding(
+			key.WithKeys("home", "g"),
+			key.WithHelp("g", "top"),
+		),
+		Bottom: key.NewBinding(
+			key.WithKeys("end", "G"),
+			key.WithHelp("G", "bottom"),
 		),
 		Expand: key.NewBinding(
 			key.WithKeys("e", "?"),

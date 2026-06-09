@@ -33,6 +33,20 @@ type sdkSnippetMsg struct {
 	err     error
 }
 
+type mouseAction int
+
+const (
+	mouseActionNone mouseAction = iota
+	mouseActionSelectStep
+	mouseActionSelectCompletion
+	mouseActionOpenClaim
+)
+
+type mouseActionMsg struct {
+	action mouseAction
+	index  int
+}
+
 func tickCmd() tea.Cmd {
 	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 		return tickMsg(t)

@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"charm.land/bubbles/v2/key"
@@ -18,7 +20,6 @@ const (
 	minViewportHeight   = 1
 	terminalScrollGuard = 1
 	detailIndent        = 1
-	detailFrameWidth    = 4
 )
 
 func (m Model) renderWaitingView() string {
@@ -91,7 +92,7 @@ func (m Model) renderHeader() string {
 		if maxW > 0 && len(url) > maxW {
 			url = url[:maxW-1] + "…"
 		}
-		header += "\n" + DimmedStyle.Render("  ⚡ ") + BrandStyle.Render(url)
+		header += "\n" + DimmedStyle.Render("  ⚡ ") + BrandStyle.Hyperlink(m.session.ClaimURL).Render(url)
 	}
 
 	return header
@@ -340,11 +341,12 @@ func (m Model) renderDetailHeader(section string) string {
 
 func (m Model) detailWidths() (int, int) {
 	contentW := m.contentWidth()
-	w := contentW - detailIndent - detailFrameWidth - terminalScrollGuard
+	frameW, _ := DetailBoxStyle.GetFrameSize()
+	w := contentW - detailIndent - terminalScrollGuard
 	if w < 12 {
-		w = max(contentW-detailFrameWidth-terminalScrollGuard, 1)
+		w = max(contentW-frameW-terminalScrollGuard, 1)
 	}
-	innerW := w - 2
+	innerW := w - frameW
 	if innerW < 8 {
 		innerW = 8
 	}
@@ -482,11 +484,7 @@ func (m Model) renderMarkdown(content string, width int) string {
 	if content == "" {
 		return ""
 	}
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithEnvironmentConfig(),
-		glamour.WithWordWrap(width),
-		glamour.WithEmoji(),
-	)
+	renderer, err := markdownRenderer(width, m.isDark)
 	if err != nil {
 		return content
 	}
@@ -495,6 +493,51 @@ func (m Model) renderMarkdown(content string, width int) string {
 		return content
 	}
 	return strings.TrimSpace(rendered)
+}
+
+type markdownRendererKey struct {
+	width int
+	dark  bool
+	style string
+}
+
+var markdownRenderers = struct {
+	sync.Mutex
+	byKey map[markdownRendererKey]*glamour.TermRenderer
+}{byKey: map[markdownRendererKey]*glamour.TermRenderer{}}
+
+func markdownRenderer(width int, isDark bool) (*glamour.TermRenderer, error) {
+	if width < 1 {
+		width = 1
+	}
+	style := os.Getenv("GLAMOUR_STYLE")
+	key := markdownRendererKey{width: width, dark: isDark, style: style}
+
+	markdownRenderers.Lock()
+	defer markdownRenderers.Unlock()
+	if renderer := markdownRenderers.byKey[key]; renderer != nil {
+		return renderer, nil
+	}
+
+	var styleOpt glamour.TermRendererOption
+	if style != "" {
+		styleOpt = glamour.WithEnvironmentConfig()
+	} else if isDark {
+		styleOpt = glamour.WithStandardStyle("dark")
+	} else {
+		styleOpt = glamour.WithStandardStyle("light")
+	}
+	renderer, err := glamour.NewTermRenderer(
+		styleOpt,
+		glamour.WithWordWrap(width),
+		glamour.WithEmoji(),
+		glamour.WithTableWrap(false),
+	)
+	if err != nil {
+		return nil, err
+	}
+	markdownRenderers.byKey[key] = renderer
+	return renderer, nil
 }
 
 func (m Model) renderFooter() string {
@@ -924,7 +967,7 @@ func (m Model) renderCompletionBody() string {
 	}
 
 	if m.session.ClaimURL != "" {
-		content += "\n" + DimmedStyle.Render("  ⚡ Claim your sandbox: ") + BrandStyle.Render(m.session.ClaimURL)
+		content += "\n" + DimmedStyle.Render("  ⚡ Claim your sandbox: ") + BrandStyle.Hyperlink(m.session.ClaimURL).Render(m.session.ClaimURL)
 		content += "\n" + DimmedStyle.Render("    Press o to open in browser")
 	}
 

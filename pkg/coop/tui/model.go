@@ -12,6 +12,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -127,6 +128,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+
+	case tea.MouseWheelMsg:
+		m.userMoved = true
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
+
+	case mouseActionMsg:
+		return m.handleMouseAction(msg)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -260,6 +270,10 @@ func (m Model) View() tea.View {
 	v.AltScreen = true
 	v.MouseMode = tea.MouseModeCellMotion
 	v.ReportFocus = true
+	v.KeyboardEnhancements.ReportEventTypes = true
+	v.ProgressBar = m.progressBar()
+	v.Cursor = m.rejectionCursor(content)
+	v.OnMouse = m.mouseHandler()
 	if m.session != nil {
 		done := 0
 		for _, ch := range m.session.Chapters {
@@ -274,6 +288,60 @@ func (m Model) View() tea.View {
 		v.WindowTitle = "Stripe Co-op"
 	}
 	return v
+}
+
+func (m Model) progressBar() *tea.ProgressBar {
+	if m.err != nil {
+		return tea.NewProgressBar(tea.ProgressBarError, 100)
+	}
+	if m.waiting || m.session == nil {
+		return tea.NewProgressBar(tea.ProgressBarIndeterminate, 0)
+	}
+	total := 0
+	done := 0
+	for _, ch := range m.session.Chapters {
+		for _, n := range ch.Nodes {
+			if n.State == coop.StepSkipped {
+				continue
+			}
+			total++
+			if n.State == coop.StepDone {
+				done++
+			}
+		}
+	}
+	if total == 0 {
+		return tea.NewProgressBar(tea.ProgressBarNone, 0)
+	}
+	value := done * 100 / total
+	state := tea.ProgressBarDefault
+	if m.agentIdle() {
+		state = tea.ProgressBarWarning
+	}
+	return tea.NewProgressBar(state, value)
+}
+
+func (m Model) rejectionCursor(content string) *tea.Cursor {
+	if !m.rejecting {
+		return nil
+	}
+	lines := strings.Split(content, "\n")
+	for y, line := range lines {
+		plain := ansi.Strip(line)
+		const prefix = "Request changes: "
+		idx := strings.Index(plain, prefix)
+		if idx < 0 {
+			continue
+		}
+		x := lipgloss.Width(plain[:idx+len(prefix)])
+		x += lipgloss.Width(m.rejectionInput.Value())
+		cursor := tea.NewCursor(x, y)
+		cursor.Shape = tea.CursorBar
+		cursor.Color = HuePurple500
+		cursor.Blink = true
+		return cursor
+	}
+	return nil
 }
 
 // --- State management ---
@@ -311,18 +379,7 @@ func (m *Model) syncViewport() {
 }
 
 func (m *Model) scrollToCursor() {
-	allContent := m.renderStepList()
-	if m.session != nil && m.session.IsComplete() {
-		allContent = m.renderCompletionBody()
-	}
-	allLines := strings.Split(allContent, "\n")
-	targetLine := 0
-	for i, line := range allLines {
-		if strings.Contains(line, "▸") {
-			targetLine = i
-			break
-		}
-	}
+	targetLine := m.selectedContentLine()
 
 	vpTop := m.viewport.YOffset()
 	vpBottom := vpTop + m.viewport.Height()
@@ -340,6 +397,31 @@ func (m *Model) scrollToCursor() {
 		}
 		m.viewport.SetYOffset(offset)
 	}
+}
+
+func (m Model) selectedContentLine() int {
+	if m.session != nil && !m.session.IsComplete() {
+		selectedLine := -1
+		for line, step := range m.stepContentLines() {
+			if step == m.cursor && (selectedLine == -1 || line < selectedLine) {
+				selectedLine = line
+			}
+		}
+		if selectedLine >= 0 {
+			return selectedLine
+		}
+	}
+	content := m.renderStepList()
+	if m.session != nil && m.session.IsComplete() {
+		content = m.renderCompletionBody()
+	}
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "▸") {
+			return i
+		}
+	}
+	return 0
 }
 
 func (m *Model) autoScroll() {
@@ -367,6 +449,9 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.rejecting {
 		return m.handleRejectionKey(msg)
 	}
+	if msg.IsRepeat && (key.Matches(msg, m.keys.Confirm) || key.Matches(msg, m.keys.Reject) || key.Matches(msg, m.keys.Copy) || key.Matches(msg, m.keys.OpenClaim)) {
+		return m, nil
+	}
 
 	switch {
 	case key.Matches(msg, m.keys.Quit):
@@ -380,6 +465,22 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.moveCursorDown()
 		m.resizeViewport()
 		m.syncViewport()
+		return m, nil
+	case key.Matches(msg, m.keys.PageUp):
+		m.userMoved = true
+		m.viewport.PageUp()
+		return m, nil
+	case key.Matches(msg, m.keys.PageDown):
+		m.userMoved = true
+		m.viewport.PageDown()
+		return m, nil
+	case key.Matches(msg, m.keys.Top):
+		m.userMoved = true
+		m.viewport.GotoTop()
+		return m, nil
+	case key.Matches(msg, m.keys.Bottom):
+		m.userMoved = true
+		m.viewport.GotoBottom()
 		return m, nil
 	case key.Matches(msg, m.keys.Expand):
 		m.expanded = !m.expanded
