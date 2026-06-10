@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -398,7 +397,6 @@ func (m Model) renderDetail() string {
 	switch section {
 	case "Summary":
 		m.writeSummaryDetail(&md, node)
-		m.writeAPIRequestDetail(&md, node)
 		m.writeStepSDKSnippetDetail(&md, node, currentSnippet)
 	case "Files":
 		m.writeImplementationDetail(&md, node, false)
@@ -536,20 +534,6 @@ func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
 	}
 	if node.Description == "" && node.ReviewPrompt == "" {
 		md.WriteString("*No summary available for this step.*\n\n")
-	}
-}
-
-func (m Model) writeAPIRequestDetail(md *strings.Builder, node *coop.SessionNode) {
-	if node.Type != coop.NodeAPIRequest || node.Request == nil {
-		return
-	}
-	md.WriteString("**API call:** `" + strings.ToUpper(node.Request.Method) + " " + node.Request.Path + "`\n\n")
-	if node.Request.Params != nil {
-		if data, err := json.MarshalIndent(node.Request.Params, "", "  "); err == nil && string(data) != "null" {
-			md.WriteString("```json\n")
-			md.Write(data)
-			md.WriteString("\n```\n\n")
-		}
 	}
 }
 

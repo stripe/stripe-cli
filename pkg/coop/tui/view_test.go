@@ -212,7 +212,7 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	assertNotContainsPlain(t, detail, "Files  Checks  Reference")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
 	assertContainsPlain(t, detail, "Confirmation steps")
-	assertContainsPlain(t, detail, "POST /v1/products")
+	assertNotContainsPlain(t, detail, "POST /v1/products")
 	assertNotContainsPlain(t, detail, "You check")
 }
 

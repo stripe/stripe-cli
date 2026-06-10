@@ -189,6 +189,25 @@ func TestUpdateMouseWheelScrollsViewport(t *testing.T) {
 	assert.Greater(t, updated.viewport.YOffset(), 0)
 }
 
+func TestSyncViewportPreservesManualScroll(t *testing.T) {
+	m := readyModel()
+	m.ready = true
+	m.width = 80
+	m.height = 12
+	m.resizeViewport()
+	m.cursor = 0
+	m.expanded = true
+	m.sdkSnippet = strings.Repeat("const product = await stripe.products.create({});\n", 20)
+	m.sdkSnippetStep = 0
+	m.syncViewport()
+	m.viewport.SetYOffset(6)
+	m.userMoved = true
+
+	m.syncViewport()
+
+	assert.Equal(t, 6, m.viewport.YOffset())
+}
+
 func TestViewDoesNotInstallMouseHandler(t *testing.T) {
 	m := readyModel()
 

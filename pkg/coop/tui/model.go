@@ -387,7 +387,9 @@ func (m *Model) syncViewport() {
 	m.ensureValidNavigationSelection()
 	content := m.renderStepList()
 	m.viewport.SetContent(content)
-	m.scrollToCursor()
+	if !m.userMoved {
+		m.scrollToCursor()
+	}
 }
 
 func (m *Model) scrollToCursor() {

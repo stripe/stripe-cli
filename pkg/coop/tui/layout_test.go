@@ -75,10 +75,9 @@ func TestUILayoutMatrix(t *testing.T) {
 			expectReviewCard: true,
 		},
 		{
-			name:         "manual_navigation",
-			model:        manualNavigationLayoutModel,
-			footerToken:  "f follow",
-			expectCursor: true,
+			name:        "manual_navigation",
+			model:       manualNavigationLayoutModel,
+			footerToken: "f follow",
 		},
 		{
 			name:         "expanded_details",
