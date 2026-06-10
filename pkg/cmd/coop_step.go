@@ -13,6 +13,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
+var fetchCoopSDKSnippet = coop.FetchSDKSnippet
+
 type coopStepCmd struct {
 	cmd *cobra.Command
 
@@ -125,14 +127,28 @@ func (sc *coopStepCmd) doStart(store *coop.Store, session *coop.Session, stepNum
 		return fmt.Errorf("writing session: %w", err)
 	}
 
-	return outputJSON(coop.CommandResponse{
+	resp := coop.CommandResponse{
 		OK:        true,
 		SessionID: session.ID,
 		Step:      stepNum,
 		State:     string(coop.StepActive),
 		Message:   fmt.Sprintf("Started: %s", node.Title),
 		Next:      fmt.Sprintf("stripe coop step %d done --session=%s --file=<path> --note=\"<what you did>\"", stepNum, session.ID),
-	})
+	}
+	if node.Type == coop.NodeAPIRequest && node.Request != nil {
+		resp.APIRequest = node.Request
+		if snippet, err := fetchCoopSDKSnippet(node.Request.Path, node.Request.Method, node.Request.Params, coopLanguage(session)); err == nil {
+			resp.SDKExample = snippet
+		}
+	}
+	return outputJSON(resp)
+}
+
+func coopLanguage(session *coop.Session) string {
+	if session != nil && session.Settings != nil && session.Settings["language"] != "" {
+		return session.Settings["language"]
+	}
+	return "node"
 }
 
 func (sc *coopStepCmd) doDone(store *coop.Store, session *coop.Session, stepNum int) error {

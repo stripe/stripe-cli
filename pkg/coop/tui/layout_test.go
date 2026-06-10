@@ -172,7 +172,7 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	assertHeaderIsPinned(t, rendered)
 	assertFooterIsPinned(t, rendered, "enter")
 	assert.Contains(t, rendered, "Review")
-	assert.Contains(t, rendered, "You check")
+	assert.Contains(t, rendered, "Confirmation steps")
 }
 
 func TestFooterActionRowStaysPinnedAcrossFooterModes(t *testing.T) {

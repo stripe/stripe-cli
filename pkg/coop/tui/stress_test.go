@@ -42,7 +42,7 @@ func TestUILayoutStressSessions(t *testing.T) {
 				}
 				if scenario.expectReviewCard {
 					assert.Contains(t, rendered, "Review")
-					assert.Contains(t, rendered, "You check")
+					assert.Contains(t, rendered, "Confirmation steps")
 					assert.LessOrEqual(t, lipgloss.Height(m.renderFooter()), m.footerHeightBudget())
 				}
 			})
@@ -73,7 +73,7 @@ func TestUILayoutCopyAudit(t *testing.T) {
 				assert.NotContains(t, lower, strings.ToLower(phrase))
 			}
 			if strings.Contains(rendered, "Review") {
-				assert.Contains(t, rendered, "You check")
+				assert.Contains(t, rendered, "Confirmation steps")
 			}
 		})
 	}

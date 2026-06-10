@@ -59,6 +59,32 @@ func TestDoStartTransitionsPendingToActive(t *testing.T) {
 	store.Write(session)
 }
 
+func TestDoStartReturnsAPIRequestAndSDKExample(t *testing.T) {
+	store, session := setupStepTest(t)
+	node, err := session.NodeByNumber(1)
+	require.NoError(t, err)
+	node.Request = &coop.APIRequest{Path: "/v1/customers", Method: "post", Params: map[string]string{"name": "Test"}}
+	require.NoError(t, store.Write(session))
+
+	origFetch := fetchCoopSDKSnippet
+	fetchCoopSDKSnippet = func(path, method string, params interface{}, language string) (string, error) {
+		assert.Equal(t, "/v1/customers", path)
+		assert.Equal(t, "post", method)
+		assert.Equal(t, "node", language)
+		return "const customer = await stripe.customers.create({});", nil
+	}
+	defer func() { fetchCoopSDKSnippet = origFetch }()
+
+	output := captureStdout(t, func() {
+		require.NoError(t, (&coopStepCmd{}).doStart(store, session, 1))
+	})
+
+	assert.Contains(t, output, `"api_request"`)
+	assert.Contains(t, output, `"/v1/customers"`)
+	assert.Contains(t, output, `"sdk_example"`)
+	assert.Contains(t, output, `stripe.customers.create`)
+}
+
 func TestDoStartOnActiveStepFails(t *testing.T) {
 	_, session := setupStepTest(t)
 

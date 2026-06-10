@@ -43,8 +43,10 @@ func testModel() Model {
 					Nodes: []coop.SessionNode{
 						{Key: "n1", Title: "Create product", State: coop.StepDone, Type: coop.NodeAPIRequest,
 							ReviewPrompt:   "Confirm the saved price ID is reused by Checkout.",
+							Request:        &coop.APIRequest{Path: "/v1/products", Method: "post", Params: map[string]string{"name": "Gold plan"}},
 							Implementation: &coop.Implementation{File: "server.js", Lines: "5-20", Note: "Created product"}},
 						{Key: "n2", Title: "Create checkout", State: coop.StepActive, Type: coop.NodeAPIRequest,
+							Request:  &coop.APIRequest{Path: "/v1/checkout/sessions", Method: "post"},
 							Activity: "Writing endpoint"},
 					},
 				},
@@ -119,7 +121,7 @@ func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "Needs chapter review (2 steps)")
+	assertContainsPlain(t, list, "Awaiting review (2 steps)")
 	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
 	assertContainsPlain(t, list, "Create product  Included")
 	assertContainsPlain(t, list, "Create checkout  Included")
@@ -134,7 +136,7 @@ func TestRenderStepListShowsSingleStepChapterReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, list, "Needs chapter review (1 step)")
+	assertContainsPlain(t, list, "Awaiting review (1 step)")
 	assertContainsPlain(t, footer, "confirm all")
 }
 
@@ -206,9 +208,40 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	detail := m.renderDetail()
 
 	assertNotContainsPlain(t, detail, "Details:")
-	assert.Equal(t, 1, strings.Count(ansi.Strip(detail), "Summary"))
+	assert.NotContains(t, ansi.Strip(detail), "Summary")
 	assertNotContainsPlain(t, detail, "Files  Checks  Reference")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
+	assertContainsPlain(t, detail, "Confirmation steps")
+	assertContainsPlain(t, detail, "POST /v1/products")
+	assertNotContainsPlain(t, detail, "You check")
+}
+
+func TestRenderSummaryDetailShowsStepSDKSnippet(t *testing.T) {
+	m := testModel()
+	m.cursor = 0
+	m.expanded = true
+	m.detailTab = 0
+	m.sdkSnippet = "const product = await stripe.products.create({name: 'Gold plan'});"
+	m.sdkSnippetStep = 0
+
+	detail := m.renderDetail()
+
+	assertContainsPlain(t, detail, "SDK example")
+	assertContainsPlain(t, detail, "stripe.products.create")
+}
+
+func TestRenderChapterDetailUsesChapterOverview(t *testing.T) {
+	m := testModel()
+	m.selectChapter(0)
+	m.expanded = true
+	m.detailTab = 0
+
+	detail := m.renderDetail()
+
+	assertContainsPlain(t, detail, "✓ Create product")
+	assertContainsPlain(t, detail, "● Create checkout")
+	assertContainsPlain(t, detail, "Confirmation steps")
+	assertNotContainsPlain(t, detail, "SDK example")
 }
 
 func TestRenderDetailWebhook(t *testing.T) {
@@ -299,7 +332,7 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	assertContainsPlain(t, footer, "changes")
 	assertContainsPlain(t, footer, "Review:")
 	assertContainsPlain(t, footer, "Agent changed")
-	assertContainsPlain(t, footer, "You check")
+	assertContainsPlain(t, footer, "Confirmation steps")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -319,7 +352,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	assertContainsPlain(t, card, "server.js:5-20")
 	assertContainsPlain(t, card, "Agent verified:")
 	assertContainsPlain(t, card, "1/2 check(s) passed")
-	assertContainsPlain(t, card, "You check:")
+	assertContainsPlain(t, card, "Confirmation steps:")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 

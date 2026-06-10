@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -161,7 +162,7 @@ func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selec
 	}
 	line := prefix + MutedStyle.Render(disclosure) + ChapterTitleStyle.Render(title)
 	if count := m.chapterReviewCount(chapterIndex); count > 0 {
-		line += "  " + AttentionStyle.Render(fmt.Sprintf("Needs chapter review (%s)", formatStepCount(count)))
+		line += "  " + AttentionStyle.Render(fmt.Sprintf("Awaiting review (%s)", formatStepCount(count)))
 	}
 	if m.chapterCollapsed(chapterIndex) {
 		if summary := m.collapsedChapterSummary(chapterIndex); summary != "" {
@@ -314,7 +315,7 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterR
 		annStyle = func(s string) string { return DimmedStyle.Render(s) }
 	}
 
-	line := fmt.Sprintf("  %s%s %s", cursor, icon, title)
+	line := fmt.Sprintf("%s%s %s", cursor, icon, title)
 	if label, style := m.stepStatusLabel(node, includedInChapterReview); label != "" {
 		line += "  " + style(label)
 	}
@@ -326,7 +327,7 @@ func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterR
 		}
 		wrapped := wordWrap(annText, wrapW)
 		for _, wl := range strings.Split(wrapped, "\n") {
-			line += "\n      " + annStyle(wl)
+			line += "\n" + strings.Repeat(" ", rowCursorWidth+2) + annStyle(wl)
 		}
 	}
 
@@ -389,10 +390,13 @@ func (m Model) renderDetail() string {
 
 	var md strings.Builder
 	section := detailSections[m.detailTab%len(detailSections)]
+	currentSnippet := m.sdkSnippetStep == stepIndex && m.sdkSnippet != ""
 
 	switch section {
 	case "Summary":
 		m.writeSummaryDetail(&md, node)
+		m.writeAPIRequestDetail(&md, node)
+		m.writeStepSDKSnippetDetail(&md, node, currentSnippet)
 	case "Files":
 		m.writeImplementationDetail(&md, node, false)
 	case "Checks":
@@ -400,7 +404,6 @@ func (m Model) renderDetail() string {
 		m.writeAsyncHandlerCheckDetail(&md, node)
 		m.writeVerificationDetail(&md, node)
 	case "Reference":
-		currentSnippet := m.sdkSnippetStep == stepIndex && m.sdkSnippet != ""
 		m.writeSDKReferenceDetail(&md, node, currentSnippet)
 		m.writeAsyncHandlerReferenceDetail(&md, node)
 	}
@@ -410,12 +413,15 @@ func (m Model) renderDetail() string {
 	}
 
 	content := strings.TrimSpace(md.String())
-	suffix := m.renderDetailSuffix(node)
+	suffix := m.renderDetailSuffix(node, innerW)
 	if content == "" && suffix == "" {
 		return ""
 	}
 
-	parts := []string{m.renderDetailHeader(section)}
+	var parts []string
+	if header := m.renderDetailHeader(section); header != "" {
+		parts = append(parts, header)
+	}
 	if content != "" {
 		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
 	}
@@ -435,38 +441,37 @@ func (m Model) renderChapterDetail(chapterIndex int) string {
 
 	var md strings.Builder
 	section := detailSections[m.detailTab%len(detailSections)]
-	for i := range m.session.Chapters[chapterIndex].Nodes {
-		node := &m.session.Chapters[chapterIndex].Nodes[i]
-		md.WriteString("### " + node.Title + "\n\n")
-		switch section {
-		case "Summary":
-			m.writeSummaryDetail(&md, node)
-		case "Files":
-			m.writeImplementationDetail(&md, node, false)
-		case "Checks":
-			m.writeReviewCommandDetail(&md, node)
-			m.writeAsyncHandlerCheckDetail(&md, node)
-			m.writeVerificationDetail(&md, node)
-		case "Reference":
-			m.writeAsyncHandlerReferenceDetail(&md, node)
-			if node.Type == coop.NodeAPIRequest {
-				md.WriteString("*Open the step to load API reference snippets.*\n\n")
-			}
-		}
+	ch := &m.session.Chapters[chapterIndex]
+	switch section {
+	case "Summary":
+		m.writeChapterSummaryDetail(&md, ch, innerW)
+	case "Files":
+		m.writeChapterFilesDetail(&md, ch)
+	case "Checks":
+		m.writeChapterChecksDetail(&md, ch)
+	case "Reference":
+		m.writeChapterReferenceDetail(&md, ch)
 	}
 
 	content := strings.TrimSpace(md.String())
 	suffix := ""
 	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
-		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm chapter or r to request chapter changes")
+		suffix = "\n" + attentionWrapped("Waiting for you: c confirm all · r request changes", innerW)
 	}
 	if content == "" && suffix == "" {
 		return ""
 	}
 
-	parts := []string{m.renderDetailHeader(section)}
+	var parts []string
+	if header := m.renderDetailHeader(section); header != "" {
+		parts = append(parts, header)
+	}
 	if content != "" {
-		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
+		if section == "Summary" {
+			parts = append(parts, clampLines(content, innerW))
+		} else {
+			parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
+		}
 	}
 	if suffix != "" {
 		parts = append(parts, suffix)
@@ -477,6 +482,9 @@ func (m Model) renderChapterDetail(chapterIndex int) string {
 }
 
 func (m Model) renderDetailHeader(section string) string {
+	if section == "Summary" {
+		return ""
+	}
 	return lipgloss.NewStyle().
 		Foreground(HuePurple400).
 		Bold(true).
@@ -521,12 +529,164 @@ func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
 		md.WriteString(node.Description + "\n\n")
 	}
 	if node.ReviewPrompt != "" {
-		md.WriteString("**You check**\n\n")
-		md.WriteString(node.ReviewPrompt + "\n\n")
+		md.WriteString("**Confirmation steps:** " + node.ReviewPrompt + "\n\n")
 	}
 	if node.Description == "" && node.ReviewPrompt == "" {
 		md.WriteString("*No summary available for this step.*\n\n")
 	}
+}
+
+func (m Model) writeAPIRequestDetail(md *strings.Builder, node *coop.SessionNode) {
+	if node.Type != coop.NodeAPIRequest || node.Request == nil {
+		return
+	}
+	md.WriteString("**API call:** `" + strings.ToUpper(node.Request.Method) + " " + node.Request.Path + "`\n\n")
+	if node.Request.Params != nil {
+		if data, err := json.MarshalIndent(node.Request.Params, "", "  "); err == nil && string(data) != "null" {
+			md.WriteString("```json\n")
+			md.Write(data)
+			md.WriteString("\n```\n\n")
+		}
+	}
+}
+
+func (m Model) writeStepSDKSnippetDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
+	if node.Type != coop.NodeAPIRequest || node.Request == nil {
+		return
+	}
+	if currentSnippet {
+		md.WriteString("**SDK example**\n")
+		md.WriteString("```" + m.detailLanguage() + "\n")
+		md.WriteString(m.sdkSnippet + "\n")
+		md.WriteString("```\n\n")
+		return
+	}
+	if stepIndex, ok := m.selectedStepIndex(); ok && m.sdkLoading && m.sdkLoadingStep == stepIndex {
+		md.WriteString("*Loading SDK example...*\n\n")
+	}
+}
+
+func (m Model) writeChapterSummaryDetail(md *strings.Builder, ch *coop.SessionChapter, width int) {
+	wrapWidth := width - 2
+	if wrapWidth < 20 {
+		wrapWidth = 20
+	}
+	md.WriteString("Steps\n")
+	for _, node := range ch.Nodes {
+		md.WriteString("  " + chapterStepStatusLabel(node) + " " + node.Title + "\n")
+	}
+	md.WriteString("\n")
+	if changed := chapterChangedFiles(ch); changed != "" {
+		md.WriteString("Changed\n")
+		for _, line := range strings.Split(wordWrap(changed, wrapWidth), "\n") {
+			md.WriteString("  " + line + "\n")
+		}
+		md.WriteString("\n")
+	}
+	if checks := chapterConfirmationSteps(ch); checks != "" {
+		md.WriteString("Confirmation steps\n")
+		for _, line := range strings.Split(wordWrap(checks, wrapWidth), "\n") {
+			md.WriteString("  " + line + "\n")
+		}
+		md.WriteString("\n")
+	}
+}
+
+func (m Model) writeChapterFilesDetail(md *strings.Builder, ch *coop.SessionChapter) {
+	wrote := false
+	for _, node := range ch.Nodes {
+		if node.Implementation == nil || node.Implementation.File == "" {
+			continue
+		}
+		md.WriteString("- `" + implementationFileLabel(node.Implementation) + "` — " + node.Title + "\n")
+		wrote = true
+	}
+	if wrote {
+		md.WriteString("\n")
+		return
+	}
+	md.WriteString("*No files reported for this chapter yet.*\n\n")
+}
+
+func (m Model) writeChapterChecksDetail(md *strings.Builder, ch *coop.SessionChapter) {
+	wrote := false
+	for _, node := range ch.Nodes {
+		if node.ReviewPrompt != "" {
+			md.WriteString("- " + node.Title + ": " + node.ReviewPrompt + "\n")
+			wrote = true
+		}
+		for _, verification := range node.Verifications {
+			prefix := "✗"
+			if verification.Passed {
+				prefix = "✓"
+			}
+			md.WriteString("- " + prefix + " " + node.Title + ": " + verification.Check + "\n")
+			wrote = true
+		}
+		if command := reviewCommandForNode(&node); command != "" {
+			md.WriteString("- `" + strings.ReplaceAll(command, "`", "'") + "`\n")
+			wrote = true
+		}
+	}
+	if wrote {
+		md.WriteString("\n")
+		return
+	}
+	md.WriteString("*No confirmation steps reported for this chapter yet.*\n\n")
+}
+
+func (m Model) writeChapterReferenceDetail(md *strings.Builder, ch *coop.SessionChapter) {
+	wrote := false
+	for _, node := range ch.Nodes {
+		if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
+			md.WriteString("- `" + node.Events[0] + "` webhook trigger for " + node.Title + "\n")
+			wrote = true
+		}
+		if node.Type == coop.NodeAPIRequest && node.Request != nil {
+			md.WriteString("- `" + strings.ToUpper(node.Request.Method) + " " + node.Request.Path + "` for " + node.Title + "\n")
+			wrote = true
+		}
+	}
+	if wrote {
+		md.WriteString("\n")
+		return
+	}
+	md.WriteString("*No reference metadata for this chapter yet.*\n\n")
+}
+
+func chapterStepStatusLabel(node coop.SessionNode) string {
+	switch node.State {
+	case coop.StepDone:
+		return "✓"
+	case coop.StepActive:
+		return "●"
+	case coop.StepReview:
+		return "◆"
+	case coop.StepSkipped:
+		return "–"
+	default:
+		return "○"
+	}
+}
+
+func chapterChangedFiles(ch *coop.SessionChapter) string {
+	var files []string
+	for _, node := range ch.Nodes {
+		if node.Implementation != nil && node.Implementation.File != "" {
+			files = append(files, implementationFileLabel(node.Implementation))
+		}
+	}
+	return strings.Join(files, ", ")
+}
+
+func chapterConfirmationSteps(ch *coop.SessionChapter) string {
+	var checks []string
+	for _, node := range ch.Nodes {
+		if node.ReviewPrompt != "" {
+			checks = append(checks, node.Title+": "+node.ReviewPrompt)
+		}
+	}
+	return strings.Join(checks, " ")
 }
 
 func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.SessionNode) {
@@ -561,7 +721,7 @@ func (m Model) writeSDKReferenceDetail(md *strings.Builder, node *coop.SessionNo
 		return
 	}
 	if currentSnippet {
-		md.WriteString("**Reference:**\n\n")
+		md.WriteString("**SDK example**\n")
 		md.WriteString("```" + m.detailLanguage() + "\n")
 		md.WriteString(m.sdkSnippet + "\n")
 		md.WriteString("```\n\n")
@@ -615,12 +775,23 @@ func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNo
 	md.WriteString("\n")
 }
 
-func (m Model) renderDetailSuffix(node *coop.SessionNode) string {
+func (m Model) renderDetailSuffix(node *coop.SessionNode, width int) string {
 	var suffix string
 	if target, ok := m.selectedReviewTarget(); ok && target.kind == "step" && node.State == coop.StepReview {
-		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm or r to request changes")
+		suffix = "\n" + attentionWrapped("Waiting for you: c confirm · r request changes", width)
 	}
 	return suffix
+}
+
+func attentionWrapped(text string, width int) string {
+	if width < 1 {
+		width = 1
+	}
+	lines := strings.Split(wordWrap(text, width), "\n")
+	for i, line := range lines {
+		lines[i] = AttentionStyle.Render(line)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) renderMarkdown(content string, width int) string {
@@ -859,9 +1030,9 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if maxHeight > 0 && maxHeight < 3 {
 		return ""
 	}
-	w := min(m.contentWidth()-4, 84)
+	w := min(m.contentWidth()-2, 84)
 	if w < 20 {
-		w = m.contentWidth() - 4
+		w = m.contentWidth() - 2
 	}
 
 	var lines []string
@@ -883,7 +1054,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 	check := m.reviewPromptLabel(target.steps)
 	if check != "" {
-		lines = append(lines, MutedStyle.Render("You check: ")+check)
+		lines = append(lines, MutedStyle.Render("Confirmation steps: ")+check)
 	}
 	if command := m.reviewCommandLabel(target.steps); command != "" {
 		lines = append(lines, MutedStyle.Render("Run: ")+command)
@@ -909,7 +1080,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 			if maxContentLines <= 1 {
 				wrapped = []string{DimmedStyle.Render("Review: more checks available")}
 			} else {
-				more := DimmedStyle.Render("You check: enter/e for more")
+				more := DimmedStyle.Render("Confirmation steps: enter/e for more")
 				wrapped = append(wrapped[:maxContentLines-1], more)
 			}
 		}

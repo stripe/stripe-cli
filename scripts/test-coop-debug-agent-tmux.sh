@@ -102,7 +102,7 @@ if wait_for_tui "Review" 10; then
 else
   record_fail "debug agent reaches first review"
 fi
-assert_tui_visible "You check" "review acceptance check visible"
+assert_tui_visible "Confirmation steps" "review acceptance check visible"
 assert_agent_visible "\\[debug-agent\\]" "debug agent logs visible"
 
 tmux send-keys -t "$tui_pane" "r"
