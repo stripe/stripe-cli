@@ -41,6 +41,13 @@ run_install() {
 
     winget)
         winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        # winget modifies the user PATH but the current shell doesn't inherit the change;
+        # refresh it by reading the updated value from the Windows environment.
+        WINGET_PATH=$(powershell.exe -NoProfile -Command '[Environment]::GetEnvironmentVariable("PATH","User")' 2>/dev/null | tr -d '\r')
+        if [ -n "$WINGET_PATH" ]; then
+            PATH="$PATH:$(echo "$WINGET_PATH" | tr ';' ':')"
+            export PATH
+        fi
         stripe --version
     ;;
 
