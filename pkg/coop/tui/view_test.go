@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -88,6 +89,24 @@ func TestRenderStepList(t *testing.T) {
 	assertContainsPlain(t, list, "Create checkout")
 	assertContainsPlain(t, list, "Handle webhooks")
 	assertContainsPlain(t, list, "Handle event")
+}
+
+func TestRenderStepListAlignsChapterTitleWithRule(t *testing.T) {
+	m := testModel()
+	lines := strings.Split(ansi.Strip(m.renderStepList()), "\n")
+
+	var titleLine, ruleLine string
+	for i, line := range lines {
+		if strings.Contains(line, "Set up product") && i+1 < len(lines) {
+			titleLine = line
+			ruleLine = lines[i+1]
+			break
+		}
+	}
+
+	require.NotEmpty(t, titleLine)
+	require.NotEmpty(t, ruleLine)
+	assert.Equal(t, strings.Index(titleLine, "Set up product"), strings.Index(ruleLine, "─"))
 }
 
 func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {

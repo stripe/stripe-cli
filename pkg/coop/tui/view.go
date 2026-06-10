@@ -148,15 +148,15 @@ func (m Model) renderStepList() string {
 }
 
 func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selected bool) string {
-	cursor := "  "
+	prefix := "  "
 	if selected {
-		cursor = BrandStyle.Render("▸ ")
+		prefix = BrandStyle.Render("▸ ")
 	}
 	title := ch.Title
 	if selected {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
-	line := "  " + cursor + ChapterTitleStyle.Render(title)
+	line := prefix + ChapterTitleStyle.Render(title)
 	if count := m.chapterReviewCount(chapterIndex); count > 0 {
 		line += "  " + AttentionStyle.Render(fmt.Sprintf("Needs chapter review (%d steps)", count))
 	}
