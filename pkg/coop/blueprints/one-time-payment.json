@@ -30,7 +30,6 @@
     {
       "description": "Build a server endpoint that creates a Checkout Session and redirects the customer.",
       "key": "checkout-chapter",
-      "review_granularity": "chapter",
       "nodes": [
         {
           "description": "Create a Checkout Session with the price from the previous step.",

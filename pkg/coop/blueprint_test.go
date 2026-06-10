@@ -155,7 +155,7 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 	// Total steps = blueprint steps (6) + context step (1)
 	assert.Equal(t, 7, session.TotalSteps())
 
-	assert.Equal(t, ReviewGranularityChapter, session.Chapters[2].ReviewGranularity)
+	assert.Empty(t, session.Chapters[2].ReviewGranularity)
 	assert.NotEmpty(t, session.Chapters[1].Nodes[0].ReviewPrompt)
 	assert.Equal(t, "stripe trigger checkout.session.completed", session.Chapters[3].Nodes[0].ReviewCommand)
 }
