@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
+	coopcmd "github.com/stripe/stripe-cli/pkg/cmd/coop"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
@@ -140,7 +141,7 @@ func Execute(ctx context.Context) {
 
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
-		var renderedCoopError coopRenderedError
+		var renderedCoopError coopcmd.RenderedError
 
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
@@ -262,7 +263,15 @@ func init() {
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newSandboxCmd().cmd)
-	rootCmd.AddCommand(newCoopCmd().cmd)
+	rootCmd.AddCommand(coopcmd.New(coopcmd.Options{
+		ConfigFolder: func() string {
+			return Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		},
+		ClaimURL: func() string {
+			return viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
+		},
+		AIAgentHelpAnnotationKey: AIAgentHelpAnnotationKey,
+	}))
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
 	registerHTTPCmds(rootCmd)

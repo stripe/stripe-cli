@@ -1,4 +1,4 @@
-package cmd
+package coopcmd
 
 import (
 	"github.com/stripe/stripe-cli/pkg/coop"

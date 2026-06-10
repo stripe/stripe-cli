@@ -1,4 +1,4 @@
-package cmd
+package coopcmd
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/nextaction"
+	"github.com/stripe/stripe-cli/pkg/coop/review"
 	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
@@ -96,7 +98,7 @@ func (a *coopDebugAgent) run(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
-				if next := nextPendingStepInChapter(session, chapterIndex, step); next > 0 {
+				if next := review.NextPendingStepInChapter(session, chapterIndex, step); next > 0 {
 					a.log("section %q still has pending work; continuing with step %d", chapter.Title, next)
 					if err := a.startStep(next); err != nil {
 						return err
@@ -197,7 +199,7 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 		return err
 	}
 
-	if chapterReviewApplies(session, step) {
+	if review.ChapterReviewApplies(session, step) {
 		chapter, chapterIndex, _, err := session.ChapterByStepNumber(step)
 		if err != nil {
 			return err
@@ -260,25 +262,9 @@ func (a *coopDebugAgent) awaitChapterReview(ctx context.Context, chapterIndex in
 
 func (a *coopDebugAgent) completeSession(ctx context.Context, session *coop.Session) error {
 	if session.Status != coop.SessionCompleted || session.NextSteps == nil || len(session.NextSteps.Suggestions) == 0 {
-		suggestions := buildSuggestions(session, detectProjectEnvironment())
-		var tuiSuggestions []coop.NextStepSuggestion
-		for _, s := range suggestions {
-			tuiSuggestions = append(tuiSuggestions, coop.NextStepSuggestion{
-				ID:          s.ID,
-				Title:       s.Title,
-				Description: s.Description,
-				Reason:      s.Reason,
-			})
-		}
-
-		if session.NextSteps == nil {
-			session.NextSteps = &coop.NextStepsState{}
-		}
-		session.NextSteps.Suggestions = tuiSuggestions
-		session.NextSteps.Selected = ""
-		session.Status = coop.SessionCompleted
+		suggestions := nextaction.BuildSuggestions(session, nextaction.DetectProjectEnvironment())
 		a.log("all steps complete; showing next steps")
-		if err := a.store.Write(session); err != nil {
+		if err := nextaction.ShowSuggestions(a.store, session, suggestions, ""); err != nil {
 			if isVersionConflict(err) {
 				return nil
 			}
@@ -327,7 +313,7 @@ func firstStepWithState(session *coop.Session, state coop.StepState) int {
 }
 
 func shouldContinueChapterBeforeReview(session *coop.Session, step int) bool {
-	if !chapterReviewApplies(session, step) {
+	if !review.ChapterReviewApplies(session, step) {
 		return false
 	}
 	_, chapterIndex, _, err := session.ChapterByStepNumber(step)

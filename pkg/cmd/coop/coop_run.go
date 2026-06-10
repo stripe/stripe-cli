@@ -1,4 +1,4 @@
-package cmd
+package coopcmd
 
 import (
 	"encoding/json"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -64,9 +63,8 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 	session := sc.newSession(bp, sessionID)
 	session.CreatedAt = time.Now().UTC()
 
-	// Populate claim URL from config if sandbox was provisioned
-	if claimURL := Config.Profile.GetConfigField("sandbox_claim_url"); claimURL != "" {
-		session.ClaimURL = viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
+	if claimURL := coopClaimURL(); claimURL != "" {
+		session.ClaimURL = claimURL
 	}
 
 	if err := store.Write(session); err != nil {
@@ -221,11 +219,11 @@ func outputCoopError(msg, hint string) error {
 	}
 	data, _ := json.MarshalIndent(resp, "", "  ")
 	fmt.Fprintln(os.Stderr, string(data))
-	return coopRenderedError{}
+	return RenderedError{}
 }
 
-type coopRenderedError struct{}
+type RenderedError struct{}
 
-func (coopRenderedError) Error() string {
+func (RenderedError) Error() string {
 	return "coop command failed"
 }

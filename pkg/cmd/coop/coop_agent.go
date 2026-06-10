@@ -1,7 +1,8 @@
-package cmd
+package coopcmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/nextaction"
 	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
@@ -163,10 +165,7 @@ func newCoopAgentNextActionCmd() *coopAgentActionCmd {
 		Use:   "next-action",
 		Short: "Wait for or record the developer's next action",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCoopNextAction(coopNextActionInput{
-				session:   c.session,
-				completed: c.completed,
-			})
+			return runCoopNextAction(c.session, c.completed)
 		},
 	}
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
@@ -222,6 +221,21 @@ func newWorkflowService() (*workflow.Service, error) {
 	return workflow.NewService(store), nil
 }
 
+func runCoopNextAction(sessionID, completed string) error {
+	store, err := coop.NewStore(coopConfigFolder())
+	if err != nil {
+		return fmt.Errorf("creating store: %w", err)
+	}
+	resp, err := nextaction.Run(store, nextaction.Input{SessionID: sessionID, Completed: completed})
+	if errors.Is(err, nextaction.ErrNoSession) {
+		return outputCoopError("No session found.", "stripe coop run <blueprint>")
+	}
+	if err != nil {
+		return err
+	}
+	return outputJSON(resp)
+}
+
 func outputAgentResponse(resp coop.CommandResponse, err error) error {
 	if err != nil {
 		return err
@@ -230,7 +244,7 @@ func outputAgentResponse(resp coop.CommandResponse, err error) error {
 		return outErr
 	}
 	if !resp.OK {
-		return coopRenderedError{}
+		return RenderedError{}
 	}
 	return nil
 }

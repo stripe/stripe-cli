@@ -228,16 +228,22 @@ pkg/coop/tui/
 pkg/coop/workflow/
   service.go        — Shared lifecycle operations for agent commands and TUI review actions
 
-pkg/cmd/
-  coop.go           — Parent command, subcommand registration
+pkg/coop/nextaction/
+  nextaction.go     — Post-completion suggestions, environment detection, and next-action responses
+
+pkg/coop/review/
+  review.go         — Shared chapter-review navigation rules
+
+pkg/coop/prompt/
+  prompt.go         — Shared Huh prompt helpers using the co-op TUI theme
+
+pkg/cmd/coop/
+  coop.go           — Parent command, subcommand registration, command-package options
   coop_start.go     — User-facing orchestrator (tmux launcher)
-  coop_launcher.go  — Agent detection, tmux management, prompts
+  coop_launcher.go  — Agent detection and tmux/process management
   coop_run.go       — Agent-facing session creator
   coop_agent.go     — Typed agent lifecycle commands
-  coop_step.go      — Hidden legacy step lifecycle shim
   coop_join.go      — TUI launcher
-  coop_nextsteps.go — Post-completion flow
-  coop_env.go       — Environment detection, suggestion building
   coop_status.go    — Session status display
   coop_stop.go      — End session
   coop_recover.go   — Diagnose and fix stuck sessions

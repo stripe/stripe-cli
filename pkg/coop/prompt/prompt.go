@@ -1,4 +1,4 @@
-package cmd
+package prompt
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop/tui"
 )
 
-func runCoopSelect[T comparable](title string, options []huh.Option[T], value *T) error {
+func Select[T comparable](title string, options []huh.Option[T], value *T) error {
 	if len(options) == 0 {
 		return fmt.Errorf("no options available")
 	}
@@ -31,7 +31,7 @@ func runCoopSelect[T comparable](title string, options []huh.Option[T], value *T
 		WithTheme(tui.HuhTheme())
 
 	var err error
-	if coopAccessiblePrompts() {
+	if Accessible() {
 		err = huh.NewForm(huh.NewGroup(selectField)).
 			WithTheme(tui.HuhTheme()).
 			WithAccessible(true).
@@ -48,7 +48,7 @@ func runCoopSelect[T comparable](title string, options []huh.Option[T], value *T
 	return err
 }
 
-func coopAccessiblePrompts() bool {
+func Accessible() bool {
 	switch strings.ToLower(os.Getenv("STRIPE_COOP_ACCESSIBLE_PROMPTS")) {
 	case "1", "true", "yes", "on":
 		return true

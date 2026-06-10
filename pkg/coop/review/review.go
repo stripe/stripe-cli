@@ -1,8 +1,8 @@
-package cmd
+package review
 
 import "github.com/stripe/stripe-cli/pkg/coop"
 
-func nextPendingStepInChapter(session *coop.Session, chapterIndex, afterStep int) int {
+func NextPendingStepInChapter(session *coop.Session, chapterIndex, afterStep int) int {
 	step := 0
 	for i := range session.Chapters {
 		for j := range session.Chapters[i].Nodes {
@@ -15,8 +15,8 @@ func nextPendingStepInChapter(session *coop.Session, chapterIndex, afterStep int
 	return 0
 }
 
-func chapterReviewApplies(session *coop.Session, stepNum int) bool {
-	chapter, _, _, err := session.ChapterByStepNumber(stepNum)
+func ChapterReviewApplies(session *coop.Session, step int) bool {
+	chapter, _, _, err := session.ChapterByStepNumber(step)
 	if err != nil {
 		return false
 	}
