@@ -60,7 +60,6 @@ active ──→ completed    (all steps done/skipped, or "stripe coop stop")
 | `stripe coop join [session-id]` | Open the TUI for an existing session |
 | `stripe coop status` | Show session summary |
 | `stripe coop stop` | End the session |
-| `stripe coop recover` | Diagnose and fix stuck sessions |
 | `stripe coop recommend` | List available blueprints |
 
 ### Agent-facing (AI agent runs these)
@@ -138,16 +137,18 @@ When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` f
 
 The heartbeat file is cleaned up when `await` exits.
 
-## Recovery
+## Resuming
 
-`stripe coop recover` diagnoses common issues:
+`stripe coop join` is the recovery path. With no session ID, it opens the most
+recent active session, falling back to the latest session if none are active.
+Use `stripe coop join --resume` to pick from recent sessions.
 
-| Issue | Detection | Fix |
-|-------|-----------|-----|
-| Step stuck in `active` | No heartbeat, step is active | Recovery reports the active step; it does not move in-progress work automatically |
-| Session done but not marked | All steps done, status=active | `--fix` marks completed |
-| No active step | No active/review steps found | Shows next pending step number |
-| Agent crashed | Heartbeat stale | TUI shows warning, user runs `recover --fix` |
+| Issue | What to do |
+|-------|------------|
+| Step is active | Rejoin the session and check the agent pane/TUI state |
+| Step is in review | Rejoin the session and confirm or request changes |
+| Agent appears idle | Rejoin the session; the TUI shows heartbeat/idle state |
+| Need a specific older session | Run `stripe coop join --resume` |
 
 ## Blueprint Format
 
@@ -246,7 +247,6 @@ pkg/cmd/coop/
   coop_join.go      — TUI launcher
   coop_status.go    — Session status display
   coop_stop.go      — End session
-  coop_recover.go   — Diagnose and fix stuck sessions
   coop_recommend.go — Blueprint discovery
 ```
 

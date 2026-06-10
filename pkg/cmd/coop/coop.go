@@ -60,7 +60,6 @@ The developer confirms each step before the agent moves on.`,
 	cc.cmd.AddCommand(newCoopStatusCmd().cmd)
 	cc.cmd.AddCommand(newCoopStopCmd().cmd)
 	cc.cmd.AddCommand(newCoopRecommendCmd().cmd)
-	cc.cmd.AddCommand(newCoopRecoverCmd().cmd)
 	cc.cmd.AddCommand(newCoopDebugAgentCmd().cmd)
 
 	return cc
