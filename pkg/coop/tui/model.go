@@ -688,13 +688,32 @@ func (m *Model) handleConfirm() {
 		return
 	}
 	for _, step := range target.steps {
-		if err := m.session.TransitionStep(step, coop.StepDone); err != nil {
+		if err := confirmStep(m.session, step); err != nil {
 			m.err = fmt.Errorf("failed to confirm review: %w", err)
 			return
 		}
 	}
 	if err := m.store.Write(m.session); err != nil {
-		m.err = fmt.Errorf("failed to save confirmation: %w", err)
+		if !isCoopVersionConflict(err) {
+			m.err = fmt.Errorf("failed to save confirmation: %w", err)
+			return
+		}
+		latest, readErr := m.store.Read(m.session.ID)
+		if readErr != nil {
+			m.err = fmt.Errorf("failed to reload confirmation: %w", readErr)
+			return
+		}
+		m.session = latest
+		for _, step := range target.steps {
+			if err := confirmStep(m.session, step); err != nil {
+				m.err = fmt.Errorf("failed to confirm review: %w", err)
+				return
+			}
+		}
+		if err := m.store.Write(m.session); err != nil {
+			m.err = fmt.Errorf("failed to save confirmation: %w", err)
+			return
+		}
 	}
 	m.lastVersion = m.session.Version
 	if target.kind == "chapter" && len(target.steps) > 0 {
@@ -731,6 +750,38 @@ func (m *Model) startReject() {
 		m.resizeViewport()
 		m.syncViewport()
 	}
+}
+
+func confirmStep(session *coop.Session, step int) error {
+	node, err := session.NodeByNumber(step)
+	if err != nil {
+		return err
+	}
+	if node.State == coop.StepDone {
+		return nil
+	}
+	return session.TransitionStep(step, coop.StepDone)
+}
+
+func rejectStep(session *coop.Session, step int, note string) error {
+	node, err := session.NodeByNumber(step)
+	if err != nil {
+		return err
+	}
+	if node.State != coop.StepActive {
+		if err := session.TransitionStep(step, coop.StepActive); err != nil {
+			return err
+		}
+		node, _ = session.NodeByNumber(step)
+	}
+	node.RejectionNote = note
+	node.Implementation = nil
+	node.Verifications = nil
+	return nil
+}
+
+func isCoopVersionConflict(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "version conflict")
 }
 
 func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -771,17 +822,32 @@ func (m *Model) handleReject(note string) {
 		return
 	}
 	for _, step := range target.steps {
-		if err := m.session.TransitionStep(step, coop.StepActive); err != nil {
+		if err := rejectStep(m.session, step, note); err != nil {
 			m.err = fmt.Errorf("failed to request changes: %w", err)
 			return
 		}
-		node, _ := m.session.NodeByNumber(step)
-		node.RejectionNote = note
-		node.Implementation = nil
-		node.Verifications = nil
 	}
 	if err := m.store.Write(m.session); err != nil {
-		m.err = fmt.Errorf("failed to save request changes: %w", err)
+		if !isCoopVersionConflict(err) {
+			m.err = fmt.Errorf("failed to save request changes: %w", err)
+			return
+		}
+		latest, readErr := m.store.Read(m.session.ID)
+		if readErr != nil {
+			m.err = fmt.Errorf("failed to reload request changes: %w", readErr)
+			return
+		}
+		m.session = latest
+		for _, step := range target.steps {
+			if err := rejectStep(m.session, step, note); err != nil {
+				m.err = fmt.Errorf("failed to request changes: %w", err)
+				return
+			}
+		}
+		if err := m.store.Write(m.session); err != nil {
+			m.err = fmt.Errorf("failed to save request changes: %w", err)
+			return
+		}
 	}
 	m.lastVersion = m.session.Version
 	if target.kind == "chapter" && len(target.steps) > 0 {

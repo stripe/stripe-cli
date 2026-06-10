@@ -85,9 +85,8 @@ func TestCoopDebugAgentRerunsRequestedChanges(t *testing.T) {
 func TestCoopDebugAgentWaitsForChapterReviewAfterChapterIsReady(t *testing.T) {
 	store, session := setupDebugAgentSession(t, []coop.SessionChapter{
 		{
-			Key:               "chapter",
-			Title:             "Chapter",
-			ReviewGranularity: coop.ReviewGranularityChapter,
+			Key:   "chapter",
+			Title: "Chapter",
 			Nodes: []coop.SessionNode{
 				{Key: "product", Title: "Create product", State: coop.StepPending, Type: coop.NodeAPIRequest},
 				{Key: "checkout", Title: "Build Checkout", State: coop.StepPending, Type: coop.NodeAPIRequest},

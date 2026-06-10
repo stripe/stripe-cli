@@ -241,6 +241,7 @@ func TestRenderChapterDetailUsesChapterOverview(t *testing.T) {
 	assertContainsPlain(t, detail, "✓ Create product")
 	assertContainsPlain(t, detail, "● Create checkout")
 	assertContainsPlain(t, detail, "Confirmation steps")
+	assertContainsPlain(t, detail, "Agent help")
 	assertNotContainsPlain(t, detail, "SDK example")
 }
 

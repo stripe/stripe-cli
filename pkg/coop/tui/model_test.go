@@ -537,7 +537,8 @@ func TestAutoScrollToReview(t *testing.T) {
 
 	m.autoScroll()
 
-	assert.Equal(t, 1, m.cursor)
+	assert.Equal(t, navigationChapter, m.selected.kind)
+	assert.Equal(t, 0, m.selected.chapterIndex)
 }
 
 func TestAutoScrollToActive(t *testing.T) {
@@ -574,7 +575,8 @@ func TestFollowKeyResumesAutoFollow(t *testing.T) {
 	updated := result.(Model)
 
 	assert.False(t, updated.userMoved)
-	assert.Equal(t, 1, updated.cursor)
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+	assert.Equal(t, 0, updated.selected.chapterIndex)
 }
 
 func TestActionableReviewCountCollapsesChapterReview(t *testing.T) {

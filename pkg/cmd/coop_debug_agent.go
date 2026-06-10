@@ -208,7 +208,7 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 		return err
 	}
 
-	if session.ReviewGranularityForStep(step) == coop.ReviewGranularityChapter {
+	if chapterReviewApplies(session, step) {
 		chapter, chapterIndex, _, err := session.ChapterByStepNumber(step)
 		if err != nil {
 			return err
@@ -256,13 +256,14 @@ func (a *coopDebugAgent) awaitChapterReview(ctx context.Context, chapterIndex in
 			a.store.RemoveHeartbeat(a.sessionID)
 			return err
 		}
+		if active := session.FirstActiveStepInChapter(chapterIndex); active > 0 {
+			a.store.RemoveHeartbeat(a.sessionID)
+			a.log("chapter requested changes; rerunning from step %d", active)
+			return nil
+		}
 		if !session.ChapterHasReview(chapterIndex) {
 			a.store.RemoveHeartbeat(a.sessionID)
-			if active := session.FirstActiveStepInChapter(chapterIndex); active > 0 {
-				a.log("chapter requested changes; rerunning from step %d", active)
-			} else {
-				a.log("chapter review released")
-			}
+			a.log("chapter review released")
 			return nil
 		}
 	}
@@ -337,7 +338,7 @@ func firstStepWithState(session *coop.Session, state coop.StepState) int {
 }
 
 func shouldContinueChapterBeforeReview(session *coop.Session, step int) bool {
-	if session.ReviewGranularityForStep(step) != coop.ReviewGranularityChapter {
+	if !chapterReviewApplies(session, step) {
 		return false
 	}
 	_, chapterIndex, _, err := session.ChapterByStepNumber(step)

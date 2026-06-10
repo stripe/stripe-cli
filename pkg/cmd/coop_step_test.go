@@ -137,6 +137,38 @@ func TestDoDoneReviewGranularityAuto(t *testing.T) {
 	assert.NotContains(t, output, `"state": "review"`)
 }
 
+func TestDoDoneContinuesChapterBeforeAwaitingReview(t *testing.T) {
+	store, session := setupStepTest(t)
+	require.NoError(t, session.TransitionStep(1, coop.StepActive))
+
+	output := captureStdout(t, func() {
+		require.NoError(t, (&coopStepCmd{}).doDone(store, session, 1))
+	})
+
+	assert.Contains(t, output, `"state": "review"`)
+	assert.Contains(t, output, "Continue the chapter")
+	assert.Contains(t, output, `stripe coop step 2 start`)
+	assert.NotContains(t, output, `stripe coop step 1 await`)
+}
+
+func TestDoDoneAwaitsAtDefaultChapterBoundary(t *testing.T) {
+	store, session := setupStepTest(t)
+	require.NoError(t, session.TransitionStep(1, coop.StepActive))
+	require.NoError(t, session.TransitionStep(1, coop.StepReview))
+	require.NoError(t, session.TransitionStep(2, coop.StepActive))
+	require.NoError(t, session.TransitionStep(2, coop.StepDone))
+	require.NoError(t, session.TransitionStep(3, coop.StepActive))
+	require.NoError(t, store.Write(session))
+
+	output := captureStdout(t, func() {
+		require.NoError(t, (&coopStepCmd{}).doDone(store, session, 3))
+	})
+
+	assert.Contains(t, output, "Chapter ready for review")
+	assert.Contains(t, output, "help the developer verify")
+	assert.Contains(t, output, `stripe coop step 3 await`)
+}
+
 func TestSkipDoneStepFails(t *testing.T) {
 	_, session := setupStepTest(t)
 
@@ -302,9 +334,8 @@ func TestDoSkipFinalStepRoutesToNextSteps(t *testing.T) {
 	assert.Contains(t, output, `"next": "stripe coop next-steps --session=step_test_session"`)
 }
 
-func TestDoAwaitChapterReviewContinuesUntilChapterReady(t *testing.T) {
+func TestDoAwaitDefaultChapterReviewContinuesUntilChapterReady(t *testing.T) {
 	store, session := setupStepTest(t)
-	session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	require.NoError(t, session.TransitionStep(1, coop.StepActive))
 	require.NoError(t, session.TransitionStep(1, coop.StepReview))
 	require.NoError(t, store.Write(session))

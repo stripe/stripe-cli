@@ -167,7 +167,8 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	updated := updatedModel.(Model)
 	rendered := updated.View().Content
 
-	assert.Equal(t, 1, updated.cursor)
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+	assert.Equal(t, 0, updated.selected.chapterIndex)
 	assertLayoutFits(t, rendered, layoutSize{name: "narrow_acceptance", width: 56, height: 18})
 	assertHeaderIsPinned(t, rendered)
 	assertFooterIsPinned(t, rendered, "enter")

@@ -232,7 +232,7 @@ func formatStepCount(count int) string {
 }
 
 func (m Model) chapterReviewReady(chapterIndex int) bool {
-	return m.chapterAllReviewableStepsNeedConfirmation(chapterIndex)
+	return m.chapterHasPendingReviewWithNoActiveWork(chapterIndex)
 }
 
 func (m Model) chapterReviewCount(chapterIndex int) int {
@@ -255,21 +255,24 @@ func (m Model) chapterReviewCountRaw(chapterIndex int) int {
 	return count
 }
 
-func (m Model) chapterAllReviewableStepsNeedConfirmation(chapterIndex int) bool {
+func (m Model) chapterHasPendingReviewWithNoActiveWork(chapterIndex int) bool {
 	if m.session == nil || chapterIndex < 0 || chapterIndex >= len(m.session.Chapters) {
 		return false
 	}
-	hasReviewable := false
+	hasReview := false
 	for _, node := range m.session.Chapters[chapterIndex].Nodes {
 		if node.AutoConfirm {
 			continue
 		}
-		hasReviewable = true
-		if node.State != coop.StepReview {
+		switch node.State {
+		case coop.StepReview:
+			hasReview = true
+		case coop.StepDone, coop.StepSkipped:
+		default:
 			return false
 		}
 	}
-	return hasReviewable
+	return hasReview
 }
 
 func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterReview bool, selected bool) string {
@@ -590,6 +593,11 @@ func (m Model) writeChapterSummaryDetail(md *strings.Builder, ch *coop.SessionCh
 		}
 		md.WriteString("\n")
 	}
+	md.WriteString("Agent help\n")
+	for _, line := range strings.Split(wordWrap("The agent should run relevant checks, keep any app or server available, share a local URL when useful, and create or identify test data.", wrapWidth), "\n") {
+		md.WriteString("  " + line + "\n")
+	}
+	md.WriteString("\n")
 }
 
 func (m Model) writeChapterFilesDetail(md *strings.Builder, ch *coop.SessionChapter) {

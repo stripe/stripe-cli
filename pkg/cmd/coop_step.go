@@ -181,8 +181,27 @@ func (sc *coopStepCmd) doDone(store *coop.Store, session *coop.Session, stepNum 
 	var msg, next string
 
 	if targetState == coop.StepReview {
-		msg = fmt.Sprintf("Ready for review: %s (waiting for human to confirm)", node.Title)
-		next = fmt.Sprintf("stripe coop step %d await --session=%s", stepNum, session.ID)
+		if chapterReviewApplies(session, stepNum) {
+			chapter, chapterIndex, _, err := session.ChapterByStepNumber(stepNum)
+			if err != nil {
+				return outputCoopError(err.Error(), fmt.Sprintf("stripe coop status --session=%s", session.ID))
+			}
+			if !session.ChapterReadyForReview(chapterIndex) {
+				msg = fmt.Sprintf("Ready: %s. Continue the chapter before asking for human review.", node.Title)
+				if nextStep := nextPendingStepInChapter(session, chapterIndex, stepNum); nextStep > 0 {
+					nextNode, _ := session.NodeByNumber(nextStep)
+					next = fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Beginning: "+nextNode.Title))
+				} else {
+					next = fmt.Sprintf("stripe coop status --session=%s", session.ID)
+				}
+			} else {
+				msg = fmt.Sprintf("Chapter ready for review: %s. Before awaiting, help the developer verify it: run relevant checks, start the app/server if useful, share any local URL, create or identify test data, and make the observable result clear.", chapter.Title)
+				next = fmt.Sprintf("stripe coop step %d await --session=%s", stepNum, session.ID)
+			}
+		} else {
+			msg = fmt.Sprintf("Ready for review: %s (waiting for human to confirm)", node.Title)
+			next = fmt.Sprintf("stripe coop step %d await --session=%s", stepNum, session.ID)
+		}
 	} else {
 		msg = fmt.Sprintf("Completed: %s", node.Title)
 		if nextStep := session.NextPendingStep(stepNum); nextStep > 0 {
@@ -273,7 +292,7 @@ func (sc *coopStepCmd) doAwait(store *coop.Store, session *coop.Session, stepNum
 		})
 	}
 
-	if session.ReviewGranularityForStep(stepNum) == coop.ReviewGranularityChapter && node.State == coop.StepReview {
+	if chapterReviewApplies(session, stepNum) && node.State == coop.StepReview {
 		chapter, chapterIndex, _, err := session.ChapterByStepNumber(stepNum)
 		if err != nil {
 			return outputCoopError(err.Error(), fmt.Sprintf("stripe coop status --session=%s", session.ID))
@@ -430,10 +449,6 @@ func (sc *coopStepCmd) awaitChapterReview(store *coop.Store, session *coop.Sessi
 			return fmt.Errorf("reading session: %w", err)
 		}
 
-		if session.ChapterHasReview(chapterIndex) {
-			continue
-		}
-
 		if activeStep := session.FirstActiveStepInChapter(chapterIndex); activeStep > 0 {
 			activeNode, _ := session.NodeByNumber(activeStep)
 			msg := fmt.Sprintf("Chapter %q requested changes.", chapterTitle)
@@ -449,6 +464,10 @@ func (sc *coopStepCmd) awaitChapterReview(store *coop.Store, session *coop.Sessi
 				Message:   msg,
 				Next:      fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", activeStep, session.ID, quoteArg("Redoing: "+activeNode.Title)),
 			})
+		}
+
+		if session.ChapterHasReview(chapterIndex) {
+			continue
 		}
 
 		next := ""
@@ -482,6 +501,19 @@ func nextPendingStepInChapter(session *coop.Session, chapterIndex, afterStep int
 		}
 	}
 	return 0
+}
+
+func chapterReviewApplies(session *coop.Session, stepNum int) bool {
+	chapter, _, _, err := session.ChapterByStepNumber(stepNum)
+	if err != nil {
+		return false
+	}
+	switch chapter.ReviewGranularity {
+	case coop.ReviewGranularityAuto, coop.ReviewGranularityStep:
+		return false
+	default:
+		return true
+	}
 }
 
 // readFromStdin reads implementation data from stdin as JSON.
