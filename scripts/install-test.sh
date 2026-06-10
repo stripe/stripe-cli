@@ -77,21 +77,48 @@ run_install() {
     esac
 }
 
+install_pd_cli() {
+    sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
+}
+
 trigger_pagerduty_alert() {
     if [ "${DRYRUN:-false}" = "true" ]; then
         echo "Dry run: PagerDuty alert would have fired with:"
-        echo "  summary:  Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+        echo "  action:    trigger"
+        echo "  dedup_key: gh-actions-stripe-cli-install-test"
+        echo "  summary:   Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
         echo "  timestamp: $(date)"
-        echo "  source:   Stripe CLI GitHub Actions"
-        echo "  severity: critical"
+        echo "  source:    Stripe CLI GitHub Actions"
+        echo "  severity:  critical"
         return 0
     fi
-    sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
-    pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
-    --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
-    --timestamp "\"$(date)\"" \
-    --source "Stripe CLI GitHub Actions" \
-    --severity critical
+    install_pd_cli
+    pd event alert \
+        --action trigger \
+        --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
+        --dedup_key "gh-actions-stripe-cli-install-test" \
+        --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
+        --timestamp "\"$(date)\"" \
+        --source "Stripe CLI GitHub Actions" \
+        --severity critical
+}
+
+resolve_pagerduty_alert() {
+    if [ "${DRYRUN:-false}" = "true" ]; then
+        echo "Dry run: PagerDuty resolve would have fired with:"
+        echo "  action:    resolve"
+        echo "  dedup_key: gh-actions-stripe-cli-install-test"
+        echo "  summary:   Stripe CLI installation is passing again"
+        echo "  source:    Stripe CLI GitHub Actions"
+        return 0
+    fi
+    install_pd_cli
+    pd event alert \
+        --action resolve \
+        --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
+        --dedup_key "gh-actions-stripe-cli-install-test" \
+        --source "Stripe CLI GitHub Actions" \
+        --summary "Stripe CLI installation is passing again"
 }
 
 if ! run_install
@@ -120,3 +147,5 @@ then
         fi
     fi
 fi
+
+resolve_pagerduty_alert
