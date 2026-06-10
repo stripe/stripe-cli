@@ -23,7 +23,7 @@ func newCoopStopCmd() *coopStopCmd {
 (integration finished successfully). Use --abort to mark it as "aborted"
 (stopped early, integration incomplete).
 
-Ended sessions won't be picked up by "stripe coop join" or "stripe coop step".`,
+Ended sessions won't be picked up by co-op join or agent lifecycle commands.`,
 		RunE: sc.runStopCmd,
 	}
 

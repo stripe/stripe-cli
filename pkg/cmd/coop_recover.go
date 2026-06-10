@@ -82,7 +82,7 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 				SessionID: session.ID,
 				Diagnosis: "All steps were done but session was still marked active.",
 				Action:    "Marked session as completed.",
-				Next:      fmt.Sprintf("stripe coop next-steps --session=%s", session.ID),
+				Next:      fmt.Sprintf("stripe coop agent next-action --session=%s", session.ID),
 			})
 		}
 		return outputJSON(recoverResponse{
@@ -136,7 +136,7 @@ func (rc *coopRecoverCmd) runRecoverCmd(cmd *cobra.Command, args []string) error
 			OK:        true,
 			SessionID: session.ID,
 			Diagnosis: fmt.Sprintf("No step is active. Next pending step is %d (%s). The agent needs to start it.", nextStep, node.Title),
-			Next:      fmt.Sprintf("stripe coop step %d start --session=%s --note=%s", nextStep, session.ID, quoteArg("Resuming")),
+			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, nextStep, quoteArg("Resuming")),
 		})
 	}
 

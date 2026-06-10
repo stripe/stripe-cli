@@ -40,8 +40,9 @@ func newCoopStepCmd() *coopStepCmd {
 	sc := &coopStepCmd{}
 
 	sc.cmd = &cobra.Command{
-		Use:   "step <number> <action>",
-		Short: "Update a step's lifecycle state",
+		Use:    "step <number> <action>",
+		Short:  "Update a step's lifecycle state",
+		Hidden: true,
 		Long: `Manage the lifecycle of a co-op session step. Actions:
   start   — mark step as active (agent is working on it)
   done    — mark step as complete (moves to review unless --auto-confirm)

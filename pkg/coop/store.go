@@ -2,6 +2,7 @@ package coop
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,14 @@ import (
 type Store struct {
 	baseDir string
 }
+
+var (
+	ErrInvalidSessionID = errors.New("invalid session id")
+	ErrSessionNotFound  = errors.New("session not found")
+	ErrVersionConflict  = errors.New("version conflict")
+	ErrLockTimeout      = errors.New("timed out waiting for session lock")
+	ErrCorruptSession   = errors.New("corrupt session")
+)
 
 // NewStore creates a Store, ensuring the coop directory exists.
 func NewStore(configFolder string) (*Store, error) {
@@ -32,20 +41,27 @@ func NewStoreAt(dir string) (*Store, error) {
 	return &Store{baseDir: dir}, nil
 }
 
-func (s *Store) sessionPath(id string) string {
+func (s *Store) sessionPath(id string) (string, error) {
 	// Validate ID to prevent path traversal
 	base := filepath.Base(id)
 	if base != id || id == "" || id == "." || id == ".." {
-		return filepath.Join(s.baseDir, "invalid.json")
+		return "", fmt.Errorf("%w: %q", ErrInvalidSessionID, id)
 	}
-	return filepath.Join(s.baseDir, id+".json")
+	return filepath.Join(s.baseDir, id+".json"), nil
 }
 
 // Write atomically persists a session (write to .tmp then rename).
 // Uses optimistic locking: checks that the file's current version matches
 // the session's version before writing. Returns an error on conflict.
 func (s *Store) Write(session *Session) error {
-	path := s.sessionPath(session.ID)
+	path, err := s.sessionPath(session.ID)
+	if err != nil {
+		return err
+	}
+	return s.writePath(path, session)
+}
+
+func (s *Store) writePath(path string, session *Session) error {
 	unlock, err := s.acquireSessionLock(path)
 	if err != nil {
 		return err
@@ -58,11 +74,14 @@ func (s *Store) Write(session *Session) error {
 		if json.Unmarshal(existing, &current) == nil {
 			if current.Version != session.Version {
 				// Re-read to get latest state
-				return fmt.Errorf("version conflict: expected %d, file has %d (another writer updated)", session.Version, current.Version)
+				return fmt.Errorf("%w: expected %d, file has %d", ErrVersionConflict, session.Version, current.Version)
 			}
 		}
 	}
 
+	if session.SchemaVersion == 0 {
+		session.SchemaVersion = CurrentSessionSchemaVersion
+	}
 	session.UpdatedAt = time.Now().UTC()
 	session.Version++
 
@@ -113,7 +132,7 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 		}
 
 		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("timed out waiting for session lock")
+			return nil, ErrLockTimeout
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
@@ -121,22 +140,105 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 
 // Read loads a session from disk.
 func (s *Store) Read(id string) (*Session, error) {
-	data, err := os.ReadFile(s.sessionPath(id))
+	path, err := s.sessionPath(id)
 	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%w: %q", ErrSessionNotFound, id)
+		}
 		return nil, fmt.Errorf("reading session %q: %w", id, err)
 	}
 
 	var session Session
 	if err := json.Unmarshal(data, &session); err != nil {
-		return nil, fmt.Errorf("parsing session %q: %w", id, err)
+		return nil, fmt.Errorf("%w: parsing session %q: %v", ErrCorruptSession, id, err)
+	}
+	if session.SchemaVersion == 0 {
+		session.SchemaVersion = 1
 	}
 
 	return &session, nil
 }
 
+// Update loads, mutates, and atomically writes a session with optimistic locking.
+func (s *Store) Update(id string, fn func(*Session) error) (*Session, error) {
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return nil, err
+	}
+
+	unlock, err := s.acquireSessionLock(path)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%w: %q", ErrSessionNotFound, id)
+		}
+		return nil, fmt.Errorf("reading session %q: %w", id, err)
+	}
+
+	var session Session
+	if err := json.Unmarshal(data, &session); err != nil {
+		return nil, fmt.Errorf("%w: parsing session %q: %v", ErrCorruptSession, id, err)
+	}
+	if session.SchemaVersion == 0 {
+		session.SchemaVersion = 1
+	}
+	if err := fn(&session); err != nil {
+		return nil, err
+	}
+	if session.SchemaVersion == 0 || session.SchemaVersion == 1 {
+		session.SchemaVersion = CurrentSessionSchemaVersion
+	}
+	session.UpdatedAt = time.Now().UTC()
+	session.Version++
+
+	if err := s.writeUnlocked(path, &session); err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (s *Store) writeUnlocked(path string, session *Session) error {
+	data, err := json.MarshalIndent(session, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling session: %w", err)
+	}
+
+	tmp, err := os.CreateTemp(s.baseDir, filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return fmt.Errorf("writing temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("closing temp file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("renaming temp file: %w", err)
+	}
+	return nil
+}
+
 // ModTime returns the file modification time (for polling).
 func (s *Store) ModTime(id string) (time.Time, error) {
-	info, err := os.Stat(s.sessionPath(id))
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return time.Time{}, err
+	}
+	info, err := os.Stat(path)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -242,11 +344,19 @@ func (s *Store) LatestActiveSession() (*Session, error) {
 
 // Delete removes a session file.
 func (s *Store) Delete(id string) error {
-	return os.Remove(s.sessionPath(id))
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return err
+	}
+	return os.Remove(path)
 }
 
 func (s *Store) heartbeatPath(id string) string {
-	return s.sessionPath(id) + ".heartbeat"
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return filepath.Join(s.baseDir, "invalid.heartbeat")
+	}
+	return path + ".heartbeat"
 }
 
 // WriteHeartbeat updates the heartbeat file for a session (signals agent is polling).

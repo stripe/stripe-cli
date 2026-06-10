@@ -209,12 +209,12 @@ func TestSyncViewportPreservesManualScroll(t *testing.T) {
 	assert.Equal(t, 6, m.viewport.YOffset())
 }
 
-func TestViewDoesNotInstallMouseHandler(t *testing.T) {
+func TestViewInstallsMouseHandler(t *testing.T) {
 	m := readyModel()
 
 	view := m.View()
 
-	assert.Nil(t, view.OnMouse)
+	assert.NotNil(t, view.OnMouse)
 }
 
 func TestMouseActionSelectsVisibleStep(t *testing.T) {

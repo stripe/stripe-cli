@@ -101,7 +101,55 @@ func (m Model) renderHeader() string {
 }
 
 func (m Model) renderStepList() string {
+	if m.useSplitWorkspace() {
+		return m.renderSplitWorkspace()
+	}
 	return m.renderStepOutline().content
+}
+
+func (m Model) useSplitWorkspace() bool {
+	return m.width >= 100 && m.session != nil && !m.session.IsComplete()
+}
+
+func (m Model) renderSplitWorkspace() string {
+	leftW := m.width / 3
+	if leftW < 34 {
+		leftW = 34
+	}
+	if leftW > 48 {
+		leftW = 48
+	}
+	gapW := 2
+	rightW := m.width - leftW - gapW
+	if rightW < 40 {
+		return m.renderStepOutline().content
+	}
+
+	nav := m.renderStepOutline().content
+	detail := m.renderSplitDetail(rightW)
+	left := lipgloss.NewStyle().
+		Width(leftW).
+		MaxWidth(leftW).
+		Render(nav)
+	right := lipgloss.NewStyle().
+		Width(rightW).
+		MaxWidth(rightW).
+		Render(detail)
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", gapW), right)
+}
+
+func (m Model) renderSplitDetail(width int) string {
+	if !m.expanded {
+		if m.selected.kind == navigationChapter {
+			return m.theme.MutedStyle.Render("Press enter to inspect this section.")
+		}
+		return m.theme.MutedStyle.Render("Press enter to inspect this step.")
+	}
+	detail := strings.TrimSpace(m.renderDetail())
+	if detail == "" {
+		return m.theme.MutedStyle.Render("No details available yet.")
+	}
+	return lipgloss.NewStyle().MaxWidth(width).Render(detail)
 }
 
 type renderedOutline struct {
@@ -128,7 +176,7 @@ func (m Model) renderStepOutline() renderedOutline {
 		navigationLines[len(lines)] = chapterItem
 		lines = append(lines, m.renderChapterLine(ch, chIdx, chapterSelected))
 		lines = append(lines, strings.Repeat(" ", rowCursorWidth)+m.theme.ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth)))
-		if m.expanded && chapterSelected {
+		if m.expanded && chapterSelected && !m.useSplitWorkspace() {
 			if detail := m.renderDetail(); detail != "" {
 				lines = append(lines, detail)
 			}
@@ -143,7 +191,7 @@ func (m Model) renderStepOutline() renderedOutline {
 			stepSelected := m.navigationItemSelected(stepItem)
 			navigationLines[len(lines)] = stepItem
 			lines = append(lines, m.renderStepLine(node, stepIdx, chapterReviewReady, stepSelected))
-			if m.expanded && stepSelected {
+			if m.expanded && stepSelected && !m.useSplitWorkspace() {
 				if detail := m.renderDetail(); detail != "" {
 					lines = append(lines, detail)
 				}

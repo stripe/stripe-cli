@@ -87,7 +87,7 @@ func buildSummarizePrompt(session *coop.Session) string {
 - Stripe Dashboard: https://dashboard.stripe.com/test
 - API docs: https://docs.stripe.com/api
 
-After writing the file, run "stripe coop next-steps --session=%s --completed=summarize" again to offer more options.`, session.Blueprint, session.ID)
+After writing the file, run "stripe coop agent next-action --session=%s --completed=summarize" again to offer more options.`, session.Blueprint, session.ID)
 }
 
 // projectEnvironment captures deploy targets detected in the working directory.

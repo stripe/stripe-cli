@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
 type coopDebugAgentCmd struct {
@@ -135,19 +136,14 @@ func (a *coopDebugAgent) startStep(step int) error {
 		return nil
 	}
 
-	if err := session.TransitionStep(step, coop.StepActive); err != nil {
+	resp, err := workflow.NewService(a.store).StartWork(a.sessionID, step, "Debug agent working: "+node.Title)
+	if err != nil {
 		return err
 	}
-	node, _ = session.NodeByNumber(step)
-	node.Activity = "Debug agent working: " + node.Title
-
+	if !resp.OK {
+		return fmt.Errorf("%s", resp.Error)
+	}
 	a.log("step %d active: %s", step, node.Title)
-	if err := a.store.Write(session); err != nil {
-		if isVersionConflict(err) {
-			return nil
-		}
-		return err
-	}
 	return nil
 }
 
@@ -168,33 +164,26 @@ func (a *coopDebugAgent) completeActiveStep(ctx context.Context, step int) error
 		return nil
 	}
 
-	targetState := coop.StepReview
-	if node.AutoConfirm || session.ReviewGranularityForStep(step) == coop.ReviewGranularityAuto {
-		targetState = coop.StepDone
+	service := workflow.NewService(a.store)
+	resp, err := service.ReportCheck(a.sessionID, step, "Debug agent deterministic check", true)
+	if err != nil {
+		return err
 	}
-
-	node.Verifications = append(node.Verifications, coop.Verification{
-		Check:  "Debug agent deterministic check",
-		Passed: true,
-	})
-	node.Implementation = &coop.Implementation{
+	if !resp.OK {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	resp, err = service.ReportWork(a.sessionID, step, workflow.ReportWorkInput{
 		File:  "debug/" + safeDebugFileName(node.Key) + ".txt",
 		Lines: "1-1",
 		Note:  "Deterministic debug agent completed " + node.Title,
-	}
-
-	if err := session.TransitionStep(step, targetState); err != nil {
+	}, false)
+	if err != nil {
 		return err
 	}
-	node.Activity = ""
-
-	a.log("step %d %s: %s", step, targetState, node.Title)
-	if err := a.store.Write(session); err != nil {
-		if isVersionConflict(err) {
-			return nil
-		}
-		return err
+	if !resp.OK {
+		return fmt.Errorf("%s", resp.Error)
 	}
+	a.log("step %d %s: %s", step, resp.State, node.Title)
 	return nil
 }
 

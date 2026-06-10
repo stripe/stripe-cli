@@ -12,7 +12,7 @@ Co-op mode enables an AI agent and a human developer to build Stripe integration
 │  │  TUI (coop join)     │   │  Agent (Claude/Codex)      │ │
 │  │                      │   │                            │ │
 │  │  Reads session.json  │   │  Writes session.json via   │ │
-│  │  every 500ms         │   │  stripe coop step commands │ │
+│  │  every 500ms         │   │  stripe coop agent commands│ │
 │  │                      │   │                            │ │
 │  └──────────┬───────────┘   └──────────────┬─────────────┘ │
 │             │                              │               │
@@ -67,12 +67,12 @@ active ──→ completed    (all steps done/skipped, or "stripe coop stop")
 | Command | Purpose |
 |---------|---------|
 | `stripe coop run <blueprint>` | Create a session (outputs JSON with instructions) |
-| `stripe coop step <n> start` | Mark step as active |
-| `stripe coop step <n> done` | Mark step as complete (→ review or → done if auto_confirm) |
-| `stripe coop step <n> verify` | Add a verification check |
-| `stripe coop step <n> skip` | Skip a step |
-| `stripe coop step <n> await` | Block until developer confirms or requests changes |
-| `stripe coop next-steps` | Show post-completion options (blocks until selection) |
+| `stripe coop agent start-work --step <n>` | Mark step as active |
+| `stripe coop agent report-work --step <n>` | Mark step as complete (→ review or → done if auto_confirm) |
+| `stripe coop agent report-check --step <n>` | Add a verification check |
+| `stripe coop agent skip --step <n>` | Skip a step |
+| `stripe coop agent await-review --step <n>` | Block until developer confirms or requests changes |
+| `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 
 All agent commands output JSON with an `ok` field and a `next` field suggesting the next command.
 
@@ -109,14 +109,14 @@ $ stripe coop start one-time-payment --language=node
 # 2. TUI appears in left pane showing step progress
 # 3. Agent runs: stripe coop run one-time-payment --language=node
 # 4. Agent works through steps, calling:
-#      stripe coop step 1 start --note="Scanning project"
-#      stripe coop step 1 done --note="Found Next.js app"
-#      stripe coop step 2 start --note="Creating product"
-#      stripe coop step 2 done --file=server.js --lines=5-20 --note="Created product"
-#      stripe coop step 2 await --session=coop_abc123   ← blocks until developer confirms
+#      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Scanning project"
+#      stripe coop agent report-work --session=coop_abc123 --step=1 --note="Found Next.js app"
+#      stripe coop agent start-work --session=coop_abc123 --step=2 --note="Creating product"
+#      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product"
+#      stripe coop agent await-review --session=coop_abc123 --step=2   ← blocks until developer confirms
 # 5. Developer sees progress live, presses 'c' to confirm
 # 6. Agent continues to next step
-# 7. After all steps: agent runs "stripe coop next-steps --session=coop_abc123"
+# 7. After all steps: agent runs "stripe coop agent next-action --session=coop_abc123"
 # 8. Developer picks what to do next from TUI suggestions
 ```
 
@@ -125,14 +125,14 @@ Post-completion choices are written into the session file for the agent. Deploy 
 ## Auto-Confirm
 
 Nodes with `"auto_confirm": true` skip human review:
-- `step done` transitions directly to `done` (not `review`)
-- `step await` returns immediately if the step is auto-confirmed
+- `agent report-work` transitions directly to `done` (not `review`)
+- `agent await-review` returns immediately if the step is auto-confirmed
 - The prepended "Understand the project" step is always auto-confirmed
 - Blueprint nodes can set `"auto_confirm": true` for mechanical steps
 
 ## Heartbeat
 
-When the agent runs `stripe coop step <n> await`, it writes a `.heartbeat` file every 500ms. The TUI checks this file:
+When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` file every 500ms. The TUI checks this file:
 - **Fresh heartbeat (< 5s old):** Agent is actively waiting for confirmation
 - **No heartbeat + no session update in 2min:** Show idle warning
 
@@ -225,12 +225,16 @@ pkg/coop/tui/
   messages.go       — Custom message types
   theme.go          — Sail Design System colors + HuhTheme
 
+pkg/coop/workflow/
+  service.go        — Shared lifecycle operations for agent commands and TUI review actions
+
 pkg/cmd/
   coop.go           — Parent command, subcommand registration
   coop_start.go     — User-facing orchestrator (tmux launcher)
   coop_launcher.go  — Agent detection, tmux management, prompts
   coop_run.go       — Agent-facing session creator
-  coop_step.go      — Step lifecycle (start/done/verify/skip/await)
+  coop_agent.go     — Typed agent lifecycle commands
+  coop_step.go      — Hidden legacy step lifecycle shim
   coop_join.go      — TUI launcher
   coop_nextsteps.go — Post-completion flow
   coop_env.go       — Environment detection, suggestion building

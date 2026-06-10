@@ -11,24 +11,25 @@ import (
 type sailTheme struct{}
 
 func (sailTheme) Theme(isDark bool) *huh.Styles {
-	t := huh.ThemeBase(isDark)
+	styles := huh.ThemeBase(isDark)
+	theme := NewTheme(isDark)
 
-	t.Focused.Base = t.Focused.Base.BorderForeground(HueGray700)
-	t.Focused.Title = t.Focused.Title.Foreground(HuePurple500).Bold(true)
-	t.Focused.Description = t.Focused.Description.Foreground(HueGray400)
-	t.Focused.SelectSelector = t.Focused.SelectSelector.Foreground(HuePurple500)
-	t.Focused.NextIndicator = t.Focused.NextIndicator.Foreground(HuePurple400)
-	t.Focused.PrevIndicator = t.Focused.PrevIndicator.Foreground(HuePurple400)
-	t.Focused.Option = t.Focused.Option.Foreground(HueGray300)
-	t.Focused.SelectedOption = t.Focused.SelectedOption.Foreground(HueGreen300)
-	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(HueGreen400).SetString("▶ ")
-	t.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(HueGray500).SetString("  ")
-	t.Focused.UnselectedOption = t.Focused.UnselectedOption.Foreground(HueGray400)
-	t.Focused.FocusedButton = t.Focused.FocusedButton.Foreground(lipgloss.Color("#ffffff")).Background(HuePurple500)
-	t.Focused.BlurredButton = t.Focused.BlurredButton.Foreground(HueGray300).Background(HueGray700)
-	t.Blurred = t.Focused
+	styles.Focused.Base = styles.Focused.Base.BorderForeground(theme.HueBorder)
+	styles.Focused.Title = styles.Focused.Title.Foreground(theme.HuePurple500).Bold(true)
+	styles.Focused.Description = styles.Focused.Description.Foreground(theme.HueGray400)
+	styles.Focused.SelectSelector = styles.Focused.SelectSelector.Foreground(theme.HuePurple500)
+	styles.Focused.NextIndicator = styles.Focused.NextIndicator.Foreground(theme.HuePurple400)
+	styles.Focused.PrevIndicator = styles.Focused.PrevIndicator.Foreground(theme.HuePurple400)
+	styles.Focused.Option = styles.Focused.Option.Foreground(theme.HueGray300)
+	styles.Focused.SelectedOption = styles.Focused.SelectedOption.Foreground(theme.HueGreen400)
+	styles.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(theme.HueGreen400).SetString("▶ ")
+	styles.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(theme.HueGray500).SetString("  ")
+	styles.Focused.UnselectedOption = styles.Focused.UnselectedOption.Foreground(theme.HueGray400)
+	styles.Focused.FocusedButton = styles.Focused.FocusedButton.Foreground(theme.HueOnBrand).Background(theme.HuePurple500)
+	styles.Focused.BlurredButton = styles.Focused.BlurredButton.Foreground(theme.HueGray300).Background(theme.HuePanel)
+	styles.Blurred = styles.Focused
 
-	return t
+	return styles
 }
 
 // HuhTheme returns a Sail-styled huh theme for interactive prompts.
@@ -89,6 +90,10 @@ type Theme struct {
 	HueGray700   color.Color
 	HueError     color.Color
 	HueText      color.Color
+	HueOnBrand   color.Color
+	HueBorder    color.Color
+	HuePanel     color.Color
+	HueSelection color.Color
 
 	BrandStyle              lipgloss.Style
 	SuccessStyle            lipgloss.Style
@@ -125,7 +130,11 @@ func NewTheme(isDark bool) Theme {
 		HueGray700:   lightDark(lipgloss.Color("#d9dee7"), HueGray700),
 		HueError:     lightDark(lipgloss.Color("#b00020"), lipgloss.Color("#df1b41")),
 		HueText:      lightDark(lipgloss.Color("#1f2430"), lipgloss.Color("#ffffff")),
+		HueOnBrand:   lipgloss.Color("#ffffff"),
 	}
+	t.HueBorder = lipgloss.Blend1D(3, t.HueGray500, t.HuePurple400)[1]
+	t.HuePanel = lightDark(lipgloss.Darken(t.HueGray700, 0.04), lipgloss.Lighten(t.HueGray700, 0.08))
+	t.HueSelection = lipgloss.Blend1D(4, t.HuePurple700, t.HuePurple500)[1]
 	t.BrandStyle = lipgloss.NewStyle().Foreground(t.HuePurple500)
 	t.SuccessStyle = lipgloss.NewStyle().Foreground(t.HueGreen400)
 	t.AttentionStyle = lipgloss.NewStyle().Foreground(t.HueOrange400)
@@ -135,7 +144,7 @@ func NewTheme(isDark bool) Theme {
 	t.ErrorStyle = lipgloss.NewStyle().Foreground(t.HueError)
 	t.HeaderStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("#ffffff")).
+		Foreground(t.HueOnBrand).
 		Background(t.HuePurple700).
 		Padding(0, 1)
 	t.ChapterTitleStyle = lipgloss.NewStyle().
@@ -145,15 +154,15 @@ func NewTheme(isDark bool) Theme {
 		Foreground(t.HueGray700)
 	t.DetailBoxStyle = lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.HueGray700).
+		BorderForeground(t.HueBorder).
 		Padding(0, 1)
 	t.ReviewCardStyle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(t.HuePurple400).
+		BorderForeground(t.HueSelection).
 		Padding(0, 1)
 	t.ConfirmationHeaderStyle = lipgloss.NewStyle().
 		Foreground(t.HueText).
-		Background(t.HuePurple700).
+		Background(t.HueSelection).
 		Bold(true).
 		Padding(0, 1)
 	t.FooterStyle = lipgloss.NewStyle().

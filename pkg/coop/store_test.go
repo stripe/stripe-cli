@@ -39,6 +39,7 @@ func TestStoreWriteRead(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "test_001", loaded.ID)
 	assert.Equal(t, "one-time-payment", loaded.Blueprint)
+	assert.Equal(t, CurrentSessionSchemaVersion, loaded.SchemaVersion)
 	assert.Equal(t, 1, loaded.Version)
 	assert.Equal(t, StepPending, loaded.Chapters[0].Nodes[0].State)
 }
@@ -54,6 +55,43 @@ func TestStoreWriteIncrementsVersion(t *testing.T) {
 
 	store.Write(session)
 	assert.Equal(t, 2, session.Version)
+}
+
+func TestStoreUpdateMutatesAndVersionsSession(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	session := &Session{
+		ID:       "update_test",
+		Status:   SessionActive,
+		Chapters: []SessionChapter{{Key: "chapter", Nodes: []SessionNode{{Key: "step", Title: "Step", State: StepPending}}}},
+	}
+	require.NoError(t, store.Write(session))
+
+	updated, err := store.Update("update_test", func(session *Session) error {
+		node, err := session.NodeByNumber(1)
+		require.NoError(t, err)
+		node.Activity = "working"
+		return nil
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 2, updated.Version)
+	assert.Equal(t, CurrentSessionSchemaVersion, updated.SchemaVersion)
+	assert.Equal(t, "working", updated.Chapters[0].Nodes[0].Activity)
+
+	loaded, err := store.Read("update_test")
+	require.NoError(t, err)
+	assert.Equal(t, "working", loaded.Chapters[0].Nodes[0].Activity)
+}
+
+func TestStoreUpdateInvalidSessionID(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	_, err = store.Update("../bad", func(session *Session) error { return nil })
+	require.ErrorIs(t, err, ErrInvalidSessionID)
 }
 
 func TestStoreList(t *testing.T) {

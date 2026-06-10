@@ -185,10 +185,11 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings map[strin
 	}
 
 	return &Session{
-		ID:        sessionID,
-		Blueprint: bp.ID,
-		Status:    SessionActive,
-		Settings:  settings,
-		Chapters:  chapters,
+		SchemaVersion: CurrentSessionSchemaVersion,
+		ID:            sessionID,
+		Blueprint:     bp.ID,
+		Status:        SessionActive,
+		Settings:      settings,
+		Chapters:      chapters,
 	}
 }

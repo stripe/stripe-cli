@@ -35,8 +35,9 @@ type nextStepsResponse struct {
 func newCoopNextStepsCmd() *coopNextStepsCmd {
 	nc := &coopNextStepsCmd{}
 	nc.cmd = &cobra.Command{
-		Use:   "next-steps",
-		Short: "Suggest what to do after completing an integration",
+		Use:    "next-steps",
+		Short:  "Suggest what to do after completing an integration",
+		Hidden: true,
 		Long: `Inspects the completed session and project environment to suggest
 logical next steps: deploy, go live, add webhooks, or build more.
 
@@ -130,7 +131,7 @@ func buildNextStepsResponse(session *coop.Session, suggestions []suggestion, sel
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: buildSummarizePrompt(session),
-			Next:        fmt.Sprintf("Write STRIPE.md, then run: stripe coop next-steps --session=%s --completed=summarize", session.ID),
+			Next:        fmt.Sprintf("Write STRIPE.md, then run: stripe coop agent next-action --session=%s --completed=summarize", session.ID),
 		}
 	case "deploy", "deploy-update":
 		lang := session.Settings["language"]

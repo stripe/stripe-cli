@@ -8,6 +8,10 @@ import "time"
 type StepState string
 
 const (
+	CurrentSessionSchemaVersion = 2
+)
+
+const (
 	StepPending StepState = "pending"
 	StepActive  StepState = "active"
 	StepReview  StepState = "review"
@@ -98,6 +102,7 @@ type SessionChapter struct {
 
 // Session is the shared state file between agent and TUI.
 type Session struct {
+	SchemaVersion   int               `json:"schema_version"`
 	ID              string            `json:"id"`
 	Blueprint       string            `json:"blueprint"`
 	Status          SessionStatus     `json:"status"`
@@ -129,14 +134,15 @@ type NextStepSuggestion struct {
 
 // CommandResponse is the JSON output format for agent-facing commands.
 type CommandResponse struct {
-	OK         bool        `json:"ok"`
-	SessionID  string      `json:"session_id,omitempty"`
-	Step       int         `json:"step,omitempty"`
-	State      string      `json:"state,omitempty"`
-	Message    string      `json:"message,omitempty"`
-	Next       string      `json:"next,omitempty"`
-	APIRequest *APIRequest `json:"api_request,omitempty"`
-	SDKExample string      `json:"sdk_example,omitempty"`
-	Error      string      `json:"error,omitempty"`
-	Hint       string      `json:"hint,omitempty"`
+	OK          bool        `json:"ok"`
+	SessionID   string      `json:"session_id,omitempty"`
+	Step        int         `json:"step,omitempty"`
+	State       string      `json:"state,omitempty"`
+	Message     string      `json:"message,omitempty"`
+	Next        string      `json:"next,omitempty"`
+	AgentPrompt string      `json:"agent_prompt,omitempty"`
+	APIRequest  *APIRequest `json:"api_request,omitempty"`
+	SDKExample  string      `json:"sdk_example,omitempty"`
+	Error       string      `json:"error,omitempty"`
+	Hint        string      `json:"hint,omitempty"`
 }

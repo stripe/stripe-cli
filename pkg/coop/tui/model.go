@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
 // Model is the root bubbletea model for the co-op TUI.
@@ -309,6 +310,14 @@ func (m Model) View() tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.MouseMode = tea.MouseModeCellMotion
+	v.OnMouse = func(msg tea.MouseMsg) tea.Cmd {
+		if action, ok := m.mouseActionFor(msg.Mouse()); ok {
+			return func() tea.Msg {
+				return action
+			}
+		}
+		return nil
+	}
 	v.ReportFocus = true
 	v.KeyboardEnhancements.ReportEventTypes = true
 	v.ProgressBar = m.progressBar()
@@ -725,34 +734,12 @@ func (m *Model) handleConfirm() {
 	if !ok {
 		return
 	}
-	for _, step := range target.steps {
-		if err := confirmStep(m.session, step); err != nil {
-			m.err = fmt.Errorf("failed to confirm review: %w", err)
-			return
-		}
+	session, err := workflow.NewService(m.store).ConfirmReview(m.session.ID, target.steps)
+	if err != nil {
+		m.err = fmt.Errorf("failed to confirm review: %w", err)
+		return
 	}
-	if err := m.store.Write(m.session); err != nil {
-		if !isCoopVersionConflict(err) {
-			m.err = fmt.Errorf("failed to save confirmation: %w", err)
-			return
-		}
-		latest, readErr := m.store.Read(m.session.ID)
-		if readErr != nil {
-			m.err = fmt.Errorf("failed to reload confirmation: %w", readErr)
-			return
-		}
-		m.session = latest
-		for _, step := range target.steps {
-			if err := confirmStep(m.session, step); err != nil {
-				m.err = fmt.Errorf("failed to confirm review: %w", err)
-				return
-			}
-		}
-		if err := m.store.Write(m.session); err != nil {
-			m.err = fmt.Errorf("failed to save confirmation: %w", err)
-			return
-		}
-	}
+	m.session = session
 	m.lastVersion = m.session.Version
 	if target.kind == "chapter" && len(target.steps) > 0 {
 		m.selectStep(target.steps[0] - 1)
@@ -860,34 +847,12 @@ func (m *Model) handleReject(note string) {
 	if !ok {
 		return
 	}
-	for _, step := range target.steps {
-		if err := rejectStep(m.session, step, note); err != nil {
-			m.err = fmt.Errorf("failed to request changes: %w", err)
-			return
-		}
+	session, err := workflow.NewService(m.store).RequestChanges(m.session.ID, target.steps, note)
+	if err != nil {
+		m.err = fmt.Errorf("failed to request changes: %w", err)
+		return
 	}
-	if err := m.store.Write(m.session); err != nil {
-		if !isCoopVersionConflict(err) {
-			m.err = fmt.Errorf("failed to save request changes: %w", err)
-			return
-		}
-		latest, readErr := m.store.Read(m.session.ID)
-		if readErr != nil {
-			m.err = fmt.Errorf("failed to reload request changes: %w", readErr)
-			return
-		}
-		m.session = latest
-		for _, step := range target.steps {
-			if err := rejectStep(m.session, step, note); err != nil {
-				m.err = fmt.Errorf("failed to request changes: %w", err)
-				return
-			}
-		}
-		if err := m.store.Write(m.session); err != nil {
-			m.err = fmt.Errorf("failed to save request changes: %w", err)
-			return
-		}
-	}
+	m.session = session
 	m.lastVersion = m.session.Version
 	if target.kind == "chapter" && len(target.steps) > 0 {
 		m.selectStep(target.steps[0] - 1)

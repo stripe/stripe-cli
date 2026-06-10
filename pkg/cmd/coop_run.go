@@ -99,7 +99,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 			Step:      1,
 			State:     "created",
 			Message:   fmt.Sprintf("Session started: %s (%d steps)", bp.Title, session.TotalSteps()),
-			Next:      fmt.Sprintf("stripe coop step 1 start --session=%s --note=%s", sessionID, quoteArg("Beginning: "+session.Chapters[0].Nodes[0].Title)),
+			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", sessionID, quoteArg("Beginning: "+session.Chapters[0].Nodes[0].Title)),
 		},
 		AgentInstructions: agentInstructions(bp, session),
 		Steps:             steps,
@@ -171,33 +171,33 @@ If a step includes review_prompt, that is the baseline acceptance check shown to
 
 Step 1 is always "Understand the project" — scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining steps to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
-Step lifecycle commands (use this session id: %s):
-1. stripe coop step <n> start --session=%s --note="<what you're about to do>"
+Agent lifecycle commands (use this session id: %s):
+1. stripe coop agent start-work --session=%s --step=<n> --note="<what you're about to do>"
 2. Write the code and run it to verify it works
-3. stripe coop step <n> verify --session=%s --check="<what you verified>" --passed
-4. stripe coop step <n> done --session=%s --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
+3. stripe coop agent report-check --session=%s --step=<n> --check="<what you verified>" --passed
+4. stripe coop agent report-work --session=%s --step=<n> --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
 5. Follow the JSON response's next command. Most steps continue to the next step in the same section.
-6. Only run stripe coop step <n> await --session=%s when the response says the section is ready for review. Await blocks until the human confirms the section or requests changes.
+6. Only run stripe coop agent await-review --session=%s --step=<n> when the response says the section is ready for review. Await blocks until the human confirms the section or requests changes.
 7. If confirmed: move to next step. If rejected: redo the affected step (check the message for feedback).
-8. When the final step is confirmed: IMMEDIATELY run "stripe coop next-steps --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
+8. When the final step is confirmed: IMMEDIATELY run "stripe coop agent next-action --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
 
-Sections are the default human-review unit. Build and verify each step one at a time, but do not interrupt the developer for every step. At the end of each section, before running await, help the developer verify the section: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop step <n> verify --check="..." --passed so the review card has useful evidence.
+Sections are the default human-review unit. Build and verify each step one at a time, but do not interrupt the developer for every step. At the end of each section, before running await, help the developer verify the section: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop agent report-check --session=%s --step=<n> --check="..." --passed so the review card has useful evidence.
 
 The "await" command is critical at section boundaries — it blocks until the developer acts. Do NOT proceed to the next section without running await when the step response tells you the section is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected step.
 
 Some steps are marked auto_confirm — these do not require human review. Continue following the next command returned by the CLI.
 
 For values containing special characters ($, quotes, etc.), use --stdin to pipe JSON:
-  echo '{"file":"app.js","lines":"1-10","snippet":"code here","note":"Created $99 product"}' | stripe coop step <n> done --session=%s --stdin
+  echo '{"file":"app.js","lines":"1-10","snippet":"code here","note":"Created $99 product"}' | stripe coop agent report-work --session=%s --step=<n> --stdin
 
 Important:
 - The human is watching your progress live in a terminal UI.
 - Write working code, not stubs. Run it. Verify it actually works.
 - Report what you did concretely (file paths, line numbers, test results).
-- If a step doesn't apply to the user's setup, skip it: stripe coop step <n> skip --note="<reason>"
+- If a step doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
 - Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
   Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
-  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
+  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
 }
 
 func outputJSON(v interface{}) error {
