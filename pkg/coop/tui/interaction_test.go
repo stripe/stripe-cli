@@ -174,6 +174,8 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	assertInteractionLayout(t, m, "details closed before review")
 
 	m = updateWithRunes(t, m, "j")
+	assertInteractionLayout(t, m, "moved onto chapter")
+	m = updateWithRunes(t, m, "j")
 	assert.Equal(t, 2, m.cursor)
 	assertInteractionLayout(t, m, "moved onto review card")
 	assert.Equal(t, m.height-1, lineIndexContaining(m.View().Content, "enter"))

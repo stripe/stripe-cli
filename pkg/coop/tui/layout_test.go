@@ -317,7 +317,7 @@ func chapterReviewLayoutModel() Model {
 	m.session.Chapters[0].Nodes[1].ReviewPrompt = "Open the app locally, click the Checkout button, complete payment, and confirm the redirect reaches the expected success page."
 	m.session.Chapters[0].Nodes[1].Implementation = &coop.Implementation{File: "client/src/components/CheckoutButton.tsx", Lines: "9-88"}
 	m.session.Chapters[0].Nodes[1].Verifications = []coop.Verification{{Check: "Rendered Checkout button", Passed: true}, {Check: "Confirmed redirect", Passed: true}}
-	m.cursor = 0
+	m.selectChapter(0)
 	return m
 }
 

@@ -124,7 +124,7 @@ func stressCrowdedChapterReviewModel() Model {
 			Verifications: []coop.Verification{{Check: fmt.Sprintf("Verification %d passed", i+1), Passed: true}},
 		})
 	}
-	m.cursor = 0
+	m.selectChapter(0)
 	return m
 }
 

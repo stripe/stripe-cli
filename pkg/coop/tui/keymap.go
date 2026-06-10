@@ -9,6 +9,8 @@ type keyMap struct {
 	Quit      key.Binding
 	Up        key.Binding
 	Down      key.Binding
+	Left      key.Binding
+	Right     key.Binding
 	PageUp    key.Binding
 	PageDown  key.Binding
 	Top       key.Binding
@@ -37,6 +39,14 @@ func newKeyMap() keyMap {
 		Down: key.NewBinding(
 			key.WithKeys("down", "j"),
 			key.WithHelp("↓/j", "down"),
+		),
+		Left: key.NewBinding(
+			key.WithKeys("left", "h"),
+			key.WithHelp("←/h", "collapse"),
+		),
+		Right: key.NewBinding(
+			key.WithKeys("right", "l"),
+			key.WithHelp("→/l", "expand"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("pgup", "b"),
@@ -124,6 +134,14 @@ func (m Model) ShortHelp() []key.Binding {
 	}
 
 	bindings = append(bindings, m.keys.Enter, m.keys.Quit)
+
+	if m.selected.kind == navigationChapter {
+		if m.chapterCollapsed(m.selected.chapterIndex) {
+			bindings = append(bindings, m.keys.Right)
+		} else {
+			bindings = append(bindings, m.keys.Left)
+		}
+	}
 
 	if m.expanded {
 		bindings = append(bindings, m.keys.Tab, m.keys.Escape)

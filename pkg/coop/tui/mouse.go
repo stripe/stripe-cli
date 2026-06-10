@@ -5,8 +5,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
-	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
 type mouseTarget struct {
@@ -74,17 +72,12 @@ func (m Model) navigationContentLines() map[int]navigationItem {
 
 	line := 0
 	stepIdx := 0
-	selectedChapterReview := -1
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
-		selectedChapterReview = target.chapterIndex
-	}
 
 	for chIdx, ch := range m.session.Chapters {
-		chapterSelected := chIdx == selectedChapterReview
+		chapterItem := navigationItem{kind: navigationChapter, chapterIndex: chIdx}
+		chapterSelected := m.navigationItemSelected(chapterItem)
 		line++ // blank line before chapter
-		if m.chapterReviewReady(chIdx) {
-			result[line] = navigationItem{kind: navigationChapter, chapterIndex: chIdx}
-		}
+		result[line] = chapterItem
 		line++ // chapter line
 		line++ // rule line
 		if m.expanded && chapterSelected {
@@ -93,13 +86,17 @@ func (m Model) navigationContentLines() map[int]navigationItem {
 			}
 		}
 
+		if m.chapterCollapsed(chIdx) {
+			stepIdx += len(ch.Nodes)
+			continue
+		}
 		chapterReviewReady := m.chapterReviewReady(chIdx)
 		for _, node := range ch.Nodes {
-			if !chapterReviewReady {
-				result[line] = navigationItem{kind: navigationStep, stepIndex: stepIdx}
-			}
-			line += lipgloss.Height(m.renderStepLine(node, stepIdx, chapterReviewReady))
-			if m.expanded && stepIdx == m.cursor && !chapterSelected {
+			stepItem := navigationItem{kind: navigationStep, stepIndex: stepIdx, chapterIndex: chIdx}
+			stepSelected := m.navigationItemSelected(stepItem)
+			result[line] = stepItem
+			line += lipgloss.Height(m.renderStepLine(node, stepIdx, chapterReviewReady, stepSelected))
+			if m.expanded && stepSelected {
 				if detail := m.renderDetail(); detail != "" {
 					line += lipgloss.Height(detail)
 				}
@@ -108,32 +105,6 @@ func (m Model) navigationContentLines() map[int]navigationItem {
 		}
 	}
 	return result
-}
-
-func (m Model) stepContentLines() map[int]int {
-	result := map[int]int{}
-	for line, item := range m.navigationContentLines() {
-		if item.kind == navigationStep {
-			result[line] = item.stepIndex
-		}
-	}
-	return result
-}
-
-func firstReviewStepIndex(session *coop.Session, chapterIndex int) int {
-	if session == nil {
-		return -1
-	}
-	stepIdx := 0
-	for i := range session.Chapters {
-		for j := range session.Chapters[i].Nodes {
-			if i == chapterIndex && session.Chapters[i].Nodes[j].State == coop.StepReview {
-				return stepIdx
-			}
-			stepIdx++
-		}
-	}
-	return -1
 }
 
 func (m Model) completionSuggestionLines() map[int]int {
@@ -169,7 +140,7 @@ func (m Model) handleMouseAction(msg mouseActionMsg) (tea.Model, tea.Cmd) {
 		m.syncViewport()
 		return m, nil
 	case mouseActionSelectChapter:
-		if m.session == nil || msg.index < 0 || msg.index >= len(m.session.Chapters) || !m.chapterReviewReady(msg.index) {
+		if m.session == nil || msg.index < 0 || msg.index >= len(m.session.Chapters) {
 			return m, nil
 		}
 		m.selectChapter(msg.index)

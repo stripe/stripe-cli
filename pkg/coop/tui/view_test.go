@@ -106,7 +106,9 @@ func TestRenderStepListAlignsChapterTitleWithRule(t *testing.T) {
 
 	require.NotEmpty(t, titleLine)
 	require.NotEmpty(t, ruleLine)
-	assert.Equal(t, strings.Index(titleLine, "Set up product"), strings.Index(ruleLine, "─"))
+	titlePrefix := titleLine[:strings.Index(titleLine, "Set up product")]
+	rulePrefix := ruleLine[:strings.Index(ruleLine, "─")]
+	assert.Equal(t, lipgloss.Width(titlePrefix), lipgloss.Width(rulePrefix))
 }
 
 func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
@@ -128,7 +130,7 @@ func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
 func TestRenderStepLineAnnotation(t *testing.T) {
 	m := testModel()
 	node := m.session.Chapters[0].Nodes[0]
-	line := m.renderStepLine(node, 0, false)
+	line := m.renderStepLine(node, 0, false, false)
 
 	assertContainsPlain(t, line, "server.js:5-20")
 }
@@ -136,7 +138,7 @@ func TestRenderStepLineAnnotation(t *testing.T) {
 func TestRenderStepLineActivity(t *testing.T) {
 	m := testModel()
 	node := m.session.Chapters[0].Nodes[1]
-	line := m.renderStepLine(node, 1, false)
+	line := m.renderStepLine(node, 1, false, false)
 
 	assertContainsPlain(t, line, "Writing endpoint")
 }
@@ -145,7 +147,7 @@ func TestRenderStepLineCursor(t *testing.T) {
 	m := testModel()
 	m.cursor = 1
 	node := m.session.Chapters[0].Nodes[1]
-	line := m.renderStepLine(node, 1, false)
+	line := m.renderStepLine(node, 1, false, true)
 
 	assertContainsPlain(t, line, "▸")
 }
@@ -154,7 +156,7 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 	m := testModel()
 	m.cursor = 0
 	node := m.session.Chapters[0].Nodes[1]
-	line := m.renderStepLine(node, 1, false)
+	line := m.renderStepLine(node, 1, false, false)
 
 	assertNotContainsPlain(t, line, "▸")
 }
@@ -452,7 +454,7 @@ func TestAnnotationWrapsAtNarrowWidth(t *testing.T) {
 		Key: "test", Title: "Step", State: coop.StepActive,
 		Activity: "This is a very long activity note that should wrap",
 	}
-	line := m.renderStepLine(node, 0, false)
+	line := m.renderStepLine(node, 0, false, false)
 
 	// Should have a newline (wrapped)
 	assert.True(t, strings.Contains(line, "\n"))
@@ -465,7 +467,7 @@ func TestAnnotationInlineAtWideWidth(t *testing.T) {
 		Key: "test", Title: "Step", State: coop.StepActive,
 		Activity: "Short note",
 	}
-	line := m.renderStepLine(node, 0, false)
+	line := m.renderStepLine(node, 0, false, false)
 
 	// Should contain the annotation inline (not wrapped to next line)
 	assertContainsPlain(t, line, "Short note")
@@ -509,7 +511,7 @@ func TestRenderStepLineSkipped(t *testing.T) {
 		Key: "skipped", Title: "Skipped step", State: coop.StepSkipped,
 		Activity: "Not needed for this project",
 	}
-	line := m.renderStepLine(node, 0, false)
+	line := m.renderStepLine(node, 0, false, false)
 	assertContainsPlain(t, line, "Not needed")
 }
 
@@ -658,7 +660,7 @@ func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {
 		{Check: "Rendered Checkout button", Passed: true},
 		{Check: "Confirmed redirect", Passed: true},
 	}
-	m.cursor = 0
+	m.selectChapter(0)
 
 	m.resizeViewport()
 	m.syncViewport()

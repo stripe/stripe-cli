@@ -58,10 +58,11 @@ func (m Model) discoverNewSession() tea.Cmd {
 }
 
 func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
-	if m.session == nil || m.chapterSelected || m.sdkSnippetStep == m.cursor {
+	stepIndex, ok := m.selectedStepIndex()
+	if m.session == nil || !ok || m.sdkSnippetStep == stepIndex {
 		return nil
 	}
-	node, err := m.session.NodeByNumber(m.cursor + 1)
+	node, err := m.session.NodeByNumber(stepIndex + 1)
 	if err != nil || node.Type != coop.NodeAPIRequest || node.Request == nil {
 		return nil
 	}
@@ -72,7 +73,7 @@ func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 	path := node.Request.Path
 	method := node.Request.Method
 	params := node.Request.Params
-	cursor := m.cursor
+	cursor := stepIndex
 	m.sdkLoading = true
 	m.sdkLoadingStep = cursor
 	return func() tea.Msg {

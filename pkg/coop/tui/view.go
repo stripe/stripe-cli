@@ -117,20 +117,27 @@ func (m Model) renderStepList() string {
 	}
 
 	for chIdx, ch := range m.session.Chapters {
-		chapterSelected := m.chapterSelected && chIdx == m.chapterCursor && m.chapterReviewReady(chIdx)
+		chapterItem := navigationItem{kind: navigationChapter, chapterIndex: chIdx}
+		chapterSelected := m.navigationItemSelected(chapterItem)
 		chapterReviewReady := m.chapterReviewReady(chIdx)
 		lines = append(lines, "")
 		lines = append(lines, m.renderChapterLine(ch, chIdx, chapterSelected))
-		lines = append(lines, "  "+ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth)))
+		lines = append(lines, "    "+ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth)))
 		if m.expanded && chapterSelected {
 			if detail := m.renderDetail(); detail != "" {
 				lines = append(lines, detail)
 			}
 		}
 
+		if m.chapterCollapsed(chIdx) {
+			stepIdx += len(ch.Nodes)
+			continue
+		}
 		for _, node := range ch.Nodes {
-			lines = append(lines, m.renderStepLine(node, stepIdx, chapterReviewReady))
-			if m.expanded && stepIdx == m.cursor && !chapterSelected {
+			stepItem := navigationItem{kind: navigationStep, stepIndex: stepIdx, chapterIndex: chIdx}
+			stepSelected := m.navigationItemSelected(stepItem)
+			lines = append(lines, m.renderStepLine(node, stepIdx, chapterReviewReady, stepSelected))
+			if m.expanded && stepSelected {
 				if detail := m.renderDetail(); detail != "" {
 					lines = append(lines, detail)
 				}
@@ -147,11 +154,15 @@ func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selec
 	if selected {
 		prefix = BrandStyle.Render("▸ ")
 	}
+	disclosure := "▾ "
+	if m.chapterCollapsed(chapterIndex) {
+		disclosure = "▸ "
+	}
 	title := ch.Title
 	if selected {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
-	line := prefix + ChapterTitleStyle.Render(title)
+	line := prefix + MutedStyle.Render(disclosure) + ChapterTitleStyle.Render(title)
 	if count := m.chapterReviewCount(chapterIndex); count > 0 {
 		line += "  " + AttentionStyle.Render(fmt.Sprintf("Needs chapter review (%d steps)", count))
 	}
@@ -187,18 +198,18 @@ func (m Model) chapterReviewCountRaw(chapterIndex int) int {
 	return count
 }
 
-func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterReview bool) string {
+func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterReview bool, selected bool) string {
 	icon := m.stepIcon(node)
 
 	cursor := "  "
-	if idx == m.cursor && !includedInChapterReview {
+	if selected {
 		cursor = BrandStyle.Render("▸ ")
 	}
 
 	title := node.Title
 	if node.State == coop.StepSkipped {
 		title = DimmedStyle.Render(title)
-	} else if idx == m.cursor && !includedInChapterReview {
+	} else if selected {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
 
@@ -289,10 +300,14 @@ func (m Model) renderDetail() string {
 	if m.session == nil {
 		return ""
 	}
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
-		return m.renderChapterDetail(target)
+	if m.selected.kind == navigationChapter {
+		return m.renderChapterDetail(m.selected.chapterIndex)
 	}
-	node, err := m.session.NodeByNumber(m.cursor + 1)
+	stepIndex, ok := m.selectedStepIndex()
+	if !ok {
+		return ""
+	}
+	node, err := m.session.NodeByNumber(stepIndex + 1)
 	if err != nil {
 		return ""
 	}
@@ -312,7 +327,7 @@ func (m Model) renderDetail() string {
 		m.writeAsyncHandlerCheckDetail(&md, node)
 		m.writeVerificationDetail(&md, node)
 	case "Reference":
-		currentSnippet := m.sdkSnippetStep == m.cursor && m.sdkSnippet != ""
+		currentSnippet := m.sdkSnippetStep == stepIndex && m.sdkSnippet != ""
 		m.writeSDKReferenceDetail(&md, node, currentSnippet)
 		m.writeAsyncHandlerReferenceDetail(&md, node)
 	}
@@ -339,16 +354,16 @@ func (m Model) renderDetail() string {
 	return indentBlock(box, detailIndent)
 }
 
-func (m Model) renderChapterDetail(target reviewTarget) string {
+func (m Model) renderChapterDetail(chapterIndex int) string {
+	if m.session == nil || chapterIndex < 0 || chapterIndex >= len(m.session.Chapters) {
+		return ""
+	}
 	w, innerW := m.detailWidths()
 
 	var md strings.Builder
 	section := detailSections[m.detailTab%len(detailSections)]
-	for _, step := range target.steps {
-		node, err := m.session.NodeByNumber(step)
-		if err != nil {
-			continue
-		}
+	for i := range m.session.Chapters[chapterIndex].Nodes {
+		node := &m.session.Chapters[chapterIndex].Nodes[i]
 		md.WriteString("### " + node.Title + "\n\n")
 		switch section {
 		case "Summary":
@@ -368,7 +383,10 @@ func (m Model) renderChapterDetail(target reviewTarget) string {
 	}
 
 	content := strings.TrimSpace(md.String())
-	suffix := "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm chapter or r to request chapter changes")
+	suffix := ""
+	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
+		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm chapter or r to request chapter changes")
+	}
 	if content == "" && suffix == "" {
 		return ""
 	}
@@ -377,7 +395,9 @@ func (m Model) renderChapterDetail(target reviewTarget) string {
 	if content != "" {
 		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
 	}
-	parts = append(parts, suffix)
+	if suffix != "" {
+		parts = append(parts, suffix)
+	}
 	body := clampLines(strings.Join(parts, "\n"), innerW)
 	box := DetailBoxStyle.Width(w).Render(body)
 	return indentBlock(box, detailIndent)
@@ -475,7 +495,7 @@ func (m Model) writeSDKReferenceDetail(md *strings.Builder, node *coop.SessionNo
 		md.WriteString("```\n\n")
 		return
 	}
-	if m.sdkLoading && m.sdkLoadingStep == m.cursor {
+	if stepIndex, ok := m.selectedStepIndex(); ok && m.sdkLoading && m.sdkLoadingStep == stepIndex {
 		md.WriteString("*Loading reference...*\n\n")
 	}
 }
@@ -525,7 +545,7 @@ func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNo
 
 func (m Model) renderDetailSuffix(node *coop.SessionNode) string {
 	var suffix string
-	if node.State == coop.StepReview {
+	if target, ok := m.selectedReviewTarget(); ok && target.kind == "step" && node.State == coop.StepReview {
 		suffix = "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm or r to request changes")
 	}
 	return suffix

@@ -38,7 +38,8 @@ func TestUpdateKeyUp(t *testing.T) {
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
 
-	assert.Equal(t, 1, updated.cursor)
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.chapterIndex)
 }
 
 func TestUpdateKeyUpAtTop(t *testing.T) {
@@ -211,28 +212,25 @@ func TestMouseActionSelectsVisibleStep(t *testing.T) {
 	assert.True(t, updated.userMoved)
 }
 
-func TestNavigationSelectsReadyChapterReviewAsRow(t *testing.T) {
+func TestNavigationMovesBetweenChapterAndStepRows(t *testing.T) {
 	m := readyModel()
 	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
-	m.cursor = 1
+	m.selectStep(0)
 
 	m.syncViewport()
 
-	assert.True(t, m.chapterSelected)
-	assert.Equal(t, 0, m.chapterCursor)
+	m.moveCursorUp()
+	assert.Equal(t, navigationChapter, m.selected.kind)
+	assert.Equal(t, 0, m.selected.chapterIndex)
 
 	m.moveCursorDown()
-	assert.False(t, m.chapterSelected)
-	assert.Equal(t, 2, m.cursor)
-
-	m.moveCursorUp()
-	assert.True(t, m.chapterSelected)
-	assert.Equal(t, 0, m.chapterCursor)
+	assert.Equal(t, navigationStep, m.selected.kind)
+	assert.Equal(t, 0, m.selected.stepIndex)
 }
 
-func TestMouseActionSelectsChapterReview(t *testing.T) {
+func TestMouseActionSelectsChapter(t *testing.T) {
 	m := readyModel()
 	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
@@ -241,9 +239,38 @@ func TestMouseActionSelectsChapterReview(t *testing.T) {
 	result, _ := m.Update(mouseActionMsg{action: mouseActionSelectChapter, index: 0})
 	updated := result.(Model)
 
-	assert.True(t, updated.chapterSelected)
-	assert.Equal(t, 0, updated.chapterCursor)
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+	assert.Equal(t, 0, updated.selected.chapterIndex)
 	assert.True(t, updated.userMoved)
+}
+
+func TestLeftRightCollapseAndExpandSelectedChapter(t *testing.T) {
+	m := readyModel()
+	m.selectChapter(0)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	updated := result.(Model)
+
+	assert.True(t, updated.chapterCollapsed(0))
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	updated = result.(Model)
+
+	assert.False(t, updated.chapterCollapsed(0))
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+}
+
+func TestLeftFromStepMovesToParentChapter(t *testing.T) {
+	m := readyModel()
+	m.selectStep(1)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	updated := result.(Model)
+
+	assert.Equal(t, navigationChapter, updated.selected.kind)
+	assert.Equal(t, 0, updated.selected.chapterIndex)
+	assert.False(t, updated.chapterCollapsed(0))
 }
 
 func TestUpdateKeyConfirmNotOnReviewStep(t *testing.T) {
@@ -342,6 +369,27 @@ func TestUpdateKeyConfirmChapterReview(t *testing.T) {
 	node2, _ := updated.session.NodeByNumber(2)
 	assert.Equal(t, coop.StepDone, node1.State)
 	assert.Equal(t, coop.StepDone, node2.State)
+}
+
+func TestUpdateKeyConfirmChapterReviewRequiresChapterSelection(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+
+	m := readyModel()
+	m.store = store
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.selectStep(0)
+	store.Write(m.session)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
+	updated := result.(Model)
+
+	node1, _ := updated.session.NodeByNumber(1)
+	node2, _ := updated.session.NodeByNumber(2)
+	assert.Equal(t, coop.StepReview, node1.State)
+	assert.Equal(t, coop.StepReview, node2.State)
 }
 
 func TestSelectedReviewTargetChapterRequiresReadyChapter(t *testing.T) {

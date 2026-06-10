@@ -24,14 +24,14 @@ type Model struct {
 	session     *coop.Session
 	lastVersion int
 
-	cursor          int
-	chapterSelected bool
-	chapterCursor   int
-	expanded        bool
-	detailTab       int
-	width           int
-	height          int
-	userMoved       bool
+	cursor            int
+	selected          navigationItem
+	collapsedChapters map[int]bool
+	expanded          bool
+	detailTab         int
+	width             int
+	height            int
+	userMoved         bool
 
 	rejecting       bool
 	rejectionInput  textinput.Model
@@ -173,8 +173,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.waitingMessage = ""
 		m.sessionID = msg.sessionID
 		m.cursor = 0
-		m.chapterSelected = false
-		m.chapterCursor = 0
+		m.selected = navigationItem{}
+		m.collapsedChapters = nil
 		m.expanded = false
 		m.userMoved = false
 		m.rejecting = false
@@ -202,8 +202,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Reset cursor when transitioning to completion view
 		if !wasComplete && m.session.IsComplete() {
 			m.cursor = 0
-			m.chapterSelected = false
-			m.chapterCursor = 0
+			m.selected = navigationItem{}
+			m.collapsedChapters = nil
 			m.expanded = false
 			m.userMoved = false
 			m.statusMessage = ""
@@ -485,6 +485,21 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
+	case key.Matches(msg, m.keys.Left):
+		if m.collapseSelectedChapter() {
+			m.userMoved = true
+			m.expanded = false
+			m.resizeViewport()
+			m.syncViewport()
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Right):
+		if m.expandSelectedChapter() {
+			m.userMoved = true
+			m.resizeViewport()
+			m.syncViewport()
+		}
+		return m, nil
 	case key.Matches(msg, m.keys.PageUp):
 		m.userMoved = true
 		m.viewport.PageUp()
@@ -643,8 +658,8 @@ func (m *Model) enterWaitingMode(message string) {
 	m.waitingMessage = message
 	m.session = nil
 	m.cursor = 0
-	m.chapterSelected = false
-	m.chapterCursor = 0
+	m.selected = navigationItem{}
+	m.collapsedChapters = nil
 	m.expanded = false
 	m.userMoved = false
 	m.rejecting = false
@@ -687,8 +702,8 @@ func (m *Model) handleConfirm() {
 	m.rejectionError = ""
 	if m.session.IsComplete() {
 		m.cursor = 0
-		m.chapterSelected = false
-		m.chapterCursor = 0
+		m.selected = navigationItem{}
+		m.collapsedChapters = nil
 		m.expanded = false
 		m.statusMessage = ""
 		m.statusExpiresAt = time.Time{}
@@ -787,8 +802,8 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if m.session == nil {
 		return reviewTarget{}, false
 	}
-	if m.chapterSelected {
-		chapterIndex := m.chapterCursor
+	if m.selected.kind == navigationChapter {
+		chapterIndex := m.selected.chapterIndex
 		if !m.chapterReviewReady(chapterIndex) {
 			return reviewTarget{}, false
 		}
@@ -808,7 +823,11 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 		}
 		return reviewTarget{title: ch.Title, kind: "chapter", steps: steps, chapterIndex: chapterIndex}, true
 	}
-	stepNum := m.cursor + 1
+	stepIndex, ok := m.selectedStepIndex()
+	if !ok {
+		return reviewTarget{}, false
+	}
+	stepNum := stepIndex + 1
 	node, err := m.session.NodeByNumber(stepNum)
 	if err != nil || node.State != coop.StepReview {
 		return reviewTarget{}, false
