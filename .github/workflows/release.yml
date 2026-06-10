@@ -120,8 +120,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: '24'
           package-manager-cache: false
 
       - name: Derive version from tag
@@ -145,8 +144,8 @@ jobs:
       - name: Publish platform packages
         run: |
           for dir in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
-            npm publish ./npm/$dir --access public
+            npm publish ./npm/$dir
           done
 
       - name: Publish wrapper package
-        run: npm publish ./npm/wrapper --access public
+        run: npm publish ./npm/wrapper
