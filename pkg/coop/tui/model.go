@@ -70,10 +70,6 @@ func newThemedSpinner(t Theme) spinner.Model {
 	)
 }
 
-func newRejectionInput() textarea.Model {
-	return newThemedRejectionInput(NewTheme(true))
-}
-
 func newThemedRejectionInput(t Theme) textarea.Model {
 	ti := textarea.New()
 	ti.Prompt = ""
@@ -292,17 +288,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() tea.View {
 	var content string
-	if m.err != nil {
+	switch {
+	case m.err != nil:
 		content = m.theme.ErrorStyle.Render(fmt.Sprintf("Error: %s", m.err))
-	} else if !m.ready {
+	case !m.ready:
 		content = m.spinner.View() + " Loading..."
-	} else if m.waiting {
+	case m.waiting:
 		content = m.renderWaitingView()
-	} else if m.session == nil {
+	case m.session == nil:
 		content = m.renderWaitingView()
-	} else if m.session.IsComplete() {
+	case m.session.IsComplete():
 		content = m.renderCompletionView()
-	} else {
+	default:
 		header := m.renderHeader()
 		content = m.renderPinnedViewport(header, m.renderFooter())
 	}
@@ -523,19 +520,27 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	if next, cmd, ok := m.handleNavigationKey(msg); ok {
+		return next, cmd
+	}
+	if next, cmd, ok := m.handleViewportKey(msg); ok {
+		return next, cmd
+	}
+	return m.handleActionKey(msg)
+}
+
+func (m Model) handleNavigationKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
 	switch {
-	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
 	case key.Matches(msg, m.keys.Up):
 		m.moveCursorUp()
 		m.resizeViewport()
 		m.syncViewport()
-		return m, nil
+		return m, nil, true
 	case key.Matches(msg, m.keys.Down):
 		m.moveCursorDown()
 		m.resizeViewport()
 		m.syncViewport()
-		return m, nil
+		return m, nil, true
 	case key.Matches(msg, m.keys.Left):
 		if m.collapseSelectedChapter() {
 			m.userMoved = true
@@ -543,30 +548,44 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.resizeViewport()
 			m.syncViewport()
 		}
-		return m, nil
+		return m, nil, true
 	case key.Matches(msg, m.keys.Right):
 		if m.expandSelectedChapter() {
 			m.userMoved = true
 			m.resizeViewport()
 			m.syncViewport()
 		}
-		return m, nil
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+func (m Model) handleViewportKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
+	switch {
 	case key.Matches(msg, m.keys.PageUp):
 		m.userMoved = true
 		m.viewport.PageUp()
-		return m, nil
+		return m, nil, true
 	case key.Matches(msg, m.keys.PageDown):
 		m.userMoved = true
 		m.viewport.PageDown()
-		return m, nil
+		return m, nil, true
 	case key.Matches(msg, m.keys.Top):
 		m.userMoved = true
 		m.viewport.GotoTop()
-		return m, nil
+		return m, nil, true
 	case key.Matches(msg, m.keys.Bottom):
 		m.userMoved = true
 		m.viewport.GotoBottom()
-		return m, nil
+		return m, nil, true
+	}
+	return m, nil, false
+}
+
+func (m Model) handleActionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
 	case key.Matches(msg, m.keys.Expand):
 		m.expanded = !m.expanded
 		m.resizeViewport()
@@ -776,38 +795,6 @@ func (m *Model) startReject() {
 		m.resizeViewport()
 		m.syncViewport()
 	}
-}
-
-func confirmStep(session *coop.Session, step int) error {
-	node, err := session.NodeByNumber(step)
-	if err != nil {
-		return err
-	}
-	if node.State == coop.StepDone {
-		return nil
-	}
-	return session.TransitionStep(step, coop.StepDone)
-}
-
-func rejectStep(session *coop.Session, step int, note string) error {
-	node, err := session.NodeByNumber(step)
-	if err != nil {
-		return err
-	}
-	if node.State != coop.StepActive {
-		if err := session.TransitionStep(step, coop.StepActive); err != nil {
-			return err
-		}
-		node, _ = session.NodeByNumber(step)
-	}
-	node.RejectionNote = note
-	node.Implementation = nil
-	node.Verifications = nil
-	return nil
-}
-
-func isCoopVersionConflict(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "version conflict")
 }
 
 func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

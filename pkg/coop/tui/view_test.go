@@ -111,8 +111,12 @@ func TestRenderStepListAlignsChapterTitleWithRule(t *testing.T) {
 
 	require.NotEmpty(t, titleLine)
 	require.NotEmpty(t, ruleLine)
-	titlePrefix := titleLine[:strings.Index(titleLine, "-")]
-	rulePrefix := ruleLine[:strings.Index(ruleLine, "─")]
+	titleDash := strings.Index(titleLine, "-")
+	ruleDash := strings.Index(ruleLine, "─")
+	require.NotEqual(t, -1, titleDash)
+	require.NotEqual(t, -1, ruleDash)
+	titlePrefix := titleLine[:titleDash]
+	rulePrefix := ruleLine[:ruleDash]
 	assert.Equal(t, lipgloss.Width(titlePrefix), lipgloss.Width(rulePrefix))
 }
 

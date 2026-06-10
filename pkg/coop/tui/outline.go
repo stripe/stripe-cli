@@ -193,13 +193,6 @@ func (m Model) collapsedChapterSummary(chapterIndex int) string {
 	return strings.Join(parts, " ")
 }
 
-func formatStepCount(count int) string {
-	if count == 1 {
-		return "1 step"
-	}
-	return fmt.Sprintf("%d steps", count)
-}
-
 func (m Model) chapterReviewReady(chapterIndex int) bool {
 	return m.chapterHasPendingReviewWithNoActiveWork(chapterIndex)
 }

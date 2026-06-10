@@ -11,6 +11,7 @@ import (
 )
 
 var openBrowserFn = openBrowserDefault
+
 func openBrowser(url string) {
 	openBrowserFn(url)
 }

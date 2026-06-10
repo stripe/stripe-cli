@@ -6,10 +6,6 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-func (m Model) renderViewportRegion() string {
-	return m.renderViewportRegionWithHeight(m.viewport.Height())
-}
-
 func (m Model) renderViewportRegionWithHeight(height int) string {
 	if m.width <= 0 || height <= 0 {
 		return m.viewport.View()

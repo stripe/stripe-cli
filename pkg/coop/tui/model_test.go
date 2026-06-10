@@ -365,8 +365,8 @@ func TestRejectingViewSetsRealCursor(t *testing.T) {
 	view := m.View()
 
 	require.NotNil(t, view.Cursor)
-	assert.GreaterOrEqual(t, view.Cursor.Position.X, 0)
-	assert.GreaterOrEqual(t, view.Cursor.Position.Y, 0)
+	assert.GreaterOrEqual(t, view.Cursor.X, 0)
+	assert.GreaterOrEqual(t, view.Cursor.Y, 0)
 	assert.Equal(t, tea.CursorBar, view.Cursor.Shape)
 }
 

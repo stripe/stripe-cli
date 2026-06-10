@@ -69,7 +69,7 @@ type coopDebugAgent struct {
 }
 
 func (a *coopDebugAgent) run(ctx context.Context) error {
-	a.log("debug agent attached to %s", a.sessionID)
+	a.logf("debug agent attached to %s", a.sessionID)
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -99,7 +99,7 @@ func (a *coopDebugAgent) run(ctx context.Context) error {
 					return err
 				}
 				if next := review.NextPendingStepInChapter(session, chapterIndex, step); next > 0 {
-					a.log("section %q still has pending work; continuing with step %d", chapter.Title, next)
+					a.logf("section %q still has pending work; continuing with step %d", chapter.Title, next)
 					if err := a.startStep(next); err != nil {
 						return err
 					}
@@ -145,7 +145,7 @@ func (a *coopDebugAgent) startStep(step int) error {
 	if !resp.OK {
 		return fmt.Errorf("%s", resp.Error)
 	}
-	a.log("step %d active: %s", step, node.Title)
+	a.logf("step %d active: %s", step, node.Title)
 	return nil
 }
 
@@ -185,7 +185,7 @@ func (a *coopDebugAgent) completeActiveStep(ctx context.Context, step int) error
 	if !resp.OK {
 		return fmt.Errorf("%s", resp.Error)
 	}
-	a.log("step %d %s: %s", step, resp.State, node.Title)
+	a.logf("step %d %s: %s", step, resp.State, node.Title)
 	return nil
 }
 
@@ -204,11 +204,11 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 		if err != nil {
 			return err
 		}
-		a.log("waiting for section review: %s", chapter.Title)
+		a.logf("waiting for section review: %s", chapter.Title)
 		return a.awaitChapterReview(ctx, chapterIndex)
 	}
 
-	a.log("waiting for review: step %d %s", step, node.Title)
+	a.logf("waiting for review: step %d %s", step, node.Title)
 	for {
 		a.store.WriteHeartbeat(a.sessionID)
 		if err := a.sleep(ctx, a.pollInterval); err != nil {
@@ -228,7 +228,7 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 		}
 		if node.State != coop.StepReview {
 			a.store.RemoveHeartbeat(a.sessionID)
-			a.log("review released: step %d is %s", step, node.State)
+			a.logf("review released: step %d is %s", step, node.State)
 			return nil
 		}
 	}
@@ -249,12 +249,12 @@ func (a *coopDebugAgent) awaitChapterReview(ctx context.Context, chapterIndex in
 		}
 		if active := session.FirstActiveStepInChapter(chapterIndex); active > 0 {
 			a.store.RemoveHeartbeat(a.sessionID)
-			a.log("section requested changes; rerunning from step %d", active)
+			a.logf("section requested changes; rerunning from step %d", active)
 			return nil
 		}
 		if !session.ChapterHasReview(chapterIndex) {
 			a.store.RemoveHeartbeat(a.sessionID)
-			a.log("section review released")
+			a.logf("section review released")
 			return nil
 		}
 	}
@@ -263,7 +263,7 @@ func (a *coopDebugAgent) awaitChapterReview(ctx context.Context, chapterIndex in
 func (a *coopDebugAgent) completeSession(ctx context.Context, session *coop.Session) error {
 	if session.Status != coop.SessionCompleted || session.NextSteps == nil || len(session.NextSteps.Suggestions) == 0 {
 		suggestions := nextaction.BuildSuggestions(session, nextaction.DetectProjectEnvironment())
-		a.log("all steps complete; showing next steps")
+		a.logf("all steps complete; showing next steps")
 		if err := nextaction.ShowSuggestions(a.store, session, suggestions, ""); err != nil {
 			if isVersionConflict(err) {
 				return nil
@@ -294,7 +294,7 @@ func (a *coopDebugAgent) completeSession(ctx context.Context, session *coop.Sess
 		if err := a.store.Write(session); err != nil && !isVersionConflict(err) {
 			return err
 		}
-		a.log("next step selected: %s", selected)
+		a.logf("next step selected: %s", selected)
 		return nil
 	}
 }
@@ -348,7 +348,7 @@ func (a *coopDebugAgent) sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
-func (a *coopDebugAgent) log(format string, args ...interface{}) {
+func (a *coopDebugAgent) logf(format string, args ...interface{}) {
 	if a.out == nil {
 		return
 	}

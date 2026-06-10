@@ -37,10 +37,6 @@ func HuhTheme() huh.Theme {
 	return sailTheme{}
 }
 
-func newHelp() help.Model {
-	return newThemedHelp(NewTheme(true))
-}
-
 func newThemedHelp(t Theme) help.Model {
 	h := help.New()
 	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.HuePurple400).Bold(true)
