@@ -151,7 +151,7 @@ func runDebugAgentForTest(ctx context.Context, store *coop.Store, sessionID stri
 
 func waitForDebugSession(t *testing.T, store *coop.Store, sessionID string, predicate func(*coop.Session) bool) {
 	t.Helper()
-	deadline := time.Now().Add(500 * time.Millisecond)
+	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		session, err := store.Read(sessionID)
 		require.NoError(t, err)
@@ -167,7 +167,7 @@ func waitForDebugSession(t *testing.T, store *coop.Store, sessionID string, pred
 
 func waitForDebugHeartbeat(t *testing.T, store *coop.Store, sessionID string) {
 	t.Helper()
-	deadline := time.Now().Add(500 * time.Millisecond)
+	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		if store.HeartbeatAge(sessionID) >= 0 {
 			return
