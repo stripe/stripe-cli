@@ -68,7 +68,7 @@ func (jc *coopJoinCmd) runJoinCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	default:
-		// Try active first, then fall back to latest (including completed — for next-steps view)
+		// Try active first, then fall back to latest (including completed sessions with next-action suggestions).
 		session, err = store.LatestActiveSession()
 		if err != nil {
 			session, err = store.LatestSession()

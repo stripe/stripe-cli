@@ -163,8 +163,10 @@ func newCoopAgentNextActionCmd() *coopAgentActionCmd {
 		Use:   "next-action",
 		Short: "Wait for or record the developer's next action",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			nc := &coopNextStepsCmd{session: c.session, completed: c.completed}
-			return nc.runNextStepsCmd(cmd, args)
+			return runCoopNextAction(coopNextActionInput{
+				session:   c.session,
+				completed: c.completed,
+			})
 		},
 	}
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")

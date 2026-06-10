@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
-type coopNextStepsCmd struct {
-	cmd       *cobra.Command
+type coopNextActionInput struct {
 	session   string
 	completed string
 }
@@ -32,35 +29,15 @@ type nextStepsResponse struct {
 	Next        string       `json:"next"`
 }
 
-func newCoopNextStepsCmd() *coopNextStepsCmd {
-	nc := &coopNextStepsCmd{}
-	nc.cmd = &cobra.Command{
-		Use:    "next-steps",
-		Short:  "Suggest what to do after completing an integration",
-		Hidden: true,
-		Long: `Inspects the completed session and project environment to suggest
-logical next steps: deploy, go live, add webhooks, or build more.
-
-Automatically detects existing deploy targets, framework, and Stripe
-Projects configuration to make relevant suggestions.`,
-		RunE: nc.runNextStepsCmd,
-	}
-
-	nc.cmd.Flags().StringVar(&nc.session, "session", "", "Session ID (defaults to latest)")
-	nc.cmd.Flags().StringVar(&nc.completed, "completed", "", "Mark a suggestion as completed (used by agent after finishing a task)")
-
-	return nc
-}
-
-func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) error {
+func runCoopNextAction(input coopNextActionInput) error {
 	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}
 
 	var session *coop.Session
-	if nc.session != "" {
-		session, err = store.Read(nc.session)
+	if input.session != "" {
+		session, err = store.Read(input.session)
 	} else {
 		session, err = store.LatestSession()
 	}
@@ -92,8 +69,8 @@ func (nc *coopNextStepsCmd) runNextStepsCmd(cmd *cobra.Command, args []string) e
 		return fmt.Errorf("writing next-step suggestions: %w", err)
 	}
 
-	if nc.completed != "" {
-		session.NextSteps.Completed = append(session.NextSteps.Completed, nc.completed)
+	if input.completed != "" {
+		session.NextSteps.Completed = append(session.NextSteps.Completed, input.completed)
 		if err := store.Write(session); err != nil {
 			return fmt.Errorf("marking next-step completed: %w", err)
 		}
