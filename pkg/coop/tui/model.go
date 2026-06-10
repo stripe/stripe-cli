@@ -24,12 +24,14 @@ type Model struct {
 	session     *coop.Session
 	lastVersion int
 
-	cursor    int
-	expanded  bool
-	detailTab int
-	width     int
-	height    int
-	userMoved bool
+	cursor          int
+	chapterSelected bool
+	chapterCursor   int
+	expanded        bool
+	detailTab       int
+	width           int
+	height          int
+	userMoved       bool
 
 	rejecting       bool
 	rejectionInput  textinput.Model
@@ -171,6 +173,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.waitingMessage = ""
 		m.sessionID = msg.sessionID
 		m.cursor = 0
+		m.chapterSelected = false
+		m.chapterCursor = 0
 		m.expanded = false
 		m.userMoved = false
 		m.rejecting = false
@@ -198,6 +202,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Reset cursor when transitioning to completion view
 		if !wasComplete && m.session.IsComplete() {
 			m.cursor = 0
+			m.chapterSelected = false
+			m.chapterCursor = 0
 			m.expanded = false
 			m.userMoved = false
 			m.statusMessage = ""
@@ -372,13 +378,14 @@ func (m *Model) syncViewport() {
 	if !m.ready || m.session == nil {
 		return
 	}
-	content := m.renderStepList()
 	if m.session.IsComplete() {
-		content = m.renderCompletionBody()
+		content := m.renderCompletionBody()
 		m.viewport.SetContent(content)
 		m.viewport.SetYOffset(0)
 		return
 	}
+	m.ensureValidNavigationSelection()
+	content := m.renderStepList()
 	m.viewport.SetContent(content)
 	m.scrollToCursor()
 }
@@ -407,8 +414,8 @@ func (m *Model) scrollToCursor() {
 func (m Model) selectedContentLine() int {
 	if m.session != nil && !m.session.IsComplete() {
 		selectedLine := -1
-		for line, step := range m.stepContentLines() {
-			if step == m.cursor && (selectedLine == -1 || line < selectedLine) {
+		for line, item := range m.navigationContentLines() {
+			if m.navigationItemSelected(item) && (selectedLine == -1 || line < selectedLine) {
 				selectedLine = line
 			}
 		}
@@ -433,11 +440,18 @@ func (m *Model) autoScroll() {
 	if m.session == nil {
 		return
 	}
+	for i := range m.session.Chapters {
+		if m.chapterReviewReady(i) {
+			m.selectChapter(i)
+			m.expanded = false
+			return
+		}
+	}
 	idx := 0
 	for i := range m.session.Chapters {
 		for j := range m.session.Chapters[i].Nodes {
 			if m.session.Chapters[i].Nodes[j].State == coop.StepReview && m.reviewIsActionable(idx+1) {
-				m.cursor = idx
+				m.selectStep(idx)
 				m.expanded = false
 				return
 			}
@@ -446,7 +460,7 @@ func (m *Model) autoScroll() {
 	}
 	_, activeNum := m.session.ActiveNode()
 	if activeNum > 0 {
-		m.cursor = activeNum - 1
+		m.selectStep(activeNum - 1)
 	}
 }
 
@@ -552,8 +566,16 @@ func (m *Model) moveCursorUp() {
 		} else {
 			m.cursor = len(suggestions) - 1
 		}
-	} else if m.cursor > 0 {
-		m.cursor--
+	} else {
+		items := m.navigationItems()
+		if len(items) == 0 {
+			return
+		}
+		idx := m.selectedNavigationIndex()
+		if idx <= 0 {
+			return
+		}
+		m.selectNavigationItem(items[idx-1])
 		m.userMoved = true
 	}
 }
@@ -569,8 +591,16 @@ func (m *Model) moveCursorDown() {
 		} else {
 			m.cursor = 0
 		}
-	} else if m.session != nil && m.cursor < m.session.TotalSteps()-1 {
-		m.cursor++
+	} else {
+		items := m.navigationItems()
+		if len(items) == 0 {
+			return
+		}
+		idx := m.selectedNavigationIndex()
+		if idx < 0 || idx >= len(items)-1 {
+			return
+		}
+		m.selectNavigationItem(items[idx+1])
 		m.userMoved = true
 	}
 }
@@ -613,6 +643,8 @@ func (m *Model) enterWaitingMode(message string) {
 	m.waitingMessage = message
 	m.session = nil
 	m.cursor = 0
+	m.chapterSelected = false
+	m.chapterCursor = 0
 	m.expanded = false
 	m.userMoved = false
 	m.rejecting = false
@@ -646,12 +678,17 @@ func (m *Model) handleConfirm() {
 		m.err = fmt.Errorf("failed to save confirmation: %w", err)
 	}
 	m.lastVersion = m.session.Version
+	if target.kind == "chapter" && len(target.steps) > 0 {
+		m.selectStep(target.steps[0] - 1)
+	}
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
 	m.rejecting = false
 	m.rejectionInput.SetValue("")
 	m.rejectionError = ""
 	if m.session.IsComplete() {
 		m.cursor = 0
+		m.chapterSelected = false
+		m.chapterCursor = 0
 		m.expanded = false
 		m.statusMessage = ""
 		m.statusExpiresAt = time.Time{}
@@ -728,6 +765,9 @@ func (m *Model) handleReject(note string) {
 		m.err = fmt.Errorf("failed to save request changes: %w", err)
 	}
 	m.lastVersion = m.session.Version
+	if target.kind == "chapter" && len(target.steps) > 0 {
+		m.selectStep(target.steps[0] - 1)
+	}
 	m.rejecting = false
 	m.rejectionInput.SetValue("")
 	m.rejectionError = ""
@@ -747,6 +787,27 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if m.session == nil {
 		return reviewTarget{}, false
 	}
+	if m.chapterSelected {
+		chapterIndex := m.chapterCursor
+		if !m.chapterReviewReady(chapterIndex) {
+			return reviewTarget{}, false
+		}
+		ch := m.session.Chapters[chapterIndex]
+		var steps []int
+		step := 0
+		for i := range m.session.Chapters {
+			for j := range m.session.Chapters[i].Nodes {
+				step++
+				if i == chapterIndex && m.session.Chapters[i].Nodes[j].State == coop.StepReview {
+					steps = append(steps, step)
+				}
+			}
+		}
+		if len(steps) == 0 {
+			return reviewTarget{}, false
+		}
+		return reviewTarget{title: ch.Title, kind: "chapter", steps: steps, chapterIndex: chapterIndex}, true
+	}
 	stepNum := m.cursor + 1
 	node, err := m.session.NodeByNumber(stepNum)
 	if err != nil || node.State != coop.StepReview {
@@ -755,24 +816,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if m.session.ReviewGranularityForStep(stepNum) != coop.ReviewGranularityChapter {
 		return reviewTarget{title: node.Title, kind: "step", steps: []int{stepNum}, chapterIndex: -1}, true
 	}
-	ch, chapterIndex, _, err := m.session.ChapterByStepNumber(stepNum)
-	if err != nil || !m.session.ChapterReadyForReview(chapterIndex) {
-		return reviewTarget{}, false
-	}
-	var steps []int
-	idx := 0
-	for i := range m.session.Chapters {
-		for j := range m.session.Chapters[i].Nodes {
-			idx++
-			if i == chapterIndex && m.session.Chapters[i].Nodes[j].State == coop.StepReview {
-				steps = append(steps, idx)
-			}
-		}
-	}
-	if len(steps) == 0 {
-		return reviewTarget{}, false
-	}
-	return reviewTarget{title: ch.Title, kind: "chapter", steps: steps, chapterIndex: chapterIndex}, true
+	return reviewTarget{}, false
 }
 
 func (m Model) reviewIsActionable(stepNum int) bool {

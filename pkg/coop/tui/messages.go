@@ -38,6 +38,7 @@ type mouseAction int
 const (
 	mouseActionNone mouseAction = iota
 	mouseActionSelectStep
+	mouseActionSelectChapter
 	mouseActionSelectCompletion
 	mouseActionOpenClaim
 )

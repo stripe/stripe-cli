@@ -211,6 +211,41 @@ func TestMouseActionSelectsVisibleStep(t *testing.T) {
 	assert.True(t, updated.userMoved)
 }
 
+func TestNavigationSelectsReadyChapterReviewAsRow(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.cursor = 1
+
+	m.syncViewport()
+
+	assert.True(t, m.chapterSelected)
+	assert.Equal(t, 0, m.chapterCursor)
+
+	m.moveCursorDown()
+	assert.False(t, m.chapterSelected)
+	assert.Equal(t, 2, m.cursor)
+
+	m.moveCursorUp()
+	assert.True(t, m.chapterSelected)
+	assert.Equal(t, 0, m.chapterCursor)
+}
+
+func TestMouseActionSelectsChapterReview(t *testing.T) {
+	m := readyModel()
+	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+
+	result, _ := m.Update(mouseActionMsg{action: mouseActionSelectChapter, index: 0})
+	updated := result.(Model)
+
+	assert.True(t, updated.chapterSelected)
+	assert.Equal(t, 0, updated.chapterCursor)
+	assert.True(t, updated.userMoved)
+}
+
 func TestUpdateKeyConfirmNotOnReviewStep(t *testing.T) {
 	m := readyModel()
 	m.cursor = 0 // step is Done, not Review
@@ -297,7 +332,7 @@ func TestUpdateKeyConfirmChapterReview(t *testing.T) {
 	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
-	m.cursor = 0
+	m.selectChapter(0)
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
@@ -321,6 +356,10 @@ func TestSelectedReviewTargetChapterRequiresReadyChapter(t *testing.T) {
 	assert.False(t, m.reviewIsActionable(1))
 
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	_, ok = m.selectedReviewTarget()
+	assert.False(t, ok)
+
+	m.selectChapter(0)
 	target, ok := m.selectedReviewTarget()
 
 	assert.True(t, ok)
@@ -343,7 +382,7 @@ func TestUpdateKeyRejectChapterReview(t *testing.T) {
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].Implementation = &coop.Implementation{File: "checkout.js"}
 	m.session.Chapters[0].Nodes[1].Verifications = []coop.Verification{{Check: "checkout test", Passed: true}}
-	m.cursor = 0
+	m.selectChapter(0)
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})

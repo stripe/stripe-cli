@@ -116,13 +116,8 @@ func (m Model) renderStepList() string {
 		ruleWidth = 80
 	}
 
-	selectedChapterReview := -1
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
-		selectedChapterReview = target.chapterIndex
-	}
-
 	for chIdx, ch := range m.session.Chapters {
-		chapterSelected := chIdx == selectedChapterReview
+		chapterSelected := m.chapterSelected && chIdx == m.chapterCursor && m.chapterReviewReady(chIdx)
 		chapterReviewReady := m.chapterReviewReady(chIdx)
 		lines = append(lines, "")
 		lines = append(lines, m.renderChapterLine(ch, chIdx, chapterSelected))
@@ -168,11 +163,19 @@ func (m Model) chapterReviewReady(chapterIndex int) bool {
 		chapterIndex >= 0 &&
 		chapterIndex < len(m.session.Chapters) &&
 		m.session.Chapters[chapterIndex].ReviewGranularity == coop.ReviewGranularityChapter &&
-		m.session.ChapterReadyForReview(chapterIndex)
+		m.session.ChapterReadyForReview(chapterIndex) &&
+		m.chapterReviewCountRaw(chapterIndex) > 0
 }
 
 func (m Model) chapterReviewCount(chapterIndex int) int {
 	if !m.chapterReviewReady(chapterIndex) {
+		return 0
+	}
+	return m.chapterReviewCountRaw(chapterIndex)
+}
+
+func (m Model) chapterReviewCountRaw(chapterIndex int) int {
+	if m.session == nil || chapterIndex < 0 || chapterIndex >= len(m.session.Chapters) {
 		return 0
 	}
 	count := 0
@@ -286,6 +289,9 @@ func (m Model) renderDetail() string {
 	if m.session == nil {
 		return ""
 	}
+	if target, ok := m.selectedReviewTarget(); ok && target.kind == "chapter" {
+		return m.renderChapterDetail(target)
+	}
 	node, err := m.session.NodeByNumber(m.cursor + 1)
 	if err != nil {
 		return ""
@@ -328,6 +334,50 @@ func (m Model) renderDetail() string {
 	if suffix != "" {
 		parts = append(parts, suffix)
 	}
+	body := clampLines(strings.Join(parts, "\n"), innerW)
+	box := DetailBoxStyle.Width(w).Render(body)
+	return indentBlock(box, detailIndent)
+}
+
+func (m Model) renderChapterDetail(target reviewTarget) string {
+	w, innerW := m.detailWidths()
+
+	var md strings.Builder
+	section := detailSections[m.detailTab%len(detailSections)]
+	for _, step := range target.steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil {
+			continue
+		}
+		md.WriteString("### " + node.Title + "\n\n")
+		switch section {
+		case "Summary":
+			m.writeSummaryDetail(&md, node)
+		case "Files":
+			m.writeImplementationDetail(&md, node, false)
+		case "Checks":
+			m.writeReviewCommandDetail(&md, node)
+			m.writeAsyncHandlerCheckDetail(&md, node)
+			m.writeVerificationDetail(&md, node)
+		case "Reference":
+			m.writeAsyncHandlerReferenceDetail(&md, node)
+			if node.Type == coop.NodeAPIRequest {
+				md.WriteString("*Open the step to load API reference snippets.*\n\n")
+			}
+		}
+	}
+
+	content := strings.TrimSpace(md.String())
+	suffix := "\n" + AttentionStyle.Render("  Waiting for you: press c to confirm chapter or r to request chapter changes")
+	if content == "" && suffix == "" {
+		return ""
+	}
+
+	parts := []string{m.renderDetailHeader(section)}
+	if content != "" {
+		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
+	}
+	parts = append(parts, suffix)
 	body := clampLines(strings.Join(parts, "\n"), innerW)
 	box := DetailBoxStyle.Width(w).Render(body)
 	return indentBlock(box, detailIndent)
@@ -727,7 +777,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if target.kind == "chapter" {
 		prefix = fmt.Sprintf("Review chapter (%d steps)", len(target.steps))
 	}
-	lines = append(lines, AttentionStyle.Render(prefix+": ")+target.title)
+	lines = append(lines, BrandStyle.Render("▸ ")+AttentionStyle.Render(prefix+": ")+target.title)
 	if target.kind == "chapter" {
 		if included := m.reviewStepTitleLabel(target.steps); included != "" {
 			lines = append(lines, MutedStyle.Render("Includes: ")+included)

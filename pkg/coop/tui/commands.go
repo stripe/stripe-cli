@@ -58,7 +58,7 @@ func (m Model) discoverNewSession() tea.Cmd {
 }
 
 func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
-	if m.session == nil || m.sdkSnippetStep == m.cursor {
+	if m.session == nil || m.chapterSelected || m.sdkSnippetStep == m.cursor {
 		return nil
 	}
 	node, err := m.session.NodeByNumber(m.cursor + 1)

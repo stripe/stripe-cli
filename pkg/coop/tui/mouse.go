@@ -52,17 +52,22 @@ func (m Model) mouseTargets() []mouseTarget {
 		return targets
 	}
 
-	for line, step := range m.stepContentLines() {
+	for line, item := range m.navigationContentLines() {
 		y := viewportTop + line - offset
 		if y >= viewportTop && y < viewportBottom {
-			targets = append(targets, mouseTarget{y: y, action: mouseActionSelectStep, index: step})
+			switch item.kind {
+			case navigationChapter:
+				targets = append(targets, mouseTarget{y: y, action: mouseActionSelectChapter, index: item.chapterIndex})
+			case navigationStep:
+				targets = append(targets, mouseTarget{y: y, action: mouseActionSelectStep, index: item.stepIndex})
+			}
 		}
 	}
 	return targets
 }
 
-func (m Model) stepContentLines() map[int]int {
-	result := map[int]int{}
+func (m Model) navigationContentLines() map[int]navigationItem {
+	result := map[int]navigationItem{}
 	if m.session == nil {
 		return result
 	}
@@ -77,8 +82,8 @@ func (m Model) stepContentLines() map[int]int {
 	for chIdx, ch := range m.session.Chapters {
 		chapterSelected := chIdx == selectedChapterReview
 		line++ // blank line before chapter
-		if chapterSelected {
-			result[line] = firstReviewStepIndex(m.session, chIdx)
+		if m.chapterReviewReady(chIdx) {
+			result[line] = navigationItem{kind: navigationChapter, chapterIndex: chIdx}
 		}
 		line++ // chapter line
 		line++ // rule line
@@ -90,7 +95,9 @@ func (m Model) stepContentLines() map[int]int {
 
 		chapterReviewReady := m.chapterReviewReady(chIdx)
 		for _, node := range ch.Nodes {
-			result[line] = stepIdx
+			if !chapterReviewReady {
+				result[line] = navigationItem{kind: navigationStep, stepIndex: stepIdx}
+			}
 			line += lipgloss.Height(m.renderStepLine(node, stepIdx, chapterReviewReady))
 			if m.expanded && stepIdx == m.cursor && !chapterSelected {
 				if detail := m.renderDetail(); detail != "" {
@@ -103,7 +110,20 @@ func (m Model) stepContentLines() map[int]int {
 	return result
 }
 
+func (m Model) stepContentLines() map[int]int {
+	result := map[int]int{}
+	for line, item := range m.navigationContentLines() {
+		if item.kind == navigationStep {
+			result[line] = item.stepIndex
+		}
+	}
+	return result
+}
+
 func firstReviewStepIndex(session *coop.Session, chapterIndex int) int {
+	if session == nil {
+		return -1
+	}
 	stepIdx := 0
 	for i := range session.Chapters {
 		for j := range session.Chapters[i].Nodes {
@@ -113,7 +133,7 @@ func firstReviewStepIndex(session *coop.Session, chapterIndex int) int {
 			stepIdx++
 		}
 	}
-	return 0
+	return -1
 }
 
 func (m Model) completionSuggestionLines() map[int]int {
@@ -143,7 +163,16 @@ func (m Model) handleMouseAction(msg mouseActionMsg) (tea.Model, tea.Cmd) {
 		if m.session == nil || msg.index < 0 || msg.index >= m.session.TotalSteps() {
 			return m, nil
 		}
-		m.cursor = msg.index
+		m.selectStep(msg.index)
+		m.userMoved = true
+		m.resizeViewport()
+		m.syncViewport()
+		return m, nil
+	case mouseActionSelectChapter:
+		if m.session == nil || msg.index < 0 || msg.index >= len(m.session.Chapters) || !m.chapterReviewReady(msg.index) {
+			return m, nil
+		}
+		m.selectChapter(msg.index)
 		m.userMoved = true
 		m.resizeViewport()
 		m.syncViewport()

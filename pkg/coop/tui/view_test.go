@@ -114,6 +114,7 @@ func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
 	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
+	m.selectChapter(0)
 
 	list := m.renderStepList()
 
@@ -289,7 +290,7 @@ func TestRenderChapterReviewCardNamesCoveredSteps(t *testing.T) {
 	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
-	m.cursor = 0
+	m.selectChapter(0)
 
 	card := m.renderReviewCard()
 	footer := m.renderFooter()
