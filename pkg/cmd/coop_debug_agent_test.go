@@ -54,7 +54,7 @@ func TestCoopDebugAgentRerunsRequestedChanges(t *testing.T) {
 		node, _ := s.NodeByNumber(1)
 		return node.State == coop.StepReview
 	})
-	require.True(t, store.HeartbeatAge(session.ID) >= 0)
+	waitForDebugHeartbeat(t, store, session.ID)
 
 	current, err := store.Read(session.ID)
 	require.NoError(t, err)
@@ -163,4 +163,16 @@ func waitForDebugSession(t *testing.T, store *coop.Store, sessionID string, pred
 	session, err := store.Read(sessionID)
 	require.NoError(t, err)
 	require.True(t, predicate(session), "session did not reach expected state: %+v", session)
+}
+
+func waitForDebugHeartbeat(t *testing.T, store *coop.Store, sessionID string) {
+	t.Helper()
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if store.HeartbeatAge(sessionID) >= 0 {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	require.True(t, store.HeartbeatAge(sessionID) >= 0, "debug agent did not write heartbeat")
 }
