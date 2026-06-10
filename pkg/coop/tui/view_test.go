@@ -106,14 +106,13 @@ func TestRenderStepListAlignsChapterTitleWithRule(t *testing.T) {
 
 	require.NotEmpty(t, titleLine)
 	require.NotEmpty(t, ruleLine)
-	titlePrefix := titleLine[:strings.Index(titleLine, "Set up product")]
+	titlePrefix := titleLine[:strings.Index(titleLine, "-")]
 	rulePrefix := ruleLine[:strings.Index(ruleLine, "─")]
 	assert.Equal(t, lipgloss.Width(titlePrefix), lipgloss.Width(rulePrefix))
 }
 
 func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
 	m := testModel()
-	m.session.Chapters[0].ReviewGranularity = coop.ReviewGranularityChapter
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
 	m.selectChapter(0)
@@ -121,10 +120,34 @@ func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 
 	assertContainsPlain(t, list, "Needs chapter review (2 steps)")
-	assertContainsPlain(t, list, "▸")
+	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
 	assertContainsPlain(t, list, "Create product  Included")
 	assertContainsPlain(t, list, "Create checkout  Included")
 	assertNotContainsPlain(t, list, "Create product  Needs review")
+}
+
+func TestRenderStepListShowsSingleStepChapterReviewUnit(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[1].Nodes[0].State = coop.StepReview
+	m.selectChapter(1)
+
+	list := m.renderStepList()
+	footer := m.renderFooter()
+
+	assertContainsPlain(t, list, "Needs chapter review (1 step)")
+	assertContainsPlain(t, footer, "confirm all")
+}
+
+func TestRenderCollapsedChapterShowsStateSummary(t *testing.T) {
+	m := testModel()
+	m.collapseChapter(0)
+
+	list := m.renderStepList()
+
+	assertContainsPlain(t, list, "+ Set up product")
+	assertContainsPlain(t, list, "✓1 ●1")
+	assertNotContainsPlain(t, list, "Create product")
+	assertNotContainsPlain(t, list, "Create checkout")
 }
 
 func TestRenderStepLineAnnotation(t *testing.T) {
@@ -149,7 +172,7 @@ func TestRenderStepLineCursor(t *testing.T) {
 	node := m.session.Chapters[0].Nodes[1]
 	line := m.renderStepLine(node, 1, false, true)
 
-	assertContainsPlain(t, line, "▸")
+	assertContainsPlain(t, line, strings.TrimSpace(cursorMarker))
 }
 
 func TestRenderStepLineNoCursor(t *testing.T) {
@@ -158,7 +181,7 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 	node := m.session.Chapters[0].Nodes[1]
 	line := m.renderStepLine(node, 1, false, false)
 
-	assertNotContainsPlain(t, line, "▸")
+	assertNotContainsPlain(t, line, strings.TrimSpace(cursorMarker))
 }
 
 func TestRenderDetail(t *testing.T) {
@@ -230,6 +253,19 @@ func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
 	assertContainsPlain(t, detail, "Waiting for you")
 }
 
+func TestRenderDetailBoxMatchesOutlineWidth(t *testing.T) {
+	m := testModel()
+	m.width = 69
+	m.cursor = 0
+	m.expanded = true
+
+	detail := ansi.Strip(m.renderDetail())
+	lines := strings.Split(detail, "\n")
+	require.NotEmpty(t, lines)
+
+	assert.Equal(t, m.outlineRuleWidth(), lipgloss.Width(strings.TrimPrefix(lines[0], strings.Repeat(" ", detailIndent))))
+}
+
 func TestRenderMarkdownDoesNotIndentSubsequentLines(t *testing.T) {
 	m := testModel()
 	rendered := ansi.Strip(m.renderMarkdown("first line\n\nsecond line\n\nthird line", 40))
@@ -299,8 +335,8 @@ func TestRenderChapterReviewCardNamesCoveredSteps(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review chapter (2 steps): Set up product")
 	assertContainsPlain(t, card, "Includes: Create product, Create checkout")
-	assertContainsPlain(t, footer, "confirm chapter")
-	assertContainsPlain(t, footer, "chapter changes")
+	assertContainsPlain(t, footer, "confirm all")
+	assertContainsPlain(t, footer, "changes")
 }
 
 func TestRenderReviewCardFallbackCheck(t *testing.T) {
@@ -701,6 +737,35 @@ func TestViewportShowsMoreBelowIndicator(t *testing.T) {
 
 	assertContainsPlain(t, rendered, "more below")
 	assertLinesWithinWidth(t, rendered, m.width)
+}
+
+func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
+	m := testModel()
+	m.ready = true
+	m.width = 69
+	m.height = 12
+	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(6))
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = strings.Repeat("Confirm the Checkout flow uses the saved price ID and redirects correctly. ", 5)
+	m.cursor = 0
+	m.expanded = true
+	m.resizeViewport()
+	m.syncViewport()
+	m.viewport.SetHeight(6)
+	m.viewport.SetYOffset(3)
+
+	rendered := ansi.Strip(m.renderViewportRegionWithHeight(6))
+
+	assert.Contains(t, rendered, "╰")
+	assert.Contains(t, rendered, "╯")
+	assertContainsPlain(t, rendered, "more below")
+	assertLinesWithinWidth(t, rendered, m.width)
+}
+
+func TestClippedDetailBoxDoesNotTurnTopBorderIntoBottomBorder(t *testing.T) {
+	rendered := closeClippedDetailBox("before\n  ╭────────╮")
+
+	assert.Contains(t, rendered, "╭")
+	assert.NotContains(t, rendered, "╰")
 }
 
 func assertLinesWithinWidth(t *testing.T, rendered string, width int) {

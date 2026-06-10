@@ -20,7 +20,11 @@ var detailSections = []string{"Summary", "Files", "Checks", "Reference"}
 const (
 	minViewportHeight   = 1
 	terminalScrollGuard = 1
-	detailIndent        = 1
+	rowCursorWidth      = 2
+	rowRightGap         = 2
+	maxRuleWidth        = 80
+	detailIndent        = rowCursorWidth
+	cursorMarker        = "> "
 )
 
 func (m Model) renderWaitingView() string {
@@ -104,17 +108,10 @@ func (m Model) renderStepList() string {
 		return ""
 	}
 
-	w := m.contentWidth()
 	var lines []string
 	stepIdx := 0
 
-	ruleWidth := w - 4
-	if ruleWidth < 20 {
-		ruleWidth = 20
-	}
-	if ruleWidth > 80 {
-		ruleWidth = 80
-	}
+	ruleWidth := m.outlineRuleWidth()
 
 	for chIdx, ch := range m.session.Chapters {
 		chapterItem := navigationItem{kind: navigationChapter, chapterIndex: chIdx}
@@ -122,7 +119,7 @@ func (m Model) renderStepList() string {
 		chapterReviewReady := m.chapterReviewReady(chIdx)
 		lines = append(lines, "")
 		lines = append(lines, m.renderChapterLine(ch, chIdx, chapterSelected))
-		lines = append(lines, "    "+ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth)))
+		lines = append(lines, strings.Repeat(" ", rowCursorWidth)+ChapterRuleStyle.Render(strings.Repeat("─", ruleWidth)))
 		if m.expanded && chapterSelected {
 			if detail := m.renderDetail(); detail != "" {
 				lines = append(lines, detail)
@@ -152,11 +149,11 @@ func (m Model) renderStepList() string {
 func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selected bool) string {
 	prefix := "  "
 	if selected {
-		prefix = BrandStyle.Render("▸ ")
+		prefix = BrandStyle.Render(cursorMarker)
 	}
-	disclosure := "▾ "
+	disclosure := "- "
 	if m.chapterCollapsed(chapterIndex) {
-		disclosure = "▸ "
+		disclosure = "+ "
 	}
 	title := ch.Title
 	if selected {
@@ -164,18 +161,77 @@ func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selec
 	}
 	line := prefix + MutedStyle.Render(disclosure) + ChapterTitleStyle.Render(title)
 	if count := m.chapterReviewCount(chapterIndex); count > 0 {
-		line += "  " + AttentionStyle.Render(fmt.Sprintf("Needs chapter review (%d steps)", count))
+		line += "  " + AttentionStyle.Render(fmt.Sprintf("Needs chapter review (%s)", formatStepCount(count)))
+	}
+	if m.chapterCollapsed(chapterIndex) {
+		if summary := m.collapsedChapterSummary(chapterIndex); summary != "" {
+			candidate := line + "  " + MutedStyle.Render(summary)
+			if lipgloss.Width(candidate) <= m.contentWidth() {
+				line = candidate
+			}
+		}
 	}
 	return line
 }
 
+func (m Model) outlineRuleWidth() int {
+	w := m.contentWidth() - rowCursorWidth - rowRightGap
+	if w < 20 {
+		return 20
+	}
+	if w > maxRuleWidth {
+		return maxRuleWidth
+	}
+	return w
+}
+
+func (m Model) collapsedChapterSummary(chapterIndex int) string {
+	if m.session == nil || chapterIndex < 0 || chapterIndex >= len(m.session.Chapters) {
+		return ""
+	}
+	var done, review, active, pending, skipped int
+	for _, node := range m.session.Chapters[chapterIndex].Nodes {
+		switch node.State {
+		case coop.StepDone:
+			done++
+		case coop.StepReview:
+			review++
+		case coop.StepActive:
+			active++
+		case coop.StepPending:
+			pending++
+		case coop.StepSkipped:
+			skipped++
+		}
+	}
+	var parts []string
+	if done > 0 {
+		parts = append(parts, fmt.Sprintf("✓%d", done))
+	}
+	if review > 0 {
+		parts = append(parts, fmt.Sprintf("◆%d", review))
+	}
+	if active > 0 {
+		parts = append(parts, fmt.Sprintf("●%d", active))
+	}
+	if pending > 0 {
+		parts = append(parts, fmt.Sprintf("○%d", pending))
+	}
+	if skipped > 0 {
+		parts = append(parts, fmt.Sprintf("–%d", skipped))
+	}
+	return strings.Join(parts, " ")
+}
+
+func formatStepCount(count int) string {
+	if count == 1 {
+		return "1 step"
+	}
+	return fmt.Sprintf("%d steps", count)
+}
+
 func (m Model) chapterReviewReady(chapterIndex int) bool {
-	return m.session != nil &&
-		chapterIndex >= 0 &&
-		chapterIndex < len(m.session.Chapters) &&
-		m.session.Chapters[chapterIndex].ReviewGranularity == coop.ReviewGranularityChapter &&
-		m.session.ChapterReadyForReview(chapterIndex) &&
-		m.chapterReviewCountRaw(chapterIndex) > 0
+	return m.chapterAllReviewableStepsNeedConfirmation(chapterIndex)
 }
 
 func (m Model) chapterReviewCount(chapterIndex int) int {
@@ -198,12 +254,29 @@ func (m Model) chapterReviewCountRaw(chapterIndex int) int {
 	return count
 }
 
+func (m Model) chapterAllReviewableStepsNeedConfirmation(chapterIndex int) bool {
+	if m.session == nil || chapterIndex < 0 || chapterIndex >= len(m.session.Chapters) {
+		return false
+	}
+	hasReviewable := false
+	for _, node := range m.session.Chapters[chapterIndex].Nodes {
+		if node.AutoConfirm {
+			continue
+		}
+		hasReviewable = true
+		if node.State != coop.StepReview {
+			return false
+		}
+	}
+	return hasReviewable
+}
+
 func (m Model) renderStepLine(node coop.SessionNode, idx int, includedInChapterReview bool, selected bool) string {
 	icon := m.stepIcon(node)
 
 	cursor := "  "
 	if selected {
-		cursor = BrandStyle.Render("▸ ")
+		cursor = BrandStyle.Render(cursorMarker)
 	}
 
 	title := node.Title
@@ -411,11 +484,10 @@ func (m Model) renderDetailHeader(section string) string {
 }
 
 func (m Model) detailWidths() (int, int) {
-	contentW := m.contentWidth()
 	frameW, _ := DetailBoxStyle.GetFrameSize()
-	w := contentW - detailIndent - terminalScrollGuard
+	w := m.outlineRuleWidth()
 	if w < 12 {
-		w = max(contentW-frameW-terminalScrollGuard, 1)
+		w = 12
 	}
 	innerW := w - frameW
 	if innerW < 8 {
@@ -795,9 +867,9 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	var lines []string
 	prefix := "Review"
 	if target.kind == "chapter" {
-		prefix = fmt.Sprintf("Review chapter (%d steps)", len(target.steps))
+		prefix = fmt.Sprintf("Review chapter (%s)", formatStepCount(len(target.steps)))
 	}
-	lines = append(lines, BrandStyle.Render("▸ ")+AttentionStyle.Render(prefix+": ")+target.title)
+	lines = append(lines, BrandStyle.Render(cursorMarker)+AttentionStyle.Render(prefix+": ")+target.title)
 	if target.kind == "chapter" {
 		if included := m.reviewStepTitleLabel(target.steps); included != "" {
 			lines = append(lines, MutedStyle.Render("Includes: ")+included)
@@ -869,24 +941,69 @@ func (m Model) renderViewportRegion() string {
 }
 
 func (m Model) renderViewportRegionWithHeight(height int) string {
-	view := m.viewport.View()
 	if m.width <= 0 || height <= 0 {
-		return view
+		return m.viewport.View()
 	}
+	hasMoreBelow := m.viewport.YOffset()+height < m.viewport.TotalLineCount()
+	if hasMoreBelow && height >= 3 {
+		vp := m.viewport
+		vp.SetHeight(height - 2)
+		body := lipgloss.NewStyle().
+			Width(m.width).
+			Height(height - 2).
+			MaxHeight(height - 2).
+			Render(vp.View())
+		body = closeClippedDetailBox(body)
+		indicator := m.renderMoreBelowIndicator()
+		return strings.Join([]string{body, "", indicator}, "\n")
+	}
+	view := m.viewport.View()
 	rendered := lipgloss.NewStyle().
 		Width(m.width).
 		Height(height).
 		MaxHeight(height).
 		Render(view)
-	if height >= 3 && m.viewport.YOffset()+height < m.viewport.TotalLineCount() {
-		lines := strings.Split(rendered, "\n")
-		if len(lines) > 0 {
-			indicator := MutedStyle.Render("  ↓ more below")
-			lines[len(lines)-1] = lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(indicator)
-			rendered = strings.Join(lines, "\n")
+	return rendered
+}
+
+func (m Model) renderMoreBelowIndicator() string {
+	label := MutedStyle.Render("more below")
+	width := m.outlineRuleWidth()
+	if width < lipgloss.Width(label) {
+		width = lipgloss.Width(label)
+	}
+	centered := lipgloss.PlaceHorizontal(width, lipgloss.Center, label)
+	return lipgloss.NewStyle().
+		Width(m.width).
+		MaxWidth(m.width).
+		Render(strings.Repeat(" ", rowCursorWidth) + centered)
+}
+
+func closeClippedDetailBox(s string) string {
+	if !strings.Contains(s, "╭") || strings.Contains(s, "╰") {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	if len(lines) == 0 {
+		return s
+	}
+	topLine := -1
+	bottomLine := -1
+	for i, line := range lines {
+		if strings.Contains(line, "╭") && strings.Contains(line, "╮") {
+			topLine = i
+		}
+		if strings.Contains(line, "╰") && strings.Contains(line, "╯") {
+			bottomLine = i
 		}
 	}
-	return rendered
+	if topLine == -1 || bottomLine > topLine || topLine >= len(lines)-1 {
+		return s
+	}
+	top := lines[topLine]
+	bottom := strings.NewReplacer("╭", "╰", "╮", "╯").Replace(top)
+	lines[len(lines)-1] = bottom
+	return strings.Join(lines, "\n")
 }
 
 func (m Model) renderPinnedViewport(header, footer string) string {
@@ -1165,7 +1282,7 @@ func (m Model) renderCompletionBody() string {
 	for i, s := range suggestions {
 		cur := "  "
 		if i == m.cursor {
-			cur = BrandStyle.Render("▸ ")
+			cur = BrandStyle.Render(cursorMarker)
 		}
 		isDone := completed[s.id]
 		icon := MutedStyle.Render("○")

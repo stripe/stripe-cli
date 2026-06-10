@@ -41,12 +41,12 @@ func newKeyMap() keyMap {
 			key.WithHelp("↓/j", "down"),
 		),
 		Left: key.NewBinding(
-			key.WithKeys("left", "h"),
-			key.WithHelp("←/h", "collapse"),
+			key.WithKeys("left"),
+			key.WithHelp("←", "collapse"),
 		),
 		Right: key.NewBinding(
-			key.WithKeys("right", "l"),
-			key.WithHelp("→/l", "expand"),
+			key.WithKeys("right"),
+			key.WithHelp("→", "expand"),
 		),
 		PageUp: key.NewBinding(
 			key.WithKeys("pgup", "b"),
@@ -127,8 +127,8 @@ func (m Model) ShortHelp() []key.Binding {
 			confirm.SetHelp("c", "confirm")
 			reject.SetHelp("r", "changes")
 		} else if target.kind == "chapter" {
-			confirm.SetHelp("c", "confirm chapter")
-			reject.SetHelp("r", "chapter changes")
+			confirm.SetHelp("c", "confirm all")
+			reject.SetHelp("r", "changes")
 		}
 		bindings = append(bindings, confirm, reject)
 	}

@@ -88,8 +88,7 @@ var (
 	DetailBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(HueGray700).
-			Padding(0, 1).
-			MarginTop(1)
+			Padding(0, 1)
 
 	ReviewCardStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).

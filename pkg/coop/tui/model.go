@@ -394,7 +394,11 @@ func (m *Model) scrollToCursor() {
 	targetLine := m.selectedContentLine()
 
 	vpTop := m.viewport.YOffset()
-	vpBottom := vpTop + m.viewport.Height()
+	visibleHeight := m.viewport.Height()
+	if m.viewport.TotalLineCount() > visibleHeight && visibleHeight >= 3 {
+		visibleHeight -= 2
+	}
+	vpBottom := vpTop + visibleHeight
 	scrollThreshold := vpBottom - 2
 	if m.session != nil && m.session.IsComplete() {
 		scrollThreshold = vpBottom
@@ -403,7 +407,7 @@ func (m *Model) scrollToCursor() {
 	if targetLine < vpTop {
 		m.viewport.SetYOffset(targetLine)
 	} else if targetLine >= scrollThreshold {
-		offset := targetLine - m.viewport.Height()/2
+		offset := targetLine - visibleHeight/2
 		if offset < 0 {
 			offset = 0
 		}
@@ -429,7 +433,7 @@ func (m Model) selectedContentLine() int {
 	}
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
-		if strings.Contains(line, "▸") {
+		if strings.Contains(line, cursorMarker) {
 			return i
 		}
 	}

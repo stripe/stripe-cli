@@ -105,7 +105,7 @@ func TestUILayoutMatrix(t *testing.T) {
 				assertHeaderIsPinned(t, rendered)
 				assertFooterIsPinned(t, rendered, scenario.footerToken)
 				if scenario.expectCursor {
-					assert.Contains(t, rendered, "▸", "selected row should remain visible")
+					assert.Contains(t, rendered, strings.TrimSpace(cursorMarker), "selected row should remain visible")
 				}
 				if scenario.expectReviewCard {
 					assert.Contains(t, rendered, "Review", "review card should remain visible")
