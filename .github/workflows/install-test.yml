@@ -6,7 +6,7 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: '0 * * * *' # Every hour
+    - cron: '*/10 * * * *' # Every 10 minutes
 name: Package manager test
 permissions:
   contents: read
