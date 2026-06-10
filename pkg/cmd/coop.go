@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
@@ -41,4 +43,8 @@ The developer confirms each step before the agent moves on.`,
 	cc.cmd.AddCommand(newCoopDebugAgentCmd().cmd)
 
 	return cc
+}
+
+func coopConfigFolder() string {
+	return Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 }
