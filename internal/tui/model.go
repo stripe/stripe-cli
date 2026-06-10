@@ -346,6 +346,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.doc = msg.doc
 		m.title = msg.doc.Title()
 		m.palette = newPalette(m.page, m.doc, m.client)
+		m.setScrollEnabled(true)
 		if m.renderer != nil {
 			if out, err := m.renderer.Render(msg.doc); err == nil {
 				m.viewport.SetContent(out)
