@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -144,7 +145,7 @@ func (s *Store) Read(id string) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(path)
+	data, err := readSessionFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("%w: %q", ErrSessionNotFound, id)
@@ -161,6 +162,21 @@ func (s *Store) Read(id string) (*Session, error) {
 	}
 
 	return &session, nil
+}
+
+func readSessionFile(path string) ([]byte, error) {
+	deadline := time.Now().Add(250 * time.Millisecond)
+	for {
+		data, err := os.ReadFile(path)
+		if err == nil || !isWindowsSharingViolation(err) || time.Now().After(deadline) {
+			return data, err
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func isWindowsSharingViolation(err error) bool {
+	return runtime.GOOS == "windows" && strings.Contains(err.Error(), "being used by another process")
 }
 
 // Update loads, mutates, and atomically writes a session with optimistic locking.
