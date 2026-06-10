@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,6 +30,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 
 	origProfilesFile := Config.ProfilesFile
 	origProfileName := Config.Profile.ProfileName
+	origKeyRing := config.KeyRing
 
 	viper.Reset()
 	os.WriteFile(profilesFile, []byte("[default]\n"), 0600)
@@ -36,6 +38,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	Config.Profile.ProfileName = "default"
 	Config.Profile.TestModeAPIKey = ""
 	Config.InitConfig()
+	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	// Mock browser to prevent real browser launches
 	origOpen := openBrowserFunc
@@ -53,6 +56,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	return func() {
 		Config.ProfilesFile = origProfilesFile
 		Config.Profile.ProfileName = origProfileName
+		config.KeyRing = origKeyRing
 		openBrowserFunc = origOpen
 		canOpenBrowserFunc = origCanOpen
 		restoreLoginBrowser()
