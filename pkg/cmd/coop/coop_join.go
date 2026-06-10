@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
-	"github.com/stripe/stripe-cli/pkg/coop/prompt"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 	"github.com/stripe/stripe-cli/pkg/coop/tui"
 )
 
@@ -127,7 +127,7 @@ func (jc *coopJoinCmd) pickSession(store *coop.Store) (*coop.Session, error) {
 
 	var choice string
 
-	err = prompt.Select("Pick a session to resume:", options, &choice)
+	err = helpers.Select("Pick a session to resume:", options, &choice)
 	if err != nil {
 		return nil, err
 	}

@@ -224,19 +224,15 @@ pkg/coop/tui/
   commands.go       — Async commands (polling, snippets, session discovery)
   helpers.go        — Word wrap, formatting, browser open
   messages.go       — Custom message types
-  theme.go          — Sail Design System colors + HuhTheme
+  theme.go          — Sail Design System colors
 
 pkg/coop/workflow/
   service.go        — Shared lifecycle operations for agent commands and TUI review actions
 
-pkg/coop/nextaction/
+pkg/coop/helpers/
   nextaction.go     — Post-completion suggestions, environment detection, and next-action responses
-
-pkg/coop/review/
+  prompt.go         — Shared Huh prompt helpers using Sail-styled prompts
   review.go         — Shared chapter-review navigation rules
-
-pkg/coop/prompt/
-  prompt.go         — Shared Huh prompt helpers using the co-op TUI theme
 
 pkg/cmd/coop/
   coop.go           — Parent command, subcommand registration, command-package options

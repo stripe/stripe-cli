@@ -1,5 +1,5 @@
-// Package nextaction builds and records follow-up actions after a co-op session completes.
-package nextaction
+// Package helpers contains shared support logic for co-op commands and workflows.
+package helpers
 
 import (
 	"errors"

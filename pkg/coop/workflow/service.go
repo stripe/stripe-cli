@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
-	"github.com/stripe/stripe-cli/pkg/coop/review"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 )
 
 const AwaitTimeout = 10 * time.Minute
@@ -254,7 +254,7 @@ func (s *Service) AwaitReview(sessionID string, step int) (coop.CommandResponse,
 	if node.AutoConfirm && node.State == coop.StepReview {
 		return s.autoConfirm(sessionID, step)
 	}
-	if review.ChapterReviewApplies(session, step) && node.State == coop.StepReview {
+	if helpers.ChapterReviewApplies(session, step) && node.State == coop.StepReview {
 		chapter, chapterIndex, _, err := session.ChapterByStepNumber(step)
 		if err != nil {
 			return errorResponse(err, "stripe coop status"), nil
@@ -383,7 +383,7 @@ func (s *Service) awaitChapterReview(sessionID, chapterTitle string, chapterInde
 
 func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNode, step int, targetState coop.StepState) coop.CommandResponse {
 	if targetState == coop.StepReview {
-		if review.ChapterReviewApplies(session, step) {
+		if helpers.ChapterReviewApplies(session, step) {
 			chapter, chapterIndex, _, err := session.ChapterByStepNumber(step)
 			if err == nil && !session.ChapterReadyForReview(chapterIndex) {
 				return coop.CommandResponse{
@@ -443,7 +443,7 @@ func nextAfterStep(session *coop.Session, step int) string {
 }
 
 func nextInChapterOrStatus(session *coop.Session, chapterIndex, afterStep int) string {
-	if nextStep := review.NextPendingStepInChapter(session, chapterIndex, afterStep); nextStep > 0 {
+	if nextStep := helpers.NextPendingStepInChapter(session, chapterIndex, afterStep); nextStep > 0 {
 		nextNode, _ := session.NodeByNumber(nextStep)
 		return fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, nextStep, quoteArg("Beginning: "+nextNode.Title))
 	}

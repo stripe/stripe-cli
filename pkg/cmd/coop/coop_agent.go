@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
-	"github.com/stripe/stripe-cli/pkg/coop/nextaction"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
@@ -226,8 +226,8 @@ func runCoopNextAction(sessionID, completed string) error {
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}
-	resp, err := nextaction.Run(store, nextaction.Input{SessionID: sessionID, Completed: completed})
-	if errors.Is(err, nextaction.ErrNoSession) {
+	resp, err := helpers.Run(store, helpers.Input{SessionID: sessionID, Completed: completed})
+	if errors.Is(err, helpers.ErrNoSession) {
 		return outputCoopError("No session found.", "stripe coop run <blueprint>")
 	}
 	if err != nil {

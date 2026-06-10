@@ -12,7 +12,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
-	"github.com/stripe/stripe-cli/pkg/coop/prompt"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 	"github.com/stripe/stripe-cli/pkg/coop/tui"
 )
 
@@ -52,7 +52,7 @@ func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	switch {
 	case hasClaude && hasCodex:
 		var choice string
-		err := prompt.Select("Multiple agents detected. Which would you like to use?",
+		err := helpers.Select("Multiple agents detected. Which would you like to use?",
 			[]huh.Option[string]{
 				huh.NewOption("Claude Code", "claude"),
 				huh.NewOption("Codex", "codex"),
@@ -89,7 +89,7 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) bool {
 		return false
 	}
 
-	err := prompt.Select(title,
+	err := helpers.Select(title,
 		[]huh.Option[string]{
 			huh.NewOption("Normal — agent asks before running commands", "normal"),
 			huh.NewOption("Auto-approve — skip all permission prompts (faster, less safe)", "auto"),
@@ -214,7 +214,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	// Check for existing session
 	if err := exec.Command("tmux", "has-session", "-t", sessionName).Run(); err == nil {
 		var choice string
-		if err := prompt.Select("A co-op tmux session already exists. What would you like to do?",
+		if err := helpers.Select("A co-op tmux session already exists. What would you like to do?",
 			[]huh.Option[string]{
 				huh.NewOption("Reattach to existing session", "attach"),
 				huh.NewOption("Start fresh (kills existing session)", "fresh"),

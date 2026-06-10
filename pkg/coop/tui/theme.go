@@ -4,38 +4,8 @@ import (
 	"image/color"
 
 	"charm.land/bubbles/v2/help"
-	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 )
-
-type sailTheme struct{}
-
-func (sailTheme) Theme(isDark bool) *huh.Styles {
-	styles := huh.ThemeBase(isDark)
-	theme := NewTheme(isDark)
-
-	styles.Focused.Base = styles.Focused.Base.BorderForeground(theme.HueBorder)
-	styles.Focused.Title = styles.Focused.Title.Foreground(theme.HuePurple500).Bold(true)
-	styles.Focused.Description = styles.Focused.Description.Foreground(theme.HueGray400)
-	styles.Focused.SelectSelector = styles.Focused.SelectSelector.Foreground(theme.HuePurple500)
-	styles.Focused.NextIndicator = styles.Focused.NextIndicator.Foreground(theme.HuePurple400)
-	styles.Focused.PrevIndicator = styles.Focused.PrevIndicator.Foreground(theme.HuePurple400)
-	styles.Focused.Option = styles.Focused.Option.Foreground(theme.HueGray300)
-	styles.Focused.SelectedOption = styles.Focused.SelectedOption.Foreground(theme.HueGreen400)
-	styles.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(theme.HueGreen400).SetString("▶ ")
-	styles.Focused.UnselectedPrefix = lipgloss.NewStyle().Foreground(theme.HueGray500).SetString("  ")
-	styles.Focused.UnselectedOption = styles.Focused.UnselectedOption.Foreground(theme.HueGray400)
-	styles.Focused.FocusedButton = styles.Focused.FocusedButton.Foreground(theme.HueOnBrand).Background(theme.HuePurple500)
-	styles.Focused.BlurredButton = styles.Focused.BlurredButton.Foreground(theme.HueGray300).Background(theme.HuePanel)
-	styles.Blurred = styles.Focused
-
-	return styles
-}
-
-// HuhTheme returns a Sail-styled huh theme for interactive prompts.
-func HuhTheme() huh.Theme {
-	return sailTheme{}
-}
 
 func newThemedHelp(t Theme) help.Model {
 	h := help.New()

@@ -11,8 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
-	"github.com/stripe/stripe-cli/pkg/coop/nextaction"
-	"github.com/stripe/stripe-cli/pkg/coop/review"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
@@ -98,7 +97,7 @@ func (a *coopDebugAgent) run(ctx context.Context) error {
 				if err != nil {
 					return err
 				}
-				if next := review.NextPendingStepInChapter(session, chapterIndex, step); next > 0 {
+				if next := helpers.NextPendingStepInChapter(session, chapterIndex, step); next > 0 {
 					a.logf("section %q still has pending work; continuing with step %d", chapter.Title, next)
 					if err := a.startStep(next); err != nil {
 						return err
@@ -199,7 +198,7 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 		return err
 	}
 
-	if review.ChapterReviewApplies(session, step) {
+	if helpers.ChapterReviewApplies(session, step) {
 		chapter, chapterIndex, _, err := session.ChapterByStepNumber(step)
 		if err != nil {
 			return err
@@ -262,9 +261,9 @@ func (a *coopDebugAgent) awaitChapterReview(ctx context.Context, chapterIndex in
 
 func (a *coopDebugAgent) completeSession(ctx context.Context, session *coop.Session) error {
 	if session.Status != coop.SessionCompleted || session.NextSteps == nil || len(session.NextSteps.Suggestions) == 0 {
-		suggestions := nextaction.BuildSuggestions(session, nextaction.DetectProjectEnvironment())
+		suggestions := helpers.BuildSuggestions(session, helpers.DetectProjectEnvironment())
 		a.logf("all steps complete; showing next steps")
-		if err := nextaction.ShowSuggestions(a.store, session, suggestions, ""); err != nil {
+		if err := helpers.ShowSuggestions(a.store, session, suggestions, ""); err != nil {
 			if isVersionConflict(err) {
 				return nil
 			}
@@ -313,7 +312,7 @@ func firstStepWithState(session *coop.Session, state coop.StepState) int {
 }
 
 func shouldContinueChapterBeforeReview(session *coop.Session, step int) bool {
-	if !review.ChapterReviewApplies(session, step) {
+	if !helpers.ChapterReviewApplies(session, step) {
 		return false
 	}
 	_, chapterIndex, _, err := session.ChapterByStepNumber(step)
