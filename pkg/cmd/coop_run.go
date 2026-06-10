@@ -176,14 +176,14 @@ Step lifecycle commands (use this session id: %s):
 2. Write the code and run it to verify it works
 3. stripe coop step <n> verify --session=%s --check="<what you verified>" --passed
 4. stripe coop step <n> done --session=%s --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
-5. Follow the JSON response's next command. Most steps continue to the next step in the same chapter.
-6. Only run stripe coop step <n> await --session=%s when the response says the chapter is ready for review. Await blocks until the human confirms the chapter or requests changes.
+5. Follow the JSON response's next command. Most steps continue to the next step in the same section.
+6. Only run stripe coop step <n> await --session=%s when the response says the section is ready for review. Await blocks until the human confirms the section or requests changes.
 7. If confirmed: move to next step. If rejected: redo the affected step (check the message for feedback).
 8. When the final step is confirmed: IMMEDIATELY run "stripe coop next-steps --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
 
-Chapters are the default human-review unit. Build and verify each step one at a time, but do not interrupt the developer for every step. At the end of each chapter, before running await, help the developer verify the chapter: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop step <n> verify --check="..." --passed so the review card has useful evidence.
+Sections are the default human-review unit. Build and verify each step one at a time, but do not interrupt the developer for every step. At the end of each section, before running await, help the developer verify the section: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop step <n> verify --check="..." --passed so the review card has useful evidence.
 
-The "await" command is critical at chapter boundaries — it blocks until the developer acts. Do NOT proceed to the next chapter without running await when the step response tells you the chapter is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected step.
+The "await" command is critical at section boundaries — it blocks until the developer acts. Do NOT proceed to the next section without running await when the step response tells you the section is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected step.
 
 Some steps are marked auto_confirm — these do not require human review. Continue following the next command returned by the CLI.
 

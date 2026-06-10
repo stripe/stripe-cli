@@ -91,7 +91,7 @@ func TestChapterReviewInteractionJourney(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, coop.StepDone, node1.State)
 	assert.Equal(t, coop.StepDone, node2.State)
-	assert.NotContains(t, m.renderFooter(), "Review chapter")
+	assert.NotContains(t, m.renderFooter(), "Review section")
 	assertInteractionLayout(t, m, "chapter confirmed")
 }
 

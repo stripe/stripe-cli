@@ -143,7 +143,7 @@ func stressManyStepsManualNavigationModel() Model {
 	for ch := 0; ch < 6; ch++ {
 		chapter := coop.SessionChapter{
 			Key:   fmt.Sprintf("chapter-%d", ch),
-			Title: fmt.Sprintf("Chapter %d with enough steps to force scrolling", ch+1),
+			Title: fmt.Sprintf("Section %d with enough steps to force scrolling", ch+1),
 		}
 		for node := 0; node < 8; node++ {
 			state := coop.StepDone

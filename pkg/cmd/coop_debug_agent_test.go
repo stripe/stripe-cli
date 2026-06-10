@@ -39,7 +39,7 @@ func TestCoopDebugAgentRerunsRequestedChanges(t *testing.T) {
 	store, session := setupDebugAgentSession(t, []coop.SessionChapter{
 		{
 			Key:   "chapter",
-			Title: "Chapter",
+			Title: "Section",
 			Nodes: []coop.SessionNode{
 				{Key: "checkout", Title: "Build Checkout", State: coop.StepPending, Type: coop.NodeAPIRequest},
 			},
@@ -86,7 +86,7 @@ func TestCoopDebugAgentWaitsForChapterReviewAfterChapterIsReady(t *testing.T) {
 	store, session := setupDebugAgentSession(t, []coop.SessionChapter{
 		{
 			Key:   "chapter",
-			Title: "Chapter",
+			Title: "Section",
 			Nodes: []coop.SessionNode{
 				{Key: "product", Title: "Create product", State: coop.StepPending, Type: coop.NodeAPIRequest},
 				{Key: "checkout", Title: "Build Checkout", State: coop.StepPending, Type: coop.NodeAPIRequest},

@@ -89,7 +89,7 @@ All agent commands output JSON with an `ok` field and a `next` field suggesting 
 | `o` | Open claim URL in browser (when sandbox is unclaimed) |
 | `q` / `Ctrl+C` | Quit TUI |
 
-When requesting changes, `r` opens a feedback prompt. Press `Enter` to submit a note and move the reviewed step or chapter back to `active`; press `Esc` to cancel.
+When requesting changes, `r` opens a feedback prompt. Press `Enter` to submit a note and move the reviewed step or section back to `active`; press `Esc` to cancel.
 
 In the completion view:
 | Key | Action |
@@ -155,7 +155,7 @@ Blueprints are embedded JSON in `pkg/coop/blueprints/`. Each has:
 - `id` — unique identifier (also the filename without .json)
 - `title`, `description` — human-readable
 - `prompt` — optional custom agent instructions (overrides generic preamble)
-- `chapters` — ordered groups of nodes
+- `chapters` — ordered sections of nodes
 
 Each node has:
 - `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `testHelper`
@@ -165,7 +165,7 @@ Each node has:
 - `request` — API request details (for `apiRequest` nodes with SDK snippet support)
 - `events` — webhook events (for `asyncHandler` nodes)
 
-Chapters may set `review_granularity` to `chapter` to group multiple reviewable nodes into one human approval milestone.
+Sections may set `review_granularity` to `chapter` to group multiple reviewable nodes into one human approval milestone.
 
 ### Custom Agent Prompt
 

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"image/color"
+
 	"charm.land/bubbles/v2/help"
 	"charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
@@ -35,11 +37,15 @@ func HuhTheme() huh.Theme {
 }
 
 func newHelp() help.Model {
+	return newThemedHelp(NewTheme(true))
+}
+
+func newThemedHelp(t Theme) help.Model {
 	h := help.New()
-	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(HuePurple400).Bold(true)
-	h.Styles.ShortDesc = lipgloss.NewStyle().Foreground(HueGray300)
-	h.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(HueGray500)
-	h.Styles.Ellipsis = lipgloss.NewStyle().Foreground(HueGray400)
+	h.Styles.ShortKey = lipgloss.NewStyle().Foreground(t.HuePurple400).Bold(true)
+	h.Styles.ShortDesc = lipgloss.NewStyle().Foreground(t.HueGray300)
+	h.Styles.ShortSeparator = lipgloss.NewStyle().Foreground(t.HueGray500)
+	h.Styles.Ellipsis = lipgloss.NewStyle().Foreground(t.HueGray400)
 	h.Styles.FullKey = h.Styles.ShortKey
 	h.Styles.FullDesc = h.Styles.ShortDesc
 	h.Styles.FullSeparator = h.Styles.ShortSeparator
@@ -66,12 +72,104 @@ var (
 	HueGray700 = lipgloss.Color("#414552")
 )
 
+type Theme struct {
+	IsDark bool
+
+	HuePurple500 color.Color
+	HuePurple400 color.Color
+	HuePurple700 color.Color
+	HueGreen300  color.Color
+	HueGreen400  color.Color
+	HueBlue400   color.Color
+	HueBlue700   color.Color
+	HueOrange400 color.Color
+	HueGray300   color.Color
+	HueGray400   color.Color
+	HueGray500   color.Color
+	HueGray700   color.Color
+	HueError     color.Color
+	HueText      color.Color
+
+	BrandStyle              lipgloss.Style
+	SuccessStyle            lipgloss.Style
+	AttentionStyle          lipgloss.Style
+	ReviewStyle             lipgloss.Style
+	MutedStyle              lipgloss.Style
+	DimmedStyle             lipgloss.Style
+	ErrorStyle              lipgloss.Style
+	HeaderStyle             lipgloss.Style
+	ChapterTitleStyle       lipgloss.Style
+	ChapterRuleStyle        lipgloss.Style
+	DetailBoxStyle          lipgloss.Style
+	ReviewCardStyle         lipgloss.Style
+	ConfirmationHeaderStyle lipgloss.Style
+	FooterStyle             lipgloss.Style
+	FileAnnotationStyle     lipgloss.Style
+}
+
+func NewTheme(isDark bool) Theme {
+	lightDark := lipgloss.LightDark(isDark)
+	t := Theme{
+		IsDark:       isDark,
+		HuePurple500: lightDark(lipgloss.Color("#4f46d8"), HuePurple500),
+		HuePurple400: lightDark(lipgloss.Color("#5f52e8"), HuePurple400),
+		HuePurple700: lightDark(lipgloss.Color("#3f32a1"), HuePurple700),
+		HueGreen300:  lightDark(lipgloss.Color("#237500"), HueGreen300),
+		HueGreen400:  lightDark(lipgloss.Color("#2f8506"), HueGreen400),
+		HueBlue400:   lightDark(lipgloss.Color("#006bb6"), HueBlue400),
+		HueBlue700:   lightDark(lipgloss.Color("#dff2ff"), HueBlue700),
+		HueOrange400: lightDark(lipgloss.Color("#b34800"), HueOrange400),
+		HueGray300:   lightDark(lipgloss.Color("#2f3640"), HueGray300),
+		HueGray400:   lightDark(lipgloss.Color("#4f5967"), HueGray400),
+		HueGray500:   lightDark(lipgloss.Color("#697384"), HueGray500),
+		HueGray700:   lightDark(lipgloss.Color("#d9dee7"), HueGray700),
+		HueError:     lightDark(lipgloss.Color("#b00020"), lipgloss.Color("#df1b41")),
+		HueText:      lightDark(lipgloss.Color("#1f2430"), lipgloss.Color("#ffffff")),
+	}
+	t.BrandStyle = lipgloss.NewStyle().Foreground(t.HuePurple500)
+	t.SuccessStyle = lipgloss.NewStyle().Foreground(t.HueGreen400)
+	t.AttentionStyle = lipgloss.NewStyle().Foreground(t.HueOrange400)
+	t.ReviewStyle = lipgloss.NewStyle().Foreground(t.HuePurple400)
+	t.MutedStyle = lipgloss.NewStyle().Foreground(t.HueGray400)
+	t.DimmedStyle = lipgloss.NewStyle().Foreground(t.HueGray500).Italic(true)
+	t.ErrorStyle = lipgloss.NewStyle().Foreground(t.HueError)
+	t.HeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(t.HuePurple700).
+		Padding(0, 1)
+	t.ChapterTitleStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(t.HueGray300)
+	t.ChapterRuleStyle = lipgloss.NewStyle().
+		Foreground(t.HueGray700)
+	t.DetailBoxStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.HueGray700).
+		Padding(0, 1)
+	t.ReviewCardStyle = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(t.HuePurple400).
+		Padding(0, 1)
+	t.ConfirmationHeaderStyle = lipgloss.NewStyle().
+		Foreground(t.HueText).
+		Background(t.HuePurple700).
+		Bold(true).
+		Padding(0, 1)
+	t.FooterStyle = lipgloss.NewStyle().
+		Foreground(t.HueGray300)
+	t.FileAnnotationStyle = lipgloss.NewStyle().
+		Foreground(t.HueGray500).
+		Italic(true)
+	return t
+}
+
 // Semantic styles
 var (
 	BrandStyle     = lipgloss.NewStyle().Foreground(HuePurple500)
 	SuccessStyle   = lipgloss.NewStyle().Foreground(HueGreen400)
 	AttentionStyle = lipgloss.NewStyle().Foreground(HueOrange400)
-	ReviewStyle    = lipgloss.NewStyle().Foreground(HueBlue400)
+	ReviewStyle    = lipgloss.NewStyle().Foreground(HuePurple400)
 	MutedStyle     = lipgloss.NewStyle().Foreground(HueGray400)
 	DimmedStyle    = lipgloss.NewStyle().Foreground(HueGray500).Italic(true)
 	ErrorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#df1b41"))
@@ -96,12 +194,12 @@ var (
 
 	ReviewCardStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(HueBlue400).
+			BorderForeground(HuePurple400).
 			Padding(0, 1)
 
 	ConfirmationHeaderStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#ffffff")).
-				Background(HueBlue700).
+				Background(HuePurple700).
 				Bold(true).
 				Padding(0, 1)
 

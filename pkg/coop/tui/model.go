@@ -8,7 +8,7 @@ import (
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/spinner"
-	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -34,13 +34,14 @@ type Model struct {
 	userMoved         bool
 
 	rejecting       bool
-	rejectionInput  textinput.Model
+	rejectionInput  textarea.Model
 	rejectionError  string
 	statusMessage   string
 	statusExpiresAt time.Time
 
-	keys keyMap
-	help help.Model
+	keys  keyMap
+	help  help.Model
+	theme Theme
 
 	viewport viewport.Model
 	ready    bool
@@ -61,33 +62,60 @@ type Model struct {
 	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
 }
 
-func newRejectionInput() textinput.Model {
-	ti := textinput.New()
+func newThemedSpinner(t Theme) spinner.Model {
+	return spinner.New(
+		spinner.WithSpinner(spinner.MiniDot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(t.HuePurple500)),
+	)
+}
+
+func newRejectionInput() textarea.Model {
+	return newThemedRejectionInput(NewTheme(true))
+}
+
+func newThemedRejectionInput(t Theme) textarea.Model {
+	ti := textarea.New()
 	ti.Prompt = ""
 	ti.Placeholder = "Describe what to change..."
+	ti.ShowLineNumbers = false
+	ti.EndOfBufferCharacter = 0
 	ti.CharLimit = 500
+	ti.DynamicHeight = true
+	ti.MinHeight = 1
+	ti.MaxHeight = 3
+	ti.MaxContentHeight = 6
 	ti.SetVirtualCursor(false)
+	ti.SetWidth(60)
 	styles := ti.Styles()
-	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(HueGray500).Italic(true)
-	styles.Focused.Text = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff"))
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(t.HueGray500).Italic(true)
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(t.HueText)
+	styles.Focused.CursorLine = lipgloss.NewStyle()
+	styles.Focused.Base = lipgloss.NewStyle()
+	styles.Blurred = styles.Focused
 	ti.SetStyles(styles)
 	return ti
 }
 
+func (m *Model) applyTheme(isDark bool) {
+	m.isDark = isDark
+	m.theme = NewTheme(isDark)
+	m.spinner.Style = lipgloss.NewStyle().Foreground(m.theme.HuePurple500)
+	m.rejectionInput.SetStyles(newThemedRejectionInput(m.theme).Styles())
+	m.help = newThemedHelp(m.theme)
+}
+
 // NewModel creates a TUI model for a known session.
 func NewModel(store *coop.Store, sessionID string) Model {
-	s := spinner.New(
-		spinner.WithSpinner(spinner.MiniDot),
-		spinner.WithStyle(lipgloss.NewStyle().Foreground(HuePurple500)),
-	)
+	t := NewTheme(true)
 
 	return Model{
 		store:          store,
 		sessionID:      sessionID,
-		spinner:        s,
-		rejectionInput: newRejectionInput(),
+		spinner:        newThemedSpinner(t),
+		rejectionInput: newThemedRejectionInput(t),
 		keys:           newKeyMap(),
-		help:           newHelp(),
+		help:           newThemedHelp(t),
+		theme:          t,
 		isDark:         true,
 		focused:        true,
 		sdkSnippetStep: -1,
@@ -97,17 +125,15 @@ func NewModel(store *coop.Store, sessionID string) Model {
 
 // NewWaitingModel creates a TUI model that waits for a new session to appear.
 func NewWaitingModel(store *coop.Store, existingIDs map[string]bool) Model {
-	s := spinner.New(
-		spinner.WithSpinner(spinner.MiniDot),
-		spinner.WithStyle(lipgloss.NewStyle().Foreground(HuePurple500)),
-	)
+	t := NewTheme(true)
 
 	return Model{
 		store:          store,
-		spinner:        s,
-		rejectionInput: newRejectionInput(),
+		spinner:        newThemedSpinner(t),
+		rejectionInput: newThemedRejectionInput(t),
 		keys:           newKeyMap(),
-		help:           newHelp(),
+		help:           newThemedHelp(t),
+		theme:          t,
 		isDark:         true,
 		focused:        true,
 		sdkSnippetStep: -1,
@@ -246,7 +272,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case tea.BackgroundColorMsg:
-		m.isDark = msg.IsDark()
+		m.applyTheme(msg.IsDark())
+		m.resizeViewport()
+		m.syncViewport()
 		return m, nil
 
 	case tea.FocusMsg:
@@ -264,7 +292,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	var content string
 	if m.err != nil {
-		content = ErrorStyle.Render(fmt.Sprintf("Error: %s", m.err))
+		content = m.theme.ErrorStyle.Render(fmt.Sprintf("Error: %s", m.err))
 	} else if !m.ready {
 		content = m.spinner.View() + " Loading..."
 	} else if m.waiting {
@@ -344,11 +372,14 @@ func (m Model) rejectionCursor(content string) *tea.Cursor {
 		if idx < 0 {
 			continue
 		}
-		x := lipgloss.Width(plain[:idx+len(prefix)])
-		x += lipgloss.Width(m.rejectionInput.Value())
-		cursor := tea.NewCursor(x, y)
+		cursor := m.rejectionInput.Cursor()
+		if cursor == nil {
+			cursor = tea.NewCursor(0, 0)
+		}
+		cursor.X += lipgloss.Width(plain[:idx+len(prefix)])
+		cursor.Y += y
 		cursor.Shape = tea.CursorBar
-		cursor.Color = HuePurple500
+		cursor.Color = m.theme.HuePurple500
 		cursor.Blink = true
 		return cursor
 	}
@@ -372,6 +403,10 @@ func (m *Model) resizeViewport() {
 	}
 	m.viewport.SetWidth(m.width)
 	m.viewport.SetHeight(vpHeight)
+	m.viewport.YPosition = lipgloss.Height(m.renderHeader())
+	if m.rejecting {
+		m.rejectionInput.SetWidth(m.requestChangesInputWidth())
+	}
 }
 
 func (m *Model) syncViewport() {
@@ -394,6 +429,7 @@ func (m *Model) syncViewport() {
 
 func (m *Model) scrollToCursor() {
 	targetLine := m.selectedContentLine()
+	m.viewport.EnsureVisible(targetLine, 0, 0)
 
 	vpTop := m.viewport.YOffset()
 	visibleHeight := m.viewport.Height()
@@ -721,6 +757,7 @@ func (m *Model) handleConfirm() {
 	if target.kind == "chapter" && len(target.steps) > 0 {
 		m.selectStep(target.steps[0] - 1)
 	}
+	m.userMoved = false
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
 	m.rejecting = false
 	m.rejectionInput.SetValue("")
@@ -855,6 +892,7 @@ func (m *Model) handleReject(note string) {
 	if target.kind == "chapter" && len(target.steps) > 0 {
 		m.selectStep(target.steps[0] - 1)
 	}
+	m.userMoved = false
 	m.rejecting = false
 	m.rejectionInput.SetValue("")
 	m.rejectionError = ""

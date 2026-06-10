@@ -65,46 +65,7 @@ func (m Model) mouseTargets() []mouseTarget {
 }
 
 func (m Model) navigationContentLines() map[int]navigationItem {
-	result := map[int]navigationItem{}
-	if m.session == nil {
-		return result
-	}
-
-	line := 0
-	stepIdx := 0
-
-	for chIdx, ch := range m.session.Chapters {
-		chapterItem := navigationItem{kind: navigationChapter, chapterIndex: chIdx}
-		chapterSelected := m.navigationItemSelected(chapterItem)
-		line++ // blank line before chapter
-		result[line] = chapterItem
-		line++ // chapter line
-		line++ // rule line
-		if m.expanded && chapterSelected {
-			if detail := m.renderDetail(); detail != "" {
-				line += lipgloss.Height(detail)
-			}
-		}
-
-		if m.chapterCollapsed(chIdx) {
-			stepIdx += len(ch.Nodes)
-			continue
-		}
-		chapterReviewReady := m.chapterReviewReady(chIdx)
-		for _, node := range ch.Nodes {
-			stepItem := navigationItem{kind: navigationStep, stepIndex: stepIdx, chapterIndex: chIdx}
-			stepSelected := m.navigationItemSelected(stepItem)
-			result[line] = stepItem
-			line += lipgloss.Height(m.renderStepLine(node, stepIdx, chapterReviewReady, stepSelected))
-			if m.expanded && stepSelected {
-				if detail := m.renderDetail(); detail != "" {
-					line += lipgloss.Height(detail)
-				}
-			}
-			stepIdx++
-		}
-	}
-	return result
+	return m.renderStepOutline().navigationLine
 }
 
 func (m Model) completionSuggestionLines() map[int]int {

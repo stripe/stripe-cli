@@ -96,7 +96,7 @@ func (a *coopDebugAgent) run(ctx context.Context) error {
 					return err
 				}
 				if next := nextPendingStepInChapter(session, chapterIndex, step); next > 0 {
-					a.log("chapter %q still has pending work; continuing with step %d", chapter.Title, next)
+					a.log("section %q still has pending work; continuing with step %d", chapter.Title, next)
 					if err := a.startStep(next); err != nil {
 						return err
 					}
@@ -213,7 +213,7 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 		if err != nil {
 			return err
 		}
-		a.log("waiting for chapter review: %s", chapter.Title)
+		a.log("waiting for section review: %s", chapter.Title)
 		return a.awaitChapterReview(ctx, chapterIndex)
 	}
 
@@ -258,12 +258,12 @@ func (a *coopDebugAgent) awaitChapterReview(ctx context.Context, chapterIndex in
 		}
 		if active := session.FirstActiveStepInChapter(chapterIndex); active > 0 {
 			a.store.RemoveHeartbeat(a.sessionID)
-			a.log("chapter requested changes; rerunning from step %d", active)
+			a.log("section requested changes; rerunning from step %d", active)
 			return nil
 		}
 		if !session.ChapterHasReview(chapterIndex) {
 			a.store.RemoveHeartbeat(a.sessionID)
-			a.log("chapter review released")
+			a.log("section review released")
 			return nil
 		}
 	}

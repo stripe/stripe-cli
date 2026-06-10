@@ -30,7 +30,7 @@ func setupStepTest(t *testing.T) (*coop.Store, *coop.Session) {
 		Chapters: []coop.SessionChapter{
 			{
 				Key:   "ch1",
-				Title: "Chapter 1",
+				Title: "Section 1",
 				Nodes: []coop.SessionNode{
 					{Key: "n1", Title: "Step 1", State: coop.StepPending, Type: coop.NodeAPIRequest},
 					{Key: "n2", Title: "Step 2", State: coop.StepPending, Type: coop.NodeTestHelper, AutoConfirm: true},
@@ -146,7 +146,7 @@ func TestDoDoneContinuesChapterBeforeAwaitingReview(t *testing.T) {
 	})
 
 	assert.Contains(t, output, `"state": "review"`)
-	assert.Contains(t, output, "Continue the chapter")
+	assert.Contains(t, output, "Continue the section")
 	assert.Contains(t, output, `stripe coop step 2 start`)
 	assert.NotContains(t, output, `stripe coop step 1 await`)
 }
@@ -164,7 +164,7 @@ func TestDoDoneAwaitsAtDefaultChapterBoundary(t *testing.T) {
 		require.NoError(t, (&coopStepCmd{}).doDone(store, session, 3))
 	})
 
-	assert.Contains(t, output, "Chapter ready for review")
+	assert.Contains(t, output, "Section ready for review")
 	assert.Contains(t, output, "help the developer verify")
 	assert.Contains(t, output, `stripe coop step 3 await`)
 }
@@ -494,7 +494,7 @@ func setupCompletedNextStepsSession(t *testing.T) (*coop.Store, *coop.Session) {
 		Chapters: []coop.SessionChapter{
 			{
 				Key:   "ch1",
-				Title: "Chapter 1",
+				Title: "Section 1",
 				Nodes: []coop.SessionNode{
 					{Key: "n1", Title: "Step 1", State: coop.StepDone, Type: coop.NodeAPIRequest},
 					{Key: "n2", Title: "Step 2", State: coop.StepDone, Type: coop.NodeTestHelper},

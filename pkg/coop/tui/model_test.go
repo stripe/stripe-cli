@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"image/color"
 	"strings"
 	"testing"
 	"time"
@@ -369,6 +370,18 @@ func TestRejectingViewSetsRealCursor(t *testing.T) {
 	assert.Equal(t, tea.CursorBar, view.Cursor.Shape)
 }
 
+func TestBackgroundColorUpdatesTheme(t *testing.T) {
+	m := readyModel()
+	require.True(t, m.theme.IsDark)
+
+	result, _ := m.Update(tea.BackgroundColorMsg{Color: color.White})
+	updated := result.(Model)
+
+	assert.False(t, updated.theme.IsDark)
+	assert.False(t, updated.isDark)
+	assert.NotEqual(t, m.theme.HueGray300, updated.theme.HueGray300)
+}
+
 func TestUpdateKeyConfirmChapterReview(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
@@ -379,6 +392,7 @@ func TestUpdateKeyConfirmChapterReview(t *testing.T) {
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[1].State = coop.StepReview
 	m.selectChapter(0)
+	m.userMoved = true
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
@@ -388,6 +402,7 @@ func TestUpdateKeyConfirmChapterReview(t *testing.T) {
 	node2, _ := updated.session.NodeByNumber(2)
 	assert.Equal(t, coop.StepDone, node1.State)
 	assert.Equal(t, coop.StepDone, node2.State)
+	assert.False(t, updated.userMoved)
 }
 
 func TestUpdateKeyConfirmChapterReviewRequiresChapterSelection(t *testing.T) {
@@ -450,6 +465,7 @@ func TestUpdateKeyRejectChapterReview(t *testing.T) {
 	m.session.Chapters[0].Nodes[1].Implementation = &coop.Implementation{File: "checkout.js"}
 	m.session.Chapters[0].Nodes[1].Verifications = []coop.Verification{{Check: "checkout test", Passed: true}}
 	m.selectChapter(0)
+	m.userMoved = true
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
@@ -470,6 +486,7 @@ func TestUpdateKeyRejectChapterReview(t *testing.T) {
 	assert.Nil(t, node1.Verifications)
 	assert.Nil(t, node2.Verifications)
 	assert.False(t, updated.rejecting)
+	assert.False(t, updated.userMoved)
 }
 
 func TestUpdateKeyRejectCancel(t *testing.T) {

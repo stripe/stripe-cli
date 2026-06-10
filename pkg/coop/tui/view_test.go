@@ -24,13 +24,16 @@ func assertNotContainsPlain(t *testing.T, s, substr string) {
 }
 
 func testModel() Model {
+	theme := NewTheme(true)
 	m := Model{
 		width:          80,
 		height:         30,
 		sdkSnippetStep: -1,
-		rejectionInput: newRejectionInput(),
+		rejectionInput: newThemedRejectionInput(theme),
 		keys:           newKeyMap(),
-		help:           newHelp(),
+		help:           newThemedHelp(theme),
+		theme:          theme,
+		isDark:         true,
 		session: &coop.Session{
 			ID:        "test_123",
 			Blueprint: "one-time-payment",
@@ -331,7 +334,7 @@ func TestRenderFooterReviewStep(t *testing.T) {
 
 	assertContainsPlain(t, footer, "confirm")
 	assertContainsPlain(t, footer, "changes")
-	assertContainsPlain(t, footer, "Review:")
+	assertContainsPlain(t, footer, "Review")
 	assertContainsPlain(t, footer, "Agent changed")
 	assertContainsPlain(t, footer, "Confirmation steps")
 }
@@ -348,7 +351,8 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Review: Create product")
+	assertContainsPlain(t, card, "Review")
+	assertNotContainsPlain(t, card, "Review: Create product")
 	assertContainsPlain(t, card, "Agent changed:")
 	assertContainsPlain(t, card, "server.js:5-20")
 	assertContainsPlain(t, card, "Agent verified:")
@@ -359,6 +363,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	assertNotContainsPlain(t, card, "declined cards")
 	plain := ansi.Strip(card)
 	assert.Less(t, strings.Index(plain, "Confirmation steps"), strings.Index(plain, "Agent changed:"))
+	assert.Contains(t, plain, "│                                                                            │\n│ Agent changed:")
 }
 
 func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
@@ -383,7 +388,8 @@ func TestRenderChapterReviewCardNamesCoveredSteps(t *testing.T) {
 	card := m.renderReviewCard()
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, card, "Review chapter (2 steps): Set up product")
+	assertContainsPlain(t, card, "Review section")
+	assertNotContainsPlain(t, card, "Review section (2 steps): Set up product")
 	assertContainsPlain(t, card, "Includes: Create product, Create checkout")
 	assertContainsPlain(t, footer, "confirm all")
 	assertContainsPlain(t, footer, "changes")
@@ -416,7 +422,7 @@ func TestRenderFooterReviewNotice(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you")
-	assertContainsPlain(t, footer, "need review")
+	assertContainsPlain(t, footer, "review section")
 }
 
 func TestRenderCompletionView(t *testing.T) {
@@ -467,7 +473,7 @@ func TestCompletionBuiltItemsFiltersContextSkippedAndIncomplete(t *testing.T) {
 		},
 		{
 			Key:   "incomplete",
-			Title: "Incomplete chapter",
+			Title: "Incomplete section",
 			Nodes: []coop.SessionNode{
 				{Title: "Done", State: coop.StepDone},
 				{Title: "Still active", State: coop.StepActive},
@@ -755,7 +761,7 @@ func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {
 	assert.LessOrEqual(t, lipgloss.Height(view), m.height)
 	assertLinesWithinWidth(t, view, m.width)
 	assertContainsPlain(t, view, "Stripe Co-op")
-	assertContainsPlain(t, view, "Review chapter")
+	assertContainsPlain(t, view, "Review section")
 	assertContainsPlain(t, view, "q quit")
 }
 
@@ -767,7 +773,7 @@ func TestViewportShowsMoreBelowIndicator(t *testing.T) {
 	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(4))
 	m.session.Chapters = []coop.SessionChapter{{
 		Key:   "long",
-		Title: "Long chapter",
+		Title: "Long section",
 		Nodes: []coop.SessionNode{
 			{Title: "One", State: coop.StepDone},
 			{Title: "Two", State: coop.StepDone},
@@ -811,8 +817,8 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 	assertLinesWithinWidth(t, rendered, m.width)
 }
 
-func TestClippedDetailBoxDoesNotTurnTopBorderIntoBottomBorder(t *testing.T) {
-	rendered := closeClippedDetailBox("before\n  ╭────────╮")
+func TestViewportBoundaryDoesNotTurnTopBorderIntoBottomBorder(t *testing.T) {
+	rendered := closeOpenBoxAtViewportBoundary("before\n  ╭────────╮")
 
 	assert.Contains(t, rendered, "╭")
 	assert.NotContains(t, rendered, "╰")
