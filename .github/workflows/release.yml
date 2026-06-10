@@ -10,7 +10,14 @@ permissions:
   id-token: write # Required for OIDC to npm
 
 jobs:
+  approve-release:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - run: echo "Release approved, proceeding."
+
   canary-tests:
+    needs: [approve-release]
     uses: ./.github/workflows/canary-test.yml
     with:
       run_api_tests: true
