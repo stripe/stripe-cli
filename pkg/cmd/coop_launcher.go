@@ -9,6 +9,7 @@ import (
 
 	"charm.land/huh/v2"
 	"github.com/google/uuid"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 	"github.com/stripe/stripe-cli/pkg/coop/tui"
@@ -20,6 +21,11 @@ type agentInfo struct {
 }
 
 type coopPaneCommandBuilder func(sessionID string) (string, func(), error)
+
+const (
+	defaultCoopTmuxSessionWidth  = 200
+	defaultCoopTmuxSessionHeight = 50
+)
 
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	if rc.agent != "" {
@@ -247,7 +253,8 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 		return err
 	}
 
-	create := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-x", "200", "-y", "50",
+	width, height := coopTmuxSessionDimensions()
+	create := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
 		"bash", "-c", tuiCmd)
 	if err := create.Run(); err != nil {
 		if cleanup != nil {
@@ -272,6 +279,18 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	attach.Stdout = os.Stdout
 	attach.Stderr = os.Stderr
 	return attach.Run()
+}
+
+func coopTmuxSessionDimensions() (int, int) {
+	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+	return normalizeCoopTmuxSessionDimensions(width, height, err)
+}
+
+func normalizeCoopTmuxSessionDimensions(width, height int, err error) (int, int) {
+	if err != nil || width <= 0 || height <= 0 {
+		return defaultCoopTmuxSessionWidth, defaultCoopTmuxSessionHeight
+	}
+	return width, height
 }
 
 func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
