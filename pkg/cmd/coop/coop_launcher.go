@@ -198,7 +198,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 	}
 
 	if blueprintID != "" {
-		return runCoopTUI(store, sessionID)
+		return tui.Run(store, sessionID)
 	}
 
 	return runCoopTUIWait(store)

@@ -87,7 +87,7 @@ func (jc *coopJoinCmd) runJoinCmd(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 	}
 
-	return runCoopTUI(store, session.ID)
+	return tui.Run(store, session.ID)
 }
 
 func (jc *coopJoinCmd) pickSession(store *coop.Store) (*coop.Session, error) {
