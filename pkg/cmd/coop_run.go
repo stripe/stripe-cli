@@ -167,7 +167,7 @@ Each step has a description that tells you what to do. Follow the description �
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). Report the output.
 - "testHelper": Verify something works end-to-end. Run the flow and confirm the expected outcome.
 
-If a step includes review_prompt, that is what the human will use as the acceptance check. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields.
+If a step includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
 Step 1 is always "Understand the project" — scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining steps to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
@@ -181,7 +181,7 @@ Step lifecycle commands (use this session id: %s):
 7. If confirmed: move to next step. If rejected: redo the affected step (check the message for feedback).
 8. When the final step is confirmed: IMMEDIATELY run "stripe coop next-steps --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
 
-Chapters are the default human-review unit. Build and verify each step one at a time, but do not interrupt the developer for every step. At the end of each chapter, before running await, help the developer verify the chapter: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm.
+Chapters are the default human-review unit. Build and verify each step one at a time, but do not interrupt the developer for every step. At the end of each chapter, before running await, help the developer verify the chapter: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop step <n> verify --check="..." --passed so the review card has useful evidence.
 
 The "await" command is critical at chapter boundaries — it blocks until the developer acts. Do NOT proceed to the next chapter without running await when the step response tells you the chapter is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected step.
 

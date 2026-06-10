@@ -55,6 +55,9 @@ var (
 	HueGreen300 = lipgloss.Color("#48c404")
 	HueGreen400 = lipgloss.Color("#3fa40d")
 
+	HueBlue400 = lipgloss.Color("#00a3ff")
+	HueBlue700 = lipgloss.Color("#0b3a5b")
+
 	HueOrange400 = lipgloss.Color("#ed6704")
 
 	HueGray300 = lipgloss.Color("#a3acba")
@@ -68,6 +71,7 @@ var (
 	BrandStyle     = lipgloss.NewStyle().Foreground(HuePurple500)
 	SuccessStyle   = lipgloss.NewStyle().Foreground(HueGreen400)
 	AttentionStyle = lipgloss.NewStyle().Foreground(HueOrange400)
+	ReviewStyle    = lipgloss.NewStyle().Foreground(HueBlue400)
 	MutedStyle     = lipgloss.NewStyle().Foreground(HueGray400)
 	DimmedStyle    = lipgloss.NewStyle().Foreground(HueGray500).Italic(true)
 	ErrorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#df1b41"))
@@ -92,8 +96,14 @@ var (
 
 	ReviewCardStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(HueOrange400).
+			BorderForeground(HueBlue400).
 			Padding(0, 1)
+
+	ConfirmationHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#ffffff")).
+				Background(HueBlue700).
+				Bold(true).
+				Padding(0, 1)
 
 	FooterStyle = lipgloss.NewStyle().
 			Foreground(HueGray300)

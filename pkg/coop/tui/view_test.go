@@ -121,7 +121,7 @@ func TestRenderStepListShowsChapterReviewUnit(t *testing.T) {
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "Awaiting review (2 steps)")
+	assertContainsPlain(t, list, "Awaiting review")
 	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
 	assertContainsPlain(t, list, "Create product  Included")
 	assertContainsPlain(t, list, "Create checkout  Included")
@@ -136,7 +136,7 @@ func TestRenderStepListShowsSingleStepChapterReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, list, "Awaiting review (1 step)")
+	assertContainsPlain(t, list, "Awaiting review")
 	assertContainsPlain(t, footer, "confirm all")
 }
 
@@ -341,8 +341,8 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	m.session.Chapters[0].Nodes[0].State = coop.StepReview
 	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Confirm Checkout uses the saved price ID."
 	m.session.Chapters[0].Nodes[0].Verifications = []coop.Verification{
-		{Check: "unit test", Passed: true},
-		{Check: "manual test", Passed: false},
+		{Check: "Visit http://localhost:3000/checkout, click Pay, and confirm Checkout opens with the saved price.", Passed: true},
+		{Check: "Confirm the failure banner appears for declined cards.", Passed: false},
 	}
 	m.cursor = 0
 
@@ -353,7 +353,23 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	assertContainsPlain(t, card, "server.js:5-20")
 	assertContainsPlain(t, card, "Agent verified:")
 	assertContainsPlain(t, card, "1/2 check(s) passed")
-	assertContainsPlain(t, card, "Confirmation steps:")
+	assertContainsPlain(t, card, "Confirmation steps")
+	assertContainsPlain(t, card, "Visit http://localhost:3000/checkout")
+	assertNotContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
+	assertNotContainsPlain(t, card, "declined cards")
+	plain := ansi.Strip(card)
+	assert.Less(t, strings.Index(plain, "Confirmation steps"), strings.Index(plain, "Agent changed:"))
+}
+
+func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
+	m := testModel()
+	m.session.Chapters[0].Nodes[0].State = coop.StepReview
+	m.session.Chapters[0].Nodes[0].ReviewPrompt = "Confirm Checkout uses the saved price ID."
+	m.cursor = 0
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Confirmation steps")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 

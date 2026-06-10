@@ -160,8 +160,8 @@ func (m Model) renderChapterLine(ch coop.SessionChapter, chapterIndex int, selec
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
 	line := prefix + MutedStyle.Render(disclosure) + ChapterTitleStyle.Render(title)
-	if count := m.chapterReviewCount(chapterIndex); count > 0 {
-		line += "  " + AttentionStyle.Render(fmt.Sprintf("Awaiting review (%s)", formatStepCount(count)))
+	if m.chapterReviewCount(chapterIndex) > 0 {
+		line += "  " + ReviewStyle.Render("Awaiting review")
 	}
 	if m.chapterCollapsed(chapterIndex) {
 		if summary := m.collapsedChapterSummary(chapterIndex); summary != "" {
@@ -672,6 +672,25 @@ func chapterChangedFiles(ch *coop.SessionChapter) string {
 }
 
 func chapterConfirmationSteps(ch *coop.SessionChapter) string {
+	var agentChecks []string
+	seenAgentCheck := map[string]bool{}
+	for _, node := range ch.Nodes {
+		for _, verification := range node.Verifications {
+			check := strings.TrimSpace(verification.Check)
+			if !verification.Passed || check == "" || seenAgentCheck[check] {
+				continue
+			}
+			seenAgentCheck[check] = true
+			if node.Title != "" {
+				check = node.Title + ": " + check
+			}
+			agentChecks = append(agentChecks, check)
+		}
+	}
+	if len(agentChecks) > 0 {
+		return strings.Join(agentChecks, " ")
+	}
+
 	var checks []string
 	for _, node := range ch.Nodes {
 		if node.ReviewPrompt != "" {
@@ -1032,7 +1051,12 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if target.kind == "chapter" {
 		prefix = fmt.Sprintf("Review chapter (%s)", formatStepCount(len(target.steps)))
 	}
-	lines = append(lines, BrandStyle.Render(cursorMarker)+AttentionStyle.Render(prefix+": ")+target.title)
+	lines = append(lines, BrandStyle.Render(cursorMarker)+ReviewStyle.Render(prefix+": ")+target.title)
+	check := m.reviewPromptLabel(target.steps)
+	if check != "" {
+		lines = append(lines, ConfirmationHeaderStyle.Render("Confirmation steps"))
+		lines = append(lines, check)
+	}
 	if target.kind == "chapter" {
 		if included := m.reviewStepTitleLabel(target.steps); included != "" {
 			lines = append(lines, MutedStyle.Render("Includes: ")+included)
@@ -1043,10 +1067,6 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 	if verified := m.reviewVerificationLabel(target.steps); verified != "" {
 		lines = append(lines, MutedStyle.Render("Agent verified: ")+verified)
-	}
-	check := m.reviewPromptLabel(target.steps)
-	if check != "" {
-		lines = append(lines, MutedStyle.Render("Confirmation steps: ")+check)
 	}
 	if command := m.reviewCommandLabel(target.steps); command != "" {
 		lines = append(lines, MutedStyle.Render("Run: ")+command)
@@ -1064,7 +1084,9 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 
 	var wrapped []string
 	for _, line := range lines {
-		wrapped = append(wrapped, strings.Split(wordWrap(line, w-4), "\n")...)
+		for _, segment := range strings.Split(line, "\n") {
+			wrapped = append(wrapped, strings.Split(wordWrap(segment, w-4), "\n")...)
+		}
 	}
 	if maxHeight > 0 {
 		maxContentLines := maxHeight - 2
@@ -1298,6 +1320,40 @@ func (m Model) reviewStepTitleLabel(steps []int) string {
 }
 
 func (m Model) reviewPromptLabel(steps []int) string {
+	if agentChecks := m.reviewAgentConfirmationLabel(steps); agentChecks != "" {
+		return agentChecks
+	}
+	if blueprintChecks := m.reviewBlueprintConfirmationLabel(steps); blueprintChecks != "" {
+		return blueprintChecks
+	}
+	return "Confirm the completed work matches this step and its verification evidence."
+}
+
+func (m Model) reviewAgentConfirmationLabel(steps []int) string {
+	var checks []string
+	seen := map[string]bool{}
+	showStepTitle := len(steps) > 1
+	for _, step := range steps {
+		node, err := m.session.NodeByNumber(step)
+		if err != nil {
+			continue
+		}
+		for _, verification := range node.Verifications {
+			check := strings.TrimSpace(verification.Check)
+			if !verification.Passed || check == "" || seen[check] {
+				continue
+			}
+			seen[check] = true
+			if showStepTitle && node.Title != "" {
+				check = node.Title + ": " + check
+			}
+			checks = append(checks, check)
+		}
+	}
+	return reviewConfirmationSummary(checks, 3)
+}
+
+func (m Model) reviewBlueprintConfirmationLabel(steps []int) string {
 	var prompts []string
 	seen := map[string]bool{}
 	for _, step := range steps {
@@ -1308,13 +1364,17 @@ func (m Model) reviewPromptLabel(steps []int) string {
 		seen[node.ReviewPrompt] = true
 		prompts = append(prompts, node.ReviewPrompt)
 	}
-	if len(prompts) == 0 {
-		return "Confirm the completed work matches this step and its verification evidence."
+	return reviewConfirmationSummary(prompts, 2)
+}
+
+func reviewConfirmationSummary(checks []string, limit int) string {
+	if len(checks) == 0 {
+		return ""
 	}
-	if len(prompts) > 2 {
-		return strings.Join(prompts[:2], " ") + " Open details for the remaining checks."
+	if len(checks) > limit {
+		return strings.Join(checks[:limit], "\n") + fmt.Sprintf("\nOpen details for %d more check(s).", len(checks)-limit)
 	}
-	return strings.Join(prompts, " ")
+	return strings.Join(checks, "\n")
 }
 
 func (m Model) reviewCommandLabel(steps []int) string {
