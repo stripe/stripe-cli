@@ -26,9 +26,14 @@ func isStdoutTTY(cmd *cobra.Command) bool {
 func (r *RootCommand) newSearchCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "search <query>",
-		Short: "Search on docs.stripe.com from the terminal",
-		Example: `  stripe docs search "Payment methods"
-  stripe docs search "API keys"`,
+		Short: "Search docs.stripe.com from the terminal",
+		Long: `Search docs.stripe.com from the terminal.
+
+Search by keyword or phrase:
+
+  docs search "payment methods"
+  docs search "API keys"
+  docs search "dispute evidence"`,
 		Args: cobra.ArbitraryArgs,
 		RunE: r.runSearch,
 	}

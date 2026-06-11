@@ -20,6 +20,13 @@ func (r *RootCommand) newSkillsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skills",
 		Short: "Manage agent skills for docs.stripe.com",
+		Long: `Manage agent skills from docs.stripe.com.
+
+Agent skills are instructions that help agents create more accurate Stripe integrations.
+
+List available skills:
+
+  docs skills list`,
 	}
 	cmd.AddCommand(r.newSkillsListCommand())
 	return cmd
@@ -29,8 +36,13 @@ func (r *RootCommand) newSkillsListCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List available agent skills from docs.stripe.com",
-		Args:  cobra.NoArgs,
-		RunE:  r.runSkillsList,
+		Long: `List agent skills available from docs.stripe.com.
+
+Skills are hosted at docs.stripe.com and available from agent marketplaces.
+
+  docs skills list`,
+		Args: cobra.NoArgs,
+		RunE: r.runSkillsList,
 	}
 }
 
