@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	zkr "github.com/zalando/go-keyring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	zkr "github.com/zalando/go-keyring"
 )
 
 // secretServiceAvailable returns true if the OS keyring backend is usable.
