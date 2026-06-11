@@ -1,4 +1,4 @@
-package cmd_test
+package docs_test
 
 import (
 	"bytes"
@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	"github.com/stripe/stripe-cli-docs-plugin/cmd"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
+	"github.com/stripe/stripe-cli/internal/docs"
 )
 
 func stripANSI(s string) string {

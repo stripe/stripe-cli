@@ -1,4 +1,4 @@
-package cmd_test
+package docs_test
 
 import (
 	"bytes"
@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	"github.com/stripe/stripe-cli-docs-plugin/cmd"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/markdown"
 )
 
 func TestNew(t *testing.T) {
@@ -219,15 +219,3 @@ func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
 	assert.Contains(t, out.String(), "Payments")
 }
 
-func TestVersionCommand(t *testing.T) {
-	root := cmd.New().WithOptions(cmd.WithVersion("0.0.1")).Root()
-
-	out := new(bytes.Buffer)
-	root.SetOut(out)
-	root.SetArgs([]string{"version"})
-
-	err := root.Execute()
-
-	assert.NoError(t, err)
-	assert.Equal(t, "stripe docs version 0.0.1\n", out.String())
-}

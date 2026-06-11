@@ -1,4 +1,4 @@
-package cmd_test
+package docs_test
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli-docs-plugin/cmd"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/markdown"
 )
 
 func TestAPICommand_MissingArgs(t *testing.T) {

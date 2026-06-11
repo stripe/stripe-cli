@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra/doc"
-	"github.com/stripe/stripe-cli-docs-plugin/cmd"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 )
 
 func main() {

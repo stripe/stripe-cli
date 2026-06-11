@@ -1,4 +1,4 @@
-package cmd
+package docs
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
+	"github.com/stripe/stripe-cli/internal/ui"
 )
 
 // errAPINotFound indicates a failed API reference lookup.

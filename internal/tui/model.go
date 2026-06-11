@@ -14,10 +14,10 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/joelzwarrington/foam/palette"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/browser"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
+	"github.com/stripe/stripe-cli/internal/browser"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/internal/ui"
 )
 
 const (

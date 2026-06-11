@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/stripe/stripe-cli-docs-plugin/internal/agentskills"
+	"github.com/stripe/stripe-cli/internal/agentskills"
 )
 
 const defaultBaseURL = "https://docs.stripe.com"

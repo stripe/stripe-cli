@@ -1,4 +1,4 @@
-package cmd
+package docs
 
 import (
 	"fmt"
@@ -13,14 +13,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/version"
 	"golang.org/x/term"
 
-	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/markdown"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/tui"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
+	"github.com/stripe/stripe-cli/internal/agent"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/internal/pager"
+	"github.com/stripe/stripe-cli/internal/tui"
+	"github.com/stripe/stripe-cli/internal/ui"
 )
 
 const colorValueOff = "off"
@@ -36,7 +37,6 @@ type RootCommand struct {
 	rendererOpts []markdown.RendererOption
 	logger       *slog.Logger
 
-	version string
 	noPager bool
 	noTUI   bool
 }
@@ -118,23 +118,7 @@ Read API Reference pages by their identifier:
 	skillsCmd.GroupID = agent.ID
 	r.cmd.AddCommand(skillsCmd)
 
-	r.cmd.AddCommand(&cobra.Command{
-		Use:                "version",
-		Short:              "Print the docs plugin version",
-		DisableFlagParsing: true,
-		Run: func(cmd *cobra.Command, _ []string) {
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "stripe docs version %s\n", r.version)
-		},
-	})
-
 	return r
-}
-
-// WithVersion sets the plugin version displayed by the version subcommand.
-func WithVersion(v string) Option {
-	return func(r *RootCommand) {
-		r.version = v
-	}
 }
 
 // WithOptions applies the given options to the RootCommand.
@@ -156,7 +140,7 @@ func (r *RootCommand) initClient() {
 		}
 		return
 	}
-	r.client = docs.NewClient(r.version)
+	r.client = docs.NewClient(version.Version)
 	var clientOpts []docs.ClientOption
 	if a := agent.Detect(); a != agent.NotDetected {
 		clientOpts = append(clientOpts, docs.WithAgent(string(a)))
@@ -211,7 +195,7 @@ func (r *RootCommand) initLogger() {
 			Level:  level,
 			Prefix: "docs",
 		})
-		r.logger = slog.New(handler).With("version", r.version)
+		r.logger = slog.New(handler).With("version", version.Version)
 	}
 	if r.logger != nil && r.client != nil {
 		r.client.WithOptions(docs.WithLogger(r.logger))

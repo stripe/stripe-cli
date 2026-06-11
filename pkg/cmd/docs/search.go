@@ -1,4 +1,4 @@
-package cmd
+package docs
 
 import (
 	"fmt"
@@ -9,12 +9,12 @@ import (
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/list"
 	"github.com/spf13/cobra"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/agent"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/docs"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/pager"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/spinner"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/tui"
-	"github.com/stripe/stripe-cli-docs-plugin/internal/ui"
+	"github.com/stripe/stripe-cli/internal/agent"
+	"github.com/stripe/stripe-cli/internal/docs"
+	"github.com/stripe/stripe-cli/internal/pager"
+	"github.com/stripe/stripe-cli/internal/spinner"
+	"github.com/stripe/stripe-cli/internal/tui"
+	"github.com/stripe/stripe-cli/internal/ui"
 	"golang.org/x/term"
 )
 
