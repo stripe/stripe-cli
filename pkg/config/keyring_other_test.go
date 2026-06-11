@@ -3,7 +3,6 @@
 package config
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,16 +11,11 @@ import (
 )
 
 // secretServiceAvailable returns true if the OS keyring backend is usable.
-// On Linux CI (no D-Bus), zalando/go-keyring returns a D-Bus error rather
-// than ErrNotFound.
+// On Linux CI (no D-Bus), zalando/go-keyring returns errors other than
+// ErrNotFound when the secret service is unavailable.
 func secretServiceAvailable() bool {
 	_, err := zkr.Get("stripe-cli-probe", "probe")
-	if err == nil || err == zkr.ErrNotFound {
-		return true
-	}
-	return !strings.Contains(err.Error(), "dbus") &&
-		!strings.Contains(err.Error(), "DBus") &&
-		!strings.Contains(err.Error(), "service_unknown")
+	return err == nil || err == zkr.ErrNotFound
 }
 
 func TestZalandoStoreGetNotFound(t *testing.T) {
