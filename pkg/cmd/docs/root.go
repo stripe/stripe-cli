@@ -71,17 +71,53 @@ func New() *RootCommand {
 
 	r.cmd = &cobra.Command{
 		Use:   "docs <path>",
-		Short: "Search, browse, and read docs.stripe.com documentation from the terminal",
-		Example: `  stripe docs /payments
-  stripe docs /connect/accounts
-  stripe docs /api/customers`,
+		Short: "Browse docs.stripe.com from the terminal",
+		Long: `Browse docs.stripe.com from the terminal.
+
+Read a page by path:
+
+  docs /payments
+  docs /api/customers
+
+Search documentation by keywords:
+
+  docs search "payment intents"
+
+Read API Reference pages by their identifier:
+
+  docs api product
+  docs api GET /v1/products
+  docs api product.created`,
 		Args:              cobra.ArbitraryArgs,
 		PersistentPreRunE: r.preRun,
 		RunE:              r.run,
 		SilenceUsage:      true,
 	}
-	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", false, "Do not pipe output through a pager")
-	r.cmd.PersistentFlags().BoolVar(&r.noTUI, "no-tui", false, "Do not use the interactive TUI")
+
+	agentDetected := agent.Detect() != agent.NotDetected
+	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
+	r.cmd.PersistentFlags().BoolVar(&r.noTUI, "no-tui", agentDetected, "Write output directly without the interactive browser")
+
+	docs := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
+	agent := &cobra.Group{ID: "agent", Title: "Agent Commands:"}
+
+	r.cmd.AddGroup(
+		docs,
+		agent,
+	)
+
+	searchCmd := r.newSearchCommand()
+	searchCmd.GroupID = docs.ID
+	r.cmd.AddCommand(searchCmd)
+
+	apiCmd := r.newAPICmd()
+	apiCmd.GroupID = docs.ID
+	r.cmd.AddCommand(apiCmd)
+
+	skillsCmd := r.newSkillsCommand()
+	skillsCmd.GroupID = agent.ID
+	r.cmd.AddCommand(skillsCmd)
+
 	r.cmd.AddCommand(&cobra.Command{
 		Use:                "version",
 		Short:              "Print the docs plugin version",
@@ -90,9 +126,7 @@ func New() *RootCommand {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "stripe docs version %s\n", r.version)
 		},
 	})
-	r.cmd.AddCommand(r.newSearchCommand())
-	r.cmd.AddCommand(r.newAPICmd())
-	r.cmd.AddCommand(r.newSkillsCommand())
+
 	return r
 }
 
@@ -154,7 +188,6 @@ func (r *RootCommand) initRenderer() {
 	default:
 		if agent.Detect() != agent.NotDetected {
 			opts = append(opts, markdown.WithStyle("notty"))
-			r.noPager = true
 		}
 	}
 	r.rendererOpts = opts

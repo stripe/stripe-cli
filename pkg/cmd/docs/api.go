@@ -28,12 +28,22 @@ func (r *RootCommand) newAPICmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "api <method|resource|event>",
 		Short: "Look up Stripe API reference documentation",
-		Long: `Look up Stripe API reference documentation by HTTP method+path, resource name, or event type.
+		Long: `Look up Stripe API reference documentation by resource name, HTTP method and path, or event type.
 
-Examples:
-  stripe docs api GET /v1/products
-  stripe docs api product
-  stripe docs api product.created`,
+Look up by resource name:
+
+  docs api product
+  docs api customer
+
+Look up by HTTP method and path:
+
+  docs api GET /v1/products
+  docs api POST /v1/products/{id}
+
+Look up by event type:
+
+  docs api charge.succeeded
+  docs api payment_intent.created`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: r.runAPI,
 	}
