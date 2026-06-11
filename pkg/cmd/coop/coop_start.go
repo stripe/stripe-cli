@@ -41,7 +41,7 @@ splits the current window. Otherwise creates a new tmux session.`,
 	rc.cmd.Flags().StringArrayVar(&rc.settings, "setting", nil, "Blueprint settings as key=value pairs")
 	rc.cmd.Flags().StringVar(&rc.agent, "agent", "", "Agent to use (default: auto-detect claude/codex)")
 	rc.cmd.Flags().BoolVar(&rc.debugAgent, "debug-agent", false, "Use a deterministic fake agent for local TUI debugging")
-	rc.cmd.Flags().MarkHidden("debug-agent") //nolint:gosec
+	mustMarkFlagHidden(rc.cmd, "debug-agent")
 
 	return rc
 }

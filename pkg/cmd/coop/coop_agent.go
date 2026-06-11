@@ -170,15 +170,15 @@ func newCoopAgentNextActionCmd() *coopAgentActionCmd {
 	}
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
 	c.cmd.Flags().StringVar(&c.completed, "completed", "", "Mark a next action as completed")
-	c.cmd.MarkFlagRequired("session") //nolint:gosec
+	mustMarkFlagRequired(c.cmd, "session")
 	return c
 }
 
 func (c *coopAgentActionCmd) addSessionStepFlags() {
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
 	c.cmd.Flags().IntVar(&c.step, "step", 0, "1-based step number")
-	c.cmd.MarkFlagRequired("session") //nolint:gosec
-	c.cmd.MarkFlagRequired("step")    //nolint:gosec
+	mustMarkFlagRequired(c.cmd, "session")
+	mustMarkFlagRequired(c.cmd, "step")
 }
 
 func (c *coopAgentActionCmd) readWorkFromStdin() error {

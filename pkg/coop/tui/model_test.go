@@ -167,7 +167,10 @@ func TestUpdateMouseClickOpensClaimURL(t *testing.T) {
 	m.session.ClaimURL = "https://dashboard.stripe.com/sandbox/claim_abc"
 	var opened string
 	oldOpen := openBrowserFn
-	openBrowserFn = func(url string) { opened = url }
+	openBrowserFn = func(url string) error {
+		opened = url
+		return nil
+	}
 	t.Cleanup(func() { openBrowserFn = oldOpen })
 
 	result, _ := m.Update(tea.MouseClickMsg(tea.Mouse{Y: 1, Button: tea.MouseLeft}))
@@ -839,7 +842,10 @@ func TestNewWaitingModel(t *testing.T) {
 func TestHandleKeyOpenBrowser(t *testing.T) {
 	orig := openBrowserFn
 	var opened string
-	openBrowserFn = func(url string) { opened = url }
+	openBrowserFn = func(url string) error {
+		opened = url
+		return nil
+	}
 	defer func() { openBrowserFn = orig }()
 
 	m := readyModel()

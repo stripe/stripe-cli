@@ -32,7 +32,7 @@ func newCoopDebugAgentCmd() *coopDebugAgentCmd {
 
 	dc.cmd.Flags().StringVar(&dc.session, "session", "", "Session ID to drive")
 	dc.cmd.Flags().DurationVar(&dc.delay, "delay", dc.delay, "Delay between active and review states")
-	dc.cmd.Flags().MarkHidden("delay") //nolint:gosec
+	mustMarkFlagHidden(dc.cmd, "delay")
 
 	return dc
 }

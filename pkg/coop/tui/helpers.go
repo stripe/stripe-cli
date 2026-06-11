@@ -2,29 +2,18 @@ package tui
 
 import (
 	"fmt"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/stripe/stripe-cli/pkg/open"
 )
 
-var openBrowserFn = openBrowserDefault
+var openBrowserFn = open.Browser
 
 func openBrowser(url string) {
-	openBrowserFn(url)
-}
-
-func openBrowserDefault(url string) {
-	switch runtime.GOOS {
-	case "darwin":
-		exec.Command("open", url).Start() //nolint:gosec
-	case "linux":
-		exec.Command("xdg-open", url).Start() //nolint:gosec
-	case "windows":
-		exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start() //nolint:gosec
-	}
+	_ = openBrowserFn(url)
 }
 
 func (m Model) contentWidth() int {
