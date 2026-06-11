@@ -194,7 +194,8 @@ func Execute(ctx context.Context) {
 
 func loginRequiredAgentHint() string {
 	return "  To get API keys instantly: run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>`.\n" +
-		"  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.\n"
+		"  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.\n" +
+		"  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).\n"
 }
 
 func apiKeyExpiredMessage(profileName string) string {
