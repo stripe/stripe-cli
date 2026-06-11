@@ -1,0 +1,4 @@
+.projects/
+.env
+.env.*
+.env.test
