@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -128,6 +130,9 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+		if useragent.DetectAIAgent(os.Getenv) != "" {
+			fmt.Fprintln(os.Stderr, "Tip: to get API keys without browser auth, run `stripe sandbox create --from-git` instead.")
+		}
 		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
 	}
 
