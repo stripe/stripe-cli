@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -168,11 +167,8 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{
-		{
-			Key:  "test.live_mode_api_key",
-			Data: []byte("rk_live_0000000001"),
-		},
+	KeyRing = NewMemoryStore(map[string][]byte{
+		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
 
 	v := viper.New()
@@ -205,7 +201,7 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	KeyRing = NewMemoryStore(nil)
 
 	v := viper.New()
 
@@ -216,14 +212,11 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 	err = p.CreateProfile()
 	require.NoError(t, err)
 
-	item, err := KeyRing.Get("test.live_mode_api_key")
+	data, err := KeyRing.Get("test.live_mode_api_key")
 	require.NoError(t, err)
-	require.Equal(t, keyring.Item{
-		Key:         "test.live_mode_api_key",
-		Data:        []byte("rk_live_0000000001"),
-		Label:       "test.live_mode_api_key",
-		Description: "Live mode API key",
-	}, item)
+	require.Equal(t, []byte("rk_live_0000000001"), data)
+
+	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
@@ -242,11 +235,8 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{
-		{
-			Key:  "test.live_mode_api_key",
-			Data: []byte("rk_live_0000000001"),
-		},
+	KeyRing = NewMemoryStore(map[string][]byte{
+		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
 
 	v := viper.New()
@@ -258,14 +248,11 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 	err = p.CreateProfile()
 	require.NoError(t, err)
 
-	item, err := KeyRing.Get("test.live_mode_api_key")
+	data, err := KeyRing.Get("test.live_mode_api_key")
 	require.NoError(t, err)
-	require.Equal(t, keyring.Item{
-		Key:         "test.live_mode_api_key",
-		Data:        []byte("rk_live_0000000002"),
-		Label:       "test.live_mode_api_key",
-		Description: "Live mode API key",
-	}, item)
+	require.Equal(t, []byte("rk_live_0000000002"), data)
+
+	cleanUp(c.ProfilesFile)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
@@ -275,4 +262,8 @@ func helperLoadBytes(t *testing.T, name string) []byte {
 	}
 
 	return bytes
+}
+
+func cleanUp(file string) {
+	os.Remove(file)
 }

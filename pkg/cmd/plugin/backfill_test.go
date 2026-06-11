@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -88,7 +87,7 @@ func setupPluginCommandTest(t *testing.T) (*config.Config, afero.Fs, func()) {
 	}
 	cfg.InitConfig()
 	cfg.Profile.APIKey = "rk_test_11111111111111111111111111"
-	config.KeyRing = keyring.NewArrayKeyring(nil)
+	config.KeyRing = config.NewMemoryStore(nil)
 
 	return cfg, afero.NewMemMapFs(), func() {
 		viper.Reset()

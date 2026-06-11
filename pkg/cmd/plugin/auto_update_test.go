@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +22,7 @@ func setupAutoUpdateTest(t *testing.T) (*config.Config, func()) {
 		Profile:      config.Profile{ProfileName: "default"},
 	}
 	cfg.InitConfig()
-	config.KeyRing = keyring.NewArrayKeyring(nil)
+	config.KeyRing = config.NewMemoryStore(nil)
 
 	return cfg, func() {
 		viper.Reset()

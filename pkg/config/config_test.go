@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/99designs/keyring"
-	"github.com/spf13/viper"
+		"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +35,7 @@ func setupTestConfig(t *testing.T) (*Config, string, func()) {
 		},
 	}
 	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	KeyRing = NewMemoryStore(nil)
 
 	cleanup := func() {
 		viper.Reset()

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -31,7 +30,7 @@ func setupInteractiveLoginConfig(t *testing.T) (*config.Config, func()) {
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = config.NewMemoryStore(nil)
 	cleanup := func() {
 		os.Remove(profilesFile)
 	}

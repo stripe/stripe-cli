@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -179,14 +178,8 @@ func (c *Config) InitConfig() {
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
 	}
 
-	// initialize key ring
-	KeyRing, err = keyring.Open(getKeyringConfig())
-	if err != nil {
-		log.WithFields(log.Fields{
-			"prefix": "config.Config.InitConfig",
-			"error":  err,
-		}).Warn("Failed to initialize keyring")
-	}
+	// initialize secure credential store
+	KeyRing = newSecureStore()
 
 	// redact livemode values for existing configs
 	c.Profile.redactAllLivemodeValues()
@@ -451,17 +444,11 @@ func (c *Config) RemoveAllAuthFields() error {
 
 func deleteLivemodeKey(key string, profile string) error {
 	fieldID := profile + "." + key
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return err
+	err := KeyRing.Remove(fieldID)
+	if err == ErrKeyNotFound {
+		return nil
 	}
-	for _, item := range existingKeys {
-		if item == fieldID {
-			KeyRing.Remove(fieldID)
-			return nil
-		}
-	}
-	return nil
+	return err
 }
 
 func deleteTopLevelLivemodeKey(key string) error {

@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +37,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	Config.Profile.ProfileName = "default"
 	Config.Profile.TestModeAPIKey = ""
 	Config.InitConfig()
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = config.NewMemoryStore(nil)
 
 	// Mock browser to prevent real browser launches
 	origOpen := openBrowserFunc

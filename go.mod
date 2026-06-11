@@ -49,6 +49,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/joho/godotenv v1.5.1
 	github.com/yuin/goldmark v1.2.1
+	github.com/zalando/go-keyring v0.2.8
 )
 
 require (
@@ -63,6 +64,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
+	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect

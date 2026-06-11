@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -79,8 +77,8 @@ const (
 	KeyManagementService = "StripeCLI"
 )
 
-// KeyRing ...
-var KeyRing keyring.Keyring
+// KeyRing is the global secure credential store.
+var KeyRing SecureStore
 
 func isWSLFromVersion(procVersion string) bool {
 	lower := strings.ToLower(procVersion)
@@ -115,24 +113,6 @@ func wslFilePassword(_ string) (string, error) {
 	return wslFilePasswordFromPaths("/etc/machine-id", "/proc/sys/kernel/random/boot_id")
 }
 
-func getKeyringConfig() keyring.Config {
-	c := keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-	}
-
-	if runtime.GOOS == "linux" {
-		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		c.FilePasswordFunc = wslFilePassword
-		if isWSL() {
-			c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
-		} else {
-			c.AllowedBackends = []keyring.BackendType{keyring.SecretServiceBackend, keyring.FileBackend}
-		}
-	}
-
-	return c
-}
 
 // authFieldNames are the config fields that are removed on login/logout.
 // Non-auth fields like "color" are preserved.
@@ -343,7 +323,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		p.redactAllLivemodeValues()
 		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
-			return "", err
+			return "", errors.New("your live mode API key needs to be re-configured. Run `stripe login --live` to re-authenticate")
 		}
 	}
 
@@ -622,46 +602,27 @@ func getKeyExpiresAt() string {
 // saveLivemodeValue saves livemode value of given key in keyring
 func (p *Profile) saveLivemodeValue(field, value, description string) {
 	fieldID := p.GetConfigField(field)
-	_ = KeyRing.Set(keyring.Item{
-		Key:         fieldID,
-		Data:        []byte(value),
-		Description: description,
-		Label:       fieldID,
-	})
+	_ = KeyRing.Set(fieldID, []byte(value), description)
 }
 
 // retrieveLivemodeValue retrieves livemode value of given key in keyring
 func (p *Profile) retrieveLivemodeValue(key string) (string, error) {
 	fieldID := p.GetConfigField(key)
-	existingKeys, err := KeyRing.Keys()
+	data, err := KeyRing.Get(fieldID)
 	if err != nil {
-		return "", err
+		return "", validators.ErrAPIKeyNotConfigured
 	}
-
-	for _, item := range existingKeys {
-		if item == fieldID {
-			value, _ := KeyRing.Get(fieldID)
-			return string(value.Data), nil
-		}
-	}
-
-	return "", validators.ErrAPIKeyNotConfigured
+	return string(data), nil
 }
 
 // deleteLivemodeValue deletes livemode value of given key in keyring
 func (p *Profile) deleteLivemodeValue(key string) error {
 	fieldID := p.GetConfigField(key)
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return err
+	err := KeyRing.Remove(fieldID)
+	if err == ErrKeyNotFound {
+		return nil
 	}
-	for _, item := range existingKeys {
-		if item == fieldID {
-			KeyRing.Remove(fieldID)
-			return nil
-		}
-	}
-	return nil
+	return err
 }
 
 // GetUserInfo reads the stored UserInfo from the profile config.
@@ -693,20 +654,16 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(getKeyringConfig())
+	data, err := KeyRing.Get(key)
 	if err != nil {
-		return nil, err
-	}
-	keyringItem, err := ring.Get(key)
-	if err != nil {
-		if err == keyring.ErrKeyNotFound {
+		if err == ErrKeyNotFound {
 			return nil, errors.New("no session")
 		}
 		return nil, err
 	}
 
 	creds := SessionCredentials{}
-	if err := json.Unmarshal(keyringItem.Data, &creds); err != nil {
+	if err := json.Unmarshal(data, &creds); err != nil {
 		return nil, err
 	}
 

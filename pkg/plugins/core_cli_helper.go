@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -171,11 +170,11 @@ var (
 )
 
 func readKeychainPassword(key string) (string, bool, error) {
-	item, err := config.KeyRing.Get(key)
+	data, err := config.KeyRing.Get(key)
 	if err == nil {
-		return string(item.Data), true, nil
+		return string(data), true, nil
 	}
-	if err == keyring.ErrKeyNotFound {
+	if err == config.ErrKeyNotFound {
 		return "", false, nil
 	}
 	return "", false, err
@@ -267,11 +266,7 @@ func (h *coreCLIHelper) KeychainGetPassword(key string) (string, bool, error) {
 
 // KeychainSetPassword stores a password in the system keychain.
 func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
-	if err := config.KeyRing.Set(keyring.Item{
-		Key:   key,
-		Data:  []byte(value),
-		Label: key,
-	}); err != nil {
+	if err := config.KeyRing.Set(key, []byte(value), ""); err != nil {
 		return err
 	}
 
@@ -283,19 +278,14 @@ func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
 func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 	clearPendingKeychainValue(key)
 
-	existingKeys, err := config.KeyRing.Keys()
+	err := config.KeyRing.Remove(key)
+	if err == config.ErrKeyNotFound {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	for _, k := range existingKeys {
-		if k == key {
-			if err := config.KeyRing.Remove(key); err != nil {
-				return false, err
-			}
-			return true, nil
-		}
-	}
-	return false, nil
+	return true, nil
 }
 
 // KeychainFindCredentials lists all keys stored in the keychain for this service.
