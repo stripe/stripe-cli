@@ -131,7 +131,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 
 	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 		if useragent.DetectAIAgent(os.Getenv) != "" {
-			fmt.Fprintln(os.Stderr, "Tip: to provision a new account with API keys without the browser, use `stripe sandbox create --from-git` instead.")
+			fmt.Fprintln(os.Stderr, "To provision a new account with API keys without the browser, use `stripe sandbox create --from-git` instead.")
 		}
 		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
 	}
