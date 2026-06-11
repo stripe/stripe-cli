@@ -3,17 +3,11 @@
 package config
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/pbkdf2"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/json"
-	"io"
-	"os"
-	"path/filepath"
+	"bytes"
+	"fmt"
+	"os/exec"
 	"runtime"
-	"sync"
+	"strings"
 
 	zkr "github.com/zalando/go-keyring"
 )
@@ -49,167 +43,121 @@ func (s *zalandoStore) Keys() ([]string, error) {
 	return []string{}, nil
 }
 
-// wslFileStore is an encrypted file-based store for WSL where D-Bus
-// (required by zalando/go-keyring on Linux) is not available.
-type wslFileStore struct {
-	dir string
-	key []byte
-	mu  sync.Mutex
+// wslWinCredStore bridges to Windows Credential Manager from WSL via
+// cmdkey.exe (write/delete) and powershell.exe (read). This avoids
+// maintaining custom encryption and uses the host OS's native credential
+// store — the same one zalando/go-keyring uses on native Windows.
+type wslWinCredStore struct {
+	service string
 }
 
-type wslFileData struct {
-	Items map[string][]byte `json:"items"`
+func (s *wslWinCredStore) targetName(key string) string {
+	return fmt.Sprintf("%s:%s", s.service, key)
 }
 
-func newWSLFileStore(dir string) (*wslFileStore, error) {
-	pass, err := wslFilePassword("")
-	if err != nil {
-		return nil, err
-	}
-	return newWSLFileStoreFromPassphrase(dir, pass)
-}
+func (s *wslWinCredStore) Get(key string) ([]byte, error) {
+	target := s.targetName(key)
 
-func newWSLFileStoreFromPassphrase(dir string, pass string) (*wslFileStore, error) {
-	const salt = "stripe-cli-wsl-file-store-v1"
-	const iterations = 100000
-	key, err := pbkdf2.Key(sha256.New, pass, []byte(salt), iterations, 32)
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return nil, err
-	}
-	return &wslFileStore{dir: dir, key: key}, nil
+	// PowerShell script: try Get-StoredCredential first (CredentialManager
+	// module), fall back to raw Win32 CredRead via P/Invoke.
+	psScript := fmt.Sprintf(`
+$ErrorActionPreference = 'Stop'
+try {
+    $cred = Get-StoredCredential -Target '%s' -ErrorAction Stop
+    if ($cred) {
+        $n = $cred.GetNetworkCredential()
+        Write-Host -NoNewline $n.Password
+    } else {
+        exit 1
+    }
+} catch {
+    Add-Type -Namespace 'SC' -Name 'Cred' -MemberDefinition '
+        [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+        public static extern bool CredRead(string target, int type, int flags, out IntPtr cred);
+        [DllImport("advapi32.dll")]
+        public static extern void CredFree(IntPtr cred);
+        [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+        public struct CREDENTIAL {
+            public int Flags; public int Type;
+            public string TargetName; public string Comment;
+            public long LastWritten;
+            public int CredentialBlobSize;
+            public IntPtr CredentialBlob;
+            public int Persist; public int AttributeCount;
+            public IntPtr Attributes; public string TargetAlias;
+            public string UserName;
+        }
+    '
+    $ptr = [IntPtr]::Zero
+    $ok = [SC.Cred]::CredRead('%s', 1, 0, [ref]$ptr)
+    if (-not $ok) { exit 1 }
+    $c = [System.Runtime.InteropServices.Marshal]::PtrToStructure($ptr, [Type][SC.Cred+CREDENTIAL])
+    $pass = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($c.CredentialBlob, $c.CredentialBlobSize / 2)
+    [SC.Cred]::CredFree($ptr)
+    Write-Host -NoNewline $pass
 }
+`, target, target)
 
-func (s *wslFileStore) path() string {
-	return filepath.Join(s.dir, "keys.enc")
-}
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
-func (s *wslFileStore) load() (wslFileData, error) {
-	data := wslFileData{Items: make(map[string][]byte)}
-	raw, err := os.ReadFile(s.path())
-	if err != nil {
-		if os.IsNotExist(err) {
-			return data, nil
+	if err := cmd.Run(); err != nil {
+		if strings.Contains(stderr.String(), "not recognized") {
+			return nil, fmt.Errorf("powershell.exe not available in WSL: %w", err)
 		}
-		return data, err
-	}
-	plaintext, err := s.decrypt(raw)
-	if err != nil {
-		return data, err
-	}
-	if err := json.Unmarshal(plaintext, &data); err != nil {
-		return wslFileData{Items: make(map[string][]byte)}, nil
-	}
-	return data, nil
-}
-
-func (s *wslFileStore) save(data wslFileData) error {
-	plaintext, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	ciphertext, err := s.encrypt(plaintext)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(s.path(), ciphertext, 0600)
-}
-
-func (s *wslFileStore) encrypt(plaintext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(s.key)
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
-	return gcm.Seal(nonce, nonce, plaintext, nil), nil
-}
-
-func (s *wslFileStore) decrypt(ciphertext []byte) ([]byte, error) {
-	block, err := aes.NewCipher(s.key)
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-	nonceSize := gcm.NonceSize()
-	if len(ciphertext) < nonceSize {
 		return nil, ErrKeyNotFound
 	}
-	nonce, ct := ciphertext[:nonceSize], ciphertext[nonceSize:]
-	return gcm.Open(nil, nonce, ct, nil)
-}
 
-func (s *wslFileStore) Get(key string) ([]byte, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	data, err := s.load()
-	if err != nil {
-		return nil, err
-	}
-	val, ok := data.Items[key]
-	if !ok {
+	secret := stdout.String()
+	if secret == "" {
 		return nil, ErrKeyNotFound
 	}
-	return val, nil
+
+	return []byte(secret), nil
 }
 
-func (s *wslFileStore) Set(key string, value []byte, description string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	data, err := s.load()
-	if err != nil {
-		return err
+func (s *wslWinCredStore) Set(key string, data []byte, description string) error {
+	target := s.targetName(key)
+
+	cmd := exec.Command("cmdkey.exe",
+		fmt.Sprintf("/generic:%s", target),
+		fmt.Sprintf("/user:%s", key),
+		fmt.Sprintf("/pass:%s", string(data)),
+	)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("cmdkey.exe failed: %v (stderr: %s)", err, strings.TrimSpace(stderr.String()))
 	}
-	data.Items[key] = value
-	return s.save(data)
+
+	return nil
 }
 
-func (s *wslFileStore) Remove(key string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	data, err := s.load()
-	if err != nil {
-		return err
-	}
-	if _, ok := data.Items[key]; !ok {
+func (s *wslWinCredStore) Remove(key string) error {
+	target := s.targetName(key)
+
+	cmd := exec.Command("cmdkey.exe", fmt.Sprintf("/delete:%s", target))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
 		return ErrKeyNotFound
 	}
-	delete(data.Items, key)
-	return s.save(data)
+
+	return nil
 }
 
-func (s *wslFileStore) Keys() ([]string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	data, err := s.load()
-	if err != nil {
-		return nil, err
-	}
-	keys := make([]string, 0, len(data.Items))
-	for k := range data.Items {
-		keys = append(keys, k)
-	}
-	return keys, nil
+func (s *wslWinCredStore) Keys() ([]string, error) {
+	return []string{}, nil
 }
 
 func newSecureStore() SecureStore {
 	if runtime.GOOS == "linux" && isWSL() {
-		dir := getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		store, err := newWSLFileStore(dir)
-		if err == nil {
-			return store
-		}
+		return &wslWinCredStore{service: KeyManagementService}
 	}
 	return &zalandoStore{service: KeyManagementService}
 }
