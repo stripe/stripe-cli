@@ -17,8 +17,15 @@ jobs:
     secrets:
       STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
 
-  build-mac:
+  approve-release:
     needs: [canary-tests]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - run: echo "Release approved, proceeding."
+
+  build-mac:
+    needs: [approve-release]
     runs-on: macos-latest
     steps:
       - name: Code checkout
@@ -40,7 +47,7 @@ jobs:
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
   build-linux:
-    needs: [canary-tests]
+    needs: [approve-release]
     runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
@@ -75,7 +82,7 @@ jobs:
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
-    needs: [canary-tests]
+    needs: [approve-release]
     runs-on: windows-latest
     steps:
       - name: Code checkout
