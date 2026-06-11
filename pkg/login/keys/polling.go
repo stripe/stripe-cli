@@ -26,6 +26,9 @@ type PollAPIKeyResponse struct {
 	LiveModePublishableKey string `json:"livemode_key_publishable"`
 	TestModeAPIKey         string `json:"testmode_key_secret"`
 	TestModePublishableKey string `json:"testmode_key_publishable"`
+	UAT                    string `json:"uat"`
+	LiveContext            string `json:"live_context"`
+	TestWorkspaceID        string `json:"test_workspace_id"`
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
