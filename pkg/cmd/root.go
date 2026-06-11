@@ -159,8 +159,13 @@ func Execute(ctx context.Context) {
 
 			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 				fmt.Fprintln(os.Stderr, string(errRunes))
-				fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
-				fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+				if useragent.DetectAIAgent(os.Getenv) != "" {
+					fmt.Fprintln(os.Stderr, "  No API key configured. Run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>` to provision one instantly.")
+					fmt.Fprintln(os.Stderr, "  Or set STRIPE_API_KEY / pass --api-key <key> if you already have one.")
+				} else {
+					fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
+					fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+				}
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
