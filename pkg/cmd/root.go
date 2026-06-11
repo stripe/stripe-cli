@@ -52,7 +52,7 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"status":    "stripe",
 		"resources": "resources",
-		AIAgentHelpAnnotationKey: "  If not authenticated, run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>` to get API keys instantly.\n" +
+		AIAgentHelpAnnotationKey: "  To provision a new account with API keys without the browser: use `stripe sandbox create --from-git` or `stripe sandbox create --email <email>`.\n" +
 			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
 			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
 			"  Additional commands (apps, docs, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
@@ -193,7 +193,7 @@ func Execute(ctx context.Context) {
 }
 
 func loginRequiredAgentHint() string {
-	return "  To get API keys instantly: run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>`.\n" +
+	return "  To provision a new account with API keys without the browser: run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>`.\n" +
 		"  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.\n" +
 		"  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).\n"
 }
