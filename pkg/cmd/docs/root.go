@@ -12,9 +12,10 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
+
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/version"
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/internal/agent"
 	"github.com/stripe/stripe-cli/internal/docs"

@@ -157,7 +157,7 @@ func (c *Client) do(req *http.Request) (response, error) {
 	resp, err := c.http.Do(req)
 	if err != nil {
 		if req.Context().Err() != nil {
-			c.logger.Debug("request cancelled", "url", req.URL, "cause", req.Context().Err())
+			c.logger.Debug("request canceled", "url", req.URL, "cause", req.Context().Err())
 		} else {
 			c.logger.Error("request failed", "url", req.URL, "err", err)
 		}

@@ -11,11 +11,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/internal/agentskills"
 	"github.com/stripe/stripe-cli/internal/docs"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 )
 
 func TestSkillsListCommand(t *testing.T) {

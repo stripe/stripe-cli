@@ -6,8 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/internal/markdown"
 	"github.com/yuin/goldmark/ast"
+
+	"github.com/stripe/stripe-cli/internal/markdown"
 )
 
 func TestParse(t *testing.T) {
@@ -260,8 +261,8 @@ func TestParseWithRelativeURLs(t *testing.T) {
 			wantURLs: []string{"/get-started"},
 		},
 		{
-			name: "handles mixed links",
-			src:  "[A](https://docs.stripe.com/a)\n\n[B](https://stripe.com/b)\n\n[C](/c)",
+			name:     "handles mixed links",
+			src:      "[A](https://docs.stripe.com/a)\n\n[B](https://stripe.com/b)\n\n[C](/c)",
 			wantURLs: []string{"/a", "https://stripe.com/b", "/c"},
 		},
 	}

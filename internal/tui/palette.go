@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/joelzwarrington/foam/palette"
+
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/markdown"
 )

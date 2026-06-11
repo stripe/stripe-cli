@@ -89,7 +89,7 @@ func TestFSCache_Get_UnreadableFile(t *testing.T) {
 	require.NoError(t, os.Chmod(path, 0o000))
 	t.Cleanup(func() { os.Chmod(path, 0o644) })
 
-	_, _, _, err = cache.Get("key")
+	_, _, _, err = cache.Get("key") //nolint:dogsled
 	assert.Error(t, err)
 }
 
@@ -126,4 +126,3 @@ func TestNewFSCache_CustomTTL(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5*time.Minute, cache.ttl)
 }
-

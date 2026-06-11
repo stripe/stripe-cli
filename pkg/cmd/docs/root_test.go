@@ -11,11 +11,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/markdown"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 )
 
 func TestNew(t *testing.T) {
@@ -218,4 +219,3 @@ func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, out.String(), "Payments")
 }
-

@@ -9,7 +9,7 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-// ParseOption configures Parse behaviour.
+// ParseOption configures Parse behavior.
 type ParseOption func(*parseConfig)
 
 type parseConfig struct {

@@ -9,13 +9,14 @@ import (
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/list"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
+
 	"github.com/stripe/stripe-cli/internal/agent"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/pager"
 	"github.com/stripe/stripe-cli/internal/spinner"
 	"github.com/stripe/stripe-cli/internal/tui"
 	"github.com/stripe/stripe-cli/internal/ui"
-	"golang.org/x/term"
 )
 
 func isStdoutTTY(cmd *cobra.Command) bool {

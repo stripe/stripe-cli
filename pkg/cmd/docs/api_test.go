@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/markdown"
+	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 )
 
 func TestAPICommand_MissingArgs(t *testing.T) {

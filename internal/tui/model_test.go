@@ -77,7 +77,7 @@ func TestPalette_OpenInBrowser_ExecutesCommand(t *testing.T) {
 
 	// Execute selected command with Enter
 	result, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Text: "enter"})
-	model = result.(Model)
+	_ = result.(Model)
 
 	// The command returns a batch; execute returned cmds to trigger the browser open
 	if cmd != nil {
@@ -292,7 +292,7 @@ func TestUpdate_TickMsg_Landing(t *testing.T) {
 	model := result.(Model)
 
 	result, cmd := model.Update(animationFrameMsg{})
-	model = result.(Model)
+	_ = result.(Model)
 	assert.NotNil(t, cmd)
 }
 

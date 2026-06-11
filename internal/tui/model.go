@@ -14,6 +14,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/joelzwarrington/foam/palette"
+
 	"github.com/stripe/stripe-cli/internal/browser"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/markdown"
@@ -129,7 +130,7 @@ func WithStyles(s ui.Styles) Option {
 }
 
 // WithWindowSize pre-seeds the terminal dimensions so the viewport can be
-// initialised in New() without waiting for the first tea.WindowSizeMsg.
+// initialized in New() without waiting for the first tea.WindowSizeMsg.
 func WithWindowSize(width, height int) Option {
 	return func(m *Model) {
 		m.width = width
@@ -250,33 +251,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case pageLoadedMsg:
-		m.loading = false
-		m.page = msg.page
-		m.doc = msg.doc
-		m.title = msg.doc.Title()
-		m.palette = newPalette(m.page, m.doc, m.client)
-		m.setScrollEnabled(true)
-		if m.ready && m.renderer != nil {
-			if out, err := m.renderer.Render(msg.doc); err == nil {
-				m.viewport.SetContent(out)
-			}
-		}
-		return m, nil
+		return m.applyPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready)
+	case pageReadyMsg:
+		return m.applyPage(msg.page, msg.doc, true)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		if !m.ready {
-			// Initial setup: rebuild renderer and render synchronously so
-			// content is ready before the first frame.
 			m = m.initViewport(msg)
 		} else {
 			m.viewport.SetWidth(msg.Width)
 			m.viewport.SetHeight(m.viewportHeight())
 			m.help.SetWidth(msg.Width)
-			// Re-render with the new word wrap out-of-band to avoid blocking
-			// the resize. The result is discarded if the width changed again
-			// before it arrives.
 			if m.adaptiveWordWrap && m.doc != nil {
 				return m, m.rerenderCmd()
 			}
@@ -302,57 +289,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case palette.SelectedMsg:
-		if hit, ok := msg.Item.(searchHit); ok {
-			m.palette.Dismiss()
-			m.loading = true
-			client := m.client
-			renderer := m.renderer
-			return m, func() tea.Msg {
-				u, err := url.Parse(hit.url)
-				if err != nil {
-					return statusMsg("Invalid URL")
-				}
-				fetched, err := client.FetchPage(context.Background(), u)
-				if err != nil {
-					return statusMsg("Failed to load page")
-				}
-				doc, err := markdown.Parse(fetched.Content, markdown.WithRelativeURLs("https://docs.stripe.com"))
-				if err != nil {
-					return statusMsg("Failed to parse page")
-				}
-				_ = renderer
-				return pageReadyMsg{
-					page: Page{Content: fetched.Content, URL: fetched.URL},
-					doc:  doc,
-				}
-			}
-		}
-		if hit, ok := msg.Item.(reference); ok {
-			m.palette.Dismiss()
-			if hit.external {
-				u := hit.url
-				return m, func() tea.Msg {
-					_ = browser.Open(context.Background(), u)
-					return statusMsg("Opened!")
-				}
-			}
-			m.loading = true
-			return m, m.fetchPageCmd(hit.url)
-		}
-
-	case pageReadyMsg:
-		m.loading = false
-		m.page = msg.page
-		m.doc = msg.doc
-		m.title = msg.doc.Title()
-		m.palette = newPalette(m.page, m.doc, m.client)
-		m.setScrollEnabled(true)
-		if m.renderer != nil {
-			if out, err := m.renderer.Render(msg.doc); err == nil {
-				m.viewport.SetContent(out)
-			}
-		}
-		return m, nil
+		return m.handleSelected(msg)
 
 	case statusMsg:
 		m.loading = false
@@ -372,75 +309,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
 	case tea.MouseMsg:
 		if m.isLanding() {
 			prev := m.mouse
 			m.mouse = msg.Mouse()
 			if m.mouseReady {
-				dx := float64(m.mouse.X - prev.X)
-				dy := float64(m.mouse.Y - prev.Y)
-				m.shape.addMotion(dx, dy)
+				m.shape.addMotion(float64(m.mouse.X-prev.X), float64(m.mouse.Y-prev.Y))
 			} else {
 				m.mouseReady = true
 				m.shape.addMotion(5, 5) // initial impulse so the effect is visible on first interaction
 			}
 			return m, nil
 		}
-	case tea.KeyPressMsg:
-		if m.palette.Visible() {
-			switch {
-			case key.Matches(msg, m.keys.Quit):
-				return m.beginQuit()
-			case msg.String() == "esc":
-				m.palette.Dismiss()
-				return m, nil
-			default:
-				m.palette.Model, cmd = m.palette.Update(msg)
-				m.palette.syncKeyMap()
-				return m, cmd
-			}
-		}
 
-		switch {
-		case key.Matches(msg, m.keys.Enter):
-			if m.isLanding() && !m.loading {
-				m.loading = true
-				return m, m.fetchPageCmd(&url.URL{Path: "/"})
-			}
-		case key.Matches(msg, m.keys.Palette):
-			focusCmd := m.palette.Open()
-			m.palette.Model, cmd = m.palette.Update(msg)
-			m.palette.syncKeyMap()
-			return m, tea.Batch(focusCmd, cmd)
-		case key.Matches(msg, m.keys.Search):
-			focusCmd := m.palette.Open()
-			m.palette.syncKeyMap()
-			return m, focusCmd
-		case key.Matches(msg, m.keys.Reference):
-			focusCmd := m.palette.Open()
-			m.palette.Model, cmd = m.palette.Update(msg)
-			m.palette.syncKeyMap()
-			return m, tea.Batch(focusCmd, cmd)
-		case key.Matches(msg, m.keys.Help):
-			m.help.ShowAll = !m.help.ShowAll
-			m.viewport.SetHeight(m.viewportHeight())
-		case key.Matches(msg, m.keys.Quit):
-			return m.beginQuit()
-		case key.Matches(msg, m.keys.Up):
-			m.viewport.ScrollUp(1)
-		case key.Matches(msg, m.keys.Down):
-			m.viewport.ScrollDown(1)
-		case key.Matches(msg, m.keys.PageUp):
-			m.viewport.PageUp()
-		case key.Matches(msg, m.keys.PageDown):
-			m.viewport.PageDown()
-		case key.Matches(msg, m.keys.OpenInBrowser):
-			if m.isLanding() {
-				_ = browser.Open(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"})
-			} else {
-				_ = m.page.Open(context.Background())
-			}
-		}
+	case tea.KeyPressMsg:
+		return m.handleKey(msg)
 	}
 
 	if m.palette.Visible() {
@@ -453,6 +337,122 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport, cmd = m.viewport.Update(msg)
 	}
 	return m, cmd
+}
+
+// applyPage installs a newly loaded page into the model.
+func (m Model) applyPage(page Page, doc *markdown.Document, render bool) (Model, tea.Cmd) {
+	m.loading = false
+	m.page = page
+	m.doc = doc
+	m.title = doc.Title()
+	m.palette = newPalette(m.page, m.doc, m.client)
+	m.setScrollEnabled(true)
+	if render && m.renderer != nil {
+		if out, err := m.renderer.Render(doc); err == nil {
+			m.viewport.SetContent(out)
+		}
+	}
+	return m, nil
+}
+
+// handleSelected processes a palette item selection.
+func (m Model) handleSelected(msg palette.SelectedMsg) (Model, tea.Cmd) {
+	if hit, ok := msg.Item.(searchHit); ok {
+		m.palette.Dismiss()
+		m.loading = true
+		client := m.client
+		return m, func() tea.Msg {
+			u, err := url.Parse(hit.url)
+			if err != nil {
+				return statusMsg("Invalid URL")
+			}
+			fetched, err := client.FetchPage(context.Background(), u)
+			if err != nil {
+				return statusMsg("Failed to load page")
+			}
+			doc, err := markdown.Parse(fetched.Content, markdown.WithRelativeURLs("https://docs.stripe.com"))
+			if err != nil {
+				return statusMsg("Failed to parse page")
+			}
+			return pageReadyMsg{page: Page{Content: fetched.Content, URL: fetched.URL}, doc: doc}
+		}
+	}
+	if hit, ok := msg.Item.(reference); ok {
+		m.palette.Dismiss()
+		if hit.external {
+			u := hit.url
+			return m, func() tea.Msg {
+				_ = browser.Open(context.Background(), u)
+				return statusMsg("Opened!")
+			}
+		}
+		m.loading = true
+		return m, m.fetchPageCmd(hit.url)
+	}
+	return m, nil
+}
+
+// handleKey processes a key press, delegating to the palette when it is visible.
+func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	if m.palette.Visible() {
+		switch {
+		case key.Matches(msg, m.keys.Quit):
+			qm, qcmd := m.beginQuit()
+			return qm.(Model), qcmd
+		case msg.String() == "esc":
+			m.palette.Dismiss()
+			return m, nil
+		default:
+			m.palette.Model, cmd = m.palette.Update(msg)
+			m.palette.syncKeyMap()
+			return m, cmd
+		}
+	}
+
+	switch {
+	case key.Matches(msg, m.keys.Enter):
+		if m.isLanding() && !m.loading {
+			m.loading = true
+			return m, m.fetchPageCmd(&url.URL{Path: "/"})
+		}
+	case key.Matches(msg, m.keys.Palette):
+		focusCmd := m.palette.Open()
+		m.palette.Model, cmd = m.palette.Update(msg)
+		m.palette.syncKeyMap()
+		return m, tea.Batch(focusCmd, cmd)
+	case key.Matches(msg, m.keys.Search):
+		focusCmd := m.palette.Open()
+		m.palette.syncKeyMap()
+		return m, focusCmd
+	case key.Matches(msg, m.keys.Reference):
+		focusCmd := m.palette.Open()
+		m.palette.Model, cmd = m.palette.Update(msg)
+		m.palette.syncKeyMap()
+		return m, tea.Batch(focusCmd, cmd)
+	case key.Matches(msg, m.keys.Help):
+		m.help.ShowAll = !m.help.ShowAll
+		m.viewport.SetHeight(m.viewportHeight())
+	case key.Matches(msg, m.keys.Quit):
+		qm, qcmd := m.beginQuit()
+		return qm.(Model), qcmd
+	case key.Matches(msg, m.keys.Up):
+		m.viewport.ScrollUp(1)
+	case key.Matches(msg, m.keys.Down):
+		m.viewport.ScrollDown(1)
+	case key.Matches(msg, m.keys.PageUp):
+		m.viewport.PageUp()
+	case key.Matches(msg, m.keys.PageDown):
+		m.viewport.PageDown()
+	case key.Matches(msg, m.keys.OpenInBrowser):
+		if m.isLanding() {
+			_ = browser.Open(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"})
+		} else {
+			_ = m.page.Open(context.Background())
+		}
+	}
+	return m, nil
 }
 
 // View renders the current model state to the terminal.
@@ -481,18 +481,20 @@ func (m Model) View() tea.View {
 	if m.loading || (m.palette.Visible() && m.palette.Loading()) {
 		view.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 0)
 	}
-	if m.quitting {
+	switch {
+	case m.quitting:
 		view.MouseMode = tea.MouseModeNone
-	} else if m.isLanding() {
+	case m.isLanding():
 		view.MouseMode = tea.MouseModeAllMotion
-	} else {
+	default:
 		view.MouseMode = tea.MouseModeCellMotion
 	}
-	if m.title != "" {
+	switch {
+	case m.title != "":
 		view.WindowTitle = m.title
-	} else if m.doc != nil {
+	case m.doc != nil:
 		view.WindowTitle = m.doc.Title()
-	} else {
+	default:
 		view.WindowTitle = "stripe docs"
 	}
 	return view
