@@ -76,7 +76,7 @@ For agents and scripts, use the two-step non-interactive flow:
   #   Step 2 – after the user approves in the browser, complete login
   stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  To provision a new account with API keys without the browser: use `stripe sandbox create --from-git` or `stripe sandbox create --email <email>`.\n" +
+			AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).\n" +
 				"  Prefer setting STRIPE_API_KEY or using `--api-key` over `stripe login` for non-interactive use.\n" +
 				"  If authentication is required, run `stripe login` — in agent contexts it automatically outputs\n" +
 				"  a browser URL and a `next_step` command to complete login with user action.",
@@ -131,7 +131,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 
 	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 		if useragent.DetectAIAgent(os.Getenv) != "" {
-			fmt.Fprintln(os.Stderr, "To provision a new account with API keys without the browser, use `stripe sandbox create --from-git` instead.")
+			fmt.Fprintln(os.Stderr, "If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).")
 		}
 		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
 	}

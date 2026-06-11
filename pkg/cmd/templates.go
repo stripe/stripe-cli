@@ -286,7 +286,7 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 		sb.WriteString(extra + "\n")
 	}
 
-	fmt.Fprintf(&sb, "  To provision a new account with API keys without the browser: run %s.\n", ansi.Bold("stripe sandbox create --from-git"))
+	fmt.Fprintf(&sb, "  If you do not have an account: run %s (provisions a claimable sandbox without a browser).\n", ansi.Bold("stripe sandbox create"))
 	fmt.Fprintf(&sb, "  If you already have a key: use %s (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
 
 	if cmd.Flags().Lookup("data") != nil {
