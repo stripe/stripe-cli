@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-		"github.com/spf13/viper"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 

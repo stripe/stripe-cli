@@ -113,7 +113,6 @@ func wslFilePassword(_ string) (string, error) {
 	return wslFilePasswordFromPaths("/etc/machine-id", "/proc/sys/kernel/random/boot_id")
 }
 
-
 // authFieldNames are the config fields that are removed on login/logout.
 // Non-auth fields like "color" are preserved.
 var authFieldNames = []string{

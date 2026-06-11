@@ -75,7 +75,7 @@ func (s *legacyKeyringStore) Keys() ([]string, error) {
 // nullStore is a no-op store used when keyring initialization fails.
 type nullStore struct{}
 
-func (n *nullStore) Get(string) ([]byte, error)              { return nil, ErrKeyNotFound }
-func (n *nullStore) Set(string, []byte, string) error        { return nil }
-func (n *nullStore) Remove(string) error                     { return ErrKeyNotFound }
-func (n *nullStore) Keys() ([]string, error)                 { return []string{}, nil }
+func (n *nullStore) Get(string) ([]byte, error)       { return nil, ErrKeyNotFound }
+func (n *nullStore) Set(string, []byte, string) error { return nil }
+func (n *nullStore) Remove(string) error              { return ErrKeyNotFound }
+func (n *nullStore) Keys() ([]string, error)          { return []string{}, nil }
