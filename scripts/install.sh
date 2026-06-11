@@ -1,5 +1,5 @@
 #!/bin/sh
-set -euo pipefail
+set -e
 
 INSTALL_DIR="${STRIPE_INSTALL_DIR:-$HOME/.stripe/bin}"
 GITHUB_REPO="stripe/stripe-cli"
@@ -22,7 +22,7 @@ detect_platform() {
     linux)  OS_LABEL="linux" ;;
     *)
       echo "Error: unsupported operating system: $OS"
-      echo "Supported: macOS, Linux."
+      echo "Supported: macOS, Linux. For Windows, use install.ps1."
       exit 1
       ;;
   esac
@@ -45,33 +45,13 @@ detect_platform() {
   echo "Detected: $OS $ARCH_LABEL"
 }
 
-http_get() {
-  url="$1"
-  if command -v curl >/dev/null 2>&1; then
-    curl -sSL "$url"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "$url"
-  else
-    echo "Error: curl or wget is required but neither is installed."
-    exit 1
-  fi
-}
-
-http_download() {
-  url="$1"
-  output="$2"
-  if command -v curl >/dev/null 2>&1; then
-    curl -sSL -o "$output" "$url"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "$output" "$url"
-  else
-    echo "Error: curl or wget is required but neither is installed."
-    exit 1
-  fi
-}
-
 get_latest_version() {
-  VERSION=$(http_get "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | \
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not installed."
+    exit 1
+  fi
+
+  VERSION=$(curl -sSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | \
     sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
 
   if [ -z "$VERSION" ]; then
@@ -91,8 +71,8 @@ download_and_verify() {
   trap 'rm -rf "$TMP_DIR"' EXIT
 
   echo "Downloading stripe v${VERSION}..."
-  http_download "$BASE_URL/$ARCHIVE" "$TMP_DIR/$ARCHIVE"
-  http_download "$BASE_URL/$CHECKSUMS_FILE" "$TMP_DIR/checksums.txt"
+  curl -sSL -o "$TMP_DIR/$ARCHIVE" "$BASE_URL/$ARCHIVE"
+  curl -sSL -o "$TMP_DIR/checksums.txt" "$BASE_URL/$CHECKSUMS_FILE"
 
   echo "Verifying checksum..."
   EXPECTED=$(sed -n "s/^\([a-f0-9]*\)  *${ARCHIVE}$/\1/p" "$TMP_DIR/checksums.txt")
