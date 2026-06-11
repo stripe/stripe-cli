@@ -3,13 +3,32 @@
 package config
 
 import (
+	"strings"
 	"testing"
 
+	zkr "github.com/zalando/go-keyring"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// secretServiceAvailable returns true if the OS keyring backend is usable.
+// On Linux CI (no D-Bus), zalando/go-keyring returns a D-Bus error rather
+// than ErrNotFound.
+func secretServiceAvailable() bool {
+	_, err := zkr.Get("stripe-cli-probe", "probe")
+	if err == nil || err == zkr.ErrNotFound {
+		return true
+	}
+	return !strings.Contains(err.Error(), "dbus") &&
+		!strings.Contains(err.Error(), "DBus") &&
+		!strings.Contains(err.Error(), "service_unknown")
+}
+
 func TestZalandoStoreGetNotFound(t *testing.T) {
+	if !secretServiceAvailable() {
+		t.Skip("secret service not available (no D-Bus)")
+	}
+
 	store := &zalandoStore{service: "stripe-cli-test-nonexistent"}
 
 	_, err := store.Get("no-such-key")
@@ -17,6 +36,10 @@ func TestZalandoStoreGetNotFound(t *testing.T) {
 }
 
 func TestZalandoStoreRemoveNotFound(t *testing.T) {
+	if !secretServiceAvailable() {
+		t.Skip("secret service not available (no D-Bus)")
+	}
+
 	store := &zalandoStore{service: "stripe-cli-test-nonexistent"}
 
 	err := store.Remove("no-such-key")
@@ -24,6 +47,10 @@ func TestZalandoStoreRemoveNotFound(t *testing.T) {
 }
 
 func TestZalandoStoreRoundTrip(t *testing.T) {
+	if !secretServiceAvailable() {
+		t.Skip("secret service not available (no D-Bus)")
+	}
+
 	store := &zalandoStore{service: "stripe-cli-test"}
 	defer func() {
 		_ = store.Remove("test-key")
