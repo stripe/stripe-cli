@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
+	cmddocs "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
@@ -54,7 +55,7 @@ var rootCmd = &cobra.Command{
 		"resources": "resources",
 		AIAgentHelpAnnotationKey: "  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
 			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
-			"  Additional commands (apps, docs, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
+			"  Additional commands (apps, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -237,6 +238,7 @@ func init() {
 	// also, bind flags to the environment variables
 	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
+	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
