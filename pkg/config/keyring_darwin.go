@@ -65,23 +65,40 @@ func (k *darwinKeychain) Keys() ([]string, error) {
 		return []string{}, nil
 	}
 
+	// Parse dump-keychain output. Each item has "acct" before "svce" in the
+	// attributes block, so we collect acct first, then confirm it belongs to
+	// our service when we hit the svce line.
 	var keys []string
-	lines := strings.Split(string(out), "\n")
-	var inOurService bool
-	for _, line := range lines {
+	var currentAcct string
+	for _, line := range strings.Split(string(out), "\n") {
 		trimmed := strings.TrimSpace(line)
-		if strings.Contains(trimmed, `"svce"<blob>=`) {
-			inOurService = strings.Contains(trimmed, fmt.Sprintf(`"%s"`, k.service))
+		if strings.Contains(trimmed, `"acct"<blob>=`) {
+			currentAcct = extractQuotedValue(trimmed)
 		}
-		if inOurService && strings.Contains(trimmed, `"acct"<blob>=`) {
-			if start := strings.Index(trimmed, `="`); start != -1 {
-				start += 2
-				if end := strings.LastIndex(trimmed, `"`); end > start {
-					keys = append(keys, trimmed[start:end])
-				}
+		if strings.Contains(trimmed, `"svce"<blob>=`) {
+			if extractQuotedValue(trimmed) == k.service && currentAcct != "" {
+				keys = append(keys, currentAcct)
 			}
+			currentAcct = ""
+		}
+		// Reset on new item boundary
+		if strings.HasPrefix(trimmed, "keychain:") {
+			currentAcct = ""
 		}
 	}
 
 	return keys, nil
+}
+
+func extractQuotedValue(line string) string {
+	start := strings.Index(line, `="`)
+	if start == -1 {
+		return ""
+	}
+	start += 2
+	end := strings.LastIndex(line, `"`)
+	if end <= start {
+		return ""
+	}
+	return line[start:end]
 }
