@@ -61,7 +61,7 @@ func newListenCmd() *listenCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "listen",
 		Args:  validators.NoArgs,
-		Short: "Listen for webhook events",
+		Short: "Listen for and forward webhook events to your local server",
 		Long: `The listen command watches and forwards webhook events from Stripe to your
 local machine by connecting directly to Stripe's API. You can test the latest
 API version, filter events, or even load your saved webhook endpoints from your
