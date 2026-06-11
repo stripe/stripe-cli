@@ -21,15 +21,3 @@ npm/_tmp/
 
 # Claude Code local configuration (auto-added)
 .claude/*.local.*
-
-# Go workspace
-go.work
-go.work.sum
-
-# IDE
-.idea/
-*.swp
-*.swo
-
-# macOS
-.DS_Store
