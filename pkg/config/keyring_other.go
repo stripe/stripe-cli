@@ -5,6 +5,7 @@ package config
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/pbkdf2"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
@@ -65,11 +66,20 @@ func newWSLFileStore(dir string) (*wslFileStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	hash := sha256.Sum256([]byte(pass))
+	return newWSLFileStoreFromPassphrase(dir, pass)
+}
+
+func newWSLFileStoreFromPassphrase(dir string, pass string) (*wslFileStore, error) {
+	const salt = "stripe-cli-wsl-file-store-v1"
+	const iterations = 100000
+	key, err := pbkdf2.Key(sha256.New, pass, []byte(salt), iterations, 32)
+	if err != nil {
+		return nil, err
+	}
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
-	return &wslFileStore{dir: dir, key: hash[:]}, nil
+	return &wslFileStore{dir: dir, key: key}, nil
 }
 
 func (s *wslFileStore) path() string {
