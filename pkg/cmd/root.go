@@ -160,8 +160,7 @@ func Execute(ctx context.Context) {
 			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 				fmt.Fprintln(os.Stderr, string(errRunes))
 				if useragent.DetectAIAgent(os.Getenv) != "" {
-					fmt.Fprintln(os.Stderr, "  No API key configured. Run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>` to provision one instantly.")
-					fmt.Fprintln(os.Stderr, "  Or set STRIPE_API_KEY / pass --api-key <key> if you already have one.")
+					fmt.Fprint(os.Stderr, loginRequiredAgentHint())
 				} else {
 					fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
 					fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
@@ -191,6 +190,11 @@ func Execute(ctx context.Context) {
 			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
 		}
 	}
+}
+
+func loginRequiredAgentHint() string {
+	return "  To get API keys instantly: run `stripe sandbox create --from-git` or `stripe sandbox create --email <email>`.\n" +
+		"  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.\n"
 }
 
 func apiKeyExpiredMessage(profileName string) string {
