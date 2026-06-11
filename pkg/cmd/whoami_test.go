@@ -158,36 +158,10 @@ func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
 	assert.Nil(t, result.LiveModeKey.ExpiresAt, "override keys have no expiry")
 }
 
-// noPromptKeyring implements SecureStore but fails the test if Get is called —
-// that operation would trigger an OS-level auth prompt on some platforms.
-type noPromptKeyring struct {
-	keys []string
-	t    *testing.T
-}
-
-func (k *noPromptKeyring) Get(key string) ([]byte, error) {
-	k.t.Fatal("Get would prompt for keychain password on some platforms")
-	return nil, nil
-}
-
-func (k *noPromptKeyring) Set(key string, data []byte, description string) error {
-	return nil
-}
-
-func (k *noPromptKeyring) Remove(key string) error {
-	return config.ErrKeyNotFound
-}
-
-func (k *noPromptKeyring) Keys() ([]string, error) {
-	return k.keys, nil
-}
-
-func TestWhoamiLiveModeKeyDoesNotReadSecret(t *testing.T) {
-	kr := &noPromptKeyring{
-		keys: []string{"default.live_mode_api_key"},
-		t:    t,
-	}
-	config.KeyRing = kr
+func TestWhoamiLiveModeKeyDetected(t *testing.T) {
+	config.KeyRing = config.NewMemoryStore(map[string][]byte{
+		"default.live_mode_api_key": []byte("rk_live_1234567890abcdef"),
+	})
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{

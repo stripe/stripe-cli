@@ -268,17 +268,8 @@ func (p *Profile) HasAPIKey(livemode bool) bool {
 	if KeyRing == nil {
 		return false
 	}
-	fieldID := p.GetConfigField(LiveModeAPIKeyName)
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return false
-	}
-	for _, item := range existingKeys {
-		if item == fieldID {
-			return true
-		}
-	}
-	return false
+	_, err := KeyRing.Get(p.GetConfigField(LiveModeAPIKeyName))
+	return err == nil
 }
 
 // GetAPIKey will return the existing key for the given profile
