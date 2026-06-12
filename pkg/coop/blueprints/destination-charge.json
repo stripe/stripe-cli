@@ -1,0 +1,29 @@
+{
+  "id": "destination-charge",
+  "title": "Create a destination charge",
+  "description": "Create a Connect destination charge by collecting payment on the platform and transferring funds to a connected account.",
+  "type": "learning",
+  "products": [
+    "Connect",
+    "Payments"
+  ],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Create a destination charge",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createCharge",
+          "title": "Create a PaymentIntent",
+          "request": {
+            "path": "/v1/payment_intents",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        }
+      ]
+    }
+  ]
+}

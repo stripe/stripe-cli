@@ -1,0 +1,26 @@
+{
+  "id": "direct-charge",
+  "title": "Create a direct charge",
+  "description": "Creates a charge directly on a connected account and transfers a collected fee to the platform.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Create a direct charge",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createCharge",
+          "title": "Create a payment intent",
+          "request": {
+            "path": "/v1/payment_intents",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        }
+      ]
+    }
+  ]
+}

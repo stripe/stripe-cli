@@ -1,0 +1,64 @@
+{
+  "id": "managed-payments",
+  "title": "Set up Managed Payments",
+  "description": "Set up Checkout for managed payments with subscription and one-time product options, then listen for completed checkout events.",
+  "type": "learning",
+  "products": [
+    "Checkout",
+    "Payments"
+  ],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Set up Managed Payments",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-subscription-product",
+          "title": "Create subscription product",
+          "request": {
+            "path": "/v1/products",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-one-time-product",
+          "title": "Create one-time product",
+          "request": {
+            "path": "/v1/products",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create managed Checkout Session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete a test payment",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "asyncHandler",
+          "key": "wait-for-checkout-completed",
+          "title": "Listen for checkout.session.completed",
+          "events": [
+            "checkout.session.completed"
+          ],
+          "review_prompt": "Run stripe trigger checkout.session.completed and confirm the handler processes the signed event correctly."
+        }
+      ]
+    }
+  ]
+}
