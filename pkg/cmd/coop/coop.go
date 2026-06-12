@@ -86,3 +86,9 @@ func mustMarkFlagRequired(cmd *cobra.Command, name string) {
 		panic("marking required flag " + name + ": " + err.Error())
 	}
 }
+
+func mustMarkFlagHidden(cmd *cobra.Command, name string) {
+	if err := cmd.Flags().MarkHidden(name); err != nil {
+		panic("hiding flag " + name + ": " + err.Error())
+	}
+}
