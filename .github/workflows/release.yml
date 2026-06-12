@@ -34,9 +34,9 @@ jobs:
           fetch-depth: 0
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
           owner: stripe
       - name: Set up Go
@@ -98,9 +98,9 @@ jobs:
           fetch-depth: 0
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
           private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
           owner: stripe
       - name: Set up Go
