@@ -106,10 +106,28 @@ func (s *Store) writePath(path string, session *Session) error {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 
-	if err := os.Rename(tmpPath, path); err != nil {
+	if err := replaceSessionFile(tmpPath, path); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func replaceSessionFile(tmpPath, path string) error {
+	if err := os.Rename(tmpPath, path); err == nil {
+		return nil
+	} else if runtime.GOOS != "windows" {
 		return fmt.Errorf("renaming temp file: %w", err)
 	}
 
+	// Windows does not replace an existing destination with os.Rename.
+	// Writers are already serialized by the session lock, so remove first.
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing existing session file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("renaming temp file: %w", err)
+	}
 	return nil
 }
 
@@ -168,15 +186,15 @@ func readSessionFile(path string) ([]byte, error) {
 	deadline := time.Now().Add(250 * time.Millisecond)
 	for {
 		data, err := os.ReadFile(path)
-		if err == nil || !isWindowsSharingViolation(err) || time.Now().After(deadline) {
+		if err == nil || !isWindowsTransientReadError(err) || time.Now().After(deadline) {
 			return data, err
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 }
 
-func isWindowsSharingViolation(err error) bool {
-	return runtime.GOOS == "windows" && strings.Contains(err.Error(), "being used by another process")
+func isWindowsTransientReadError(err error) bool {
+	return runtime.GOOS == "windows" && (os.IsNotExist(err) || strings.Contains(err.Error(), "being used by another process"))
 }
 
 // Update loads, mutates, and atomically writes a session with optimistic locking.
@@ -242,8 +260,8 @@ func (s *Store) writeUnlocked(path string, session *Session) error {
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("renaming temp file: %w", err)
+	if err := replaceSessionFile(tmpPath, path); err != nil {
+		return err
 	}
 	return nil
 }
