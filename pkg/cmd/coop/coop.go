@@ -54,11 +54,14 @@ The developer confirms each step before the agent moves on.`,
 		},
 	}
 
+	cc.cmd.AddCommand(newCoopRunCmd().cmd)
 	cc.cmd.AddCommand(newCoopStartCmd().cmd)
+	cc.cmd.AddCommand(newCoopJoinCmd().cmd)
 	cc.cmd.AddCommand(newCoopAgentCmd().cmd)
 	cc.cmd.AddCommand(newCoopStatusCmd().cmd)
 	cc.cmd.AddCommand(newCoopStopCmd().cmd)
 	cc.cmd.AddCommand(newCoopRecommendCmd().cmd)
+	cc.cmd.AddCommand(newCoopDebugAgentCmd().cmd)
 
 	return cc
 }
