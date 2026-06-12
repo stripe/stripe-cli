@@ -43,7 +43,6 @@ jobs:
             stripe-cli
             homebrew-stripe-cli
             scoop-stripe-cli
-            winget-pkgs
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -112,7 +111,6 @@ jobs:
             stripe-cli
             homebrew-stripe-cli
             scoop-stripe-cli
-            winget-pkgs
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -126,7 +124,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          WINGET_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # The GitHub App token is scoped to the stripe org and cannot create
+          # PRs on microsoft/winget-pkgs, so winget still requires a PAT.
+          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
   upload-to-virustotal:
     needs: [build-windows]
