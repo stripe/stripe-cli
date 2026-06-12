@@ -698,6 +698,9 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			cmd := m.selectCompletionOption()
 
 			switch selected.id {
+			case "deploy", "deploy-update":
+				m.enterWaitingMode("Waiting for agent to start the deploy session...")
+				return m, cmd
 			case "add-integration":
 				m.enterWaitingMode("Waiting for agent to ask which Stripe feature to add...")
 				return m, cmd
