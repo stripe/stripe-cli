@@ -2,6 +2,7 @@ package docs
 
 import (
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -79,6 +80,10 @@ func TestFSCache_Get_TTLEviction(t *testing.T) {
 }
 
 func TestFSCache_Get_UnreadableFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod 000 does not restrict read access on Windows")
+	}
+
 	dir := t.TempDir()
 	cache, err := NewFSCache(dir)
 	require.NoError(t, err)
