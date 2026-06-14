@@ -34,11 +34,13 @@ func GenerateStepGuidance(step StepInfo) string {
 		if step.APIRequest != nil {
 			b.WriteString(" ")
 			b.WriteString(GenerateAPIRequestGuidance(step.APIRequest))
+			b.WriteString(" When sdk_example is present, use it as the generated SDK translation of blueprint_step.api_request; adapt it to the app's existing Stripe client pattern and resolve blueprint references instead of copying placeholders literally.")
 		}
 	case NodeAsyncHandler:
 		if len(step.Events) > 0 {
 			b.WriteString(" ")
 			b.WriteString(GenerateAsyncHandlerGuidance(step.Events))
+			b.WriteString(" When webhook_example is present, use it as the generated handler translation of blueprint_step.events; adapt the route, framework, persistence, and side effects to the app without dropping or renaming blueprint events.")
 		}
 	case NodeUIComponent:
 		b.WriteString(" Implement the user-facing app behavior described by this blueprint step; wire it to the specific API, redirect, webhook, or state produced by neighboring blueprint steps instead of building a detached demo UI.")

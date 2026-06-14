@@ -80,6 +80,24 @@ func TestGenerateStepGuidanceUsesBlueprintStepFields(t *testing.T) {
 	assert.Contains(t, guidance, "Confirm Checkout uses the saved price ID.")
 	assert.Contains(t, guidance, "npm test")
 	assert.Contains(t, guidance, "${node.setup.create-product:default_price}")
+	assert.Contains(t, guidance, "sdk_example")
+	assert.Contains(t, guidance, "generated SDK translation")
+}
+
+func TestGenerateStepGuidanceUsesWebhookExampleAsEventTranslation(t *testing.T) {
+	guidance := GenerateStepGuidance(StepInfo{
+		Number:       6,
+		Key:          "handle-checkout-completed",
+		Title:        "Handle checkout.session.completed",
+		Type:         NodeAsyncHandler,
+		ReviewPrompt: "Confirm fulfillment happens after signature verification.",
+		Events:       []string{"checkout.session.completed"},
+	})
+
+	assert.Contains(t, guidance, "blueprint_step.events")
+	assert.Contains(t, guidance, "webhook_example")
+	assert.Contains(t, guidance, "generated handler translation")
+	assert.Contains(t, guidance, "without dropping or renaming blueprint events")
 }
 
 func TestBlueprintReferencesReturnsSortedUniqueTokens(t *testing.T) {
