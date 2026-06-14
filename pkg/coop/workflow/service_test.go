@@ -85,9 +85,10 @@ func TestStartWorkReturnsSDKExampleForBlueprintParams(t *testing.T) {
 
 	require.True(t, called)
 	assert.Contains(t, resp.SDKExample, "mode: 'payment'")
-	assert.Contains(t, resp.AgentGuidance, "request params in this response are canonical")
+	assert.Contains(t, resp.AgentGuidance, "blueprint_step.api_request.params are canonical")
 	require.NotNil(t, resp.BlueprintStep)
-	assert.Equal(t, resp.APIRequest, resp.BlueprintStep.APIRequest)
+	require.NotNil(t, resp.BlueprintStep.APIRequest)
+	assert.Equal(t, "/v1/checkout/sessions", resp.BlueprintStep.APIRequest.Path)
 }
 
 func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing.T) {

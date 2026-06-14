@@ -168,7 +168,7 @@ func sessionLifecycleInstructions(preamble string, session *coop.Session) string
 
 The blueprint describes the Stripe flow the developer wants in their app. Your deliverable is the user's app implementing that flow. Stripe CLI commands are useful for setup and verification, but they are not the implementation unless a step is explicitly a cliCommand.
 
-The initial steps array and each start-work blueprint_step object are the concrete blueprint contract. Preserve the step order, step type, api_request, events, review_prompt, and review_command. Do not replace a blueprint API request with a different endpoint, Dashboard-only setup, or unrelated CLI command unless the step itself says to use that path.
+The initial steps array and each start-work blueprint_step object are the concrete blueprint contract. Preserve the step order, type, api_request, events, review_prompt, and review_command. Do not replace a blueprint API request with a different endpoint, Dashboard-only setup, or unrelated CLI command unless the step itself says to use that path.
 
 BEFORE YOU START — ensure you have API access:
 1. Run "stripe whoami" to check if you're authenticated.

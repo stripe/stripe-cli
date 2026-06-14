@@ -103,7 +103,6 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 		resp.AgentGuidance = coop.GenerateStepGuidance(*blueprintStep)
 	}
 	if node.Type == coop.NodeAPIRequest && node.Request != nil {
-		resp.APIRequest = node.Request
 		if coop.ShouldFetchSDKSnippet(node.Request) {
 			if snippet, err := s.fetchSnippet(node.Request.Path, node.Request.Method, node.Request.Params, language(session)); err == nil {
 				resp.SDKExample = snippet

@@ -64,7 +64,7 @@ func GenerateAPIRequestGuidance(req *APIRequest) string {
 		fmt.Fprintf(&b, " Preserve blueprint output references and resolve them from prior steps at runtime: %s.", strings.Join(refs, ", "))
 	}
 	if requestHasParams(req.Params) {
-		b.WriteString(" The request params in this response are canonical; use api_request.params as the request shape, adapting only placeholders and referenced IDs to the user's app state instead of inventing a different API shape.")
+		b.WriteString(" The request params in blueprint_step.api_request.params are canonical; use them as the request shape, adapting only placeholders and referenced IDs to the user's app state instead of inventing a different API shape.")
 	} else if isMutatingMethod(req.Method) {
 		b.WriteString(" This blueprint node currently provides endpoint and method only, so treat any SDK example as incomplete. Fill request params from the step intent, earlier blueprint outputs, and Stripe's official API docs, then report the exact app code path and params you used.")
 	}

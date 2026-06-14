@@ -16,7 +16,7 @@ func TestGenerateAPIRequestGuidanceUsesBlueprintParamsAsCanonical(t *testing.T) 
 	})
 
 	assert.Contains(t, guidance, "POST /v1/checkout/sessions")
-	assert.Contains(t, guidance, "request params in this response are canonical")
+	assert.Contains(t, guidance, "blueprint_step.api_request.params are canonical")
 	assert.Contains(t, guidance, "hosted Checkout")
 }
 

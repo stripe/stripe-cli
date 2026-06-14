@@ -175,7 +175,7 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 
 	assert.Contains(t, instructions, "The blueprint describes the Stripe flow the developer wants in their app")
 	assert.Contains(t, instructions, "The initial steps array and each start-work blueprint_step object are the concrete blueprint contract")
-	assert.Contains(t, instructions, "Preserve the step order, step type, api_request, events, review_prompt, and review_command")
+	assert.Contains(t, instructions, "Preserve the step order, type, api_request, events, review_prompt, and review_command")
 	assert.Contains(t, instructions, "Stripe CLI commands are useful for setup and verification, but they are not the implementation")
 	assert.Contains(t, instructions, `"apiRequest": Implement app code that calls this Stripe API`)
 	assert.Contains(t, instructions, `"asyncHandler": Implement the app's webhook or async event handler for every event listed on the step`)

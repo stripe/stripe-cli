@@ -93,7 +93,7 @@ func SDKSnippetGuidance(req *APIRequest, language string) string {
 		lines = append(lines, fmt.Sprintf("%s Resolve blueprint references from prior step outputs at runtime: %s.", prefix, strings.Join(refs, ", ")))
 	}
 	if requestHasParams(req.Params) {
-		lines = append(lines, fmt.Sprintf("%s Use api_request.params as the canonical request shape from the blueprint.", prefix))
+		lines = append(lines, fmt.Sprintf("%s Use blueprint_step.api_request.params as the canonical request shape from the blueprint.", prefix))
 	} else {
 		lines = append(lines, fmt.Sprintf("%s This blueprint node does not include canonical request params yet.", prefix))
 		lines = append(lines, fmt.Sprintf("%s Do not treat an empty SDK call as complete; wire the app to this endpoint and use the step intent, earlier IDs, and Stripe docs to fill the params.", prefix))
