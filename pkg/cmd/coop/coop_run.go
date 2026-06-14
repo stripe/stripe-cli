@@ -193,6 +193,11 @@ BEFORE YOU START — ensure you have API access:
    This gives you a working API key without requiring browser login.
    The claim URL will appear automatically in the TUI for the developer.
 
+Security and configuration:
+- Never hardcode Stripe API keys, restricted keys, publishable keys, webhook secrets, or Stripe-shaped fake secrets in source code, tests, examples, or fallback paths.
+- Read secrets from environment variables, the Stripe CLI config, or the app's existing secret-management pattern. If credentials are unavailable, return a clear setup error instead of adding a placeholder key.
+- In tests, use non-secret fixture strings such as "test_webhook_secret" rather than values that look like real Stripe secrets.
+
 Each step has a description that tells you what to do. Follow the description — it's the source of truth. The node type defines the expected kind of app integration:
 - "apiRequest": Implement app code that calls this Stripe API using the official Stripe SDK or the project's existing Stripe client pattern. Use the Stripe CLI only to inspect, create temporary test data, or verify the app code.
 - "asyncHandler": Implement the app's webhook or async event handler. Use "stripe listen --forward-to localhost:<port>/webhook" and event triggers to verify signature handling and event-specific behavior.
