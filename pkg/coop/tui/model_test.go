@@ -1120,6 +1120,55 @@ func TestFetchSnippetCached(t *testing.T) {
 	assert.Nil(t, cmd) // should not re-fetch
 }
 
+func TestFetchSnippetRefetchesWhenCacheKeyChanges(t *testing.T) {
+	m := readyModel()
+	m.selectionCursor = 0
+	m.sdkSnippetNode = 0
+	m.sdkSnippetKey = "stale"
+
+	cmd := m.fetchSnippetIfNeeded()
+
+	assert.NotNil(t, cmd)
+}
+
+func TestFetchSnippetUsesGuidanceForEndpointOnlyMutatingRequest(t *testing.T) {
+	m := readyModel()
+	m.selectionCursor = 1 // Checkout Session node with POST and no params
+
+	cmd := m.fetchSnippetIfNeeded()
+	require.NotNil(t, cmd)
+	msg := cmd().(sdkSnippetMsg)
+
+	assert.Equal(t, 1, msg.step)
+	assert.Contains(t, msg.snippet, "Blueprint request: POST /v1/checkout/sessions")
+	assert.Contains(t, msg.snippet, "does not include canonical request params")
+	assert.NoError(t, msg.err)
+}
+
+func TestFetchSnippetCachesGuidanceForEndpointOnlyMutatingRequest(t *testing.T) {
+	m := readyModel()
+	m.selectionCursor = 1
+	m.sdkSnippetNode = 1
+	m.sdkSnippetKey = m.snippetKeyForNode(1)
+
+	cmd := m.fetchSnippetIfNeeded()
+
+	assert.Nil(t, cmd)
+}
+
+func TestSelectedReviewCommandCopiesAllCommands(t *testing.T) {
+	m := readyModel()
+	m.session.Steps[0].Nodes = []coop.SessionNode{
+		{NodeDefinition: coop.NodeDefinition{Key: "one", Title: "One", ReviewCommand: "cmd one"}, State: coop.NodeReview},
+		{NodeDefinition: coop.NodeDefinition{Key: "two", Title: "Two", ReviewCommand: "cmd two"}, State: coop.NodeReview},
+		{NodeDefinition: coop.NodeDefinition{Key: "three", Title: "Three", ReviewCommand: "cmd three"}, State: coop.NodeReview},
+	}
+	m.selectStep(0)
+
+	assert.Equal(t, "cmd one && cmd two && cmd three", m.selectedReviewCommand())
+	assert.Contains(t, m.reviewCommandLabel([]int{1, 2, 3}), "# +1 more")
+}
+
 func TestAgentIdleNoSession(t *testing.T) {
 	m := readyModel()
 	m.session = nil

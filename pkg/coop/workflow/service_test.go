@@ -49,6 +49,62 @@ func TestStartWorkReturnsWebhookExampleForAsyncHandler(t *testing.T) {
 	assert.Contains(t, resp.WebhookExample, `case "customer.subscription.created"`)
 	assert.Contains(t, resp.WebhookExample, "stripe.v2.core.events.retrieve")
 	assert.Contains(t, resp.WebhookExample, "v1.<event>")
+	assert.Contains(t, resp.AgentGuidance, "signed webhook/event handler")
+}
+
+func TestStartWorkReturnsSDKExampleForBlueprintParams(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Settings = map[string]string{"language": "node"}
+		session.Steps[0].Nodes[0].Type = coop.NodeAPIRequest
+		session.Steps[0].Nodes[0].Request = &coop.APIRequest{
+			Path:   "/v1/checkout/sessions",
+			Method: "post",
+			Params: map[string]interface{}{
+				"mode": "payment",
+			},
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	called := false
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		called = true
+		assert.Equal(t, "/v1/checkout/sessions", path)
+		assert.Equal(t, "post", method)
+		return "await stripe.checkout.sessions.create({ mode: 'payment' })", nil
+	}))
+
+	resp, err := service.StartWork(session.ID, 1, "Create checkout")
+	require.NoError(t, err)
+
+	require.True(t, called)
+	assert.Contains(t, resp.SDKExample, "mode: 'payment'")
+	assert.Contains(t, resp.AgentGuidance, "request params in this response are canonical")
+}
+
+func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Settings = map[string]string{"language": "node"}
+		session.Steps[0].Nodes[0].Type = coop.NodeAPIRequest
+		session.Steps[0].Nodes[0].Request = &coop.APIRequest{
+			Path:   "/v1/checkout/sessions",
+			Method: "post",
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		t.Fatal("endpoint-only mutating requests should not fetch docs snippets")
+		return "", nil
+	}))
+
+	resp, err := service.StartWork(session.ID, 1, "Create checkout")
+	require.NoError(t, err)
+
+	assert.Contains(t, resp.SDKExample, "does not include canonical request params")
+	assert.Contains(t, resp.AgentGuidance, "endpoint and method only")
 }
 
 func TestStartWorkIsIdempotentForActiveNode(t *testing.T) {

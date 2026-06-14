@@ -100,12 +100,18 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 	}
 	if node.Type == coop.NodeAPIRequest && node.Request != nil {
 		resp.APIRequest = node.Request
-		if snippet, err := s.fetchSnippet(node.Request.Path, node.Request.Method, node.Request.Params, language(session)); err == nil {
-			resp.SDKExample = snippet
+		resp.AgentGuidance = coop.GenerateAPIRequestGuidance(node.Request)
+		if coop.ShouldFetchSDKSnippet(node.Request) {
+			if snippet, err := s.fetchSnippet(node.Request.Path, node.Request.Method, node.Request.Params, language(session)); err == nil {
+				resp.SDKExample = snippet
+			}
+		} else {
+			resp.SDKExample = coop.SDKSnippetGuidance(node.Request, language(session))
 		}
 	}
 	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
 		resp.WebhookExample = coop.GenerateWebhookExample(node.Events, language(session))
+		resp.AgentGuidance = coop.GenerateAsyncHandlerGuidance(node.Events)
 	}
 	return resp, nil
 }

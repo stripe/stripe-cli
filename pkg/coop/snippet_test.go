@@ -76,3 +76,21 @@ func TestFetchSDKSnippetReturnsParamMarshalError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "marshaling snippet params")
 }
+
+func TestShouldFetchSDKSnippetRequiresParamsForMutatingCalls(t *testing.T) {
+	assert.False(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/checkout/sessions", Method: "post"}))
+	assert.False(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/checkout/sessions", Method: "post", Params: map[string]string{}}))
+	assert.True(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/checkout/sessions", Method: "post", Params: map[string]string{"mode": "payment"}}))
+	assert.True(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/invoices/in_123", Method: "get"}))
+}
+
+func TestSDKSnippetGuidanceUsesLanguageComments(t *testing.T) {
+	req := &APIRequest{Path: "/v1/checkout/sessions", Method: "post"}
+
+	node := SDKSnippetGuidance(req, "node")
+	assert.Contains(t, node, "// Blueprint request: POST /v1/checkout/sessions")
+	assert.Contains(t, node, "does not include canonical request params")
+
+	python := SDKSnippetGuidance(req, "python")
+	assert.Contains(t, python, "# Blueprint request: POST /v1/checkout/sessions")
+}

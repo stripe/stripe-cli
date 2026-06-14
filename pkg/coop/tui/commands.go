@@ -91,6 +91,11 @@ func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 	method := node.Request.Method
 	params := node.Request.Params
 	cursor := nodeIndex
+	if !coop.ShouldFetchSDKSnippet(node.Request) {
+		return func() tea.Msg {
+			return sdkSnippetMsg{step: cursor, key: key, snippet: coop.SDKSnippetGuidance(node.Request, lang)}
+		}
+	}
 	m.sdkLoading = true
 	m.sdkLoadingNode = cursor
 	return func() tea.Msg {

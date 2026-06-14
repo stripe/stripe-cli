@@ -153,6 +153,7 @@ type CommandResponse struct {
 	APIRequest     *APIRequest `json:"api_request,omitempty"`
 	SDKExample     string      `json:"sdk_example,omitempty"`
 	WebhookExample string      `json:"webhook_example,omitempty"`
+	AgentGuidance  string      `json:"agent_guidance,omitempty"`
 	Error          string      `json:"error,omitempty"`
 	Hint           string      `json:"hint,omitempty"`
 }

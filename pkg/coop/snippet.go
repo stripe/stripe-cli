@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
+	"strings"
 	"time"
 )
 
@@ -59,4 +61,64 @@ func FetchSDKSnippet(path, method string, params interface{}, language string) (
 	}
 
 	return snippet, nil
+}
+
+// ShouldFetchSDKSnippet reports whether the docs snippet endpoint has enough
+// blueprint data to produce a useful example. Mutating calls without params tend
+// to generate misleading empty SDK calls, such as checkout.sessions.create().
+func ShouldFetchSDKSnippet(req *APIRequest) bool {
+	if req == nil || strings.TrimSpace(req.Path) == "" || strings.TrimSpace(req.Method) == "" {
+		return false
+	}
+	if !isMutatingMethod(req.Method) {
+		return true
+	}
+	return requestHasParams(req.Params)
+}
+
+// SDKSnippetGuidance returns a code-comment fallback when the blueprint only
+// specifies an endpoint and method.
+func SDKSnippetGuidance(req *APIRequest, language string) string {
+	if req == nil {
+		return ""
+	}
+	prefix := commentPrefix(language)
+	return fmt.Sprintf("%s Blueprint request: %s %s\n%s This blueprint node does not include canonical request params yet.\n%s Do not treat an empty SDK call as complete; wire the app to this endpoint and use the step intent, earlier IDs, and Stripe docs to fill the params.",
+		prefix,
+		strings.ToUpper(req.Method),
+		req.Path,
+		prefix,
+		prefix,
+	)
+}
+
+func requestHasParams(params interface{}) bool {
+	if params == nil {
+		return false
+	}
+	value := reflect.ValueOf(params)
+	switch value.Kind() {
+	case reflect.Map, reflect.Slice, reflect.Array:
+		return value.Len() > 0
+	default:
+		return true
+	}
+}
+
+func isMutatingMethod(method string) bool {
+	switch strings.ToUpper(strings.TrimSpace(method)) {
+	case "POST", "PUT", "PATCH":
+		return true
+	default:
+		return false
+	}
+}
+
+func commentPrefix(language string) string {
+	switch strings.ToLower(strings.TrimSpace(language)) {
+	case "python", "ruby":
+		return "#"
+	default:
+		return "//"
+	}
 }
