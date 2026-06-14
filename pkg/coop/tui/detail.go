@@ -45,6 +45,7 @@ func (m Model) renderDetail() string {
 	case "Reference":
 		m.writeSDKReferenceDetail(&md, node, currentSnippet)
 		m.writeAsyncHandlerReferenceDetail(&md, node)
+		m.writeAsyncHandlerExampleDetail(&md, node)
 	}
 
 	if node.State == coop.NodeSkipped && node.Activity != "" {
@@ -269,7 +270,7 @@ func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionSte
 	wrote := false
 	for _, node := range ch.Nodes {
 		if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-			md.WriteString("- `" + node.Events[0] + "` webhook trigger for " + node.Title + "\n")
+			md.WriteString("- `" + strings.Join(node.Events, "`, `") + "` webhook triggers for " + node.Title + "\n")
 			wrote = true
 		}
 		if node.Type == coop.NodeAPIRequest && node.Request != nil {
@@ -342,9 +343,20 @@ func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.Sess
 	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
 		return
 	}
+	commands := asyncEventTriggerCommands(node.Events)
+	if len(commands) == 0 {
+		return
+	}
 	md.WriteString("**How to verify:**\n\n")
 	md.WriteString("1. `stripe listen --forward-to localhost:<port>/webhook`\n")
-	md.WriteString("2. `stripe trigger " + node.Events[0] + "`\n")
+	if len(commands) == 1 {
+		md.WriteString("2. `" + commands[0] + "`\n")
+	} else {
+		md.WriteString("2. Run each required trigger:\n")
+		for _, command := range commands {
+			md.WriteString("   - `" + command + "`\n")
+		}
+	}
 	md.WriteString("3. Confirm your handler processes the event\n\n")
 }
 
@@ -352,8 +364,34 @@ func (m Model) writeAsyncHandlerReferenceDetail(md *strings.Builder, node *coop.
 	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
 		return
 	}
-	md.WriteString("**Webhook trigger:**\n\n")
-	md.WriteString("`stripe trigger " + node.Events[0] + "`\n\n")
+	commands := asyncEventTriggerCommands(node.Events)
+	if len(commands) == 0 {
+		return
+	}
+	if len(commands) == 1 {
+		md.WriteString("**Webhook trigger:**\n\n")
+		md.WriteString("`" + commands[0] + "`\n\n")
+		return
+	}
+	md.WriteString("**Webhook triggers:**\n\n")
+	for _, command := range commands {
+		md.WriteString("- `" + command + "`\n")
+	}
+	md.WriteString("\n")
+}
+
+func (m Model) writeAsyncHandlerExampleDetail(md *strings.Builder, node *coop.SessionNode) {
+	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
+		return
+	}
+	example := strings.TrimSpace(coop.GenerateWebhookExample(node.Events, m.detailLanguage()))
+	if example == "" {
+		return
+	}
+	md.WriteString("**Webhook handler example**\n")
+	md.WriteString("```" + webhookExampleFenceLanguage(m.detailLanguage()) + "\n")
+	md.WriteString(example + "\n")
+	md.WriteString("```\n\n")
 }
 
 func (m Model) writeReviewCommandDetail(md *strings.Builder, node *coop.SessionNode) {
@@ -441,4 +479,19 @@ func (m Model) attentionWrapped(text string, width int) string {
 		lines[i] = m.theme.AttentionStyle.Render(line)
 	}
 	return strings.Join(lines, "\n")
+}
+
+func webhookExampleFenceLanguage(language string) string {
+	switch strings.ToLower(strings.TrimSpace(language)) {
+	case "node", "javascript", "js":
+		return "javascript"
+	case "typescript", "ts":
+		return "typescript"
+	case "python", "py":
+		return "python"
+	case "go", "golang":
+		return "go"
+	default:
+		return "text"
+	}
 }

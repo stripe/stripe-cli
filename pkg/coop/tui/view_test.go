@@ -281,6 +281,7 @@ func TestRenderDetailWebhook(t *testing.T) {
 	m.selectionCursor = 2 // asyncHandler node
 	m.expanded = true
 	m.detailTab = 2
+	m.session.Steps[1].Nodes[0].Events = []string{"checkout.session.completed", "invoice.paid"}
 	detail := m.renderDetail()
 
 	assertContainsPlain(t, detail, "Checks")
@@ -288,6 +289,26 @@ func TestRenderDetailWebhook(t *testing.T) {
 	assertContainsPlain(t, detail, "How to verify")
 	assertContainsPlain(t, detail, "stripe listen")
 	assertContainsPlain(t, detail, "stripe trigger checkout.session.completed")
+	assertContainsPlain(t, detail, "stripe trigger invoice.paid")
+}
+
+func TestRenderDetailWebhookReferenceShowsGeneratedExample(t *testing.T) {
+	m := testModel()
+	m.selectionCursor = 2 // asyncHandler node
+	m.expanded = true
+	m.detailTab = 3
+	m.session.Steps[1].Nodes[0].Events = []string{"checkout.session.completed", "invoice.paid"}
+
+	detail := m.renderDetail()
+
+	assertContainsPlain(t, detail, "Reference")
+	assertContainsPlain(t, detail, "Webhook triggers")
+	assertContainsPlain(t, detail, "stripe trigger checkout.session.completed")
+	assertContainsPlain(t, detail, "stripe trigger invoice.paid")
+	assertContainsPlain(t, detail, "Webhook handler example")
+	assertContainsPlain(t, detail, "stripe.v2.core.events.retrieve")
+	assertContainsPlain(t, detail, "case \"checkout.session.completed\"")
+	assertContainsPlain(t, detail, "case \"invoice.paid\"")
 }
 
 func TestRenderDetailWithSDKSnippet(t *testing.T) {
@@ -444,6 +465,15 @@ func TestRenderFooterReviewCommand(t *testing.T) {
 	assertContainsPlain(t, footer, "Run:")
 	assertContainsPlain(t, footer, "stripe trigger checkout.session.completed")
 	assertContainsPlain(t, footer, "y copy")
+}
+
+func TestSelectedReviewCommandForAsyncNodeUsesAllEvents(t *testing.T) {
+	m := testModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.session.Steps[1].Nodes[0].Events = []string{"checkout.session.completed", "invoice.paid"}
+	m.selectionCursor = 2
+
+	assert.Equal(t, "stripe trigger checkout.session.completed && stripe trigger invoice.paid", m.selectedReviewCommand())
 }
 
 func TestRenderFooterReviewNotice(t *testing.T) {

@@ -357,9 +357,23 @@ func reviewCommandForNode(node *coop.SessionNode) string {
 		return node.ReviewCommand
 	}
 	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-		return "stripe trigger " + node.Events[0]
+		return strings.Join(asyncEventTriggerCommands(node.Events), " && ")
 	}
 	return ""
+}
+
+func asyncEventTriggerCommands(events []string) []string {
+	var commands []string
+	seen := map[string]bool{}
+	for _, event := range events {
+		event = strings.TrimSpace(event)
+		if event == "" || seen[event] {
+			continue
+		}
+		seen[event] = true
+		commands = append(commands, "stripe trigger "+event)
+	}
+	return commands
 }
 
 func (m Model) actionableReviewCount() int {

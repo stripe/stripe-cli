@@ -29,6 +29,49 @@ func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
 	assert.Equal(t, "Scanning", node.Activity)
 }
 
+func TestStartWorkReturnsWebhookExampleForAsyncHandler(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Settings = map[string]string{"language": "node"}
+		session.Steps[0].Nodes[0].Type = coop.NodeAsyncHandler
+		session.Steps[0].Nodes[0].Events = []string{"invoice.paid", "customer.subscription.created"}
+		return nil
+	})
+	require.NoError(t, err)
+	service := NewService(store)
+
+	resp, err := service.StartWork(session.ID, 1, "Implementing webhook")
+	require.NoError(t, err)
+
+	require.True(t, resp.OK)
+	assert.Empty(t, resp.SDKExample)
+	assert.Contains(t, resp.WebhookExample, `case "invoice.paid"`)
+	assert.Contains(t, resp.WebhookExample, `case "customer.subscription.created"`)
+	assert.Contains(t, resp.WebhookExample, "stripe.v2.core.events.retrieve")
+	assert.Contains(t, resp.WebhookExample, "v1.<event>")
+}
+
+func TestStartWorkIsIdempotentForActiveNode(t *testing.T) {
+	store, session := workflowTestStore(t)
+	service := NewService(store)
+
+	_, err := service.StartWork(session.ID, 1, "First note")
+	require.NoError(t, err)
+	resp, err := service.StartWork(session.ID, 1, "Updated note")
+	require.NoError(t, err)
+
+	require.True(t, resp.OK)
+	assert.Equal(t, "active", resp.State)
+	assert.Contains(t, resp.Next, "stripe coop agent report-work")
+
+	loaded, err := store.Read(session.ID)
+	require.NoError(t, err)
+	node, err := loaded.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Equal(t, coop.NodeActive, node.State)
+	assert.Equal(t, "Updated note", node.Activity)
+}
+
 func TestReportWorkContinuesStepBeforeReview(t *testing.T) {
 	store, session := workflowTestStore(t)
 	service := NewService(store)

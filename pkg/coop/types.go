@@ -143,15 +143,16 @@ type NextStepSuggestion struct {
 
 // CommandResponse is the JSON output format for agent-facing commands.
 type CommandResponse struct {
-	OK          bool        `json:"ok"`
-	SessionID   string      `json:"session_id,omitempty"`
-	Node        int         `json:"node,omitempty"`
-	State       string      `json:"state,omitempty"`
-	Message     string      `json:"message,omitempty"`
-	Next        string      `json:"next,omitempty"`
-	AgentPrompt string      `json:"agent_prompt,omitempty"`
-	APIRequest  *APIRequest `json:"api_request,omitempty"`
-	SDKExample  string      `json:"sdk_example,omitempty"`
-	Error       string      `json:"error,omitempty"`
-	Hint        string      `json:"hint,omitempty"`
+	OK             bool        `json:"ok"`
+	SessionID      string      `json:"session_id,omitempty"`
+	Node           int         `json:"node,omitempty"`
+	State          string      `json:"state,omitempty"`
+	Message        string      `json:"message,omitempty"`
+	Next           string      `json:"next,omitempty"`
+	AgentPrompt    string      `json:"agent_prompt,omitempty"`
+	APIRequest     *APIRequest `json:"api_request,omitempty"`
+	SDKExample     string      `json:"sdk_example,omitempty"`
+	WebhookExample string      `json:"webhook_example,omitempty"`
+	Error          string      `json:"error,omitempty"`
+	Hint           string      `json:"hint,omitempty"`
 }

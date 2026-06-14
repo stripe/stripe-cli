@@ -205,6 +205,8 @@ Each step has a description that tells you what to do. Follow the description â€
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). This is the only node type where no app code may be required.
 - "testHelper": Verify the app behavior end-to-end. Use Stripe test helpers, test clocks, triggers, or CLI commands as supporting test tools.
 
+For asyncHandler steps, use the webhook_example returned by start-work as implementation guidance when present. Snapshot events usually include event.data.object, but you should still fetch the latest resource when freshness matters. Thin event notifications are lightweight: parse them with the official SDK thin-event helper when available, retrieve the full Events v2 object or related object before mutating durable app state, and treat v1.<event> thin migration aliases as the same logical event as <event>. If a snapshot and thin destination run in parallel, use snapshot_event from the thin event as the idempotency key when present.
+
 For apiRequest, asyncHandler, and uiComponent steps, a step is complete only when:
 1. The user's app has code for the behavior, unless the behavior is already implemented or the step truly does not apply.
 2. The code is wired into the app's existing route, service, handler, UI, or framework conventions.
