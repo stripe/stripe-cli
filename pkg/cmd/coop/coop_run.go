@@ -200,7 +200,7 @@ Security and configuration:
 
 Each step has a description that tells you what to do. Follow the description — it's the source of truth. The node type defines the expected kind of app integration:
 - "apiRequest": Implement app code that calls this Stripe API using the official Stripe SDK or the project's existing Stripe client pattern. Use the Stripe CLI only to inspect, create temporary test data, or verify the app code.
-- "asyncHandler": Implement the app's webhook or async event handler. Use "stripe listen --forward-to localhost:<port>/webhook" and event triggers to verify signature handling and event-specific behavior.
+- "asyncHandler": Implement the app's webhook or async event handler for every event listed on the step. Read the raw request body, verify the Stripe signature with STRIPE_WEBHOOK_SECRET using the official SDK webhook helpers, branch on each listed event type, and store or act on the event data the app needs. Use "stripe listen --forward-to localhost:<actual app port>/webhook" and "stripe trigger <event>" for each listed event. Do not hardcode port 4242 unless the app is actually listening there.
 - "uiComponent": Build or update the user-facing app surface that starts, redirects to, or displays this part of the flow. Verify it through the app.
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). This is the only node type where no app code may be required.
 - "testHelper": Verify the app behavior end-to-end. Use Stripe test helpers, test clocks, triggers, or CLI commands as supporting test tools.
@@ -211,7 +211,9 @@ For apiRequest, asyncHandler, and uiComponent steps, a step is complete only whe
 3. Verification exercises the app code, not only a direct Stripe CLI/API call.
 4. report-work points to the app file/function/route you changed. Do not report README/package files as the main implementation unless the step is documentation-only.
 
-If a node includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
+Every non-skipped reviewable step needs at least one passed report-check before report-work. If the environment prevents full verification, report the concrete app path you did verify and explain the exact limitation instead of marking the step complete with no evidence.
+
+If a step includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
 If a node asks you to understand the project, scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
@@ -235,7 +237,8 @@ Important:
 - The human is watching your progress live in a terminal UI.
 - Write working code, not stubs. Run it. Verify it actually works.
 - Report what you did concretely (file paths, line numbers, test results).
-- If a node doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
+- Never pass full card numbers to Stripe APIs or CLI commands. Collect card details only through hosted Checkout, Payment Element, or another official client-side integration. If an API needs a test payment method, use supported test PaymentMethod IDs such as pm_card_visa instead of card[number].
+- If a step doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
 - Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
   Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
   Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)

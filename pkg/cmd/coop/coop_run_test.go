@@ -176,6 +176,10 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 	assert.Contains(t, instructions, "The blueprint describes the Stripe flow the developer wants in their app")
 	assert.Contains(t, instructions, "Stripe CLI commands are useful for setup and verification, but they are not the implementation")
 	assert.Contains(t, instructions, `"apiRequest": Implement app code that calls this Stripe API`)
+	assert.Contains(t, instructions, `"asyncHandler": Implement the app's webhook or async event handler for every event listed on the step`)
+	assert.Contains(t, instructions, "Do not hardcode port 4242 unless the app is actually listening there")
 	assert.Contains(t, instructions, "Verification exercises the app code, not only a direct Stripe CLI/API call")
+	assert.Contains(t, instructions, "Every non-skipped reviewable step needs at least one passed report-check before report-work")
 	assert.Contains(t, instructions, "report-work points to the app file/function/route you changed")
+	assert.Contains(t, instructions, "Never pass full card numbers to Stripe APIs or CLI commands")
 }
