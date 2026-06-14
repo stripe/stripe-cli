@@ -4,12 +4,15 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 )
 
 //go:embed blueprints/*.json
 var blueprintFS embed.FS
+
+var blueprintNodeRefRE = regexp.MustCompile(`\$\{node\.([^}:]+):[^}]+\}`)
 
 // BlueprintStep is a step definition within a blueprint.
 type BlueprintStep struct {
@@ -74,8 +77,54 @@ func LoadBlueprint(id string) (*Blueprint, error) {
 	if err := json.Unmarshal(data, &bp); err != nil {
 		return nil, fmt.Errorf("parsing blueprint %q: %w", id, err)
 	}
+	if err := validateBlueprintReferences(&bp); err != nil {
+		return nil, fmt.Errorf("validating blueprint %q: %w", id, err)
+	}
 
 	return &bp, nil
+}
+
+func validateBlueprintReferences(bp *Blueprint) error {
+	validRefs := map[string]bool{}
+	for _, step := range bp.Steps {
+		for _, node := range step.Nodes {
+			validRefs[step.Key+"."+node.Key] = true
+			for _, request := range node.TestRequests {
+				if request.Key != "" {
+					validRefs[step.Key+"."+node.Key+"."+request.Key] = true
+				}
+			}
+		}
+	}
+
+	data, err := json.Marshal(bp)
+	if err != nil {
+		return err
+	}
+	for _, match := range blueprintNodeRefRE.FindAllSubmatch(data, -1) {
+		ref := string(match[1])
+		if validRefs[ref] {
+			continue
+		}
+		parts := strings.Split(ref, ".")
+		if len(parts) == 3 && validRefs[parts[0]+"."+parts[1]] && isIntegerRefSegment(parts[2]) {
+			continue
+		}
+		return fmt.Errorf("unknown node reference %q", ref)
+	}
+	return nil
+}
+
+func isIntegerRefSegment(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func prefixMatchBlueprint(prefix string) (string, error) {

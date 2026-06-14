@@ -103,6 +103,41 @@ func TestLoadBlueprintNotFound(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestValidateBlueprintReferences(t *testing.T) {
+	bp := &Blueprint{
+		ID: "test",
+		Steps: []BlueprintStep{
+			{
+				StepDefinition: StepDefinition{Key: "setup", Title: "Setup"},
+				Nodes: []NodeDefinition{
+					{Key: "create-product", Request: &APIRequest{Path: "/v1/products", Method: "post"}},
+					{Key: "create-clock", TestRequests: []TestHelperRequest{{
+						Key: "create-clock-request",
+						APIRequest: APIRequest{
+							Path:   "/v1/test_helpers/test_clocks",
+							Method: "post",
+						},
+					}}},
+					{Key: "create-checkout", Request: &APIRequest{
+						Path:   "/v1/checkout/sessions",
+						Method: "post",
+						Params: map[string]string{
+							"price": "${node.setup.create-product:default_price}",
+						},
+					}},
+					{Key: "view-clock", Request: &APIRequest{Path: "/v1/test_helpers/test_clocks/${node.setup.create-clock.create-clock-request:id}", Method: "get"}},
+				},
+			},
+		},
+	}
+	require.NoError(t, validateBlueprintReferences(bp))
+
+	bp.Steps[0].Nodes[3].Request.Path = "/v1/products/${node.old.create-product:id}"
+	err := validateBlueprintReferences(bp)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown node reference")
+}
+
 func TestLoadBlueprintPrefixMatch(t *testing.T) {
 	bp, err := LoadBlueprint("setup-future")
 	require.NoError(t, err)
