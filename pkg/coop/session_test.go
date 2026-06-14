@@ -60,6 +60,26 @@ func TestNodeByNumber(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestStepInfoByNumberIncludesBlueprintFields(t *testing.T) {
+	s := newTestSession()
+	s.Steps[1].Nodes[0].Type = NodeAsyncHandler
+	s.Steps[1].Nodes[0].Description = "Handle the signed event."
+	s.Steps[1].Nodes[0].ReviewPrompt = "Confirm the webhook branch runs."
+	s.Steps[1].Nodes[0].ReviewCommand = "stripe trigger invoice.paid"
+	s.Steps[1].Nodes[0].Events = []string{"invoice.paid"}
+
+	info, err := s.StepInfoByNumber(3)
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, info.Number)
+	assert.Equal(t, "node-3", info.Key)
+	assert.Equal(t, NodeAsyncHandler, info.Type)
+	assert.Equal(t, "Handle the signed event.", info.Description)
+	assert.Equal(t, "Confirm the webhook branch runs.", info.ReviewPrompt)
+	assert.Equal(t, "stripe trigger invoice.paid", info.ReviewCommand)
+	assert.Equal(t, []string{"invoice.paid"}, info.Events)
+}
+
 func TestTransitionNode(t *testing.T) {
 	s := newTestSession()
 

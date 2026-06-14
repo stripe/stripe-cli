@@ -82,6 +82,7 @@ func TestShouldFetchSDKSnippetRequiresParamsForMutatingCalls(t *testing.T) {
 	assert.False(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/checkout/sessions", Method: "post", Params: map[string]string{}}))
 	assert.True(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/checkout/sessions", Method: "post", Params: map[string]string{"mode": "payment"}}))
 	assert.True(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/invoices/in_123", Method: "get"}))
+	assert.False(t, ShouldFetchSDKSnippet(&APIRequest{Path: "/v1/invoices/${node.main.create-invoice:id}", Method: "get"}))
 }
 
 func TestSDKSnippetGuidanceUsesLanguageComments(t *testing.T) {
@@ -93,4 +94,17 @@ func TestSDKSnippetGuidanceUsesLanguageComments(t *testing.T) {
 
 	python := SDKSnippetGuidance(req, "python")
 	assert.Contains(t, python, "# Blueprint request: POST /v1/checkout/sessions")
+}
+
+func TestSDKSnippetGuidancePreservesBlueprintReferences(t *testing.T) {
+	req := &APIRequest{
+		Path:   "/v1/invoices/${node.main.create-invoice:id}",
+		Method: "get",
+	}
+
+	guidance := SDKSnippetGuidance(req, "node")
+
+	assert.Contains(t, guidance, "// Blueprint request: GET /v1/invoices/${node.main.create-invoice:id}")
+	assert.Contains(t, guidance, "Resolve blueprint references from prior step outputs")
+	assert.Contains(t, guidance, "${node.main.create-invoice:id}")
 }

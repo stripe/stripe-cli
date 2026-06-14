@@ -146,8 +146,8 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 	assert.Contains(t, resp.Next, "stripe coop agent start-work")
 	assert.Contains(t, resp.AgentInstructions, "guided co-op follow-up")
 	assert.Contains(t, resp.AgentInstructions, "Vercel")
-	require.Len(t, resp.Nodes, 3)
-	assert.Equal(t, "Inspect existing deploy config", resp.Nodes[0].Title)
+	require.Len(t, resp.Steps, 3)
+	assert.Equal(t, "Inspect existing deploy config", resp.Steps[0].Title)
 
 	ids, err := store.List()
 	require.NoError(t, err)

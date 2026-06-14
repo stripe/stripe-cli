@@ -20,6 +20,9 @@ func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
 	require.True(t, resp.OK)
 	assert.Equal(t, "active", resp.State)
 	assert.Contains(t, resp.Next, "stripe coop agent report-work")
+	require.NotNil(t, resp.BlueprintStep)
+	assert.Equal(t, "one", resp.BlueprintStep.Key)
+	assert.Contains(t, resp.AgentGuidance, "Follow blueprint step 1")
 
 	loaded, err := store.Read(session.ID)
 	require.NoError(t, err)
@@ -50,6 +53,8 @@ func TestStartWorkReturnsWebhookExampleForAsyncHandler(t *testing.T) {
 	assert.Contains(t, resp.WebhookExample, "stripe.v2.core.events.retrieve")
 	assert.Contains(t, resp.WebhookExample, "v1.<event>")
 	assert.Contains(t, resp.AgentGuidance, "signed webhook/event handler")
+	require.NotNil(t, resp.BlueprintStep)
+	assert.Equal(t, []string{"invoice.paid", "customer.subscription.created"}, resp.BlueprintStep.Events)
 }
 
 func TestStartWorkReturnsSDKExampleForBlueprintParams(t *testing.T) {
@@ -81,6 +86,8 @@ func TestStartWorkReturnsSDKExampleForBlueprintParams(t *testing.T) {
 	require.True(t, called)
 	assert.Contains(t, resp.SDKExample, "mode: 'payment'")
 	assert.Contains(t, resp.AgentGuidance, "request params in this response are canonical")
+	require.NotNil(t, resp.BlueprintStep)
+	assert.Equal(t, resp.APIRequest, resp.BlueprintStep.APIRequest)
 }
 
 func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing.T) {
@@ -105,6 +112,27 @@ func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing
 
 	assert.Contains(t, resp.SDKExample, "does not include canonical request params")
 	assert.Contains(t, resp.AgentGuidance, "endpoint and method only")
+}
+
+func TestStartWorkReturnsGuidanceForUIComponent(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Steps[0].Nodes[0].Type = coop.NodeUIComponent
+		session.Steps[0].Nodes[0].Description = "Add a Checkout button that calls the app checkout endpoint."
+		session.Steps[0].Nodes[0].ReviewPrompt = "Open the app and confirm the button redirects to Checkout."
+		return nil
+	})
+	require.NoError(t, err)
+	service := NewService(store)
+
+	resp, err := service.StartWork(session.ID, 1, "Building UI")
+	require.NoError(t, err)
+
+	require.NotNil(t, resp.BlueprintStep)
+	assert.Equal(t, coop.NodeUIComponent, resp.BlueprintStep.Type)
+	assert.Contains(t, resp.AgentGuidance, "Add a Checkout button")
+	assert.Contains(t, resp.AgentGuidance, "Open the app and confirm")
+	assert.Contains(t, resp.AgentGuidance, "user-facing app behavior")
 }
 
 func TestStartWorkIsIdempotentForActiveNode(t *testing.T) {

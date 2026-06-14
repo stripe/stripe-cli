@@ -98,9 +98,12 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 		Message:   fmt.Sprintf("Started: %s", node.Title),
 		Next:      fmt.Sprintf("stripe coop agent report-work --session=%s --step=%d --file=<path> --note=\"<what you did>\"", session.ID, nodeNumber),
 	}
+	if blueprintStep, err := session.StepInfoByNumber(nodeNumber); err == nil {
+		resp.BlueprintStep = blueprintStep
+		resp.AgentGuidance = coop.GenerateStepGuidance(*blueprintStep)
+	}
 	if node.Type == coop.NodeAPIRequest && node.Request != nil {
 		resp.APIRequest = node.Request
-		resp.AgentGuidance = coop.GenerateAPIRequestGuidance(node.Request)
 		if coop.ShouldFetchSDKSnippet(node.Request) {
 			if snippet, err := s.fetchSnippet(node.Request.Path, node.Request.Method, node.Request.Params, language(session)); err == nil {
 				resp.SDKExample = snippet
@@ -111,7 +114,6 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 	}
 	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
 		resp.WebhookExample = coop.GenerateWebhookExample(node.Events, language(session))
-		resp.AgentGuidance = coop.GenerateAsyncHandlerGuidance(node.Events)
 	}
 	return resp, nil
 }

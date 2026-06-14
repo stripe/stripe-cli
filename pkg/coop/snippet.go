@@ -70,6 +70,9 @@ func ShouldFetchSDKSnippet(req *APIRequest) bool {
 	if req == nil || strings.TrimSpace(req.Path) == "" || strings.TrimSpace(req.Method) == "" {
 		return false
 	}
+	if hasBlueprintReferences(req.Path) {
+		return false
+	}
 	if !isMutatingMethod(req.Method) {
 		return true
 	}
@@ -83,13 +86,19 @@ func SDKSnippetGuidance(req *APIRequest, language string) string {
 		return ""
 	}
 	prefix := commentPrefix(language)
-	return fmt.Sprintf("%s Blueprint request: %s %s\n%s This blueprint node does not include canonical request params yet.\n%s Do not treat an empty SDK call as complete; wire the app to this endpoint and use the step intent, earlier IDs, and Stripe docs to fill the params.",
-		prefix,
-		strings.ToUpper(req.Method),
-		req.Path,
-		prefix,
-		prefix,
-	)
+	lines := []string{
+		fmt.Sprintf("%s Blueprint request: %s %s", prefix, strings.ToUpper(req.Method), req.Path),
+	}
+	if refs := BlueprintReferences(req.Path, req.Params); len(refs) > 0 {
+		lines = append(lines, fmt.Sprintf("%s Resolve blueprint references from prior step outputs at runtime: %s.", prefix, strings.Join(refs, ", ")))
+	}
+	if requestHasParams(req.Params) {
+		lines = append(lines, fmt.Sprintf("%s Use api_request.params as the canonical request shape from the blueprint.", prefix))
+	} else {
+		lines = append(lines, fmt.Sprintf("%s This blueprint node does not include canonical request params yet.", prefix))
+		lines = append(lines, fmt.Sprintf("%s Do not treat an empty SDK call as complete; wire the app to this endpoint and use the step intent, earlier IDs, and Stripe docs to fill the params.", prefix))
+	}
+	return strings.Join(lines, "\n")
 }
 
 func requestHasParams(params interface{}) bool {

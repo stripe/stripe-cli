@@ -86,20 +86,12 @@ func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.S
 }
 
 func newCoopAgentSessionResponse(title string, session *coop.Session, instructions string) coopAgentRunResponse {
-	var nodes []nodeBrief
+	var steps []coop.StepInfo
 	nodeNumber := 0
 	for _, step := range session.Steps {
 		for _, n := range step.Nodes {
 			nodeNumber++
-			nodes = append(nodes, nodeBrief{
-				Number:        nodeNumber,
-				Title:         n.Title,
-				Type:          string(n.Type),
-				Description:   n.Description,
-				ReviewPrompt:  n.ReviewPrompt,
-				ReviewCommand: n.ReviewCommand,
-				AutoConfirm:   n.AutoConfirm,
-			})
+			steps = append(steps, coop.NewStepInfo(nodeNumber, n))
 		}
 	}
 
@@ -113,7 +105,7 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
 		},
 		AgentInstructions: instructions,
-		Nodes:             nodes,
+		Steps:             steps,
 	}
 	return resp
 }
@@ -157,18 +149,8 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 
 type coopAgentRunResponse struct {
 	coop.CommandResponse
-	AgentInstructions string      `json:"agent_instructions"`
-	Nodes             []nodeBrief `json:"nodes"`
-}
-
-type nodeBrief struct {
-	Number        int    `json:"number"`
-	Title         string `json:"title"`
-	Type          string `json:"type"`
-	Description   string `json:"description,omitempty"`
-	ReviewPrompt  string `json:"review_prompt,omitempty"`
-	ReviewCommand string `json:"review_command,omitempty"`
-	AutoConfirm   bool   `json:"auto_confirm,omitempty"`
+	AgentInstructions string          `json:"agent_instructions"`
+	Steps             []coop.StepInfo `json:"steps"`
 }
 
 func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
@@ -185,6 +167,8 @@ func sessionLifecycleInstructions(preamble string, session *coop.Session) string
 	return fmt.Sprintf(`%s
 
 The blueprint describes the Stripe flow the developer wants in their app. Your deliverable is the user's app implementing that flow. Stripe CLI commands are useful for setup and verification, but they are not the implementation unless a step is explicitly a cliCommand.
+
+The initial steps array and each start-work blueprint_step object are the concrete blueprint contract. Preserve the step order, step type, api_request, events, review_prompt, and review_command. Do not replace a blueprint API request with a different endpoint, Dashboard-only setup, or unrelated CLI command unless the step itself says to use that path.
 
 BEFORE YOU START â€” ensure you have API access:
 1. Run "stripe whoami" to check if you're authenticated.
@@ -205,7 +189,7 @@ Each step has a description that tells you what to do. Follow the description â€
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). This is the only node type where no app code may be required.
 - "testHelper": Verify the app behavior end-to-end. Use Stripe test helpers, test clocks, triggers, or CLI commands as supporting test tools.
 
-When start-work returns agent_guidance, use it as step-specific guidance. For apiRequest steps, treat api_request.path, api_request.method, and any api_request.params as the canonical API contract from the blueprint. If sdk_example is a warning that the blueprint is endpoint-only, do not treat an empty SDK call as complete; choose params from the step intent, prior blueprint outputs, and Stripe docs, then report the exact app code path and params used.
+When start-work returns agent_guidance, use it as step-specific guidance. For apiRequest steps, treat blueprint_step.api_request.path, blueprint_step.api_request.method, and any blueprint_step.api_request.params as the canonical API contract from the blueprint. If sdk_example is a warning that the blueprint is endpoint-only, do not treat an empty SDK call as complete; choose params from the step intent, prior blueprint outputs, and Stripe docs, then report the exact app code path and params used.
 
 For asyncHandler steps, use the webhook_example returned by start-work and any agent_guidance as implementation guidance when present. Snapshot events usually include event.data.object, but you should still fetch the latest resource when freshness matters. Thin event notifications are lightweight: parse them with the official SDK thin-event helper when available, retrieve the full Events v2 object or related object before mutating durable app state, and treat v1.<event> thin migration aliases as the same logical event as <event>. If a snapshot and thin destination run in parallel, use snapshot_event from the thin event as the idempotency key when present.
 

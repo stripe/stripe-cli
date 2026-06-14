@@ -70,6 +70,21 @@ type TestHelperRequest struct {
 	APIRequest
 }
 
+// StepInfo is the agent-facing blueprint contract for a single node.
+type StepInfo struct {
+	Number        int                 `json:"number,omitempty"`
+	Key           string              `json:"key"`
+	Title         string              `json:"title"`
+	Type          NodeType            `json:"type"`
+	Description   string              `json:"description,omitempty"`
+	ReviewPrompt  string              `json:"review_prompt,omitempty"`
+	ReviewCommand string              `json:"review_command,omitempty"`
+	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
+	APIRequest    *APIRequest         `json:"api_request,omitempty"`
+	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
+	Events        []string            `json:"events,omitempty"`
+}
+
 // NodeDefinition is the source-derived static definition for a node.
 type NodeDefinition struct {
 	Type          NodeType            `json:"type"`
@@ -154,6 +169,7 @@ type CommandResponse struct {
 	SDKExample     string      `json:"sdk_example,omitempty"`
 	WebhookExample string      `json:"webhook_example,omitempty"`
 	AgentGuidance  string      `json:"agent_guidance,omitempty"`
+	BlueprintStep  *StepInfo   `json:"blueprint_step,omitempty"`
 	Error          string      `json:"error,omitempty"`
 	Hint           string      `json:"hint,omitempty"`
 }
