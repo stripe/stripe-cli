@@ -184,6 +184,8 @@ func guidedActionAgentInstructions(action *coop.GuidedAction, session *coop.Sess
 func sessionLifecycleInstructions(preamble string, session *coop.Session) string {
 	return fmt.Sprintf(`%s
 
+The blueprint describes the Stripe flow the developer wants in their app. Your deliverable is the user's app implementing that flow. Stripe CLI commands are useful for setup and verification, but they are not the implementation unless a step is explicitly a cliCommand.
+
 BEFORE YOU START — ensure you have API access:
 1. Run "stripe whoami" to check if you're authenticated.
 2. If not authenticated OR if the output shows "Test mode key: not available",
@@ -191,12 +193,18 @@ BEFORE YOU START — ensure you have API access:
    This gives you a working API key without requiring browser login.
    The claim URL will appear automatically in the TUI for the developer.
 
-Each node has a description that tells you what to do. Follow the description — it's the source of truth. The node type is a hint about the general category:
-- "apiRequest": Usually means writing code that calls a Stripe API. Run it and verify the response.
-- "asyncHandler": Set up a webhook handler. Use "stripe listen --forward-to localhost:<port>/webhook" to test.
-- "uiComponent": Build frontend code or configure something user-facing. Verify it works.
-- "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). Report the output.
-- "testHelper": Verify something works end-to-end. Run the flow and confirm the expected outcome.
+Each step has a description that tells you what to do. Follow the description — it's the source of truth. The node type defines the expected kind of app integration:
+- "apiRequest": Implement app code that calls this Stripe API using the official Stripe SDK or the project's existing Stripe client pattern. Use the Stripe CLI only to inspect, create temporary test data, or verify the app code.
+- "asyncHandler": Implement the app's webhook or async event handler. Use "stripe listen --forward-to localhost:<port>/webhook" and event triggers to verify signature handling and event-specific behavior.
+- "uiComponent": Build or update the user-facing app surface that starts, redirects to, or displays this part of the flow. Verify it through the app.
+- "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). This is the only node type where no app code may be required.
+- "testHelper": Verify the app behavior end-to-end. Use Stripe test helpers, test clocks, triggers, or CLI commands as supporting test tools.
+
+For apiRequest, asyncHandler, and uiComponent steps, a step is complete only when:
+1. The user's app has code for the behavior, unless the behavior is already implemented or the step truly does not apply.
+2. The code is wired into the app's existing route, service, handler, UI, or framework conventions.
+3. Verification exercises the app code, not only a direct Stripe CLI/API call.
+4. report-work points to the app file/function/route you changed. Do not report README/package files as the main implementation unless the step is documentation-only.
 
 If a node includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
