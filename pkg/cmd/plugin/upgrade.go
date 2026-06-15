@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -91,6 +92,7 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Println(color.Green(fmt.Sprintf("✔ upgrade to v%s complete.", version)))
 	}
+	postinstall.PrintTips(os.Stdout, plugin.Shortname)
 
 	return nil
 }
