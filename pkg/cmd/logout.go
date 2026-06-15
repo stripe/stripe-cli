@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/logout"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -18,12 +19,12 @@ func newLogoutCmd() *logoutCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "logout",
 		Args:  validators.NoArgs,
-		Short: "Logout of your Stripe account",
-		Long:  `Logout of your Stripe account from the CLI`,
+		Short: i18n.T("logout.short"),
+		Long:  i18n.T("logout.long"),
 		RunE:  lc.runLogoutCmd,
 	}
 
-	lc.cmd.Flags().BoolVarP(&lc.all, "all", "a", false, "Clear credentials for all projects you are currently logged into.")
+	lc.cmd.Flags().BoolVarP(&lc.all, "all", "a", false, i18n.T("logout.flags.all"))
 
 	return lc
 }

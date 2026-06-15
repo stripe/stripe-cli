@@ -21,13 +21,14 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
-
-	"github.com/spf13/cobra"
 )
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
@@ -146,7 +147,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) > 1 {
-		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
+		return fmt.Errorf("%s", i18n.T("requests.errors.too_many_args"))
 	}
 
 	if len(args) == 0 {
@@ -173,7 +174,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else if !confirmed {
-		fmt.Println("Exiting without execution. User did not confirm the command.")
+		fmt.Println(i18n.T("requests.output.user_cancelled"))
 		return nil
 	}
 
@@ -190,32 +191,32 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 // InitFlags initialize shared flags for all requests commands
 func (rb *Base) InitFlags() {
 	if rb.Cmd.Flags().Lookup("confirm") == nil {
-		rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
+		rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, i18n.T("requests.flags.confirm"))
 	}
 
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
-	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
-	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
-	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
-	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
-	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
-	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
-	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
-	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, i18n.T("requests.flags.data"))
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, i18n.T("requests.flags.expand"))
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", i18n.T("requests.flags.idempotency"))
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", i18n.T("requests.flags.stripe_version"))
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", i18n.T("requests.flags.stripe_account"))
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", i18n.T("requests.flags.stripe_context"))
+	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, i18n.T("requests.flags.show_headers"))
+	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, i18n.T("requests.flags.live"))
+	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, i18n.T("requests.flags.dark_style"))
+	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, i18n.T("requests.flags.dry_run"))
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
 		if rb.Cmd.Flags().Lookup("limit") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "How many objects to be returned, between 1 and 100 (default is 10)")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", i18n.T("requests.flags.limit"))
 		}
 
 		if rb.Cmd.Flags().Lookup("starting-after") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.startingAfter, "starting-after", "a", "", i18n.T("requests.flags.starting_after"))
 		}
 
 		if rb.Cmd.Flags().Lookup("ending-before") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.endingBefore, "ending-before", "b", "", i18n.T("requests.flags.ending_before"))
 		}
 	}
 
@@ -347,7 +348,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			if err != nil {
 				return []byte{}, fmt.Errorf("failed to save PDF file: %w", err)
 			}
-			fmt.Printf("PDF saved to: %s\n", filename)
+			fmt.Print(i18n.Tf("requests.output.pdf_saved", i18n.Args{"filename": filename}))
 		} else {
 			result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
 			fmt.Println(result)
@@ -851,12 +852,7 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 		request.Header.Set("Idempotency-Key", params.idempotency)
 
 		if rb.Method == http.MethodGet || rb.Method == http.MethodDelete {
-			warning := fmt.Sprintf(
-				"Warning: sending an idempotency key with a %s request has no effect and should be avoided, as %s requests are idempotent by definition.",
-				rb.Method,
-				rb.Method,
-			)
-			fmt.Println(warning)
+			fmt.Println(i18n.Tf("requests.output.idempotency_warning", i18n.Args{"method": rb.Method}))
 		}
 	}
 }
@@ -898,8 +894,7 @@ func (rb *Base) confirmCommand() (bool, error) {
 
 func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
 	if _, needsConfirmation := confirmationCommands[rb.Method]; needsConfirmation && !rb.autoConfirm {
-		confirmationPrompt := fmt.Sprintf("Are you sure you want to perform the command: %s?\nEnter 'yes' to confirm: ", rb.Method)
-		fmt.Print(confirmationPrompt)
+		fmt.Print(i18n.Tf("requests.prompts.confirm_command", i18n.Args{"method": rb.Method}))
 
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -924,7 +919,7 @@ func createOrNormalizePath(arg string) (string, error) {
 			return path + arg, nil
 		}
 
-		return "", fmt.Errorf("unrecognized object id: %s", arg)
+		return "", fmt.Errorf("%s", i18n.Tf("requests.errors.unrecognized_id", i18n.Args{"id": arg}))
 	}
 
 	return normalizePath(arg), nil

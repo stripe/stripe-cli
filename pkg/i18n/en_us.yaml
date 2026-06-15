@@ -1,0 +1,619 @@
+community:
+    output:
+        browser_failed: Failed to open browser, please go to {url} manually.
+        no_browser: |
+            Chat with other developers and Stripe engineers in the official Stripe Discord server: {url}
+        with_browser: |-
+            Chat with other developers and Stripe engineers in the official Stripe Discord server.
+
+            Press Enter to open the browser or visit {url}
+    short: Chat with Stripe engineers and other developers
+completion:
+    errors:
+        cannot_detect_shell: could not automatically detect your shell; please run the command with the --shell flag for bash, zsh, or fish
+        unsupported_shell: 'unsupported shell {shell}; supported shells are: bash, zsh, fish'
+    flags:
+        shell: 'Shell to generate completions for: bash, zsh, or fish (auto-detected if omitted)'
+        write_to_stdout: Print completion script to stdout rather than creating a new file.
+    output:
+        bash_detected: 'Detected `bash`, generating bash completion file: stripe-completion.bash'
+        bash_generating: 'Generating bash completion file: stripe-completion.bash'
+        bash_instructions_linux: |4
+            1. Ensure bash autocompletion is installed on your system. Often, this means verifying that `/etc/profile.d/bash_completion.sh` exists, and is sourced by your bash profile; the location of this file varies across distributions of Linux.
+
+            2. Move `stripe-completion.bash` to the correct location:
+                mkdir -p ~/.stripe
+                mv stripe-completion.bash ~/.stripe
+
+            3. Add the following line to your bash profile, so that Stripe autocompletion will be enabled every time you start a new terminal session:
+                source ~/.stripe/stripe-completion.bash
+
+            4. Either restart your terminal, or run the following command in your current session to enable immediately:
+                source ~/.stripe/stripe-completion.bash
+        bash_instructions_mac: |4
+            Set up bash autocompletion on your system:
+            1. Install the bash autocompletion package:
+                 brew install bash-completion
+            2. Follow the post-install instructions displayed by Homebrew; add a line like the following to your bash profile:
+                 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+
+            Set up Stripe autocompletion:
+            3. Move `stripe-completion.bash` to the correct location:
+                mkdir -p ~/.stripe
+                mv stripe-completion.bash ~/.stripe
+
+            4. Add the following line to your bash profile, so that Stripe autocompletion will be enabled every time you start a new terminal session:
+                source ~/.stripe/stripe-completion.bash
+
+            5. Either restart your terminal, or run the following command in your current session to enable immediately:
+                source ~/.stripe/stripe-completion.bash
+        fish_detected: 'Detected `fish`, generating fish completion file: stripe.fish'
+        fish_generating: 'Generating fish completion file: stripe.fish'
+        fish_instructions: |4
+            1. Move `stripe.fish` to the fish completions directory:
+                mkdir -p ~/.config/fish/completions
+                mv stripe.fish ~/.config/fish/completions/stripe.fish
+
+            Fish automatically loads completions from this directory, so no additional
+            configuration is needed. Open a new terminal session and completions will
+            be available.
+        instructions_header: |4
+            Suggested next steps:
+            ---------------------
+        zsh_detected: 'Detected `zsh`, generating zsh completion file: stripe-completion.zsh'
+        zsh_generating: 'Generating zsh completion file: stripe-completion.zsh'
+        zsh_instructions: |4
+            1. Move `stripe-completion.zsh` to the correct location:
+                mkdir -p ~/.stripe
+                mv stripe-completion.zsh ~/.stripe
+
+            2. Add the following lines to your `.zshrc` enabling shell completion for Stripe:
+                fpath=(~/.stripe $fpath)
+                autoload -Uz compinit && compinit -i
+
+            3. Source your `.zshrc` or open a new terminal session:
+                source ~/.zshrc
+    short: Generate bash, zsh, and fish completion scripts
+config:
+    example: |-
+        stripe config --list
+          stripe config --set color off
+          stripe config --unset color
+    flags:
+        edit: Open an editor to the config file
+        list: List configs
+        set: Set a config field to some value
+        unset: Unset a specific config field
+    long: |-
+        config lets you set and unset specific configuration values for your profile if
+        you need more granular control over the configuration.
+    short: Manually change the config values for the CLI
+daemon:
+    flags:
+        port: 'The TCP port the daemon will listen to (default: an available port)'
+    long: |-
+        Start a local gRPC server, enabling you to invoke Stripe CLI commands programmatically from a gRPC
+        client.
+
+        Currently, stripe daemon only supports a subset of CLI commands. Documentation is not yet available.
+    short: Run as a daemon on your localhost
+delete:
+    example: stripe {preview}delete /customers/cus_FROPkgsHVRRspg
+    long: |
+        Make {verb} requests to the Stripe API using your test mode key.
+        {preview_note}
+        For a full list of supported paths, see the API reference:
+        https://stripe.com/docs/api
+    preview_note: |4
+        The preview Stripe-Version header is set automatically on all requests.
+    short: Make a {verb} request to the Stripe API
+feedback:
+    output:
+        body: |-
+            We'd love to know what you think of the CLI:
+
+            * Report bugs or issues on GitHub: https://github.com/stripe/stripe-cli/issues
+    short: Provide us with feedback on the CLI
+fixtures:
+    flags:
+        add: Add parameters in the fixture
+        api_version: Specify API version in the fixture
+        edit: Edit the fixture directly in your default IDE
+        override: Override parameters in the fixture
+        remove: Remove parameters from the fixture
+        skip: Skip specific steps in the fixture
+        stripe_account: Set a header identifying the connected account
+    long: Run fixtures to populate your account with data
+    short: Run fixtures to populate your account with data
+get:
+    example: |-
+        stripe {preview}get ch_1EGYgUByst5pquEtjb0EkYha
+          stripe {preview}get cus_G6GQwbr1dWXt9O
+          stripe {preview}get /v1/charges --limit 50
+    long: |
+        With the get command, you can load API resources by providing just the resource
+        id. You can also make normal HTTP {verb_upper} requests to the Stripe API by providing
+        the API path.
+        {preview_note}
+        For a full list of supported paths, see the API reference:
+        https://stripe.com/docs/api
+    preview_note: |4
+        The preview Stripe-Version header is set automatically on all requests.
+    short: Retrieve resources by their ID or make {verb} requests
+listen:
+    errors:
+        org_sandbox_unsupported: The listen command is not supported in an organization sandbox at this time.
+        parse_api_base_url: failed to parse API base url
+        unexpected_data_type: VisitData received unexpected type for DataElement, got {type}
+    example: |-
+        stripe listen
+          stripe listen --events charge.captured,charge.updated \
+            --forward-to localhost:3000/events
+          stripe listen --thin-events v1.billing.meter.no_meter_found \
+            --forward-thin-to localhost:3000/thin-events
+    flags:
+        connect_headers: 'A comma-separated list of custom headers to forward for Connect. Ex: "Key1:Value1, Key2:Value2"'
+        events: 'A comma-separated list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types'
+        format: |-
+            Specifies the output format of webhook events
+            	Acceptable values:
+            		'JSON' - Output webhook events in JSON format
+        forward_connect_to: 'The URL to forward Connect webhook events to (default: same as normal events)'
+        forward_thin_connect_to: The URL to forward thin Connect events to
+        forward_thin_to: The URL to forward thin events to
+        forward_to: The URL to forward webhook events to
+        headers: 'A comma-separated list of custom headers to forward. Ex: "Key1:Value1, Key2:Value2"'
+        latest: 'Receive events formatted with the latest API version (default: your account''s default API version)'
+        live: 'Receive live events (default: test)'
+        print_json_deprecated: Please use `--format json` instead and use `jq` if you need to process the JSON in the terminal.
+        print_secret: Only print the webhook signing secret and exit
+        skip_update: Skip checking latest version of Stripe CLI
+        skip_verify: Skip certificate verification when forwarding to HTTPS endpoints
+        thin_events: A comma-separated list of thin events to listen for.
+        use_configured_webhooks: Load webhook endpoint configuration from the webhooks API/dashboard
+    long: |-
+        The listen command watches and forwards webhook events from Stripe to your
+        local machine by connecting directly to Stripe's API. You can test the latest
+        API version, filter events, or even load your saved webhook endpoints from your
+        Stripe account.
+    output:
+        failed_to_post: |
+            {time}            [{status}] Failed to POST: {error}
+        failed_to_read_response: |
+            {time}            [{status}] Failed to read response from endpoint, error = {error}
+        getting_ready: Getting ready...
+        ready: Ready! {api_version}Your webhook signing secret is {secret} (^C to quit)
+        session_expired: Session expired, reconnecting...
+    short: Listen for webhook events
+login:
+    example: |
+        # Standard browser login (default for TTY users)
+          stripe login
+
+          # Paste an API key instead of using a browser
+          stripe login --interactive
+
+          # Non-interactive: get links and exit (useful for agents/scripts)
+          stripe login --non-interactive
+
+          # Two-step agent-driven flow:
+          #   Step 1 – get the browser URL, verification code, and poll URL
+          stripe login --non-interactive
+          #   Step 2 – after the user approves in the browser, complete login
+          stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'
+    flags:
+        complete: Complete a browser login by polling the given URL (from 'stripe login --non-interactive')
+        interactive: Run interactive configuration mode if you cannot open a browser
+        non_interactive: Print login URL and verification code as JSON and exit; immediately run the next_step command from the output to poll while the user approves in the browser
+    list:
+        example: stripe login list
+        short: Lists all available logged-in accounts
+    long: |
+        Login to your Stripe account to set up the CLI.
+
+        By default (when stdin is a terminal), this opens a browser-based OAuth flow: it
+        prints a pairing code, launches your browser to the Stripe Dashboard, and waits for
+        you to approve the request before saving your credentials.
+
+        Use --interactive when a browser is unavailable:
+
+          --interactive
+              Prompts you to paste an API key directly. Useful for SSH sessions or
+              CI environments with a human operator.
+
+        For agents and scripts, use the two-step non-interactive flow:
+
+          --non-interactive
+              Prints a JSON object containing a browser_url, a verification_code to
+              confirm the pairing, and a next_step command, then exits immediately.
+              Activates automatically when stdin is not a terminal.
+              Immediately run the next_step command from the JSON output to poll
+              while the user approves in the browser; it blocks until authentication
+              completes.
+
+          --complete <poll-url>
+              Polls the given URL (from the next_step of a prior --non-interactive run)
+              until the user approves in the browser, then saves credentials.
+    short: Login to your Stripe account
+    switch:
+        example: stripe login switch <account_name>
+        short: Switch to a different logged-in account
+login_flow:
+    interactive:
+        api_key_display: |
+            Your API key is: {key}
+        api_key_required: API key is required, please provide your API key
+        error_verifying: |
+            > Error verifying the CLI was setup successfully: {error}
+        prompt_api_key: 'Enter your API key: '
+        prompt_device_name: 'How would you like to identify this device in the Stripe Dashboard? [default: {default}] '
+    output:
+        browser_failed: Failed to open browser, please go to {url} manually.
+        error_verifying: |
+            > Error verifying the CLI was set up successfully: {error}
+        go_to_url: |
+            To authenticate with Stripe, please go to: {url}
+        key_expiry_notice: 'Please note: this key will expire after 90 days, at which point you''ll need to re-authenticate.'
+        pairing_code: |
+            Your pairing code is: {code}
+        pairing_code_note: This pairing code verifies your authentication with Stripe.
+        press_enter_to_open: Press Enter to open the browser or visit {url} (^C to quit)
+        success: |
+            > {message}
+        waiting_for_confirmation: Waiting for confirmation...
+    poll:
+        error_verifying: |
+            > Error verifying setup: {error}
+        next_step_cmd: stripe login --complete '{url}'
+    success:
+        basic: Done! The Stripe CLI is configured
+        with_account: Done! The Stripe CLI is configured for your account with account id {account_id}
+        with_display_and_account: Done! The Stripe CLI is configured for {display_name} with account id {account_id}
+logout:
+    flags:
+        all: Clear credentials for all projects you are currently logged into.
+    long: Logout of your Stripe account from the CLI
+    short: Logout of your Stripe account
+logs:
+    long: Tail Stripe API request logs in real-time and see debug information.
+    short: Interact with Stripe API request logs
+open:
+    errors:
+        unsupported_command: 'unsupported open command, given: {command}'
+    example: |-
+        stripe open --list
+          stripe open api
+          stripe open docs
+          stripe open dashboard/webhooks
+          stripe open dashboard/billing --live
+    flags:
+        list: List all supported short cuts
+        live: Open the Stripe Dashboard for your live integration
+    long: |-
+        The open command provices shortcuts to quickly let you open pages to Stripe with
+        in your browser. A full list of support shortcuts can be seen with 'stripe open --list'
+    output:
+        column_shortcut: shortcut
+        column_url: url
+        intro: open quickly opens Stripe pages. To use, run 'stripe open <shortcut>'.
+        shortcuts_header: 'open supports the following shortcuts:'
+    short: Quickly open Stripe pages
+plugin:
+    long: Interact with Stripe CLI plugins.
+    short: Interact with Stripe CLI plugins
+post:
+    example: |-
+        stripe {preview}post /payment_intents \
+            -d amount=2000 \
+            -d currency=usd \
+            -d "payment_method_types[]=card"
+    long: |
+        Make {verb} requests to the Stripe API using your test mode key.
+
+        The post command supports API features like idempotency keys and expand flags.
+        {preview_note}
+        For a full list of supported paths, see the API reference:
+        https://stripe.com/docs/api
+    preview_note: |4
+        The preview Stripe-Version header is set automatically on all requests.
+    short: Make a {verb} request to the Stripe API
+postinstall:
+    example: stripe postinstall
+    output:
+        welcome: Thanks for installing the Stripe CLI! To get started, run `stripe login`
+    short: Run some checks after installation of this CLI and prompt user if needed
+proxy:
+    errors:
+        auth_error: 'Error while authenticating with Stripe: {error}'
+        forward_connect_url_relative: forward_connect_to cannot be a relative path when loading webhook endpoints from the API
+        forward_url_cannot_parse: 'provided forward url cannot be parsed: {url}'
+        forward_url_relative: forward_to cannot be a relative path when loading webhook endpoints from the API
+        load_from_webhooks_requires_forward: load_from_webhooks_api requires a location to forward to with forward_to
+        malformed_event: 'Received malformed event: {error}'
+        malformed_event_internal: received malformed event from Stripe
+        no_webhook_endpoints: 'you have not defined any webhook endpoints on your account, go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks'
+        session_expired: session expired, terminating after {attempts} failed attempts to reauthorize
+        too_many_sessions: you have too many `stripe listen` sessions open, please close some and try again
+        unrecognized_format: |
+            Unrecognized output format {format}
+    output:
+        api_version: 'You are using Stripe API Version [{version}]. '
+    warnings:
+        invalid_event: |
+            You're attempting to listen for "{event}", which isn't a valid event
+        invalid_thin_event: |
+            You're attempting to listen for "{event}", which isn't a valid thin event or preview event
+        wildcard_thin_events: |
+            * is only supported in the CLI, thin event destinations do not support selecting all event types
+requests:
+    errors:
+        too_many_args: this command only supports one argument. Run with the --help flag to see usage and examples
+        unrecognized_id: 'unrecognized object id: {id}'
+    flags:
+        confirm: Skip the warning prompt and automatically confirm the command being entered
+        dark_style: Use a darker color scheme better suited for lighter command-lines
+        data: Data for the API request
+        dry_run: Preview the request without sending it
+        ending_before: Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID
+        expand: Response attributes to expand inline
+        idempotency: Set the idempotency key for the request, prevents replaying the same requests within 24 hours
+        limit: How many objects to be returned, between 1 and 100 (default is 10)
+        live: 'Make a live request (default: test)'
+        show_headers: Show response headers
+        starting_after: Retrieve the next page in the list. This is a cursor for pagination and should be an object ID
+        stripe_account: Set a header identifying the connected account
+        stripe_context: Set a header identifying the compartment context
+        stripe_version: Set the Stripe API version to use for your request
+    output:
+        idempotency_warning: 'Warning: sending an idempotency key with a {method} request has no effect and should be avoided, as {method} requests are idempotent by definition.'
+        pdf_saved: |
+            PDF saved to: {filename}
+        user_cancelled: Exiting without execution. User did not confirm the command.
+    prompts:
+        confirm_command: "Are you sure you want to perform the command: {method}?\nEnter 'yes' to confirm: "
+resources:
+    output:
+        available_commands: 'Available commands:'
+        help_hint: Use "stripe [command] --help" for more information about a command.
+    short: List resource commands
+root:
+    errors:
+        api_key_expired_default: |-
+            The API key for the default profile has expired. Run `stripe login` to re-authenticate.
+            If you recently ran `stripe login` and still see this error, it may have authenticated a different profile — run `stripe whoami` to confirm.
+        api_key_expired_profile: The API key for profile "{profile}" has expired. Run `stripe login --project-name={profile}` to re-authenticate.
+        auto_login_prompt: |
+            {error}. Running `stripe login`...
+        color_flag_no_command: You provided the "--color" flag but did not specify any command. The "--color" flag configures the color output of a specified command.
+        did_you_mean: |4-
+             Did you mean "{suggestion}"?
+            If not, s
+        no_api_key_hint_browser: '  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.'
+        no_api_key_hint_key: '  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.'
+        project_not_found: |
+            You provided the project name "{project}" (either via the "--project-name" flag or the "STRIPE_PROJECT_NAME" environment variable), but no config for that project was found.
+            Please run `stripe login --project-name={project}` to enable commands for this project.
+        unknown_command: Unknown command "{command}" for "{parent}".{suggestion_str}ee "stripe --help" for a list of available commands.
+        unknown_command_tree: |+
+            Unknown command {command} — showing full command tree.
+
+    flags:
+        api_key: Your API key to use for the command
+        color: turn on/off color output (on, off, auto)
+        config: config file (default is $HOME/.config/stripe/config.toml)
+        device_name: device name
+        log_level: log level (debug, info, trace, warn, error)
+        map_flag: Print a command tree [tree|compact|paths|json]
+        project_name: the project name to read from for config
+        version: Get the version of the Stripe CLI
+    login_hint: |4-
+        Before using the CLI, you'll need to login:
+
+          $ stripe login
+
+        If you're working on multiple projects, you can run the login command with the
+        --project-name flag:
+
+          $ stripe login --project-name rocket-rides
+    long: |-
+        The official command-line tool to interact with Stripe.
+        {login_hint}
+    short: A CLI to help you integrate Stripe with your application
+samples:
+    short: Sample integrations built by Stripe
+sandbox:
+    claim:
+        flags:
+            non_interactive: Print output directly without waiting for input
+        long: Opens the claim URL for your active sandbox. After claiming, run `stripe login` to get permanent keys.
+        output:
+            claim_with_account: |
+                Claim your sandbox ({account_id}) by visiting the claim link below.
+            claim_without_account: |
+                Claim your sandbox by visiting the claim link below.
+            no_active_sandbox: |
+                No active sandbox. Run `stripe sandbox create` to get started.
+            press_enter_to_open: Press Enter to open the browser or visit {url}
+            session_expired: |
+                Your sandbox session has expired.
+                Run `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.
+            visit_url: |
+                Visit {url}
+        short: Claim your sandbox in the browser
+    create:
+        errors:
+            browser_unavailable: browser login unavailable in SSH session
+            email_required: email is required, pass --email your@email.com or use --from-git to infer from git config user.email
+            git_email_not_set: --from-git requires git config user.email to be set, but it was not found
+            invalid_email: 'invalid email "{email}": {error}'
+            mutually_exclusive: --email and --from-git are mutually exclusive
+            no_secret_key: no secret key in server response
+        example: |-
+            stripe sandbox create --email you@example.com
+              stripe sandbox create --from-git
+        flags:
+            email: Your email address
+            from_git: Infer email and full name from git config
+            full_name: Your full name (optional)
+            non_interactive: Print output directly without waiting for input
+        long: |
+            Create a new Stripe sandbox with test API keys.
+
+            If you are already logged in (have a configured API key), opens the
+            sandbox management page in your browser instead.
+
+            Otherwise, uses a proof-of-work challenge to provision a temporary sandbox
+            without authentication. If that fails, automatically falls back to
+            browser-based signup/login.
+
+            Keys are saved to the current CLI profile so subsequent stripe commands
+            work immediately.
+        output:
+            active_sandbox_account_id: |
+                Account ID:      {id}
+            active_sandbox_claim_hint: |4
+                Run `stripe sandbox claim` when you're ready to claim your sandbox.
+            active_sandbox_expires: |4
+                This sandbox expires {date} (in 7 days). Claim it before then by running `stripe sandbox claim`.
+            active_sandbox_header: |+
+                You already have an active sandbox.
+
+            active_sandbox_pub_key: |
+                Publishable key: {key}
+            active_sandbox_secret_key: |
+                Secret key:      {key}
+            already_authenticated: |+
+                You're already authenticated; sandbox management is available in Dashboard.
+
+            done: ' done.'
+            press_enter_to_open: Press Enter to open the browser or visit {url}
+            provisioning_failed: |4-
+                Could not provision a sandbox automatically. Opening browser to create your Stripe sandbox account instead...
+            sandbox_claim_hint: |4
+                Claim your sandbox by using the above claim_url or running `stripe sandbox claim`.
+            sandbox_expires: |4
+                This sandbox expires {date} (in 7 days). Claim it before then by using the above claim_url or running `stripe sandbox claim`.
+            session_expired: |
+                Your sandbox session has expired.
+                Run `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.
+            setting_up: Setting up your sandbox...
+            ssh_no_browser: SSH session detected. Cannot open browser.
+            ssh_use_interactive: Use `stripe login --interactive` or set STRIPE_API_KEY instead.
+            use_keys_hint: |4
+                Use the keys above to start building your integration.
+            using_email_from_git: |
+                Using email: {email} (from git config)
+            visit_url: |
+                Visit {url}
+        short: Provision a new sandbox environment
+    short: Manage Stripe sandbox environments
+serve:
+    example: stripe serve /path/to/directory
+    flags:
+        port: Provide a custom port to serve content from.
+    output:
+        server_address: Starting static file server at address http://localhost:{port}
+        starting_server: |
+            Starting server for directory  {dir}
+    short: Serve static files locally
+templates:
+    agent_guidance:
+        api_key_hint: |4
+              Use {flag} to pass your key non-interactively (or set {env}).
+        data_hint: |4
+              Use {flag} to set nested params, e.g. {example}.
+        full_help_hint: |4
+              Run {flag} to see the full parameter list for a specific operation.
+        help_hint: |4
+              Run {flag} to see operations and required/common parameters for a resource.
+        map_hint: |4
+              Run {flag} to quickly see all available commands.
+        resources_hint: |4
+              Run {flag} to discover all available API resources.
+        stripe_account_hint: '  Use {flag} to make requests on behalf of connected accounts.'
+    resource_descriptions:
+        charges: Make requests (capture, create, list, etc) on charges
+        customers: Make requests (create, delete, list, etc) on customers
+        payment_intents: Make requests (cancel, capture, confirm, etc) on payment intents
+    section:
+        agent_guidance: '[Agent guidance]'
+        aliases: 'Aliases:'
+        api_commands: 'API commands:'
+        available_commands: 'Available commands:'
+        examples: 'Examples:'
+        flags: 'Flags:'
+        global_flags: 'Global flags:'
+        other_commands: 'Other commands:'
+        resource_commands: 'Resource commands:'
+        resource_commands_more: To see more resource commands, run `stripe resources help`
+        resource_commands_v2: To see only v2 resource commands, run `stripe v2 help`
+        stripe_commands: 'Stripe commands:'
+        usage: 'Usage:'
+        webhook_commands: 'Webhook commands:'
+trigger:
+    example: stripe trigger payment_intent.created
+    flags:
+        add: Add params to the trigger
+        api_version: Specify API version for trigger
+        edit: Edit the trigger directly in your default IDE
+        override: Override params in the trigger
+        raw: Raw fixture in string format to replace all default fixtures
+        remove: Remove params from the trigger
+        skip: Skip specific steps in the trigger
+        stripe_account: Set a header identifying the connected account
+    long: |
+        Trigger specific webhook events to be sent. Webhooks events created through
+        the trigger command will also create all necessary side-effect events that are
+        needed to create the triggered event as well as the corresponding API objects.
+
+        {supported_events_header}
+        {event_list}
+    output:
+        success: Trigger succeeded! Check dashboard for event details.
+    short: Trigger test webhook events
+version:
+    short: Get the version of the Stripe CLI
+whoami:
+    example: |-
+        stripe whoami
+          stripe whoami --format json
+          stripe whoami --project-name myproject --format json
+    flags:
+        format: 'Output format: ''json'' for a stable JSON schema (suitable for scripting)'
+    long: |
+        Display the current authentication state for the Stripe CLI.
+
+        Reads credentials from the config file and keychain — no API calls are made.
+
+        Use --format json for output suitable for scripting or agent consumption. The
+        schema is stable: test_mode_key and live_mode_key are always present regardless
+        of auth state, and authenticated: false indicates no usable credentials exist.
+
+        Exit codes:
+          0  Authenticated (at least one key is available)
+          1  Not authenticated, or an error occurred
+    output:
+        account_with_display: |
+            Account:	{display_name}
+        account_with_display_and_id: |
+            Account:	{display_name} ({account_id})
+        account_with_id: |
+            Account:	{account_id}
+        api_version: |
+            API version:	{version}
+        authenticated_false: "Authenticated:\tfalse"
+        device_name: |
+            Device name:	{name}
+        key_available: available
+        key_available_expires: available (expires {date})
+        key_not_available: not available
+        live_mode_key: |
+            Live mode key:	{status}
+        login_hint: Run `stripe login` to authenticate.
+        preview_api_version: |
+            Preview API version:	{version}
+        profile: |
+            Profile:	{name}
+        test_mode_key: |
+            Test mode key:	{status}
+    short: Show the current Stripe auth state

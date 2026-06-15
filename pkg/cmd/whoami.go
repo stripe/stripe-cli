@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -49,27 +50,15 @@ func newWhoamiCmd() *whoamiCmd {
 	}
 
 	wc.cmd = &cobra.Command{
-		Use:   "whoami",
-		Args:  validators.NoArgs,
-		Short: "Show the current Stripe auth state",
-		Long: `Display the current authentication state for the Stripe CLI.
-
-Reads credentials from the config file and keychain — no API calls are made.
-
-Use --format json for output suitable for scripting or agent consumption. The
-schema is stable: test_mode_key and live_mode_key are always present regardless
-of auth state, and authenticated: false indicates no usable credentials exist.
-
-Exit codes:
-  0  Authenticated (at least one key is available)
-  1  Not authenticated, or an error occurred`,
-		Example: `stripe whoami
-  stripe whoami --format json
-  stripe whoami --project-name myproject --format json`,
-		RunE: wc.runWhoamiCmd,
+		Use:     "whoami",
+		Args:    validators.NoArgs,
+		Short:   i18n.T("whoami.short"),
+		Long:    i18n.T("whoami.long"),
+		Example: i18n.T("whoami.example"),
+		RunE:    wc.runWhoamiCmd,
 	}
 
-	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
+	wc.cmd.Flags().StringVar(&wc.format, "format", "", i18n.T("whoami.flags.format"))
 
 	return wc
 }
@@ -117,42 +106,42 @@ func printWhoamiText(out io.Writer, data whoamiOutput) {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	defer w.Flush()
 
-	fmt.Fprintf(w, "Profile:\t%s\n", data.ProfileName)
+	fmt.Fprint(w, i18n.Tf("whoami.output.profile", i18n.Args{"name": data.ProfileName}))
 
 	if !data.Authenticated {
-		fmt.Fprintln(w, "Authenticated:\tfalse")
+		fmt.Fprintln(w, i18n.T("whoami.output.authenticated_false"))
 		w.Flush()
-		fmt.Fprintln(out, "Run `stripe login` to authenticate.")
+		fmt.Fprintln(out, i18n.T("whoami.output.login_hint"))
 		return
 	}
 
 	switch {
 	case data.DisplayName != "" && data.AccountID != "":
-		fmt.Fprintf(w, "Account:\t%s (%s)\n", data.DisplayName, data.AccountID)
+		fmt.Fprint(w, i18n.Tf("whoami.output.account_with_display_and_id", i18n.Args{"display_name": data.DisplayName, "account_id": data.AccountID}))
 	case data.DisplayName != "":
-		fmt.Fprintf(w, "Account:\t%s\n", data.DisplayName)
+		fmt.Fprint(w, i18n.Tf("whoami.output.account_with_display", i18n.Args{"display_name": data.DisplayName}))
 	case data.AccountID != "":
-		fmt.Fprintf(w, "Account:\t%s\n", data.AccountID)
+		fmt.Fprint(w, i18n.Tf("whoami.output.account_with_id", i18n.Args{"account_id": data.AccountID}))
 	}
 
 	if data.DeviceName != "" {
-		fmt.Fprintf(w, "Device name:\t%s\n", data.DeviceName)
+		fmt.Fprint(w, i18n.Tf("whoami.output.device_name", i18n.Args{"name": data.DeviceName}))
 	}
 
-	fmt.Fprintf(w, "Test mode key:\t%s\n", keyAvailabilityText(data.TestModeKey))
-	fmt.Fprintf(w, "Live mode key:\t%s\n", keyAvailabilityText(data.LiveModeKey))
-	fmt.Fprintf(w, "API version:\t%s\n", data.APIVersion)
-	fmt.Fprintf(w, "Preview API version:\t%s\n", data.PreviewAPIVersion)
+	fmt.Fprint(w, i18n.Tf("whoami.output.test_mode_key", i18n.Args{"status": keyAvailabilityText(data.TestModeKey)}))
+	fmt.Fprint(w, i18n.Tf("whoami.output.live_mode_key", i18n.Args{"status": keyAvailabilityText(data.LiveModeKey)}))
+	fmt.Fprint(w, i18n.Tf("whoami.output.api_version", i18n.Args{"version": data.APIVersion}))
+	fmt.Fprint(w, i18n.Tf("whoami.output.preview_api_version", i18n.Args{"version": data.PreviewAPIVersion}))
 }
 
 func keyAvailabilityText(k whoamiKeyInfo) string {
 	if !k.Available {
-		return "not available"
+		return i18n.T("whoami.output.key_not_available")
 	}
 	if k.ExpiresAt != nil {
-		return fmt.Sprintf("available (expires %s)", *k.ExpiresAt)
+		return i18n.Tf("whoami.output.key_available_expires", i18n.Args{"date": *k.ExpiresAt})
 	}
-	return "available"
+	return i18n.T("whoami.output.key_available")
 }
 
 // resolveKeyInfo determines key availability and expiry for the given mode.

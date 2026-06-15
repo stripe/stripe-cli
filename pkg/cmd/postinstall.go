@@ -8,6 +8,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -23,8 +24,8 @@ func newPostinstallCmd(config *config.Config) *postinstallCmd {
 	pic.cmd = &cobra.Command{
 		Use:     "postinstall",
 		Args:    validators.NoArgs,
-		Short:   "Run some checks after installation of this CLI and prompt user if needed",
-		Example: `stripe postinstall`,
+		Short:   i18n.T("postinstall.short"),
+		Example: i18n.T("postinstall.example"),
 		Hidden:  true,
 		RunE:    pic.runPostinstallCmd,
 	}
@@ -39,8 +40,7 @@ func (pic *postinstallCmd) runPostinstallCmd(cmd *cobra.Command, args []string) 
 	// Suggest the user run `stripe login` to get started as a helpful prompt.
 	if err != nil {
 		welcomeIcon := color.BrightRed("❤").String()
-		welcomeText := "Thanks for installing the Stripe CLI! To get started, run `stripe login`"
-		fmt.Printf("%s %s\n", welcomeIcon, welcomeText)
+		fmt.Printf("%s %s\n", welcomeIcon, i18n.T("postinstall.output.welcome"))
 	}
 
 	return nil

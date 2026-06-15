@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 
@@ -27,19 +28,19 @@ func SuccessMessage(ctx context.Context, account *acct.Account, baseURL string, 
 	accountID := account.ID
 
 	if displayName != "" && accountID != "" {
-		return fmt.Sprintf(
-			"Done! The Stripe CLI is configured for %s with account id %s",
-			color.Bold(displayName),
-			color.Bold(accountID),
+		return i18n.Tf("login_flow.success.with_display_and_account",
+			i18n.Args{
+				"display_name": fmt.Sprint(color.Bold(displayName)),
+				"account_id":   fmt.Sprint(color.Bold(accountID)),
+			},
 		), nil
 	}
 
 	if accountID != "" {
-		return fmt.Sprintf(
-			"Done! The Stripe CLI is configured for your account with account id %s",
-			color.Bold(accountID),
+		return i18n.Tf("login_flow.success.with_account",
+			i18n.Args{"account_id": fmt.Sprint(color.Bold(accountID))},
 		), nil
 	}
 
-	return "Done! The Stripe CLI is configured", nil
+	return i18n.T("login_flow.success.basic"), nil
 }

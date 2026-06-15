@@ -24,6 +24,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -57,11 +58,8 @@ var rootCmd = &cobra.Command{
 			"  Additional commands (apps, directory, docs, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
-	Short:   "A CLI to help you integrate Stripe with your application",
-	Long: fmt.Sprintf(`The official command-line tool to interact with Stripe.
-%s`,
-		getLogin(&fs, &Config),
-	),
+	Short:   i18n.T("root.short"),
+	Long:    i18n.Tf("root.long", i18n.Args{"login_hint": getLogin(&fs, &Config)}),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		if cmd.Name() == "help" {
 			fullHelpMode = true
@@ -106,12 +104,16 @@ func showSuggestion() {
 
 	suggestions := rootCmd.SuggestionsFor(os.Args[1])
 	if len(suggestions) > 0 {
-		suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
+		suggStr = i18n.Tf("root.errors.did_you_mean", i18n.Args{"suggestion": suggestions[0]})
 	}
 
-	fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
-		"ee \"stripe --help\" for a list of available commands.",
-		os.Args[1], rootCmd.CommandPath(), suggStr))
+	fmt.Println(i18n.Tf("root.errors.unknown_command",
+		i18n.Args{
+			"command":        os.Args[1],
+			"parent":         rootCmd.CommandPath(),
+			"suggestion_str": suggStr,
+		},
+	))
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -131,7 +133,7 @@ func Execute(ctx context.Context) {
 		remaining := stripMapFlag(os.Args[1:])
 		targetCmd, _, _ := rootCmd.Find(remaining)
 		if targetCmd == nil || (targetCmd == rootCmd && len(remaining) > 0) {
-			fmt.Fprintf(os.Stderr, "Unknown command %q — showing full command tree.\n\n", strings.Join(remaining, " "))
+			fmt.Fprint(os.Stderr, i18n.Tf("root.errors.unknown_command_tree", i18n.Args{"command": strings.Join(remaining, " ")}))
 			targetCmd = rootCmd
 		}
 		printCommandMap(os.Stdout, targetCmd, mode)
@@ -150,7 +152,7 @@ func Execute(ctx context.Context) {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isLoginRequiredError && projectNameFlag != "default":
-			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
+			fmt.Fprint(os.Stderr, i18n.Tf("root.errors.project_not_found", i18n.Args{"project": projectNameFlag}))
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
@@ -158,10 +160,10 @@ func Execute(ctx context.Context) {
 
 			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 				fmt.Fprintln(os.Stderr, string(errRunes))
-				fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
-				fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+				fmt.Fprintln(os.Stderr, i18n.T("root.errors.no_api_key_hint_key"))
+				fmt.Fprintln(os.Stderr, i18n.T("root.errors.no_api_key_hint_browser"))
 			} else {
-				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
+				fmt.Fprint(os.Stderr, i18n.Tf("root.errors.auto_login_prompt", i18n.Args{"error": string(errRunes)}))
 
 				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
 
@@ -182,17 +184,16 @@ func Execute(ctx context.Context) {
 		userInput := os.Args[1:]
 		// --color on/off/auto
 		if len(userInput) == 2 && userInput[0] == "--color" {
-			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
+			fmt.Println(i18n.T("root.errors.color_flag_no_command"))
 		}
 	}
 }
 
 func apiKeyExpiredMessage(profileName string) string {
 	if profileName == "default" {
-		return "The API key for the default profile has expired. Run `stripe login` to re-authenticate.\n" +
-			"If you recently ran `stripe login` and still see this error, it may have authenticated a different profile — run `stripe whoami` to confirm."
+		return i18n.T("root.errors.api_key_expired_default")
 	}
-	return fmt.Sprintf("The API key for profile %q has expired. Run `stripe login --project-name=%s` to re-authenticate.", profileName, profileName)
+	return i18n.Tf("root.errors.api_key_expired_profile", i18n.Args{"profile": profileName})
 }
 
 var keysToReBind []string
@@ -220,13 +221,13 @@ func bindEnv(key, envKey string) {
 func init() {
 	cobra.OnInitialize(Config.InitConfig, ReBindKeys)
 
-	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command")
-	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
-	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
-	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
-	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, trace, warn, error)")
-	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
-	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", i18n.T("root.flags.api_key"))
+	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", i18n.T("root.flags.color"))
+	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", i18n.T("root.flags.config"))
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", i18n.T("root.flags.device_name"))
+	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", i18n.T("root.flags.log_level"))
+	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", i18n.T("root.flags.project_name"))
+	rootCmd.PersistentFlags().String("map", "", i18n.T("root.flags.map_flag"))
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 

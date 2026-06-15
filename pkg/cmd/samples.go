@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/samples"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 )
 
 type samplesCmd struct {
@@ -14,7 +15,7 @@ func newSamplesCmd() *samplesCmd {
 	samplesCmd := &samplesCmd{
 		cmd: &cobra.Command{
 			Use:   "samples",
-			Short: `Sample integrations built by Stripe`,
+			Short: i18n.T("samples.short"),
 			Long:  ``,
 		},
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -49,7 +50,7 @@ func InitiateLogin(ctx context.Context, baseURL string, cfg *config.Config) erro
 	out := loginSessionOutput{
 		BrowserURL:       links.BrowserURL,
 		VerificationCode: links.VerificationCode,
-		NextStep:         fmt.Sprintf("stripe login --complete '%s'", links.PollURL),
+		NextStep:         i18n.Tf("login_flow.poll.next_step_cmd", i18n.Args{"url": links.PollURL}),
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -74,10 +75,10 @@ func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error
 
 	msg, err := SuccessMessage(ctx, account, stripe.DefaultAPIBaseURL, response.TestModeAPIKey)
 	if err != nil {
-		fmt.Printf("> Error verifying setup: %s\n", err)
+		fmt.Print(i18n.Tf("login_flow.poll.error_verifying", i18n.Args{"error": err.Error()}))
 		return err
 	}
-	fmt.Printf("> %s\n", msg)
-	fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+	fmt.Print(i18n.Tf("login_flow.output.success", i18n.Args{"message": msg}))
+	fmt.Println(ansi.Italic(i18n.T("login_flow.output.key_expiry_notice")))
 	return nil
 }
