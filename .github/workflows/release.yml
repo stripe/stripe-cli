@@ -17,14 +17,32 @@ jobs:
     secrets:
       STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
 
-  build-mac:
+  approve-release:
     needs: [canary-tests]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - run: echo "Release approved, proceeding."
+
+  build-mac:
+    needs: [approve-release]
     runs-on: macos-latest
     steps:
       - name: Code checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
+          owner: stripe
+          repositories: |
+            stripe-cli
+            homebrew-stripe-cli
+            scoop-stripe-cli
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -37,10 +55,10 @@ jobs:
           args: release -f .goreleaser/mac.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build-linux:
-    needs: [canary-tests]
+    needs: [approve-release]
     runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
@@ -75,13 +93,24 @@ jobs:
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
-    needs: [canary-tests]
+    needs: [approve-release]
     runs-on: windows-latest
     steps:
       - name: Code checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
+          owner: stripe
+          repositories: |
+            stripe-cli
+            homebrew-stripe-cli
+            scoop-stripe-cli
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -94,7 +123,9 @@ jobs:
           args: release -f .goreleaser/windows.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # The GitHub App token is scoped to the stripe org and cannot create
+          # PRs on microsoft/winget-pkgs, so winget still requires a PAT.
           WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
   upload-to-virustotal:
