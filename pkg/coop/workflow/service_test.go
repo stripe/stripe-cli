@@ -210,6 +210,45 @@ func TestReviewWorkflowRejectsInactiveSessions(t *testing.T) {
 	}
 }
 
+func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
+	store, err := coop.NewStoreAt(t.TempDir())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Blueprint:     "one-time-payment",
+		Status:        coop.SessionCompleted,
+	}
+	require.NoError(t, store.Write(parent))
+	child := &coop.Session{
+		SchemaVersion:   coop.CurrentSessionSchemaVersion,
+		ID:              "child_session",
+		Blueprint:       "deploy-stripe-projects",
+		Status:          coop.SessionActive,
+		ParentSessionID: "parent_session",
+		ParentStepID:    "deploy",
+		Steps: []coop.SessionStep{
+			{
+				StepDefinition: coop.StepDefinition{Key: "deploy", Title: "Deploy"},
+				Nodes: []coop.SessionNode{
+					{
+						NodeDefinition: coop.NodeDefinition{Key: "deploy", Title: "Deploy"},
+						State:          coop.NodeActive,
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, store.Write(child))
+	service := NewService(store)
+
+	resp, err := service.ReportWork(child.ID, 1, ReportWorkInput{File: "stripe.json", Note: "Deployed"}, true)
+
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=deploy", resp.Next)
+}
+
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {
 	t.Helper()
 	store, err := coop.NewStoreAt(t.TempDir())

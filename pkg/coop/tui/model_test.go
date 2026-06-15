@@ -866,11 +866,11 @@ func TestSpinnerTickDoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
+func TestCompletionEnterDeployWaitsForAgentSession(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
 
-	m := withCompletionSuggestions(readyModel())
+	m := withDeployCompletionSuggestion(readyModel())
 	m.store = store
 	for i := range m.session.Steps {
 		for j := range m.session.Steps[i].Nodes {
@@ -880,9 +880,10 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	m.session.ID = "parent_session"
 	store.Write(m.session)
 
+	// Find deploy position in agent-published suggestions
 	suggestions := m.getCompletionSuggestions()
 	for i, s := range suggestions {
-		if s.id == "add-integration" {
+		if s.id == "deploy" || s.id == "deploy-update" {
 			m.selectionCursor = i
 			break
 		}
@@ -901,7 +902,8 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	require.True(t, ok)
 	assert.NotNil(t, baseline.existingSessionIDs)
 
-	assert.Equal(t, "add-integration", session.NextSteps.Selected)
+	_, err = store.Read("coop_deploy")
+	assert.Error(t, err)
 }
 
 func TestSelectCompletionOptionSummarize(t *testing.T) {
@@ -1060,7 +1062,7 @@ func TestStatusWithoutTTLDoesNotExpire(t *testing.T) {
 }
 
 func TestShouldTransitionToNewSession(t *testing.T) {
-	m := withCompletionSuggestions(readyModel())
+	m := withDeployCompletionSuggestion(readyModel())
 	for i := range m.session.Steps {
 		for j := range m.session.Steps[i].Nodes {
 			m.session.Steps[i].Nodes[j].State = coop.NodeDone
@@ -1069,8 +1071,9 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 	suggestions := m.getCompletionSuggestions()
 
+	// Find deploy
 	for i, s := range suggestions {
-		if s.id == "add-integration" {
+		if s.id == "deploy" || s.id == "deploy-update" {
 			m.selectionCursor = i
 			assert.True(t, m.shouldTransitionToNewSession())
 			break
@@ -1085,6 +1088,14 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 			break
 		}
 	}
+}
+
+func withDeployCompletionSuggestion(m Model) Model {
+	m = withCompletionSuggestions(m)
+	m.session.NextSteps.Suggestions = append([]coop.NextStepSuggestion{
+		{ID: "deploy", Title: "Deploy with Stripe Projects", Description: "Set up hosting, CI/CD, and environment management"},
+	}, m.session.NextSteps.Suggestions...)
+	return m
 }
 
 func TestFetchSnippetNotAPIRequest(t *testing.T) {
