@@ -1,0 +1,35 @@
+{
+  "id": "checkout-studio",
+  "title": "Build your Integration",
+  "description": "Create a Checkout Session and add the frontend entry point for a hosted Checkout payment flow.",
+  "type": "learning",
+  "products": [
+    "Checkout",
+    "Payments"
+  ],
+  "settings": [],
+  "steps": [
+    {
+      "key": "main",
+      "title": "Build your Integration",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create a checkout session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "uiComponent",
+          "key": "setup-stripe-elements-html-snippet",
+          "title": "Set up your frontend",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        }
+      ]
+    }
+  ]
+}
