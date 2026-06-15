@@ -21,23 +21,26 @@ const (
 // BlueprintStep is a step definition within a blueprint.
 type BlueprintStep struct {
 	StepDefinition
-	Description string             `json:"description,omitempty"`
-	Required    bool               `json:"required,omitempty"`
-	Settings    []BlueprintSetting `json:"settings,omitempty"`
-	Params      []BlueprintParam   `json:"params,omitempty"`
-	Nodes       []NodeDefinition   `json:"nodes"`
+	Description string              `json:"description,omitempty"`
+	Required    bool                `json:"required,omitempty"`
+	Settings    []BlueprintSetting  `json:"settings,omitempty"`
+	Params      []BlueprintParam    `json:"params,omitempty"`
+	Nodes       []NodeDefinition    `json:"nodes"`
+	Semantics   *BlueprintSemantics `json:"semantics,omitempty"`
 }
 
 // Blueprint is the CLI-friendly representation of a Workbench Blueprint.
 type Blueprint struct {
-	ID          string             `json:"id"`
-	Title       string             `json:"title"`
-	Description string             `json:"description,omitempty"`
-	Type        string             `json:"type"`
-	Products    []string           `json:"products,omitempty"`
-	Settings    []BlueprintSetting `json:"settings"`
-	Params      []BlueprintParam   `json:"params,omitempty"`
-	Steps       []BlueprintStep    `json:"steps"`
+	ID          string              `json:"id"`
+	Title       string              `json:"title"`
+	Description string              `json:"description,omitempty"`
+	Prompt      string              `json:"prompt,omitempty"`
+	Type        string              `json:"type"`
+	Products    []string            `json:"products,omitempty"`
+	Settings    []BlueprintSetting  `json:"settings"`
+	Params      []BlueprintParam    `json:"params,omitempty"`
+	Steps       []BlueprintStep     `json:"steps"`
+	Semantics   *BlueprintSemantics `json:"semantics,omitempty"`
 }
 
 // BlueprintSetting defines a configurable setting for a blueprint.
@@ -271,7 +274,7 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 					Key:         "scan-project",
 					Type:        NodeTestHelper,
 					Title:       "Understand the project",
-					Description: "Scan the codebase to identify language, framework, dependencies, and existing Stripe code. Report what you find.",
+					Description: "Scan the codebase to identify language, framework, dependencies, existing Stripe code, auth/current-user flow, existing webhook routes, and the app-owned records relevant to this blueprint. Report, only where applicable, the source of truth for money values, customer or user identity, Stripe ID persistence, connected-account mapping, and payment, subscription, or entitlement state before changing code.",
 					AutoConfirm: true,
 				},
 				State: NodePending,
@@ -285,8 +288,10 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 	for _, ch := range bp.Steps {
 		nodes := make([]SessionNode, len(ch.Nodes))
 		for j, n := range ch.Nodes {
+			nodeDefinition := n
+			nodeDefinition.Semantics = MergeBlueprintSemantics(bp.Semantics, ch.Semantics, n.Semantics)
 			nodes[j] = SessionNode{
-				NodeDefinition: n,
+				NodeDefinition: nodeDefinition,
 				State:          NodePending,
 			}
 		}
@@ -307,4 +312,138 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
+}
+
+// MergeBlueprintSemantics overlays increasingly specific semantic contracts.
+// Blueprint-level values can provide defaults, and chapter/node values can
+// refine them for a concrete step.
+func MergeBlueprintSemantics(parts ...*BlueprintSemantics) *BlueprintSemantics {
+	var merged BlueprintSemantics
+	hasValues := false
+	for _, part := range parts {
+		if part == nil {
+			continue
+		}
+		hasValues = true
+		if part.SourceOfTruth != nil {
+			merged.SourceOfTruth = mergeSourceOfTruthSemantics(merged.SourceOfTruth, part.SourceOfTruth)
+		}
+		if part.PaymentLifecycle != nil {
+			merged.PaymentLifecycle = mergePaymentLifecycleSemantics(merged.PaymentLifecycle, part.PaymentLifecycle)
+		}
+		if part.Connect != nil {
+			merged.Connect = mergeConnectSemantics(merged.Connect, part.Connect)
+		}
+		if part.ServerVerification != nil {
+			merged.ServerVerification = mergeServerVerificationSemantics(merged.ServerVerification, part.ServerVerification)
+		}
+		if len(part.EventRoles) > 0 {
+			merged.EventRoles = append(merged.EventRoles, part.EventRoles...)
+		}
+		if len(part.Assertions) > 0 {
+			merged.Assertions = append(merged.Assertions, part.Assertions...)
+		}
+	}
+	if !hasValues {
+		return nil
+	}
+	return &merged
+}
+
+func mergeSourceOfTruthSemantics(base, overlay *SourceOfTruthSemantics) *SourceOfTruthSemantics {
+	if base == nil {
+		copied := *overlay
+		return &copied
+	}
+	merged := *base
+	if overlay.Amount != "" {
+		merged.Amount = overlay.Amount
+	}
+	if overlay.LineItems != "" {
+		merged.LineItems = overlay.LineItems
+	}
+	if overlay.Catalog != "" {
+		merged.Catalog = overlay.Catalog
+	}
+	if overlay.Customer != "" {
+		merged.Customer = overlay.Customer
+	}
+	if overlay.ConnectedAccount != "" {
+		merged.ConnectedAccount = overlay.ConnectedAccount
+	}
+	return &merged
+}
+
+func mergePaymentLifecycleSemantics(base, overlay *PaymentLifecycleSemantics) *PaymentLifecycleSemantics {
+	if base == nil {
+		copied := *overlay
+		copied.FailureEvents = append([]string(nil), overlay.FailureEvents...)
+		return &copied
+	}
+	merged := *base
+	merged.FailureEvents = append([]string(nil), base.FailureEvents...)
+	if overlay.StartsPayment {
+		merged.StartsPayment = true
+	}
+	if overlay.CompletionEvent != "" {
+		merged.CompletionEvent = overlay.CompletionEvent
+	}
+	if len(overlay.FailureEvents) > 0 {
+		merged.FailureEvents = append([]string(nil), overlay.FailureEvents...)
+	}
+	if overlay.PendingState != "" {
+		merged.PendingState = overlay.PendingState
+	}
+	if overlay.CompletedState != "" {
+		merged.CompletedState = overlay.CompletedState
+	}
+	if overlay.FulfillmentRequiresSignedWebhook {
+		merged.FulfillmentRequiresSignedWebhook = true
+	}
+	return &merged
+}
+
+func mergeConnectSemantics(base, overlay *ConnectSemantics) *ConnectSemantics {
+	if base == nil {
+		copied := *overlay
+		return &copied
+	}
+	merged := *base
+	if overlay.RequiresConnectedAccount {
+		merged.RequiresConnectedAccount = true
+	}
+	if overlay.ConnectedAccountOwner != "" {
+		merged.ConnectedAccountOwner = overlay.ConnectedAccountOwner
+	}
+	if overlay.OnboardingRequired {
+		merged.OnboardingRequired = true
+	}
+	if overlay.AccountLinkRequired {
+		merged.AccountLinkRequired = true
+	}
+	if overlay.CapabilityGate != "" {
+		merged.CapabilityGate = overlay.CapabilityGate
+	}
+	if overlay.Source != "" {
+		merged.Source = overlay.Source
+	}
+	return &merged
+}
+
+func mergeServerVerificationSemantics(base, overlay *ServerVerificationSemantics) *ServerVerificationSemantics {
+	if base == nil {
+		copied := *overlay
+		return &copied
+	}
+	merged := *base
+	if overlay.Required {
+		merged.Required = true
+	}
+	if overlay.StateSource != "" {
+		merged.StateSource = overlay.StateSource
+	}
+	if overlay.Reason != "" {
+		merged.Reason = overlay.Reason
+	}
+	return &merged
 }

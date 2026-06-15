@@ -98,6 +98,9 @@ func SDKSnippetGuidance(req *APIRequest, language string) string {
 		lines = append(lines, fmt.Sprintf("%s This blueprint node does not include canonical request params yet.", prefix))
 		lines = append(lines, fmt.Sprintf("%s Do not treat an empty SDK call as complete; wire the app to this endpoint and use the step intent, earlier IDs, and Stripe docs to fill the params.", prefix))
 	}
+	for _, note := range APIRequestProductGuidance(req) {
+		lines = append(lines, fmt.Sprintf("%s %s", prefix, note))
+	}
 	return strings.Join(lines, "\n")
 }
 

@@ -91,6 +91,38 @@ func TestStartWorkReturnsSDKExampleForBlueprintParams(t *testing.T) {
 	assert.Equal(t, "/v1/checkout/sessions", resp.BlueprintStep.APIRequest.Path)
 }
 
+func TestStartWorkReturnsStructuredSemantics(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Steps[0].Nodes[0].Type = coop.NodeAPIRequest
+		session.Steps[0].Nodes[0].Request = &coop.APIRequest{
+			Path:   "/v1/checkout/sessions",
+			Method: "post",
+		}
+		session.Steps[0].Nodes[0].Semantics = &coop.BlueprintSemantics{
+			SourceOfTruth: &coop.SourceOfTruthSemantics{Amount: "app_domain"},
+			PaymentLifecycle: &coop.PaymentLifecycleSemantics{
+				CompletionEvent:                  "checkout.session.completed",
+				FulfillmentRequiresSignedWebhook: true,
+			},
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		return "", nil
+	}))
+
+	resp, err := service.StartWork(session.ID, 1, "Create checkout")
+	require.NoError(t, err)
+
+	require.NotNil(t, resp.BlueprintStep)
+	require.NotNil(t, resp.BlueprintStep.Semantics)
+	assert.Equal(t, "app_domain", resp.BlueprintStep.Semantics.SourceOfTruth.Amount)
+	assert.Contains(t, resp.AgentGuidance, "Blueprint source-of-truth semantics are canonical")
+	assert.Contains(t, resp.AgentGuidance, "completion_event=checkout.session.completed")
+}
+
 func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing.T) {
 	store, session := workflowTestStore(t)
 	_, err := store.Update(session.ID, func(session *coop.Session) error {

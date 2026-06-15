@@ -70,6 +70,64 @@ type TestHelperRequest struct {
 	APIRequest
 }
 
+// BlueprintSemantics captures durable Stripe product intent that can be supplied
+// by local or remote blueprints and compiled into agent guidance.
+type BlueprintSemantics struct {
+	SourceOfTruth      *SourceOfTruthSemantics      `json:"source_of_truth,omitempty"`
+	PaymentLifecycle   *PaymentLifecycleSemantics   `json:"payment_lifecycle,omitempty"`
+	Connect            *ConnectSemantics            `json:"connect,omitempty"`
+	EventRoles         []EventRoleSemantics         `json:"event_roles,omitempty"`
+	ServerVerification *ServerVerificationSemantics `json:"server_verification,omitempty"`
+	Assertions         []string                     `json:"assertions,omitempty"`
+}
+
+// SourceOfTruthSemantics tells agents which values come from the app domain
+// instead of generated demo data.
+type SourceOfTruthSemantics struct {
+	Amount           string `json:"amount,omitempty"`
+	LineItems        string `json:"line_items,omitempty"`
+	Catalog          string `json:"catalog,omitempty"`
+	Customer         string `json:"customer,omitempty"`
+	ConnectedAccount string `json:"connected_account,omitempty"`
+}
+
+// PaymentLifecycleSemantics describes when payment-related app state is safe to
+// finalize.
+type PaymentLifecycleSemantics struct {
+	StartsPayment                    bool     `json:"starts_payment,omitempty"`
+	CompletionEvent                  string   `json:"completion_event,omitempty"`
+	FailureEvents                    []string `json:"failure_events,omitempty"`
+	PendingState                     string   `json:"pending_state,omitempty"`
+	CompletedState                   string   `json:"completed_state,omitempty"`
+	FulfillmentRequiresSignedWebhook bool     `json:"fulfillment_requires_signed_webhook,omitempty"`
+}
+
+// ConnectSemantics describes connected account prerequisites for Connect flows.
+type ConnectSemantics struct {
+	RequiresConnectedAccount bool   `json:"requires_connected_account,omitempty"`
+	ConnectedAccountOwner    string `json:"connected_account_owner,omitempty"`
+	OnboardingRequired       bool   `json:"onboarding_required,omitempty"`
+	AccountLinkRequired      bool   `json:"account_link_required,omitempty"`
+	CapabilityGate           string `json:"capability_gate,omitempty"`
+	Source                   string `json:"source,omitempty"`
+}
+
+// EventRoleSemantics describes why an async event matters to the app.
+type EventRoleSemantics struct {
+	Event          string `json:"event,omitempty"`
+	Role           string `json:"role,omitempty"`
+	StateUpdate    string `json:"state_update,omitempty"`
+	RequiresLookup bool   `json:"requires_lookup,omitempty"`
+}
+
+// ServerVerificationSemantics describes server-side checks needed for
+// user-facing completion or return pages.
+type ServerVerificationSemantics struct {
+	Required    bool   `json:"required,omitempty"`
+	StateSource string `json:"state_source,omitempty"`
+	Reason      string `json:"reason,omitempty"`
+}
+
 // StepInfo is the agent-facing blueprint contract for a single node.
 type StepInfo struct {
 	Number        int                 `json:"number,omitempty"`
@@ -83,6 +141,7 @@ type StepInfo struct {
 	APIRequest    *APIRequest         `json:"api_request,omitempty"`
 	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
 	Events        []string            `json:"events,omitempty"`
+	Semantics     *BlueprintSemantics `json:"semantics,omitempty"`
 }
 
 // NodeDefinition is the source-derived static definition for a node.
@@ -97,6 +156,7 @@ type NodeDefinition struct {
 	Request       *APIRequest         `json:"request,omitempty"`
 	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
 	Events        []string            `json:"events,omitempty"`
+	Semantics     *BlueprintSemantics `json:"semantics,omitempty"`
 }
 
 // StepDefinition is the source-derived static definition for a step.

@@ -208,6 +208,9 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 	// First step is always the context-gathering step
 	assert.Equal(t, "context-step", session.Steps[0].Key)
 	assert.Equal(t, "Understand the project", session.Steps[0].Nodes[0].Title)
+	assert.Contains(t, session.Steps[0].Nodes[0].Description, "app-owned records relevant to this blueprint")
+	assert.Contains(t, session.Steps[0].Nodes[0].Description, "Report, only where applicable")
+	assert.Contains(t, session.Steps[0].Nodes[0].Description, "connected-account mapping")
 
 	// All nodes should be pending
 	for _, ch := range session.Steps {
@@ -463,6 +466,59 @@ func TestEmbeddedBlueprintTopologyMatchesSourceDefinitions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewSessionFromBlueprintMergesSemantics(t *testing.T) {
+	bp := &Blueprint{
+		ID:   "semantic-blueprint",
+		Type: "learning",
+		Semantics: &BlueprintSemantics{
+			PaymentLifecycle: &PaymentLifecycleSemantics{
+				CompletionEvent: "checkout.session.completed",
+			},
+		},
+		Steps: []BlueprintStep{
+			{
+				StepDefinition: StepDefinition{Key: "main", Title: "Main"},
+				Semantics: &BlueprintSemantics{
+					SourceOfTruth: &SourceOfTruthSemantics{Amount: "app_domain", LineItems: "app_domain"},
+					EventRoles: []EventRoleSemantics{
+						{Event: "checkout.session.completed", Role: "payment_completion"},
+					},
+				},
+				Nodes: []NodeDefinition{
+					{
+						Key:   "checkout",
+						Type:  NodeAPIRequest,
+						Title: "Create Checkout Session",
+						Request: &APIRequest{
+							Path:   "/v1/checkout/sessions",
+							Method: "post",
+						},
+						Semantics: &BlueprintSemantics{
+							SourceOfTruth: &SourceOfTruthSemantics{Amount: "blueprint_catalog"},
+							Connect:       &ConnectSemantics{RequiresConnectedAccount: true, ConnectedAccountOwner: "seller"},
+							Assertions:    []string{"Checkout uses the app order total"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	session := NewSessionFromBlueprint(bp, "test_semantics", nil, nil)
+
+	node := session.Steps[1].Nodes[0]
+	require.NotNil(t, node.Semantics)
+	require.NotNil(t, node.Semantics.PaymentLifecycle)
+	require.NotNil(t, node.Semantics.SourceOfTruth)
+	require.NotNil(t, node.Semantics.Connect)
+	assert.Equal(t, "checkout.session.completed", node.Semantics.PaymentLifecycle.CompletionEvent)
+	assert.Equal(t, "blueprint_catalog", node.Semantics.SourceOfTruth.Amount)
+	assert.Equal(t, "app_domain", node.Semantics.SourceOfTruth.LineItems)
+	assert.Equal(t, "seller", node.Semantics.Connect.ConnectedAccountOwner)
+	assert.Equal(t, []EventRoleSemantics{{Event: "checkout.session.completed", Role: "payment_completion"}}, node.Semantics.EventRoles)
+	assert.Equal(t, []string{"Checkout uses the app order total"}, node.Semantics.Assertions)
 }
 
 func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {

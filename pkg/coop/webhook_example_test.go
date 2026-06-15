@@ -20,9 +20,20 @@ func TestGenerateWebhookExampleNodeHandlesSnapshotAndThinEvents(t *testing.T) {
 	assert.Contains(t, example, "normalizeStripeEventType")
 	assert.Contains(t, example, `case "invoice.paid"`)
 	assert.Contains(t, example, `case "customer.subscription.created"`)
+	assert.Contains(t, example, "mark the invoice/subscription entitlement state current idempotently")
+	assert.Contains(t, example, "Persist subscription status")
+	assert.Contains(t, example, "Use idempotencyKey")
 	assert.Contains(t, example, "event.snapshot_event || event.id")
 	assert.Contains(t, example, "v1.<event>")
 	assert.Equal(t, 1, strings.Count(example, `case "invoice.paid"`))
+}
+
+func TestGenerateWebhookExampleNodeSteersCheckoutCompletionState(t *testing.T) {
+	example := GenerateWebhookExample([]string{"checkout.session.completed"}, "node")
+
+	assert.Contains(t, example, "Find the pending app record from Session metadata")
+	assert.Contains(t, example, "mark it paid or fulfilled idempotently")
+	assert.Contains(t, example, "do not rely on success-page query params")
 }
 
 func TestGenerateWebhookExamplePythonUsesSDKThinHelpers(t *testing.T) {
@@ -33,6 +44,7 @@ func TestGenerateWebhookExamplePythonUsesSDKThinHelpers(t *testing.T) {
 	assert.Contains(t, example, "notification.fetch_event()")
 	assert.Contains(t, example, "stripe_client.construct_event")
 	assert.Contains(t, example, `event_type == "entitlements.active_entitlement_summary.updated"`)
+	assert.Contains(t, example, "Refresh the customer's server-side entitlement state")
 }
 
 func TestGenerateWebhookExampleGoUsesSDKThinHelpers(t *testing.T) {
@@ -43,6 +55,7 @@ func TestGenerateWebhookExampleGoUsesSDKThinHelpers(t *testing.T) {
 	assert.Contains(t, example, "FetchEvent(r.Context())")
 	assert.Contains(t, example, "stripeClient.ConstructEvent")
 	assert.Contains(t, example, `case "v2.billing.pricing_plan_subscription.servicing_activated"`)
+	assert.Contains(t, example, "Use the event or snapshot_event ID as an idempotency key")
 }
 
 func TestGenerateWebhookExampleGenericMentionsThinEvents(t *testing.T) {
@@ -51,6 +64,7 @@ func TestGenerateWebhookExampleGenericMentionsThinEvents(t *testing.T) {
 	assert.Contains(t, example, "checkout.session.completed")
 	assert.Contains(t, example, "Events v2")
 	assert.Contains(t, example, "v1.<event>")
+	assert.Contains(t, example, "Find the pending app record from Session metadata")
 }
 
 func TestGenerateWebhookExamplePreservesExplicitV1ThinEvent(t *testing.T) {

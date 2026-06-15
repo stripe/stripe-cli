@@ -91,9 +91,21 @@ func TestSDKSnippetGuidanceUsesLanguageComments(t *testing.T) {
 	node := SDKSnippetGuidance(req, "node")
 	assert.Contains(t, node, "// Blueprint request: POST /v1/checkout/sessions")
 	assert.Contains(t, node, "does not include canonical request params")
+	assert.Contains(t, node, "// For existing apps, derive Checkout line items")
+	assert.Contains(t, node, "rather than the success URL")
 
 	python := SDKSnippetGuidance(req, "python")
 	assert.Contains(t, python, "# Blueprint request: POST /v1/checkout/sessions")
+}
+
+func TestSDKSnippetGuidanceIncludesPaymentIntentProductSafety(t *testing.T) {
+	req := &APIRequest{Path: "/v1/payment_intents", Method: "post"}
+
+	guidance := SDKSnippetGuidance(req, "node")
+
+	assert.Contains(t, guidance, "derive amount, currency, customer identity")
+	assert.Contains(t, guidance, "never by passing raw card numbers")
+	assert.Contains(t, guidance, "do not accept an arbitrary destination account ID from the client")
 }
 
 func TestSDKSnippetGuidancePreservesBlueprintReferences(t *testing.T) {

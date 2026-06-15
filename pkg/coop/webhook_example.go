@@ -88,7 +88,8 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 		fmt.Fprintf(&b, "    case %q: {\n", event)
 		b.WriteString("      // Snapshot events usually provide data.object. Thin events provide\n")
 		b.WriteString("      // relatedObject and, after retrieval, any extra data/changes.\n")
-		fmt.Fprintf(&b, "      // TODO: update app state for %s using data, relatedObject, and idempotencyKey.\n", event)
+		fmt.Fprintf(&b, "      // %s\n", webhookStateUpdateHint(event))
+		b.WriteString("      // Use idempotencyKey to make repeated event delivery safe.\n")
 		b.WriteString("      break;\n")
 		b.WriteString("    }\n")
 	}
@@ -166,7 +167,8 @@ def stripe_webhook_handler():
 		fmt.Fprintf(&b, "    %s event_type == %q:\n", prefix, event)
 		b.WriteString("        # Snapshot events usually provide data.object. Thin events provide\n")
 		b.WriteString("        # related_object and, after retrieval, any extra data/changes.\n")
-		fmt.Fprintf(&b, "        # TODO: update app state for %s using data, related_object, and idempotency_key.\n", event)
+		fmt.Fprintf(&b, "        # %s\n", webhookStateUpdateHint(event))
+		b.WriteString("        # Use idempotency_key to make repeated event delivery safe.\n")
 	}
 	b.WriteString(`
     return jsonify(received=True)
@@ -256,8 +258,9 @@ func stripeWebhookHandler(w http.ResponseWriter, r *http.Request) {
 `)
 	for _, event := range events {
 		fmt.Fprintf(&b, "\tcase %q:\n", event)
-		fmt.Fprintf(&b, "\t\t// TODO: update app state for %s. Snapshot events use the constructed event's Data.Raw;\n", event)
-		b.WriteString("\t\t// thin events use the retrieved Events v2 object or related object.\n")
+		fmt.Fprintf(&b, "\t\t// %s\n", webhookStateUpdateHint(event))
+		b.WriteString("\t\t// Snapshot events use the constructed event's Data.Raw; thin events use the retrieved Events v2 object or related object.\n")
+		b.WriteString("\t\t// Use the event or snapshot_event ID as an idempotency key so repeated delivery is safe.\n")
 	}
 	b.WriteString(`	default:
 	}
@@ -305,9 +308,38 @@ func generateGenericWebhookExample(events []string) string {
 	var b strings.Builder
 	b.WriteString("Verify the Stripe signature using STRIPE_WEBHOOK_SECRET, then branch on every required event:\n\n")
 	for _, event := range events {
-		fmt.Fprintf(&b, "- %s: read event.data.object for snapshot events, or retrieve the full Events v2 object/related object for thin events, then update app state.\n", event)
+		fmt.Fprintf(&b, "- %s: read event.data.object for snapshot events, or retrieve the full Events v2 object/related object for thin events. %s\n", event, webhookStateUpdateHint(event))
 	}
 	b.WriteString("\nFor v1 thin-event migration, handle the v1.<event> alias as the same logical event and use snapshot_event for idempotency when both destinations run in parallel.\n")
 	b.WriteString("Lookup endpoints can supplement this handler, but they do not replace handling the signed event.\n")
 	return b.String()
+}
+
+func webhookStateUpdateHint(event string) string {
+	logical := logicalStripeEvent(event)
+	switch logical {
+	case "checkout.session.completed":
+		return "Find the pending app record from Session metadata, client_reference_id, customer, or session ID, then mark it paid or fulfilled idempotently; do not rely on success-page query params."
+	case "checkout.session.async_payment_succeeded":
+		return "Find the pending app record from the Checkout Session and complete fulfillment idempotently after the asynchronous payment succeeds."
+	case "checkout.session.async_payment_failed":
+		return "Find the pending app record from the Checkout Session and keep it unpaid or recoverable without fulfillment."
+	case "payment_intent.succeeded":
+		return "Find the pending app record from PaymentIntent metadata, customer, or ID, then mark it paid or fulfilled idempotently."
+	case "payment_intent.payment_failed":
+		return "Find the pending app record from the PaymentIntent and keep it unpaid or recoverable without fulfillment."
+	case "invoice.paid", "invoice.payment_succeeded":
+		return "Find the customer, subscription, or invoice record and mark the invoice/subscription entitlement state current idempotently."
+	case "invoice.payment_failed":
+		return "Find the customer or subscription record and mark the invoice unpaid or past_due without granting new access."
+	case "entitlements.active_entitlement_summary.updated":
+		return "Refresh the customer's server-side entitlement state and make access checks read that stored state."
+	}
+	if strings.HasPrefix(logical, "customer.subscription.") {
+		return "Persist subscription status, current period, cancellation fields, customer mapping, and plan or price references used for access decisions."
+	}
+	if strings.HasPrefix(logical, "account.") || strings.Contains(logical, ".capability.") {
+		return "Refresh connected-account readiness and capability state before enabling charges, payouts, or destination transfers."
+	}
+	return fmt.Sprintf("Update the app state required by %s idempotently using data, related object, and the event ID.", logical)
 }
