@@ -121,7 +121,7 @@ func TestRenderStepListAlignsStepTitleWithRule(t *testing.T) {
 	assert.Equal(t, lipgloss.Width(titlePrefix), lipgloss.Width(rulePrefix))
 }
 
-func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
+func TestRenderStepListShowsNodeReviewUnit(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
@@ -136,7 +136,7 @@ func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
 	assertNotContainsPlain(t, list, "Create product  Needs review")
 }
 
-func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
+func TestRenderStepListShowsSingleStepNodeReviewUnit(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
 	m.selectStep(1)
@@ -383,7 +383,7 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 
-func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
+func TestRenderNodeReviewCardNamesCoveredSteps(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].ReviewGranularity = coop.ReviewGranularityStep
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
@@ -446,7 +446,7 @@ func TestRenderCompletionView(t *testing.T) {
 	assertContainsPlain(t, view, "Confirm the saved price ID is reused by Checkout.")
 	assertContainsPlain(t, view, "Next steps")
 	assertContainsPlain(t, view, "STRIPE.md")
-	assertContainsPlain(t, view, "Add another Stripe feature")
+	assertContainsPlain(t, view, "Deploy")
 	assertContainsPlain(t, view, "Finish")
 }
 
@@ -526,9 +526,9 @@ func TestGetCompletionSuggestionsDefault(t *testing.T) {
 	m := testModel()
 	suggestions := m.getCompletionSuggestions()
 
-	assert.Len(t, suggestions, 3)
+	assert.Len(t, suggestions, 4)
 	assert.Equal(t, "Write a STRIPE.md summary", suggestions[0].title)
-	assert.Equal(t, "Finish", suggestions[2].title)
+	assert.Equal(t, "Finish", suggestions[3].title)
 }
 
 func TestGetCompletionSuggestionsFromSession(t *testing.T) {
@@ -854,6 +854,28 @@ func TestStepIconAllStates(t *testing.T) {
 		icon := m.nodeIcon(node)
 		assert.Contains(t, ansi.Strip(icon), tc.contains, "state %s should contain %s", tc.state, tc.contains)
 	}
+}
+
+func TestGetCompletionSuggestionsWithDeployDone(t *testing.T) {
+	m := testModel()
+	for i := range m.session.Steps {
+		for j := range m.session.Steps[i].Nodes {
+			m.session.Steps[i].Nodes[j].State = coop.NodeDone
+		}
+	}
+	m.session.NextSteps = &coop.NextStepsState{
+		Completed: []string{"deploy"},
+	}
+
+	suggestions := m.getCompletionSuggestions()
+	// Should show "Redeploy" instead of "Deploy with Stripe Projects"
+	found := false
+	for _, s := range suggestions {
+		if s.id == "deploy" && s.title == "Redeploy" {
+			found = true
+		}
+	}
+	assert.True(t, found, "expected 'Redeploy' after deploy completed")
 }
 
 func TestClampLines(t *testing.T) {

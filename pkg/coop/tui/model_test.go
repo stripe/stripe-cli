@@ -766,7 +766,7 @@ func TestSpinnerTickDoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
+func TestCompletionEnterDeployWaitsForAgentSession(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
 
@@ -780,9 +780,10 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	m.session.ID = "parent_session"
 	store.Write(m.session)
 
+	// Find deploy position in default suggestions
 	suggestions := m.getCompletionSuggestions()
 	for i, s := range suggestions {
-		if s.id == "add-integration" {
+		if s.id == "deploy" || s.id == "deploy-update" {
 			m.cursor = i
 			break
 		}
@@ -796,7 +797,8 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	assert.Equal(t, suggestions[m.cursor].id, session.NextSteps.Selected)
 	assert.True(t, updated.waiting)
 
-	assert.Equal(t, "add-integration", session.NextSteps.Selected)
+	_, err = store.Read("coop_deploy")
+	assert.Error(t, err)
 }
 
 func TestSelectCompletionOptionSummarize(t *testing.T) {
@@ -948,8 +950,9 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 	suggestions := m.getCompletionSuggestions()
 
+	// Find deploy
 	for i, s := range suggestions {
-		if s.id == "add-integration" {
+		if s.id == "deploy" || s.id == "deploy-update" {
 			m.cursor = i
 			assert.True(t, m.shouldTransitionToNewSession())
 			break

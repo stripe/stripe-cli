@@ -246,6 +246,12 @@ func (m Model) getCompletionSuggestions() []completionSuggestion {
 		suggestions = append(suggestions, completionSuggestion{id: "summarize", title: "Write a STRIPE.md summary", desc: "Generate a summary of what was built, API keys used, endpoints created, and how to run it"})
 	}
 
+	if completed["deploy"] || completed["deploy-update"] {
+		suggestions = append(suggestions, completionSuggestion{id: "deploy", title: "Redeploy", desc: "Push latest changes to production"})
+	} else {
+		suggestions = append(suggestions, completionSuggestion{id: "deploy", title: "Deploy with Stripe Projects", desc: "Set up hosting, CI/CD, and environment management"})
+	}
+
 	suggestions = append(suggestions, completionSuggestion{id: "add-integration", title: "Add another Stripe feature", desc: "Subscriptions, Connect, billing portal, and more"})
 	suggestions = append(suggestions, completionSuggestion{id: "done", title: "Finish", desc: "Close this session"})
 

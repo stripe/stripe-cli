@@ -146,5 +146,5 @@ func (m Model) shouldTransitionToNewSession() bool {
 		return false
 	}
 	id := suggestions[m.cursor].id
-	return id == "add-integration"
+	return id == "deploy" || id == "deploy-update" || id == "add-integration"
 }
