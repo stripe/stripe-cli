@@ -72,7 +72,12 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("writing session: %w", err)
 	}
 
-	// Build node overview for the agent
+	resp := newCoopStartResponse(bp, session)
+
+	return outputJSON(resp)
+}
+
+func newCoopStartResponse(bp *coop.Blueprint, session *coop.Session) coopStartResponse {
 	var nodes []nodeBrief
 	nodeNumber := 0
 	for _, step := range session.Steps {
@@ -93,17 +98,16 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 	resp := coopStartResponse{
 		CommandResponse: coop.CommandResponse{
 			OK:        true,
-			SessionID: sessionID,
+			SessionID: session.ID,
 			Node:      1,
 			State:     "created",
 			Message:   fmt.Sprintf("Session started: %s (%d nodes)", bp.Title, session.TotalNodes()),
-			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", sessionID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
+			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
 		},
 		AgentInstructions: agentInstructions(bp, session),
 		Nodes:             nodes,
 	}
-
-	return outputJSON(resp)
+	return resp
 }
 
 func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
