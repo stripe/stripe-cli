@@ -19,6 +19,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -280,25 +281,25 @@ const AIAgentHelpAnnotationKey = "ai_agent_help"
 func formatAgentGuidance(cmd *cobra.Command) string {
 	var sb strings.Builder
 
-	fmt.Fprintf(&sb, "\n\n%s\n", ansi.Bold("[Agent guidance]"))
+	fmt.Fprintf(&sb, "\n\n%s\n", ansi.Bold(i18n.T("templates.section.agent_guidance")))
 
 	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
 		sb.WriteString(extra + "\n")
 	}
 
-	fmt.Fprintf(&sb, "  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
+	fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.api_key_hint", i18n.Args{"flag": ansi.Bold("--api-key"), "env": ansi.Bold("STRIPE_API_KEY")}))
 
 	if cmd.Flags().Lookup("data") != nil {
-		fmt.Fprintf(&sb, "  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`))
+		fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.data_hint", i18n.Args{"flag": ansi.Bold("-d"), "example": ansi.Italic(`-d "metadata[key]=value"`)}))
 	}
 
-	fmt.Fprintf(&sb, "  Run %s to quickly see all available commands.\n", ansi.Bold("stripe --map"))
-	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
-	fmt.Fprintf(&sb, "  Run %s to see operations and required/common parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
-	fmt.Fprintf(&sb, "  Run %s to see the full parameter list for a specific operation.\n", ansi.Bold("stripe help [resource] [operation]"))
+	fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.map_hint", i18n.Args{"flag": ansi.Bold("stripe --map")}))
+	fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.resources_hint", i18n.Args{"flag": ansi.Bold("stripe resources")}))
+	fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.help_hint", i18n.Args{"flag": ansi.Bold("stripe [resource] --help")}))
+	fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.full_help_hint", i18n.Args{"flag": ansi.Bold("stripe help [resource] [operation]")}))
 
 	if cmd.Flags().Lookup("stripe-account") != nil {
-		fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
+		fmt.Fprint(&sb, i18n.Tf("templates.agent_guidance.stripe_account_hint", i18n.Args{"flag": ansi.Bold("--stripe-account")}))
 	}
 
 	return sb.String()
@@ -331,15 +332,7 @@ func getLogin(fs *afero.Fs, cfg *config.Config) string {
 	exists, _ := afero.Exists(*fs, file)
 
 	if !exists {
-		return `
-Before using the CLI, you'll need to login:
-
-  $ stripe login
-
-If you're working on multiple projects, you can run the login command with the
---project-name flag:
-
-  $ stripe login --project-name rocket-rides`
+		return "\n" + i18n.T("root.login_hint")
 	}
 
 	return ""
@@ -388,19 +381,19 @@ func getUsageTemplate() string {
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
 `,
-		ansi.Bold("Usage:"),
-		ansi.Bold("Aliases:"),
-		ansi.Bold("Examples:"),
-		ansi.Bold("Webhook commands:"),
-		ansi.Bold("Stripe commands:"),
-		ansi.Bold("Resource commands:"),
-		ansi.Italic("To see more resource commands, run `stripe resources help`"),
-		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
-		ansi.Bold("API commands:"),
-		ansi.Bold("Other commands:"),
-		ansi.Bold("Available commands:"),
-		ansi.Bold("Flags:"),
-		ansi.Bold("Global flags:"),
+		ansi.Bold(i18n.T("templates.section.usage")),
+		ansi.Bold(i18n.T("templates.section.aliases")),
+		ansi.Bold(i18n.T("templates.section.examples")),
+		ansi.Bold(i18n.T("templates.section.webhook_commands")),
+		ansi.Bold(i18n.T("templates.section.stripe_commands")),
+		ansi.Bold(i18n.T("templates.section.resource_commands")),
+		ansi.Italic(i18n.T("templates.section.resource_commands_more")),
+		ansi.Italic(i18n.T("templates.section.resource_commands_v2")),
+		ansi.Bold(i18n.T("templates.section.api_commands")),
+		ansi.Bold(i18n.T("templates.section.other_commands")),
+		ansi.Bold(i18n.T("templates.section.available_commands")),
+		ansi.Bold(i18n.T("templates.section.flags")),
+		ansi.Bold(i18n.T("templates.section.global_flags")),
 	)
 }
 

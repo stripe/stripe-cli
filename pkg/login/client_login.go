@@ -9,6 +9,7 @@ import (
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -52,8 +53,8 @@ func NewAuthenticator(keytransfer keys.KeyTransfer) *Authenticator {
 // Login function is used to obtain credentials via stripe dashboard.
 func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 	color := ansi.Color(os.Stdout)
-	fmt.Printf("Your pairing code is: %s\n", color.Bold(links.VerificationCode))
-	fmt.Println(ansi.Faint("This pairing code verifies your authentication with Stripe."))
+	fmt.Print(i18n.Tf("login_flow.output.pairing_code", i18n.Args{"code": fmt.Sprint(color.Bold(links.VerificationCode))}))
+	fmt.Println(ansi.Faint(i18n.T("login_flow.output.pairing_code_note")))
 
 	var s *spinner.Spinner
 
@@ -61,11 +62,11 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 	inputCh := make(chan int)
 
 	if isSSH() || !canOpenBrowser() {
-		fmt.Printf("To authenticate with Stripe, please go to: %s\n", links.BrowserURL)
-		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+		fmt.Print(i18n.Tf("login_flow.output.go_to_url", i18n.Args{"url": links.BrowserURL}))
+		s = ansi.StartNewSpinner(i18n.T("login_flow.output.waiting_for_confirmation"), os.Stdout)
 		go a.keytransfer.AsyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	} else {
-		fmt.Printf("Press Enter to open the browser or visit %s (^C to quit)", links.BrowserURL)
+		fmt.Print(i18n.Tf("login_flow.output.press_enter_to_open", i18n.Args{"url": links.BrowserURL}))
 		go a.asyncInputReader.scanln(inputCh)
 		go a.keytransfer.AsyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	}
@@ -73,13 +74,13 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 	for {
 		select {
 		case <-inputCh:
-			s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+			s = ansi.StartNewSpinner(i18n.T("login_flow.output.waiting_for_confirmation"), os.Stdout)
 
 			err := openBrowser(links.BrowserURL)
 			if err != nil {
-				msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
+				msg := i18n.Tf("login_flow.output.browser_failed", i18n.Args{"url": links.BrowserURL})
 				ansi.StopSpinner(s, msg, os.Stdout)
-				s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+				s = ansi.StartNewSpinner(i18n.T("login_flow.output.waiting_for_confirmation"), os.Stdout)
 			}
 		case res := <-pollResultCh:
 			if res.Err != nil {
@@ -95,12 +96,12 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, res.TestModeAPIKey)
 			if err != nil {
-				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
+				fmt.Print(i18n.Tf("login_flow.output.error_verifying", i18n.Args{"error": err.Error()}))
 				return err
 			}
 
-			fmt.Printf("> %s\n", message)
-			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+			fmt.Print(i18n.Tf("login_flow.output.success", i18n.Args{"message": message}))
+			fmt.Println(ansi.Italic(i18n.T("login_flow.output.key_expiry_notice")))
 			return nil
 		}
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -25,25 +26,16 @@ func newPostCmd(isPreview bool) *requests.Base {
 
 	previewNote := ""
 	if isPreview {
-		previewNote = "\nThe preview Stripe-Version header is set automatically on all requests.\n"
+		previewNote = i18n.T("post.preview_note")
 	}
 
 	reqs.Cmd = &cobra.Command{
-		Use:   "post <path>",
-		Args:  validators.ExactArgs(1),
-		Short: "Make a " + verb + " request to the Stripe API",
-		Long: `Make ` + verb + ` requests to the Stripe API using your test mode key.
-
-The post command supports API features like idempotency keys and expand flags.
-` + previewNote + `
-For a full list of supported paths, see the API reference:
-https://stripe.com/docs/api
-`,
-		Example: `stripe ` + preview + `post /payment_intents \
-    -d amount=2000 \
-    -d currency=usd \
-    -d "payment_method_types[]=card"`,
-		RunE: reqs.RunRequestsCmd,
+		Use:     "post <path>",
+		Args:    validators.ExactArgs(1),
+		Short:   i18n.Tf("post.short", i18n.Args{"verb": verb}),
+		Long:    i18n.Tf("post.long", i18n.Args{"verb": verb, "preview_note": previewNote}),
+		Example: i18n.Tf("post.example", i18n.Args{"preview": preview}),
+		RunE:    reqs.RunRequestsCmd,
 	}
 
 	reqs.InitFlags()

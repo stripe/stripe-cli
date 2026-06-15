@@ -15,6 +15,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -56,16 +57,16 @@ func interactiveLoginWithParams(ctx context.Context, config *config.Config, inpu
 	// we need to include it manually to maintain consistency in outputs.
 	message, err := SuccessMessage(ctx, nil, baseURL, apiKey)
 	if err != nil {
-		fmt.Printf("> Error verifying the CLI was setup successfully: %s\n", err)
+		fmt.Print(i18n.Tf("login_flow.interactive.error_verifying", i18n.Args{"error": err.Error()}))
 	} else {
-		fmt.Printf("> %s\n", message)
+		fmt.Print(i18n.Tf("login_flow.output.success", i18n.Args{"message": message}))
 	}
 
 	return nil
 }
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
-	fmt.Print("Enter your API key: ")
+	fmt.Print(i18n.T("login_flow.interactive.prompt_api_key"))
 
 	apiKey, err := securePrompt(input)
 	if err != nil {
@@ -74,7 +75,7 @@ func getConfigureAPIKey(input io.Reader) (string, error) {
 
 	apiKey = strings.TrimSpace(apiKey)
 	if apiKey == "" {
-		return "", errors.New("API key is required, please provide your API key")
+		return "", errors.New(i18n.T("login_flow.interactive.api_key_required"))
 	}
 
 	err = validators.APIKey(apiKey)
@@ -82,7 +83,7 @@ func getConfigureAPIKey(input io.Reader) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("Your API key is: %s\n", config.RedactAPIKey(apiKey))
+	fmt.Print(i18n.Tf("login_flow.interactive.api_key_display", i18n.Args{"key": config.RedactAPIKey(apiKey)}))
 
 	return apiKey, nil
 }
@@ -92,7 +93,7 @@ func getConfigureDeviceName(input io.Reader) string {
 	reader := bufio.NewReader(input)
 
 	color := ansi.Color(os.Stdout)
-	fmt.Printf("How would you like to identify this device in the Stripe Dashboard? [default: %s] ", color.Bold(color.Cyan(hostName)))
+	fmt.Print(i18n.Tf("login_flow.interactive.prompt_device_name", i18n.Args{"default": fmt.Sprint(color.Bold(color.Cyan(hostName)))}))
 
 	deviceName, _ := reader.ReadString('\n')
 	if strings.TrimSpace(deviceName) == "" {

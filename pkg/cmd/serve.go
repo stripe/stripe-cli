@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -24,9 +25,9 @@ func newServeCmd() *serveCmd {
 	sc.cmd = &cobra.Command{
 		Use:     "serve",
 		Aliases: []string{"srv"},
-		Short:   "Serve static files locally",
+		Short:   i18n.T("serve.short"),
 		Args:    validators.MaximumNArgs(1),
-		Example: "stripe serve /path/to/directory",
+		Example: i18n.T("serve.example"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := "."
 			if len(args) == 1 {
@@ -38,15 +39,15 @@ func newServeCmd() *serveCmd {
 				return err
 			}
 
-			fmt.Printf("Starting server for directory  %s\n", absoluteDir)
+			fmt.Print(i18n.Tf("serve.output.starting_server", i18n.Args{"dir": absoluteDir}))
 
-			fmt.Println("Starting static file server at address", fmt.Sprintf("http://localhost:%s", port))
+			fmt.Println(i18n.Tf("serve.output.server_address", i18n.Args{"port": port}))
 			http.Handle("/", http.FileServer(http.Dir(absoluteDir)))
 			return http.ListenAndServe(fmt.Sprintf("localhost:%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 		},
 	}
 
-	sc.cmd.Flags().StringVar(&port, "port", "4242", "Provide a custom port to serve content from.")
+	sc.cmd.Flags().StringVar(&port, "port", "4242", i18n.T("serve.flags.port"))
 
 	return sc
 }

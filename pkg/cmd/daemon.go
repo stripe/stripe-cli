@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/rpcservice"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -22,17 +23,14 @@ func newDaemonCmd(cfg *config.Config) *daemonCmd {
 	}
 
 	dc.cmd = &cobra.Command{
-		Use:   "daemon",
-		Args:  validators.NoArgs,
-		Short: "Run as a daemon on your localhost",
-		Long: `Start a local gRPC server, enabling you to invoke Stripe CLI commands programmatically from a gRPC
-client.
-
-Currently, stripe daemon only supports a subset of CLI commands. Documentation is not yet available.`,
+		Use:    "daemon",
+		Args:   validators.NoArgs,
+		Short:  i18n.T("daemon.short"),
+		Long:   i18n.T("daemon.long"),
 		Run:    dc.runDaemonCmd,
 		Hidden: true,
 	}
-	dc.cmd.Flags().IntVar(&dc.port, "port", 0, "The TCP port the daemon will listen to (default: an available port)")
+	dc.cmd.Flags().IntVar(&dc.port, "port", 0, i18n.T("daemon.flags.port"))
 
 	return dc
 }

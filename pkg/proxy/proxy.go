@@ -17,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
@@ -162,7 +163,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		session, err := p.createSession(ctx)
 		if err != nil {
 			p.cfg.OutCh <- websocket.ErrorElement{
-				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
+				Error: fmt.Errorf("%s", i18n.Tf("proxy.errors.auth_error", i18n.Args{"error": err.Error()})),
 			}
 			return err
 		}
@@ -186,9 +187,9 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 			displayedAPIVersion := ""
 			if p.cfg.UseLatestAPIVersion && session.LatestVersion != "" {
-				displayedAPIVersion = "You are using Stripe API Version [" + session.LatestVersion + "]. "
+				displayedAPIVersion = i18n.Tf("proxy.output.api_version", i18n.Args{"version": session.LatestVersion})
 			} else if !p.cfg.UseLatestAPIVersion && session.DefaultVersion != "" {
-				displayedAPIVersion = "You are using Stripe API Version [" + session.DefaultVersion + "]. "
+				displayedAPIVersion = i18n.Tf("proxy.output.api_version", i18n.Args{"version": session.DefaultVersion})
 			}
 
 			p.cfg.OutCh <- websocket.StateElement{
@@ -212,7 +213,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 					State: websocket.Reconnecting,
 				}
 			} else {
-				err := fmt.Errorf("session expired, terminating after %d failed attempts to reauthorize", nAttempts)
+				err := fmt.Errorf("%s", i18n.Tf("proxy.errors.session_expired", i18n.Args{"attempts": strconv.Itoa(nAttempts)}))
 				p.cfg.OutCh <- websocket.ErrorElement{
 					Error: err,
 				}
@@ -250,7 +251,7 @@ func GetSessionSecret(ctx context.Context, client stripe.RequestPerformer, devic
 	if err != nil {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.GetSessionSecret",
-		}).Debug(fmt.Sprintf("Error while authenticating with Stripe: %v", err))
+		}).Debug(i18n.Tf("proxy.errors.auth_error", i18n.Args{"error": err.Error()}))
 		return "", err
 	}
 
@@ -288,7 +289,7 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 
 			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
 				if clientError.StatusCode == http.StatusTooManyRequests {
-					err = errors.New("you have too many `stripe listen` sessions open, please close some and try again")
+					err = errors.New(i18n.T("proxy.errors.too_many_sessions"))
 				}
 				exitCh <- struct{}{}
 				return
@@ -315,7 +316,7 @@ func formatOutput(format string, eventPayload string) string {
 	var event map[string]interface{}
 	err := json.Unmarshal([]byte(eventPayload), &event)
 	if err != nil {
-		return fmt.Sprintf("Received malformed event: %s", err)
+		return i18n.Tf("proxy.errors.malformed_event", i18n.Args{"error": err.Error()})
 	}
 	switch strings.ToUpper(format) {
 	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
@@ -323,7 +324,7 @@ func formatOutput(format string, eventPayload string) string {
 		outputJSON, _ := json.Marshal(event)
 		return fmt.Sprintln(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
 	default:
-		return fmt.Sprintf("Unrecognized output format %s\n", format)
+		return i18n.Tf("proxy.errors.unrecognized_format", i18n.Args{"format": format})
 	}
 }
 
@@ -340,13 +341,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	// validate forward-urls args
 	if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) > 0 {
 		if strings.HasPrefix(cfg.ForwardURL, "/") {
-			return nil, errors.New("forward_to cannot be a relative path when loading webhook endpoints from the API")
+			return nil, errors.New(i18n.T("proxy.errors.forward_url_relative"))
 		}
 		if strings.HasPrefix(cfg.ForwardConnectURL, "/") {
-			return nil, errors.New("forward_connect_to cannot be a relative path when loading webhook endpoints from the API")
+			return nil, errors.New(i18n.T("proxy.errors.forward_connect_url_relative"))
 		}
 	} else if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) == 0 {
-		return nil, errors.New("load_from_webhooks_api requires a location to forward to with forward_to")
+		return nil, errors.New(i18n.T("proxy.errors.load_from_webhooks_requires_forward"))
 	}
 
 	// if no events are passed, listen for all events
@@ -355,7 +356,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	} else {
 		for _, event := range cfg.Events {
 			if _, found := validEvents[event]; !found {
-				cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+				cfg.Log.Warningf("%s", i18n.Tf("proxy.warnings.invalid_event", i18n.Args{"event": event}))
 			}
 		}
 	}
@@ -366,9 +367,9 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 				// If not found in validThinEvents, check in validPreviewThinEvents
 				if _, foundInPreview := validPreviewThinEvents[event]; !foundInPreview {
 					if event == "*" {
-						cfg.Log.Infof("* is only supported in the CLI, thin event destinations do not support selecting all event types\n")
+						cfg.Log.Infof("%s", i18n.T("proxy.warnings.wildcard_thin_events"))
 					} else {
-						cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
+						cfg.Log.Warningf("%s", i18n.Tf("proxy.warnings.invalid_thin_event", i18n.Args{"event": event}))
 					}
 				}
 			}
@@ -393,7 +394,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		// build from user's API config
 		endpoints := getEndpointsFromAPI(ctx, cfg.Client)
 		if len(endpoints.Data) == 0 {
-			return nil, errors.New("you have not defined any webhook endpoints on your account, go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
+			return nil, errors.New(i18n.T("proxy.errors.no_webhook_endpoints"))
 		}
 		var err error
 		endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
@@ -493,7 +494,7 @@ func ExtractRequestData(data interface{}) (StripeRequest, error) {
 		return StripeRequest{}, nil
 	}
 
-	return StripeRequest{}, errors.New("received malformed event from Stripe")
+	return StripeRequest{}, errors.New(i18n.T("proxy.errors.malformed_event_internal"))
 }
 
 //
@@ -634,7 +635,7 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 func buildForwardURL(forwardURL string, destination *url.URL) (string, error) {
 	f, err := url.Parse(forwardURL)
 	if err != nil {
-		return "", fmt.Errorf("provided forward url cannot be parsed: %s", forwardURL)
+		return "", fmt.Errorf("%s", i18n.Tf("proxy.errors.forward_url_cannot_parse", i18n.Args{"url": forwardURL}))
 	}
 
 	newForwardURL := fmt.Sprintf(

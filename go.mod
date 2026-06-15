@@ -49,6 +49,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/joho/godotenv v1.5.1
 	github.com/yuin/goldmark v1.2.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -74,7 +75,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (

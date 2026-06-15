@@ -6,6 +6,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/fixtures"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -35,8 +36,8 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	fixturesCmd.Cmd = &cobra.Command{
 		Use:   "fixtures",
 		Args:  validators.ExactArgs(1),
-		Short: "Run fixtures to populate your account with data",
-		Long:  `Run fixtures to populate your account with data`,
+		Short: i18n.T("fixtures.short"),
+		Long:  i18n.T("fixtures.long"),
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Fixtures execute a sequence of API requests defined in a JSON file.\n" +
 				"  Use `--override` to customize parameters, e.g. `--override customer:email=test@example.com`.\n" +
@@ -45,13 +46,13 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 		RunE: fixturesCmd.runFixturesCmd,
 	}
 
-	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
-	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.skip, "skip", []string{}, "Skip specific steps in the fixture")
-	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.override, "override", []string{}, "Override parameters in the fixture")
-	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.add, "add", []string{}, "Add parameters in the fixture")
-	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.remove, "remove", []string{}, "Remove parameters from the fixture")
-	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.apiVersion, "api-version", "", "Specify API version in the fixture")
-	fixturesCmd.Cmd.Flags().BoolVar(&fixturesCmd.edit, "edit", false, "Edit the fixture directly in your default IDE")
+	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.stripeAccount, "stripe-account", "", i18n.T("fixtures.flags.stripe_account"))
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.skip, "skip", []string{}, i18n.T("fixtures.flags.skip"))
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.override, "override", []string{}, i18n.T("fixtures.flags.override"))
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.add, "add", []string{}, i18n.T("fixtures.flags.add"))
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.remove, "remove", []string{}, i18n.T("fixtures.flags.remove"))
+	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.apiVersion, "api-version", "", i18n.T("fixtures.flags.api_version"))
+	fixturesCmd.Cmd.Flags().BoolVar(&fixturesCmd.edit, "edit", false, i18n.T("fixtures.flags.edit"))
 
 	// Hidden configuration flags, useful for dev/debugging
 	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")

@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -95,19 +96,14 @@ func newOpenCmd() *openCmd {
 	oc.cmd = &cobra.Command{
 		Use:       "open",
 		ValidArgs: openNames(),
-		Short:     "Quickly open Stripe pages",
-		Long: `The open command provices shortcuts to quickly let you open pages to Stripe with
-in your browser. A full list of support shortcuts can be seen with 'stripe open --list'`,
-		Example: `stripe open --list
-  stripe open api
-  stripe open docs
-  stripe open dashboard/webhooks
-  stripe open dashboard/billing --live`,
-		RunE: oc.runOpenCmd,
+		Short:     i18n.T("open.short"),
+		Long:      i18n.T("open.long"),
+		Example:   i18n.T("open.example"),
+		RunE:      oc.runOpenCmd,
 	}
 
-	oc.cmd.Flags().Bool("list", false, "List all supported short cuts")
-	oc.cmd.Flags().Bool("live", false, "Open the Stripe Dashboard for your live integration")
+	oc.cmd.Flags().Bool("list", false, i18n.T("open.flags.list"))
+	oc.cmd.Flags().Bool("live", false, i18n.T("open.flags.live"))
 
 	return oc
 }
@@ -124,8 +120,8 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if list || len(args) == 0 {
-		fmt.Println("open quickly opens Stripe pages. To use, run 'stripe open <shortcut>'.")
-		fmt.Println("open supports the following shortcuts:")
+		fmt.Println(i18n.T("open.output.intro"))
+		fmt.Println(i18n.T("open.output.shortcuts_header"))
 		fmt.Println()
 
 		shortcuts := openNames()
@@ -133,7 +129,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 
 		longest := getLongestShortcut(shortcuts)
 
-		fmt.Printf("%s%s\n", padName("shortcut", longest), "    url")
+		fmt.Printf("%s%s\n", padName(i18n.T("open.output.column_shortcut"), longest), "    "+i18n.T("open.output.column_url"))
 		fmt.Printf("%s%s\n", padName("--------", longest), "    ---------")
 
 		for _, shortcut := range shortcuts {
@@ -177,7 +173,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("unsupported open command, given: %s", args[0])
+		return fmt.Errorf("%s", i18n.Tf("open.errors.unsupported_command", i18n.Args{"command": args[0]}))
 	}
 
 	return nil

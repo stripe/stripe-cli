@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -59,18 +60,11 @@ func newListenCmd() *listenCmd {
 	lc := &listenCmd{}
 
 	lc.cmd = &cobra.Command{
-		Use:   "listen",
-		Args:  validators.NoArgs,
-		Short: "Listen for webhook events",
-		Long: `The listen command watches and forwards webhook events from Stripe to your
-local machine by connecting directly to Stripe's API. You can test the latest
-API version, filter events, or even load your saved webhook endpoints from your
-Stripe account.`,
-		Example: `stripe listen
-  stripe listen --events charge.captured,charge.updated \
-    --forward-to localhost:3000/events
-  stripe listen --thin-events v1.billing.meter.no_meter_found \
-    --forward-thin-to localhost:3000/thin-events`,
+		Use:     "listen",
+		Args:    validators.NoArgs,
+		Short:   i18n.T("listen.short"),
+		Long:    i18n.T("listen.long"),
+		Example: i18n.T("listen.example"),
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
@@ -80,25 +74,23 @@ Stripe account.`,
 		RunE: lc.runListenCmd,
 	}
 
-	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
-	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
-	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
-	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
-	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
-	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
-	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
-	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
+	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, i18n.T("listen.flags.connect_headers"))
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, i18n.T("listen.flags.events"))
+	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", i18n.T("listen.flags.forward_to"))
+	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, i18n.T("listen.flags.headers"))
+	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", i18n.T("listen.flags.forward_connect_to"))
+	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, i18n.T("listen.flags.thin_events"))
+	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", i18n.T("listen.flags.forward_thin_to"))
+	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", i18n.T("listen.flags.forward_thin_connect_to"))
+	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, i18n.T("listen.flags.latest"))
+	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, i18n.T("listen.flags.live"))
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
-	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format json` instead and use `jq` if you need to process the JSON in the terminal.")
-	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
-	Acceptable values:
-		'JSON' - Output webhook events in JSON format`)
-	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, "Load webhook endpoint configuration from the webhooks API/dashboard")
-	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
-	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
-	lc.cmd.Flags().BoolVarP(&lc.skipUpdate, "skip-update", "s", false, "Skip checking latest version of Stripe CLI")
+	lc.cmd.Flags().MarkDeprecated("print-json", i18n.T("listen.flags.print_json_deprecated"))
+	lc.cmd.Flags().StringVar(&lc.format, "format", "", i18n.T("listen.flags.format"))
+	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, i18n.T("listen.flags.use_configured_webhooks"))
+	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, i18n.T("listen.flags.skip_verify"))
+	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, i18n.T("listen.flags.print_secret"))
+	lc.cmd.Flags().BoolVarP(&lc.skipUpdate, "skip-update", "s", false, i18n.T("listen.flags.skip_update"))
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -143,13 +135,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if strings.Contains(key, "sk_org") {
-		log.Errorf("The listen command is not supported in an organization sandbox at this time.")
+		log.Errorf("%s", i18n.T("listen.errors.org_sandbox_unsupported"))
 		return nil
 	}
 
 	apiBase, err := url.Parse(lc.apiBaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to parse API base url: %w", err)
+		return fmt.Errorf("%s: %w", i18n.T("listen.errors.parse_api_base_url"), err)
 	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
@@ -244,10 +236,12 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				color := ansi.Color(os.Stdout)
 				localTime := time.Now().Format(timeLayout)
 
-				errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
-					color.Faint(localTime),
-					color.Red("ERROR"),
-					ee.Error,
+				errStr := i18n.Tf("listen.output.failed_to_post",
+					i18n.Args{
+						"time":   fmt.Sprint(color.Faint(localTime)),
+						"status": fmt.Sprint(color.Red("ERROR")),
+						"error":  fmt.Sprintf("%v", ee.Error),
+					},
 				)
 				fmt.Println(errStr)
 
@@ -257,10 +251,12 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				color := ansi.Color(os.Stdout)
 				localTime := time.Now().Format(timeLayout)
 
-				errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
-					color.Faint(localTime),
-					color.Red("ERROR"),
-					ee.Error,
+				errStr := i18n.Tf("listen.output.failed_to_read_response",
+					i18n.Args{
+						"time":   fmt.Sprint(color.Faint(localTime)),
+						"status": fmt.Sprint(color.Red("ERROR")),
+						"error":  fmt.Sprintf("%v", ee.Error),
+					},
 				)
 				log.Errorf("%s", errStr)
 
@@ -274,11 +270,11 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 		VisitStatus: func(se websocket.StateElement) error {
 			switch se.State {
 			case websocket.Loading:
-				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
+				s = ansi.StartNewSpinner(i18n.T("listen.output.getting_ready"), logger.Out)
 			case websocket.Reconnecting:
-				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
+				ansi.StartSpinner(s, i18n.T("listen.output.session_expired"), logger.Out)
 			case websocket.Ready:
-				ansi.StopSpinner(s, fmt.Sprintf("Ready! %sYour webhook signing secret is %s (^C to quit)", se.Data[0], ansi.Bold(se.Data[1])), logger.Out)
+				ansi.StopSpinner(s, i18n.Tf("listen.output.ready", i18n.Args{"api_version": se.Data[0], "secret": ansi.Bold(se.Data[1])}), logger.Out)
 			case websocket.Done:
 				ansi.StopSpinner(s, "", logger.Out)
 			}

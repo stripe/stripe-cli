@@ -17,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/i18n"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
@@ -47,7 +48,7 @@ func newSandboxCmd() *sandboxCmd {
 	sc := &sandboxCmd{}
 	sc.cmd = &cobra.Command{
 		Use:    "sandbox",
-		Short:  "Manage Stripe sandbox environments",
+		Short:  i18n.T("sandbox.short"),
 		Hidden: true,
 		Args:   validators.NoArgs,
 		Annotations: map[string]string{
@@ -68,22 +69,11 @@ func newSandboxCmd() *sandboxCmd {
 func newSandboxCreateCmd() *sandboxCreateCmd {
 	scc := &sandboxCreateCmd{}
 	scc.cmd = &cobra.Command{
-		Use:   "create",
-		Short: "Provision a new sandbox environment",
-		Long: `Create a new Stripe sandbox with test API keys.
-
-If you are already logged in (have a configured API key), opens the
-sandbox management page in your browser instead.
-
-Otherwise, uses a proof-of-work challenge to provision a temporary sandbox
-without authentication. If that fails, automatically falls back to
-browser-based signup/login.
-
-Keys are saved to the current CLI profile so subsequent stripe commands
-work immediately.`,
-		Example: `stripe sandbox create --email you@example.com
-  stripe sandbox create --from-git`,
-		Args: validators.NoArgs,
+		Use:     "create",
+		Short:   i18n.T("sandbox.create.short"),
+		Long:    i18n.T("sandbox.create.long"),
+		Example: i18n.T("sandbox.create.example"),
+		Args:    validators.NoArgs,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Provisions a sandbox and saves keys to the current CLI profile.\n" +
 				"  Pass --from-git to resolve your email from git config user.email.\n" +
@@ -93,10 +83,10 @@ work immediately.`,
 		RunE: scc.runSandboxCreateCmd,
 	}
 
-	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address")
-	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email and full name from git config")
-	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", "Your full name (optional)")
-	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
+	scc.cmd.Flags().StringVar(&scc.email, "email", "", i18n.T("sandbox.create.flags.email"))
+	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, i18n.T("sandbox.create.flags.from_git"))
+	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", i18n.T("sandbox.create.flags.full_name"))
+	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, i18n.T("sandbox.create.flags.non_interactive"))
 
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
@@ -120,17 +110,17 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Logged in with a real key (sk_test_, rk_test_ from stripe login).
 		// Direct to dashboard — sandbox creation requires an empty profile.
 		sandboxURL := scc.dashboardURL + "/sandboxes"
-		fmt.Printf("You're already authenticated; sandbox management is available in Dashboard.\n\n")
+		fmt.Print(i18n.T("sandbox.create.output.already_authenticated"))
 		switch {
 		case scc.nonInteractive:
 			fmt.Printf("%s\n", sandboxURL)
 		case canOpenBrowserFunc():
-			fmt.Printf("Press Enter to open the browser or visit %s", sandboxURL)
+			fmt.Print(i18n.Tf("sandbox.create.output.press_enter_to_open", i18n.Args{"url": sandboxURL}))
 			buf := make([]byte, 1)
 			os.Stdin.Read(buf)
 			openBrowserFunc(sandboxURL)
 		default:
-			fmt.Printf("Visit %s\n", sandboxURL)
+			fmt.Print(i18n.Tf("sandbox.create.output.visit_url", i18n.Args{"url": sandboxURL}))
 		}
 		return nil
 
@@ -138,7 +128,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Claimable sandbox has expired. Clear the stale config so the user
 		// can provision a fresh one or login with a claimed account.
 		clearExpiredSandboxProfile()
-		fmt.Printf("Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
+		fmt.Print(i18n.T("sandbox.create.output.session_expired"))
 		return nil
 
 	default:
@@ -146,19 +136,19 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// and claim URL — one sandbox at a time.
 		pubKey, _ := Config.Profile.GetPublishableKey(false)
 		accountID, _ := Config.Profile.GetAccountID()
-		fmt.Printf("You already have an active sandbox.\n\n")
-		fmt.Printf("Secret key:      %s\n", existingKey)
+		fmt.Print(i18n.T("sandbox.create.output.active_sandbox_header"))
+		fmt.Print(i18n.Tf("sandbox.create.output.active_sandbox_secret_key", i18n.Args{"key": existingKey}))
 		if pubKey != "" {
-			fmt.Printf("Publishable key: %s\n", pubKey)
+			fmt.Print(i18n.Tf("sandbox.create.output.active_sandbox_pub_key", i18n.Args{"key": pubKey}))
 		}
 		if accountID != "" {
-			fmt.Printf("Account ID:      %s\n", accountID)
+			fmt.Print(i18n.Tf("sandbox.create.output.active_sandbox_account_id", i18n.Args{"id": accountID}))
 		}
 		expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
 		if expiresAt != "" {
-			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandbox claim`.\n", expiresAt)
+			fmt.Print(i18n.Tf("sandbox.create.output.active_sandbox_expires", i18n.Args{"date": expiresAt}))
 		} else {
-			fmt.Printf("\nRun `stripe sandbox claim` when you're ready to claim your sandbox.\n")
+			fmt.Print(i18n.T("sandbox.create.output.active_sandbox_claim_hint"))
 		}
 		return nil
 	}
@@ -191,7 +181,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Any server-side failure (429, 500, network) triggers this path
 		// so the user always has a way to get keys.
 		log.WithFields(log.Fields{"error": err}).Debug("sandbox: provisioning failed, falling back to browser")
-		fmt.Println(color.Yellow("\nCould not provision a sandbox automatically. Opening browser to create your Stripe sandbox account instead..."))
+		fmt.Println(color.Yellow(i18n.T("sandbox.create.output.provisioning_failed")))
 		return scc.runDashboardFlow(cmd, color, email)
 	}
 
@@ -202,7 +192,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 // mutually exclusive; providing both is an error.
 func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 	if scc.fromGit && scc.email != "" {
-		return "", fmt.Errorf("--email and --from-git are mutually exclusive")
+		return "", fmt.Errorf("%s", i18n.T("sandbox.create.errors.mutually_exclusive"))
 	}
 
 	var email string
@@ -210,18 +200,18 @@ func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 	case scc.fromGit:
 		gitEmail := sandbox.GitConfigFunc("user.email")
 		if gitEmail == "" {
-			return "", fmt.Errorf("--from-git requires git config user.email to be set, but it was not found")
+			return "", fmt.Errorf("%s", i18n.T("sandbox.create.errors.git_email_not_set"))
 		}
-		fmt.Printf("Using email: %s (from git config)\n", gitEmail)
+		fmt.Print(i18n.Tf("sandbox.create.output.using_email_from_git", i18n.Args{"email": gitEmail}))
 		email = gitEmail
 	case scc.email != "":
 		email = scc.email
 	default:
-		return "", fmt.Errorf("email is required, pass --email your@email.com or use --from-git to infer from git config user.email")
+		return "", fmt.Errorf("%s", i18n.T("sandbox.create.errors.email_required"))
 	}
 
 	if _, err := mail.ParseAddress(email); err != nil {
-		return "", fmt.Errorf("invalid email %q: %w", email, err)
+		return "", fmt.Errorf("%s", i18n.Tf("sandbox.create.errors.invalid_email", i18n.Args{"email": email, "error": err.Error()}))
 	}
 	return email, nil
 }
@@ -234,13 +224,13 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 		return nil, err
 	}
 
-	fmt.Print("Setting up your sandbox...")
+	fmt.Print(i18n.T("sandbox.create.output.setting_up"))
 	solution, err := sandbox.SolveChallenge(cmd.Context(), challengeResp.Algorithm, challengeResp.Challenge, challengeResp.Salt)
 	if err != nil {
 		fmt.Println()
 		return nil, err
 	}
-	fmt.Println(" done.")
+	fmt.Println(i18n.T("sandbox.create.output.done"))
 
 	provisionReq := sandbox.ProvisionRequest{
 		Algorithm: challengeResp.Algorithm,
@@ -260,9 +250,9 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 // login.Login() to pre-fill and open /register instead of /confirm_auth.
 func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
 	if isSSHSession() && !scc.nonInteractive {
-		fmt.Println("SSH session detected. Cannot open browser.")
-		fmt.Println("Use `stripe login --interactive` or set STRIPE_API_KEY instead.")
-		return fmt.Errorf("browser login unavailable in SSH session")
+		fmt.Println(i18n.T("sandbox.create.output.ssh_no_browser"))
+		fmt.Println(i18n.T("sandbox.create.output.ssh_use_interactive"))
+		return fmt.Errorf("%s", i18n.T("sandbox.create.errors.browser_unavailable"))
 	}
 
 	if scc.nonInteractive {
@@ -295,11 +285,11 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 	}
 	fmt.Println(string(out))
 
-	fmt.Printf("\nUse the keys above to start building your integration.\n")
+	fmt.Print(i18n.T("sandbox.create.output.use_keys_hint"))
 	if result.GetExpiresAt() != "" {
-		fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandbox claim`.\n", result.GetExpiresAt())
+		fmt.Print(i18n.Tf("sandbox.create.output.sandbox_expires", i18n.Args{"date": result.GetExpiresAt()}))
 	} else {
-		fmt.Printf("\nClaim your sandbox by using the above claim_url or running `stripe sandbox claim`.\n")
+		fmt.Print(i18n.T("sandbox.create.output.sandbox_claim_hint"))
 	}
 
 	return nil
@@ -314,7 +304,7 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
-		return fmt.Errorf("no secret key in server response")
+		return fmt.Errorf("%s", i18n.T("sandbox.create.errors.no_secret_key"))
 	}
 
 	accountID := result.GetAccountID()
@@ -405,34 +395,34 @@ func newSandboxClaimCmd() *sandboxClaimCmd {
 	scc := &sandboxClaimCmd{}
 	scc.cmd = &cobra.Command{
 		Use:   "claim",
-		Short: "Claim your sandbox in the browser",
-		Long:  "Opens the claim URL for your active sandbox. After claiming, run `stripe login` to get permanent keys.",
+		Short: i18n.T("sandbox.claim.short"),
+		Long:  i18n.T("sandbox.claim.long"),
 		Args:  validators.NoArgs,
 		RunE:  scc.runSandboxClaimCmd,
 	}
-	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
+	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, i18n.T("sandbox.claim.flags.non_interactive"))
 	return scc
 }
 
 func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string) error {
 	claimURL := viper.GetString(Config.Profile.GetConfigField(config.SandboxClaimURLName))
 	if claimURL == "" {
-		fmt.Printf("No active sandbox. Run `stripe sandbox create` to get started.\n")
+		fmt.Print(i18n.T("sandbox.claim.output.no_active_sandbox"))
 		return nil
 	}
 
 	if isExpiredSandbox() {
 		clearExpiredSandboxProfile()
-		fmt.Printf("Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
+		fmt.Print(i18n.T("sandbox.claim.output.session_expired"))
 		return nil
 	}
 
 	accountID, _ := Config.Profile.GetAccountID()
 
 	if accountID != "" {
-		fmt.Printf("Claim your sandbox (%s) by visiting the claim link below.\n", accountID)
+		fmt.Print(i18n.Tf("sandbox.claim.output.claim_with_account", i18n.Args{"account_id": accountID}))
 	} else {
-		fmt.Printf("Claim your sandbox by visiting the claim link below.\n")
+		fmt.Print(i18n.T("sandbox.claim.output.claim_without_account"))
 	}
 	fmt.Println()
 
@@ -440,12 +430,12 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 	case scc.nonInteractive:
 		fmt.Printf("%s\n", claimURL)
 	case canOpenBrowserFunc():
-		fmt.Printf("Press Enter to open the browser or visit %s", claimURL)
+		fmt.Print(i18n.Tf("sandbox.claim.output.press_enter_to_open", i18n.Args{"url": claimURL}))
 		buf := make([]byte, 1)
 		os.Stdin.Read(buf)
 		openBrowserFunc(claimURL)
 	default:
-		fmt.Printf("Visit %s\n", claimURL)
+		fmt.Print(i18n.Tf("sandbox.claim.output.visit_url", i18n.Args{"url": claimURL}))
 	}
 	return nil
 }
