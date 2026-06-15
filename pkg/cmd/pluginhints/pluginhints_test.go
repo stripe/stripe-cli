@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 // newTestCmd builds a pluginHintCmd with all side effects mocked out.
@@ -35,6 +37,52 @@ func newTestCmd(name string, opts ...option) *pluginHintCmd {
 
 func (p *pluginHintCmd) output() string {
 	return p.stdout.(*bytes.Buffer).String()
+}
+
+func findChildCommand(rootCmd *cobra.Command, name string) *cobra.Command {
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Name() == name {
+			return cmd
+		}
+	}
+	return nil
+}
+
+// --- AddHintCommands ---
+
+func TestAddHintCommands_DirectoryHintRoutesAliasesWhenPluginMissing(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "stripe"}
+
+	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{})
+
+	directoryCmd := findChildCommand(rootCmd, "directory")
+	require.NotNil(t, directoryCmd)
+
+	for _, name := range []string{
+		"directory",
+		"search",
+		"directry",
+		"directary",
+		"direcotry", //nolint:misspell // Intentional typo alias.
+		"diretory",
+	} {
+		t.Run(name, func(t *testing.T) {
+			resolvedCmd, _, err := rootCmd.Find([]string{name})
+
+			require.NoError(t, err)
+			assert.Same(t, directoryCmd, resolvedCmd)
+		})
+	}
+}
+
+func TestAddHintCommands_DirectoryHintSkippedWhenPluginInstalled(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "stripe"}
+
+	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{
+		"directory": true,
+	})
+
+	assert.Nil(t, findChildCommand(rootCmd, "directory"))
 }
 
 // --- run ---

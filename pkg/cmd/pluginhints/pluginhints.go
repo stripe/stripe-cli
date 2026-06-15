@@ -37,6 +37,19 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
 	}
+	if !installedPluginSet["directory"] {
+		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
+		directoryCmd.Aliases = []string{
+			"search",
+			"directry",
+			"directary",
+			"direcotry", //nolint:misspell // Intentional typo alias.
+			"diretory",
+		}
+		rootCmd.AddCommand(
+			directoryCmd,
+		)
+	}
 	if !installedPluginSet["docs"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "docs", "Browse Stripe documentation and API reference.").Command,
