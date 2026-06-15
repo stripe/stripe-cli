@@ -4,6 +4,8 @@ package helpers
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
@@ -43,6 +45,11 @@ type Response struct {
 }
 
 type Environment struct {
+	HasStripeProjects bool
+	HasVercel         bool
+	HasFly            bool
+	HasNetlify        bool
+	HasExistingDeploy bool
 }
 
 func Run(store Store, input Input) (Response, error) {
@@ -130,6 +137,34 @@ func waitForSelection(store Store, sessionID string, timeout time.Duration, now 
 func BuildSuggestions(session *coop.Session, env Environment) []Suggestion {
 	var suggestions []Suggestion
 
+	switch {
+	case env.HasStripeProjects:
+		suggestions = append(suggestions, Suggestion{
+			ID:          "deploy",
+			Title:       "Deploy with Stripe Projects",
+			Description: "Your project is already configured — run stripe projects deploy",
+			Available:   true,
+			Reason:      "stripe.json found",
+		})
+	case !env.HasExistingDeploy:
+		suggestions = append(suggestions, Suggestion{
+			ID:          "deploy",
+			Title:       "Deploy with Stripe Projects",
+			Description: "Set up hosting, CI/CD, and environment management",
+			Available:   true,
+			Reason:      "No deploy configuration detected",
+		})
+	default:
+		target := env.deployTarget()
+		suggestions = append(suggestions, Suggestion{
+			ID:          "deploy-update",
+			Title:       "Deploy your changes",
+			Description: fmt.Sprintf("Push your new integration code to %s", target),
+			Available:   true,
+			Reason:      fmt.Sprintf("Detected: %s", target),
+		})
+	}
+
 	suggestions = append(suggestions, Suggestion{
 		ID:          "summarize",
 		Title:       "Write a STRIPE.md summary",
@@ -165,6 +200,20 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			AgentPrompt: BuildSummarizePrompt(session),
 			Next:        fmt.Sprintf("Write STRIPE.md, then run: stripe coop agent next-action --session=%s --completed=summarize", session.ID),
 		}
+	case "deploy", "deploy-update":
+		lang := session.Settings["language"]
+		if lang == "" {
+			lang = "node"
+		}
+		next := fmt.Sprintf("stripe coop run deploy-stripe-projects --language=%s --parent-session=%s --parent-step=%s", shellQuote(lang), shellQuote(session.ID), shellQuote(selected))
+		return Response{
+			OK:          true,
+			SessionID:   session.ID,
+			Completed:   session.Blueprint,
+			Suggestions: suggestions,
+			AgentPrompt: "The developer wants to deploy. Start a new co-op session with the deploy blueprint.",
+			Next:        next,
+		}
 	case "add-integration":
 		return Response{
 			OK:          true,
@@ -191,6 +240,10 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Next:        "stripe coop stop",
 		}
 	}
+}
+
+func shellQuote(value string) string {
+	return strconv.Quote(value)
 }
 
 func BuildSummarizePrompt(session *coop.Session) string {
@@ -221,5 +274,36 @@ After writing the file, run "stripe coop agent next-action --session=%s --comple
 }
 
 func DetectProjectEnvironment() Environment {
-	return Environment{}
+	env := Environment{}
+	env.HasStripeProjects = fileExists("stripe.json") || dirExists(".stripe")
+	env.HasVercel = fileExists("vercel.json") || fileExists(".vercel/project.json")
+	env.HasFly = fileExists("fly.toml")
+	env.HasNetlify = fileExists("netlify.toml")
+	hasDocker := fileExists("Dockerfile") || fileExists("docker-compose.yml") || fileExists("docker-compose.yaml")
+	hasRailway := fileExists("railway.json") || fileExists("railway.toml")
+	env.HasExistingDeploy = env.HasVercel || env.HasFly || hasDocker || hasRailway || env.HasNetlify
+	return env
+}
+
+func (env Environment) deployTarget() string {
+	switch {
+	case env.HasVercel:
+		return "Vercel"
+	case env.HasFly:
+		return "Fly.io"
+	case env.HasNetlify:
+		return "Netlify"
+	default:
+		return "existing infrastructure"
+	}
+}
+
+func fileExists(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
+}
+
+func dirExists(name string) bool {
+	info, err := os.Stat(name)
+	return err == nil && info.IsDir()
 }

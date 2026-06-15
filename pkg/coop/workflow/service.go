@@ -447,6 +447,9 @@ func nextAfterNode(session *coop.Session, nodeNumber int) string {
 		return fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, nextNodeNumber, quoteArg("Beginning: "+nextNode.Title))
 	}
 	if session.IsComplete() {
+		if session.ParentSessionID != "" && session.ParentStepID != "" {
+			return fmt.Sprintf("stripe coop agent next-action --session=%s --completed=%s", session.ParentSessionID, session.ParentStepID)
+		}
 		return fmt.Sprintf("stripe coop agent next-action --session=%s", session.ID)
 	}
 	return fmt.Sprintf("stripe coop status --session=%s", session.ID)
