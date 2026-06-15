@@ -67,6 +67,10 @@ func (m Model) renderFooter() string {
 	return strings.Join(lines, "\n")
 }
 
+func (m Model) renderReviewCard() string {
+	return m.renderReviewCardWithMaxHeight(0)
+}
+
 func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	target, ok := m.selectedReviewTarget()
 	if !ok {
