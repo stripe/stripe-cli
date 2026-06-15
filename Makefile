@@ -118,9 +118,20 @@ release:
 # Makefile's execute each line in its own subshell so variables don't
 # persist. Instead, grab the version and run the `tag` command in the same
 # subprocess by escaping the newline
-	@read -p "Enter new version (of the format vN.N.N): " version; \
+	@current=$$(git tag --sort=-version:refname | head -1); \
+	read -p "Enter new version (of the format vN.N.N) [current latest: $$current]: " version; \
+	case "$$version" in \
+	  v*) ;; \
+	  *) echo "Error: version must start with 'v'" && exit 1 ;; \
+	esac; \
 	git tag $$version && \
-	git push origin refs/tags/$$version
+	git push origin refs/tags/$$version && \
+	echo "" && \
+	echo "Tag $$version pushed. Next steps:" && \
+	echo "" && \
+	echo "  1. Request approval to run the release workflow in #stripe-cli on Slack." && \
+	echo "  2. Monitor the release at:" && \
+	echo "       https://github.com/stripe/stripe-cli/actions/workflows/release.yml"
 .PHONY: release
 
 clean:

@@ -7,10 +7,17 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
+if [ "${DRYRUN:-false}" = "true" ]; then
+    echo "Dry run mode: PagerDuty alerts will be suppressed"
+else
+    echo "Live mode: PagerDuty alerts are enabled"
+fi
+
 run_install() {
     case $PACKAGE_MANAGER in
     homebrew)
         brew install stripe/stripe-cli/stripe
+        stripe --version
     ;;
 
     apt)
@@ -18,18 +25,47 @@ run_install() {
         echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
         sudo apt update
         sudo apt install stripe
+        stripe --version
     ;;
 
     yum)
         yum -y install stripe
+        stripe --version
     ;;
 
     scoop)
         scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
         scoop install stripe
+        stripe --version
+    ;;
+
+    winget)
+        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        # winget modifies PATH but the current shell process doesn't inherit the change;
+        # explicitly add the WinGet Links directory where the stripe alias was created.
+        PATH="$PATH:$(cygpath -u "$LOCALAPPDATA/Microsoft/WinGet/Links")"
+        export PATH
+        stripe --version
     ;;
 
     docker)
+        # The workflow runs this script inside the stripe/stripe-cli:latest container,
+        # so the stripe binary is already present. No install step needed.
+        stripe --version
+    ;;
+
+    npm)
+        npm install -g @stripe/cli
+        stripe --version
+    ;;
+
+    npm-no-optional)
+        npm install -g @stripe/cli --no-optional
+        stripe --version
+    ;;
+
+    npx)
+        npx --yes @stripe/cli --version
     ;;
 
     *)
@@ -39,17 +75,66 @@ run_install() {
         exit 1
         ;;
     esac
+}
 
-    stripe --version
+send_pagerduty_event() {
+    body="$1"
+    if command -v curl >/dev/null 2>&1; then
+        curl -s -X POST https://events.pagerduty.com/v2/enqueue \
+            -H "Content-Type: application/json" \
+            -d "$body"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O- --post-data="$body" --header="Content-Type: application/json" \
+            https://events.pagerduty.com/v2/enqueue
+    else
+        echo "Error: neither curl nor wget available; cannot send PagerDuty notification" >&2
+        return 1
+    fi
 }
 
 trigger_pagerduty_alert() {
-    sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
-    pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
-    --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
-    --timestamp "\"$(date)\"" \
-    --source "Stripe CLI GitHub Actions" \
-    --severity critical
+    if [ "${DRYRUN:-false}" = "true" ]; then
+        echo "Dry run: PagerDuty alert would have fired with:"
+        echo "  action:    trigger"
+        echo "  dedup_key: gh-actions-stripe-cli-install-test"
+        echo "  summary:   Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+        echo "  timestamp: $(date)"
+        echo "  source:    Stripe CLI GitHub Actions"
+        echo "  severity:  critical"
+        return 0
+    fi
+    send_pagerduty_event '{
+        "routing_key": "'"$PAGERDUTY_INTEGRATION_KEY"'",
+        "event_action": "trigger",
+        "dedup_key": "gh-actions-stripe-cli-install-test",
+        "payload": {
+            "summary": "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml",
+            "source": "Stripe CLI GitHub Actions",
+            "severity": "critical",
+            "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+        }
+    }'
+}
+
+resolve_pagerduty_alert() {
+    if [ "${DRYRUN:-false}" = "true" ]; then
+        echo "Dry run: PagerDuty resolve would have fired with:"
+        echo "  action:    resolve"
+        echo "  dedup_key: gh-actions-stripe-cli-install-test"
+        echo "  summary:   Stripe CLI installation is passing again"
+        echo "  source:    Stripe CLI GitHub Actions"
+        return 0
+    fi
+    send_pagerduty_event '{
+        "routing_key": "'"$PAGERDUTY_INTEGRATION_KEY"'",
+        "event_action": "resolve",
+        "dedup_key": "gh-actions-stripe-cli-install-test",
+        "payload": {
+            "summary": "Stripe CLI installation is passing again",
+            "source": "Stripe CLI GitHub Actions",
+            "severity": "info"
+        }
+    }'
 }
 
 if ! run_install
@@ -78,3 +163,5 @@ then
         fi
     fi
 fi
+
+resolve_pagerduty_alert

@@ -1,0 +1,38 @@
+{
+  "name": "@stripe/cli",
+  "version": "1.42.1",
+  "description": "The Stripe CLI",
+  "homepage": "https://stripe.com/docs/stripe-cli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stripe/stripe-cli.git",
+    "directory": "npm/wrapper"
+  },
+  "bin": {
+    "stripe": "bin/shim.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "optionalDependencies": {
+    "@stripe/cli-darwin-arm64": "1.42.1",
+    "@stripe/cli-darwin-x64": "1.42.1",
+    "@stripe/cli-linux-x64": "1.42.1",
+    "@stripe/cli-linux-arm64": "1.42.1",
+    "@stripe/cli-win32-x64": "1.42.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/shim.js",
+    "scripts/postinstall.js",
+    "platforms.json"
+  ]
+}
