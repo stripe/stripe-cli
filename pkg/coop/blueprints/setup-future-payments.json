@@ -1,0 +1,109 @@
+{
+  "steps": [
+    {
+      "description": "Create a Checkout Session in setup mode to collect payment details.",
+      "key": "setup-step",
+      "nodes": [
+        {
+          "description": "Create a customer to attach the saved payment method to.",
+          "key": "create-customer",
+          "request": {
+            "key": "create-customer-request",
+            "method": "post",
+            "params": {
+              "email": "jenny@example.com",
+              "name": "Jenny Rosen"
+            },
+            "path": "/v1/customers"
+          },
+          "title": "Create a customer",
+          "type": "apiRequest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "description": "Create a Checkout Session with mode=setup to save a payment method.",
+          "key": "create-setup-session",
+          "request": {
+            "key": "create-setup-session-request",
+            "method": "post",
+            "params": {
+              "cancel_url": "https://example.com/cancel",
+              "customer": "${node.setup-step.create-customer.create-customer-request:id}",
+              "mode": "setup",
+              "payment_method_types": [
+                "card"
+              ],
+              "success_url": "https://example.com/success"
+            },
+            "path": "/v1/checkout/sessions"
+          },
+          "title": "Create a Checkout Session (setup mode)",
+          "type": "apiRequest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        }
+      ],
+      "required": true,
+      "title": "Create a Setup Session"
+    },
+    {
+      "description": "Redirect the customer and handle the result.",
+      "key": "complete-step",
+      "nodes": [
+        {
+          "description": "Redirect the customer to the Checkout Session URL.",
+          "key": "redirect-to-setup",
+          "title": "Redirect to setup page",
+          "type": "uiComponent",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "description": "Listen for the setup_intent.succeeded event to confirm the payment method was saved.",
+          "events": [
+            "setup_intent.succeeded"
+          ],
+          "key": "handle-setup-completed",
+          "title": "Handle setup_intent.succeeded",
+          "type": "asyncHandler",
+          "review_prompt": "Run stripe trigger setup_intent.succeeded and confirm the handler processes the signed event correctly."
+        }
+      ],
+      "title": "Complete the setup"
+    },
+    {
+      "description": "Create a PaymentIntent using the saved payment method.",
+      "key": "charge-step",
+      "nodes": [
+        {
+          "description": "Charge the customer using their saved payment method.",
+          "key": "create-payment-intent",
+          "request": {
+            "key": "create-payment-intent-request",
+            "method": "post",
+            "params": {
+              "amount": 1099,
+              "confirm": true,
+              "currency": "usd",
+              "customer": "${node.setup-step.create-customer.create-customer-request:id}",
+              "off_session": true,
+              "payment_method": "${node.complete-step.handle-setup-completed:payment_method}"
+            },
+            "path": "/v1/payment_intents"
+          },
+          "title": "Create a PaymentIntent off-session",
+          "type": "apiRequest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        }
+      ],
+      "title": "Charge the saved card"
+    }
+  ],
+  "description": "Use Checkout in setup mode to collect payment details and charge customers later.",
+  "id": "setup-future-payments",
+  "products": [
+    "Payments",
+    "Checkout"
+  ],
+  "settings": [],
+  "title": "Save a card for future payments",
+  "type": "learning"
+}
