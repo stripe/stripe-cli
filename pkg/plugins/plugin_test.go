@@ -82,7 +82,9 @@ func TestInstallRollsBackPersistedStateWhenConfigWriteFails(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, fileExists)
 
-	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "appA"))
+	metadataPath, err := getLocalPluginMetadataPath(config, "appA")
+	require.NoError(t, err)
+	metadataExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.True(t, metadataExists)
 	require.Empty(t, config.GetInstalledPlugins())
@@ -935,7 +937,8 @@ func TestUninstall(t *testing.T) {
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
-	metadataPath := getLocalPluginMetadataPath(config, "appA")
+	metadataPath, err := getLocalPluginMetadataPath(config, "appA")
+	require.NoError(t, err)
 	cacheExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.True(t, cacheExists)
@@ -976,7 +979,9 @@ func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
 	err := plugin.Uninstall(context.Background(), config, fs)
 	require.NoError(t, err)
 
-	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
+	require.NoError(t, err)
+	cacheExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.False(t, cacheExists)
 
@@ -985,6 +990,30 @@ func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))
+}
+
+func TestUninstallRejectsInvalidPluginShortnames(t *testing.T) {
+	tests := []string{"../victim", "..\\victim"}
+
+	for _, shortname := range tests {
+		t.Run(shortname, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			config := &TestConfig{}
+			config.InitConfig()
+			config.InstalledPlugins = []string{shortname}
+
+			require.NoError(t, fs.MkdirAll("/victim", 0755))
+			require.NoError(t, afero.WriteFile(fs, "/victim/data.txt", []byte("keep me"), 0644))
+
+			err := (&Plugin{Shortname: shortname}).Uninstall(context.Background(), config, fs)
+			require.ErrorContains(t, err, "invalid plugin name")
+
+			victimExists, statErr := afero.Exists(fs, "/victim/data.txt")
+			require.NoError(t, statErr)
+			require.True(t, victimExists)
+			require.Equal(t, []string{shortname}, config.GetInstalledPlugins())
+		})
+	}
 }
 
 func TestUninstallReturnsErrorWithoutRemovingFilesWhenMetadataRemovalFails(t *testing.T) {
@@ -1014,7 +1043,9 @@ func TestUninstallReturnsErrorWithoutRemovingFilesWhenMetadataRemovalFails(t *te
 	err := plugin.Uninstall(context.Background(), config, afero.NewReadOnlyFs(fs))
 	require.Error(t, err)
 
-	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
+	require.NoError(t, err)
+	cacheExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.True(t, cacheExists)
 
@@ -1054,7 +1085,9 @@ func TestUninstallRollsBackStateWhenConfigWriteFails(t *testing.T) {
 	err := plugin.Uninstall(context.Background(), config, fs)
 	require.ErrorIs(t, err, config.WriteErr)
 
-	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
+	require.NoError(t, err)
+	cacheExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.True(t, cacheExists)
 
@@ -1098,7 +1131,9 @@ func TestUninstallRollsBackStateWhenPluginRemovalFails(t *testing.T) {
 	err := plugin.Uninstall(context.Background(), config, failingFS)
 	require.ErrorIs(t, err, removeErr)
 
-	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
+	require.NoError(t, err)
+	cacheExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.True(t, cacheExists)
 
