@@ -62,6 +62,7 @@ func TestFormatAgentGuidance(t *testing.T) {
 	output := formatAgentGuidance(cmd)
 	require.NotEmpty(t, output)
 	assert.Contains(t, output, "[Agent guidance]")
+	assert.Contains(t, output, "stripe sandbox create")
 	assert.Contains(t, output, "--api-key")
 	assert.Contains(t, output, "STRIPE_API_KEY")
 	assert.Contains(t, output, "stripe --map")
