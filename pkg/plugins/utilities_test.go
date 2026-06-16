@@ -115,6 +115,21 @@ func TestLookUpPluginUsesLocalMetadata(t *testing.T) {
 	require.Len(t, plugin.Releases, 4)
 }
 
+func TestLookUpPluginFallsBackToCachedManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+
+	plugin, err := LookUpPlugin(context.Background(), config, fs, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "appA", plugin.Shortname)
+	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
+	require.NotEmpty(t, plugin.Releases)
+}
+
 func TestLookUpPluginReturnsErrPluginNotFoundWithoutLocalMetadata(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
@@ -230,7 +245,9 @@ func TestPersistInstalledPluginStateRollsBackOnConfigWriteFailure(t *testing.T) 
 	err := PersistInstalledPluginState(config, fs, plugin)
 	require.ErrorIs(t, err, config.WriteErr)
 
-	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
+	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
+	require.NoError(t, err)
+	metadataExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.False(t, metadataExists)
 	require.Empty(t, config.GetInstalledPlugins())
@@ -671,6 +688,32 @@ func TestBackfillMissingInstalledPluginMetadataWritesLocalMetadata(t *testing.T)
 
 	require.NoError(t, BackfillMissingInstalledPluginMetadata(context.Background(), config, fs, stripeServer.URL, stripeServer.URL))
 	require.Equal(t, "2.0.1", requestedVersion)
+
+	plugin, err := readLocalPluginMetadata(config, fs, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "appA", plugin.Shortname)
+	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
+func TestBackfillMissingInstalledPluginMetadataUsesCachedManifestBeforeNetwork(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.InstalledPlugins = []string{"appA"}
+
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+
+	var requestCount int
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		requestCount++
+		t.Fatalf("unexpected network request during cached-manifest backfill: %s", req.URL.String())
+	}))
+	defer stripeServer.Close()
+
+	require.NoError(t, BackfillMissingInstalledPluginMetadata(context.Background(), config, fs, stripeServer.URL, stripeServer.URL))
+	require.Equal(t, 0, requestCount)
 
 	plugin, err := readLocalPluginMetadata(config, fs, "appA")
 	require.NoError(t, err)

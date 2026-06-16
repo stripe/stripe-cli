@@ -45,6 +45,10 @@ func (uc *UninstallCmd) runUninstallCmd(cmd *cobra.Command, args []string) error
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
+	if err := plugins.ValidatePluginShortname(args[0]); err != nil {
+		return err
+	}
+
 	plugin := plugins.Plugin{Shortname: args[0]}
 
 	err := plugin.Uninstall(ctx, uc.cfg, uc.fs)
