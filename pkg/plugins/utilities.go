@@ -45,6 +45,7 @@ type ResolvedPluginVersion struct {
 	BinaryURL string
 }
 
+// checkLatestPluginVersionResolver is swappable for test injection.
 var checkLatestPluginVersionResolver = ResolvePluginForUpgrade
 
 // Install installs the resolved plugin version. If the metadata lookup already
@@ -314,6 +315,9 @@ func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboa
 
 // BackfillMissingInstalledPluginMetadata refreshes local metadata for plugins
 // that were installed before `plugin-metadata/*.toml` became the source of truth.
+// It is a no-op once all installed plugins already have a local metadata file.
+// Failures are best-effort: a failed backfill leaves the plugin runnable but
+// without upgrade-hint support until the next successful backfill.
 func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
 	if dashboardBaseURL == "" {
 		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
@@ -840,9 +844,9 @@ func normalizePluginMetadataError(pluginName string, err error) error {
 	}
 
 	switch {
-	case strings.Contains(err.Error(), fmt.Sprintf("plugin metadata response did not include plugin %s", pluginName)):
-		return &ErrPluginNotFound{Name: pluginName}
 	case strings.Contains(err.Error(), fmt.Sprintf("plugin metadata response did not include plugin %s version", pluginName)):
+		return &ErrPluginNotFound{Name: pluginName}
+	case strings.Contains(err.Error(), fmt.Sprintf("plugin metadata response did not include plugin %s", pluginName)):
 		return &ErrPluginNotFound{Name: pluginName}
 	default:
 		return nil
