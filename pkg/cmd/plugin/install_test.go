@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -42,33 +40,22 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 	cfg.Profile.APIKey = ""
 	cfg.Profile.AccountID = ""
 
-	manifest := testPluginManifest()
-
 	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/ajax/stripecli/plugins_metadata":
 			res.WriteHeader(http.StatusNotFound)
-			res.Write([]byte(`{"error":{"message":"not found"}}`))
-		case "/plugins.toml":
-			res.Write(manifest)
+			_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
 		default:
 			res.WriteHeader(http.StatusNotFound)
 		}
 	}))
 	defer server.Close()
 
-	originalPluginData := requests.DefaultPluginData
-	requests.DefaultPluginData = requests.PluginData{
-		PluginBaseURL:       server.URL,
-		AdditionalManifests: nil,
-	}
-	defer func() { requests.DefaultPluginData = originalPluginData }()
-
 	// Redirect stdin to simulate user typing "cancel" to skip login prompt
 	origStdin := os.Stdin
 	r, w, _ := os.Pipe()
-	w.WriteString("cancel\n")
-	w.Close()
+	_, _ = w.WriteString("cancel\n")
+	_ = w.Close()
 	os.Stdin = r
 	defer func() { os.Stdin = origStdin }()
 
@@ -87,28 +74,16 @@ func TestRunInstallCmdNonExistentPluginLoggedIn(t *testing.T) {
 	defer cleanup()
 	cfg.Profile.AccountID = "acct_123"
 
-	manifest := testPluginManifest()
-
-	var serverURL string
 	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/v1/stripecli/get-plugin-metadata":
 			res.WriteHeader(http.StatusNotFound)
-			res.Write([]byte(`{"error":{"message":"not found"}}`))
-		case "/v1/stripecli/get-plugin-url":
-			body, _ := json.Marshal(requests.PluginData{
-				PluginBaseURL:       serverURL,
-				AdditionalManifests: nil,
-			})
-			res.Write(body)
-		case "/plugins.toml":
-			res.Write(manifest)
+			_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
 		default:
 			res.WriteHeader(http.StatusNotFound)
 		}
 	}))
 	defer server.Close()
-	serverURL = server.URL
 
 	ic := NewInstallCmd(cfg)
 	ic.fs = fs

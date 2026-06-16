@@ -13,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -124,7 +125,8 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "")
 	plugins.CleanupAllClients()
 	if err == nil {
-		plugins.CheckLatestPluginVersion(ptc.cfg, fs, plugin)
+		dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+		plugins.CheckLatestPluginVersion(ctx, ptc.cfg, fs, plugin, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 	}
 
 	if err != nil {
