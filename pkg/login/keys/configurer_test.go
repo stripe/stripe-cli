@@ -49,3 +49,65 @@ func TestSaveLoginDetails(t *testing.T) {
 	assert.Equal(t, "rk_test_1234567890000", v.GetString("tests.test_mode_api_key"))
 	assert.Equal(t, "pk_test_1234567890000", v.GetString("tests.test_mode_pub_key"))
 }
+
+func TestSaveLoginDetails_UserInfo(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "stripe", "config.toml")
+	c := &config.Config{
+		LogLevel: "info",
+		Profile: config.Profile{
+			ProfileName: "tests",
+		},
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+
+	configurer := NewRAKConfigurer(c, afero.NewOsFs())
+	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{
+		Redeemed:        true,
+		AccountID:       "acct_123",
+		TestModeAPIKey:  "rk_test_1234567890000",
+		LiveContext:     "acct_live_456",
+		TestWorkspaceID: "acct_test_789",
+	})
+	require.NoError(t, err)
+
+	ui, err := c.Profile.GetUserInfo()
+	require.NoError(t, err)
+	require.NotNil(t, ui)
+
+	var liveComp, testComp config.Compartment
+	for _, comp := range ui.Compartments {
+		if comp.Livemode {
+			liveComp = comp
+		} else {
+			testComp = comp
+		}
+	}
+	assert.Equal(t, "acct_live_456", liveComp.CompartmentID)
+	assert.Equal(t, "acct_test_789", testComp.CompartmentID)
+}
+
+func TestSaveLoginDetails_UserInfoEmpty(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "stripe", "config.toml")
+	c := &config.Config{
+		LogLevel: "info",
+		Profile: config.Profile{
+			ProfileName: "tests",
+		},
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+
+	configurer := NewRAKConfigurer(c, afero.NewOsFs())
+	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{
+		Redeemed:       true,
+		AccountID:      "acct_123",
+		TestModeAPIKey: "rk_test_1234567890000",
+		// no LiveContext or TestWorkspaceID
+	})
+	require.NoError(t, err)
+
+	ui, err := c.Profile.GetUserInfo()
+	require.NoError(t, err)
+	assert.Nil(t, ui)
+}

@@ -286,7 +286,8 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 		sb.WriteString(extra + "\n")
 	}
 
-	fmt.Fprintf(&sb, "  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
+	fmt.Fprintf(&sb, "  If you do not have an account: run %s (provisions a claimable sandbox without a browser).\n", ansi.Bold("stripe sandbox create"))
+	fmt.Fprintf(&sb, "  If you already have a key: use %s (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
 
 	if cmd.Flags().Lookup("data") != nil {
 		fmt.Fprintf(&sb, "  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`))

@@ -60,6 +60,14 @@ func TestHelpFlag(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSandboxVisibleInHelp(t *testing.T) {
+	Execute(context.Background())
+
+	output, err := executeCommand(rootCmd, "--help")
+	require.NoError(t, err)
+	require.Contains(t, output, "sandbox")
+}
+
 func TestExampleCommands(t *testing.T) {
 	{
 		_, err := executeCommand(rootCmd, "foo")
