@@ -20,6 +20,8 @@ package rpcservice
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,6 +31,15 @@ import (
 
 	"github.com/stripe/stripe-cli/rpc"
 )
+
+// noRequestServer returns an httptest server that fails the test if any request reaches it.
+// Used for error-path tests where the trigger should fail before making any HTTP call.
+func noRequestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected HTTP request: %s %s", r.Method, r.URL)
+	}))
+}
 
 // TestUnsupportedEventErrorMessage verifies the error message for unsupported events
 // contains helpful guidance for users.
@@ -44,7 +55,9 @@ func TestUnsupportedEventErrorMessage(t *testing.T) {
 	defer conn.Close()
 
 	client := rpc.NewStripeCLIClient(conn)
-	baseURL = "https://api.stripe.com"
+	ts := noRequestServer(t)
+	defer ts.Close()
+	baseURL = ts.URL
 
 	resp, err := client.Trigger(ctx, &rpc.TriggerRequest{
 		Event: "customer.nonexistent",
@@ -83,7 +96,9 @@ func TestEmptyEventErrorMessage(t *testing.T) {
 	defer conn.Close()
 
 	client := rpc.NewStripeCLIClient(conn)
-	baseURL = "https://api.stripe.com"
+	ts := noRequestServer(t)
+	defer ts.Close()
+	baseURL = ts.URL
 
 	resp, err := client.Trigger(ctx, &rpc.TriggerRequest{
 		Event: "",
@@ -108,7 +123,9 @@ func TestInvalidEventNameVariations(t *testing.T) {
 	defer conn.Close()
 
 	client := rpc.NewStripeCLIClient(conn)
-	baseURL = "https://api.stripe.com"
+	ts := noRequestServer(t)
+	defer ts.Close()
+	baseURL = ts.URL
 
 	testCases := []struct {
 		name      string
