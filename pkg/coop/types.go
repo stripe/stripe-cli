@@ -80,7 +80,7 @@ type NodeDefinition struct {
 	ReviewCommand string              `json:"review_command,omitempty"`
 	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
 	Request       *APIRequest         `json:"request,omitempty"`
-	Requests      []TestHelperRequest `json:"requests,omitempty"`
+	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
 	Events        []string            `json:"events,omitempty"`
 }
 

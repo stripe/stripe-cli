@@ -446,8 +446,8 @@ func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {
 						assert.NotEmpty(t, n.Request.Path)
 						assert.NotEmpty(t, n.Request.Method)
 					}
-					if n.Type == NodeTestHelper && len(n.Requests) > 0 {
-						for _, req := range n.Requests {
+					if n.Type == NodeTestHelper && len(n.TestRequests) > 0 {
+						for _, req := range n.TestRequests {
 							assert.NotEmpty(t, req.Key, "testHelper node %q request should have key", n.Key)
 							assert.NotEmpty(t, req.Path, "testHelper node %q request %q should have path", n.Key, req.Key)
 							assert.NotEmpty(t, req.Method, "testHelper node %q request %q should have method", n.Key, req.Key)
