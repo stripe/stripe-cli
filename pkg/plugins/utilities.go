@@ -355,8 +355,9 @@ func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboa
 
 // BackfillMissingInstalledPluginMetadata refreshes local metadata for plugins
 // that were installed before `plugin-metadata/*.toml` became the source of truth.
-// It first migrates from the legacy cached `plugins.toml` on disk, then falls
-// back to the live metadata endpoint for plugins not present in that cache.
+// It first migrates from the legacy cached `plugins.toml` on disk when that
+// cache still describes the installed version, then falls back to the live
+// metadata endpoint for plugins not present in that cache.
 // Failures are best-effort: a failed backfill should not prevent existing
 // plugin commands from being registered via the same cached-manifest fallback.
 func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
@@ -397,25 +398,6 @@ func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.I
 			continue
 		}
 
-		manifestPlugin, manifestErr := lookUpPluginInCachedManifest(config, fs, pluginName)
-		if manifestErr == nil {
-			if err := PersistInstalledPluginState(config, fs, manifestPlugin); err != nil {
-				log.WithFields(log.Fields{
-					"prefix": "plugins.BackfillMissingInstalledPluginMetadata",
-					"plugin": pluginName,
-				}).Debugf("could not persist backfilled plugin metadata from cached manifest: %s", err)
-			}
-			continue
-		}
-
-		var pluginNotFound *ErrPluginNotFound
-		if !os.IsNotExist(manifestErr) && !errors.As(manifestErr, &pluginNotFound) {
-			log.WithFields(log.Fields{
-				"prefix": "plugins.BackfillMissingInstalledPluginMetadata",
-				"plugin": pluginName,
-			}).Debugf("could not read cached manifest plugin metadata before network fallback: %s", manifestErr)
-		}
-
 		installedVersion, err := (&Plugin{Shortname: pluginName}).lookUpInstalledVersion(config, fs)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -426,6 +408,33 @@ func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.I
 		}
 		if installedVersion == "" || isLocalDevelopmentVersion(installedVersion) {
 			continue
+		}
+
+		manifestPlugin, manifestErr := lookUpPluginInCachedManifest(config, fs, pluginName)
+		if manifestErr == nil {
+			if manifestPlugin.getReleaseForVersion(installedVersion) != nil {
+				if err := PersistInstalledPluginState(config, fs, manifestPlugin); err != nil {
+					log.WithFields(log.Fields{
+						"prefix": "plugins.BackfillMissingInstalledPluginMetadata",
+						"plugin": pluginName,
+					}).Debugf("could not persist backfilled plugin metadata from cached manifest: %s", err)
+				}
+				continue
+			}
+
+			log.WithFields(log.Fields{
+				"prefix":  "plugins.BackfillMissingInstalledPluginMetadata",
+				"plugin":  pluginName,
+				"version": installedVersion,
+			}).Debug("cached manifest did not include the installed version; falling back to network metadata")
+		}
+
+		var pluginNotFound *ErrPluginNotFound
+		if manifestErr != nil && !os.IsNotExist(manifestErr) && !errors.As(manifestErr, &pluginNotFound) {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.BackfillMissingInstalledPluginMetadata",
+				"plugin": pluginName,
+			}).Debugf("could not read cached manifest plugin metadata before network fallback: %s", manifestErr)
 		}
 
 		resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, installedVersion, apiBaseURL, dashboardBaseURL, apiKey)
@@ -484,7 +493,7 @@ func LookUpPlugin(_ context.Context, config config.IConfig, fs afero.Fs, pluginN
 }
 
 // ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
-// using the metadata endpoint first and cached local metadata as fallback.
+// using the metadata endpoint first and cached plugin metadata as fallback.
 func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, err
@@ -504,9 +513,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		"prefix":  "plugins.ResolvePluginForInstall",
 		"plugin":  pluginName,
 		"version": version,
-	}).Debugf("could not resolve plugin via plugin metadata endpoint, falling back to cached local metadata: %s", err)
+	}).Debugf("could not resolve plugin via plugin metadata endpoint, falling back to cached plugin metadata: %s", err)
 
-	cachedPlugin, cachedErr := resolveCachedPluginForInstall(config, fs, pluginName)
+	cachedPlugin, cachedErr := resolveCachedPluginForInstall(config, fs, pluginName, version)
 	if cachedErr == nil {
 		resolvedVersion := version
 		if resolvedVersion == "" {
@@ -534,7 +543,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 // ResolvePluginForUpgrade resolves the latest plugin metadata for
 // `stripe plugin upgrade` using the plugin metadata endpoint first and cached
-// local metadata as fallback.
+// plugin metadata as fallback.
 func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, err
@@ -553,7 +562,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 	log.WithFields(log.Fields{
 		"prefix": "plugins.ResolvePluginForUpgrade",
 		"plugin": pluginName,
-	}).Debugf("could not resolve latest plugin via plugin metadata endpoint, falling back to cached local metadata: %s", endpointErr)
+	}).Debugf("could not resolve latest plugin via plugin metadata endpoint, falling back to cached plugin metadata: %s", endpointErr)
 
 	cachedPlugin, cachedErr := resolveCachedPluginForUpgrade(config, fs, pluginName)
 	if cachedErr == nil {
@@ -575,40 +584,49 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %v; cached lookup failed: %w", pluginName, endpointErr, cachedErr)
 }
 
-func resolveCachedPluginForInstall(config config.IConfig, fs afero.Fs, pluginName string) (*Plugin, error) {
-	return readCachedPluginMetadata(config, fs, pluginName, "plugins.ResolvePluginForInstall")
+func resolveCachedPluginForInstall(config config.IConfig, fs afero.Fs, pluginName, version string) (*Plugin, error) {
+	return readCachedPluginMetadata(config, fs, pluginName, "plugins.ResolvePluginForInstall", func(localPlugin, manifestPlugin *Plugin) *Plugin {
+		return selectPluginForInstall(localPlugin, manifestPlugin, version)
+	})
 }
 
 // resolveCachedPluginForUpgrade resolves plugin metadata for upgrade using
-// persisted local metadata only.
+// persisted local metadata and the cached manifest.
 func resolveCachedPluginForUpgrade(config config.IConfig, fs afero.Fs, pluginName string) (*Plugin, error) {
-	return readCachedPluginMetadata(config, fs, pluginName, "plugins.ResolvePluginForUpgrade")
+	return readCachedPluginMetadata(config, fs, pluginName, "plugins.ResolvePluginForUpgrade", selectPluginForUpgrade)
 }
 
-func readCachedPluginMetadata(config config.IConfig, fs afero.Fs, pluginName, logPrefix string) (*Plugin, error) {
+type cachedPluginSelector func(localPlugin, manifestPlugin *Plugin) *Plugin
+
+func readCachedPluginMetadata(config config.IConfig, fs afero.Fs, pluginName, logPrefix string, selector cachedPluginSelector) (*Plugin, error) {
+	var localPlugin *Plugin
 	localPluginValue, err := readLocalPluginMetadata(config, fs, pluginName)
 	if err == nil {
-		return &localPluginValue, nil
-	}
-
-	if !os.IsNotExist(err) {
+		localPlugin = &localPluginValue
+	} else if !os.IsNotExist(err) {
 		log.WithFields(log.Fields{
 			"prefix": logPrefix,
 			"plugin": pluginName,
 		}).Debugf("could not read local plugin metadata: %s", err)
 	}
 
+	var manifestPlugin *Plugin
 	manifestPluginValue, manifestErr := lookUpPluginInCachedManifest(config, fs, pluginName)
 	if manifestErr == nil {
-		return &manifestPluginValue, nil
+		manifestPlugin = &manifestPluginValue
+	} else {
+		var pluginNotFound *ErrPluginNotFound
+		if !os.IsNotExist(manifestErr) && !errors.As(manifestErr, &pluginNotFound) {
+			log.WithFields(log.Fields{
+				"prefix": logPrefix,
+				"plugin": pluginName,
+			}).Debugf("could not read cached manifest plugin metadata: %s", manifestErr)
+		}
 	}
 
-	var pluginNotFound *ErrPluginNotFound
-	if !os.IsNotExist(manifestErr) && !errors.As(manifestErr, &pluginNotFound) {
-		log.WithFields(log.Fields{
-			"prefix": logPrefix,
-			"plugin": pluginName,
-		}).Debugf("could not read cached manifest plugin metadata: %s", manifestErr)
+	plugin := selector(localPlugin, manifestPlugin)
+	if plugin != nil {
+		return plugin, nil
 	}
 
 	if !os.IsNotExist(err) {
@@ -618,8 +636,80 @@ func readCachedPluginMetadata(config config.IConfig, fs afero.Fs, pluginName, lo
 	return nil, manifestErr
 }
 
-// resolvePluginForAutoInstall resolves the freshest plugin metadata to use when
-// a command is invoked but the local plugin binary is missing.
+func selectPluginForInstall(localPlugin, manifestPlugin *Plugin, requestedVersion string) *Plugin {
+	if requestedVersion == "" {
+		return selectPluginForUpgrade(localPlugin, manifestPlugin)
+	}
+
+	localHasVersion := localPlugin != nil && localPlugin.getReleaseForVersion(requestedVersion) != nil
+	manifestHasVersion := manifestPlugin != nil && manifestPlugin.getReleaseForVersion(requestedVersion) != nil
+
+	switch {
+	case localHasVersion && !manifestHasVersion:
+		return mergePluginMetadata(localPlugin, manifestPlugin)
+	case manifestHasVersion && !localHasVersion:
+		return mergePluginMetadata(manifestPlugin, localPlugin)
+	default:
+		return selectPluginForUpgrade(localPlugin, manifestPlugin)
+	}
+}
+
+func selectPluginForUpgrade(localPlugin, manifestPlugin *Plugin) *Plugin {
+	switch {
+	case localPlugin == nil:
+		return mergePluginMetadata(manifestPlugin, nil)
+	case manifestPlugin == nil:
+		return mergePluginMetadata(localPlugin, nil)
+	case comparePluginVersions(localPlugin.LookUpLatestVersion(), manifestPlugin.LookUpLatestVersion()) >= 0:
+		return mergePluginMetadata(localPlugin, manifestPlugin)
+	default:
+		return mergePluginMetadata(manifestPlugin, localPlugin)
+	}
+}
+
+func mergePluginMetadata(primary, fallback *Plugin) *Plugin {
+	if primary == nil {
+		if fallback == nil {
+			return nil
+		}
+		pluginCopy := *fallback
+		return &pluginCopy
+	}
+
+	pluginCopy := *primary
+	if fallback == nil {
+		return &pluginCopy
+	}
+
+	if pluginCopy.Shortdesc == "" {
+		pluginCopy.Shortdesc = fallback.Shortdesc
+	}
+	if pluginCopy.Binary == "" {
+		pluginCopy.Binary = fallback.Binary
+	}
+	if pluginCopy.MagicCookieValue == "" {
+		pluginCopy.MagicCookieValue = fallback.MagicCookieValue
+	}
+	if len(pluginCopy.Commands) == 0 && len(fallback.Commands) > 0 {
+		pluginCopy.Commands = fallback.Commands
+	}
+
+	for i := range pluginCopy.Releases {
+		if len(pluginCopy.Releases[i].Runtime) != 0 {
+			continue
+		}
+
+		fallbackRelease := fallback.getRelease(pluginCopy.Releases[i].Version, pluginCopy.Releases[i].OS, pluginCopy.Releases[i].Arch)
+		if fallbackRelease == nil || len(fallbackRelease.Runtime) == 0 {
+			continue
+		}
+
+		pluginCopy.Releases[i].Runtime = copyRuntime(fallbackRelease.Runtime)
+	}
+
+	return &pluginCopy
+}
+
 func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	resolvedPlugin, err := ResolvePluginForInstall(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL)
 	if err == nil {
