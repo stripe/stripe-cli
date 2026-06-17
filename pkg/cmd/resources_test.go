@@ -84,7 +84,6 @@ func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 
 func TestConflictWithPluginCommand(t *testing.T) {
 	// Serve a static plugin manifest to avoid a real network call.
-	// Update this list when new plugins are published.
 	const staticManifest = `
 [[Plugin]]
 Shortname = "projects"
