@@ -24,6 +24,8 @@ func TestWriteProfile(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
 	v := viper.New()
@@ -60,6 +62,8 @@ func TestWriteProfilesMerge(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
 	v := viper.New()
@@ -105,6 +109,8 @@ func TestOldProfileDeleted(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
 	p.WriteConfigField("experimental.stripe_headers", "test-headers")
@@ -166,10 +172,11 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	c.InitConfig()
 	KeyRing = NewMemoryStore(map[string][]byte{
 		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
+	t.Cleanup(func() { KeyRing = nil })
+	c.InitConfig()
 
 	v := viper.New()
 
@@ -199,8 +206,9 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	c.InitConfig()
 	KeyRing = NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
+	c.InitConfig()
 
 	v := viper.New()
 
@@ -231,10 +239,11 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	c.InitConfig()
 	KeyRing = NewMemoryStore(map[string][]byte{
 		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
+	t.Cleanup(func() { KeyRing = nil })
+	c.InitConfig()
 
 	v := viper.New()
 

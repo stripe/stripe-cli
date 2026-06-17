@@ -178,8 +178,10 @@ func (c *Config) InitConfig() {
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
 	}
 
-	// initialize secure credential store
-	KeyRing = newSecureStore()
+	// initialize secure credential store (tests may pre-set KeyRing to a mock)
+	if KeyRing == nil {
+		KeyRing = newSecureStore()
+	}
 
 	// redact livemode values for existing configs
 	c.Profile.redactAllLivemodeValues()

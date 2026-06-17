@@ -34,10 +34,11 @@ func setupTestConfig(t *testing.T) (*Config, string, func()) {
 			ProfileName: "default",
 		},
 	}
-	c.InitConfig()
 	KeyRing = NewMemoryStore(nil)
+	c.InitConfig()
 
 	cleanup := func() {
+		KeyRing = nil
 		viper.Reset()
 	}
 
