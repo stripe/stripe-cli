@@ -444,6 +444,72 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(
 	require.Empty(t, resolvedPlugin.BinaryURL)
 }
 
+func TestResolvePluginForInstallPrefersFresherCachedManifestWhenEndpointFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	localPlugin := Plugin{
+		Shortname:        "generate",
+		Shortdesc:        "Generate things",
+		Binary:           "stripe-cli-generate",
+		MagicCookieValue: "GENERATE-COOKIE",
+		Commands: []CommandInfo{
+			{
+				Name: "create",
+				Desc: "Create generated artifacts",
+			},
+		},
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+				Runtime: map[string]string{"node": "20"},
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	manifestContent := []byte(fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "abc123"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.1.0"
+    Sum = "def456"
+`, runtime.GOARCH, runtime.GOOS, runtime.GOARCH, runtime.GOOS))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusInternalServerError)
+		_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+	}))
+	defer failingServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", failingServer.URL, failingServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, "1.0.0", resolvedPlugin.Version)
+	require.Equal(t, "1.1.0", resolvedPlugin.Plugin.LookUpLatestVersion())
+	require.Len(t, resolvedPlugin.Plugin.Commands, 1)
+	require.Equal(t, "create", resolvedPlugin.Plugin.Commands[0].Name)
+
+	release := resolvedPlugin.Plugin.getReleaseForVersion("1.0.0")
+	require.NotNil(t, release)
+	require.Equal(t, "20", release.Runtime["node"])
+}
+
 func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
@@ -626,6 +692,42 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	require.Empty(t, resolvedPlugin.BinaryURL)
 }
 
+func TestResolvePluginForUpgradePrefersFresherCachedManifestWhenEndpointFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	localPlugin := Plugin{
+		Shortname:        "appA",
+		Binary:           "stripe-cli-app-a",
+		MagicCookieValue: "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.1",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusInternalServerError)
+		_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+	}))
+	defer failingServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "appA", failingServer.URL, failingServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, "2.0.1", resolvedPlugin.Version)
+	require.Equal(t, "2.0.1", resolvedPlugin.Plugin.LookUpLatestVersion())
+}
+
 func TestResolveCachedPluginForUpgradeUsesLocalMetadataWhenPresent(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
@@ -701,6 +803,10 @@ func TestBackfillMissingInstalledPluginMetadataUsesCachedManifestBeforeNetwork(t
 	config.InitConfig()
 	config.InstalledPlugins = []string{"appA"}
 
+	pluginBinaryPath := filepath.Join(getPluginsDir(config), "appA", "2.0.1", "stripe-cli-app-a"+GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("installed"), 0755))
+
 	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
 	require.NoError(t, err)
 	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
@@ -719,6 +825,61 @@ func TestBackfillMissingInstalledPluginMetadataUsesCachedManifestBeforeNetwork(t
 	require.NoError(t, err)
 	require.Equal(t, "appA", plugin.Shortname)
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
+func TestBackfillMissingInstalledPluginMetadataSkipsStaleCachedManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.InstalledPlugins = []string{"appA"}
+
+	pluginBinaryPath := filepath.Join(getPluginsDir(config), "appA", "2.0.1", "stripe-cli-app-a"+GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("installed"), 0755))
+
+	staleManifest := []byte(fmt.Sprintf(`[[Plugin]]
+  Shortname = "appA"
+  Binary = "stripe-cli-app-a"
+  MagicCookieValue = "APP-A-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "9.9.9"
+    Sum = "abc123"
+`, runtime.GOARCH, runtime.GOOS))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), staleManifest, os.ModePerm))
+
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+
+	var requestCount int
+	var requestedVersion string
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			requestCount++
+			requestedVersion = req.URL.Query().Get("version")
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			_, _ = res.Write(body)
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	require.NoError(t, BackfillMissingInstalledPluginMetadata(context.Background(), config, fs, stripeServer.URL, stripeServer.URL))
+	require.Equal(t, 1, requestCount)
+	require.Equal(t, "2.0.1", requestedVersion)
+
+	plugin, err := readLocalPluginMetadata(config, fs, "appA")
+	require.NoError(t, err)
+	require.NotNil(t, plugin.getReleaseForVersion("2.0.1"))
+	require.Nil(t, plugin.getReleaseForVersion("9.9.9"))
 }
 
 func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenLoggedIn(t *testing.T) {
