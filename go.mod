@@ -42,7 +42,7 @@ require (
 
 require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
-	github.com/go-git/go-git/v5 v5.17.1
+	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.7.0
@@ -68,7 +68,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
-	github.com/pjbgf/sha1cd v0.5.0 // indirect
+	github.com/pjbgf/sha1cd v0.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/skeema/knownhosts v1.3.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
