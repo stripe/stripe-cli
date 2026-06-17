@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +11,7 @@ import (
 )
 
 func TestWriteProfile(t *testing.T) {
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{
 		DeviceName:     "st-testing",
 		ProfileName:    "tests",
@@ -30,8 +29,6 @@ func TestWriteProfile(t *testing.T) {
 
 	v := viper.New()
 
-	fmt.Println(profilesFile)
-
 	err := p.writeProfile(v)
 	require.NoError(t, err)
 
@@ -47,12 +44,10 @@ test_mode_key_expires_at = '` + expiresAt + `'
 `
 
 	require.EqualValues(t, expectedConfig, string(configValues))
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestWriteProfilesMerge(t *testing.T) {
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{
 		ProfileName:    "tests",
 		DeviceName:     "st-testing",
@@ -95,12 +90,10 @@ test_mode_key_expires_at = '` + expiresAt + `'
 `
 
 	require.EqualValues(t, expectedConfig, string(configValues))
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestOldProfileDeleted(t *testing.T) {
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-before-test",
@@ -157,12 +150,10 @@ func TestOldProfileDeleted(t *testing.T) {
 	// Leaves the other profile untouched
 	require.Equal(t, "foo-device-name", v.GetString(untouchedProfile.GetConfigField(DeviceNameName)))
 	require.Equal(t, "foo_test_123", v.GetString(untouchedProfile.GetConfigField(TestModeAPIKeyName)))
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-before-test",
@@ -196,12 +187,10 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 	keys, err := KeyRing.Keys()
 	require.NoError(t, err)
 	require.Empty(t, keys)
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-before-test",
@@ -235,12 +224,10 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 		Label:       "test.live_mode_api_key",
 		Description: "Live mode API key",
 	}, item)
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-before-test",
@@ -279,8 +266,6 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 		Label:       "test.live_mode_api_key",
 		Description: "Live mode API key",
 	}, item)
-
-	cleanUp(c.ProfilesFile)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
@@ -292,6 +277,3 @@ func helperLoadBytes(t *testing.T, name string) []byte {
 	return bytes
 }
 
-func cleanUp(file string) {
-	os.Remove(file)
-}
