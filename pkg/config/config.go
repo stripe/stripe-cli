@@ -23,7 +23,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/git"
 )
 
-// ColorOn represnets the on-state for colors
+// ColorOn represents the on-state for colors
 const ColorOn = "on"
 
 // ColorOff represents the off-state for colors

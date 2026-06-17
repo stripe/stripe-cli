@@ -21,7 +21,7 @@ type ErrorElement struct {
 }
 
 // DataElement is the data received on the stream.
-// It represents the main data model between communicated.
+// It represents the main data model being communicated.
 type DataElement struct {
 	Data      interface{}
 	Marshaled string
