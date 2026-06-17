@@ -70,7 +70,7 @@ func (c *CoreCLIHelperClient) KeychainDeletePassword(key string) (bool, error) {
 }
 
 func (c *CoreCLIHelperClient) KeychainFindCredentials() ([]string, error) {
-	resp, err := c.client.KeychainFindCredentials(context.Background(), &proto.KeychainFindCredentialsRequest{})
+	resp, err := c.client.KeychainFindCredentials(context.Background(), &proto.KeychainFindCredentialsRequest{}) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -131,12 +131,12 @@ func (s *CoreCLIHelperServer) KeychainDeletePassword(ctx context.Context, req *p
 	return &proto.KeychainDeletePasswordResponse{Deleted: deleted}, nil
 }
 
-func (s *CoreCLIHelperServer) KeychainFindCredentials(ctx context.Context, req *proto.KeychainFindCredentialsRequest) (*proto.KeychainFindCredentialsResponse, error) {
+func (s *CoreCLIHelperServer) KeychainFindCredentials(ctx context.Context, req *proto.KeychainFindCredentialsRequest) (*proto.KeychainFindCredentialsResponse, error) { //nolint:staticcheck
 	keys, err := s.Impl.KeychainFindCredentials()
 	if err != nil {
 		return nil, err
 	}
-	return &proto.KeychainFindCredentialsResponse{Keys: keys}, nil
+	return &proto.KeychainFindCredentialsResponse{Keys: keys}, nil //nolint:staticcheck
 }
 
 func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunPeerPluginRequest) (*proto.RunPeerPluginResponse, error) {
