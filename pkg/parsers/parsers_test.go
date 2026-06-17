@@ -362,8 +362,8 @@ func TestParseWithLocalEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_LOCAL|+1234567890}"
 
-	os.Setenv("CUST_ID", "cust_12345")
-	os.Setenv("PHONE_LOCAL", "+1234")
+	t.Setenv("CUST_ID", "cust_12345")
+	t.Setenv("PHONE_LOCAL", "+1234")
 
 	httpPath := "/v1/customers/${.env:CUST_ID}"
 
@@ -374,8 +374,6 @@ func TestParseWithLocalEnv(t *testing.T) {
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
-
-	os.Unsetenv("PHONE_LOCAL")
 }
 
 func TestParseWithEnvFile(t *testing.T) {
