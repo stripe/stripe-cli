@@ -57,9 +57,10 @@ type Verification struct {
 
 // APIRequest describes the expected API call for a node.
 type APIRequest struct {
-	Path   string      `json:"path"`
-	Method string      `json:"method"`
-	Params interface{} `json:"params,omitempty"`
+	Path    string            `json:"path"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Params  interface{}       `json:"params,omitempty"`
 }
 
 // NodeDefinition is the source-derived static definition for a node.

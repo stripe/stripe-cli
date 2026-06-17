@@ -39,7 +39,12 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/pricing_plans",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "currency": "usd",
+              "display_name": "Flat Fee and Overages Pricing Plan",
+              "tax_behavior": "exclusive"
+            }
           }
         },
         {
@@ -49,7 +54,14 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/billing/meters",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "default_aggregation": {
+                "formula": "sum"
+              },
+              "display_name": "API Requests Meter",
+              "event_name": "blueprint_flat_fee_meter+${env:randomName}"
+            }
           }
         }
       ]
@@ -67,7 +79,14 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/rate_cards",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "currency": "usd",
+              "display_name": "Overages Rate Card",
+              "service_interval": "month",
+              "service_interval_count": 1,
+              "tax_behavior": "exclusive"
+            }
           }
         },
         {
@@ -77,7 +96,11 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/metered_items",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "display_name": "API Usage Metered Item",
+              "meter": "${node.create-pricing-plan-chapter.createMeter:id}"
+            }
           }
         },
         {
@@ -87,7 +110,21 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard:id}/rates",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "metered_item": "${node.create-rate-card-chapter.createMeteredItem:id}",
+              "tiering_mode": "graduated",
+              "tiers": [
+                {
+                  "unit_amount": "0",
+                  "up_to_decimal": "1000"
+                },
+                {
+                  "unit_amount": "5",
+                  "up_to_inf": "inf"
+                }
+              ]
+            }
           }
         },
         {
@@ -97,7 +134,14 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "rate_card": {
+                "id": "${node.create-rate-card-chapter.createRateCard:id}",
+                "version": "${node.create-rate-card-chapter.createRateCard:latest_version}"
+              },
+              "type": "rate_card"
+            }
           }
         }
       ]
@@ -115,7 +159,11 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/licensed_items",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "display_name": "Per Seat License",
+              "lookup_key": "seat-license+${env:randomName}"
+            }
           }
         },
         {
@@ -125,7 +173,16 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/license_fees",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "currency": "usd",
+              "display_name": "Per Seat License Fee",
+              "licensed_item": "${node.create-licensed-fee-chapter.createLicensedItem:id}",
+              "service_interval": "month",
+              "service_interval_count": 1,
+              "tax_behavior": "exclusive",
+              "unit_amount": "2000"
+            }
           }
         },
         {
@@ -135,7 +192,15 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "license_fee": {
+                "id": "${node.create-licensed-fee-chapter.createLicenseFee:id}",
+                "version": "${node.create-licensed-fee-chapter.createLicenseFee:latest_version}"
+              },
+              "lookup_key": "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}",
+              "type": "license_fee"
+            }
           }
         }
       ]
@@ -152,7 +217,10 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "live_version": "latest"
+            }
           }
         },
         {
@@ -162,7 +230,29 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/checkout/sessions",
-            "method": "post"
+            "method": "post",
+            "headers": {
+              "stripe-version": "2025-06-30.preview;checkout_product_catalog_preview=v1"
+            },
+            "params": {
+              "checkout_items": [
+                {
+                  "pricing_plan_subscription_item": {
+                    "component_configurations": {
+                      "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}": {
+                        "license_fee_component": {
+                          "quantity": 1
+                        },
+                        "type": "license_fee_component"
+                      }
+                    },
+                    "pricing_plan": "${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}"
+                  },
+                  "type": "pricing_plan_subscription_item"
+                }
+              ],
+              "success_url": "https://example.com/success"
+            }
           }
         },
         {
