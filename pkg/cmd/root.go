@@ -54,7 +54,8 @@ var rootCmd = &cobra.Command{
 		"resources": "resources",
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
 			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
-			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
+			"  Run `stripe skills install` to install all Stripe AI skills into .skills/ in the current directory.\n" +
+			"  Or use `npx skills add --all stripe/ai` to add them via npx.\n" +
 			"  Additional commands (apps, directory, docs, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
@@ -253,6 +254,7 @@ func init() {
 	rootCmd.AddCommand(newOpenCmd().cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
+	rootCmd.AddCommand(newSkillsCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
 	// current stripe status site is being deprecated
 	// hide status command until status site v2 is released
