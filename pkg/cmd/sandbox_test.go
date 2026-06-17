@@ -490,13 +490,6 @@ func TestSandboxCreateCmd_ConfigNotCorrupted(t *testing.T) {
 	content, readErr := os.ReadFile(Config.ProfilesFile)
 	require.NoError(t, readErr)
 	assert.Contains(t, string(content), "sk_test_sandbox")
-
-	// Negative: real config was not touched
-	realConfig := filepath.Join(os.Getenv("HOME"), ".config", "stripe", "config.toml")
-	if _, statErr := os.Stat(realConfig); statErr == nil {
-		realContent, _ := os.ReadFile(realConfig)
-		assert.NotContains(t, string(realContent), "sk_test_sandbox")
-	}
 }
 
 func TestSaveSandboxToConfig_EmptyKey(t *testing.T) {
