@@ -3,132 +3,167 @@
   "title": "Set up flat fee and overages pricing",
   "description": "Charge customers a flat recurring fee with overage charges for usage beyond included limits.",
   "type": "learning",
-  "products": [],
+  "products": [
+    "Billing"
+  ],
   "settings": [],
   "steps": [
     {
-      "key": "main",
-      "title": "Set up flat fee and overages pricing",
+      "key": "create-customer-chapter",
+      "title": "Create a customer",
+      "description": "Create the customer that will subscribe to the pricing plan.",
+      "required": true,
       "nodes": [
         {
           "type": "apiRequest",
           "key": "createCustomer",
           "title": "Create a customer",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/customers",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
-        },
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-pricing-plan-chapter",
+      "title": "Create a pricing plan",
+      "description": "Create a pricing plan and usage meter for the overage component.",
+      "required": true,
+      "nodes": [
         {
           "type": "apiRequest",
           "key": "createEmptyPricingPlan",
           "title": "Create a Pricing Plan",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/pricing_plans",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "createMeter",
           "title": "Create a meter",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/billing/meters",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
-        },
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-rate-card-chapter",
+      "title": "Create a rate card",
+      "description": "Create the rate card, metered item, and graduated overage rate.",
+      "required": true,
+      "nodes": [
         {
           "type": "apiRequest",
           "key": "createRateCard",
           "title": "Create a rate card",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/rate_cards",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "createMeteredItem",
           "title": "Create a metered item",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/metered_items",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "addGraduatedRateToRateCard",
           "title": "Add graduated rate to rate card",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
-            "path": "/v2/billing/rate_cards/${node.create-rate-card-step.createRateCard.createRateCardRequest:id}/rates",
+            "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard:id}/rates",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "attachRateCardToPricingPlan",
           "title": "Attach rate card to Pricing Plan",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
-            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-step.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
-        },
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-licensed-fee-chapter",
+      "title": "Create a license fee",
+      "description": "Create the licensed item and flat recurring license fee.",
+      "required": true,
+      "nodes": [
         {
           "type": "apiRequest",
           "key": "createLicensedItem",
           "title": "Create a licensed item",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/licensed_items",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "createLicenseFee",
           "title": "Create a license fee",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v2/billing/license_fees",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "attachLicenseFeeToPricingPlan",
           "title": "Attach license fee to Pricing Plan",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
-            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-step.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
-        },
+          }
+        }
+      ]
+    },
+    {
+      "key": "subscribe-customer-chapter",
+      "title": "Subscribe the customer",
+      "description": "Set the live pricing plan version and create a Checkout Session for the subscription.",
+      "nodes": [
         {
           "type": "apiRequest",
           "key": "setLiveVersion",
           "title": "Set live version to latest",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
-            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-step.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}",
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "apiRequest",
           "key": "createCheckoutSession",
           "title": "Create checkout session",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/checkout/sessions",
             "method": "post"
-          },
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+          }
         },
         {
           "type": "uiComponent",
@@ -140,10 +175,11 @@
           "type": "asyncHandler",
           "key": "waitForServicingActivated",
           "title": "Wait for servicing activated event",
+          "review_prompt": "Run `stripe trigger v2.billing.pricing_plan_subscription.servicing_activated` and confirm the handler processes the signed event correctly.",
+          "review_command": "stripe trigger v2.billing.pricing_plan_subscription.servicing_activated",
           "events": [
             "v2.billing.pricing_plan_subscription.servicing_activated"
-          ],
-          "review_prompt": "Run stripe trigger v2.billing.pricing_plan_subscription.servicing_activated and confirm the handler processes the signed event correctly."
+          ]
         }
       ]
     }

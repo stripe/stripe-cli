@@ -1,6 +1,7 @@
 package coop
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -14,8 +15,8 @@ func TestLoadBlueprint(t *testing.T) {
 	assert.Equal(t, "one-time-payment", bp.ID)
 	assert.Equal(t, "Accept a one-time payment", bp.Title)
 	assert.Contains(t, bp.Products, "Payments")
-	assert.Len(t, bp.Steps, 4)
-	assert.Equal(t, "setup-step", bp.Steps[0].Key)
+	assert.Len(t, bp.Steps, 3)
+	assert.Equal(t, "setup-chapter", bp.Steps[0].Key)
 	assert.Equal(t, NodeAPIRequest, bp.Steps[0].Nodes[0].Type)
 }
 
@@ -138,8 +139,8 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 	assert.Equal(t, SessionActive, session.Status)
 	assert.Equal(t, "node", session.Settings["language"])
 	assert.Equal(t, "Jenny Rosen", session.Params["account_name"])
-	// 4 blueprint steps + 1 prepended context step
-	assert.Len(t, session.Steps, 5)
+	// 3 blueprint steps + 1 prepended context step
+	assert.Len(t, session.Steps, 4)
 
 	// First step is always the context-gathering step
 	assert.Equal(t, "context-step", session.Steps[0].Key)
@@ -152,10 +153,9 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 		}
 	}
 
-	// Total steps = blueprint steps (6) + context step (1)
-	assert.Equal(t, 7, session.TotalNodes())
+	// Total nodes = blueprint nodes (4) + context node (1)
+	assert.Equal(t, 5, session.TotalNodes())
 
-	assert.Empty(t, session.Steps[2].ReviewGranularity)
 	assert.NotEmpty(t, session.Steps[1].Nodes[0].ReviewPrompt)
 	assert.Equal(t, "stripe trigger checkout.session.completed", session.Steps[3].Nodes[0].ReviewCommand)
 }
@@ -272,6 +272,116 @@ func TestNewSessionFromBlueprintPreservesEvents(t *testing.T) {
 		}
 	}
 	t.Fatal("expected to find asyncHandler node")
+}
+
+func TestEmbeddedBlueprintsUseCanonicalJSON(t *testing.T) {
+	ids, err := ListBlueprints()
+	require.NoError(t, err)
+	require.NotEmpty(t, ids)
+
+	for _, id := range ids {
+		t.Run(id, func(t *testing.T) {
+			raw, err := blueprintFS.ReadFile("blueprints/" + id + ".json")
+			require.NoError(t, err)
+
+			var bp Blueprint
+			require.NoError(t, json.Unmarshal(raw, &bp))
+
+			normalized, err := json.MarshalIndent(bp, "", "  ")
+			require.NoError(t, err)
+			normalized = append(normalized, '\n')
+
+			assert.Equal(t, string(normalized), string(raw), "blueprint JSON should be normalized through the Blueprint schema")
+		})
+	}
+}
+
+func TestEmbeddedBlueprintsDoNotCarryAPIRequestKeys(t *testing.T) {
+	ids, err := ListBlueprints()
+	require.NoError(t, err)
+	require.NotEmpty(t, ids)
+
+	for _, id := range ids {
+		t.Run(id, func(t *testing.T) {
+			raw, err := blueprintFS.ReadFile("blueprints/" + id + ".json")
+			require.NoError(t, err)
+
+			var document any
+			require.NoError(t, json.Unmarshal(raw, &document))
+			assertNoRequestKey(t, document)
+
+			text := string(raw)
+			assert.NotContains(t, text, "-request:", "node interpolation should not include API request keys")
+			assert.NotContains(t, text, "Request:", "node interpolation should not include API request keys")
+		})
+	}
+}
+
+func assertNoRequestKey(t *testing.T, value any) {
+	t.Helper()
+
+	switch v := value.(type) {
+	case map[string]any:
+		if request, ok := v["request"].(map[string]any); ok {
+			assert.NotContains(t, request, "key", "apiRequest nodes only carry one request, so request.key is redundant")
+		}
+		for _, child := range v {
+			assertNoRequestKey(t, child)
+		}
+	case []any:
+		for _, child := range v {
+			assertNoRequestKey(t, child)
+		}
+	}
+}
+
+func TestEmbeddedBlueprintTopologyMatchesSourceDefinitions(t *testing.T) {
+	// These topologies are copied from pay-server Workbench blueprint definitions.
+	// Do not add CLI-only steps or nodes here; update the source blueprint and then
+	// refresh this subset from pay-server.
+	expected := map[string][][]string{
+		"flat-fee-and-overages": {
+			{"create-customer-chapter", "createCustomer"},
+			{"create-pricing-plan-chapter", "createEmptyPricingPlan", "createMeter"},
+			{"create-rate-card-chapter", "createRateCard", "createMeteredItem", "addGraduatedRateToRateCard", "attachRateCardToPricingPlan"},
+			{"create-licensed-fee-chapter", "createLicensedItem", "createLicenseFee", "attachLicenseFeeToPricingPlan"},
+			{"subscribe-customer-chapter", "setLiveVersion", "createCheckoutSession", "completeCheckout", "waitForServicingActivated"},
+		},
+		"flat-subscription-with-entitlements": {
+			{"create-products-chapter", "create-basic-product", "create-basic-feature", "attach-feature-to-product"},
+			{"setup-chapter", "create-test-clock", "create-customer"},
+			{"subscribe-chapter", "create-checkout-session", "complete-checkout", "track-subscription-creation", "check-entitlements"},
+			{"next-billing-cycle-chapter", "advance-time", "wait-for-invoice-created", "view-invoice"},
+			{"cleanup-chapter", "test-clock-advanced", "delete-test-clock"},
+		},
+		"one-time-payment": {
+			{"setup-chapter", "create-product"},
+			{"checkout-chapter", "create-checkout-session", "complete-checkout"},
+			{"webhook-chapter", "handle-checkout-completed"},
+		},
+		"setup-future-payments": {
+			{"create-new-customer-chapter", "create-new-customer"},
+			{"create-checkout-session-chapter", "create-checkout-session", "complete-checkout", "wait-for-checkout-completed"},
+			{"charge-payment-method-later-chapter", "retrieve-setup-intent", "charge-payment-method-later", "wait-for-payment-intent-succeeded"},
+		},
+	}
+
+	for id, expectedSteps := range expected {
+		t.Run(id, func(t *testing.T) {
+			bp, err := LoadBlueprint(id)
+			require.NoError(t, err)
+			require.Len(t, bp.Steps, len(expectedSteps))
+
+			for i, expectedStep := range expectedSteps {
+				require.NotEmpty(t, expectedStep)
+				assert.Equal(t, expectedStep[0], bp.Steps[i].Key)
+				require.Len(t, bp.Steps[i].Nodes, len(expectedStep)-1)
+				for j, expectedNode := range expectedStep[1:] {
+					assert.Equal(t, expectedNode, bp.Steps[i].Nodes[j].Key)
+				}
+			}
+		})
+	}
 }
 
 func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {

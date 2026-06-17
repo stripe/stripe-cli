@@ -5,32 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 //go:embed blueprints/*.json
 var blueprintFS embed.FS
 
-// BlueprintNode is a node definition within a blueprint step.
-type BlueprintNode struct {
-	Type          NodeType    `json:"type"`
-	Key           string      `json:"key"`
-	Title         string      `json:"title"`
-	Description   string      `json:"description,omitempty"`
-	ReviewPrompt  string      `json:"review_prompt,omitempty"`
-	ReviewCommand string      `json:"review_command,omitempty"`
-	AutoConfirm   bool        `json:"auto_confirm,omitempty"`
-	Request       *APIRequest `json:"request,omitempty"`
-	Events        []string    `json:"events,omitempty"`
-}
-
 // BlueprintStep is a step definition within a blueprint.
 type BlueprintStep struct {
-	Key               string            `json:"key"`
-	Title             string            `json:"title"`
-	Description       string            `json:"description,omitempty"`
-	ReviewGranularity ReviewGranularity `json:"review_granularity,omitempty"`
-	Required          bool              `json:"required,omitempty"`
-	Nodes             []BlueprintNode   `json:"nodes"`
+	StepDefinition
+	Description string           `json:"description,omitempty"`
+	Required    bool             `json:"required,omitempty"`
+	Nodes       []NodeDefinition `json:"nodes"`
 }
 
 // Blueprint is the CLI-friendly representation of a Workbench Blueprint.
@@ -38,10 +24,9 @@ type Blueprint struct {
 	ID          string             `json:"id"`
 	Title       string             `json:"title"`
 	Description string             `json:"description,omitempty"`
-	Prompt      string             `json:"prompt,omitempty"`
 	Type        string             `json:"type"`
 	Products    []string           `json:"products,omitempty"`
-	Settings    []BlueprintSetting `json:"settings,omitempty"`
+	Settings    []BlueprintSetting `json:"settings"`
 	Params      []BlueprintParam   `json:"params,omitempty"`
 	Steps       []BlueprintStep    `json:"steps"`
 }
@@ -94,7 +79,7 @@ func LoadBlueprint(id string) (*Blueprint, error) {
 func prefixMatchBlueprint(prefix string) (string, error) {
 	ids, err := ListBlueprints()
 	if err != nil {
-		return "", fmt.Errorf("blueprint %q not found", prefix)
+		return "", fmt.Errorf("loading blueprints: %w", err)
 	}
 
 	var matches []string
@@ -142,7 +127,7 @@ func ListBlueprintsWithMetadata() ([]Blueprint, error) {
 	for _, id := range ids {
 		bp, err := LoadBlueprint(id)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("loading blueprint metadata for %q: %w", id, err)
 		}
 		blueprints = append(blueprints, *bp)
 	}
@@ -152,18 +137,24 @@ func ListBlueprintsWithMetadata() ([]Blueprint, error) {
 // NewSessionFromBlueprint creates a new Session from a Blueprint definition.
 // A context-gathering step is prepended so the agent scans the project first.
 func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params map[string]string) *Session {
+	now := time.Now().UTC()
+
 	// Prepend a context-gathering step (auto-confirmed, no human sign-off needed)
 	contextStep := SessionStep{
-		Key:   "context-step",
-		Title: "Project context",
+		StepDefinition: StepDefinition{
+			Key:   "context-step",
+			Title: "Project context",
+		},
 		Nodes: []SessionNode{
 			{
-				Key:         "scan-project",
-				Type:        NodeTestHelper,
-				Title:       "Understand the project",
-				Description: "Scan the codebase to identify language, framework, dependencies, and existing Stripe code. Report what you find.",
-				AutoConfirm: true,
-				State:       NodePending,
+				NodeDefinition: NodeDefinition{
+					Key:         "scan-project",
+					Type:        NodeTestHelper,
+					Title:       "Understand the project",
+					Description: "Scan the codebase to identify language, framework, dependencies, and existing Stripe code. Report what you find.",
+					AutoConfirm: true,
+				},
+				State: NodePending,
 			},
 		},
 	}
@@ -175,23 +166,13 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 		nodes := make([]SessionNode, len(ch.Nodes))
 		for j, n := range ch.Nodes {
 			nodes[j] = SessionNode{
-				Key:           n.Key,
-				Type:          n.Type,
-				Title:         n.Title,
-				Description:   n.Description,
-				ReviewPrompt:  n.ReviewPrompt,
-				ReviewCommand: n.ReviewCommand,
-				AutoConfirm:   n.AutoConfirm,
-				State:         NodePending,
-				Request:       n.Request,
-				Events:        n.Events,
+				NodeDefinition: n,
+				State:          NodePending,
 			}
 		}
 		steps = append(steps, SessionStep{
-			Key:               ch.Key,
-			Title:             ch.Title,
-			ReviewGranularity: ch.ReviewGranularity,
-			Nodes:             nodes,
+			StepDefinition: ch.StepDefinition,
+			Nodes:          nodes,
 		})
 	}
 
@@ -203,5 +184,7 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 		Settings:      settings,
 		Params:        params,
 		Steps:         steps,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 }

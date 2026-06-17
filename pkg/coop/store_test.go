@@ -23,10 +23,9 @@ func TestStoreWriteRead(t *testing.T) {
 		Status:    SessionActive,
 		Steps: []SessionStep{
 			{
-				Key:   "ch-1",
-				Title: "Step 1",
+				StepDefinition: StepDefinition{Key: "ch-1", Title: "Step 1"},
 				Nodes: []SessionNode{
-					{Key: "n-1", Title: "Step 1", State: NodePending},
+					testSessionNode("n-1", "Step 1", NodePending),
 				},
 			},
 		},
@@ -82,7 +81,12 @@ func TestStoreUpdateMutatesAndVersionsSession(t *testing.T) {
 	session := &Session{
 		ID:     "update_test",
 		Status: SessionActive,
-		Steps:  []SessionStep{{Key: "step", Nodes: []SessionNode{{Key: "step", Title: "Step", State: NodePending}}}},
+		Steps: []SessionStep{
+			{
+				StepDefinition: StepDefinition{Key: "step"},
+				Nodes:          []SessionNode{testSessionNode("step", "Step", NodePending)},
+			},
+		},
 	}
 	require.NoError(t, store.Write(session))
 

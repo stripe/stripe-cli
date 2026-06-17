@@ -1,14 +1,27 @@
 {
+  "id": "one-time-payment",
+  "title": "Accept a one-time payment",
+  "description": "Set up Checkout to accept a one-time payment with a prebuilt, hosted payment page.",
+  "type": "learning",
+  "products": [
+    "Payments"
+  ],
+  "settings": [],
   "steps": [
     {
+      "key": "setup-chapter",
+      "title": "Set up your product catalog",
       "description": "Create a product and price in your Stripe account.",
-      "key": "setup-step",
+      "required": true,
       "nodes": [
         {
-          "description": "Create a Stripe Product with inline default_price_data, then save the returned default_price ID for the Checkout Session. Do not put generated IDs in .env files.",
+          "type": "apiRequest",
           "key": "create-product",
+          "title": "Create a product",
+          "description": "Create a Stripe Product with inline default_price_data, then save the returned default_price ID for the Checkout Session. Do not put generated IDs in .env files.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
-            "key": "create-product-request",
+            "path": "/v1/products",
             "method": "post",
             "params": {
               "default_price_data": {
@@ -16,101 +29,64 @@
                 "unit_amount": 2000
               },
               "name": "T-shirt"
-            },
-            "path": "/v1/products"
-          },
-          "title": "Create a product",
-          "type": "apiRequest",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+            }
+          }
         }
-      ],
-      "required": true,
-      "title": "Set up your product catalog"
+      ]
     },
     {
+      "key": "checkout-chapter",
+      "title": "Create a Checkout Session",
       "description": "Build a server endpoint that creates a Checkout Session and redirects the customer.",
-      "key": "checkout-step",
       "nodes": [
         {
-          "description": "Create a Checkout Session with the price from the previous step.",
+          "type": "apiRequest",
           "key": "create-checkout-session",
+          "title": "Create a Checkout Session",
+          "description": "Create a Checkout Session with the price from the previous step.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
-            "key": "create-checkout-session-request",
+            "path": "/v1/checkout/sessions",
             "method": "post",
             "params": {
               "cancel_url": "https://example.com/cancel",
               "line_items": [
                 {
-                  "price": "${node.setup-step.create-product.create-product-request:default_price}",
+                  "price": "${node.setup-chapter.create-product:default_price}",
                   "quantity": 1
                 }
               ],
               "mode": "payment",
               "success_url": "https://example.com/success"
-            },
-            "path": "/v1/checkout/sessions"
-          },
-          "title": "Create a Checkout Session",
-          "type": "apiRequest",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+            }
+          }
         },
         {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete the checkout",
           "description": "Add a button or link that redirects the customer to the Checkout page.",
-          "key": "redirect-to-checkout",
-          "title": "Redirect to Checkout",
-          "type": "uiComponent",
-          "review_prompt": "Open the app and confirm the user-facing flow works as described."
-        },
-        {
-          "description": "Create a page to show after the customer completes payment.",
-          "key": "add-success-page",
-          "title": "Add a success page",
-          "type": "uiComponent",
           "review_prompt": "Open the app and confirm the user-facing flow works as described."
         }
-      ],
-      "title": "Create a Checkout Session"
+      ]
     },
     {
+      "key": "webhook-chapter",
+      "title": "Handle post-payment events",
       "description": "Listen for webhook events to handle fulfillment.",
-      "key": "webhook-step",
       "nodes": [
         {
-          "description": "Set up a webhook endpoint to receive the checkout.session.completed event and fulfill the order.",
-          "events": [
-            "checkout.session.completed"
-          ],
+          "type": "asyncHandler",
           "key": "handle-checkout-completed",
           "title": "Handle checkout.session.completed",
-          "type": "asyncHandler",
+          "description": "Set up a webhook endpoint to receive the checkout.session.completed event and fulfill the order.",
           "review_prompt": "Run `stripe trigger checkout.session.completed` and confirm fulfillment happens only after verifying the Stripe signature.",
-          "review_command": "stripe trigger checkout.session.completed"
+          "review_command": "stripe trigger checkout.session.completed",
+          "events": [
+            "checkout.session.completed"
+          ]
         }
-      ],
-      "title": "Handle post-payment events"
-    },
-    {
-      "description": "Verify the complete flow works end to end.",
-      "key": "test-step",
-      "nodes": [
-        {
-          "description": "Run through the complete payment flow using a test card number.",
-          "key": "test-payment-flow",
-          "title": "Make a test payment",
-          "type": "testHelper",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
-        }
-      ],
-      "title": "Test the integration"
+      ]
     }
-  ],
-  "description": "Set up Checkout to accept a one-time payment with a prebuilt, hosted payment page.",
-  "id": "one-time-payment",
-  "products": [
-    "Payments",
-    "Checkout"
-  ],
-  "settings": [],
-  "title": "Accept a one-time payment",
-  "type": "learning"
+  ]
 }
