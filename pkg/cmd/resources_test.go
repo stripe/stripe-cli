@@ -21,7 +21,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
-
 func newResourcesTestRoot(t *testing.T) *cobra.Command {
 	t.Helper()
 

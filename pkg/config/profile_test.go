@@ -276,4 +276,3 @@ func helperLoadBytes(t *testing.T, name string) []byte {
 
 	return bytes
 }
-
