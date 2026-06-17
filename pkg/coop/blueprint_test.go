@@ -310,9 +310,9 @@ func TestEmbeddedBlueprintsDoNotCarryAPIRequestKeys(t *testing.T) {
 			require.NoError(t, json.Unmarshal(raw, &document))
 			assertNoRequestKey(t, document)
 
-			text := string(raw)
-			assert.NotContains(t, text, "-request:", "node interpolation should not include API request keys")
-			assert.NotContains(t, text, "Request:", "node interpolation should not include API request keys")
+			bp, err := LoadBlueprint(id)
+			require.NoError(t, err)
+			assertNoAPIRequestNodeKeyInterpolation(t, bp, string(raw))
 		})
 	}
 }
@@ -331,6 +331,24 @@ func assertNoRequestKey(t *testing.T, value any) {
 	case []any:
 		for _, child := range v {
 			assertNoRequestKey(t, child)
+		}
+	}
+}
+
+func assertNoAPIRequestNodeKeyInterpolation(t *testing.T, bp *Blueprint, raw string) {
+	t.Helper()
+
+	for _, step := range bp.Steps {
+		for _, node := range step.Nodes {
+			if node.Type != NodeAPIRequest {
+				continue
+			}
+			assert.NotContains(
+				t,
+				raw,
+				"${node."+step.Key+"."+node.Key+".",
+				"apiRequest node interpolation should not include request keys",
+			)
 		}
 	}
 }
@@ -427,6 +445,13 @@ func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {
 						require.NotNil(t, n.Request, "apiRequest node %q should have request field", n.Key)
 						assert.NotEmpty(t, n.Request.Path)
 						assert.NotEmpty(t, n.Request.Method)
+					}
+					if n.Type == NodeTestHelper && len(n.Requests) > 0 {
+						for _, req := range n.Requests {
+							assert.NotEmpty(t, req.Key, "testHelper node %q request should have key", n.Key)
+							assert.NotEmpty(t, req.Path, "testHelper node %q request %q should have path", n.Key, req.Key)
+							assert.NotEmpty(t, req.Method, "testHelper node %q request %q should have method", n.Key, req.Key)
+						}
 					}
 				}
 			}

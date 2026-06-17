@@ -57,23 +57,31 @@ type Verification struct {
 
 // APIRequest describes the expected API call for a node.
 type APIRequest struct {
-	Path    string            `json:"path"`
-	Method  string            `json:"method"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Params  interface{}       `json:"params,omitempty"`
+	Path         string            `json:"path"`
+	Method       string            `json:"method"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Params       interface{}       `json:"params,omitempty"`
+	HiddenParams interface{}       `json:"hidden_params,omitempty"`
+}
+
+// TestHelperRequest describes an API-backed request used to advance test state.
+type TestHelperRequest struct {
+	Key string `json:"key"`
+	APIRequest
 }
 
 // NodeDefinition is the source-derived static definition for a node.
 type NodeDefinition struct {
-	Type          NodeType    `json:"type"`
-	Key           string      `json:"key"`
-	Title         string      `json:"title"`
-	Description   string      `json:"description,omitempty"`
-	ReviewPrompt  string      `json:"review_prompt,omitempty"`
-	ReviewCommand string      `json:"review_command,omitempty"`
-	AutoConfirm   bool        `json:"auto_confirm,omitempty"`
-	Request       *APIRequest `json:"request,omitempty"`
-	Events        []string    `json:"events,omitempty"`
+	Type          NodeType            `json:"type"`
+	Key           string              `json:"key"`
+	Title         string              `json:"title"`
+	Description   string              `json:"description,omitempty"`
+	ReviewPrompt  string              `json:"review_prompt,omitempty"`
+	ReviewCommand string              `json:"review_command,omitempty"`
+	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
+	Request       *APIRequest         `json:"request,omitempty"`
+	Requests      []TestHelperRequest `json:"requests,omitempty"`
+	Events        []string            `json:"events,omitempty"`
 }
 
 // StepDefinition is the source-derived static definition for a step.

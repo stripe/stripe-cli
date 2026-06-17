@@ -21,7 +21,18 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/products",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "default_price_data": {
+                "currency": "usd",
+                "recurring": {
+                  "interval": "month",
+                  "interval_count": 1
+                },
+                "unit_amount": 10000
+              },
+              "name": "Basic Product"
+            }
           }
         },
         {
@@ -31,7 +42,11 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/entitlements/features",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "lookup_key": "basic-${env:randomName}",
+              "name": "Basic Feature"
+            }
           }
         },
         {
@@ -59,14 +74,37 @@
           "key": "create-test-clock",
           "title": "Create a test clock",
           "description": "Run the test-clock setup and confirm the subscription billing flow can use the created clock.",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Run these test-helper requests to advance Stripe test state; do not implement them in the application. Confirm the expected result is observable.",
+          "requests": [
+            {
+              "key": "create-test-clock-request",
+              "path": "/v1/test_helpers/test_clocks",
+              "method": "post",
+              "params": {
+                "frozen_time": "${env:currentTime}",
+                "name": "Example Flat Subscription with Checkout"
+              }
+            }
+          ]
         },
         {
           "type": "testHelper",
           "key": "create-customer",
           "title": "Create a customer",
           "description": "Run the customer setup and confirm the customer is attached to the test clock.",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Run these test-helper requests to advance Stripe test state; do not implement them in the application. Confirm the expected result is observable.",
+          "requests": [
+            {
+              "key": "create-customer-request",
+              "path": "/v1/customers",
+              "method": "post",
+              "params": {
+                "email": "customer@example.com",
+                "name": "Metered Usage Customer",
+                "test_clock": "${node.setup-chapter.create-test-clock.create-test-clock-request:id}"
+              }
+            }
+          ]
         }
       ]
     },
@@ -82,7 +120,20 @@
           "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
           "request": {
             "path": "/v1/checkout/sessions",
-            "method": "post"
+            "method": "post",
+            "params": {
+              "line_items": [
+                {
+                  "price": "${node.create-products-chapter.create-basic-product:default_price}",
+                  "quantity": 1
+                }
+              ],
+              "mode": "subscription",
+              "success_url": "https://example.com/success"
+            },
+            "hidden_params": {
+              "customer": "${node.setup-chapter.create-customer.create-customer-request:id}"
+            }
           }
         },
         {
@@ -123,7 +174,17 @@
           "key": "advance-time",
           "title": "Advance time to billing date",
           "description": "Run the clock advance and confirm it moves to the next billing cycle.",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Run these test-helper requests to advance Stripe test state; do not implement them in the application. Confirm the expected result is observable.",
+          "requests": [
+            {
+              "key": "advance-time-request",
+              "path": "/v1/test_helpers/test_clocks/${node.setup-chapter.create-test-clock.create-test-clock-request:id}/advance",
+              "method": "post",
+              "params": {
+                "frozen_time": "${env:currentTimePlus31Days}"
+              }
+            }
+          ]
         },
         {
           "type": "asyncHandler",
@@ -166,7 +227,15 @@
           "key": "delete-test-clock",
           "title": "Delete the test clock",
           "description": "Run the cleanup and confirm the test clock is deleted after verification.",
-          "review_prompt": "Run the described test flow and confirm the expected result is observable."
+          "review_prompt": "Run these test-helper requests to advance Stripe test state; do not implement them in the application. Confirm the expected result is observable.",
+          "requests": [
+            {
+              "key": "delete-test-clock-request",
+              "path": "/v1/test_helpers/test_clocks/${node.setup-chapter.create-test-clock.create-test-clock-request:id}",
+              "method": "delete",
+              "params": {}
+            }
+          ]
         }
       ]
     }
