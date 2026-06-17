@@ -280,6 +280,7 @@ func TestMakeMultiPartRequest(t *testing.T) {
 	if err != nil {
 		t.Error("Error creating temp file")
 	}
+	tempFile.Close()
 
 	params := &RequestParameters{
 		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
