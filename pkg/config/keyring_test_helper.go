@@ -35,10 +35,3 @@ func (m *MemoryStore) Remove(key string) error {
 	return nil
 }
 
-func (m *MemoryStore) Keys() ([]string, error) {
-	keys := make([]string, 0, len(m.items))
-	for k := range m.items {
-		keys = append(keys, k)
-	}
-	return keys, nil
-}

@@ -40,9 +40,6 @@ func (s *zalandoStore) Remove(key string) error {
 	return err
 }
 
-func (s *zalandoStore) Keys() ([]string, error) {
-	return []string{}, nil
-}
 
 // wslWinCredStore bridges to Windows Credential Manager from WSL via
 // powershell.exe. Scripts are passed via stdin and secrets via environment
@@ -204,9 +201,6 @@ if (-not $ok) { exit 1 }
 	return nil
 }
 
-func (s *wslWinCredStore) Keys() ([]string, error) {
-	return []string{}, nil
-}
 
 func newSecureStore() SecureStore {
 	if runtime.GOOS == "linux" && isWSL() {

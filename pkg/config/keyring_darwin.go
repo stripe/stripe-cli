@@ -58,9 +58,3 @@ func (k *darwinKeychain) Remove(key string) error {
 	return err
 }
 
-func (k *darwinKeychain) Keys() ([]string, error) {
-	// Not efficiently supported by the security CLI without parsing
-	// dump-keychain output. Callers that need to check for a specific key
-	// should use Get() directly instead.
-	return []string{}, nil
-}

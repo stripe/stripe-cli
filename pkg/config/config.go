@@ -452,17 +452,11 @@ func deleteLivemodeKey(key string, profile string) error {
 }
 
 func deleteTopLevelLivemodeKey(key string) error {
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return err
+	err := KeyRing.Remove(key)
+	if err == ErrKeyNotFound {
+		return nil
 	}
-	for _, item := range existingKeys {
-		if item == key {
-			KeyRing.Remove(key)
-			return nil
-		}
-	}
-	return nil
+	return err
 }
 
 // isProfile identifies whether a config entry pertains to a user profile.

@@ -180,9 +180,10 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 	err = p.CreateProfile()
 	require.NoError(t, err)
 
-	keys, err := KeyRing.Keys()
-	require.NoError(t, err)
-	require.Empty(t, keys)
+	_, err = KeyRing.Get("test.live_mode_api_key")
+	require.Equal(t, ErrKeyNotFound, err)
+
+	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {

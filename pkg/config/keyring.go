@@ -10,5 +10,4 @@ type SecureStore interface {
 	Get(key string) ([]byte, error)
 	Set(key string, data []byte, description string) error
 	Remove(key string) error
-	Keys() ([]string, error)
 }

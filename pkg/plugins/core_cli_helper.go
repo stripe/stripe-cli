@@ -288,9 +288,9 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 	return true, nil
 }
 
-// KeychainFindCredentials lists all keys stored in the keychain for this service.
+// KeychainFindCredentials is deprecated and always returns an empty list.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
-	return config.KeyRing.Keys()
+	return []string{}, nil
 }
 
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.
