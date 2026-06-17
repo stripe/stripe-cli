@@ -1,0 +1,191 @@
+{
+  "id": "credit-burndown",
+  "title": "Set up credit burndown pricing",
+  "description": "Charge customers for pre-purchased credits that burn down in real time as they consume usage.",
+  "type": "learning",
+  "products": [],
+  "settings": [],
+  "chapters": [
+    {
+      "key": "main",
+      "title": "Set up credit burndown pricing",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createCustomer",
+          "title": "Create a customer",
+          "request": {
+            "path": "/v1/customers",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createEmptyPricingPlan",
+          "title": "Create a Pricing Plan",
+          "request": {
+            "path": "/v2/billing/pricing_plans",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createMeter",
+          "title": "Create a meter",
+          "request": {
+            "path": "/v1/billing/meters",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createRateCard",
+          "title": "Create a rate card",
+          "request": {
+            "path": "/v2/billing/rate_cards",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createMeteredItem",
+          "title": "Create a metered item",
+          "request": {
+            "path": "/v2/billing/metered_items",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "addRateToRateCard",
+          "title": "Add rate to rate card",
+          "request": {
+            "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard.createRateCardRequest:id}/rates",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachRateCardToPricingPlan",
+          "title": "Attach rate card to Pricing Plan",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}/components",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "setLiveVersion",
+          "title": "Set live version to latest",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan.createEmptyPricingPlanRequest:id}",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCheckoutSession",
+          "title": "Create checkout session",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "uiComponent",
+          "key": "completeCheckout",
+          "title": "Complete the checkout",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "asyncHandler",
+          "key": "waitForServicingActivated",
+          "title": "Wait for servicing activated event",
+          "events": [
+            "v2.billing.pricing_plan_subscription.servicing_activated"
+          ],
+          "review_prompt": "Run stripe trigger v2.billing.pricing_plan_subscription.servicing_activated and confirm the handler processes the signed event correctly."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createPaymentMethod",
+          "title": "Create a payment method",
+          "request": {
+            "path": "/v1/payment_methods",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachPaymentMethod",
+          "title": "Attach payment method to customer",
+          "request": {
+            "path": "/v1/payment_methods/${node.grant-credits-chapter.createPaymentMethod.createPaymentMethodRequest:id}/attach",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCreditInvoice",
+          "title": "Create an invoice for credits",
+          "request": {
+            "path": "/v1/invoices",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "addCreditInvoiceItem",
+          "title": "Add credit line item to invoice",
+          "request": {
+            "path": "/v1/invoiceitems",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "payInvoice",
+          "title": "Finalize and pay the invoice",
+          "request": {
+            "path": "/v1/invoices/${node.grant-credits-chapter.createCreditInvoice.createCreditInvoiceRequest:id}/pay",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "grantCredits",
+          "title": "Grant credits",
+          "request": {
+            "path": "/v1/billing/credit_grants",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCreditBalanceAlert",
+          "title": "Create credit balance alert",
+          "request": {
+            "path": "/v1/billing/alerts",
+            "method": "post"
+          },
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
+        }
+      ]
+    }
+  ]
+}

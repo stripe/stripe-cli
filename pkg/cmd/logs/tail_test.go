@@ -31,7 +31,7 @@ func containsZeroValueStrings(x interface{}) bool {
 	v := reflect.ValueOf(x)
 
 	// If it's a pointer, dereference it
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 
