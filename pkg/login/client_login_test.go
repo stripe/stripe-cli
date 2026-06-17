@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -29,11 +28,6 @@ func (r stubInputReader) scanln(ch chan int) {
 }
 
 func TestLogin(t *testing.T) {
-	if os.Getenv("OPEN_URL") == "1" {
-		os.Exit(0)
-		return
-	}
-
 	didOpenBrowser := false
 	openBrowser = func(string) error {
 		didOpenBrowser = true
@@ -107,11 +101,6 @@ func (r noInputReader) scanln(ch chan int) {
 }
 
 func TestLoginNoInput(t *testing.T) {
-	if os.Getenv("OPEN_URL") == "1" {
-		os.Exit(0)
-		return
-	}
-
 	didOpenBrowser := false
 	openBrowser = func(string) error {
 		didOpenBrowser = true
