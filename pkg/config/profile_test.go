@@ -182,8 +182,6 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 
 	_, err = KeyRing.Get("test.live_mode_api_key")
 	require.Equal(t, ErrKeyNotFound, err)
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
@@ -216,8 +214,6 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 	data, err := KeyRing.Get("test.live_mode_api_key")
 	require.NoError(t, err)
 	require.Equal(t, []byte("rk_live_0000000001"), data)
-
-	cleanUp(c.ProfilesFile)
 }
 
 func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
@@ -252,8 +248,6 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 	data, err := KeyRing.Get("test.live_mode_api_key")
 	require.NoError(t, err)
 	require.Equal(t, []byte("rk_live_0000000002"), data)
-
-	cleanUp(c.ProfilesFile)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
@@ -263,8 +257,4 @@ func helperLoadBytes(t *testing.T, name string) []byte {
 	}
 
 	return bytes
-}
-
-func cleanUp(file string) {
-	os.Remove(file)
 }
