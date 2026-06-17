@@ -42,8 +42,9 @@ func TestLogin(t *testing.T) {
 
 	defer func() { openBrowser = open.Browser }()
 
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	viper.SetConfigFile(profilesFile)
+	t.Cleanup(viper.Reset)
 
 	p := config.Profile{
 		DeviceName:  "st-testing",
@@ -97,8 +98,6 @@ func TestLogin(t *testing.T) {
 	err = auth.Login(context.Background(), links)
 	require.NoError(t, err)
 	assert.Equal(t, true, didOpenBrowser)
-
-	viper.Reset()
 }
 
 type noInputReader struct {
@@ -121,8 +120,9 @@ func TestLoginNoInput(t *testing.T) {
 
 	defer func() { openBrowser = open.Browser }()
 
-	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	viper.SetConfigFile(profilesFile)
+	t.Cleanup(viper.Reset)
 
 	p := config.Profile{
 		DeviceName:  "st-testing",
@@ -176,6 +176,4 @@ func TestLoginNoInput(t *testing.T) {
 	err = auth.Login(context.Background(), links)
 	require.NoError(t, err)
 	assert.Equal(t, false, didOpenBrowser)
-
-	viper.Reset()
 }
