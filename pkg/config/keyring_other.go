@@ -40,7 +40,6 @@ func (s *zalandoStore) Remove(key string) error {
 	return err
 }
 
-
 // wslWinCredStore bridges to Windows Credential Manager from WSL via
 // powershell.exe. Scripts are passed via stdin and secrets via environment
 // variables so that nothing sensitive appears in /proc/<pid>/cmdline or
@@ -200,7 +199,6 @@ if (-not $ok) { exit 1 }
 	}
 	return nil
 }
-
 
 func newSecureStore() SecureStore {
 	if runtime.GOOS == "linux" && isWSL() {

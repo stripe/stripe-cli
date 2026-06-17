@@ -57,4 +57,3 @@ func (k *darwinKeychain) Remove(key string) error {
 	}
 	return err
 }
-

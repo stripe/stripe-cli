@@ -34,4 +34,3 @@ func (m *MemoryStore) Remove(key string) error {
 	delete(m.items, key)
 	return nil
 }
-
