@@ -15,9 +15,9 @@ import (
 	"golang.org/x/term"
 
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 
-	"github.com/stripe/stripe-cli/internal/agent"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/markdown"
 	"github.com/stripe/stripe-cli/internal/pager"
@@ -95,7 +95,7 @@ Read API Reference pages by their identifier:
 		SilenceUsage:      true,
 	}
 
-	agentDetected := agent.Detect() != agent.NotDetected
+	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
 	r.cmd.PersistentFlags().BoolVar(&r.noTUI, "no-tui", agentDetected, "Write output directly without the interactive browser")
 
@@ -135,9 +135,6 @@ func (r *RootCommand) initClient() {
 	}
 	r.client = docs.NewClient(version.Version)
 	var clientOpts []docs.ClientOption
-	if a := agent.Detect(); a != agent.NotDetected {
-		clientOpts = append(clientOpts, docs.WithAgent(string(a)))
-	}
 	if r.logger != nil {
 		clientOpts = append(clientOpts, docs.WithLogger(r.logger))
 	}
@@ -163,7 +160,7 @@ func (r *RootCommand) initRenderer() {
 	case "on":
 		// Use default styled rendering (auto-detect dark/light).
 	default:
-		if agent.Detect() != agent.NotDetected {
+		if useragent.DetectAIAgent(os.Getenv) != "" {
 			opts = append(opts, markdown.WithStyle("notty"))
 		}
 	}
@@ -199,8 +196,8 @@ func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
 	if r.logger != nil {
-		if a := agent.Detect(); a != agent.NotDetected {
-			r.logger.Debug("agent detected", "name", string(a))
+		if a := useragent.DetectAIAgent(os.Getenv); a != "" {
+			r.logger.Debug("agent detected", "name", a)
 		}
 	}
 	return nil
@@ -242,7 +239,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
-	if r.noTUI || agent.Detect() != agent.NotDetected {
+	if r.noTUI || useragent.DetectAIAgent(os.Getenv) != "" {
 		return false
 	}
 	f, ok := cmd.OutOrStdout().(*os.File)

@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/stripe/stripe-cli/internal/agent"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/pager"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/internal/spinner"
 	"github.com/stripe/stripe-cli/internal/tui"
 	"github.com/stripe/stripe-cli/internal/ui"
@@ -54,7 +54,7 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	styles := ui.DefaultStyles()
 
 	checkmark := styles.SuccessText.Render("✓")
-	disabled := agent.Detect() != agent.NotDetected || !isStdoutTTY(cmd)
+	disabled := useragent.DetectAIAgent(os.Getenv) != "" || !isStdoutTTY(cmd)
 
 	var response *docs.SearchResponse
 	err := spinner.New().

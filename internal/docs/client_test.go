@@ -2,18 +2,18 @@ package docs
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 // capturingHandler collects slog records for assertions.
@@ -73,26 +73,7 @@ func (m *mockCache) Set(key string, data []byte) error {
 
 func TestNewClient_UserAgent(t *testing.T) {
 	got := NewClient("1.2.3")
-	want := fmt.Sprintf("stripe-cli docs-plugin/1.2.3 (%s; %s; %s)", runtime.GOOS, runtime.GOARCH, runtime.Version())
-	assert.Equal(t, want, got.userAgent)
-}
-
-func TestWithAgent(t *testing.T) {
-	base := fmt.Sprintf("stripe-cli docs-plugin/1.2.3 (%s; %s; %s)", runtime.GOOS, runtime.GOARCH, runtime.Version())
-	tests := []struct {
-		name  string
-		agent string
-		want  string
-	}{
-		{"appends agent", "claude_code", base + " AIAgent/claude_code"},
-		{"empty agent is no-op", "", base},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NewClient("1.2.3").WithOptions(WithAgent(tt.agent))
-			assert.Equal(t, tt.want, got.userAgent)
-		})
-	}
+	assert.Equal(t, useragent.GetEncodedUserAgent(), got.userAgent)
 }
 
 func TestNewClient_Defaults(t *testing.T) {

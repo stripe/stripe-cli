@@ -9,9 +9,9 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
-	"runtime"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 const defaultBaseURL = "https://docs.stripe.com"
@@ -63,25 +63,15 @@ func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = ca
 // WithLogger sets a custom logger.
 func WithLogger(logger *slog.Logger) ClientOption { return func(c *Client) { c.logger = logger } }
 
-// WithAgent appends an AIAgent token to the User-Agent header. Pass the result
-// of string(agent.Detect()) — a non-empty value is appended as " AIAgent/<name>".
-func WithAgent(a string) ClientOption {
-	return func(c *Client) {
-		if a != "" {
-			c.userAgent += fmt.Sprintf(" AIAgent/%s", a)
-		}
-	}
-}
-
-// NewClient creates a Client configured with the given plugin version.
-func NewClient(version string) *Client {
+// NewClient creates a Client configured to talk to docs.stripe.com.
+func NewClient(_ string) *Client {
 	base, _ := url.Parse(defaultBaseURL)
 	client := http.Client{Timeout: 10 * time.Second}
 
 	return &Client{
 		http:      &client,
 		baseURL:   base,
-		userAgent: fmt.Sprintf("stripe-cli docs-plugin/%s (%s; %s; %s)", version, runtime.GOOS, runtime.GOARCH, runtime.Version()),
+		userAgent: useragent.GetEncodedUserAgent(),
 		logger:    slog.Default(),
 	}
 }
