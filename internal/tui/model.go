@@ -15,10 +15,10 @@ import (
 
 	"github.com/joelzwarrington/foam/palette"
 
-	"github.com/stripe/stripe-cli/internal/browser"
 	"github.com/stripe/stripe-cli/internal/docs"
 	"github.com/stripe/stripe-cli/internal/markdown"
 	"github.com/stripe/stripe-cli/internal/ui"
+	"github.com/stripe/stripe-cli/pkg/open"
 )
 
 const (
@@ -382,7 +382,7 @@ func (m Model) handleSelected(msg palette.SelectedMsg) (Model, tea.Cmd) {
 		if hit.external {
 			u := hit.url
 			return m, func() tea.Msg {
-				_ = browser.Open(context.Background(), u)
+				_ = open.OpenURL(context.Background(), u, docsAllowedHosts)
 				return statusMsg("Opened!")
 			}
 		}
@@ -447,7 +447,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.viewport.PageDown()
 	case key.Matches(msg, m.keys.OpenInBrowser):
 		if m.isLanding() {
-			_ = browser.Open(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"})
+			_ = open.OpenURL(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"}, docsAllowedHosts)
 		} else {
 			_ = m.page.Open(context.Background())
 		}

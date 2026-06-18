@@ -10,19 +10,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli/internal/browser"
 	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/pkg/open"
 )
 
 func stubBrowser(t *testing.T) *[]*exec.Cmd {
 	t.Helper()
 	var calls []*exec.Cmd
-	original := browser.StartCommand
-	browser.StartCommand = func(cmd *exec.Cmd) error {
+	original := open.StartCommand
+	open.StartCommand = func(cmd *exec.Cmd) error {
 		calls = append(calls, cmd)
 		return nil
 	}
-	t.Cleanup(func() { browser.StartCommand = original })
+	t.Cleanup(func() { open.StartCommand = original })
 	return &calls
 }
 

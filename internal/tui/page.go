@@ -7,8 +7,10 @@ import (
 
 	"github.com/atotto/clipboard"
 
-	"github.com/stripe/stripe-cli/internal/browser"
+	"github.com/stripe/stripe-cli/pkg/open"
 )
+
+var docsAllowedHosts = map[string]bool{"docs.stripe.com": true}
 
 // Page holds the raw content and metadata needed by the TUI to display a
 // documentation page. Callers construct a Page from a fetched docs response
@@ -31,7 +33,7 @@ func (p Page) Open(ctx context.Context) error {
 	if p.URL == nil {
 		return nil
 	}
-	if err := browser.Open(ctx, p.URL); err != nil {
+	if err := open.OpenURL(ctx, p.URL, docsAllowedHosts); err != nil {
 		return fmt.Errorf("opening browser: %w", err)
 	}
 	return nil
