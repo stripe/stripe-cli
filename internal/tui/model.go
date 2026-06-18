@@ -251,9 +251,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case pageLoadedMsg:
-		return m.applyPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready)
+		return m.updateWithPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready)
 	case pageReadyMsg:
-		return m.applyPage(msg.page, msg.doc, true)
+		return m.updateWithPage(msg.page, msg.doc, true)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -339,8 +339,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// applyPage installs a newly loaded page into the model.
-func (m Model) applyPage(page Page, doc *markdown.Document, render bool) (Model, tea.Cmd) {
+// updateWithPage updates the model with a newly fetched page, replacing the
+// current content, title, and link palette.
+func (m Model) updateWithPage(page Page, doc *markdown.Document, render bool) (Model, tea.Cmd) {
 	m.loading = false
 	m.page = page
 	m.doc = doc
