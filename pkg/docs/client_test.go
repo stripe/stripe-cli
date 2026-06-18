@@ -124,7 +124,7 @@ func TestFetchPage(t *testing.T) {
 			ref:  &url.URL{Path: "/payments", RawQuery: "api_version=2024-06-30"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "text/plain", r.Header.Get("Accept"))
-				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli docs-plugin/")
+				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli/")
 				assert.Equal(t, "/payments", r.URL.Path)
 				assert.Equal(t, "2024-06-30", r.URL.Query().Get("api_version"))
 				fmt.Fprint(w, "page content")
