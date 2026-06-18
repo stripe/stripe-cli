@@ -16,11 +16,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 
-	"github.com/stripe/stripe-cli/internal/docs"
-	"github.com/stripe/stripe-cli/internal/markdown"
-	"github.com/stripe/stripe-cli/internal/pager"
-	"github.com/stripe/stripe-cli/internal/tui"
-	"github.com/stripe/stripe-cli/internal/ui"
+	pkgdocs "github.com/stripe/stripe-cli/pkg/docs"
+	"github.com/stripe/stripe-cli/pkg/docs/markdown"
+	"github.com/stripe/stripe-cli/pkg/docs/pager"
+	"github.com/stripe/stripe-cli/pkg/docs/tui"
+	"github.com/stripe/stripe-cli/pkg/docs/ui"
 )
 
 const colorValueOff = "off"
@@ -31,7 +31,7 @@ type RootCommand struct {
 
 	cfg *cliconfig.Config
 
-	client       *docs.Client
+	client       *pkgdocs.Client
 	renderer     markdown.Renderer
 	rendererOpts []markdown.RendererOption
 	logger       *log.Entry
@@ -44,7 +44,7 @@ type RootCommand struct {
 type Option func(*RootCommand)
 
 // WithClient sets the docs HTTP client used to fetch pages.
-func WithClient(client *docs.Client) Option {
+func WithClient(client *pkgdocs.Client) Option {
 	return func(r *RootCommand) { r.client = client }
 }
 
@@ -97,16 +97,16 @@ Read API Reference pages by their identifier:
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
 	r.cmd.PersistentFlags().BoolVar(&r.nonInteractive, "non-interactive", agentDetected, "Write output directly without the interactive browser")
 
-	docs := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
+	docsGroup := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
 
-	r.cmd.AddGroup(docs)
+	r.cmd.AddGroup(docsGroup)
 
 	searchCmd := r.newSearchCommand()
-	searchCmd.GroupID = docs.ID
+	searchCmd.GroupID = docsGroup.ID
 	r.cmd.AddCommand(searchCmd)
 
 	apiCmd := r.newAPICmd()
-	apiCmd.GroupID = docs.ID
+	apiCmd.GroupID = docsGroup.ID
 	r.cmd.AddCommand(apiCmd)
 
 	return r
@@ -127,19 +127,19 @@ func (r *RootCommand) WithOptions(opts ...Option) *RootCommand {
 func (r *RootCommand) initClient() {
 	if r.client != nil {
 		if r.logger != nil {
-			r.client.WithOptions(docs.WithLogger(r.logger))
+			r.client.WithOptions(pkgdocs.WithLogger(r.logger))
 		}
 		return
 	}
-	r.client = docs.NewClient(version.Version)
-	var clientOpts []docs.ClientOption
+	r.client = pkgdocs.NewClient(version.Version)
+	var clientOpts []pkgdocs.ClientOption
 	if r.logger != nil {
-		clientOpts = append(clientOpts, docs.WithLogger(r.logger))
+		clientOpts = append(clientOpts, pkgdocs.WithLogger(r.logger))
 	}
 	if r.cfg != nil {
 		configDir := r.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		if cache, err := docs.NewFSCache(filepath.Join(configDir, "docs", "cache")); err == nil {
-			clientOpts = append(clientOpts, docs.WithCache(cache))
+		if cache, err := pkgdocs.NewFSCache(filepath.Join(configDir, "docs", "cache")); err == nil {
+			clientOpts = append(clientOpts, pkgdocs.WithCache(cache))
 		}
 	}
 	if len(clientOpts) > 0 {
@@ -178,7 +178,7 @@ func (r *RootCommand) initLogger() {
 		r.logger = log.WithField("version", version.Version)
 	}
 	if r.client != nil {
-		r.client.WithOptions(docs.WithLogger(r.logger))
+		r.client.WithOptions(pkgdocs.WithLogger(r.logger))
 	}
 }
 
@@ -250,7 +250,7 @@ func terminalSize(cmd *cobra.Command) (w, h int, ok bool) {
 // interactive TUI; otherwise it renders markdown and pipes it through a pager.
 // A nil page starts the TUI at the home screen. Extra TUI options (e.g.
 // tui.WithPaletteInput) are forwarded to the model constructor.
-func (r *RootCommand) show(cmd *cobra.Command, page *docs.Page, extraOpts ...tui.Option) error {
+func (r *RootCommand) show(cmd *cobra.Command, page *pkgdocs.Page, extraOpts ...tui.Option) error {
 	if r.client == nil {
 		return fmt.Errorf("docs client not initialized")
 	}

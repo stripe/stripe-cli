@@ -15,9 +15,9 @@ import (
 
 	"github.com/joelzwarrington/foam/palette"
 
-	"github.com/stripe/stripe-cli/internal/docs"
-	"github.com/stripe/stripe-cli/internal/markdown"
-	"github.com/stripe/stripe-cli/internal/ui"
+	"github.com/stripe/stripe-cli/pkg/docs"
+	"github.com/stripe/stripe-cli/pkg/docs/markdown"
+	"github.com/stripe/stripe-cli/pkg/docs/ui"
 	"github.com/stripe/stripe-cli/pkg/open"
 )
 

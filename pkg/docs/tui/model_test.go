@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli/internal/docs"
-	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/pkg/docs"
+	"github.com/stripe/stripe-cli/pkg/docs/markdown"
 )
 
 func TestUpdate_OpenInBrowser(t *testing.T) {

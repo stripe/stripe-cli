@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/internal/ui"
+	"github.com/stripe/stripe-cli/pkg/docs/ui"
 )
 
 // errAPINotFound indicates a failed API reference lookup.

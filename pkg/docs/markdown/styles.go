@@ -111,8 +111,8 @@ var DarkStyleConfig = ansi.StyleConfig{
 	},
 	Code: ansi.StyleBlock{
 		StylePrimitive: ansi.StylePrimitive{
-			Prefix:          " ",
-			Suffix:          " ",
+			Prefix:          " ",
+			Suffix:          " ",
 			Color:           strPtr("203"),
 			BackgroundColor: strPtr("236"),
 		},
@@ -259,8 +259,8 @@ var LightStyleConfig = ansi.StyleConfig{
 	},
 	Code: ansi.StyleBlock{
 		StylePrimitive: ansi.StylePrimitive{
-			Prefix:          " ",
-			Suffix:          " ",
+			Prefix:          " ",
+			Suffix:          " ",
 			Color:           strPtr("203"),
 			BackgroundColor: strPtr("254"),
 		},

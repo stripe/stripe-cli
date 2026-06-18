@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark/ast"
 
-	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/pkg/docs/markdown"
 )
 
 func TestParse(t *testing.T) {

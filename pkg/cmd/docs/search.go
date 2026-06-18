@@ -11,12 +11,12 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/stripe/stripe-cli/internal/docs"
-	"github.com/stripe/stripe-cli/internal/pager"
+	pkgdocs "github.com/stripe/stripe-cli/pkg/docs"
+	"github.com/stripe/stripe-cli/pkg/docs/pager"
 	"github.com/stripe/stripe-cli/pkg/useragent"
-	"github.com/stripe/stripe-cli/internal/spinner"
-	"github.com/stripe/stripe-cli/internal/tui"
-	"github.com/stripe/stripe-cli/internal/ui"
+	"github.com/stripe/stripe-cli/pkg/docs/spinner"
+	"github.com/stripe/stripe-cli/pkg/docs/tui"
+	"github.com/stripe/stripe-cli/pkg/docs/ui"
 )
 
 func isStdoutTTY(cmd *cobra.Command) bool {
@@ -56,7 +56,7 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	checkmark := styles.SuccessText.Render("✓")
 	disabled := useragent.DetectAIAgent(os.Getenv) != "" || !isStdoutTTY(cmd)
 
-	var response *docs.SearchResponse
+	var response *pkgdocs.SearchResponse
 	err := spinner.New().
 		WithLabel("Searching Stripe documentation...").
 		WithFinalMsg(checkmark + " Searching Stripe documentation...\n").
@@ -79,7 +79,7 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	return r.renderSearch(w, response)
 }
 
-func (r *RootCommand) renderSearch(w io.Writer, response *docs.SearchResponse) error {
+func (r *RootCommand) renderSearch(w io.Writer, response *pkgdocs.SearchResponse) error {
 	styles := ui.DefaultStyles()
 	colorOff := r.color() == colorValueOff
 

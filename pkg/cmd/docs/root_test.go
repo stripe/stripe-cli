@@ -14,8 +14,8 @@ import (
 
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	"github.com/stripe/stripe-cli/internal/docs"
-	"github.com/stripe/stripe-cli/internal/markdown"
+	"github.com/stripe/stripe-cli/pkg/docs"
+	"github.com/stripe/stripe-cli/pkg/docs/markdown"
 	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 )
 
