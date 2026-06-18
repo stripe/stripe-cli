@@ -56,15 +56,6 @@ func (s *Session) StepByNodeNumber(n int) (*SessionStep, int, int, error) {
 	return nil, -1, -1, fmt.Errorf("node %d out of range (session has %d nodes)", n, s.TotalNodes())
 }
 
-// ReviewGranularityForNode returns the effective review granularity for a node.
-func (s *Session) ReviewGranularityForNode(n int) ReviewGranularity {
-	ch, _, _, err := s.StepByNodeNumber(n)
-	if err != nil || ch.ReviewGranularity == "" {
-		return ReviewGranularityNode
-	}
-	return ch.ReviewGranularity
-}
-
 // StepReadyForReview returns true when every reviewable node in a step is
 // no longer pending or active.
 func (s *Session) StepReadyForReview(stepIndex int) bool {

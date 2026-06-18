@@ -1,0 +1,92 @@
+{
+  "id": "one-time-payment",
+  "title": "Accept a one-time payment",
+  "description": "Set up Checkout to accept a one-time payment with a prebuilt, hosted payment page.",
+  "type": "learning",
+  "products": [
+    "Payments"
+  ],
+  "settings": [],
+  "steps": [
+    {
+      "key": "setup-chapter",
+      "title": "Set up your product catalog",
+      "description": "Create a product and price in your Stripe account.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-product",
+          "title": "Create a product",
+          "description": "Create a Stripe Product with inline default_price_data, then save the returned default_price ID for the Checkout Session. Do not put generated IDs in .env files.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "request": {
+            "path": "/v1/products",
+            "method": "post",
+            "params": {
+              "default_price_data": {
+                "currency": "usd",
+                "unit_amount": 2000
+              },
+              "name": "T-shirt"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "checkout-chapter",
+      "title": "Create a Checkout Session",
+      "description": "Build a server endpoint that creates a Checkout Session and redirects the customer.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create a Checkout Session",
+          "description": "Create a Checkout Session with the price from the previous step.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post",
+            "params": {
+              "cancel_url": "https://example.com/cancel",
+              "line_items": [
+                {
+                  "price": "${node.setup-chapter.create-product:default_price}",
+                  "quantity": 1
+                }
+              ],
+              "mode": "payment",
+              "success_url": "https://example.com/success"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete the checkout",
+          "description": "Add a button or link that redirects the customer to the Checkout page.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        }
+      ]
+    },
+    {
+      "key": "webhook-chapter",
+      "title": "Handle post-payment events",
+      "description": "Listen for webhook events to handle fulfillment.",
+      "nodes": [
+        {
+          "type": "asyncHandler",
+          "key": "handle-checkout-completed",
+          "title": "Handle checkout.session.completed",
+          "description": "Set up a webhook endpoint to receive the checkout.session.completed event and fulfill the order.",
+          "review_prompt": "Run `stripe trigger checkout.session.completed` and confirm fulfillment happens only after verifying the Stripe signature.",
+          "review_command": "stripe trigger checkout.session.completed",
+          "events": [
+            "checkout.session.completed"
+          ]
+        }
+      ]
+    }
+  ]
+}
