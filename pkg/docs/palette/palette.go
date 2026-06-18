@@ -73,7 +73,7 @@ type Mode struct {
 	// this mode and the debounce window elapses, the palette calls
 	// Search and the returned tea.Cmd must eventually yield a
 	// SearchResultMsg with the matching Mode name. The ctx is
-	// cancelled when a newer search supersedes this one or when the
+	// canceled when a newer search supersedes this one or when the
 	// active mode changes — implementations should pass it through
 	// to their HTTP/DB call. Nil means the mode is purely synchronous.
 	Search func(ctx context.Context, query string) tea.Cmd
@@ -531,10 +531,50 @@ func (m Model) View() string {
 		sections = append(sections, indent+m.Styles.Title.Render(m.title), "")
 	}
 
-	// Pick the leading glyph: the spinner while a search is pending,
-	// otherwise the active mode's prompt (or the global default).
-	// Styles.Prompt wraps the static glyph; the spinner owns its own
-	// rendering so we don't restyle it.
+	inner := m.InnerWidth()
+	sections = append(sections, m.viewInputRow(inner, indent))
+
+	items := m.Items()
+	desiredRows := 0
+	if m.pageSize > 0 {
+		desiredRows = m.pageSize * m.delegate.Height()
+	}
+
+	pageItems, pageStart, totalPages := m.viewPage(items)
+
+	// Resolve the no-results message for the current mode when the
+	// item list is empty, the user has typed a query, and no other
+	// surface owns the items section (loading spinner, facet picker).
+	emptyMsg := ""
+	if len(items) == 0 && m.input.Value() != "" && !m.loading && !m.pending && m.facet == nil {
+		emptyMsg = m.Mode().EmptyMessage
+		if emptyMsg == "" {
+			emptyMsg = m.emptyMessage
+		}
+	}
+
+	sections = append(sections, m.viewItemsSection(inner, pageStart, desiredRows, indent, emptyMsg, pageItems)...)
+	sections = append(sections, m.viewFooter(totalPages, indent)...)
+	sections = append(sections, m.viewHelp(inner, indent)...)
+
+	body := strings.Join(sections, "\n")
+
+	// Pin the container's block width (lipgloss treats Width as the
+	// outer block — border included — not the content width). Pass
+	// m.width so the rendered output is exactly the terminal width
+	// and lipgloss pads short body rows to the inner width without
+	// truncating the delegate's already-styled padding.
+	container := m.Styles.Container
+	if m.width > 0 {
+		container = container.Width(m.width)
+	}
+	return container.Render(body)
+}
+
+// viewInputRow builds the prompt glyph and text input line.
+// The glyph shows the spinner while a search is pending, otherwise the
+// active mode's prompt. The input is sized to the available inner width.
+func (m *Model) viewInputRow(inner int, indent string) string {
 	glyph := m.Mode().Prompt
 	if glyph == "" {
 		glyph = defaultPrompt
@@ -558,9 +598,6 @@ func (m Model) View() string {
 	tiStyles.Blurred.Placeholder = m.Styles.Placeholder
 	m.input.SetStyles(tiStyles)
 
-	// Size the textinput to the available row width so it doesn't
-	// overflow the container.
-	inner := m.InnerWidth()
 	if inner > 0 {
 		w := inner - lipgloss.Width(indent) - lipgloss.Width(glyph)
 		if w < 1 {
@@ -568,78 +605,71 @@ func (m Model) View() string {
 		}
 		m.input.SetWidth(w)
 	}
-	sections = append(sections, indent+glyph+m.input.View())
+	return indent + glyph + m.input.View()
+}
 
-	items := m.Items()
-	desiredRows := 0
-	if m.pageSize > 0 {
-		desiredRows = m.pageSize * m.delegate.Height()
+// viewPage slices items to the current page and returns the page slice,
+// the absolute start index within items, and the total page count.
+func (m Model) viewPage(items []Item) (pageItems []Item, pageStart, totalPages int) {
+	pageItems = items
+	totalPages = 1
+	if m.pageSize <= 0 || len(items) == 0 {
+		return
 	}
-
-	// Slice items down to the current page when pagination is on.
-	pageItems := items
-	pageStart := 0
-	totalPages := 1
-	if m.pageSize > 0 && len(items) > 0 {
-		totalPages = (len(items) + m.pageSize - 1) / m.pageSize
-		currentPage := m.cursor / m.pageSize
-		pageStart = currentPage * m.pageSize
-		pageEnd := pageStart + m.pageSize
-		if pageEnd > len(items) {
-			pageEnd = len(items)
-		}
-		pageItems = items[pageStart:pageEnd]
+	totalPages = (len(items) + m.pageSize - 1) / m.pageSize
+	currentPage := m.cursor / m.pageSize
+	pageStart = currentPage * m.pageSize
+	pageEnd := pageStart + m.pageSize
+	if pageEnd > len(items) {
+		pageEnd = len(items)
 	}
+	pageItems = items[pageStart:pageEnd]
+	return
+}
 
-	// Resolve the no-results message for the current mode when the
-	// item list is empty, the user has typed a query, and no other
-	// surface owns the items section (loading spinner, facet picker).
-	emptyMsg := ""
-	if len(items) == 0 && m.input.Value() != "" && !m.loading && !m.pending && m.facet == nil {
-		emptyMsg = m.Mode().EmptyMessage
-		if emptyMsg == "" {
-			emptyMsg = m.emptyMessage
+// viewItemsSection renders the item list or empty-state message and
+// returns the separator + content entries to append to the sections
+// slice, or nil when there is nothing to show.
+func (m Model) viewItemsSection(inner, pageStart, desiredRows int, indent, emptyMsg string, pageItems []Item) []string {
+	if len(pageItems) == 0 && desiredRows == 0 && emptyMsg == "" {
+		return nil
+	}
+	// Populate the render-context fields the delegate reads via
+	// IsSelected() / Width(). cursor and width on rowModel stay
+	// unchanged so Model.Selected() / Cursor() / Width() return
+	// the same values inside Render that hosts see outside.
+	rowModel := m
+	rowModel.renderWidth = inner
+	rowModel.renderRow = m.cursor - pageStart
+
+	var lines []string
+	if len(pageItems) == 0 && emptyMsg != "" {
+		lines = append(lines, indent+m.Styles.EmptyMessage.Render(emptyMsg))
+	} else {
+		for i, item := range pageItems {
+			var buf strings.Builder
+			m.delegate.Render(&buf, rowModel, i, item)
+			lines = append(lines, strings.Split(buf.String(), "\n")...)
 		}
 	}
-
-	if len(pageItems) > 0 || desiredRows > 0 || emptyMsg != "" {
-		// Populate the render-context fields the delegate reads via
-		// IsSelected() / Width(). cursor and width on rowModel stay
-		// unchanged so Model.Selected() / Cursor() / Width() return
-		// the same values inside Render that hosts see outside.
-		rowModel := m
-		rowModel.renderWidth = inner
-		rowModel.renderRow = m.cursor - pageStart
-
-		var lines []string
-		if len(pageItems) == 0 && emptyMsg != "" {
-			lines = append(lines, indent+m.Styles.EmptyMessage.Render(emptyMsg))
-		} else {
-			for i, item := range pageItems {
-				var buf strings.Builder
-				m.delegate.Render(&buf, rowModel, i, item)
-				lines = append(lines, strings.Split(buf.String(), "\n")...)
-			}
+	// Pad or truncate to a stable height so the palette doesn't
+	// jump between modes with different item counts.
+	if desiredRows > 0 {
+		for len(lines) < desiredRows {
+			lines = append(lines, "")
 		}
-
-		// Pad or truncate to a stable height so the palette doesn't
-		// jump between modes with different item counts.
-		if desiredRows > 0 {
-			for len(lines) < desiredRows {
-				lines = append(lines, "")
-			}
-			if len(lines) > desiredRows {
-				lines = lines[:desiredRows]
-			}
+		if len(lines) > desiredRows {
+			lines = lines[:desiredRows]
 		}
-
-		sections = append(sections, "", strings.Join(lines, "\n"))
 	}
+	return []string{"", strings.Join(lines, "\n")}
+}
 
-	// Footer: paginator dots on the left, facet-completion hint on the
-	// right of the same line. Reserve the slot whenever pagination is on
-	// OR any configured mode declares facets, so the palette height
-	// doesn't jump when facets activate or modes switch.
+// viewFooter builds the paginator dots and facet-hint footer line.
+// The slot is reserved whenever pagination is on or any mode declares
+// facets, so the palette height doesn't jump when modes switch.
+// Returns separator + footer entries, or nil when the slot is inactive.
+func (m *Model) viewFooter(totalPages int, indent string) []string {
 	hasFacetSlot := false
 	for _, md := range m.modes {
 		if len(md.Facets) > 0 {
@@ -647,52 +677,46 @@ func (m Model) View() string {
 			break
 		}
 	}
-	if m.pageSize > 0 || hasFacetSlot {
-		if m.pageSize > 0 {
-			m.paginator.TotalPages = totalPages
-			m.paginator.Page = m.cursor / m.pageSize
-		}
-		var parts []string
-		if m.pageSize > 0 && totalPages > 1 {
-			parts = append(parts, m.paginator.View())
-		}
-		if m.facet != nil {
-			hint := m.facet.facet.Desc
-			if hint == "" {
-				hint = m.facet.facet.Name + ":"
-			}
-			parts = append(parts, m.Styles.FacetHeader.Render(hint))
-		}
-		footer := ""
-		if len(parts) > 0 {
-			footer = indent + strings.Join(parts, " • ")
-		}
-		sections = append(sections, "", footer)
+	if m.pageSize == 0 && !hasFacetSlot {
+		return nil
 	}
-
-	if m.showHelp {
-		helpWidth := inner - lipgloss.Width(indent)
-		if helpWidth > 0 {
-			m.help.SetWidth(helpWidth)
-		}
-		helpLine := m.help.View(m)
-		if helpLine != "" {
-			sections = append(sections, "", indent+helpLine)
-		}
+	if m.pageSize > 0 {
+		m.paginator.TotalPages = totalPages
+		m.paginator.Page = m.cursor / m.pageSize
 	}
-
-	body := strings.Join(sections, "\n")
-
-	// Pin the container's block width (lipgloss treats Width as the
-	// outer block — border included — not the content width). Pass
-	// m.width so the rendered output is exactly the terminal width
-	// and lipgloss pads short body rows to the inner width without
-	// truncating the delegate's already-styled padding.
-	container := m.Styles.Container
-	if m.width > 0 {
-		container = container.Width(m.width)
+	var parts []string
+	if m.pageSize > 0 && totalPages > 1 {
+		parts = append(parts, m.paginator.View())
 	}
-	return container.Render(body)
+	if m.facet != nil {
+		hint := m.facet.facet.Desc
+		if hint == "" {
+			hint = m.facet.facet.Name + ":"
+		}
+		parts = append(parts, m.Styles.FacetHeader.Render(hint))
+	}
+	footer := ""
+	if len(parts) > 0 {
+		footer = indent + strings.Join(parts, " • ")
+	}
+	return []string{"", footer}
+}
+
+// viewHelp renders the help bar and returns separator + help line
+// entries, or nil when help is disabled or renders empty.
+func (m *Model) viewHelp(inner int, indent string) []string {
+	if !m.showHelp {
+		return nil
+	}
+	helpWidth := inner - lipgloss.Width(indent)
+	if helpWidth > 0 {
+		m.help.SetWidth(helpWidth)
+	}
+	helpLine := m.help.View(m)
+	if helpLine == "" {
+		return nil
+	}
+	return []string{"", indent + helpLine}
 }
 
 // Focus directs keyboard input to the palette.

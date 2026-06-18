@@ -60,7 +60,7 @@ type DefaultDelegate struct {
 
 // NewDefaultDelegate returns a DefaultDelegate with sensible defaults.
 // Selected rows are rendered with reverse-video so the highlight reads
-// against any terminal palette without picking a brand colour.
+// against any terminal palette without picking a brand color.
 func NewDefaultDelegate() DefaultDelegate {
 	return DefaultDelegate{
 		ShowDescription: true,

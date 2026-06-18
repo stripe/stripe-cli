@@ -30,7 +30,7 @@ type Facet struct {
 
 	// Resolve dispatches an async value lookup. The returned tea.Cmd
 	// must eventually emit a FacetResultMsg whose Facet and Partial
-	// match the inputs. The ctx is cancelled when the partial changes,
+	// match the inputs. The ctx is canceled when the partial changes,
 	// the cursor leaves the token, or the palette is Reset.
 	Resolve func(ctx context.Context, partial string) tea.Cmd
 
@@ -156,7 +156,7 @@ func ParseFacets(input string, facets []Facet) (text string, parsed map[string][
 }
 
 // evaluateFacet inspects the cursor against the active Mode's Facets
-// and synchronises m.facet accordingly. Returns commands to dispatch
+// and synchronizes m.facet accordingly. Returns commands to dispatch
 // (debounce tick + spinner.Tick) when entering or updating async
 // facet completion; nil otherwise.
 func (m *Model) evaluateFacet() tea.Cmd {

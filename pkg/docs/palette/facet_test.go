@@ -24,7 +24,7 @@ var labelFacet = Facet{
 	},
 }
 
-// facetMode wraps SearchMode-style behaviour with a facet attached.
+// facetMode wraps SearchMode-style behavior with a facet attached.
 func facetMode(facets ...Facet) Mode {
 	return Mode{
 		Name:   "search",

@@ -17,7 +17,7 @@ type testItem struct{ name string }
 func (t testItem) FilterValue() string { return t.name }
 
 // commandMode returns a ">"-prefix sync mode that fuzzy-filters cmds.
-// Mirrors the behaviour the deleted built-in CommandMode provided —
+// Mirrors the behavior the deleted built-in CommandMode provided —
 // most tests rely on the ">"-prefix mode existing alongside a
 // catch-all results bucket.
 func commandMode(cmds []Item) Mode {
@@ -549,7 +549,7 @@ func TestSearchStaleResultIgnored(t *testing.T) {
 
 func TestSearchModeSwitchCancelsInFlight(t *testing.T) {
 	// Capture the ctx the search receives so we can assert it gets
-	// cancelled when the mode switches.
+	// canceled when the mode switches.
 	var capturedCtx context.Context
 	mode := Mode{
 		Name:     "files",
@@ -574,7 +574,7 @@ func TestSearchModeSwitchCancelsInFlight(t *testing.T) {
 		t.Fatal("Search wasn't dispatched")
 	}
 	if capturedCtx.Err() != nil {
-		t.Error("ctx already cancelled before mode switch")
+		t.Error("ctx already canceled before mode switch")
 	}
 
 	// Switch modes by changing input to something CommandMode claims.
@@ -582,7 +582,7 @@ func TestSearchModeSwitchCancelsInFlight(t *testing.T) {
 	m.scheduleSearch() // cancel-only path; CommandMode has no Search
 
 	if capturedCtx.Err() == nil {
-		t.Error("expected ctx to be cancelled after mode switch, got nil err")
+		t.Error("expected ctx to be canceled after mode switch, got nil err")
 	}
 }
 
