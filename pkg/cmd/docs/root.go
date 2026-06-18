@@ -100,12 +100,8 @@ Read API Reference pages by their identifier:
 	r.cmd.PersistentFlags().BoolVar(&r.noTUI, "no-tui", agentDetected, "Write output directly without the interactive browser")
 
 	docs := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
-	agent := &cobra.Group{ID: "agent", Title: "Agent Commands:"}
 
-	r.cmd.AddGroup(
-		docs,
-		agent,
-	)
+	r.cmd.AddGroup(docs)
 
 	searchCmd := r.newSearchCommand()
 	searchCmd.GroupID = docs.ID
@@ -114,10 +110,6 @@ Read API Reference pages by their identifier:
 	apiCmd := r.newAPICmd()
 	apiCmd.GroupID = docs.ID
 	r.cmd.AddCommand(apiCmd)
-
-	skillsCmd := r.newSkillsCommand()
-	skillsCmd.GroupID = agent.ID
-	r.cmd.AddCommand(skillsCmd)
 
 	return r
 }

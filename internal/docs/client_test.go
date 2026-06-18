@@ -14,8 +14,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/internal/agentskills"
 )
 
 // capturingHandler collects slog records for assertions.
@@ -448,89 +446,6 @@ func TestSearch(t *testing.T) {
 
 			client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
 			got, err := client.Search(context.Background(), tt.query)
-
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-
-			require.NoError(t, err)
-			if tt.wantCheck != nil {
-				tt.wantCheck(t, got)
-			}
-		})
-	}
-}
-
-func TestFetchSkills(t *testing.T) {
-	tests := []struct {
-		name      string
-		handler   http.HandlerFunc
-		wantErr   string
-		wantCheck func(t *testing.T, got *agentskills.Index)
-	}{
-		{
-			name: "success",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, agentskills.IndexPath, r.URL.Path)
-				assert.Equal(t, "application/json", r.Header.Get("Accept"))
-				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli docs-plugin/")
-				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `{"skills":[{"name":"stripe-best-practices","description":"Guides Stripe integration decisions"}]}`)
-			},
-			wantCheck: func(t *testing.T, got *agentskills.Index) {
-				require.Len(t, got.Skills, 1)
-				assert.Equal(t, "stripe-best-practices", got.Skills[0].Name)
-				assert.Equal(t, "Guides Stripe integration decisions", got.Skills[0].Description)
-			},
-		},
-		{
-			name: "multiple skills",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `{"skills":[{"name":"skill-a","description":"desc a"},{"name":"skill-b","description":"desc b"}]}`)
-			},
-			wantCheck: func(t *testing.T, got *agentskills.Index) {
-				require.Len(t, got.Skills, 2)
-				assert.Equal(t, "skill-a", got.Skills[0].Name)
-				assert.Equal(t, "skill-b", got.Skills[1].Name)
-			},
-		},
-		{
-			name: "empty skills list",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `{"skills":[]}`)
-			},
-			wantCheck: func(t *testing.T, got *agentskills.Index) {
-				assert.Empty(t, got.Skills)
-			},
-		},
-		{
-			name: "non-200 response returns error",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusNotFound)
-			},
-			wantErr: "returned 404",
-		},
-		{
-			name: "invalid json returns error",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprint(w, `{"skills":[`)
-			},
-			wantErr: "skills: unmarshal response",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(tt.handler)
-			defer server.Close()
-
-			client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
-			got, err := client.FetchSkills(context.Background())
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
