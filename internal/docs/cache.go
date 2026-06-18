@@ -3,11 +3,12 @@ package docs
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/spf13/afero"
 )
 
 const defaultCacheTTL = 1 * time.Hour
@@ -22,6 +23,7 @@ type Cache interface {
 // eviction policy. Entries older than the configured TTL are treated as
 // misses and removed on access.
 type FSCache struct {
+	fs  afero.Fs
 	dir string
 	ttl time.Duration
 	now func() time.Time
@@ -40,14 +42,19 @@ func WithClock(now func() time.Time) CacheOption {
 	return func(c *FSCache) { c.now = now }
 }
 
+// WithFS sets the filesystem implementation. Defaults to the real OS filesystem.
+func WithFS(fs afero.Fs) CacheOption {
+	return func(c *FSCache) { c.fs = fs }
+}
+
 // NewFSCache creates a filesystem-backed cache rooted at dir.
 func NewFSCache(dir string, opts ...CacheOption) (*FSCache, error) {
-	if err := os.MkdirAll(dir, 0o750); err != nil {
-		return nil, fmt.Errorf("docs: create cache dir: %w", err)
-	}
-	c := &FSCache{dir: dir, ttl: defaultCacheTTL, now: time.Now}
+	c := &FSCache{fs: afero.NewOsFs(), dir: dir, ttl: defaultCacheTTL, now: time.Now}
 	for _, opt := range opts {
 		opt(c)
+	}
+	if err := c.fs.MkdirAll(dir, 0o750); err != nil {
+		return nil, fmt.Errorf("docs: create cache dir: %w", err)
 	}
 	return c, nil
 }
@@ -57,8 +64,8 @@ func NewFSCache(dir string, opts ...CacheOption) (*FSCache, error) {
 func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 	p := filepath.Clean(c.path(key))
 
-	info, err := os.Stat(p)
-	if errors.Is(err, os.ErrNotExist) {
+	info, err := c.fs.Stat(p)
+	if os.IsNotExist(err) {
 		return nil, time.Time{}, false, nil
 	}
 	if err != nil {
@@ -66,12 +73,12 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 	}
 
 	if c.now().Sub(info.ModTime()) > c.ttl {
-		_ = os.Remove(p)
+		_ = c.fs.Remove(p)
 		return nil, time.Time{}, false, nil
 	}
 
-	data, err := os.ReadFile(p)
-	if errors.Is(err, os.ErrNotExist) {
+	data, err := afero.ReadFile(c.fs, p)
+	if os.IsNotExist(err) {
 		return nil, time.Time{}, false, nil
 	}
 	if err != nil {
@@ -84,7 +91,7 @@ func (c *FSCache) Get(key string) ([]byte, time.Time, bool, error) {
 // Set writes data to the cache under key.
 func (c *FSCache) Set(key string, data []byte) error {
 	p := filepath.Clean(c.path(key))
-	if err := os.WriteFile(p, data, 0o600); err != nil {
+	if err := afero.WriteFile(c.fs, p, data, 0o600); err != nil {
 		return fmt.Errorf("docs: write cache entry: %w", err)
 	}
 	return nil

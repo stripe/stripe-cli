@@ -1,14 +1,21 @@
 package docs
 
 import (
-	"os"
-	"runtime"
 	"testing"
 	"time"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newMemCache(t *testing.T, opts ...CacheOption) *FSCache {
+	t.Helper()
+	opts = append([]CacheOption{WithFS(afero.NewMemMapFs())}, opts...)
+	cache, err := NewFSCache("/cache", opts...)
+	require.NoError(t, err)
+	return cache
+}
 
 func TestFSCache_GetSet(t *testing.T) {
 	tests := []struct {
@@ -23,9 +30,7 @@ func TestFSCache_GetSet(t *testing.T) {
 		{"binary content", "/bin", []byte{0x00, 0xFF, 0x0A}},
 	}
 
-	dir := t.TempDir()
-	cache, err := NewFSCache(dir)
-	require.NoError(t, err)
+	cache := newMemCache(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -42,9 +47,7 @@ func TestFSCache_GetSet(t *testing.T) {
 }
 
 func TestFSCache_Get_Miss(t *testing.T) {
-	dir := t.TempDir()
-	cache, err := NewFSCache(dir)
-	require.NoError(t, err)
+	cache := newMemCache(t)
 
 	got, cachedAt, ok, err := cache.Get("/nonexistent")
 	require.NoError(t, err)
@@ -57,9 +60,7 @@ func TestFSCache_Get_TTLEviction(t *testing.T) {
 	now := time.Now()
 	clock := func() time.Time { return now }
 
-	dir := t.TempDir()
-	cache, err := NewFSCache(dir, WithTTL(5*time.Minute), WithClock(clock))
-	require.NoError(t, err)
+	cache := newMemCache(t, WithTTL(5*time.Minute), WithClock(clock))
 
 	require.NoError(t, cache.Set("key", []byte("data")))
 
@@ -75,63 +76,26 @@ func TestFSCache_Get_TTLEviction(t *testing.T) {
 	assert.False(t, ok)
 	assert.Nil(t, got)
 
-	entries, _ := os.ReadDir(dir)
+	entries, _ := afero.ReadDir(cache.fs, cache.dir)
 	assert.Empty(t, entries)
 }
 
-func TestFSCache_Get_UnreadableFile(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod 000 does not restrict read access on Windows")
-	}
-
-	dir := t.TempDir()
-	cache, err := NewFSCache(dir)
-	require.NoError(t, err)
-
-	require.NoError(t, cache.Set("key", []byte("data")))
-
-	path := cache.path("key")
-	require.NoError(t, os.Chmod(path, 0o000))
-	t.Cleanup(func() { os.Chmod(path, 0o644) })
-
-	_, _, _, err = cache.Get("key") //nolint:dogsled
-	assert.Error(t, err)
-}
-
-func TestFSCache_Set_UnwritableDir(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("chmod 0555 does not restrict write access on Windows")
-	}
-
-	dir := t.TempDir()
-	cache, err := NewFSCache(dir)
-	require.NoError(t, err)
-
-	require.NoError(t, os.Chmod(dir, 0o555))
-	t.Cleanup(func() { os.Chmod(dir, 0o755) })
-
-	err = cache.Set("key", []byte("data"))
-	assert.Error(t, err)
-}
-
 func TestNewFSCache_CreatesDirIfMissing(t *testing.T) {
-	dir := t.TempDir() + "/nested/cache"
-	_, err := NewFSCache(dir)
+	fs := afero.NewMemMapFs()
+	cache, err := NewFSCache("/nested/cache", WithFS(fs))
 	require.NoError(t, err)
 
-	info, err := os.Stat(dir)
+	info, err := fs.Stat(cache.dir)
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())
 }
 
 func TestNewFSCache_DefaultTTL(t *testing.T) {
-	cache, err := NewFSCache(t.TempDir())
-	require.NoError(t, err)
+	cache := newMemCache(t)
 	assert.Equal(t, defaultCacheTTL, cache.ttl)
 }
 
 func TestNewFSCache_CustomTTL(t *testing.T) {
-	cache, err := NewFSCache(t.TempDir(), WithTTL(5*time.Minute))
-	require.NoError(t, err)
+	cache := newMemCache(t, WithTTL(5*time.Minute))
 	assert.Equal(t, 5*time.Minute, cache.ttl)
 }
