@@ -53,9 +53,10 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"status":    "stripe",
 		"resources": "resources",
-		AIAgentHelpAnnotationKey: "  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
+		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
+			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
 			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
-			"  Additional commands (apps, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
+			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -159,8 +160,11 @@ func Execute(ctx context.Context) {
 
 			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 				fmt.Fprintln(os.Stderr, string(errRunes))
-				fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
-				fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+				fmt.Fprintln(os.Stderr, "  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.")
+				fmt.Fprintln(os.Stderr, "  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).")
+				if useragent.DetectAIAgent(os.Getenv) != "" {
+					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox).")
+				}
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
@@ -286,6 +290,13 @@ func init() {
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+	if err := plugins.BackfillMissingInstalledPluginMetadata(context.Background(), cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.registerInstalledPlugins",
+		}).Debugf("could not backfill installed plugin metadata: %s", err)
+	}
+
 	pluginNames, err := plugins.GetInstalledPluginNames(cfg, fs)
 	if err != nil {
 		log.WithFields(log.Fields{

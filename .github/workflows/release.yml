@@ -32,6 +32,17 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
+          owner: stripe
+          repositories: |
+            stripe-cli
+            homebrew-stripe-cli
+            scoop-stripe-cli
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -44,7 +55,7 @@ jobs:
           args: release -f .goreleaser/mac.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build-linux:
     needs: [approve-release]
@@ -89,6 +100,17 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
+          owner: stripe
+          repositories: |
+            stripe-cli
+            homebrew-stripe-cli
+            scoop-stripe-cli
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -101,7 +123,9 @@ jobs:
           args: release -f .goreleaser/windows.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # The GitHub App token is scoped to the stripe org and cannot create
+          # PRs on microsoft/winget-pkgs, so winget still requires a PAT.
           WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
   upload-to-virustotal:

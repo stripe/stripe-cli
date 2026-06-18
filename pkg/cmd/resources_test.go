@@ -21,10 +21,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
-const (
-	pluginManifestURL = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
-)
-
 func newResourcesTestRoot(t *testing.T) *cobra.Command {
 	t.Helper()
 
@@ -87,9 +83,23 @@ func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 }
 
 func TestConflictWithPluginCommand(t *testing.T) {
-	// directly downloading the manifest can only be done within this unit test
-	// plugins.GetPluginList should be used under normal circumstances
-	resp, err := http.Get(pluginManifestURL)
+	// Serve a static plugin manifest to avoid a real network call.
+	const staticManifest = `
+[[Plugin]]
+Shortname = "projects"
+Shortdesc = "Manage Stripe projects"
+
+[[Plugin]]
+Shortname = "directory"
+Shortdesc = "Explore the Stripe API directory"
+`
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/toml")
+		w.Write([]byte(staticManifest))
+	}))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 

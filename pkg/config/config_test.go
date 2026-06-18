@@ -25,8 +25,7 @@ func TestRemoveKey(t *testing.T) {
 
 func setupTestConfig(t *testing.T) (*Config, string, func()) {
 	t.Helper()
-	profilesFile := filepath.Join(os.TempDir(), "stripe-test", "config.toml")
-	os.MkdirAll(filepath.Dir(profilesFile), 0755)
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 
 	c := &Config{
 		Color:        "auto",
@@ -40,7 +39,6 @@ func setupTestConfig(t *testing.T) (*Config, string, func()) {
 	KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	cleanup := func() {
-		os.Remove(profilesFile)
 		viper.Reset()
 	}
 

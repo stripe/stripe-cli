@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
@@ -35,6 +36,19 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 	if !installedPluginSet["projects"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
+		)
+	}
+	if !installedPluginSet["directory"] {
+		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
+		directoryCmd.Aliases = []string{
+			"search",
+			"directry",
+			"directary",
+			"direcotry", //nolint:misspell // Intentional typo alias.
+			"diretory",
+		}
+		rootCmd.AddCommand(
+			directoryCmd,
 		)
 	}
 	if !installedPluginSet["tools"] {
@@ -161,6 +175,7 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 
 	color := ansi.Color(p.stdout)
 	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
+	postinstall.PrintTips(p.stdout, p.name)
 
 	return nil
 }

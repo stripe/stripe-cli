@@ -60,6 +60,14 @@ func TestHelpFlag(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSandboxVisibleInHelp(t *testing.T) {
+	Execute(context.Background())
+
+	output, err := executeCommand(rootCmd, "--help")
+	require.NoError(t, err)
+	require.Contains(t, output, "sandbox")
+}
+
 func TestExampleCommands(t *testing.T) {
 	{
 		_, err := executeCommand(rootCmd, "foo")
@@ -87,8 +95,7 @@ func TestReadProjectDefault(t *testing.T) {
 func TestReadProjectFromEnv(t *testing.T) {
 	// Run this test in a subprocess since side effects from other tests interfere with this
 	if os.Getenv("BE_TestReadProjectFromEnv") == "1" {
-		os.Setenv("STRIPE_PROJECT_NAME", "from-env")
-		defer os.Unsetenv("STRIPE_PROJECT_NAME")
+		t.Setenv("STRIPE_PROJECT_NAME", "from-env")
 
 		executeCommand(rootCmd, "version")
 
@@ -110,8 +117,7 @@ func TestReadProjectFromFlag(t *testing.T) {
 }
 
 func TestReadProjectFlagHasPrecedence(t *testing.T) {
-	os.Setenv("STRIPE_PROJECT_NAME", "from-env")
-	defer os.Unsetenv("STRIPE_PROJECT_NAME")
+	t.Setenv("STRIPE_PROJECT_NAME", "from-env")
 
 	executeCommand(rootCmd, "version", "--project-name", "from-flag")
 
