@@ -32,15 +32,6 @@ const (
 	NodeSetUpWebhooks NodeType = "setUpWebhooks"
 )
 
-// ReviewGranularity controls where human approval happens.
-type ReviewGranularity string
-
-const (
-	ReviewGranularityNode ReviewGranularity = "node"
-	ReviewGranularityStep ReviewGranularity = "step"
-	ReviewGranularityAuto ReviewGranularity = "auto"
-)
-
 // SessionStatus represents the overall session lifecycle.
 type SessionStatus string
 
@@ -66,27 +57,46 @@ type Verification struct {
 
 // APIRequest describes the expected API call for a node.
 type APIRequest struct {
-	Key    string      `json:"key,omitempty"`
-	Path   string      `json:"path"`
-	Method string      `json:"method"`
-	Params interface{} `json:"params,omitempty"`
+	Path         string            `json:"path"`
+	Method       string            `json:"method"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Params       interface{}       `json:"params,omitempty"`
+	HiddenParams interface{}       `json:"hidden_params,omitempty"`
+}
+
+// TestHelperRequest describes an API-backed request used to advance test state.
+type TestHelperRequest struct {
+	Key string `json:"key"`
+	APIRequest
+}
+
+// NodeDefinition is the source-derived static definition for a node.
+type NodeDefinition struct {
+	Type          NodeType            `json:"type"`
+	Key           string              `json:"key"`
+	Title         string              `json:"title"`
+	Description   string              `json:"description,omitempty"`
+	ReviewPrompt  string              `json:"review_prompt,omitempty"`
+	ReviewCommand string              `json:"review_command,omitempty"`
+	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
+	Request       *APIRequest         `json:"request,omitempty"`
+	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
+	Events        []string            `json:"events,omitempty"`
+}
+
+// StepDefinition is the source-derived static definition for a step.
+type StepDefinition struct {
+	Key   string `json:"key"`
+	Title string `json:"title"`
 }
 
 // SessionNode is a single action within a session step.
 type SessionNode struct {
-	Key            string          `json:"key"`
-	Type           NodeType        `json:"type"`
-	Title          string          `json:"title"`
-	Description    string          `json:"description,omitempty"`
-	ReviewPrompt   string          `json:"review_prompt,omitempty"`
-	ReviewCommand  string          `json:"review_command,omitempty"`
-	AutoConfirm    bool            `json:"auto_confirm,omitempty"`
+	NodeDefinition
 	State          NodeState       `json:"state"`
 	Activity       string          `json:"activity,omitempty"`
 	Implementation *Implementation `json:"implementation,omitempty"`
 	Verifications  []Verification  `json:"verifications,omitempty"`
-	Request        *APIRequest     `json:"request,omitempty"`
-	Events         []string        `json:"events,omitempty"`
 	RejectionNote  string          `json:"rejection_note,omitempty"`
 	StartedAt      *time.Time      `json:"started_at,omitempty"`
 	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
@@ -94,10 +104,8 @@ type SessionNode struct {
 
 // SessionStep groups nodes under a titled step.
 type SessionStep struct {
-	Key               string            `json:"key"`
-	Title             string            `json:"title"`
-	ReviewGranularity ReviewGranularity `json:"review_granularity,omitempty"`
-	Nodes             []SessionNode     `json:"nodes"`
+	StepDefinition
+	Nodes []SessionNode `json:"nodes"`
 }
 
 // Session is the shared state file between agent and TUI.

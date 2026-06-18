@@ -7,6 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func testSessionNode(key, title string, state NodeState) SessionNode {
+	return SessionNode{
+		NodeDefinition: NodeDefinition{Key: key, Title: title},
+		State:          state,
+	}
+}
+
 func newTestSession() *Session {
 	return &Session{
 		ID:        "test_abc123",
@@ -14,18 +21,16 @@ func newTestSession() *Session {
 		Status:    SessionActive,
 		Steps: []SessionStep{
 			{
-				Key:   "step-1",
-				Title: "Step 1",
+				StepDefinition: StepDefinition{Key: "step-1", Title: "Step 1"},
 				Nodes: []SessionNode{
-					{Key: "node-1", Title: "Step 1", State: NodePending},
-					{Key: "node-2", Title: "Step 2", State: NodePending},
+					testSessionNode("node-1", "Step 1", NodePending),
+					testSessionNode("node-2", "Step 2", NodePending),
 				},
 			},
 			{
-				Key:   "step-2",
-				Title: "Step 2",
+				StepDefinition: StepDefinition{Key: "step-2", Title: "Step 2"},
 				Nodes: []SessionNode{
-					{Key: "node-3", Title: "Step 3", State: NodePending},
+					testSessionNode("node-3", "Step 3", NodePending),
 				},
 			},
 		},
@@ -238,9 +243,9 @@ func TestIsCompleteWithSkipped(t *testing.T) {
 func TestNodeByNumberAcrossSteps(t *testing.T) {
 	s := &Session{
 		Steps: []SessionStep{
-			{Key: "ch1", Nodes: []SessionNode{{Key: "a"}, {Key: "b"}}},
-			{Key: "ch2", Nodes: []SessionNode{{Key: "c"}}},
-			{Key: "ch3", Nodes: []SessionNode{{Key: "d"}, {Key: "e"}, {Key: "f"}}},
+			{StepDefinition: StepDefinition{Key: "ch1"}, Nodes: []SessionNode{testSessionNode("a", "", ""), testSessionNode("b", "", "")}},
+			{StepDefinition: StepDefinition{Key: "ch2"}, Nodes: []SessionNode{testSessionNode("c", "", "")}},
+			{StepDefinition: StepDefinition{Key: "ch3"}, Nodes: []SessionNode{testSessionNode("d", "", ""), testSessionNode("e", "", ""), testSessionNode("f", "", "")}},
 		},
 	}
 
@@ -275,17 +280,6 @@ func TestStepByNodeNumber(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestReviewGranularityForNode(t *testing.T) {
-	s := newTestSession()
-	s.Steps[0].ReviewGranularity = ReviewGranularityStep
-	s.Steps[1].ReviewGranularity = ReviewGranularityAuto
-
-	assert.Equal(t, ReviewGranularityStep, s.ReviewGranularityForNode(1))
-	assert.Equal(t, ReviewGranularityStep, s.ReviewGranularityForNode(2))
-	assert.Equal(t, ReviewGranularityAuto, s.ReviewGranularityForNode(3))
-	assert.Equal(t, ReviewGranularityNode, s.ReviewGranularityForNode(4))
-}
-
 func TestStepReadyForReview(t *testing.T) {
 	s := newTestSession()
 	assert.False(t, s.StepReadyForReview(-1))
@@ -306,11 +300,17 @@ func TestStepReadyForReviewIgnoresAutoConfirmNodes(t *testing.T) {
 	s := &Session{
 		Steps: []SessionStep{
 			{Nodes: []SessionNode{
-				{Key: "a", State: NodeReview},
-				{Key: "auto", State: NodePending, AutoConfirm: true},
+				testSessionNode("a", "", NodeReview),
+				{
+					NodeDefinition: NodeDefinition{Key: "auto", AutoConfirm: true},
+					State:          NodePending,
+				},
 			}},
 			{Nodes: []SessionNode{
-				{Key: "only-auto", State: NodePending, AutoConfirm: true},
+				{
+					NodeDefinition: NodeDefinition{Key: "only-auto", AutoConfirm: true},
+					State:          NodePending,
+				},
 			}},
 		},
 	}
