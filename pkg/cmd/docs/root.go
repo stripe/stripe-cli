@@ -2,14 +2,12 @@ package docs
 
 import (
 	"fmt"
-	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
-	charmlog "charm.land/log/v2"
-
+	log "github.com/sirupsen/logrus"
 	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -36,7 +34,7 @@ type RootCommand struct {
 	client       *docs.Client
 	renderer     markdown.Renderer
 	rendererOpts []markdown.RendererOption
-	logger       *slog.Logger
+	logger       *log.Entry
 
 	noPager bool
 	nonInteractive bool
@@ -55,8 +53,8 @@ func WithRenderer(renderer markdown.Renderer) Option {
 	return func(r *RootCommand) { r.renderer = renderer }
 }
 
-// WithLogger sets the structured logger for the plugin.
-func WithLogger(logger *slog.Logger) Option {
+// WithLogger sets the logger.
+func WithLogger(logger *log.Entry) Option {
 	return func(r *RootCommand) { r.logger = logger }
 }
 
@@ -176,18 +174,10 @@ func (r *RootCommand) color() string {
 }
 
 func (r *RootCommand) initLogger() {
-	if r.logger == nil && r.cfg != nil {
-		level, err := charmlog.ParseLevel(r.cfg.LogLevel)
-		if err != nil {
-			level = charmlog.InfoLevel
-		}
-		handler := charmlog.NewWithOptions(os.Stderr, charmlog.Options{
-			Level:  level,
-			Prefix: "docs",
-		})
-		r.logger = slog.New(handler).With("version", version.Version)
+	if r.logger == nil {
+		r.logger = log.WithField("version", version.Version)
 	}
-	if r.logger != nil && r.client != nil {
+	if r.client != nil {
 		r.client.WithOptions(docs.WithLogger(r.logger))
 	}
 }
@@ -197,7 +187,7 @@ func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initRenderer()
 	if r.logger != nil {
 		if a := useragent.DetectAIAgent(os.Getenv); a != "" {
-			r.logger.Debug("agent detected", "name", a)
+			r.logger.WithField("name", a).Debug("agent detected")
 		}
 	}
 	return nil

@@ -2,7 +2,6 @@ package docs
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -10,43 +9,34 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
-// capturingHandler collects slog records for assertions.
-type capturingHandler struct {
+// capturingHook collects logrus entries for assertions.
+type capturingHook struct {
 	mu      sync.Mutex
-	records []slog.Record
+	entries []*log.Entry
 }
 
-func (h *capturingHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+func (h *capturingHook) Levels() []log.Level { return log.AllLevels }
 
-func (h *capturingHandler) Handle(_ context.Context, r slog.Record) error {
+func (h *capturingHook) Fire(e *log.Entry) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.records = append(h.records, r)
+	h.entries = append(h.entries, e)
 	return nil
 }
 
-func (h *capturingHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
-func (h *capturingHandler) WithGroup(_ string) slog.Handler      { return h }
-
-func (h *capturingHandler) maxLevel() (slog.Level, bool) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if len(h.records) == 0 {
-		return 0, false
-	}
-	max := h.records[0].Level
-	for _, r := range h.records[1:] {
-		if r.Level > max {
-			max = r.Level
-		}
-	}
-	return max, true
+// newTestLogger returns a logrus logger wired to h, plus an entry for injection.
+func newTestLogger(h *capturingHook) *log.Entry {
+	l := log.New()
+	l.SetLevel(log.DebugLevel)
+	l.AddHook(h)
+	return log.NewEntry(l)
 }
 
 type mockCache struct {
@@ -237,34 +227,28 @@ func TestFetchPage_ContextCanceled_LoggedAtDebug(t *testing.T) {
 	}))
 	defer server.Close()
 
-	h := &capturingHandler{}
+	h := &capturingHook{}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithLogger(slog.New(h)))
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithLogger(newTestLogger(h)))
 	_, err := client.FetchPage(ctx, &url.URL{Path: "/slow"})
 	require.Error(t, err)
 
-	if level, ok := h.maxLevel(); ok {
-		assert.Less(t, level, slog.LevelError, "context cancellation must not produce an error-level log")
-	}
-
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	var found bool
-	for _, r := range h.records {
-		if r.Level != slog.LevelDebug {
-			continue
-		}
-		r.Attrs(func(a slog.Attr) bool {
-			if a.Key == "cause" {
-				found = true
-				return false
-			}
-			return true
-		})
+	for _, e := range h.entries {
+		assert.GreaterOrEqual(t, e.Level, log.WarnLevel, "context cancellation must not produce an error-level log")
 	}
-	assert.True(t, found, "expected a debug log with a cause attribute")
+	var foundCause bool
+	for _, e := range h.entries {
+		if e.Level == log.DebugLevel {
+			if _, ok := e.Data["cause"]; ok {
+				foundCause = true
+			}
+		}
+	}
+	assert.True(t, foundCause, "expected a debug log with a cause field")
 }
 
 func TestFetchPage_CacheHit(t *testing.T) {

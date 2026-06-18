@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
@@ -43,7 +44,7 @@ type Client struct {
 	baseURL   *url.URL
 	userAgent string
 	cache     Cache
-	logger    *slog.Logger
+	logger    *log.Entry
 }
 
 // ClientOption configures a Client.
@@ -61,7 +62,7 @@ func WithHTTPClient(hc *http.Client) ClientOption { return func(c *Client) { c.h
 func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = cache } }
 
 // WithLogger sets a custom logger.
-func WithLogger(logger *slog.Logger) ClientOption { return func(c *Client) { c.logger = logger } }
+func WithLogger(logger *log.Entry) ClientOption { return func(c *Client) { c.logger = logger } }
 
 // NewClient creates a Client configured to talk to docs.stripe.com.
 func NewClient(_ string) *Client {
@@ -72,7 +73,7 @@ func NewClient(_ string) *Client {
 		http:      &client,
 		baseURL:   base,
 		userAgent: useragent.GetEncodedUserAgent(),
-		logger:    slog.Default(),
+		logger:    log.NewEntry(log.StandardLogger()),
 	}
 }
 
@@ -96,17 +97,17 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 
 	if c.cache != nil {
 		if data, cachedAt, ok, err := c.cache.Get(rawURL); err != nil {
-			c.logger.Error("cache read failed", "url", rawURL, "err", err)
+			c.logger.WithFields(log.Fields{"url": rawURL}).WithError(err).Error("cache read failed")
 			return Page{}, fmt.Errorf("docs: cache read: %w", err)
 		} else if ok {
-			c.logger.Debug("cache hit", "url", rawURL, "age", time.Since(cachedAt).Round(time.Second))
+			c.logger.WithFields(log.Fields{"url": rawURL, "age": time.Since(cachedAt).Round(time.Second)}).Debug("cache hit")
 			return Page{
 				Content:   data,
 				URL:       resolvedURL,
 				FetchedAt: cachedAt,
 			}, nil
 		}
-		c.logger.Debug("cache miss", "url", rawURL)
+		c.logger.WithField("url", rawURL).Debug("cache miss")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
@@ -122,7 +123,7 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 
 	if c.cache != nil {
 		if err := c.cache.Set(rawURL, res.body); err != nil {
-			c.logger.Error("cache write failed", "url", rawURL, "err", err)
+			c.logger.WithField("url", rawURL).WithError(err).Error("cache write failed")
 			return Page{}, fmt.Errorf("docs: cache write: %w", err)
 		}
 	}
@@ -146,15 +147,15 @@ func (c *Client) do(req *http.Request) (response, error) {
 	resp, err := c.http.Do(req)
 	if err != nil {
 		if req.Context().Err() != nil {
-			c.logger.Debug("request canceled", "url", req.URL, "cause", req.Context().Err())
+			c.logger.WithFields(log.Fields{"url": req.URL, "cause": req.Context().Err()}).Debug("request canceled")
 		} else {
-			c.logger.Error("request failed", "url", req.URL, "err", err)
+			c.logger.WithField("url", req.URL).WithError(err).Error("request failed")
 		}
 		return response{}, fmt.Errorf("docs: request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	c.logger.Debug("request complete", "url", req.URL, "status", resp.StatusCode, "duration", time.Since(start).Round(time.Millisecond))
+	c.logger.WithFields(log.Fields{"url": req.URL, "status": resp.StatusCode, "duration": time.Since(start).Round(time.Millisecond)}).Debug("request complete")
 
 	if resp.StatusCode != http.StatusOK {
 		return response{}, fmt.Errorf("docs: %s returned %d", req.URL, resp.StatusCode)

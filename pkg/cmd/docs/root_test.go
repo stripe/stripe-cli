@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -179,15 +179,15 @@ func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 	renderer, err := markdown.NewRenderer()
 	require.NoError(t, err)
 
-	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
+	testLogger := log.New()
+	testLogger.SetOutput(&logBuf)
+	testLogger.SetLevel(log.DebugLevel)
 
 	var out bytes.Buffer
 	root := cmd.New().WithOptions(
 		cmd.WithClient(client),
 		cmd.WithRenderer(renderer),
-		cmd.WithLogger(logger),
+		cmd.WithLogger(log.NewEntry(testLogger)),
 	).Root()
 	root.SetOut(&out)
 	root.SetArgs([]string{"/test"})
