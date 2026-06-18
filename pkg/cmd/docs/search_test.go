@@ -129,7 +129,7 @@ func TestSearchCommand_NoTUI_FallsBackToHTTP(t *testing.T) {
 	var out bytes.Buffer
 	root := cmd.New().WithOptions(cmd.WithClient(client)).Root()
 	root.SetOut(&out)
-	root.SetArgs([]string{"--no-tui", "search", "payments"})
+	root.SetArgs([]string{"--non-interactive", "search", "payments"})
 
 	err := root.ExecuteContext(context.Background())
 	require.NoError(t, err)

@@ -39,7 +39,7 @@ type RootCommand struct {
 	logger       *slog.Logger
 
 	noPager bool
-	noTUI   bool
+	nonInteractive bool
 }
 
 // Option is a functional option for configuring RootCommand.
@@ -97,7 +97,7 @@ Read API Reference pages by their identifier:
 
 	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
-	r.cmd.PersistentFlags().BoolVar(&r.noTUI, "no-tui", agentDetected, "Write output directly without the interactive browser")
+	r.cmd.PersistentFlags().BoolVar(&r.nonInteractive, "non-interactive", agentDetected, "Write output directly without the interactive browser")
 
 	docs := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
 
@@ -239,7 +239,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
-	if r.noTUI || useragent.DetectAIAgent(os.Getenv) != "" {
+	if r.nonInteractive || useragent.DetectAIAgent(os.Getenv) != "" {
 		return false
 	}
 	f, ok := cmd.OutOrStdout().(*os.File)

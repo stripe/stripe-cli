@@ -213,7 +213,7 @@ func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
 		cmd.WithRenderer(renderer),
 	).Root()
 	root.SetOut(&out)
-	root.SetArgs([]string{"--no-tui", "/payments"})
+	root.SetArgs([]string{"--non-interactive", "/payments"})
 
 	err = root.ExecuteContext(context.Background())
 	require.NoError(t, err)
