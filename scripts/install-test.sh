@@ -142,6 +142,16 @@ resolve_pagerduty_alert() {
     }'
 }
 
+if [ "$PACKAGE_MANAGER" = "notify" ]; then
+    if [ "${OVERALL_RESULT:-failure}" = "success" ]; then
+        resolve_pagerduty_alert
+    else
+        trigger_pagerduty_alert
+        exit 1
+    fi
+    exit 0
+fi
+
 if ! run_install
 then
     echo "Install failed. Retrying in 30 seconds..."
@@ -161,12 +171,9 @@ then
                 run_install
                 if ! run_install
                 then
-                trigger_pagerduty_alert
                 exit 1
                 fi
             fi
         fi
     fi
 fi
-
-resolve_pagerduty_alert

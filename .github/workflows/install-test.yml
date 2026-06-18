@@ -164,3 +164,19 @@ jobs:
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
           DRYRUN: ${{ inputs.dryrun }}
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [homebrew, homebrew-core, apt, yum, scoop, winget, docker, npm, npm-no-optional, npx]
+    if: always()
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - run: bash scripts/install-test.sh notify
+        env:
+          OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}
