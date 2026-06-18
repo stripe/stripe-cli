@@ -13,10 +13,10 @@ import (
 
 	pkgdocs "github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/pager"
-	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/docs/spinner"
 	"github.com/stripe/stripe-cli/pkg/docs/tui"
 	"github.com/stripe/stripe-cli/pkg/docs/ui"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 func isStdoutTTY(cmd *cobra.Command) bool {

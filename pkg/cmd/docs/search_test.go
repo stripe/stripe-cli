@@ -15,8 +15,8 @@ import (
 
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
 
-	"github.com/stripe/stripe-cli/pkg/docs"
 	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
+	"github.com/stripe/stripe-cli/pkg/docs"
 )
 
 func stripANSI(s string) string {

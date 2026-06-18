@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	tea "charm.land/bubbletea/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -36,7 +36,7 @@ type RootCommand struct {
 	rendererOpts []markdown.RendererOption
 	logger       *log.Entry
 
-	noPager bool
+	noPager        bool
 	nonInteractive bool
 }
 
