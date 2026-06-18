@@ -20,9 +20,6 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh homebrew
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
   homebrew-core:
     runs-on: macos-latest
     steps:
@@ -32,9 +29,6 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh homebrew-core
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
   apt:
     runs-on: ubuntu-latest
     steps:
@@ -44,9 +38,6 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh apt
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
   yum:
     runs-on: ubuntu-latest
     container: fedora:latest
@@ -67,9 +58,6 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh yum
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
   scoop:
     runs-on: windows-latest
     steps:
@@ -81,9 +69,6 @@ jobs:
     - uses: MinoruSekine/setup-scoop@v4
     - shell: powershell
       run: bash scripts/install-test.sh scoop
-      env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
   winget:
     runs-on: windows-latest
     steps:
@@ -94,9 +79,6 @@ jobs:
         sparse-checkout-cone-mode: false
     - shell: powershell
       run: bash scripts/install-test.sh winget
-      env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
@@ -107,9 +89,6 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: sh scripts/install-test.sh docker
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
 
   npm:
     strategy:
@@ -126,9 +105,6 @@ jobs:
         with:
           node-version: '22'
       - run: bash scripts/install-test.sh npm
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
 
   npm-no-optional:
     runs-on: ubuntu-latest
@@ -142,9 +118,6 @@ jobs:
         with:
           node-version: '22'
       - run: bash scripts/install-test.sh npm-no-optional
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
 
   npx:
     runs-on: ubuntu-latest
@@ -161,9 +134,6 @@ jobs:
       # optional dependency silently drop the bin link, causing "stripe: not found".
       - run: npm install -g npm@11
       - run: bash scripts/install-test.sh npx
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
 
   notify:
     runs-on: ubuntu-latest
@@ -173,9 +143,9 @@ jobs:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
-            scripts/install-test.sh
+            scripts/notify.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh notify
+      - run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
