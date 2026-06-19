@@ -47,26 +47,26 @@ type CommandInfo struct {
 
 // Plugin contains the plugin properties
 type Plugin struct {
-	Shortname        string        `toml:"Shortname"`
-	Shortdesc        string        `toml:"Shortdesc"`
-	Binary           string        `toml:"Binary"`
-	Releases         []Release     `toml:"Release"`
-	MagicCookieValue string        `toml:"MagicCookieValue"`
-	Commands         []CommandInfo `toml:"Command,omitempty"`
+	Shortname        string        `toml:"Shortname" json:"shortname"`
+	Shortdesc        string        `toml:"Shortdesc" json:"shortdesc"`
+	Binary           string        `toml:"Binary" json:"binary"`
+	Releases         []Release     `toml:"Release" json:"releases"`
+	MagicCookieValue string        `toml:"MagicCookieValue" json:"magic_cookie_value,omitempty"`
+	Commands         []CommandInfo `toml:"Command,omitempty" json:"commands,omitempty"`
 }
 
 // PluginList contains a list of plugins
 type PluginList struct {
-	Plugins []Plugin `toml:"Plugin"`
+	Plugins []Plugin `toml:"Plugin" json:"plugins"`
 }
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string            `toml:"Arch"`
-	OS      string            `toml:"OS"`
-	Version string            `toml:"Version"`
-	Sum     string            `toml:"Sum"`
-	Runtime map[string]string `toml:"Runtime,omitempty"`
+	Arch    string            `toml:"Arch" json:"arch"`
+	OS      string            `toml:"OS" json:"os"`
+	Version string            `toml:"Version" json:"version"`
+	Sum     string            `toml:"Sum" json:"sum,omitempty"`
+	Runtime map[string]string `toml:"Runtime,omitempty" json:"runtime,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client

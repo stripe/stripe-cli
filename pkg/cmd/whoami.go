@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"text/tabwriter"
 
@@ -157,42 +156,19 @@ func keyAvailabilityText(k whoamiKeyInfo) string {
 }
 
 // resolveKeyInfo determines key availability and expiry for the given mode.
-// If an in-memory override key (--api-key / STRIPE_API_KEY) is active, it is
-// classified by prefix and returned without expiry (not persisted). Otherwise,
-// the persisted config file (test) or keychain (live) is checked.
+// HasAPIKey handles all sources (env var, --api-key flag, config file, keyring)
+// without reading the secret, avoiding OS auth prompts on macOS.
 func resolveKeyInfo(profile *config.Profile, livemode bool) whoamiKeyInfo {
-	if key := overrideAPIKey(profile); key != "" {
-		return whoamiKeyInfo{Available: apiKeyIsLivemode(key) == livemode}
-	}
-
-	if livemode && config.KeyRing == nil {
-		return whoamiKeyInfo{Available: false}
-	}
-	if _, err := profile.GetAPIKey(livemode); err != nil {
+	if !profile.HasAPIKey(livemode) {
 		return whoamiKeyInfo{Available: false}
 	}
 
 	info := whoamiKeyInfo{Available: true}
-	if t, err := profile.GetExpiresAt(livemode); err == nil {
-		s := t.Format(config.DateStringFormat)
-		info.ExpiresAt = &s
+	if !profile.HasOverrideAPIKey() {
+		if t, err := profile.GetExpiresAt(livemode); err == nil {
+			s := t.Format(config.DateStringFormat)
+			info.ExpiresAt = &s
+		}
 	}
 	return info
-}
-
-// overrideAPIKey returns the in-memory key override in effect for this
-// command, if any. These are the sources that GetAPIKey checks before the
-// persisted config/keyring, and which are mode-agnostic in that function.
-func overrideAPIKey(profile *config.Profile) string {
-	if key := os.Getenv("STRIPE_API_KEY"); key != "" {
-		return key
-	}
-	return profile.APIKey
-}
-
-// apiKeyIsLivemode reports whether a key's prefix indicates live mode.
-// Stripe API keys have the form sk_test_..., sk_live_..., rk_test_..., rk_live_...
-func apiKeyIsLivemode(key string) bool {
-	parts := strings.SplitN(key, "_", 3)
-	return len(parts) >= 2 && parts[1] == "live"
 }

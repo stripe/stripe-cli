@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // CustomTestConfig is a test config that allows overriding the config folder path
@@ -51,6 +53,146 @@ func TestGetPluginList(t *testing.T) {
 	require.Equal(t, "darwin", release.OS)
 	require.Equal(t, "0.0.1", release.Version)
 	require.Equal(t, "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238", release.Sum)
+}
+
+func TestGetPluginListIgnoresLocalPluginMetadataOutsideManifest(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "docs",
+		Shortdesc:        "Docs plugin",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	pluginList, err := GetPluginList(context.Background(), config, fs)
+	require.NoError(t, err)
+	require.Len(t, pluginList.Plugins, 3)
+
+	_, err = findPlugin(pluginList, "docs")
+	require.Error(t, err)
+	_, err = findPlugin(pluginList, "appA")
+	require.NoError(t, err)
+	_, err = findPlugin(pluginList, "appB")
+	require.NoError(t, err)
+	_, err = findPlugin(pluginList, "appC")
+	require.NoError(t, err)
+}
+
+func TestGetPluginListUsesManifestMetadataForOverlappingPlugin(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "appA",
+		Shortdesc:        "Locally cached App A",
+		Binary:           "stripe-cli-local-app-a",
+		MagicCookieValue: "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "2.0.1",
+				Sum:     "abc123",
+				Runtime: map[string]string{"node": "20"},
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	pluginList, err := GetPluginList(context.Background(), config, fs)
+	require.NoError(t, err)
+	require.Len(t, pluginList.Plugins, 3)
+
+	plugin, err := findPlugin(pluginList, "appA")
+	require.NoError(t, err)
+	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
+	require.Empty(t, plugin.Shortdesc)
+	require.Len(t, plugin.Releases, 12)
+
+	release := plugin.getReleaseForVersion("2.0.1")
+	require.NotNil(t, release)
+	require.Empty(t, release.Runtime)
+}
+
+func TestListPluginsUsesAuthenticatedEndpoint(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+
+	var authenticatedLookups int
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/list-plugins":
+			authenticatedLookups++
+			require.Equal(t, runtime.GOOS, req.URL.Query().Get("os"))
+			require.Equal(t, runtime.GOARCH, req.URL.Query().Get("arch"))
+			require.Equal(t, "Bearer "+config.Profile.APIKey, req.Header.Get("Authorization"))
+			require.Equal(t, stripe.APIVersion, req.Header.Get("Stripe-Version"))
+			_, _ = res.Write(testListEndpointResponseJSON())
+		case "/ajax/stripecli/list-plugins":
+			t.Fatalf("authenticated list should not hit the anonymous endpoint: %s", req.URL.String())
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer apiServer.Close()
+
+	pluginList, err := ListPlugins(context.Background(), config, apiServer.URL, "")
+	require.NoError(t, err)
+	require.Equal(t, 1, authenticatedLookups)
+	require.Len(t, pluginList.Plugins, 1)
+	require.Equal(t, "apps", pluginList.Plugins[0].Shortname)
+	require.Equal(t, "Build and manage Stripe Apps", pluginList.Plugins[0].Shortdesc)
+	require.Len(t, pluginList.Plugins[0].Commands, 1)
+	require.Equal(t, "create", pluginList.Plugins[0].Commands[0].Name)
+	require.Len(t, pluginList.Plugins[0].Releases, 1)
+	require.Equal(t, "1.12.0", pluginList.Plugins[0].Releases[0].Version)
+	require.Equal(t, "20", pluginList.Plugins[0].Releases[0].Runtime["node"])
+}
+
+func TestListPluginsUsesAnonymousEndpointWhenAPIKeyNotConfigured(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous list should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	var anonymousLookups int
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/list-plugins":
+			anonymousLookups++
+			require.Equal(t, runtime.GOOS, req.URL.Query().Get("os"))
+			require.Equal(t, runtime.GOARCH, req.URL.Query().Get("arch"))
+			require.Empty(t, req.Header.Get("Authorization"))
+			require.Equal(t, stripe.APIVersion, req.Header.Get("Stripe-Version"))
+			_, _ = res.Write(testListEndpointResponseJSON())
+		case "/v1/stripecli/list-plugins":
+			t.Fatalf("anonymous list should not hit the authenticated endpoint: %s", req.URL.String())
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	pluginList, err := ListPlugins(context.Background(), config, apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, 1, anonymousLookups)
+	require.Len(t, pluginList.Plugins, 1)
+	require.Equal(t, "apps", pluginList.Plugins[0].Shortname)
 }
 
 func TestLookUpPlugin(t *testing.T) {
@@ -1174,4 +1316,292 @@ func TestRefreshPluginManifestRefusesSymlinkedParent(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(victimDir, "plugins.toml"))
 	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			res.WriteHeader(http.StatusNotFound)
+			res.Write([]byte(`{"error":{"message":"not found"}}`))
+		case "/v1/stripecli/get-plugin-url":
+			body, _ := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+	require.Error(t, err)
+
+	var pluginNotFound *ErrPluginNotFound
+	require.ErrorAs(t, err, &pluginNotFound)
+	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	originalPluginData := requests.DefaultPluginData
+	requests.DefaultPluginData = requests.PluginData{
+		PluginBaseURL:       testServers.ArtifactoryServer.URL,
+		AdditionalManifests: nil,
+	}
+	defer func() {
+		requests.DefaultPluginData = originalPluginData
+	}()
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			res.WriteHeader(http.StatusNotFound)
+			res.Write([]byte(`{"error":{"message":"not found"}}`))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+	require.Error(t, err)
+
+	var pluginNotFound *ErrPluginNotFound
+	require.ErrorAs(t, err, &pluginNotFound)
+	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallSucceedsForGAPluginWhenNotLoggedIn(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Fatalf("anonymous resolution should not hit the API host: %s", req.URL.String())
+	}))
+	defer apiServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
+	require.NoError(t, err)
+	require.NotNil(t, resolvedPlugin.Plugin)
+	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
+	require.Equal(t, "2.0.1", resolvedPlugin.Version)
+}
+
+func testListEndpointResponseJSON() []byte {
+	return []byte(fmt.Sprintf(`{
+  "plugins": [
+    {
+      "shortname": "apps",
+      "shortdesc": "Build and manage Stripe Apps",
+      "binary": "stripe-cli-apps",
+      "commands": [
+        {
+          "name": "create",
+          "desc": "Create an app"
+        }
+      ],
+      "releases": [
+        {
+          "os": "%s",
+          "arch": "%s",
+          "version": "1.12.0",
+          "runtime": {
+            "node": "20"
+          }
+        }
+      ],
+      "binary_url": null
+    }
+  ]
+}`, runtime.GOOS, runtime.GOARCH))
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	orig := os.Stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = w
+
+	fn()
+
+	w.Close()
+	os.Stderr = orig
+
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+	return buf.String()
+}
+
+func makeManifestWithPlugin(shortname, version string) string {
+	return fmt.Sprintf(`[[Plugin]]
+  Shortname = "%s"
+  Binary = "stripe-cli-%s"
+  MagicCookieValue = "TEST-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "%s"
+    Sum = "abc123"
+`, shortname, shortname, runtime.GOARCH, runtime.GOOS, version)
+}
+
+func TestCheckLatestPluginVersionPrintsWhenUpgradeAvailable(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	// Simulate v1.0.0 installed on disk.
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	// Manifest has v1.1.0.
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+	require.Contains(t, output, "v1.0.0")
+	require.Contains(t, output, "v1.1.0")
+	require.Contains(t, output, "stripe plugin upgrade myplugin")
+}
+
+func TestCheckLatestPluginVersionSilentWhenUpToDate(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.1.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentWhenNoInstalledVersion(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentWhenNoManifest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
+	orig := PluginsPath
+	PluginsPath = "/some/local/dev/path"
+	defer func() { PluginsPath = orig }()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(makeManifestWithPlugin("myplugin", "1.1.0")), os.ModePerm))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(config, fs, plugin)
+	})
+
+	require.Empty(t, output)
 }

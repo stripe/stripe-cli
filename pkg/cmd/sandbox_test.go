@@ -14,11 +14,13 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
 
@@ -28,6 +30,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 
 	origProfilesFile := Config.ProfilesFile
 	origProfileName := Config.Profile.ProfileName
+	origKeyRing := config.KeyRing
 
 	viper.Reset()
 	os.WriteFile(profilesFile, []byte("[default]\n"), 0600)
@@ -35,12 +38,16 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	Config.Profile.ProfileName = "default"
 	Config.Profile.TestModeAPIKey = ""
 	Config.InitConfig()
+	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	// Mock browser to prevent real browser launches
 	origOpen := openBrowserFunc
 	origCanOpen := canOpenBrowserFunc
 	openBrowserFunc = func(url string) error { return nil }
 	canOpenBrowserFunc = func() bool { return true }
+
+	// Also mock the login package's browser opener (used by fallback flow)
+	restoreLoginBrowser := login.SetOpenBrowserForTesting(func(string) error { return nil })
 
 	// Mock git config
 	origGit := sandbox.GitConfigFunc
@@ -49,8 +56,10 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	return func() {
 		Config.ProfilesFile = origProfilesFile
 		Config.Profile.ProfileName = origProfileName
+		config.KeyRing = origKeyRing
 		openBrowserFunc = origOpen
 		canOpenBrowserFunc = origCanOpen
+		restoreLoginBrowser()
 		sandbox.GitConfigFunc = origGit
 		viper.Reset()
 	}

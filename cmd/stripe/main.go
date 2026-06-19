@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -22,6 +23,11 @@ func main() {
 			Timeout: time.Second * 3,
 		}
 		telemetryClient := &stripe.AnalyticsTelemetryClient{HTTPClient: httpClient}
+		if raw := os.Getenv("STRIPE_TELEMETRY_URL"); raw != "" {
+			if parsed, err := url.Parse(raw); err == nil {
+				telemetryClient.BaseURL = parsed
+			}
+		}
 		contextWithTelemetry := stripe.WithTelemetryClient(ctx, telemetryClient)
 
 		cmd.Execute(contextWithTelemetry)

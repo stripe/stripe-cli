@@ -19,6 +19,18 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// Compartment represents a Stripe compartment from the OIDC userinfo response.
+type Compartment struct {
+	CompartmentID string `json:"compartment_id" mapstructure:"compartment_id" toml:"compartment_id"`
+	Livemode      bool   `json:"livemode"        mapstructure:"livemode"        toml:"livemode"`
+}
+
+// UserInfo mirrors the OIDC userinfo endpoint response and is persisted as a
+// nested table in the profile config.
+type UserInfo struct {
+	Compartments []Compartment `json:"https://stripe.com/compartments" mapstructure:"compartments" toml:"compartments"`
+}
+
 // Profile handles all things related to managing the project specific configurations
 type Profile struct {
 	DeviceName             string
@@ -32,6 +44,8 @@ type Profile struct {
 	AccountID              string
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
+	UAT                    string
+	UserInfo               *UserInfo
 }
 
 // config key names
@@ -48,7 +62,10 @@ const (
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 	SandboxClaimURLName        = "sandbox_claim_url"
 	SandboxExpiresAtName       = "sandbox_expires_at"
+	UserInfoName               = "user_info"
 )
+
+const UATKeychainItemKey = "uat"
 
 const (
 	// DateStringFormat is the format for expiredAt date
@@ -150,6 +167,15 @@ func (p *Profile) CreateProfile() error {
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
 
+	// user_info is top-level; remove it before re-writing so stale data is never kept
+	if v.IsSet(UserInfoName) {
+		var err error
+		v, err = removeKey(v, UserInfoName)
+		if err != nil {
+			return err
+		}
+	}
+
 	writeErr := p.writeProfile(v)
 	if writeErr != nil {
 		return writeErr
@@ -221,6 +247,58 @@ func (p *Profile) GetAccountID() (string, error) {
 	}
 
 	return "", validators.ErrAccountIDNotConfigured
+}
+
+// HasOverrideAPIKey reports whether an in-memory API key override is active
+// (via STRIPE_API_KEY env var or --api-key flag).
+func (p *Profile) HasOverrideAPIKey() bool {
+	return os.Getenv("STRIPE_API_KEY") != "" || p.APIKey != ""
+}
+
+// isLivemodeKey reports whether a key's prefix indicates live mode.
+func isLivemodeKey(key string) bool {
+	parts := strings.SplitN(key, "_", 3)
+	return len(parts) >= 2 && parts[1] == "live"
+}
+
+// HasAPIKey reports whether an API key is available for the given mode without
+// reading its value. For live mode this checks the keyring key list only,
+// avoiding OS-level auth prompts (e.g. macOS Keychain) that would be required
+// to access the secret data.
+func (p *Profile) HasAPIKey(livemode bool) bool {
+	if key := os.Getenv("STRIPE_API_KEY"); key != "" {
+		return isLivemodeKey(key) == livemode
+	}
+	if p.APIKey != "" {
+		return isLivemodeKey(p.APIKey) == livemode
+	}
+
+	if !livemode {
+		if err := viper.ReadInConfig(); err != nil {
+			return false
+		}
+		if viper.IsSet(p.GetConfigField("secret_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "secret_key")
+		} else if viper.IsSet(p.GetConfigField("api_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "api_key")
+		}
+		return viper.GetString(p.GetConfigField(TestModeAPIKeyName)) != ""
+	}
+
+	if KeyRing == nil {
+		return false
+	}
+	fieldID := p.GetConfigField(LiveModeAPIKeyName)
+	existingKeys, err := KeyRing.Keys()
+	if err != nil {
+		return false
+	}
+	for _, item := range existingKeys {
+		if item == fieldID {
+			return true
+		}
+	}
+	return false
 }
 
 // GetAPIKey will return the existing key for the given profile
@@ -427,6 +505,22 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
 	}
 
+	if KeyRing != nil {
+		if p.UAT != "" {
+			_ = KeyRing.Set(keyring.Item{
+				Key:   UATKeychainItemKey,
+				Data:  []byte(strings.TrimSpace(p.UAT)),
+				Label: "Stripe CLI user access token",
+			})
+		} else {
+			_ = KeyRing.Remove(UATKeychainItemKey)
+		}
+	}
+
+	if p.UserInfo != nil {
+		runtimeViper.Set(UserInfoName, p.UserInfo)
+	}
+
 	runtimeViper.MergeInConfig()
 
 	// Do this after we merge the old configs in
@@ -558,6 +652,25 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 		}
 	}
 	return nil
+}
+
+// GetUserInfo reads the stored UserInfo from the profile config.
+// Returns nil, nil when no user_info has been saved yet.
+func (p *Profile) GetUserInfo() (*UserInfo, error) {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	if !viper.IsSet(UserInfoName) {
+		return nil, nil
+	}
+
+	var ui UserInfo
+	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
+		return nil, err
+	}
+
+	return &ui, nil
 }
 
 // SessionCredentials are the credentials needed for this session

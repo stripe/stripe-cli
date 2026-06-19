@@ -13,6 +13,7 @@ type pluginCmd struct {
 
 func newPluginCmd() *pluginCmd {
 	pc := &pluginCmd{}
+	listCmd := plugin.NewListCmd(&Config)
 
 	pc.cmd = &cobra.Command{
 		Use:    "plugin",
@@ -22,6 +23,7 @@ func newPluginCmd() *pluginCmd {
 		Long:   "Interact with Stripe CLI plugins.",
 	}
 
+	pc.cmd.AddCommand(listCmd.Cmd)
 	pc.cmd.AddCommand(plugin.NewInstallCmd(&Config).Cmd)
 	pc.cmd.AddCommand(plugin.NewUpgradeCmd(&Config).Cmd)
 	pc.cmd.AddCommand(plugin.NewUninstallCmd(&Config).Cmd)

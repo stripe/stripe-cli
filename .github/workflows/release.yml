@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # Required for OIDC to npm
 
 jobs:
   canary-tests:
@@ -16,14 +17,32 @@ jobs:
     secrets:
       STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
 
-  build-mac:
+  approve-release:
     needs: [canary-tests]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - run: echo "Release approved, proceeding."
+
+  build-mac:
+    needs: [approve-release]
     runs-on: macos-latest
     steps:
       - name: Code checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
+          owner: stripe
+          repositories: |
+            stripe-cli
+            homebrew-stripe-cli
+            scoop-stripe-cli
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -36,10 +55,10 @@ jobs:
           args: release -f .goreleaser/mac.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build-linux:
-    needs: [canary-tests]
+    needs: [approve-release]
     runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
@@ -74,13 +93,24 @@ jobs:
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
-    needs: [canary-tests]
+    needs: [approve-release]
     runs-on: windows-latest
     steps:
       - name: Code checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_CLIENT_ID }}
+          private-key: ${{ secrets.GH_APP_STRIPE_CLI_RELEASER_PRIVATE_KEY }}
+          owner: stripe
+          repositories: |
+            stripe-cli
+            homebrew-stripe-cli
+            scoop-stripe-cli
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
@@ -93,7 +123,9 @@ jobs:
           args: release -f .goreleaser/windows.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # The GitHub App token is scoped to the stripe org and cannot create
+          # PRs on microsoft/winget-pkgs, so winget still requires a PAT.
           WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
 
   upload-to-virustotal:
@@ -108,3 +140,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+
+  publish-npm:
+    needs: [build-mac, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Derive version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Download and extract platform binaries from GitHub Release
+        run: node npm/scripts/fetch-binaries.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+
+      - name: Stamp version into all package.json files
+        run: node npm/scripts/stamp-version.js ${{ env.VERSION }}
+
+      - name: Copy README into each package
+        run: |
+          for dir in wrapper darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            cp README.md npm/$dir/README.md
+          done
+
+      - name: Publish platform packages
+        run: |
+          for dir in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            npm publish ./npm/$dir
+          done
+
+      - name: Publish wrapper package
+        run: npm publish ./npm/wrapper

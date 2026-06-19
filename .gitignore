@@ -11,5 +11,13 @@ stripe-completion.bash
 stripe-completion.zsh
 stripe.fish
 
+# npm distribution (binaries placed by CI, vendor/ by postinstall fallback)
+npm/*/bin/stripe
+npm/*/bin/stripe.exe
+npm/*/README.md
+npm/wrapper/vendor/
+npm/_tmp/
+!npm/wrapper/bin
+
 # Claude Code local configuration (auto-added)
 .claude/*.local.*
