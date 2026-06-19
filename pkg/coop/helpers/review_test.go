@@ -25,20 +25,7 @@ func TestNextPendingNodeInStep(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, 2, NextPendingNodeInStep(session, 0, 1))
-	assert.Equal(t, 0, NextPendingNodeInStep(session, 0, 2))
-	assert.Equal(t, 3, NextPendingNodeInStep(session, 1, 0))
-}
-
-func TestStepReviewApplies(t *testing.T) {
-	session := &coop.Session{
-		Steps: []coop.SessionStep{
-			{
-				Nodes: []coop.SessionNode{{State: coop.NodeReview}},
-			},
-		},
-	}
-
-	assert.True(t, StepReviewApplies(session, 1))
-	assert.False(t, StepReviewApplies(session, 99))
+	assert.Equal(t, 2, NextPendingNodeInStep(session, 1, 1))
+	assert.Equal(t, 0, NextPendingNodeInStep(session, 1, 2))
+	assert.Equal(t, 3, NextPendingNodeInStep(session, 2, 0))
 }

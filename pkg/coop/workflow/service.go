@@ -203,7 +203,7 @@ func (s *Service) ConfirmReview(sessionID string, nodeNumbers []int) (*coop.Sess
 			if err != nil {
 				return err
 			}
-			if node.State == coop.NodeDone {
+			if node.State == coop.NodeDone || node.State == coop.NodeSkipped {
 				continue
 			}
 			if err := session.TransitionNode(nodeNumber, coop.NodeDone); err != nil {
@@ -254,7 +254,7 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 	if node.AutoConfirm && node.State == coop.NodeReview {
 		return s.autoConfirm(sessionID, nodeNumber)
 	}
-	if helpers.StepReviewApplies(session, nodeNumber) && node.State == coop.NodeReview {
+	if node.State == coop.NodeReview {
 		step, stepIndex, _, err := session.StepByNodeNumber(nodeNumber)
 		if err != nil {
 			return errorResponse(err, "stripe coop status"), nil
@@ -395,27 +395,25 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 
 func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNode, nodeNumber int, targetState coop.NodeState) coop.CommandResponse {
 	if targetState == coop.NodeReview {
-		if helpers.StepReviewApplies(session, nodeNumber) {
-			step, stepIndex, _, err := session.StepByNodeNumber(nodeNumber)
-			if err == nil && !session.StepReadyForReview(stepIndex) {
-				return coop.CommandResponse{
-					OK:        true,
-					SessionID: session.ID,
-					Node:      nodeNumber,
-					State:     string(coop.NodeReview),
-					Message:   fmt.Sprintf("Ready: %s. Continue the step before asking for human review.", node.Title),
-					Next:      nextInStepOrStatus(session, stepIndex, nodeNumber),
-				}
+		step, stepIndex, _, err := session.StepByNodeNumber(nodeNumber)
+		if err == nil && !session.StepReadyForReview(stepIndex) {
+			return coop.CommandResponse{
+				OK:        true,
+				SessionID: session.ID,
+				Node:      nodeNumber,
+				State:     string(coop.NodeReview),
+				Message:   fmt.Sprintf("Ready: %s. Continue the step before asking for human review.", node.Title),
+				Next:      nextInStepOrStatus(session, stepIndex, nodeNumber),
 			}
-			if err == nil {
-				return coop.CommandResponse{
-					OK:        true,
-					SessionID: session.ID,
-					Node:      nodeNumber,
-					State:     string(coop.NodeReview),
-					Message:   fmt.Sprintf("Step ready for review: %s. Run relevant checks, keep useful servers running, share local URLs or test data, then await review.", step.Title),
-					Next:      fmt.Sprintf("stripe coop agent await-review --session=%s --step=%d", session.ID, nodeNumber),
-				}
+		}
+		if err == nil {
+			return coop.CommandResponse{
+				OK:        true,
+				SessionID: session.ID,
+				Node:      nodeNumber,
+				State:     string(coop.NodeReview),
+				Message:   fmt.Sprintf("Step ready for review: %s. Run relevant checks, keep useful servers running, share local URLs or test data, then await review.", step.Title),
+				Next:      fmt.Sprintf("stripe coop agent await-review --session=%s --step=%d", session.ID, nodeNumber),
 			}
 		}
 		return coop.CommandResponse{
@@ -455,7 +453,7 @@ func nextAfterNode(session *coop.Session, nodeNumber int) string {
 }
 
 func nextInStepOrStatus(session *coop.Session, stepIndex, afterNode int) string {
-	if nextNodeNumber := helpers.NextPendingNodeInStep(session, stepIndex, afterNode); nextNodeNumber > 0 {
+	if nextNodeNumber := helpers.NextPendingNodeInStep(session, stepIndex+1, afterNode); nextNodeNumber > 0 {
 		nextNode, _ := session.NodeByNumber(nextNodeNumber)
 		return fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, nextNodeNumber, quoteArg("Beginning: "+nextNode.Title))
 	}

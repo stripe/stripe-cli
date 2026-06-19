@@ -10,6 +10,9 @@ import (
 )
 
 var ErrNoSession = errors.New("no session found")
+var ErrSelectionTimeout = errors.New("timed out waiting for next-action selection")
+
+const NextActionSelectionTimeout = 10 * time.Minute
 
 type Input struct {
 	SessionID string
@@ -97,8 +100,16 @@ func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestio
 }
 
 func WaitForSelection(store Store, sessionID string) (string, error) {
+	return waitForSelection(store, sessionID, NextActionSelectionTimeout, time.Now, time.Sleep)
+}
+
+func waitForSelection(store Store, sessionID string, timeout time.Duration, now func() time.Time, sleep func(time.Duration)) (string, error) {
+	deadline := now().Add(timeout)
 	for {
-		time.Sleep(500 * time.Millisecond)
+		if now().After(deadline) {
+			return "", ErrSelectionTimeout
+		}
+		sleep(500 * time.Millisecond)
 		session, err := store.Read(sessionID)
 		if err != nil {
 			continue

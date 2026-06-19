@@ -76,6 +76,20 @@ func TestConfirmAndRequestChangesUseCentralWorkflow(t *testing.T) {
 	assert.Equal(t, coop.NodeDone, node.State)
 }
 
+func TestConfirmReviewTreatsSkippedNodesAsTerminal(t *testing.T) {
+	store, session := workflowTestStore(t)
+	service := NewService(store)
+
+	_, err := service.Skip(session.ID, 1, "Not needed")
+	require.NoError(t, err)
+
+	updated, err := service.ConfirmReview(session.ID, []int{1})
+	require.NoError(t, err)
+	node, err := updated.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Equal(t, coop.NodeSkipped, node.State)
+}
+
 func TestRequestChangesMovesReviewNodeBackToActive(t *testing.T) {
 	store, session := workflowTestStore(t)
 	service := NewService(store)
