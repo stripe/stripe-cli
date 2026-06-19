@@ -248,7 +248,7 @@ func TestCreateProfileRejectsNewDottedNameBeforeMutation(t *testing.T) {
 }
 
 // WriteConfigField is a separate write path from CreateProfile, reached by
-// `stripe config --set`, docs preferences, and the Terminal quickstart. It must
+// `stripe config --set` and docs preferences. It must
 // enforce the same rule, otherwise the ban can be bypassed entirely.
 func TestWriteConfigFieldRejectsNewDottedName(t *testing.T) {
 	initialConfig := "[default]\ndisplay_name = 'Default'\n"

@@ -8,9 +8,6 @@ import "listen.proto";
 import "login.proto";
 import "login_status.proto";
 import "logs_tail.proto";
-import "sample_configs.proto";
-import "sample_create.proto";
-import "samples_list.proto";
 import "trigger.proto";
 import "triggers_list.proto";
 import "version.proto";
@@ -39,15 +36,6 @@ service StripeCLI {
 
   // Get a realtime stream of API logs. Like `stripe logs tail`.
   rpc LogsTail(LogsTailRequest) returns (stream LogsTailResponse);
-
-  // Get a list of available configs for a given Stripe sample.
-  rpc SampleConfigs(SampleConfigsRequest) returns (SampleConfigsResponse);
-
-  // Clone a Stripe sample. Like `stripe samples create`.
-  rpc SampleCreate(SampleCreateRequest) returns (SampleCreateResponse);
-
-  // Get a list of available Stripe samples. Like `stripe samples list`.
-  rpc SamplesList(SamplesListRequest) returns (SamplesListResponse);
 
   // Trigger a webhook event. Like `stripe trigger`.
   rpc Trigger(TriggerRequest) returns (TriggerResponse);
