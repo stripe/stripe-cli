@@ -194,5 +194,8 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 	assert.Contains(t, instructions, "Verification exercises the app code, not only a direct Stripe CLI/API call")
 	assert.Contains(t, instructions, "Every non-skipped reviewable step needs at least one passed report-check before report-work")
 	assert.Contains(t, instructions, "report-work points to the app file/function/route you changed")
+	assert.Contains(t, instructions, "package manager and lockfile")
+	assert.Contains(t, instructions, "migration system")
+	assert.Contains(t, instructions, "If blueprint_step.app_roles is present, bind each role")
 	assert.Contains(t, instructions, "Never pass full card numbers to Stripe APIs or CLI commands")
 }

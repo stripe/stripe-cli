@@ -208,9 +208,10 @@ func TestNewSessionFromBlueprint(t *testing.T) {
 	// First step is always the context-gathering step
 	assert.Equal(t, "context-step", session.Steps[0].Key)
 	assert.Equal(t, "Understand the project", session.Steps[0].Nodes[0].Title)
-	assert.Contains(t, session.Steps[0].Nodes[0].Description, "app-owned records relevant to this blueprint")
-	assert.Contains(t, session.Steps[0].Nodes[0].Description, "Report, only where applicable")
-	assert.Contains(t, session.Steps[0].Nodes[0].Description, "connected-account mapping")
+	assert.Contains(t, session.Steps[0].Nodes[0].Description, "project infrastructure")
+	assert.Contains(t, session.Steps[0].Nodes[0].Description, "package manager and lockfile format")
+	assert.Contains(t, session.Steps[0].Nodes[0].Description, "migration system")
+	assert.NotContains(t, session.Steps[0].Nodes[0].Description, "connected-account mapping")
 
 	// All nodes should be pending
 	for _, ch := range session.Steps {
@@ -579,6 +580,37 @@ func TestNewSessionFromBlueprintMergesAppRoles(t *testing.T) {
 	assert.Equal(t, "amount_source", node.AppRoles[1].ID)
 	assert.Equal(t, "payment_collection_surface", node.AppRoles[2].ID)
 	assert.Equal(t, "add an app-native checkout entry point", node.AppRoles[2].MissingBehavior)
+}
+
+func TestNewSessionFromBlueprintAddsRoleBindingToContextStep(t *testing.T) {
+	bp := &Blueprint{
+		ID: "role-binding-blueprint",
+		AppRoles: []AppRole{
+			{ID: "payable_record", Kind: "domain_record", Required: true},
+		},
+		Steps: []BlueprintStep{
+			{
+				StepDefinition: StepDefinition{Key: "main", Title: "Main"},
+				Nodes: []NodeDefinition{
+					{
+						Key:      "confirm-payment",
+						Type:     NodeUIComponent,
+						Title:    "Confirm payment",
+						AppRoles: []AppRole{{ID: "payment_collection_surface", Kind: "ui_surface", Required: true}},
+					},
+				},
+			},
+		},
+	}
+
+	session := NewSessionFromBlueprint(bp, "test_context_roles", nil, nil)
+	contextNode := session.Steps[0].Nodes[0]
+
+	assert.Contains(t, contextNode.Description, "bind each blueprint app role")
+	assert.Contains(t, contextNode.Description, "blueprint_step.app_roles")
+	require.Len(t, contextNode.AppRoles, 2)
+	assert.Equal(t, "payable_record", contextNode.AppRoles[0].ID)
+	assert.Equal(t, "payment_collection_surface", contextNode.AppRoles[1].ID)
 }
 
 func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {

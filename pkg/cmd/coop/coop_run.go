@@ -203,7 +203,7 @@ Every non-skipped reviewable step needs at least one passed report-check before 
 
 If a step includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
-If a node asks you to understand the project, scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
+Node 1 is always "Understand the project" — scan files for project infrastructure such as framework, frontend/backend boundaries, package manager and lockfile, migration system, env/config pattern, existing Stripe code, webhook routes, mock checkout/payment paths, and test or Docker setup. If blueprint_step.app_roles is present, bind each role to concrete app code, data, UI, or state before implementation. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
 Agent lifecycle commands (use this session id: %s):
 1. stripe coop agent start-work --session=%s --step=<n> --note="<what you're about to do>"

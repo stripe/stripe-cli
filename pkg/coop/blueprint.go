@@ -263,6 +263,7 @@ func ListBlueprintsWithMetadata() ([]Blueprint, error) {
 // A context-gathering step is prepended so the agent scans the project first.
 func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params map[string]string) *Session {
 	now := time.Now().UTC()
+	appRoles := BlueprintAppRoles(bp)
 
 	// Prepend a context-gathering step (auto-confirmed, no human sign-off needed)
 	contextStep := SessionStep{
@@ -276,8 +277,9 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 					Key:         "scan-project",
 					Type:        NodeTestHelper,
 					Title:       "Understand the project",
-					Description: "Scan the codebase to identify language, framework, dependencies, existing Stripe code, auth/current-user flow, existing webhook routes, and the app-owned records relevant to this blueprint. Report, only where applicable, the source of truth for money values, customer or user identity, Stripe ID persistence, connected-account mapping, and payment, subscription, or entitlement state before changing code.",
+					Description: ProjectContextDescription(appRoles),
 					AutoConfirm: true,
+					AppRoles:    appRoles,
 				},
 				State: NodePending,
 			},
@@ -315,6 +317,32 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
+}
+
+// BlueprintAppRoles returns the unique app-role contract declared across a
+// blueprint. It is used for the initial binding step before implementation.
+func BlueprintAppRoles(bp *Blueprint) []AppRole {
+	if bp == nil {
+		return nil
+	}
+	parts := [][]AppRole{bp.AppRoles}
+	for _, step := range bp.Steps {
+		parts = append(parts, step.AppRoles)
+		for _, node := range step.Nodes {
+			parts = append(parts, node.AppRoles)
+		}
+	}
+	return MergeAppRoles(parts...)
+}
+
+// ProjectContextDescription explains what the initial context step should
+// produce without hardcoding a taxonomy of every app domain shape.
+func ProjectContextDescription(appRoles []AppRole) string {
+	description := "Scan the codebase to identify project infrastructure: language and framework, frontend/backend boundaries, package manager and lockfile format, migration system, environment/config pattern, existing Stripe SDK usage, existing webhook routes, obvious mock checkout or payment paths, and test or Docker setup. Summarize only the facts needed to adapt the remaining blueprint steps to this app."
+	if len(appRoles) == 0 {
+		return description
+	}
+	return description + " Then bind each blueprint app role from blueprint_step.app_roles to concrete app code, data, UI, or state. For each role, report the best existing binding or the smallest app-native addition needed before implementation."
 }
 
 // MergeBlueprintSemantics overlays increasingly specific semantic contracts.
