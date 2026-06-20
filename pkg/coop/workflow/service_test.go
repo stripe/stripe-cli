@@ -149,6 +149,33 @@ func TestStartWorkReturnsBlueprintAppRoles(t *testing.T) {
 	assert.True(t, resp.BlueprintStep.AppRoles[0].Required)
 }
 
+func TestStartWorkReturnsStructuredImplementationAndVerificationRequirements(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Steps[0].Nodes[0].Type = coop.NodeAPIRequest
+		session.Steps[0].Nodes[0].Request = &coop.APIRequest{
+			Path:   "/v1/payment_intents",
+			Method: "post",
+			Params: map[string]interface{}{"amount": "${app.amount_source}"},
+		}
+		session.Steps[0].Nodes[0].AppRoles = []coop.AppRole{
+			{ID: "amount_source", Kind: "money_source", Required: true},
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		return "stripe.paymentIntents.create({ amount })", nil
+	}))
+
+	resp, err := service.StartWork(session.ID, 1, "Create PaymentIntent")
+	require.NoError(t, err)
+
+	assert.Contains(t, resp.ImplementationRequirements, "Bind blueprint_step.app_roles to concrete app code, data, UI, or state before implementing this step; if a required role is missing, add the smallest app-native implementation and report it.")
+	assert.Contains(t, resp.VerificationRequirements, "Verify that the app route, service, job, or handler creates or retrieves the Stripe object; direct Stripe CLI/API calls alone are not sufficient.")
+	assert.Contains(t, resp.QualityWarnings, "If you add or change persistent fields/tables and the project uses a migration system, add the matching migration artifact.")
+}
+
 func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing.T) {
 	store, session := workflowTestStore(t)
 	_, err := store.Update(session.ID, func(session *coop.Session) error {

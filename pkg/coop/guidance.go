@@ -66,6 +66,86 @@ func GenerateStepGuidance(step StepInfo) string {
 	return b.String()
 }
 
+// GenerateImplementationRequirements returns structured obligations an agent
+// should satisfy while implementing a blueprint step.
+func GenerateImplementationRequirements(step StepInfo) []string {
+	var requirements []string
+	if len(step.AppRoles) > 0 {
+		requirements = append(requirements, "Bind blueprint_step.app_roles to concrete app code, data, UI, or state before implementing this step; if a required role is missing, add the smallest app-native implementation and report it.")
+	}
+	switch step.Type {
+	case NodeAPIRequest:
+		requirements = append(requirements, "Implement the Stripe API call through the user's app using the official SDK or the app's existing Stripe client pattern.")
+		if step.APIRequest != nil {
+			requirements = append(requirements, fmt.Sprintf("Use blueprint_step.api_request as the canonical API target: %s %s.", strings.ToUpper(step.APIRequest.Method), step.APIRequest.Path))
+		}
+	case NodeAsyncHandler:
+		requirements = append(requirements, "Implement a signed webhook or async-event handler using the raw request body and the official SDK signature helper.")
+		if len(step.Events) > 0 {
+			requirements = append(requirements, "Branch on every blueprint_step.events value without dropping, renaming, or replacing events with lookup-only work.")
+		}
+	case NodeUIComponent:
+		requirements = append(requirements, "Wire the user-facing behavior into the app's existing route, action, or UI surface instead of adding a detached sample flow.")
+	case NodeTestHelper:
+		requirements = append(requirements, "Use test helpers to exercise the app behavior required by the surrounding blueprint steps, not only raw Stripe object creation.")
+	case NodeCLICommand:
+		requirements = append(requirements, "Run the CLI command or command family described by the blueprint step and report concrete command output.")
+	}
+	return requirements
+}
+
+// GenerateVerificationRequirements returns concrete evidence the agent should
+// collect for a blueprint step.
+func GenerateVerificationRequirements(step StepInfo) []string {
+	var requirements []string
+	switch step.Type {
+	case NodeAPIRequest:
+		requirements = append(requirements, "Verify that the app route, service, job, or handler creates or retrieves the Stripe object; direct Stripe CLI/API calls alone are not sufficient.")
+		if step.APIRequest != nil && requestHasParams(step.APIRequest.Params) {
+			requirements = append(requirements, "Report the app code path and the resolved request params used at runtime, especially blueprint references and app-role bindings.")
+		}
+	case NodeAsyncHandler:
+		requirements = append(requirements, "Verify webhook handling through the app endpoint with signature verification enabled; use stripe listen/trigger or a documented fallback when trigger coverage is unavailable.")
+		requirements = append(requirements, "Verify the app state or side effect produced by each handled event, not only that the event was received.")
+	case NodeUIComponent:
+		requirements = append(requirements, "Verify the existing UI path starts, redirects to, confirms, or displays the blueprint flow through the app.")
+		requirements = append(requirements, "Verify user-facing success, return, or cancel state comes from server-side app/Stripe state when payment or billing state is involved.")
+	case NodeTestHelper:
+		requirements = append(requirements, "Report the setup, operation, and expected app-visible result from the test helper flow.")
+	}
+	if len(step.AppRoles) > 0 {
+		requirements = append(requirements, "Verify every required app role used by this step is bound to an existing or newly added app-native code path.")
+	}
+	return requirements
+}
+
+// GenerateQualityWarnings returns repo-quality guardrails that apply across
+// app implementation steps independent of a specific blueprint product.
+func GenerateQualityWarnings(step StepInfo) []string {
+	if !isAppImplementationStep(step.Type) {
+		return nil
+	}
+	warnings := []string{
+		"If you add or change persistent fields/tables and the project uses a migration system, add the matching migration artifact.",
+		"Preserve the existing package manager and lockfile format; do not rewrite or downgrade lockfiles while adding Stripe dependencies.",
+		"If the app has mock checkout, mock payment, or fake success paths, remove or gate bypasses so production app state cannot skip Stripe.",
+		"Update env/config examples or startup docs when new Stripe secrets, webhook secrets, publishable keys, or return URLs are required.",
+	}
+	if step.Type == NodeAsyncHandler {
+		warnings = append(warnings, "Make webhook side effects idempotent so repeated Stripe deliveries do not duplicate fulfillment, inventory, email, access, or payout work.")
+	}
+	return warnings
+}
+
+func isAppImplementationStep(nodeType NodeType) bool {
+	switch nodeType {
+	case NodeAPIRequest, NodeAsyncHandler, NodeUIComponent, NodeTestHelper, NodeSetUpWebhooks:
+		return true
+	default:
+		return false
+	}
+}
+
 // GenerateAPIRequestGuidance summarizes how an agent should use the blueprint
 // request metadata for an app implementation step.
 func GenerateAPIRequestGuidance(req *APIRequest) string {

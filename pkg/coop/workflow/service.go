@@ -101,8 +101,12 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 	if blueprintStep, err := session.StepInfoByNumber(nodeNumber); err == nil {
 		resp.BlueprintStep = blueprintStep
 		resp.AgentGuidance = coop.GenerateStepGuidance(*blueprintStep)
+		resp.ImplementationRequirements = coop.GenerateImplementationRequirements(*blueprintStep)
+		resp.VerificationRequirements = coop.GenerateVerificationRequirements(*blueprintStep)
+		resp.QualityWarnings = coop.GenerateQualityWarnings(*blueprintStep)
 	}
 	if node.Type == coop.NodeAPIRequest && node.Request != nil {
+		resp.APIRequest = node.Request
 		if coop.ShouldFetchSDKSnippet(node.Request) {
 			if snippet, err := s.fetchSnippet(node.Request.Path, node.Request.Method, node.Request.Params, language(session)); err == nil {
 				resp.SDKExample = snippet

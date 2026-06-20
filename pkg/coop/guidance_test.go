@@ -253,6 +253,55 @@ func TestGenerateStepGuidanceSteersPaymentVerificationToAppLifecycle(t *testing.
 	assert.Contains(t, guidance, "paid, active, fulfilled, or entitled state after the signed event")
 }
 
+func TestGenerateStructuredRequirementsForAPIRequest(t *testing.T) {
+	step := StepInfo{
+		Number: 2,
+		Key:    "create-payment-intent",
+		Title:  "Create PaymentIntent",
+		Type:   NodeAPIRequest,
+		APIRequest: &APIRequest{
+			Path:   "/v1/payment_intents",
+			Method: "post",
+			Params: map[string]interface{}{"amount": "${app.amount_source}"},
+		},
+		AppRoles: []AppRole{
+			{ID: "payable_record", Kind: "domain_record", Required: true},
+		},
+	}
+
+	implementation := GenerateImplementationRequirements(step)
+	verification := GenerateVerificationRequirements(step)
+	warnings := GenerateQualityWarnings(step)
+
+	assert.Contains(t, implementation, "Bind blueprint_step.app_roles to concrete app code, data, UI, or state before implementing this step; if a required role is missing, add the smallest app-native implementation and report it.")
+	assert.Contains(t, implementation, "Use blueprint_step.api_request as the canonical API target: POST /v1/payment_intents.")
+	assert.Contains(t, verification, "Verify that the app route, service, job, or handler creates or retrieves the Stripe object; direct Stripe CLI/API calls alone are not sufficient.")
+	assert.Contains(t, verification, "Report the app code path and the resolved request params used at runtime, especially blueprint references and app-role bindings.")
+	assert.Contains(t, warnings, "If you add or change persistent fields/tables and the project uses a migration system, add the matching migration artifact.")
+	assert.Contains(t, warnings, "Preserve the existing package manager and lockfile format; do not rewrite or downgrade lockfiles while adding Stripe dependencies.")
+	assert.Contains(t, warnings, "If the app has mock checkout, mock payment, or fake success paths, remove or gate bypasses so production app state cannot skip Stripe.")
+}
+
+func TestGenerateStructuredRequirementsForWebhook(t *testing.T) {
+	step := StepInfo{
+		Number: 3,
+		Key:    "handle-payment",
+		Title:  "Handle payment webhook",
+		Type:   NodeAsyncHandler,
+		Events: []string{"payment_intent.succeeded"},
+	}
+
+	implementation := GenerateImplementationRequirements(step)
+	verification := GenerateVerificationRequirements(step)
+	warnings := GenerateQualityWarnings(step)
+
+	assert.Contains(t, implementation, "Implement a signed webhook or async-event handler using the raw request body and the official SDK signature helper.")
+	assert.Contains(t, implementation, "Branch on every blueprint_step.events value without dropping, renaming, or replacing events with lookup-only work.")
+	assert.Contains(t, verification, "Verify webhook handling through the app endpoint with signature verification enabled; use stripe listen/trigger or a documented fallback when trigger coverage is unavailable.")
+	assert.Contains(t, verification, "Verify the app state or side effect produced by each handled event, not only that the event was received.")
+	assert.Contains(t, warnings, "Make webhook side effects idempotent so repeated Stripe deliveries do not duplicate fulfillment, inventory, email, access, or payout work.")
+}
+
 func TestBlueprintReferencesReturnsSortedUniqueTokens(t *testing.T) {
 	refs := BlueprintReferences(
 		"/v1/invoices/${node.main.create-invoice:id}",
