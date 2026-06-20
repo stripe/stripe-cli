@@ -91,6 +91,7 @@ func TestSDKSnippetGuidanceUsesLanguageComments(t *testing.T) {
 	node := SDKSnippetGuidance(req, "node")
 	assert.Contains(t, node, "// Blueprint request: POST /v1/checkout/sessions")
 	assert.Contains(t, node, "does not include canonical request params")
+	assert.Contains(t, node, "// Fallback guidance for thin blueprints:")
 	assert.Contains(t, node, "// For existing apps, derive Checkout line items")
 	assert.Contains(t, node, "rather than the success URL")
 

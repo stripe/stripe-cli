@@ -18,6 +18,7 @@ func TestGenerateAPIRequestGuidanceUsesBlueprintParamsAsCanonical(t *testing.T) 
 	assert.Contains(t, guidance, "POST /v1/checkout/sessions")
 	assert.Contains(t, guidance, "blueprint_step.api_request.params are canonical")
 	assert.Contains(t, guidance, "hosted Checkout")
+	assert.Contains(t, guidance, "Fallback guidance for thin blueprints")
 }
 
 func TestGenerateAPIRequestGuidanceSteersCheckoutToAppDomainLifecycle(t *testing.T) {
@@ -81,6 +82,7 @@ func TestGenerateAsyncHandlerGuidanceMentionsKnownTriggerGaps(t *testing.T) {
 
 	assert.Contains(t, guidance, "signed webhook/event handler")
 	assert.Contains(t, guidance, "entitlements.active_entitlement_summary.updated, test_helpers.test_clock.ready")
+	assert.Contains(t, guidance, "Fallback guidance for thin blueprints")
 	assert.Contains(t, guidance, "might not support `stripe trigger entitlements.active_entitlement_summary.updated`")
 	assert.Contains(t, guidance, "test clock readiness")
 }
@@ -232,6 +234,7 @@ func TestGenerateStepGuidanceSteersPaymentUIIntoExistingAppFlow(t *testing.T) {
 	})
 
 	assert.Contains(t, guidance, "passing the current app record identity to the server endpoint")
+	assert.Contains(t, guidance, "Fallback guidance for thin blueprints")
 	assert.Contains(t, guidance, "do not create a separate sample-only payment path")
 	assert.Contains(t, guidance, "domain flow for the thing being paid for or subscribed to")
 	assert.Contains(t, guidance, "server-verified state tied to the current user and Stripe IDs")

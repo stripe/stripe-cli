@@ -10,6 +10,8 @@ import (
 
 var blueprintReferenceTokenRE = regexp.MustCompile(`\$\{[^}]+\}`)
 
+const fallbackProductGuidanceLabel = "Fallback guidance for thin blueprints:"
+
 // GenerateStepGuidance summarizes how an agent should follow one concrete
 // blueprint step.
 func GenerateStepGuidance(step StepInfo) string {
@@ -60,6 +62,8 @@ func GenerateStepGuidance(step StepInfo) string {
 		if productGuidance == "" {
 			return b.String()
 		}
+		b.WriteString(" ")
+		b.WriteString(fallbackProductGuidanceLabel)
 		b.WriteString(" ")
 		b.WriteString(productGuidance)
 	}
@@ -172,10 +176,7 @@ func GenerateAPIRequestGuidanceForStep(req *APIRequest, semantics *BlueprintSema
 		b.WriteString(" For hosted Checkout, verify the app creates the Session, returns or redirects to the hosted URL, configures success/cancel URLs, and handles the relevant webhook state without automating card entry.")
 	}
 	if !hasAPIProductSemantics(semantics) {
-		for _, note := range APIRequestProductGuidance(req) {
-			b.WriteString(" ")
-			b.WriteString(note)
-		}
+		appendFallbackProductGuidance(&b, APIRequestProductGuidance(req))
 	}
 	return b.String()
 }
@@ -196,10 +197,7 @@ func GenerateAsyncHandlerGuidanceForStep(events []string, semantics *BlueprintSe
 	var b strings.Builder
 	fmt.Fprintf(&b, "Implement one signed webhook/event handler, verify the Stripe signature on the raw body, branch on every blueprint event (%s), and store or refresh the app state needed by later steps.", strings.Join(events, ", "))
 	if !hasAsyncProductSemantics(semantics) {
-		for _, note := range AsyncEventProductGuidance(events) {
-			b.WriteString(" ")
-			b.WriteString(note)
-		}
+		appendFallbackProductGuidance(&b, AsyncEventProductGuidance(events))
 	}
 	for _, event := range events {
 		if note := asyncEventVerificationNote(event); note != "" {
@@ -208,6 +206,16 @@ func GenerateAsyncHandlerGuidanceForStep(events []string, semantics *BlueprintSe
 		}
 	}
 	return b.String()
+}
+
+func appendFallbackProductGuidance(b *strings.Builder, notes []string) {
+	if len(notes) == 0 {
+		return
+	}
+	b.WriteString(" ")
+	b.WriteString(fallbackProductGuidanceLabel)
+	b.WriteString(" ")
+	b.WriteString(strings.Join(notes, " "))
 }
 
 func normalizedEvents(events []string) []string {
