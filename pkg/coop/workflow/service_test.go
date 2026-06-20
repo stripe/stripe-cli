@@ -86,6 +86,7 @@ func TestStartWorkReturnsSDKExampleForBlueprintParams(t *testing.T) {
 	require.True(t, called)
 	assert.Contains(t, resp.SDKExample, "mode: 'payment'")
 	assert.Contains(t, resp.AgentGuidance, "blueprint_step.api_request.params are canonical")
+	assert.Contains(t, resp.AcceptanceCriteria, "App code calls the blueprint API target POST /v1/checkout/sessions through the official Stripe SDK or the app's existing Stripe client pattern.")
 	require.NotNil(t, resp.BlueprintStep)
 	require.NotNil(t, resp.BlueprintStep.APIRequest)
 	assert.Equal(t, "/v1/checkout/sessions", resp.BlueprintStep.APIRequest.Path)
@@ -172,6 +173,7 @@ func TestStartWorkReturnsStructuredImplementationAndVerificationRequirements(t *
 	require.NoError(t, err)
 
 	assert.Contains(t, resp.ImplementationRequirements, "Bind blueprint_step.app_roles to concrete app code, data, UI, or state before implementing this step; if a required role is missing, add the smallest app-native implementation and report it.")
+	assert.Contains(t, resp.AcceptanceCriteria, "Every required blueprint_step.app_roles entry used by this step has a reported app binding or the smallest app-native addition needed.")
 	assert.Contains(t, resp.VerificationRequirements, "Verify that the app route, service, job, or handler creates or retrieves the Stripe object; direct Stripe CLI/API calls alone are not sufficient.")
 	assert.Contains(t, resp.QualityWarnings, "If you add or change persistent fields/tables and the project uses a migration system, add the matching migration artifact.")
 }

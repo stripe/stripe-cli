@@ -244,6 +244,7 @@ type CommandResponse struct {
 	SDKExample                 string      `json:"sdk_example,omitempty"`
 	WebhookExample             string      `json:"webhook_example,omitempty"`
 	AgentGuidance              string      `json:"agent_guidance,omitempty"`
+	AcceptanceCriteria         []string    `json:"acceptance_criteria,omitempty"`
 	ImplementationRequirements []string    `json:"implementation_requirements,omitempty"`
 	VerificationRequirements   []string    `json:"verification_requirements,omitempty"`
 	QualityWarnings            []string    `json:"quality_warnings,omitempty"`

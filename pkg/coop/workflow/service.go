@@ -101,6 +101,7 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 	if blueprintStep, err := session.StepInfoByNumber(nodeNumber); err == nil {
 		resp.BlueprintStep = blueprintStep
 		resp.AgentGuidance = coop.GenerateStepGuidance(*blueprintStep)
+		resp.AcceptanceCriteria = coop.GenerateAcceptanceCriteria(*blueprintStep)
 		resp.ImplementationRequirements = coop.GenerateImplementationRequirements(*blueprintStep)
 		resp.VerificationRequirements = coop.GenerateVerificationRequirements(*blueprintStep)
 		resp.QualityWarnings = coop.GenerateQualityWarnings(*blueprintStep)
