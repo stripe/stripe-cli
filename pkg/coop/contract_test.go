@@ -13,11 +13,10 @@ func TestGenerateIntegrationContractDerivesObligationsFromBlueprint(t *testing.T
 		AppRoles: []AppRole{
 			{ID: "payable_record", Kind: "domain_record", Required: true},
 		},
-		Chapters: []BlueprintChapter{
+		Steps: []BlueprintStep{
 			{
-				Key:   "setup",
-				Title: "Setup",
-				Nodes: []BlueprintNode{
+				StepDefinition: StepDefinition{Key: "setup", Title: "Setup"},
+				Nodes: []NodeDefinition{
 					{
 						Key:   "create-account",
 						Type:  NodeAPIRequest,
@@ -35,7 +34,7 @@ func TestGenerateIntegrationContractDerivesObligationsFromBlueprint(t *testing.T
 							Path:   "/v1/checkout/sessions",
 							Method: "post",
 							Params: map[string]interface{}{
-								"line_items": []map[string]interface{}{{"price": "${node.setup.create-product.request:id}"}},
+								"line_items": []map[string]interface{}{{"price": "${node.setup.create-product:id}"}},
 							},
 						},
 					},
@@ -60,7 +59,7 @@ func TestGenerateIntegrationContractDerivesObligationsFromBlueprint(t *testing.T
 
 	require.NotEmpty(t, contract)
 	assert.Contains(t, contract, "For apiRequest nodes, preserve the blueprint method, path, params, and output references; adapt only concrete IDs, URLs, and app-owned values at the app boundary.")
-	assert.Contains(t, contract, "Resolve blueprint references from earlier step outputs at runtime instead of creating unrelated Stripe resources: ${node.setup.create-product.request:id}.")
+	assert.Contains(t, contract, "Resolve blueprint references from earlier step outputs at runtime instead of creating unrelated Stripe resources: ${node.setup.create-product:id}.")
 	assert.Contains(t, contract, "For uiComponent nodes, bind the described user or developer action to the app's existing UI, route, command, or setup surface; do not replace it with a sample-only path.")
 	assert.Contains(t, contract, "For asyncHandler nodes, implement signed event handling for the blueprint event set and prove each event's app-visible effect: checkout.session.completed, v2.core.account[configuration.recipient].capability_status_updated.")
 	assert.Contains(t, contract, "Because this blueprint starts a payment or billing flow, use the listed async event(s) as server-verified checkpoints before applying dependent durable app state changes: checkout.session.completed, v2.core.account[configuration.recipient].capability_status_updated.")
@@ -71,11 +70,10 @@ func TestGenerateIntegrationContractDerivesObligationsFromBlueprint(t *testing.T
 func TestGenerateAppMapRequirementsDerivesQuestionsFromBlueprint(t *testing.T) {
 	bp := &Blueprint{
 		ID: "subscription",
-		Chapters: []BlueprintChapter{
+		Steps: []BlueprintStep{
 			{
-				Key:   "main",
-				Title: "Main",
-				Nodes: []BlueprintNode{
+				StepDefinition: StepDefinition{Key: "main", Title: "Main"},
+				Nodes: []NodeDefinition{
 					{
 						Key:   "create-customer",
 						Type:  NodeAPIRequest,

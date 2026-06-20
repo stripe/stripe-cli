@@ -613,6 +613,41 @@ func TestNewSessionFromBlueprintAddsRoleBindingToContextStep(t *testing.T) {
 	assert.Equal(t, "payment_collection_surface", contextNode.AppRoles[1].ID)
 }
 
+func TestNewSessionFromBlueprintAddsInferredAppMapToContextStep(t *testing.T) {
+	bp := &Blueprint{
+		ID: "app-map-blueprint",
+		Steps: []BlueprintStep{
+			{
+				StepDefinition: StepDefinition{Key: "main", Title: "Main"},
+				Nodes: []NodeDefinition{
+					{
+						Key:   "create-checkout",
+						Type:  NodeAPIRequest,
+						Title: "Create Checkout",
+						Request: &APIRequest{
+							Path:   "/v1/checkout/sessions",
+							Method: "post",
+						},
+					},
+					{
+						Key:    "handle-checkout",
+						Type:   NodeAsyncHandler,
+						Title:  "Handle Checkout",
+						Events: []string{"checkout.session.completed"},
+					},
+				},
+			},
+		},
+	}
+
+	session := NewSessionFromBlueprint(bp, "test_app_map", nil, nil)
+	contextNode := session.Steps[0].Nodes[0]
+
+	assert.Contains(t, contextNode.Description, "blueprint-derived questions")
+	assert.Contains(t, contextNode.Description, "Identify the app-owned record, action, or state")
+	assert.Contains(t, contextNode.Description, "Identify where a signed webhook or async-event handler belongs")
+}
+
 func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {
 	ids, err := ListBlueprints()
 	require.NoError(t, err)

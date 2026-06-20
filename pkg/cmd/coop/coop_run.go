@@ -78,7 +78,10 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 }
 
 func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgentRunResponse {
-	return newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp, session))
+	resp := newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp, session))
+	resp.IntegrationContract = coop.GenerateIntegrationContract(bp)
+	resp.AppMapRequirements = coop.GenerateAppMapRequirements(bp)
+	return resp
 }
 
 func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coopAgentRunResponse {
@@ -149,8 +152,10 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 
 type coopAgentRunResponse struct {
 	coop.CommandResponse
-	AgentInstructions string          `json:"agent_instructions"`
-	Steps             []coop.StepInfo `json:"steps"`
+	AgentInstructions   string          `json:"agent_instructions"`
+	IntegrationContract []string        `json:"integration_contract,omitempty"`
+	AppMapRequirements  []string        `json:"app_map_requirements,omitempty"`
+	Steps               []coop.StepInfo `json:"steps"`
 }
 
 func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
@@ -189,7 +194,9 @@ Each step has a description that tells you what to do. Follow the description �
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). This is the only node type where no app code may be required.
 - "testHelper": Verify the app behavior end-to-end. Use Stripe test helpers, test clocks, triggers, or CLI commands as supporting test tools.
 
-When start-work returns agent_guidance, implementation_requirements, verification_requirements, or quality_warnings, treat them as step-specific obligations. For apiRequest steps, treat blueprint_step.api_request.path, blueprint_step.api_request.method, and any blueprint_step.api_request.params as the canonical API contract from the blueprint. When sdk_example is present, use it as the generated SDK translation of that blueprint API request, adapting it to the app's existing Stripe client pattern and resolving blueprint references from prior step outputs. If sdk_example is a warning that the blueprint is endpoint-only, do not treat an empty SDK call as complete; choose params from the step intent, prior blueprint outputs, and Stripe docs, then report the exact app code path and params used.
+Use integration_contract and app_map_requirements as blueprint-derived obligations for the whole flow. They are generated only from blueprint node types, API requests, refs, events, semantics, and app roles. Treat them as binding instructions for how to map the blueprint into this app; do not invent app-specific facts until you have scanned the codebase.
+
+When start-work returns agent_guidance, acceptance_criteria, implementation_requirements, verification_requirements, or quality_warnings, treat them as step-specific obligations. For apiRequest steps, treat blueprint_step.api_request.path, blueprint_step.api_request.method, and any blueprint_step.api_request.params as the canonical API contract from the blueprint. When sdk_example is present, use it as the generated SDK translation of that blueprint API request, adapting it to the app's existing Stripe client pattern and resolving blueprint references from prior step outputs. If sdk_example is a warning that the blueprint is endpoint-only, do not treat an empty SDK call as complete; choose params from the step intent, prior blueprint outputs, and Stripe docs, then report the exact app code path and params used.
 
 For asyncHandler steps, treat blueprint_step.events as the canonical event set. When webhook_example is present, use it as the generated handler translation of those blueprint events, adapting the route, framework, persistence, and side effects to the app without dropping or renaming events. Snapshot events usually include event.data.object, but you should still fetch the latest resource when freshness matters. Thin event notifications are lightweight: parse them with the official SDK thin-event helper when available, retrieve the full Events v2 object or related object before mutating durable app state, and treat v1.<event> thin migration aliases as the same logical event as <event>. If a snapshot and thin destination run in parallel, use snapshot_event from the thin event as the idempotency key when present.
 
@@ -203,7 +210,7 @@ Every non-skipped reviewable step needs at least one passed report-check before 
 
 If a step includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
-Node 1 is always "Understand the project" — scan files for project infrastructure such as framework, frontend/backend boundaries, package manager and lockfile, migration system, env/config pattern, existing Stripe code, webhook routes, mock checkout/payment paths, and test or Docker setup. If blueprint_step.app_roles is present, bind each role to concrete app code, data, UI, or state before implementation. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
+Node 1 is always "Understand the project" — scan files for project infrastructure such as framework, frontend/backend boundaries, package manager and lockfile, migration system, env/config pattern, existing Stripe code, webhook routes, mock checkout/payment paths, and test or Docker setup. Also answer the blueprint-derived app_map_requirements from the initial response. If blueprint_step.app_roles is present, bind each role to concrete app code, data, UI, or state before implementation. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
 Agent lifecycle commands (use this session id: %s):
 1. stripe coop agent start-work --session=%s --step=<n> --note="<what you're about to do>"

@@ -181,6 +181,9 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 	assert.Contains(t, instructions, `"asyncHandler": Implement the app's webhook or async event handler for every event listed on the step`)
 	assert.Contains(t, instructions, "Do not hardcode port 4242 unless the app is actually listening there")
 	assert.Contains(t, instructions, "When start-work returns agent_guidance")
+	assert.Contains(t, instructions, "integration_contract")
+	assert.Contains(t, instructions, "app_map_requirements")
+	assert.Contains(t, instructions, "acceptance_criteria")
 	assert.Contains(t, instructions, "implementation_requirements")
 	assert.Contains(t, instructions, "verification_requirements")
 	assert.Contains(t, instructions, "quality_warnings")
@@ -199,6 +202,7 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 	assert.Contains(t, instructions, "report-work points to the app file/function/route you changed")
 	assert.Contains(t, instructions, "package manager and lockfile")
 	assert.Contains(t, instructions, "migration system")
+	assert.Contains(t, instructions, "answer the blueprint-derived app_map_requirements")
 	assert.Contains(t, instructions, "If blueprint_step.app_roles is present, bind each role")
 	assert.Contains(t, instructions, "Never pass full card numbers to Stripe APIs or CLI commands")
 }

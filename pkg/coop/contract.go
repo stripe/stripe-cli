@@ -208,14 +208,14 @@ func blueprintSignalsFor(bp *Blueprint) blueprintSignals {
 	refs := map[string]bool{}
 	events := map[string]bool{}
 	paths := map[string]bool{}
-	for _, ch := range bp.Chapters {
-		if ch.Semantics != nil {
+	for _, step := range bp.Steps {
+		if step.Semantics != nil {
 			signals.hasSemantics = true
 		}
-		if len(ch.AppRoles) > 0 {
+		if len(step.AppRoles) > 0 {
 			signals.hasAppRoles = true
 		}
-		for _, n := range ch.Nodes {
+		for _, n := range step.Nodes {
 			if n.Semantics != nil {
 				signals.hasSemantics = true
 			}

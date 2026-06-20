@@ -264,6 +264,7 @@ func ListBlueprintsWithMetadata() ([]Blueprint, error) {
 func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params map[string]string) *Session {
 	now := time.Now().UTC()
 	appRoles := BlueprintAppRoles(bp)
+	appMapRequirements := GenerateAppMapRequirements(bp)
 
 	// Prepend a context-gathering step (auto-confirmed, no human sign-off needed)
 	contextStep := SessionStep{
@@ -277,7 +278,7 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 					Key:         "scan-project",
 					Type:        NodeTestHelper,
 					Title:       "Understand the project",
-					Description: ProjectContextDescription(appRoles),
+					Description: ProjectContextDescription(appRoles, appMapRequirements),
 					AutoConfirm: true,
 					AppRoles:    appRoles,
 				},
@@ -337,8 +338,11 @@ func BlueprintAppRoles(bp *Blueprint) []AppRole {
 
 // ProjectContextDescription explains what the initial context step should
 // produce without hardcoding a taxonomy of every app domain shape.
-func ProjectContextDescription(appRoles []AppRole) string {
+func ProjectContextDescription(appRoles []AppRole, appMapRequirements []string) string {
 	description := "Scan the codebase to identify project infrastructure: language and framework, frontend/backend boundaries, package manager and lockfile format, migration system, environment/config pattern, existing Stripe SDK usage, existing webhook routes, obvious mock checkout or payment paths, and test or Docker setup. Summarize only the facts needed to adapt the remaining blueprint steps to this app."
+	if len(appMapRequirements) > 0 {
+		description += " Produce a concise app map that answers these blueprint-derived questions: " + strings.Join(appMapRequirements, " ")
+	}
 	if len(appRoles) == 0 {
 		return description
 	}
