@@ -27,6 +27,7 @@ type BlueprintStep struct {
 	Params      []BlueprintParam    `json:"params,omitempty"`
 	Nodes       []NodeDefinition    `json:"nodes"`
 	Semantics   *BlueprintSemantics `json:"semantics,omitempty"`
+	AppRoles    []AppRole           `json:"app_roles,omitempty"`
 }
 
 // Blueprint is the CLI-friendly representation of a Workbench Blueprint.
@@ -41,6 +42,7 @@ type Blueprint struct {
 	Params      []BlueprintParam    `json:"params,omitempty"`
 	Steps       []BlueprintStep     `json:"steps"`
 	Semantics   *BlueprintSemantics `json:"semantics,omitempty"`
+	AppRoles    []AppRole           `json:"app_roles,omitempty"`
 }
 
 // BlueprintSetting defines a configurable setting for a blueprint.
@@ -290,6 +292,7 @@ func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params m
 		for j, n := range ch.Nodes {
 			nodeDefinition := n
 			nodeDefinition.Semantics = MergeBlueprintSemantics(bp.Semantics, ch.Semantics, n.Semantics)
+			nodeDefinition.AppRoles = MergeAppRoles(bp.AppRoles, ch.AppRoles, n.AppRoles)
 			nodes[j] = SessionNode{
 				NodeDefinition: nodeDefinition,
 				State:          NodePending,
@@ -348,6 +351,62 @@ func MergeBlueprintSemantics(parts ...*BlueprintSemantics) *BlueprintSemantics {
 		return nil
 	}
 	return &merged
+}
+
+// MergeAppRoles overlays app role contracts by ID. Later scopes refine earlier
+// defaults, while new IDs are appended in declaration order.
+func MergeAppRoles(parts ...[]AppRole) []AppRole {
+	var merged []AppRole
+	indexByID := map[string]int{}
+	for _, roles := range parts {
+		for _, role := range roles {
+			if strings.TrimSpace(role.ID) == "" {
+				continue
+			}
+			if index, ok := indexByID[role.ID]; ok {
+				merged[index] = mergeAppRole(merged[index], role)
+				continue
+			}
+			copied := copyAppRole(role)
+			indexByID[copied.ID] = len(merged)
+			merged = append(merged, copied)
+		}
+	}
+	return merged
+}
+
+func mergeAppRole(base, overlay AppRole) AppRole {
+	merged := copyAppRole(base)
+	if overlay.Kind != "" {
+		merged.Kind = overlay.Kind
+	}
+	if overlay.Required {
+		merged.Required = true
+	}
+	if overlay.Description != "" {
+		merged.Description = overlay.Description
+	}
+	if len(overlay.Examples) > 0 {
+		merged.Examples = append([]string(nil), overlay.Examples...)
+	}
+	if len(overlay.ConsumedBy) > 0 {
+		merged.ConsumedBy = append([]string(nil), overlay.ConsumedBy...)
+	}
+	if len(overlay.Evidence) > 0 {
+		merged.Evidence = append([]string(nil), overlay.Evidence...)
+	}
+	if overlay.MissingBehavior != "" {
+		merged.MissingBehavior = overlay.MissingBehavior
+	}
+	return merged
+}
+
+func copyAppRole(role AppRole) AppRole {
+	copied := role
+	copied.Examples = append([]string(nil), role.Examples...)
+	copied.ConsumedBy = append([]string(nil), role.ConsumedBy...)
+	copied.Evidence = append([]string(nil), role.Evidence...)
+	return copied
 }
 
 func mergeSourceOfTruthSemantics(base, overlay *SourceOfTruthSemantics) *SourceOfTruthSemantics {

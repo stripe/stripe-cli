@@ -15,6 +15,7 @@ func NewStepInfo(number int, node SessionNode) StepInfo {
 		TestRequests:  append([]TestHelperRequest(nil), node.TestRequests...),
 		Events:        append([]string(nil), node.Events...),
 		Semantics:     node.Semantics,
+		AppRoles:      append([]AppRole(nil), node.AppRoles...),
 	}
 }
 

@@ -70,6 +70,19 @@ type TestHelperRequest struct {
 	APIRequest
 }
 
+// AppRole describes an app responsibility a blueprint needs bound to concrete
+// code, data, UI, or state in the user's project.
+type AppRole struct {
+	ID              string   `json:"id"`
+	Kind            string   `json:"kind,omitempty"`
+	Required        bool     `json:"required,omitempty"`
+	Description     string   `json:"description,omitempty"`
+	Examples        []string `json:"examples,omitempty"`
+	ConsumedBy      []string `json:"consumed_by,omitempty"`
+	Evidence        []string `json:"evidence,omitempty"`
+	MissingBehavior string   `json:"missing_behavior,omitempty"`
+}
+
 // BlueprintSemantics captures durable Stripe product intent that can be supplied
 // by local or remote blueprints and compiled into agent guidance.
 type BlueprintSemantics struct {
@@ -142,6 +155,7 @@ type StepInfo struct {
 	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
 	Events        []string            `json:"events,omitempty"`
 	Semantics     *BlueprintSemantics `json:"semantics,omitempty"`
+	AppRoles      []AppRole           `json:"app_roles,omitempty"`
 }
 
 // NodeDefinition is the source-derived static definition for a node.
@@ -157,6 +171,7 @@ type NodeDefinition struct {
 	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
 	Events        []string            `json:"events,omitempty"`
 	Semantics     *BlueprintSemantics `json:"semantics,omitempty"`
+	AppRoles      []AppRole           `json:"app_roles,omitempty"`
 }
 
 // StepDefinition is the source-derived static definition for a step.

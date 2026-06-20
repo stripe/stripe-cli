@@ -123,6 +123,32 @@ func TestStartWorkReturnsStructuredSemantics(t *testing.T) {
 	assert.Contains(t, resp.AgentGuidance, "completion_event=checkout.session.completed")
 }
 
+func TestStartWorkReturnsBlueprintAppRoles(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		session.Steps[0].Nodes[0].AppRoles = []coop.AppRole{
+			{
+				ID:          "payable_record",
+				Kind:        "domain_record",
+				Required:    true,
+				Description: "The local record being paid for",
+			},
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	service := NewService(store)
+
+	resp, err := service.StartWork(session.ID, 1, "Bind roles")
+	require.NoError(t, err)
+
+	require.NotNil(t, resp.BlueprintStep)
+	require.Len(t, resp.BlueprintStep.AppRoles, 1)
+	assert.Equal(t, "payable_record", resp.BlueprintStep.AppRoles[0].ID)
+	assert.Equal(t, "domain_record", resp.BlueprintStep.AppRoles[0].Kind)
+	assert.True(t, resp.BlueprintStep.AppRoles[0].Required)
+}
+
 func TestStartWorkAvoidsEmptySDKExampleForEndpointOnlyMutatingRequest(t *testing.T) {
 	store, session := workflowTestStore(t)
 	_, err := store.Update(session.ID, func(session *coop.Session) error {

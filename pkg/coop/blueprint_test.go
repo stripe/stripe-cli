@@ -521,6 +521,66 @@ func TestNewSessionFromBlueprintMergesSemantics(t *testing.T) {
 	assert.Equal(t, []string{"Checkout uses the app order total"}, node.Semantics.Assertions)
 }
 
+func TestNewSessionFromBlueprintMergesAppRoles(t *testing.T) {
+	bp := &Blueprint{
+		ID:   "roles-blueprint",
+		Type: "learning",
+		AppRoles: []AppRole{
+			{
+				ID:          "payable_record",
+				Kind:        "domain_record",
+				Required:    true,
+				Description: "Record being paid for",
+				Examples:    []string{"order"},
+			},
+			{
+				ID:       "amount_source",
+				Kind:     "money_source",
+				Required: true,
+			},
+		},
+		Steps: []BlueprintStep{
+			{
+				StepDefinition: StepDefinition{Key: "main", Title: "Main"},
+				AppRoles: []AppRole{
+					{
+						ID:       "payable_record",
+						Evidence: []string{"model_or_schema", "state_field"},
+					},
+				},
+				Nodes: []NodeDefinition{
+					{
+						Key:   "checkout",
+						Type:  NodeAPIRequest,
+						Title: "Create Checkout Session",
+						AppRoles: []AppRole{
+							{
+								ID:              "payment_collection_surface",
+								Kind:            "ui_surface",
+								Required:        true,
+								MissingBehavior: "add an app-native checkout entry point",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	session := NewSessionFromBlueprint(bp, "test_roles", nil, nil)
+	node := session.Steps[1].Nodes[0]
+
+	require.Len(t, node.AppRoles, 3)
+	assert.Equal(t, "payable_record", node.AppRoles[0].ID)
+	assert.Equal(t, "domain_record", node.AppRoles[0].Kind)
+	assert.True(t, node.AppRoles[0].Required)
+	assert.Equal(t, []string{"order"}, node.AppRoles[0].Examples)
+	assert.Equal(t, []string{"model_or_schema", "state_field"}, node.AppRoles[0].Evidence)
+	assert.Equal(t, "amount_source", node.AppRoles[1].ID)
+	assert.Equal(t, "payment_collection_surface", node.AppRoles[2].ID)
+	assert.Equal(t, "add an app-native checkout entry point", node.AppRoles[2].MissingBehavior)
+}
+
 func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {
 	ids, err := ListBlueprints()
 	require.NoError(t, err)
