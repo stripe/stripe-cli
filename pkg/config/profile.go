@@ -417,7 +417,9 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
 
 		// // store actual key in secure keyring
-		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
+		if err := p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key"); err != nil {
+			return err
+		}
 	}
 
 	if p.LiveModePublishableKey != "" {
@@ -451,9 +453,13 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if KeyRing != nil {
 		if p.UAT != "" {
-			_ = KeyRing.Set(UATKeychainItemKey, []byte(strings.TrimSpace(p.UAT)), "Stripe CLI user access token")
+			if err := KeyRing.Set(UATKeychainItemKey, []byte(strings.TrimSpace(p.UAT)), "Stripe CLI user access token"); err != nil {
+				return err
+			}
 		} else {
-			_ = KeyRing.Remove(UATKeychainItemKey)
+			if err := KeyRing.Remove(UATKeychainItemKey); err != nil && !errors.Is(err, ErrKeyNotFound) {
+				return err
+			}
 		}
 	}
 
@@ -550,9 +556,9 @@ func getKeyExpiresAt() string {
 }
 
 // saveLivemodeValue saves livemode value of given key in keyring
-func (p *Profile) saveLivemodeValue(field, value, description string) {
+func (p *Profile) saveLivemodeValue(field, value, description string) error {
 	fieldID := p.GetConfigField(field)
-	_ = KeyRing.Set(fieldID, []byte(value), description)
+	return KeyRing.Set(fieldID, []byte(value), description)
 }
 
 // retrieveLivemodeValue retrieves livemode value of given key in keyring
