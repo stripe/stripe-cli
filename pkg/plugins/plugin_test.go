@@ -82,11 +82,9 @@ func TestInstallRollsBackPersistedStateWhenConfigWriteFails(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, fileExists)
 
-	metadataPath, err := getLocalPluginMetadataPath(config, "appA")
+	metadataExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "appA"))
 	require.NoError(t, err)
-	metadataExists, err := afero.Exists(fs, metadataPath)
-	require.NoError(t, err)
-	require.True(t, metadataExists)
+	require.False(t, metadataExists)
 	require.Empty(t, config.GetInstalledPlugins())
 }
 
@@ -448,18 +446,28 @@ func TestResolvePluginForInstallResolvesLatestVersionFromMetadata(t *testing.T) 
 	require.Equal(t, 1, metadataLookups)
 }
 
-func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenMetadataFails(t *testing.T) {
-	fs := setUpFS()
+func TestResolvePluginForInstallFallsBackToManifestLookupWhenMetadataFails(t *testing.T) {
+	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
 
+	var pluginURLLookups int
 	fallbackServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/v1/stripecli/get-plugin-metadata":
 			res.WriteHeader(http.StatusInternalServerError)
-			_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+			res.Write([]byte(`{"error":{"message":"boom"}}`))
 		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when cached metadata is available")
+			pluginURLLookups++
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -474,6 +482,10 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenMetadataFails(
 	require.Equal(t, "appA", plugin.Shortname)
 	require.Equal(t, "2.0.1", version)
 	require.Empty(t, resolvedPlugin.BinaryURL)
+	require.Equal(t, 1, pluginURLLookups)
+
+	_, err = fs.Stat("/plugins.toml")
+	require.NoError(t, err)
 }
 
 func TestResolvedPluginInstallUsesResolvedMetadataWithoutSecondLookup(t *testing.T) {
@@ -520,13 +532,25 @@ func TestResolvedPluginInstallUsesResolvedMetadataWithoutSecondLookup(t *testing
 	require.Equal(t, 1, metadataLookups)
 }
 
-func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing.T) {
+func TestResolvedPluginInstallRetriesMetadataAfterManifestFallback(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 	config.InitConfig()
 
 	binaryBody := []byte("hello, I am generate_1.0.0")
 	binarySum := fmt.Sprintf("%x", sha256.Sum256(binaryBody))
+	manifestContent := []byte(fmt.Sprintf(`[[Plugin]]
+  Shortname = "generate"
+  Shortdesc = "Generate things"
+  Binary = "stripe-cli-generate"
+  MagicCookieValue = "GENERATE-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "1.0.0"
+    Sum = "%s"
+`, runtime.GOARCH, runtime.GOOS, binarySum))
 
 	metadataManifest := fmt.Sprintf(`[[Plugin]]
   Shortname = "generate"
@@ -548,25 +572,13 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 	nodeBinaryPath := GetNodeBinaryPath(config, "20")
 	require.NoError(t, fs.MkdirAll(filepath.Dir(nodeBinaryPath), 0755))
 	require.NoError(t, afero.WriteFile(fs, nodeBinaryPath, []byte("node"), 0755))
-	require.NoError(t, writeLocalPluginMetadata(config, fs, Plugin{
-		Shortname:        "generate",
-		Shortdesc:        "Generate things",
-		Binary:           "stripe-cli-generate",
-		MagicCookieValue: "GENERATE-COOKIE",
-		Releases: []Release{
-			{
-				Arch:    runtime.GOARCH,
-				OS:      runtime.GOOS,
-				Version: "1.0.0",
-				Sum:     binarySum,
-			},
-		},
-	}))
 
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
+		case "/plugins.toml":
+			res.Write(manifestContent)
 		case fmt.Sprintf("/generate/1.0.0/%s/%s/stripe-cli-generate", runtime.GOOS, runtime.GOARCH):
-			_, _ = res.Write(binaryBody)
+			res.Write(binaryBody)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -588,7 +600,7 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 				PluginManifest: metadataManifest,
 			})
 			require.NoError(t, err)
-			_, _ = res.Write(body)
+			res.Write(body)
 		case "/v1/stripecli/get-plugin-url":
 			pluginURLLookups++
 			body, err := json.Marshal(requests.PluginData{
@@ -596,7 +608,7 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 				AdditionalManifests: nil,
 			})
 			require.NoError(t, err)
-			_, _ = res.Write(body)
+			res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -606,12 +618,12 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, metadataLookups)
-	require.Equal(t, 0, pluginURLLookups)
+	require.Equal(t, 1, pluginURLLookups)
 
 	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 2, metadataLookups)
-	require.Equal(t, 0, pluginURLLookups)
+	require.Equal(t, 1, pluginURLLookups)
 
 	cachedPlugin, err := readLocalPluginMetadata(config, fs, "generate")
 	require.NoError(t, err)
@@ -653,7 +665,7 @@ func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale
 	require.Equal(t, "2.0.1", plugin.LookUpLatestVersion())
 }
 
-func TestResolvePluginForAutoInstallFallsBackToCachedLocalMetadataWhenFreshLookupFails(t *testing.T) {
+func TestResolvePluginForAutoInstallFallsBackToCachedManifestWhenFreshLookupFails(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 	config.InitConfig()
@@ -673,6 +685,9 @@ func TestResolvePluginForAutoInstallFallsBackToCachedLocalMetadataWhenFreshLooku
 	}
 	require.NoError(t, writeLocalPluginMetadata(config, fs, stalePlugin))
 
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", manifestContent, os.ModePerm))
+
 	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
 		_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
@@ -684,8 +699,8 @@ func TestResolvePluginForAutoInstallFallsBackToCachedLocalMetadataWhenFreshLooku
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
 	require.NotNil(t, plugin)
-	require.Equal(t, "1.0.1", version)
-	require.Equal(t, "1.0.1", plugin.LookUpLatestVersion())
+	require.Equal(t, "2.0.1", version)
+	require.Equal(t, "2.0.1", plugin.LookUpLatestVersion())
 }
 
 func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
@@ -937,8 +952,7 @@ func TestUninstall(t *testing.T) {
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
-	metadataPath, err := getLocalPluginMetadataPath(config, "appA")
-	require.NoError(t, err)
+	metadataPath := getLocalPluginMetadataPath(config, "appA")
 	cacheExists, err := afero.Exists(fs, metadataPath)
 	require.NoError(t, err)
 	require.True(t, cacheExists)
@@ -979,9 +993,7 @@ func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
 	err := plugin.Uninstall(context.Background(), config, fs)
 	require.NoError(t, err)
 
-	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
-	require.NoError(t, err)
-	cacheExists, err := afero.Exists(fs, metadataPath)
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
 	require.NoError(t, err)
 	require.False(t, cacheExists)
 
@@ -990,30 +1002,6 @@ func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))
-}
-
-func TestUninstallRejectsInvalidPluginShortnames(t *testing.T) {
-	tests := []string{"../victim", "..\\victim"}
-
-	for _, shortname := range tests {
-		t.Run(shortname, func(t *testing.T) {
-			fs := afero.NewMemMapFs()
-			config := &TestConfig{}
-			config.InitConfig()
-			config.InstalledPlugins = []string{shortname}
-
-			require.NoError(t, fs.MkdirAll("/victim", 0755))
-			require.NoError(t, afero.WriteFile(fs, "/victim/data.txt", []byte("keep me"), 0644))
-
-			err := (&Plugin{Shortname: shortname}).Uninstall(context.Background(), config, fs)
-			require.ErrorContains(t, err, "invalid plugin name")
-
-			victimExists, statErr := afero.Exists(fs, "/victim/data.txt")
-			require.NoError(t, statErr)
-			require.True(t, victimExists)
-			require.Equal(t, []string{shortname}, config.GetInstalledPlugins())
-		})
-	}
 }
 
 func TestUninstallReturnsErrorWithoutRemovingFilesWhenMetadataRemovalFails(t *testing.T) {
@@ -1043,9 +1031,7 @@ func TestUninstallReturnsErrorWithoutRemovingFilesWhenMetadataRemovalFails(t *te
 	err := plugin.Uninstall(context.Background(), config, afero.NewReadOnlyFs(fs))
 	require.Error(t, err)
 
-	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
-	require.NoError(t, err)
-	cacheExists, err := afero.Exists(fs, metadataPath)
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
 	require.NoError(t, err)
 	require.True(t, cacheExists)
 
@@ -1085,9 +1071,7 @@ func TestUninstallRollsBackStateWhenConfigWriteFails(t *testing.T) {
 	err := plugin.Uninstall(context.Background(), config, fs)
 	require.ErrorIs(t, err, config.WriteErr)
 
-	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
-	require.NoError(t, err)
-	cacheExists, err := afero.Exists(fs, metadataPath)
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
 	require.NoError(t, err)
 	require.True(t, cacheExists)
 
@@ -1131,9 +1115,7 @@ func TestUninstallRollsBackStateWhenPluginRemovalFails(t *testing.T) {
 	err := plugin.Uninstall(context.Background(), config, failingFS)
 	require.ErrorIs(t, err, removeErr)
 
-	metadataPath, err := getLocalPluginMetadataPath(config, "docs")
-	require.NoError(t, err)
-	cacheExists, err := afero.Exists(fs, metadataPath)
+	cacheExists, err := afero.Exists(fs, getLocalPluginMetadataPath(config, "docs"))
 	require.NoError(t, err)
 	require.True(t, cacheExists)
 

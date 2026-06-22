@@ -63,23 +63,12 @@ func (c *TestConfig) InitConfig() {
 
 // setUpFS Sets up a memMap that contains the manifest
 func setUpFS() afero.Fs {
-	// Populate local plugin metadata from the test manifest.
-	// Note that only some entries have actual checksums that match what the test server returns.
+	// test plugin manifest
+	// Note that only some of entries have actual checksums that match with what the test server returns.
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 	fs := afero.NewMemMapFs()
-
-	pluginList, err := validatePluginManifest(manifestContent)
-	if err != nil {
-		panic(err)
-	}
-
-	config := &TestConfig{}
-	for _, plugin := range pluginList.Plugins {
-		if err := writeLocalPluginMetadata(config, fs, plugin); err != nil {
-			panic(err)
-		}
-	}
-
+	// fs.Mkdir("test_config_folder", os.ModePerm)
+	afero.WriteFile(fs, "/plugins.toml", manifestContent, os.ModePerm)
 	return fs
 }
 

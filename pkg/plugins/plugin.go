@@ -93,17 +93,13 @@ func (p *Plugin) getPluginInterface() (hcplugin.HandshakeConfig, map[int]hcplugi
 	return handshakeConfig, pluginSetMap
 }
 
-// getPluginInstallPath computes the absolute path of a specific plugin version's installation dir.
-func (p *Plugin) getPluginInstallPath(config config.IConfig, version string) (string, error) {
-	if err := ValidatePluginShortname(p.Shortname); err != nil {
-		return "", err
-	}
-
+// getPluginInstallPath computes the absolute path of a specific plugin version's installation dir
+func (p *Plugin) getPluginInstallPath(config config.IConfig, version string) string {
 	pluginsDir := getPluginsDir(config)
 	pluginPath := filepath.Join(pluginsDir, p.Shortname, version)
 	cleanedPath := filepath.Clean(pluginPath)
 
-	return cleanedPath, nil
+	return cleanedPath
 }
 
 func isLocalDevelopmentVersion(version string) bool {
@@ -111,10 +107,7 @@ func isLocalDevelopmentVersion(version string) bool {
 }
 
 func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (string, error) {
-	localDevPath, err := p.getPluginInstallPath(config, localDevelopmentVersion)
-	if err != nil {
-		return "", err
-	}
+	localDevPath := p.getPluginInstallPath(config, localDevelopmentVersion)
 	localDevExists, err := afero.DirExists(fs, localDevPath)
 	if err != nil {
 		return "", err
@@ -142,14 +135,9 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 	})
 	logger.Debug("Cleaning up other plugin versions...")
 
-	pluginPath, err := p.getPluginInstallPath(config, "")
-	if err != nil {
-		return err
-	}
-	versionPathToKeep, err := p.getPluginInstallPath(config, versionToKeep)
-	if err != nil {
-		return err
-	}
+	pluginsDir := getPluginsDir(config)
+	pluginPath := filepath.Join(pluginsDir, p.Shortname)
+	versionPathToKeep := filepath.Join(pluginPath, versionToKeep)
 
 	afero.Walk(fs, pluginPath, filepath.WalkFunc(func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -279,21 +267,16 @@ func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
 
 // IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
 func (p *Plugin) IsVersionInstalled(config config.IConfig, fs afero.Fs, version string) bool {
-	pluginDir, err := p.getPluginInstallPath(config, version)
-	if err != nil {
-		return false
-	}
+	pluginDir := p.getPluginInstallPath(config, version)
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary) + GetBinaryExtension()
-	_, err = fs.Stat(pluginBinaryPath)
+	_, err := fs.Stat(pluginBinaryPath)
 	return err == nil
 }
 
 // InstalledVersion returns the currently installed version of the plugin, or empty string if none.
 func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
-	pluginDir, err := p.getPluginInstallPath(config, "")
-	if err != nil {
-		return ""
-	}
+	pluginsDir := getPluginsDir(config)
+	pluginDir := filepath.Join(pluginsDir, p.Shortname)
 
 	entries, err := afero.ReadDir(fs, pluginDir)
 	if err != nil {
@@ -410,12 +393,8 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	if err := PersistInstalledPluginState(cfg, fs, *pluginToInstall); err != nil {
-		pluginPath, pathErr := pluginToInstall.getPluginInstallPath(cfg, version)
-		if pathErr != nil {
-			log.WithFields(log.Fields{
-				"prefix": "plugins.plugin.Install",
-			}).Debugf("could not determine plugin path for cleanup after local metadata write failure: %s", pathErr)
-		} else if cleanupErr := fs.RemoveAll(pluginPath); cleanupErr != nil {
+		pluginPath := pluginToInstall.getPluginInstallPath(cfg, version)
+		if cleanupErr := fs.RemoveAll(pluginPath); cleanupErr != nil {
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",
 				"path":   pluginPath,
@@ -454,18 +433,12 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 		}
 	}
 
-	pluginDir, err := p.getPluginInstallPath(config, "")
-	if err != nil {
-		return err
-	}
+	pluginDir := p.getPluginInstallPath(config, "")
 	dirExists, err := afero.DirExists(fs, pluginDir)
 	if err != nil {
 		return err
 	}
-	metadataPath, err := getLocalPluginMetadataPath(config, p.Shortname)
-	if err != nil {
-		return err
-	}
+	metadataPath := getLocalPluginMetadataPath(config, p.Shortname)
 	metadataExists, err := afero.Exists(fs, metadataPath)
 	if err != nil {
 		return err
@@ -520,10 +493,7 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 		"prefix": "plugins.plugin.Install",
 	})
 
-	pluginDir, err := p.getPluginInstallPath(config, version)
-	if err != nil {
-		return err
-	}
+	pluginDir := p.getPluginInstallPath(config, version)
 	pluginFilePath := filepath.Join(pluginDir, p.Binary)
 	pluginFilePath += GetBinaryExtension()
 
@@ -531,7 +501,7 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 
 	reader := bytes.NewReader(pluginData)
 
-	err = p.verifyChecksum(reader, version)
+	err := p.verifyChecksum(reader, version)
 	if err != nil {
 		logger.Debug("could not match checksum of plugin")
 		return err
@@ -646,10 +616,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	}
 
-	pluginDir, err := p.getPluginInstallPath(config, version)
-	if err != nil {
-		return err
-	}
+	pluginDir := p.getPluginInstallPath(config, version)
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
 
