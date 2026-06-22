@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -45,13 +46,13 @@ func (uc *UninstallCmd) runUninstallCmd(cmd *cobra.Command, args []string) error
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	if err := plugins.ValidatePluginShortname(args[0]); err != nil {
-		return err
+	plugin, err := plugins.LookUpPlugin(cmd.Context(), uc.cfg, uc.fs, args[0])
+
+	if err != nil {
+		return errors.New("this plugin doesn't seem to exist")
 	}
 
-	plugin := plugins.Plugin{Shortname: args[0]}
-
-	err := plugin.Uninstall(ctx, uc.cfg, uc.fs)
+	err = plugin.Uninstall(ctx, uc.cfg, uc.fs)
 
 	if err == nil {
 		color := ansi.Color(os.Stdout)
