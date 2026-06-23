@@ -31,3 +31,9 @@ func TestNewNamespaceCmd_EmptyName(t *testing.T) {
 	require.False(t, ok)
 	require.Contains(t, nsc.Cmd.UsageTemplate(), "Available Resources")
 }
+
+func TestNamespaceUsageTemplate_ExcludesProfileFlags(t *testing.T) {
+	tmpl := namespaceUsageTemplate()
+	require.Contains(t, tmpl, "WrappedNonProfileInheritedFlagUsages")
+	require.NotContains(t, tmpl, "WrappedInheritedFlagUsages .")
+}

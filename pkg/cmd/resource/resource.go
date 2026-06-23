@@ -104,7 +104,7 @@ func resourceUsageTemplate() string {
 {{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
-{{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+{{WrappedNonProfileInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
 
 %s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
@@ -116,7 +116,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
 		ansi.Bold("Flags:"),
-		ansi.Bold("Global Flags:"),
+		ansi.Bold("Global flags:"),
 		ansi.Bold("Additional help topics:"),
 	)
 }

@@ -249,6 +249,51 @@ func wrapText(s string, width, indent int) string {
 	return sb.String()
 }
 
+// profileFlagNames are flags that control which config profile is used.
+// They are rendered in a separate section in namespace/resource help output
+// so they don't clutter the operational global flags.
+var profileFlagNames = map[string]bool{
+	"config":       true,
+	"device-name":  true,
+	"project-name": true,
+}
+
+// WrappedProfileFlagUsages returns usage info for the profile/config flags
+// (--config, --device-name, --project-name) inherited from the root command.
+func WrappedProfileFlagUsages(cmd *cobra.Command) string {
+	fs := pflag.NewFlagSet("profile", pflag.ExitOnError)
+	cmd.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
+		if profileFlagNames[flag.Name] && !flag.Hidden {
+			fs.AddFlag(flag)
+		}
+	})
+	return fs.FlagUsagesWrapped(getTerminalWidth())
+}
+
+// WrappedNonProfileInheritedFlagUsages returns usage info for inherited flags
+// excluding the profile/config flags shown in a separate "Profile flags:" section.
+func WrappedNonProfileInheritedFlagUsages(cmd *cobra.Command) string {
+	fs := pflag.NewFlagSet("global", pflag.ExitOnError)
+	cmd.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
+		if !profileFlagNames[flag.Name] {
+			fs.AddFlag(flag)
+		}
+	})
+	return fs.FlagUsagesWrapped(getTerminalWidth())
+}
+
+// HasProfileInheritedFlags reports whether the command has any visible profile
+// flags (--config, --device-name, --project-name) inherited from the root.
+func HasProfileInheritedFlags(cmd *cobra.Command) bool {
+	found := false
+	cmd.InheritedFlags().VisitAll(func(flag *pflag.Flag) {
+		if profileFlagNames[flag.Name] && !flag.Hidden {
+			found = true
+		}
+	})
+	return found
+}
+
 // WrappedNonRequestParamsFlagUsages returns a string containing the usage
 // information for all non-request parameters flags. The string is wrapped to
 // the terminal's width.
@@ -418,6 +463,9 @@ func init() {
 	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
 	cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", WrappedRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
+	cobra.AddTemplateFunc("WrappedProfileFlagUsages", WrappedProfileFlagUsages)
+	cobra.AddTemplateFunc("WrappedNonProfileInheritedFlagUsages", WrappedNonProfileInheritedFlagUsages)
+	cobra.AddTemplateFunc("HasProfileInheritedFlags", HasProfileInheritedFlags)
 	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
 	cobra.AddTemplateFunc("AIAgentHelp", aiAgentHelp)
 	cobra.AddTemplateFunc("AIAgentHelpTop", aiAgentHelpTop)

@@ -222,3 +222,56 @@ func TestUsageTemplate_RootShowsCommandGroups(t *testing.T) {
 	assert.Contains(t, output, "Webhook commands")
 	assert.Contains(t, output, "API commands")
 }
+
+func makeRootWithProfileFlags() *cobra.Command {
+	root := &cobra.Command{Use: "stripe"}
+	root.PersistentFlags().String("config", "", "config file")
+	root.PersistentFlags().String("device-name", "", "device name")
+	root.PersistentFlags().String("project-name", "", "project name")
+	root.PersistentFlags().String("api-key", "", "API key")
+	root.PersistentFlags().String("log-level", "info", "log level")
+	return root
+}
+
+func TestWrappedProfileFlagUsages_ShowsOnlyProfileFlags(t *testing.T) {
+	root := makeRootWithProfileFlags()
+	child := &cobra.Command{Use: "customers", RunE: noop}
+	root.AddCommand(child)
+
+	output := WrappedProfileFlagUsages(child)
+	assert.Contains(t, output, "--config")
+	assert.Contains(t, output, "--device-name")
+	assert.Contains(t, output, "--project-name")
+	assert.NotContains(t, output, "--api-key")
+	assert.NotContains(t, output, "--log-level")
+}
+
+func TestWrappedNonProfileInheritedFlagUsages_ExcludesProfileFlags(t *testing.T) {
+	root := makeRootWithProfileFlags()
+	child := &cobra.Command{Use: "customers", RunE: noop}
+	root.AddCommand(child)
+
+	output := WrappedNonProfileInheritedFlagUsages(child)
+	assert.NotContains(t, output, "--config")
+	assert.NotContains(t, output, "--device-name")
+	assert.NotContains(t, output, "--project-name")
+	assert.Contains(t, output, "--api-key")
+	assert.Contains(t, output, "--log-level")
+}
+
+func TestHasProfileInheritedFlags(t *testing.T) {
+	root := makeRootWithProfileFlags()
+	child := &cobra.Command{Use: "customers", RunE: noop}
+	root.AddCommand(child)
+
+	assert.True(t, HasProfileInheritedFlags(child))
+}
+
+func TestHasProfileInheritedFlags_NoProfileFlags(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	root.PersistentFlags().String("api-key", "", "API key")
+	child := &cobra.Command{Use: "customers", RunE: noop}
+	root.AddCommand(child)
+
+	assert.False(t, HasProfileInheritedFlags(child))
+}
