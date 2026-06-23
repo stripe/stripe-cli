@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -136,6 +137,9 @@ func TestFileStoreRemoveNotFound(t *testing.T) {
 }
 
 func TestFileStorePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
 	store := newTestFileStore(t)
 	require.NoError(t, store.Set("k", []byte("v"), ""))
 
