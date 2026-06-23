@@ -132,6 +132,10 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 			return errors.New("install failed due to API key not configured, please run `stripe login` or specify the `--api-key`")
 		}
 
+		if isAPIKeyExpiredError(err) {
+			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(ptc.cfg.Profile.ProfileName))
+		}
+
 		log.WithFields(log.Fields{
 			"prefix": "pluginTemplateCmd.runPluginCmd",
 		}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
