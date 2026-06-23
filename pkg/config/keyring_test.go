@@ -148,9 +148,9 @@ func TestFileStorePermissions(t *testing.T) {
 // failStore is a SecureStore whose every operation returns a fixed error.
 type failStore struct{ err error }
 
-func (f *failStore) Get(_ string) ([]byte, error)              { return nil, f.err }
-func (f *failStore) Set(_ string, _ []byte, _ string) error    { return f.err }
-func (f *failStore) Remove(_ string) error                     { return f.err }
+func (f *failStore) Get(_ string) ([]byte, error)           { return nil, f.err }
+func (f *failStore) Set(_ string, _ []byte, _ string) error { return f.err }
+func (f *failStore) Remove(_ string) error                  { return f.err }
 
 func TestFallbackStoreGetFallsBackOnPrimaryError(t *testing.T) {
 	fb := newTestFileStore(t)
