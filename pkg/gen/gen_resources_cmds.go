@@ -45,6 +45,7 @@ type NamespaceData struct {
 type ResourceData struct {
 	Operations   map[string]*OperationData
 	SubResources map[string]*ResourceData
+	Description  string
 }
 
 type OperationData struct {
@@ -260,6 +261,7 @@ func getApiNamespaceFromOperations(ops *[]spec.StripeOperation, isPreview bool) 
 func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string, data *TemplateData, stripeAPI *spec.Spec) error {
 	origNsName, origResName := parseSchemaName(cmdName)
 	schema := stripeAPI.Components.Schemas[schemaName]
+	resDescription := gen.CleanDescription(gen.FirstSentence(schema.Description))
 
 	for _, op := range *schema.XStripeOperations {
 		if op.MethodOn != "service" {
@@ -276,12 +278,12 @@ func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string
 			subResName = components[1]
 		} else if strings.Contains(op.Path, test_helpers_path) && test_helpers_path != nsName {
 			if nsName != "" {
-				err := addToTemplateData(data, apiNamespace, test_helpers_path, nsName, resName, stripeAPI, op)
+				err := addToTemplateData(data, apiNamespace, test_helpers_path, nsName, resName, stripeAPI, op, "")
 				if err != nil {
 					return err
 				}
 			} else {
-				err := addToTemplateData(data, apiNamespace, test_helpers_path, resName, "", stripeAPI, op)
+				err := addToTemplateData(data, apiNamespace, test_helpers_path, resName, "", stripeAPI, op, "")
 				if err != nil {
 					return err
 				}
@@ -290,7 +292,7 @@ func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string
 			subResName = test_helpers_path
 		}
 
-		err := addToTemplateData(data, apiNamespace, nsName, resName, subResName, stripeAPI, op)
+		err := addToTemplateData(data, apiNamespace, nsName, resName, subResName, stripeAPI, op, resDescription)
 		if err != nil {
 			return err
 		}
@@ -299,7 +301,7 @@ func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string
 	return nil
 }
 
-func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation) error {
+func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation, resDescription string) error {
 	hasSubResources := subResName != ""
 
 	if _, ok := data.ApiNamespaces[apiNamespace]; !ok {
@@ -319,6 +321,7 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 		data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName] = &ResourceData{
 			Operations:   make(map[string]*OperationData),
 			SubResources: make(map[string]*ResourceData),
+			Description:  resDescription,
 		}
 	}
 
