@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -163,6 +164,7 @@ type pendingKeychainValue struct {
 }
 
 var (
+	errKeychainUnavailable          = errors.New("system keychain is unavailable")
 	keychainVisibilityRetryTimeout  = 1500 * time.Millisecond
 	keychainVisibilityRetryEnabled  = runtime.GOOS == "darwin"
 	keychainVisibilityNow           = time.Now
@@ -170,8 +172,21 @@ var (
 	keychainVisibilityPendingValues = map[string]pendingKeychainValue{}
 )
 
+func keyRing() (keyring.Keyring, error) {
+	if config.KeyRing == nil {
+		return nil, errKeychainUnavailable
+	}
+
+	return config.KeyRing, nil
+}
+
 func readKeychainPassword(key string) (string, bool, error) {
-	item, err := config.KeyRing.Get(key)
+	ring, err := keyRing()
+	if err != nil {
+		return "", false, err
+	}
+
+	item, err := ring.Get(key)
 	if err == nil {
 		return string(item.Data), true, nil
 	}
@@ -267,7 +282,12 @@ func (h *coreCLIHelper) KeychainGetPassword(key string) (string, bool, error) {
 
 // KeychainSetPassword stores a password in the system keychain.
 func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
-	if err := config.KeyRing.Set(keyring.Item{
+	ring, err := keyRing()
+	if err != nil {
+		return err
+	}
+
+	if err := ring.Set(keyring.Item{
 		Key:   key,
 		Data:  []byte(value),
 		Label: key,
@@ -283,13 +303,18 @@ func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
 func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 	clearPendingKeychainValue(key)
 
-	existingKeys, err := config.KeyRing.Keys()
+	ring, err := keyRing()
+	if err != nil {
+		return false, err
+	}
+
+	existingKeys, err := ring.Keys()
 	if err != nil {
 		return false, err
 	}
 	for _, k := range existingKeys {
 		if k == key {
-			if err := config.KeyRing.Remove(key); err != nil {
+			if err := ring.Remove(key); err != nil {
 				return false, err
 			}
 			return true, nil
@@ -300,7 +325,12 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 
 // KeychainFindCredentials lists all keys stored in the keychain for this service.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
-	return config.KeyRing.Keys()
+	ring, err := keyRing()
+	if err != nil {
+		return nil, err
+	}
+
+	return ring.Keys()
 }
 
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.
