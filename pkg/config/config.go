@@ -3,6 +3,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 // ColorOn represnets the on-state for colors
@@ -447,7 +449,7 @@ func (c *Config) RemoveAllAuthFields() error {
 func deleteLivemodeKey(key string, profile string) error {
 	fieldID := profile + "." + key
 	err := KeyRing.Remove(fieldID)
-	if err == ErrKeyNotFound {
+	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return nil
 	}
 	return err
@@ -455,7 +457,7 @@ func deleteLivemodeKey(key string, profile string) error {
 
 func deleteTopLevelLivemodeKey(key string) error {
 	err := KeyRing.Remove(key)
-	if err == ErrKeyNotFound {
+	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return nil
 	}
 	return err

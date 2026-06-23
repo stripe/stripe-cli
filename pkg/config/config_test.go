@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 func TestRemoveKey(t *testing.T) {
@@ -34,7 +36,7 @@ func setupTestConfig(t *testing.T) (*Config, string, func()) {
 			ProfileName: "default",
 		},
 	}
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 	c.InitConfig()
 
 	cleanup := func() {

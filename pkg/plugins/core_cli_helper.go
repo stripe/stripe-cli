@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -174,7 +176,7 @@ func readKeychainPassword(key string) (string, bool, error) {
 	if err == nil {
 		return string(data), true, nil
 	}
-	if err == config.ErrKeyNotFound {
+	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return "", false, nil
 	}
 	return "", false, err
@@ -279,7 +281,7 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 	clearPendingKeychainValue(key)
 
 	err := config.KeyRing.Remove(key)
-	if err == config.ErrKeyNotFound {
+	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return false, nil
 	}
 	if err != nil {

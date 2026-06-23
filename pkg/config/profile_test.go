@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 func TestWriteProfile(t *testing.T) {
@@ -24,7 +26,7 @@ func TestWriteProfile(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
@@ -62,7 +64,7 @@ func TestWriteProfilesMerge(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
@@ -109,7 +111,7 @@ func TestOldProfileDeleted(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
@@ -172,7 +174,7 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	KeyRing = NewMemoryStore(map[string][]byte{
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
 		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
 	t.Cleanup(func() { KeyRing = nil })
@@ -188,7 +190,7 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = KeyRing.Get("test.live_mode_api_key")
-	require.Equal(t, ErrKeyNotFound, err)
+	require.Equal(t, keyring.ErrKeyNotFound, err)
 }
 
 func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
@@ -206,7 +208,7 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
@@ -239,7 +241,7 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	KeyRing = NewMemoryStore(map[string][]byte{
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
 		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
 	t.Cleanup(func() { KeyRing = nil })

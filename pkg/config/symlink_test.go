@@ -7,6 +7,8 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 func TestConfigWriteConfigFieldRefusesSymlink(t *testing.T) {
@@ -21,7 +23,7 @@ func TestConfigWriteConfigFieldRefusesSymlink(t *testing.T) {
 		},
 	}
 	c.InitConfig()
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 
 	err := c.WriteConfigField("default.color", "on")
 	require.ErrorContains(t, err, "symlink")
@@ -42,7 +44,7 @@ func TestProfileWriteConfigFieldRefusesSymlink(t *testing.T) {
 		Profile:      p,
 	}
 	c.InitConfig()
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 
 	err := p.WriteConfigField("color", "on")
 	require.ErrorContains(t, err, "symlink")
@@ -64,7 +66,7 @@ func TestConfigWriteConfigFieldRefusesSymlinkedParent(t *testing.T) {
 		},
 	}
 	c.InitConfig()
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 
 	err := c.WriteConfigField("default.color", "on")
 	require.ErrorContains(t, err, "symlink")
@@ -89,7 +91,7 @@ func TestWriteProfileRefusesSymlinkedParent(t *testing.T) {
 		Profile:      p,
 	}
 	c.InitConfig()
-	KeyRing = NewMemoryStore(nil)
+	KeyRing = keyring.NewMemoryStore(nil)
 
 	v := viper.New()
 	v.SetConfigFile(profilesFile)

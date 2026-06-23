@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -50,7 +51,7 @@ type fakeKeyring struct {
 func (f *fakeKeyring) Get(key string) ([]byte, error) {
 	f.getCalls++
 	if len(f.getResults) == 0 {
-		return nil, config.ErrKeyNotFound
+		return nil, keyring.ErrKeyNotFound
 	}
 
 	index := f.getCalls - 1
@@ -119,7 +120,7 @@ func TestKeychainGetPasswordReturnsNotFoundWithoutRetry(t *testing.T) {
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{err: config.ErrKeyNotFound},
+			{err: keyring.ErrKeyNotFound},
 			{data: []byte("sk_test_123")},
 		},
 	}
@@ -179,7 +180,7 @@ func TestKeychainSetPasswordMakesRecentWriteVisibleWhenKeychainHasNotCaughtUp(t 
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{err: config.ErrKeyNotFound},
+			{err: keyring.ErrKeyNotFound},
 		},
 	}
 
@@ -246,7 +247,7 @@ func TestKeychainGetPasswordClearsRecentWriteOnceKeychainMatches(t *testing.T) {
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
 			{data: []byte("sk_test_123")},
-			{err: config.ErrKeyNotFound},
+			{err: keyring.ErrKeyNotFound},
 		},
 	}
 
@@ -283,7 +284,7 @@ func TestKeychainGetPasswordDoesNotReturnRecentWriteAfterExpiry(t *testing.T) {
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{err: config.ErrKeyNotFound},
+			{err: keyring.ErrKeyNotFound},
 		},
 	}
 
@@ -317,7 +318,7 @@ func TestKeychainSetPasswordDoesNotRememberRecentWriteWhenDisabled(t *testing.T)
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{err: config.ErrKeyNotFound},
+			{err: keyring.ErrKeyNotFound},
 		},
 	}
 
@@ -379,7 +380,7 @@ func TestKeychainDeletePasswordClearsRecentWrite(t *testing.T) {
 	ring := &fakeKeyring{
 		keys: []string{"test.key"},
 		getResults: []fakeKeyringGetResult{
-			{err: config.ErrKeyNotFound},
+			{err: keyring.ErrKeyNotFound},
 		},
 	}
 

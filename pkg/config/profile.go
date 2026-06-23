@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -75,7 +76,7 @@ const (
 )
 
 // KeyRing is the global secure credential store.
-var KeyRing SecureStore
+var KeyRing keyring.SecureStore
 
 // authFieldNames are the config fields that are removed on login/logout.
 // Non-auth fields like "color" are preserved.
@@ -457,7 +458,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 				return err
 			}
 		} else {
-			if err := KeyRing.Remove(UATKeychainItemKey); err != nil && !errors.Is(err, ErrKeyNotFound) {
+			if err := KeyRing.Remove(UATKeychainItemKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 				return err
 			}
 		}
@@ -575,7 +576,7 @@ func (p *Profile) retrieveLivemodeValue(key string) (string, error) {
 func (p *Profile) deleteLivemodeValue(key string) error {
 	fieldID := p.GetConfigField(key)
 	err := KeyRing.Remove(fieldID)
-	if err == ErrKeyNotFound {
+	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return nil
 	}
 	return err
@@ -612,7 +613,7 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
 	data, err := KeyRing.Get(key)
 	if err != nil {
-		if err == ErrKeyNotFound {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return nil, errors.New("no session")
 		}
 		return nil, err

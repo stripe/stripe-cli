@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -23,7 +24,7 @@ func runWhoami(t *testing.T, wc *whoamiCmd) (string, error) {
 
 func TestWhoamiNotAuthenticated(t *testing.T) {
 	viper.Reset()
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -39,7 +40,7 @@ func TestWhoamiNotAuthenticated(t *testing.T) {
 
 func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 	viper.Reset()
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -65,7 +66,7 @@ func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 }
 
 func TestWhoamiWithTestKey(t *testing.T) {
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -90,7 +91,7 @@ func TestWhoamiWithTestKey(t *testing.T) {
 }
 
 func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -113,7 +114,7 @@ func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
 }
 
 func TestWhoamiWithEnvVarKey(t *testing.T) {
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 	t.Setenv("STRIPE_API_KEY", "sk_test_envvar1234567890")
 
 	wc := newWhoamiCmd()
@@ -136,7 +137,7 @@ func TestWhoamiWithEnvVarKey(t *testing.T) {
 }
 
 func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 	t.Setenv("STRIPE_API_KEY", "rk_live_envvar1234567890")
 
 	wc := newWhoamiCmd()
@@ -159,7 +160,7 @@ func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
 }
 
 func TestWhoamiLiveModeKeyDetected(t *testing.T) {
-	config.KeyRing = config.NewMemoryStore(map[string][]byte{
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
 		"default.live_mode_api_key": []byte("rk_live_1234567890abcdef"),
 	})
 

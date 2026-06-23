@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
@@ -37,7 +38,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	Config.Profile.ProfileName = "default"
 	Config.Profile.TestModeAPIKey = ""
 	Config.InitConfig()
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	// Mock browser to prevent real browser launches
 	origOpen := openBrowserFunc

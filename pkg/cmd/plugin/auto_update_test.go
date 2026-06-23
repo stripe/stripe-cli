@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 func setupAutoUpdateTest(t *testing.T) (*config.Config, func()) {
@@ -22,7 +23,7 @@ func setupAutoUpdateTest(t *testing.T) (*config.Config, func()) {
 		Profile:      config.Profile{ProfileName: "default"},
 	}
 	cfg.InitConfig()
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	return cfg, func() {
 		viper.Reset()

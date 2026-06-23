@@ -1,4 +1,4 @@
-package config
+package keyring
 
 import (
 	"fmt"
@@ -105,7 +105,6 @@ func TestZalandoStoreRemoveReturnsErrNotFoundFromBackend(t *testing.T) {
 	assert.Equal(t, ErrKeyNotFound, err)
 }
 
-// newTestFileStore returns a fileStore backed by a temp directory.
 func newTestFileStore(t *testing.T) *fileStore {
 	t.Helper()
 	return &fileStore{path: filepath.Join(t.TempDir(), "credentials.json")}
@@ -218,32 +217,22 @@ func TestFallbackStoreRemoveFromFallback(t *testing.T) {
 }
 
 func TestIsUsingInsecureStorageFalseWhenPrimarySucceeds(t *testing.T) {
-	prev := KeyRing
-	t.Cleanup(func() { KeyRing = prev })
+	store := &fallbackStore{primary: NewMemoryStore(nil), fallback: newTestFileStore(t)}
 
-	KeyRing = &fallbackStore{primary: NewMemoryStore(nil), fallback: newTestFileStore(t)}
-
-	require.NoError(t, KeyRing.Set("k", []byte("v"), ""))
-	assert.False(t, IsUsingInsecureStorage())
+	require.NoError(t, store.Set("k", []byte("v"), ""))
+	assert.False(t, IsUsingInsecureStorage(store))
 }
 
 func TestIsUsingInsecureStorageTrueWhenFallbackUsed(t *testing.T) {
-	prev := KeyRing
-	t.Cleanup(func() { KeyRing = prev })
-
-	KeyRing = &fallbackStore{
+	store := &fallbackStore{
 		primary:  &failStore{fmt.Errorf("keyring unavailable")},
 		fallback: newTestFileStore(t),
 	}
 
-	require.NoError(t, KeyRing.Set("k", []byte("v"), ""))
-	assert.True(t, IsUsingInsecureStorage())
+	require.NoError(t, store.Set("k", []byte("v"), ""))
+	assert.True(t, IsUsingInsecureStorage(store))
 }
 
 func TestIsUsingInsecureStorageFalseForNonFallbackStore(t *testing.T) {
-	prev := KeyRing
-	t.Cleanup(func() { KeyRing = prev })
-
-	KeyRing = NewMemoryStore(nil)
-	assert.False(t, IsUsingInsecureStorage())
+	assert.False(t, IsUsingInsecureStorage(NewMemoryStore(nil)))
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
@@ -87,7 +88,7 @@ func setupPluginCommandTest(t *testing.T) (*config.Config, afero.Fs, func()) {
 	}
 	cfg.InitConfig()
 	cfg.Profile.APIKey = "rk_test_11111111111111111111111111"
-	config.KeyRing = config.NewMemoryStore(nil)
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	return cfg, afero.NewMemMapFs(), func() {
 		viper.Reset()
