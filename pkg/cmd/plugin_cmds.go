@@ -102,7 +102,15 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 
 // runPluginCmd hands off to the plugin itself to take over
 func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) error {
-	ctx := withSIGTERMCancel(cmd.Context(), func() {
+	// Plugin subcommand stubs can reach this path with a nil command context,
+	// which makes withSIGTERMCancel -> context.WithCancel panic ("cannot create
+	// context from nil parent"). Fall back to a background context, mirroring the
+	// guard already used on the help path above.
+	parentCtx := cmd.Context()
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	ctx := withSIGTERMCancel(parentCtx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.pluginCmd.runPluginCmd",
 		}).Debug("Ctrl+C received, cleaning up...")
