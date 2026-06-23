@@ -277,7 +277,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		p.redactAllLivemodeValues()
 		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
-			return "", errors.New("your live mode API key needs to be re-configured. Run `stripe login --live` to re-authenticate")
+			return "", errors.New("your live mode API key needs to be re-configured. Run `stripe login` to re-authenticate")
 		}
 	}
 
