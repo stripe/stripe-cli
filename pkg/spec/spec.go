@@ -88,6 +88,38 @@ type StripeEnumValue struct {
 	Value       string `json:"value"`
 }
 
+// StripeEnum represents the x-stripeEnum extension. It handles both the new
+// object format ({kind, values}) and the legacy array format ([{value, ...}]).
+type StripeEnum struct {
+	Kind   string            `json:"kind,omitempty"`
+	Values []StripeEnumValue `json:"values,omitempty"`
+}
+
+// UnmarshalJSON handles both the new object format and the legacy array format.
+func (e *StripeEnum) UnmarshalJSON(data []byte) error {
+	// Try new object format first: {kind: "...", values: [...]}
+	type stripeEnumObj struct {
+		Kind   string            `json:"kind"`
+		Values []StripeEnumValue `json:"values"`
+	}
+	var obj stripeEnumObj
+	if err := json.Unmarshal(data, &obj); err == nil && obj.Values != nil {
+		e.Kind = obj.Kind
+		e.Values = obj.Values
+		return nil
+	}
+
+	// Fall back to legacy array format: [{value, description}, ...]
+	var values []StripeEnumValue
+	if err := json.Unmarshal(data, &values); err == nil {
+		e.Kind = ""
+		e.Values = values
+		return nil
+	}
+
+	return fmt.Errorf("x-stripeEnum: expected object or array, got: %s", string(data))
+}
+
 // This is a list of fields that either we handle properly or we're confident
 // it's safe to ignore. If a field not in this list appears in the OpenAPI spec,
 // then we'll get an error so we remember to update stripe-mock to support it.
@@ -166,7 +198,7 @@ type Schema struct {
 	XStripeEvent        *StripeEvent        `json:"x-stripeEvent,omitempty"`
 	XStripeNotPublic    bool                `json:"x-stripeNotPublic,omitempty"`
 	XStripeError        *StripeError        `json:"x-stripeError"`
-	XStripeEnum         []StripeEnumValue   `json:"x-stripeEnum,omitempty"`
+	XStripeEnum         *StripeEnum         `json:"x-stripeEnum,omitempty"`
 }
 
 func (s *Schema) String() string {
