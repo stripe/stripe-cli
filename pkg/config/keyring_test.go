@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -99,5 +102,117 @@ func TestZalandoStoreRemoveReturnsErrNotFoundFromBackend(t *testing.T) {
 	store.del = func(_, _ string) error { return zkr.ErrNotFound }
 
 	err := store.Remove("key")
+	assert.Equal(t, ErrKeyNotFound, err)
+}
+
+// newTestFileStore returns a fileStore backed by a temp directory.
+func newTestFileStore(t *testing.T) *fileStore {
+	t.Helper()
+	return &fileStore{path: filepath.Join(t.TempDir(), "credentials.json")}
+}
+
+func TestFileStoreRoundTrip(t *testing.T) {
+	store := newTestFileStore(t)
+
+	require.NoError(t, store.Set("k", []byte("v"), ""))
+
+	data, err := store.Get("k")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("v"), data)
+
+	require.NoError(t, store.Remove("k"))
+
+	_, err = store.Get("k")
+	assert.Equal(t, ErrKeyNotFound, err)
+}
+
+func TestFileStoreGetNotFound(t *testing.T) {
+	_, err := newTestFileStore(t).Get("missing")
+	assert.Equal(t, ErrKeyNotFound, err)
+}
+
+func TestFileStoreRemoveNotFound(t *testing.T) {
+	err := newTestFileStore(t).Remove("missing")
+	assert.Equal(t, ErrKeyNotFound, err)
+}
+
+func TestFileStorePermissions(t *testing.T) {
+	store := newTestFileStore(t)
+	require.NoError(t, store.Set("k", []byte("v"), ""))
+
+	info, err := os.Stat(store.path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+}
+
+// failStore is a SecureStore whose every operation returns a fixed error.
+type failStore struct{ err error }
+
+func (f *failStore) Get(_ string) ([]byte, error)              { return nil, f.err }
+func (f *failStore) Set(_ string, _ []byte, _ string) error    { return f.err }
+func (f *failStore) Remove(_ string) error                     { return f.err }
+
+func TestFallbackStoreGetFallsBackOnPrimaryError(t *testing.T) {
+	fb := newTestFileStore(t)
+	require.NoError(t, fb.Set("k", []byte("from-file"), ""))
+
+	store := &fallbackStore{
+		primary:  &failStore{fmt.Errorf("keyring unavailable")},
+		fallback: fb,
+	}
+
+	data, err := store.Get("k")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("from-file"), data)
+}
+
+func TestFallbackStoreGetReturnsPrimaryValue(t *testing.T) {
+	primary := NewMemoryStore(map[string][]byte{"k": []byte("from-primary")})
+	store := &fallbackStore{primary: primary, fallback: newTestFileStore(t)}
+
+	data, err := store.Get("k")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("from-primary"), data)
+}
+
+func TestFallbackStoreSetFallsBackOnPrimaryError(t *testing.T) {
+	fb := newTestFileStore(t)
+	store := &fallbackStore{
+		primary:  &failStore{fmt.Errorf("keyring unavailable")},
+		fallback: fb,
+	}
+
+	require.NoError(t, store.Set("k", []byte("v"), ""))
+
+	data, err := fb.Get("k")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("v"), data)
+}
+
+func TestFallbackStoreRemoveBothNotFound(t *testing.T) {
+	store := &fallbackStore{
+		primary:  NewMemoryStore(nil),
+		fallback: newTestFileStore(t),
+	}
+	assert.Equal(t, ErrKeyNotFound, store.Remove("missing"))
+}
+
+func TestFallbackStoreRemoveFromPrimary(t *testing.T) {
+	primary := NewMemoryStore(map[string][]byte{"k": []byte("v")})
+	store := &fallbackStore{primary: primary, fallback: newTestFileStore(t)}
+
+	require.NoError(t, store.Remove("k"))
+	_, err := primary.Get("k")
+	assert.Equal(t, ErrKeyNotFound, err)
+}
+
+func TestFallbackStoreRemoveFromFallback(t *testing.T) {
+	fb := newTestFileStore(t)
+	require.NoError(t, fb.Set("k", []byte("v"), ""))
+
+	store := &fallbackStore{primary: NewMemoryStore(nil), fallback: fb}
+
+	require.NoError(t, store.Remove("k"))
+	_, err := fb.Get("k")
 	assert.Equal(t, ErrKeyNotFound, err)
 }
