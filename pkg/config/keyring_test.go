@@ -216,3 +216,34 @@ func TestFallbackStoreRemoveFromFallback(t *testing.T) {
 	_, err := fb.Get("k")
 	assert.Equal(t, ErrKeyNotFound, err)
 }
+
+func TestIsUsingInsecureStorageFalseWhenPrimarySucceeds(t *testing.T) {
+	prev := KeyRing
+	t.Cleanup(func() { KeyRing = prev })
+
+	KeyRing = &fallbackStore{primary: NewMemoryStore(nil), fallback: newTestFileStore(t)}
+
+	require.NoError(t, KeyRing.Set("k", []byte("v"), ""))
+	assert.False(t, IsUsingInsecureStorage())
+}
+
+func TestIsUsingInsecureStorageTrueWhenFallbackUsed(t *testing.T) {
+	prev := KeyRing
+	t.Cleanup(func() { KeyRing = prev })
+
+	KeyRing = &fallbackStore{
+		primary:  &failStore{fmt.Errorf("keyring unavailable")},
+		fallback: newTestFileStore(t),
+	}
+
+	require.NoError(t, KeyRing.Set("k", []byte("v"), ""))
+	assert.True(t, IsUsingInsecureStorage())
+}
+
+func TestIsUsingInsecureStorageFalseForNonFallbackStore(t *testing.T) {
+	prev := KeyRing
+	t.Cleanup(func() { KeyRing = prev })
+
+	KeyRing = NewMemoryStore(nil)
+	assert.False(t, IsUsingInsecureStorage())
+}

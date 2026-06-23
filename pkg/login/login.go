@@ -79,5 +79,8 @@ func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error
 	}
 	fmt.Printf("> %s\n", msg)
 	fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+	if config.IsUsingInsecureStorage() {
+		fmt.Println("Warning: the system keyring is unavailable. Your credentials have been stored unencrypted in " + config.CredentialsFilePath())
+	}
 	return nil
 }

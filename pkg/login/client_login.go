@@ -9,6 +9,7 @@ import (
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -101,6 +102,9 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 			fmt.Printf("> %s\n", message)
 			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+			if config.IsUsingInsecureStorage() {
+				fmt.Println("Warning: the system keyring is unavailable. Your credentials have been stored unencrypted in " + config.CredentialsFilePath())
+			}
 			return nil
 		}
 	}

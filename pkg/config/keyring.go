@@ -95,8 +95,23 @@ func (s *zalandoStore) Remove(key string) error {
 // This mirrors the GitHub CLI pattern: prefer the OS keyring, but write to a
 // plain file when the keyring is unavailable (e.g. headless Linux, containers).
 type fallbackStore struct {
-	primary  SecureStore
-	fallback SecureStore
+	primary         SecureStore
+	fallback        SecureStore
+	wroteToFallback bool
+}
+
+// IsUsingInsecureStorage reports whether credentials have been written to the
+// plain-file fallback because the OS keyring was unavailable. Callers (e.g.
+// the login flow) can use this to warn the user.
+func IsUsingInsecureStorage() bool {
+	fb, ok := KeyRing.(*fallbackStore)
+	return ok && fb.wroteToFallback
+}
+
+// CredentialsFilePath returns the path of the plain-text credentials file used
+// by the file fallback store.
+func CredentialsFilePath() string {
+	return newFileStore().path
 }
 
 func (s *fallbackStore) Get(key string) ([]byte, error) {
@@ -115,7 +130,11 @@ func (s *fallbackStore) Set(key string, data []byte, description string) error {
 	logger.Debug("writing to credential store")
 	if err := s.primary.Set(key, data, description); err != nil {
 		logger.WithError(err).Debug("credential store unavailable, writing to fallback file")
-		return s.fallback.Set(key, data, description)
+		if writeErr := s.fallback.Set(key, data, description); writeErr != nil {
+			return writeErr
+		}
+		s.wroteToFallback = true
+		return nil
 	}
 	return nil
 }
