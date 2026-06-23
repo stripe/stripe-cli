@@ -96,6 +96,12 @@ func getConfigFolder(xdgPath string) string {
 	return stripeConfigPath
 }
 
+// CredentialsFilePath returns the path of the plain-text credentials file used
+// by the file fallback store when the OS keyring is unavailable.
+func CredentialsFilePath() string {
+	return filepath.Join(getConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "credentials.json")
+}
+
 // InitConfig reads in profiles file and ENV variables if set.
 func (c *Config) InitConfig() {
 	logFormatter := &prefixed.TextFormatter{
@@ -182,7 +188,7 @@ func (c *Config) InitConfig() {
 
 	// initialize secure credential store (tests may pre-set KeyRing to a mock)
 	if KeyRing == nil {
-		KeyRing = newSecureStore()
+		KeyRing = keyring.NewSecureStore(KeyManagementService, CredentialsFilePath())
 	}
 
 	// redact livemode values for existing configs
