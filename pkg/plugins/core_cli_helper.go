@@ -290,9 +290,18 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 	return true, nil
 }
 
-// KeychainFindCredentials is deprecated and always returns an empty list.
+// KeychainFindCredentials returns keychain keys that are present in the credential store.
+// Deprecated: full OS-level keychain enumeration is complex and platform-specific, so this takes a
+// best-effort approach: it probes for the one key plugins are most likely to need
+// (the default profile's live mode API key), covering both the OS keychain and the
+// plain-file fallback via readKeychainPassword.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
-	return []string{}, nil
+	key := "default." + config.LiveModeAPIKeyName
+	_, exists, err := readKeychainPassword(key)
+	if err != nil || !exists {
+		return []string{}, err
+	}
+	return []string{key}, nil
 }
 
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.
