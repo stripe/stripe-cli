@@ -16,7 +16,7 @@ import (
 
 func warnIfInsecureStorage() {
 	if keyring.IsUsingInsecureStorage(config.KeyRing) {
-		fmt.Println("Warning: credentials stored in plaintext in " + config.CredentialsFilePath())
+		fmt.Println("Warning: credentials stored in plaintext")
 	}
 }
 
