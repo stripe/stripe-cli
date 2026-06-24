@@ -291,10 +291,11 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 }
 
 // KeychainFindCredentials returns keychain keys that are present in the credential store.
-// Deprecated: full OS-level keychain enumeration is complex and platform-specific, so this takes a
-// best-effort approach: it probes for the one key plugins are most likely to need
+// It takes a best-effort approach: probing for the one key plugins are most likely to need
 // (the default profile's live mode API key), covering both the OS keychain and the
 // plain-file fallback via readKeychainPassword.
+//
+// Deprecated: full OS-level keychain enumeration is complex and platform-specific.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
 	key := "default." + config.LiveModeAPIKeyName
 	_, exists, err := readKeychainPassword(key)
