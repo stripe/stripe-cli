@@ -40,6 +40,20 @@ func IsUsingInsecureStorage(store SecureStore) bool {
 	return ok && fb.wroteToFallback
 }
 
+// FallbackStoragePath returns the path of the plain-text fallback credentials
+// file, or an empty string if store is not a fallback-capable store.
+func FallbackStoragePath(store SecureStore) string {
+	fb, ok := store.(*fallbackStore)
+	if !ok {
+		return ""
+	}
+	fs, ok := fb.fallback.(*fileStore)
+	if !ok {
+		return ""
+	}
+	return fs.path
+}
+
 // zalandoStore wraps zalando/go-keyring with per-call timeouts so that a hung
 // or absent D-Bus daemon does not block the process indefinitely.
 type zalandoStore struct {

@@ -18,7 +18,8 @@ import (
 func warnIfInsecureStorage() {
 	if keyring.IsUsingInsecureStorage(config.KeyRing) {
 		color := ansi.Color(os.Stdout)
-		fmt.Println(color.Yellow("Warning: credentials stored in plaintext"))
+		path := keyring.FallbackStoragePath(config.KeyRing)
+		fmt.Println(color.Yellow(fmt.Sprintf("Warning: the system keyring is unavailable. Your credentials have been stored unencrypted in %s", path)))
 	}
 }
 
