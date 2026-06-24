@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 func TestWriteProfile(t *testing.T) {
@@ -25,6 +26,8 @@ func TestWriteProfile(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
 	v := viper.New()
@@ -61,6 +64,8 @@ func TestWriteProfilesMerge(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
 	v := viper.New()
@@ -106,6 +111,8 @@ func TestOldProfileDeleted(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
 
 	p.WriteConfigField("experimental.stripe_headers", "test-headers")
@@ -167,13 +174,11 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{
-		{
-			Key:  "test.live_mode_api_key",
-			Data: []byte("rk_live_0000000001"),
-		},
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
+	t.Cleanup(func() { KeyRing = nil })
+	c.InitConfig()
 
 	v := viper.New()
 
@@ -184,9 +189,8 @@ func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
 	err = p.CreateProfile()
 	require.NoError(t, err)
 
-	keys, err := KeyRing.Keys()
-	require.NoError(t, err)
-	require.Empty(t, keys)
+	_, err = KeyRing.Get("test.live_mode_api_key")
+	require.Equal(t, keyring.ErrKeyNotFound, err)
 }
 
 func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
@@ -204,8 +208,9 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
 	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	v := viper.New()
 
@@ -216,14 +221,9 @@ func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
 	err = p.CreateProfile()
 	require.NoError(t, err)
 
-	item, err := KeyRing.Get("test.live_mode_api_key")
+	data, err := KeyRing.Get("test.live_mode_api_key")
 	require.NoError(t, err)
-	require.Equal(t, keyring.Item{
-		Key:         "test.live_mode_api_key",
-		Data:        []byte("rk_live_0000000001"),
-		Label:       "test.live_mode_api_key",
-		Description: "Live mode API key",
-	}, item)
+	require.Equal(t, []byte("rk_live_0000000001"), data)
 }
 
 func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
@@ -241,13 +241,11 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
-	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{
-		{
-			Key:  "test.live_mode_api_key",
-			Data: []byte("rk_live_0000000001"),
-		},
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		"test.live_mode_api_key": []byte("rk_live_0000000001"),
 	})
+	t.Cleanup(func() { KeyRing = nil })
+	c.InitConfig()
 
 	v := viper.New()
 
@@ -258,14 +256,9 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 	err = p.CreateProfile()
 	require.NoError(t, err)
 
-	item, err := KeyRing.Get("test.live_mode_api_key")
+	data, err := KeyRing.Get("test.live_mode_api_key")
 	require.NoError(t, err)
-	require.Equal(t, keyring.Item{
-		Key:         "test.live_mode_api_key",
-		Data:        []byte("rk_live_0000000002"),
-		Label:       "test.live_mode_api_key",
-		Description: "Live mode API key",
-	}, item)
+	require.Equal(t, []byte("rk_live_0000000002"), data)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
