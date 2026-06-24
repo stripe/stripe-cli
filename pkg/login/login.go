@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/afero"
 
@@ -16,7 +17,8 @@ import (
 
 func warnIfInsecureStorage() {
 	if keyring.IsUsingInsecureStorage(config.KeyRing) {
-		fmt.Println("Warning: credentials stored in plaintext")
+		color := ansi.Color(os.Stdout)
+		fmt.Println(color.Yellow("Warning: credentials stored in plaintext"))
 	}
 }
 
