@@ -4,14 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+func warnIfInsecureStorage() {
+	if keyring.IsUsingInsecureStorage(config.KeyRing) {
+		color := ansi.Color(os.Stdout)
+		fmt.Println(color.Yellow("Warning: credentials stored in plaintext"))
+	}
+}
 
 // Login is the main entrypoint for logging in to the CLI.
 func Login(ctx context.Context, baseURL string, config *config.Config) error {
@@ -79,5 +88,6 @@ func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error
 	}
 	fmt.Printf("> %s\n", msg)
 	fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+	warnIfInsecureStorage()
 	return nil
 }
