@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -132,6 +133,68 @@ func TestAddPluginSubcommandStubsSkipsEmptyName(t *testing.T) {
 	assert.Equal(t, 2, len(cmds))
 	assert.Equal(t, "also-valid", cmds[0].Name())
 	assert.Equal(t, "valid", cmds[1].Name())
+}
+
+func TestGeneratedPluginSubcommandStubUsesExecutingCommand(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "projects",
+		Shortdesc:        "Projects plugin",
+		Binary:           "stripe-cli-projects",
+		MagicCookieValue: "magic",
+		Commands: []plugins.CommandInfo{
+			{
+				Name: "catalog",
+				Desc: "Browse the projects catalog",
+			},
+		},
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	sentinelErr := errors.New("stop")
+	type ctxKey struct{}
+	ctx := context.WithValue(context.Background(), ctxKey{}, "sentinel")
+
+	var capturedCmd *cobra.Command
+	var capturedArgs []string
+	ptc.runPluginCmdFn = func(cmd *cobra.Command, args []string) error {
+		capturedCmd = cmd
+		capturedArgs = append([]string(nil), args...)
+		return sentinelErr
+	}
+
+	root := &cobra.Command{Use: "stripe"}
+	root.AddCommand(ptc.cmd)
+
+	oldArgs := os.Args
+	os.Args = []string{"stripe", "projects", "catalog"}
+	defer func() { os.Args = oldArgs }()
+
+	root.SetArgs([]string{"projects", "catalog"})
+
+	err := root.ExecuteContext(ctx)
+	require.ErrorIs(t, err, sentinelErr)
+	require.NotNil(t, capturedCmd)
+	assert.Equal(t, "catalog", capturedCmd.Name())
+	assert.Equal(t, []string{"catalog"}, capturedArgs)
+	assert.Equal(t, "sentinel", capturedCmd.Context().Value(ctxKey{}))
+}
+
+func TestCommandContextOrBackgroundUsesCommandContext(t *testing.T) {
+	type ctxKey struct{}
+
+	ctx := context.WithValue(context.Background(), ctxKey{}, "sentinel")
+	cmd := &cobra.Command{Use: "projects"}
+	cmd.SetContext(ctx)
+
+	assert.Same(t, ctx, commandContextOrBackground(cmd))
+}
+
+func TestCommandContextOrBackgroundFallsBackToBackground(t *testing.T) {
+	cmd := &cobra.Command{Use: "projects"}
+
+	assert.Equal(t, context.Background(), commandContextOrBackground(nil))
+	assert.Equal(t, context.Background(), commandContextOrBackground(cmd))
 }
 
 func TestSubsliceAfter(t *testing.T) {
