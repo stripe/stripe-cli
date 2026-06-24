@@ -412,6 +412,55 @@ func TestKeychainDeletePasswordClearsRecentWrite(t *testing.T) {
 	require.Equal(t, 1, ring.getCalls)
 }
 
+func TestKeychainFindCredentialsReturnsKeyWhenPresent(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{data: []byte("sk_live_123")},
+		},
+	}
+	config.KeyRing = ring
+	t.Cleanup(func() { config.KeyRing = originalKeyRing })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	keys, err := coreCLIHelper.KeychainFindCredentials()
+	require.NoError(t, err)
+	require.Equal(t, []string{"default." + config.LiveModeAPIKeyName}, keys)
+}
+
+func TestKeychainFindCredentialsReturnsEmptyWhenNotFound(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{err: keyring.ErrKeyNotFound},
+		},
+	}
+	config.KeyRing = ring
+	t.Cleanup(func() { config.KeyRing = originalKeyRing })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	keys, err := coreCLIHelper.KeychainFindCredentials()
+	require.NoError(t, err)
+	require.Empty(t, keys)
+}
+
+func TestKeychainFindCredentialsReturnsErrorOnFailure(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	expectedErr := errors.New("boom")
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{err: expectedErr},
+		},
+	}
+	config.KeyRing = ring
+	t.Cleanup(func() { config.KeyRing = originalKeyRing })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	keys, err := coreCLIHelper.KeychainFindCredentials()
+	require.ErrorIs(t, err, expectedErr)
+	require.Empty(t, keys)
+}
+
 func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
 	// Test with a NoOp telemetry client
 	ctx := context.Background()
