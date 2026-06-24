@@ -14,6 +14,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
+func warnIfInsecureStorage() {
+	if keyring.IsUsingInsecureStorage(config.KeyRing) {
+		fmt.Println("Warning: credentials stored in plaintext in " + config.CredentialsFilePath())
+	}
+}
+
 // Login is the main entrypoint for logging in to the CLI.
 func Login(ctx context.Context, baseURL string, config *config.Config) error {
 	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
@@ -80,8 +86,6 @@ func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error
 	}
 	fmt.Printf("> %s\n", msg)
 	fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
-	if keyring.IsUsingInsecureStorage(config.KeyRing) {
-		fmt.Println("Warning: the system keyring is unavailable. Your credentials have been stored unencrypted in " + config.CredentialsFilePath())
-	}
+	warnIfInsecureStorage()
 	return nil
 }

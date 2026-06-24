@@ -15,7 +15,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -62,9 +61,7 @@ func interactiveLoginWithParams(ctx context.Context, cfg *config.Config, input i
 		fmt.Printf("> %s\n", message)
 	}
 
-	if keyring.IsUsingInsecureStorage(config.KeyRing) {
-		fmt.Println("Warning: the system keyring is unavailable. Your credentials have been stored unencrypted in " + config.CredentialsFilePath())
-	}
+	warnIfInsecureStorage()
 
 	return nil
 }
