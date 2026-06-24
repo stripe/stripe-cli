@@ -297,7 +297,7 @@ func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
 //
 // Deprecated: full OS-level keychain enumeration is complex and platform-specific.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
-	key := h.config.GetProfile().GetConfigField(config.LiveModeAPIKeyName)
+	key := "default." + config.LiveModeAPIKeyName
 	_, exists, err := readKeychainPassword(key)
 	if err != nil || !exists {
 		return []string{}, err

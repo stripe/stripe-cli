@@ -412,12 +412,6 @@ func TestKeychainDeletePasswordClearsRecentWrite(t *testing.T) {
 	require.Equal(t, 1, ring.getCalls)
 }
 
-func newTestConfigWithProfile(profileName string) *TestConfig {
-	cfg := &TestConfig{}
-	cfg.Profile.ProfileName = profileName
-	return cfg
-}
-
 func TestKeychainFindCredentialsReturnsKeyWhenPresent(t *testing.T) {
 	originalKeyRing := config.KeyRing
 	ring := &fakeKeyring{
@@ -428,11 +422,10 @@ func TestKeychainFindCredentialsReturnsKeyWhenPresent(t *testing.T) {
 	config.KeyRing = ring
 	t.Cleanup(func() { config.KeyRing = originalKeyRing })
 
-	cfg := newTestConfigWithProfile("myprofile")
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), cfg, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
 	keys, err := coreCLIHelper.KeychainFindCredentials()
 	require.NoError(t, err)
-	require.Equal(t, []string{"myprofile." + config.LiveModeAPIKeyName}, keys)
+	require.Equal(t, []string{"default." + config.LiveModeAPIKeyName}, keys)
 }
 
 func TestKeychainFindCredentialsReturnsEmptyWhenNotFound(t *testing.T) {
@@ -445,8 +438,7 @@ func TestKeychainFindCredentialsReturnsEmptyWhenNotFound(t *testing.T) {
 	config.KeyRing = ring
 	t.Cleanup(func() { config.KeyRing = originalKeyRing })
 
-	cfg := newTestConfigWithProfile("myprofile")
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), cfg, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
 	keys, err := coreCLIHelper.KeychainFindCredentials()
 	require.NoError(t, err)
 	require.Empty(t, keys)
@@ -463,8 +455,7 @@ func TestKeychainFindCredentialsReturnsErrorOnFailure(t *testing.T) {
 	config.KeyRing = ring
 	t.Cleanup(func() { config.KeyRing = originalKeyRing })
 
-	cfg := newTestConfigWithProfile("myprofile")
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), cfg, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
 	keys, err := coreCLIHelper.KeychainFindCredentials()
 	require.ErrorIs(t, err, expectedErr)
 	require.Empty(t, keys)
