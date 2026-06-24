@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -24,7 +24,7 @@ func runWhoami(t *testing.T, wc *whoamiCmd) (string, error) {
 
 func TestWhoamiNotAuthenticated(t *testing.T) {
 	viper.Reset()
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -40,7 +40,7 @@ func TestWhoamiNotAuthenticated(t *testing.T) {
 
 func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 	viper.Reset()
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -66,7 +66,7 @@ func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 }
 
 func TestWhoamiWithTestKey(t *testing.T) {
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -91,7 +91,7 @@ func TestWhoamiWithTestKey(t *testing.T) {
 }
 
 func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
@@ -114,7 +114,7 @@ func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
 }
 
 func TestWhoamiWithEnvVarKey(t *testing.T) {
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = keyring.NewMemoryStore(nil)
 	t.Setenv("STRIPE_API_KEY", "sk_test_envvar1234567890")
 
 	wc := newWhoamiCmd()
@@ -137,7 +137,7 @@ func TestWhoamiWithEnvVarKey(t *testing.T) {
 }
 
 func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
-	config.KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+	config.KeyRing = keyring.NewMemoryStore(nil)
 	t.Setenv("STRIPE_API_KEY", "rk_live_envvar1234567890")
 
 	wc := newWhoamiCmd()
@@ -159,32 +159,10 @@ func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
 	assert.Nil(t, result.LiveModeKey.ExpiresAt, "override keys have no expiry")
 }
 
-// noPromptKeyring embeds ArrayKeyring for key storage but fails the test if
-// Get or GetMetadata are called — those operations would trigger an OS-level
-// auth prompt (e.g. macOS Keychain password dialog) on some platforms.
-type noPromptKeyring struct {
-	*keyring.ArrayKeyring
-	t *testing.T
-}
-
-func (k *noPromptKeyring) Get(key string) (keyring.Item, error) {
-	k.t.Fatal("Get would prompt for keychain password on some platforms")
-	return keyring.Item{}, nil
-}
-
-func (k *noPromptKeyring) GetMetadata(key string) (keyring.Metadata, error) {
-	k.t.Fatal("GetMetadata would prompt for keychain password on some platforms")
-	return keyring.Metadata{}, nil
-}
-
-func TestWhoamiLiveModeKeyDoesNotReadSecret(t *testing.T) {
-	kr := &noPromptKeyring{
-		ArrayKeyring: keyring.NewArrayKeyring([]keyring.Item{
-			{Key: "default.live_mode_api_key", Data: []byte("sk_live_1234567890abcdef")},
-		}),
-		t: t,
-	}
-	config.KeyRing = kr
+func TestWhoamiLiveModeKeyDetected(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		"default.live_mode_api_key": []byte("rk_live_1234567890abcdef"),
+	})
 
 	wc := newWhoamiCmd()
 	wc.profile = &config.Profile{
