@@ -226,6 +226,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
 	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, trace, warn, error)")
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
+	rootCmd.PersistentFlags().StringVar(&Config.Format, "format", "text", "Output format (text, json)")
 	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")

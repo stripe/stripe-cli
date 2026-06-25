@@ -141,6 +141,11 @@ type CoreCLIHelperClient interface {
 	KeychainDeletePassword(ctx context.Context, in *KeychainDeletePasswordRequest, opts ...grpc.CallOption) (*KeychainDeletePasswordResponse, error)
 	KeychainFindCredentials(ctx context.Context, in *KeychainFindCredentialsRequest, opts ...grpc.CallOption) (*KeychainFindCredentialsResponse, error)
 	RunPeerPlugin(ctx context.Context, in *RunPeerPluginRequest, opts ...grpc.CallOption) (*RunPeerPluginResponse, error)
+	// Centralized UI Rendering
+	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error)
+	SendProgress(ctx context.Context, in *SendProgressRequest, opts ...grpc.CallOption) (*SendProgressResponse, error)
+	Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -221,6 +226,46 @@ func (c *coreCLIHelperClient) RunPeerPlugin(ctx context.Context, in *RunPeerPlug
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_SendMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendCommandOutputResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_SendCommandOutput_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) SendProgress(ctx context.Context, in *SendProgressRequest, opts ...grpc.CallOption) (*SendProgressResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendProgressResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_SendProgress_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PromptResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_Prompt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
@@ -232,6 +277,11 @@ type CoreCLIHelperServer interface {
 	KeychainDeletePassword(context.Context, *KeychainDeletePasswordRequest) (*KeychainDeletePasswordResponse, error)
 	KeychainFindCredentials(context.Context, *KeychainFindCredentialsRequest) (*KeychainFindCredentialsResponse, error)
 	RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error)
+	// Centralized UI Rendering
+	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
+	SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error)
+	SendProgress(context.Context, *SendProgressRequest) (*SendProgressResponse, error)
+	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -262,6 +312,18 @@ func (UnimplementedCoreCLIHelperServer) KeychainFindCredentials(context.Context,
 }
 func (UnimplementedCoreCLIHelperServer) RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RunPeerPlugin not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendMessage not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendCommandOutput not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) SendProgress(context.Context, *SendProgressRequest) (*SendProgressResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendProgress not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) Prompt(context.Context, *PromptRequest) (*PromptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Prompt not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -410,6 +472,78 @@ func _CoreCLIHelper_RunPeerPlugin_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_SendMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).SendMessage(ctx, req.(*SendMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_SendCommandOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCommandOutputRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).SendCommandOutput(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_SendCommandOutput_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).SendCommandOutput(ctx, req.(*SendCommandOutputRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_SendProgress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendProgressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).SendProgress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_SendProgress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).SendProgress(ctx, req.(*SendProgressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_Prompt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).Prompt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_Prompt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).Prompt(ctx, req.(*PromptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -444,6 +578,22 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunPeerPlugin",
 			Handler:    _CoreCLIHelper_RunPeerPlugin_Handler,
+		},
+		{
+			MethodName: "SendMessage",
+			Handler:    _CoreCLIHelper_SendMessage_Handler,
+		},
+		{
+			MethodName: "SendCommandOutput",
+			Handler:    _CoreCLIHelper_SendCommandOutput_Handler,
+		},
+		{
+			MethodName: "SendProgress",
+			Handler:    _CoreCLIHelper_SendProgress_Handler,
+		},
+		{
+			MethodName: "Prompt",
+			Handler:    _CoreCLIHelper_Prompt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

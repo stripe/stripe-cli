@@ -12,6 +12,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
+	"github.com/stripe/stripe-cli/pkg/plugins/rendering"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -24,6 +25,12 @@ type CoreCLIHelper interface {
 	KeychainDeletePassword(key string) (bool, error)
 	KeychainFindCredentials() ([]string, error)
 	RunPeerPlugin(pluginName string, args []string, cwd string) error
+
+	// Centralized UI Rendering
+	SendMessage(req *proto.SendMessageRequest) error
+	SendCommandOutput(req *proto.SendCommandOutputRequest) error
+	SendProgress(req *proto.SendProgressRequest) error
+	Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error)
 }
 
 type CoreCLIHelperClient struct {
@@ -87,6 +94,29 @@ func (c *CoreCLIHelperClient) RunPeerPlugin(pluginName string, args []string, cw
 	return err
 }
 
+func (c *CoreCLIHelperClient) SendMessage(req *proto.SendMessageRequest) error {
+	_, err := c.client.SendMessage(context.Background(), req)
+	return err
+}
+
+func (c *CoreCLIHelperClient) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
+	_, err := c.client.SendCommandOutput(context.Background(), req)
+	return err
+}
+
+func (c *CoreCLIHelperClient) SendProgress(req *proto.SendProgressRequest) error {
+	_, err := c.client.SendProgress(context.Background(), req)
+	return err
+}
+
+func (c *CoreCLIHelperClient) Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error) {
+	resp, err := c.client.Prompt(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 type CoreCLIHelperServer struct {
 	proto.CoreCLIHelperServer
 	Impl CoreCLIHelper
@@ -148,11 +178,40 @@ func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunP
 	return &proto.RunPeerPluginResponse{}, nil
 }
 
+func (s *CoreCLIHelperServer) SendMessage(ctx context.Context, req *proto.SendMessageRequest) (*proto.SendMessageResponse, error) {
+	err := s.Impl.SendMessage(req)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SendMessageResponse{}, nil
+}
+
+func (s *CoreCLIHelperServer) SendCommandOutput(ctx context.Context, req *proto.SendCommandOutputRequest) (*proto.SendCommandOutputResponse, error) {
+	err := s.Impl.SendCommandOutput(req)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SendCommandOutputResponse{}, nil
+}
+
+func (s *CoreCLIHelperServer) SendProgress(ctx context.Context, req *proto.SendProgressRequest) (*proto.SendProgressResponse, error) {
+	err := s.Impl.SendProgress(req)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SendProgressResponse{}, nil
+}
+
+func (s *CoreCLIHelperServer) Prompt(ctx context.Context, req *proto.PromptRequest) (*proto.PromptResponse, error) {
+	return s.Impl.Prompt(req)
+}
+
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
 type coreCLIHelper struct {
-	ctx    context.Context
-	config config.IConfig
-	fs     afero.Fs
+	ctx             context.Context
+	config          config.IConfig
+	fs              afero.Fs
+	renderingEngine *rendering.Engine
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
@@ -223,7 +282,17 @@ func clearPendingKeychainValue(key string) {
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
-	return &coreCLIHelper{ctx: ctx, config: cfg, fs: fs}
+	return NewCoreCLIHelperWithFormat(ctx, cfg, fs, rendering.FormatText)
+}
+
+// NewCoreCLIHelperWithFormat creates a CoreCLIHelper with a specific output format.
+func NewCoreCLIHelperWithFormat(ctx context.Context, cfg config.IConfig, fs afero.Fs, format rendering.Format) CoreCLIHelper {
+	return &coreCLIHelper{
+		ctx:             ctx,
+		config:          cfg,
+		fs:              fs,
+		renderingEngine: rendering.NewEngine(format),
+	}
 }
 
 // Echo echoes the input string.
@@ -315,4 +384,23 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 		return fmt.Errorf("could not run peer plugin %q: config type mismatch", pluginName)
 	}
 	return plugin.Run(h.ctx, cfg, h.fs, args, cwd)
+}
+
+func (h *coreCLIHelper) SendMessage(req *proto.SendMessageRequest) error {
+	h.renderingEngine.HandleSendMessage(req)
+	return nil
+}
+
+func (h *coreCLIHelper) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
+	h.renderingEngine.HandleCommandOutput(req)
+	return nil
+}
+
+func (h *coreCLIHelper) SendProgress(req *proto.SendProgressRequest) error {
+	h.renderingEngine.HandleProgress(req)
+	return nil
+}
+
+func (h *coreCLIHelper) Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error) {
+	return h.renderingEngine.HandlePrompt(req), nil
 }
