@@ -5481,6 +5481,20 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 				{Value: "none"},
 			},
 		},
+		"payment_method_options.sunbit.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sunbit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.swish.reference": {
 			Type:             "string",
 			ShortDescription: "The order reference that will be displayed to customers in the Swish application",
@@ -5652,6 +5666,26 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "A future timestamp to anchor the subscription's billing cycle for new subscriptions",
 			Format:           "unix-time",
+		},
+		"subscription_data.billing_cycle_anchor_config.day_of_month": {
+			Type:             "integer",
+			ShortDescription: "The day of the month the anchor should be",
+		},
+		"subscription_data.billing_cycle_anchor_config.hour": {
+			Type:             "integer",
+			ShortDescription: "The hour of the day the anchor should be",
+		},
+		"subscription_data.billing_cycle_anchor_config.minute": {
+			Type:             "integer",
+			ShortDescription: "The minute of the hour the anchor should be",
+		},
+		"subscription_data.billing_cycle_anchor_config.month": {
+			Type:             "integer",
+			ShortDescription: "The month to start full cycle periods",
+		},
+		"subscription_data.billing_cycle_anchor_config.second": {
+			Type:             "integer",
+			ShortDescription: "The second of the minute the anchor should be",
 		},
 		"subscription_data.billing_mode.flexible.proration_discounts": {
 			Type:             "string",
@@ -7882,6 +7916,10 @@ var V1DisputesUpdate = resource.OperationSpec{
 		"evidence.duplicate_charge_id": {
 			Type:             "string",
 			ShortDescription: "The Stripe ID for the prior charge which appears to be a duplicate of the disputed charge",
+		},
+		"evidence.enhanced_evidence.mastercard_compliance.fee_acknowledged": {
+			Type:             "boolean",
+			ShortDescription: "A field acknowledging the fee incurred when countering a Mastercard compliance dispute",
 		},
 		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_account_id": {
 			Type:             "string",
@@ -16098,6 +16136,15 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.satispay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
 		"payment_method_options.scalapay.capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds are captured from the customer's account",
@@ -16141,6 +16188,20 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.sunbit.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sunbit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
 			},
 		},
 		"payment_method_options.swish.reference": {
@@ -17944,6 +18005,15 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.satispay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
 		"payment_method_options.scalapay.capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds are captured from the customer's account",
@@ -17987,6 +18057,20 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.sunbit.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sunbit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
 			},
 		},
 		"payment_method_options.swish.reference": {
@@ -19879,6 +19963,15 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.satispay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
 		"payment_method_options.scalapay.capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds are captured from the customer's account",
@@ -19922,6 +20015,20 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.sunbit.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sunbit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
 			},
 		},
 		"payment_method_options.swish.reference": {
@@ -23127,7 +23234,6 @@ var V1PaymentRecordsReportRefund = resource.OperationSpec{
 		"refunded.refunded_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported refund completed",
-			Required:         true,
 			MostCommon:       true,
 			Format:           "unix-time",
 		},
@@ -30728,6 +30834,14 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The account tax IDs associated with the subscription",
 		},
+		"invoice_settings.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the object",
+		},
+		"invoice_settings.footer": {
+			Type:             "string",
+			ShortDescription: "Footer to be displayed on the invoice",
+		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
 			ShortDescription: "The connected account being referenced when `type` is `account`",
@@ -31276,6 +31390,14 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"invoice_settings.account_tax_ids": {
 			Type:             "array",
 			ShortDescription: "The account tax IDs associated with the subscription",
+		},
+		"invoice_settings.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the object",
+		},
+		"invoice_settings.footer": {
+			Type:             "string",
+			ShortDescription: "Footer to be displayed on the invoice",
 		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
@@ -38940,6 +39062,16 @@ var V1TopupsCreate = resource.OperationSpec{
 			ShortDescription: "An arbitrary string attached to the object",
 			MostCommon:       true,
 		},
+		"payment_method": {
+			Type:             "string",
+			ShortDescription: "The ID of a PaymentMethod representing the payment method to be used for the top-up",
+		},
+		"payment_method_options.us_bank_account.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+			},
+		},
 		"source": {
 			Type:             "string",
 			ShortDescription: "The ID of a source to transfer funds from",
@@ -40571,6 +40703,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-03-25.dahlia"},
 				{Value: "2026-04-22.dahlia"},
 				{Value: "2026-05-27.dahlia"},
+				{Value: "2026-06-24.dahlia"},
 			},
 		},
 		"connect": {
@@ -40723,6 +40856,7 @@ var V2CommerceProductCatalogImportsCreate = resource.OperationSpec{
 				{Value: "inventory"},
 				{Value: "pricing"},
 				{Value: "product"},
+				{Value: "promotion"},
 			},
 		},
 		"mode": {
@@ -40774,6 +40908,7 @@ var V2CommerceProductCatalogImportsList = resource.OperationSpec{
 				{Value: "inventory"},
 				{Value: "pricing"},
 				{Value: "product"},
+				{Value: "promotion"},
 			},
 		},
 		"limit": {
@@ -42583,6 +42718,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.sunbit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -43693,6 +43832,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.sunbit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -43940,29 +44083,29 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.crypto_storer.date": {
+		"identity.attestations.terms_of_service.crypto_money_manager.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
 			Format:           "date-time",
 		},
-		"identity.attestations.terms_of_service.crypto_storer.ip": {
+		"identity.attestations.terms_of_service.crypto_money_manager.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.crypto_storer.user_agent": {
+		"identity.attestations.terms_of_service.crypto_money_manager.user_agent": {
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.storer.date": {
+		"identity.attestations.terms_of_service.money_manager.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
 			Format:           "date-time",
 		},
-		"identity.attestations.terms_of_service.storer.ip": {
+		"identity.attestations.terms_of_service.money_manager.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.storer.user_agent": {
+		"identity.attestations.terms_of_service.money_manager.user_agent": {
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
@@ -45515,6 +45658,7 @@ var V2PreviewCommerceProductCatalogImportsCreate = resource.OperationSpec{
 				{Value: "inventory"},
 				{Value: "pricing"},
 				{Value: "product"},
+				{Value: "promotion"},
 			},
 		},
 		"mode": {
@@ -45567,6 +45711,7 @@ var V2PreviewCommerceProductCatalogImportsList = resource.OperationSpec{
 				{Value: "inventory"},
 				{Value: "pricing"},
 				{Value: "product"},
+				{Value: "promotion"},
 			},
 		},
 		"limit": {
@@ -46566,7 +46711,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "The boolean value indicating if the terms of service have been accepted",
 		},
-		"identity.attestations.terms_of_service.storer.shown_and_accepted": {
+		"identity.attestations.terms_of_service.money_manager.shown_and_accepted": {
 			Type:             "boolean",
 			ShortDescription: "The boolean value indicating if the terms of service have been accepted",
 		},
@@ -47403,6 +47548,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.sunbit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -47520,6 +47669,78 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A publicly available website for handling support issues",
 		},
+		"configuration.money_manager.capabilities.business_storage.inbound.aud.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.cad.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.eur.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.gbp.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.usd.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.aud.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.cad.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.eur.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.gbp.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.usd.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.inbound_transfers.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_payments.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_payments.cards.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_payments.financial_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_transfers.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_transfers.financial_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.received_credits.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.received_debits.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.recipient.capabilities.bank_accounts.local.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -47533,46 +47754,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.holds_currencies.eur.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.holds_currencies.gbp.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.holds_currencies.usd.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_payments.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_payments.cards.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_payments.financial_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -47711,16 +47892,16 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.storer.date": {
+		"identity.attestations.terms_of_service.money_manager.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
 			Format:           "date-time",
 		},
-		"identity.attestations.terms_of_service.storer.ip": {
+		"identity.attestations.terms_of_service.money_manager.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.storer.user_agent": {
+		"identity.attestations.terms_of_service.money_manager.user_agent": {
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
@@ -48604,6 +48785,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.sunbit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -48721,6 +48906,82 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A publicly available website for handling support issues",
 		},
+		"configuration.money_manager.applied": {
+			Type:             "boolean",
+			ShortDescription: "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.aud.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.cad.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.eur.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.gbp.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.inbound.usd.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.aud.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.cad.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.eur.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.gbp.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.business_storage.outbound.usd.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.inbound_transfers.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_payments.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_payments.cards.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_payments.financial_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_transfers.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.outbound_transfers.financial_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.received_credits.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.money_manager.capabilities.received_debits.bank_accounts.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.recipient.applied": {
 			Type:             "boolean",
 			ShortDescription: "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration",
@@ -48744,50 +49005,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"configuration.recipient.default_outbound_destination": {
 			Type:             "string",
 			ShortDescription: "The payout method id to be used as a default outbound destination",
-		},
-		"configuration.storer.applied": {
-			Type:             "boolean",
-			ShortDescription: "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration",
-		},
-		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.holds_currencies.eur.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.holds_currencies.gbp.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.holds_currencies.usd.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_payments.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_payments.cards.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_payments.financial_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
-		},
-		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": {
-			Type:             "boolean",
-			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"contact_email": {
 			Type:             "string",
@@ -48924,29 +49141,29 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.crypto_storer.date": {
+		"identity.attestations.terms_of_service.crypto_money_manager.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
 			Format:           "date-time",
 		},
-		"identity.attestations.terms_of_service.crypto_storer.ip": {
+		"identity.attestations.terms_of_service.crypto_money_manager.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.crypto_storer.user_agent": {
+		"identity.attestations.terms_of_service.crypto_money_manager.user_agent": {
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.storer.date": {
+		"identity.attestations.terms_of_service.money_manager.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
 			Format:           "date-time",
 		},
-		"identity.attestations.terms_of_service.storer.ip": {
+		"identity.attestations.terms_of_service.money_manager.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
 		},
-		"identity.attestations.terms_of_service.storer.user_agent": {
+		"identity.attestations.terms_of_service.money_manager.user_agent": {
 			Type:             "string",
 			ShortDescription: "The user agent of the browser from which the Account's representative accepted the terms of service",
 		},
@@ -49520,10 +49737,6 @@ var V2PreviewCoreBatchJobsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The path of the endpoint to run this batch job against",
 			Required:         true,
-		},
-		"maximum_rps": {
-			Type:             "integer",
-			ShortDescription: "Optional field that allows the user to control how fast they want this batch job to run",
 		},
 		"notification_suppression.scope": {
 			Type:             "string",
@@ -50246,14 +50459,9 @@ var V2PreviewMoneyManagementFinancialAccountsList = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The page token",
 		},
-		"status": {
-			Type:             "string",
-			ShortDescription: "The status of the FinancialAccount to filter by",
-			Enum: []resource.EnumSpec{
-				{Value: "closed"},
-				{Value: "open"},
-				{Value: "pending"},
-			},
+		"statuses": {
+			Type:             "array",
+			ShortDescription: "Filter for FinancialAccount `status`",
 		},
 	},
 }
