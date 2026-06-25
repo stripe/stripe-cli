@@ -941,6 +941,70 @@ func TestCommandInfoNilWhenAbsent(t *testing.T) {
 	require.Nil(t, appA.Commands)
 }
 
+func TestDescriptionParsedFromManifest(t *testing.T) {
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	var pluginList PluginList
+	_, err := toml.Decode(string(manifestContent), &pluginList)
+	require.Nil(t, err)
+
+	// appC has a Description field
+	var appC *Plugin
+	for i, p := range pluginList.Plugins {
+		if p.Shortname == "appC" {
+			appC = &pluginList.Plugins[i]
+			break
+		}
+	}
+	require.NotNil(t, appC, "appC should be present in manifest")
+	require.Equal(t, "A plugin with subcommands that demonstrates multi-line description support. Use stripe appC --help to see the available subcommands.", appC.Description)
+}
+
+func TestDescriptionEmptyWhenAbsent(t *testing.T) {
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	var pluginList PluginList
+	_, err := toml.Decode(string(manifestContent), &pluginList)
+	require.Nil(t, err)
+
+	// appA has no Description field — should be empty string
+	var appA *Plugin
+	for i, p := range pluginList.Plugins {
+		if p.Shortname == "appA" {
+			appA = &pluginList.Plugins[i]
+			break
+		}
+	}
+	require.NotNil(t, appA)
+	require.Empty(t, appA.Description)
+}
+
+func TestDescriptionPreservedInLocalMetadataRoundTrip(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	plugin := Plugin{
+		Shortname:        "myPlugin",
+		Shortdesc:        "Short description",
+		Description:      "A longer multi-line description for help output.",
+		Binary:           "stripe-cli-my-plugin",
+		MagicCookieValue: "COOKIE-VALUE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+
+	cached, err := readLocalPluginMetadata(config, fs, "myPlugin")
+	require.NoError(t, err)
+	require.Equal(t, "A longer multi-line description for help output.", cached.Description)
+}
+
 func TestUninstall(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
