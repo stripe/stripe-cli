@@ -3,6 +3,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -21,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 // ColorOn represnets the on-state for colors
@@ -93,6 +94,12 @@ func getConfigFolder(xdgPath string) string {
 	}).Debug("Using profiles file")
 
 	return stripeConfigPath
+}
+
+// CredentialsFilePath returns the path of the plain-text credentials file used
+// by the file fallback store when the OS keyring is unavailable.
+func CredentialsFilePath() string {
+	return filepath.Join(getConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "credentials.json")
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -179,13 +186,9 @@ func (c *Config) InitConfig() {
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
 	}
 
-	// initialize key ring
-	KeyRing, err = keyring.Open(getKeyringConfig())
-	if err != nil {
-		log.WithFields(log.Fields{
-			"prefix": "config.Config.InitConfig",
-			"error":  err,
-		}).Warn("Failed to initialize keyring")
+	// initialize secure credential store (tests may pre-set KeyRing to a mock)
+	if KeyRing == nil {
+		KeyRing = keyring.NewSecureStore(KeyManagementService, CredentialsFilePath())
 	}
 
 	// redact livemode values for existing configs
@@ -451,31 +454,19 @@ func (c *Config) RemoveAllAuthFields() error {
 
 func deleteLivemodeKey(key string, profile string) error {
 	fieldID := profile + "." + key
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return err
+	err := KeyRing.Remove(fieldID)
+	if errors.Is(err, keyring.ErrKeyNotFound) {
+		return nil
 	}
-	for _, item := range existingKeys {
-		if item == fieldID {
-			KeyRing.Remove(fieldID)
-			return nil
-		}
-	}
-	return nil
+	return err
 }
 
 func deleteTopLevelLivemodeKey(key string) error {
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return err
+	err := KeyRing.Remove(key)
+	if errors.Is(err, keyring.ErrKeyNotFound) {
+		return nil
 	}
-	for _, item := range existingKeys {
-		if item == key {
-			KeyRing.Remove(key)
-			return nil
-		}
-	}
-	return nil
+	return err
 }
 
 // isProfile identifies whether a config entry pertains to a user profile.

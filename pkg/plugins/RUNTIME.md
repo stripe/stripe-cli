@@ -4,11 +4,11 @@ This document describes the Node.js runtime installation feature for Stripe CLI 
 
 ## Overview
 
-Plugins can declare runtime dependencies in their plugin metadata manifest. When a plugin requires a specific Node.js version, the Stripe CLI will automatically download and install the required runtime during plugin installation.
+Plugins can declare runtime dependencies in their `plugins.toml` manifest. When a plugin requires a specific Node.js version, the Stripe CLI will automatically download and install the required runtime during plugin installation.
 
 ## Manifest Configuration
 
-In the plugin manifest, specify the required Node.js version using the `Runtime` field:
+In `plugins.toml`, specify the required Node.js version using the `Runtime` field:
 
 ```toml
 [[Plugin.Release]]
