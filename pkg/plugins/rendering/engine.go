@@ -48,7 +48,6 @@ func (e *Engine) HandleCommandOutput(req *proto.SendCommandOutputRequest) {
 	switch e.format {
 	case FormatJSON:
 		envelope := JSONEnvelope{
-			Ok:      req.Ok,
 			Command: req.Command,
 		}
 		for _, block := range req.Blocks {

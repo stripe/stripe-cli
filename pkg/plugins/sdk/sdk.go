@@ -151,24 +151,10 @@ func NextStepWithCode(code, description, command string) OutputBlock {
 	}}
 }
 
-// ErrorBlock creates an error block.
-func ErrorBlock(code, msg string) OutputBlock {
-	return OutputBlock{blockType: "error", payload: map[string]interface{}{
-		"code":    code,
-		"message": msg,
-	}}
-}
-
-// ErrorBlockWithDetails creates an error block with additional details.
-func ErrorBlockWithDetails(code, msg string, details map[string]string) OutputBlock {
-	return OutputBlock{blockType: "error", payload: map[string]interface{}{
-		"code":    code,
-		"message": msg,
-		"details": details,
-	}}
-}
-
 // Output sends structured command output to core CLI.
+// Only used for success output. For errors, use cli.Error() + return an error
+// from the command (non-zero exit code).
+//
 // Blocks are rendered in the order provided.
 //
 // Usage:
@@ -180,15 +166,10 @@ func ErrorBlockWithDetails(code, msg string, details map[string]string) OutputBl
 //	)
 func (c *CLI) Output(command string, blocks ...OutputBlock) error {
 	req := &proto.SendCommandOutputRequest{
-		Ok:      true,
 		Command: command,
 	}
 
 	for _, b := range blocks {
-		// If any block is an error, mark the output as failed
-		if b.blockType == "error" {
-			req.Ok = false
-		}
 		payload, err := json.Marshal(b.payload)
 		if err != nil {
 			return err

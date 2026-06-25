@@ -143,9 +143,11 @@ message OutputBlock {
 }
 
 message SendCommandOutputRequest {
-  bool ok = 1;
-  string command = 2;
-  repeated OutputBlock blocks = 3;
+  string command = 1;
+  repeated OutputBlock blocks = 2;
+  // NOTE: `ok` field intentionally omitted. Errors go to stderr via SendMessage
+  // (level=ERROR) + non-zero exit code, following Go/Cobra CLI conventions (gh, docker).
+  // Adding `ok` later is not a breaking change if needed for agentic workflows.
 }
 
 message SendCommandOutputResponse {

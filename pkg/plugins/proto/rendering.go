@@ -45,9 +45,10 @@ type OutputBlock struct {
 }
 
 type SendCommandOutputRequest struct {
-	Ok      bool           `json:"ok"`
 	Command string         `json:"command"`
 	Blocks  []*OutputBlock `json:"blocks"`
+	// NOTE: `ok` field intentionally omitted. Errors go to stderr via SendMessage
+	// (level=ERROR) + non-zero exit code. Adding `ok` later is not a breaking change.
 }
 
 type SendCommandOutputResponse struct{}
