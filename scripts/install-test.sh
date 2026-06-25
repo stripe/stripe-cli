@@ -41,7 +41,7 @@ run_install() {
     winget)
         # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
         winget source reset --force
-        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements --silent
         # winget modifies PATH but the current shell process doesn't inherit the change;
         # explicitly add the WinGet Links directory where the stripe alias was created.
         PATH="$PATH:$(cygpath -u "$LOCALAPPDATA/Microsoft/WinGet/Links")"
