@@ -46,6 +46,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc.cmd = &cobra.Command{
 		Use:   plugin.Shortname,
 		Short: plugin.Shortdesc,
+		Long:  plugin.Description,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// "stripe [host_flags...] plugin_name [plugin_subcommands...] [plugin_flags...]" => "[plugin_subcommands...] [plugin_flags...]"
 			pluginArgs := subsliceAfter(os.Args, cmd.Name())

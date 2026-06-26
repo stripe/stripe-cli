@@ -54,6 +54,35 @@ func TestFlagsArePassedAsArgs(t *testing.T) {
 	require.Equal(t, "testarg --log-level=info", strings.Join(pluginCmd.ParsedArgs, " "))
 }
 
+func TestPluginCommandSetsLongFromDescription(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "tools",
+		Shortdesc:        "Manage your account from the terminal.",
+		Description:      "Manage your account from the terminal and update settings like branding, checkout color and more.",
+		Binary:           "stripe-cli-tools",
+		MagicCookieValue: "magic",
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	assert.Equal(t, "Manage your account from the terminal.", ptc.cmd.Short)
+	assert.Equal(t, "Manage your account from the terminal and update settings like branding, checkout color and more.", ptc.cmd.Long)
+}
+
+func TestPluginCommandLongEmptyWhenNoDescription(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "simple",
+		Shortdesc:        "A simple plugin",
+		Binary:           "stripe-cli-simple",
+		MagicCookieValue: "magic",
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	assert.Equal(t, "A simple plugin", ptc.cmd.Short)
+	assert.Equal(t, "", ptc.cmd.Long)
+}
+
 func TestAddPluginSubcommandStubs(t *testing.T) {
 	plugin := plugins.Plugin{
 		Shortname:        "myapp",
