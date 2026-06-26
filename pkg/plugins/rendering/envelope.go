@@ -5,7 +5,7 @@ import "encoding/json"
 // JSONEnvelope is the standard output format for --format=json.
 // Only success output goes here (stdout). Errors go to stderr + non-zero exit.
 type JSONEnvelope struct {
-	Command string        `json:"command"`
+	Command string          `json:"command"`
 	Data    []EnvelopeBlock `json:"data"`
 }
 

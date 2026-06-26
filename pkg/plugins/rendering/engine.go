@@ -1,3 +1,4 @@
+// Package rendering implements the centralized UI rendering engine for plugin output.
 package rendering
 
 import (
