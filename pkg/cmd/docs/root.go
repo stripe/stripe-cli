@@ -75,18 +75,18 @@ func New() *RootCommand {
 
 Read a page by path:
 
-  docs /payments
-  docs /api/customers
+  stripe docs /payments
+  stripe docs /api/customers
 
 Search documentation by keywords:
 
-  docs search "payment intents"
+  stripe docs search "payment intents"
 
 Read API Reference pages by their identifier:
 
-  docs api product
-  docs api GET /v1/products
-  docs api product.created`,
+  stripe docs api product
+  stripe docs api GET /v1/products
+  stripe docs api product.created`,
 		Args:              cobra.ArbitraryArgs,
 		PersistentPreRunE: r.preRun,
 		RunE:              r.run,
@@ -229,7 +229,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
-	if r.nonInteractive || useragent.DetectAIAgent(os.Getenv) != "" {
+	if r.nonInteractive || r.noPager || useragent.DetectAIAgent(os.Getenv) != "" {
 		return false
 	}
 	f, ok := cmd.OutOrStdout().(*os.File)

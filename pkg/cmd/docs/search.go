@@ -32,9 +32,9 @@ func (r *RootCommand) newSearchCommand() *cobra.Command {
 
 Search by keyword or phrase:
 
-  docs search "payment methods"
-  docs search "API keys"
-  docs search "dispute evidence"`,
+  stripe docs search "payment methods"
+  stripe docs search "API keys"
+  stripe docs search "dispute evidence"`,
 		Args: cobra.ArbitraryArgs,
 		RunE: r.runSearch,
 	}

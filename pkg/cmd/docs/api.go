@@ -32,18 +32,18 @@ func (r *RootCommand) newAPICmd() *cobra.Command {
 
 Look up by resource name:
 
-  docs api product
-  docs api customer
+  stripe docs api product
+  stripe docs api customer
 
 Look up by HTTP method and path:
 
-  docs api GET /v1/products
-  docs api POST /v1/products/{id}
+  stripe docs api GET /v1/products
+  stripe docs api POST /v1/products/{id}
 
 Look up by event type:
 
-  docs api charge.succeeded
-  docs api payment_intent.created`,
+  stripe docs api charge.succeeded
+  stripe docs api payment_intent.created`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: r.runAPI,
 	}
