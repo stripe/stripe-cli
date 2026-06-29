@@ -376,7 +376,19 @@ func getUsageTemplate() string {
   {{rpad "delete" 29}} Make DELETE requests to the Stripe API
 
 %s{{range $index, $cmd := .Commands}}{{if (not (or (index $.Annotations $cmd.Name) $cmd.Hidden))}}
-  {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
+  {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{if HasAnnotatedCommands . "installed_plugin"}}
+
+%s
+  %s
+{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "installed_plugin")}}
+  {{$cmd.Name}}
+    {{PluginDescription $cmd}}
+{{end}}{{end}}{{end}}{{if HasAnnotatedCommands . "available_plugin"}}
+
+%s
+  %s
+{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "available_plugin")}}
+  {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{end}}{{else}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
   {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
@@ -399,6 +411,10 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
 		ansi.Bold("API commands:"),
 		ansi.Bold("Other commands:"),
+		ansi.Bold("Installed plugins:"),
+		ansi.Italic("(run 'stripe <name> --help' for full command details)"),
+		ansi.Bold("Available plugins:"),
+		ansi.Italic("(run 'stripe plugin install <name>' to add)"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global flags:"),
@@ -413,6 +429,27 @@ func getTerminalWidth() int {
 	return width
 }
 
+// hasAnnotatedCommands reports whether cmd has any child command whose name
+// maps to the given annotation value in cmd's own Annotations map.
+func hasAnnotatedCommands(cmd *cobra.Command, annotation string) bool {
+	for _, c := range cmd.Commands() {
+		if val, ok := cmd.Annotations[c.Name()]; ok && val == annotation {
+			return true
+		}
+	}
+	return false
+}
+
+// pluginDescription returns the plugin's Long description word-wrapped to the
+// terminal width with 4-space indentation, falling back to Short if Long is empty.
+func pluginDescription(cmd *cobra.Command) string {
+	text := cmd.Long
+	if text == "" {
+		text = cmd.Short
+	}
+	return wrapText(text, getTerminalWidth()-4, 4)
+}
+
 func init() {
 	cobra.AddTemplateFunc("WrappedInheritedFlagUsages", WrappedInheritedFlagUsages)
 	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
@@ -421,4 +458,6 @@ func init() {
 	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
 	cobra.AddTemplateFunc("AIAgentHelp", aiAgentHelp)
 	cobra.AddTemplateFunc("AIAgentHelpTop", aiAgentHelpTop)
+	cobra.AddTemplateFunc("HasAnnotatedCommands", hasAnnotatedCommands)
+	cobra.AddTemplateFunc("PluginDescription", pluginDescription)
 }

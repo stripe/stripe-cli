@@ -306,6 +306,7 @@ func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.
 		}
 		installedPluginSet[pluginName] = true
 		root.AddCommand(newPluginTemplateCmd(cfg, &plugin).cmd)
+		root.Annotations[pluginName] = "installed_plugin"
 	}
 
 	return installedPluginSet
