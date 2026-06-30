@@ -24,6 +24,8 @@ jobs:
             binary: stripe
           - os: macos-latest
             binary: stripe
+          - os: windows-latest
+            binary: stripe.exe
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
 
