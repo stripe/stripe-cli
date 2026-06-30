@@ -162,7 +162,6 @@ func (e *Engine) HandlePrompt(req *proto.PromptRequest) *proto.PromptResponse {
 	}
 }
 
-
 func levelPrefix(level proto.MessageLevel) string {
 	switch level {
 	case proto.MessageLevel_SUCCESS:
