@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,14 +29,14 @@ type agentSetupCmd struct {
 	jsonOutput bool
 	client     string
 
-	scanner    agentsetup.Scanner
-	runInstall agentsetup.RunCommandFunc
+	providers map[string]agentsetup.Provider
 }
 
 type agentSetupJSON struct {
-	agentsetup.ClaudeStatus
-	Action  string   `json:"action"`
-	Command []string `json:"command,omitempty"`
+	Status  string              `json:"status"`
+	Clients []agentsetup.Status `json:"clients"`
+	Actions []agentsetup.Plan   `json:"actions,omitempty"`
+	Errors  []string            `json:"errors,omitempty"`
 }
 
 func newAgentCmd() *agentCmd {
@@ -54,17 +53,18 @@ func newAgentCmd() *agentCmd {
 
 func newAgentSetupCmd() *agentSetupCmd {
 	asc := &agentSetupCmd{
-		client:     agentsetup.ClientClaudeCode,
-		scanner:    agentsetup.DefaultScanner(),
-		runInstall: agentsetup.RunCommand,
+		client:    agentsetup.ClientClaudeCode,
+		providers: agentsetup.DefaultProviders(),
 	}
 
 	asc.cmd = &cobra.Command{
-		Use:   "setup",
-		Short: "Install or check Stripe agent tooling",
-		Long:  "Install or check Stripe agent tooling. This POC supports Claude Code only.",
-		Args:  validators.NoArgs,
-		RunE:  asc.runSetup,
+		Use:           "setup",
+		Short:         "Install or check Stripe agent tooling",
+		Long:          "Install or check Stripe agent tooling. This POC supports Claude Code only.",
+		Args:          validators.NoArgs,
+		RunE:          asc.runSetup,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 	asc.cmd.Flags().BoolVar(&asc.statusOnly, "status", false, "Check installed agent tooling without making changes")
 	asc.cmd.Flags().BoolVarP(&asc.yes, "yes", "y", false, "Skip confirmation prompts")
@@ -76,18 +76,25 @@ func newAgentSetupCmd() *agentSetupCmd {
 }
 
 func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, args []string) error {
-	if asc.client != agentsetup.ClientClaudeCode {
-		return fmt.Errorf("unsupported agent client %q; this POC only supports %q", asc.client, agentsetup.ClientClaudeCode)
+	provider, ok := asc.providers[asc.client]
+	if !ok {
+		return fmt.Errorf("unsupported agent client %q; supported clients: %s", asc.client, agentsetup.SupportedProviderIDs(asc.providers))
 	}
 
-	status := asc.scanner.ScanClaude()
-	action, command := setupAction(status, asc.force)
+	status := provider.Detect()
+	plan := provider.Plan(status, asc.force)
 
 	if asc.jsonOutput {
-		return asc.writeJSON(cmd.OutOrStdout(), status, action, command)
+		if err := asc.writeJSON(cmd.OutOrStdout(), status, plan); err != nil {
+			return err
+		}
+		if status.Status == agentsetup.StatusError {
+			return errors.New(status.Error)
+		}
+		return nil
 	}
 
-	printClaudeStatus(cmd.OutOrStdout(), status)
+	printAgentStatus(cmd.OutOrStdout(), status)
 
 	if status.Status == agentsetup.StatusError {
 		return errors.New(status.Error)
@@ -96,16 +103,15 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if !status.Detected {
-		fmt.Fprintln(cmd.OutOrStdout(), "Nothing to do. Claude Code was not detected.")
+		fmt.Fprintf(cmd.OutOrStdout(), "Nothing to do. %s was not detected.\n", status.DisplayName)
 		return nil
 	}
-	if action == "none" {
+	if plan.Action == agentsetup.ActionNone {
 		fmt.Fprintln(cmd.OutOrStdout(), "Nothing to do. Stripe agent tooling is already installed.")
 		return nil
 	}
 
-	name, installArgs := agentsetup.ClaudeInstallCommand()
-	fmt.Fprintf(cmd.OutOrStdout(), "Planned command: %s %s\n", name, strings.Join(installArgs, " "))
+	fmt.Fprintf(cmd.OutOrStdout(), "Planned command: %s\n", strings.Join(plan.Command, " "))
 
 	if !asc.yes {
 		if !isInteractiveTerminal() {
@@ -121,84 +127,56 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Fprintln(cmd.OutOrStdout(), "Installing Stripe agent tooling for Claude Code...")
-	if err := asc.runClaudeInstall(commandContextOrBackground(cmd), cmd.OutOrStdout(), name, installArgs, command); err != nil {
+	fmt.Fprintf(cmd.OutOrStdout(), "Installing Stripe agent tooling for %s...\n", status.DisplayName)
+	if err := provider.Apply(commandContextOrBackground(cmd), cmd.OutOrStdout(), plan); err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), "Installed Stripe agent tooling for Claude Code.")
+	fmt.Fprintf(cmd.OutOrStdout(), "Installed Stripe agent tooling for %s.\n", status.DisplayName)
 	return nil
 }
 
-func (asc *agentSetupCmd) runClaudeInstall(ctx context.Context, out io.Writer, name string, installArgs []string, command []string) error {
-	if err := asc.runInstall(ctx, name, installArgs...); err == nil {
-		return nil
-	} else {
-		updateName, updateArgs := agentsetup.ClaudeMarketplaceUpdateCommand()
-		updateCommand := append([]string{updateName}, updateArgs...)
-		fmt.Fprintf(out, "Install failed. Updating Claude plugin marketplace and retrying: %s\n", strings.Join(updateCommand, " "))
-		if updateErr := asc.runInstall(ctx, updateName, updateArgs...); updateErr != nil {
-			return fmt.Errorf("running %q after install failed: %w", strings.Join(updateCommand, " "), updateErr)
-		}
-		if retryErr := asc.runInstall(ctx, name, installArgs...); retryErr != nil {
-			return fmt.Errorf("running %q after marketplace update: %w", strings.Join(command, " "), retryErr)
-		}
-		return nil
+func (asc *agentSetupCmd) writeJSON(w io.Writer, status agentsetup.Status, plan agentsetup.Plan) error {
+	result := agentSetupJSON{
+		Status:  status.Status,
+		Clients: []agentsetup.Status{status},
 	}
-}
-
-func setupAction(status agentsetup.ClaudeStatus, force bool) (string, []string) {
-	name, args := agentsetup.ClaudeInstallCommand()
-	command := append([]string{name}, args...)
-
-	switch {
-	case status.Status == agentsetup.StatusError:
-		return "error", nil
-	case !status.Detected:
-		return "none", nil
-	case status.PluginInstalled && force:
-		return "reinstall", command
-	case status.PluginInstalled:
-		return "none", nil
-	default:
-		return "install", command
+	if plan.Action != agentsetup.ActionNone {
+		result.Actions = []agentsetup.Plan{plan}
 	}
-}
+	if status.Status == agentsetup.StatusError {
+		result.Errors = []string{status.Error}
+	}
 
-func (asc *agentSetupCmd) writeJSON(w io.Writer, status agentsetup.ClaudeStatus, action string, command []string) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(agentSetupJSON{
-		ClaudeStatus: status,
-		Action:       action,
-		Command:      command,
-	})
+	return enc.Encode(result)
 }
 
-func printClaudeStatus(w io.Writer, status agentsetup.ClaudeStatus) {
+func printAgentStatus(w io.Writer, status agentsetup.Status) {
 	fmt.Fprintln(w, "Scanning for AI coding clients...")
 	if !status.Detected {
-		fmt.Fprintln(w, "  Claude Code: not detected")
+		fmt.Fprintf(w, "  %s: not detected\n", status.DisplayName)
 		return
 	}
 
 	if status.ExecutablePath != "" {
-		fmt.Fprintf(w, "  Claude Code: detected (%s)\n", status.ExecutablePath)
+		fmt.Fprintf(w, "  %s: detected (%s)\n", status.DisplayName, status.ExecutablePath)
 	} else {
-		fmt.Fprintln(w, "  Claude Code: detected")
+		fmt.Fprintf(w, "  %s: detected\n", status.DisplayName)
 	}
 
 	switch status.Status {
 	case agentsetup.StatusInstalled:
-		version := status.PluginVersion
+		version := status.Plugin.Version
 		if version == "" {
 			version = "unknown version"
 		}
-		fmt.Fprintf(w, "  Stripe plugin: installed as %s (%s", status.PluginID, version)
-		if status.PluginScope != "" {
-			fmt.Fprintf(w, ", %s", status.PluginScope)
+		fmt.Fprintf(w, "  Stripe plugin: installed as %s (%s", status.Plugin.ID, version)
+		if status.Plugin.Scope != "" {
+			fmt.Fprintf(w, ", %s", status.Plugin.Scope)
 		}
-		if status.PluginScope == "local" && status.PluginProject != "" {
-			fmt.Fprintf(w, ", project %s", status.PluginProject)
+		if status.Plugin.Scope == "local" && status.Plugin.Project != "" {
+			fmt.Fprintf(w, ", project %s", status.Plugin.Project)
 		}
 		fmt.Fprintln(w, ")")
 	case agentsetup.StatusError:
