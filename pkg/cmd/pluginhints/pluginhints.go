@@ -27,16 +27,19 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "apps", "This plugin lets you build and manage Stripe Apps.").Command,
 		)
+		rootCmd.Annotations["apps"] = "available_plugin"
 	}
 	if !installedPluginSet["generate"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "generate", "This plugin creates skeleton files to get you started.", withPrivatePreview()).Command,
 		)
+		rootCmd.Annotations["generate"] = "available_plugin"
 	}
 	if !installedPluginSet["projects"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
+		rootCmd.Annotations["projects"] = "available_plugin"
 	}
 	if !installedPluginSet["directory"] {
 		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
@@ -50,11 +53,13 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		rootCmd.AddCommand(
 			directoryCmd,
 		)
+		rootCmd.Annotations["directory"] = "available_plugin"
 	}
 	if !installedPluginSet["tools"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "tools", "Search, inspect, and execute Stripe operations not available in the public API.").Command,
 		)
+		rootCmd.Annotations["tools"] = "available_plugin"
 	}
 }
 
