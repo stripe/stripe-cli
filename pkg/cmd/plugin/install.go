@@ -164,8 +164,10 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if prevVersion != "" {
+		sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)
 		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
 	} else {
+		sendPluginLifecycleEvent(cmd.Context(), "Plugin Installed", version)
 		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 	}
 	postinstall.PrintTips(os.Stdout, plugin.Shortname)
@@ -187,6 +189,18 @@ func (ic *InstallCmd) setInstallTelemetryMetadata(ctx context.Context, pluginNam
 	if telemetryMetadata != nil {
 		telemetryMetadata.SetPluginName(pluginName)
 	}
+}
+
+// sendPluginLifecycleEvent sends a telemetry event for a plugin install, upgrade, or uninstall.
+func sendPluginLifecycleEvent(ctx context.Context, eventName, pluginVersion string) {
+	telemetryClient := stripe.GetTelemetryClient(ctx)
+	if telemetryClient == nil {
+		return
+	}
+	if m := stripe.GetEventMetadata(ctx); m != nil {
+		m.SetPluginVersion(pluginVersion)
+	}
+	go telemetryClient.SendEvent(ctx, eventName, pluginVersion)
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
