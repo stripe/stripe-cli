@@ -35,16 +35,6 @@ func NewEngine(format Format) *Engine {
 	}
 }
 
-func (e *Engine) HandleSendMessage(req *proto.SendMessageRequest) {
-	switch e.format {
-	case FormatJSON:
-		fmt.Fprintln(e.stderr, req.Message)
-	default:
-		style := levelPrefix(req.Level)
-		fmt.Fprintf(e.stdout, "%s %s\n", style, req.Message)
-	}
-}
-
 func (e *Engine) HandleCommandOutput(req *proto.SendCommandOutputRequest) {
 	switch e.format {
 	case FormatJSON:
@@ -52,25 +42,97 @@ func (e *Engine) HandleCommandOutput(req *proto.SendCommandOutputRequest) {
 			Command: req.Command,
 		}
 		for _, block := range req.Blocks {
-			envelope.Data = append(envelope.Data, EnvelopeBlock{
-				Type:    block.Type,
-				Payload: json.RawMessage(block.Payload),
-			})
+			if db := block.GetData(); db != nil {
+				envelope.Data = append(envelope.Data, EnvelopeBlock{
+					Type:    db.Type,
+					Payload: json.RawMessage(db.Payload),
+				})
+			}
 		}
 		enc := json.NewEncoder(e.stdout)
 		enc.SetIndent("", "  ")
 		enc.Encode(envelope)
 	default:
-		e.renderTextOutput(req)
+		e.renderBlocks(req.Blocks)
 	}
 }
 
-func (e *Engine) HandleProgress(req *proto.SendProgressRequest) {
-	switch e.format {
-	case FormatJSON:
-		fmt.Fprintln(e.stderr, req.Message)
+func (e *Engine) renderBlocks(blocks []*proto.OutputBlock) {
+	for _, block := range blocks {
+		switch b := block.Block.(type) {
+		case *proto.OutputBlock_Message:
+			e.handleMessage(b.Message)
+		case *proto.OutputBlock_Data:
+			e.handleData(b.Data)
+		case *proto.OutputBlock_Progress:
+			e.handleProgress(b.Progress)
+		}
+	}
+}
+
+func (e *Engine) handleMessage(msg *proto.MessageBlock) {
+	style := levelPrefix(msg.Level)
+	fmt.Fprintf(e.stdout, "%s %s\n", style, msg.Message)
+}
+
+func (e *Engine) handleData(data *proto.DataBlock) {
+	switch data.Type {
+	case "data":
+		var d map[string]interface{}
+		if err := json.Unmarshal([]byte(data.Payload), &d); err == nil {
+			for k, v := range d {
+				fmt.Fprintf(e.stdout, "  %s: %v\n", k, v)
+			}
+		}
+	case "warning":
+		var w struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal([]byte(data.Payload), &w); err == nil {
+			fmt.Fprintf(e.stdout, "\033[33m⚠\033[0m  %s\n", w.Message)
+		}
+	case "nextstep":
+		var ns struct {
+			Description string `json:"description"`
+			Command     string `json:"command"`
+		}
+		if err := json.Unmarshal([]byte(data.Payload), &ns); err == nil {
+			fmt.Fprintf(e.stdout, "\033[34m→\033[0m %s: %s\n", ns.Description, ns.Command)
+		}
+	case "error":
+		var errBlock struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal([]byte(data.Payload), &errBlock); err == nil {
+			fmt.Fprintf(e.stdout, "\033[31m✗\033[0m %s\n", errBlock.Message)
+		}
+	}
+}
+
+func (e *Engine) handleProgress(p *proto.ProgressBlock) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	switch p.Type {
+	case proto.ProgressType_STEP:
+		fmt.Fprintf(e.stdout, "\033[32m✔\033[0m \033[2m%s\033[0m\n", p.Message)
+	case proto.ProgressType_SPINNER_START:
+		e.spinners[p.Id] = p.Message
+		fmt.Fprintf(e.stdout, "\033[2m⠋ %s...\033[0m\n", p.Message)
+	case proto.ProgressType_SPINNER_UPDATE:
+		e.spinners[p.Id] = p.Message
+		fmt.Fprintf(e.stdout, "\033[2m⠋ %s...\033[0m\n", p.Message)
+	case proto.ProgressType_SPINNER_STOP:
+		delete(e.spinners, p.Id)
+		if p.Success {
+			fmt.Fprintf(e.stdout, "\033[32m✔\033[0m \033[2m%s\033[0m\n", p.Message)
+		} else {
+			fmt.Fprintf(e.stdout, "\033[31m✗\033[0m \033[2m%s\033[0m\n", p.Message)
+		}
 	default:
-		e.handleSpinner(req)
+		fmt.Fprintf(e.stdout, "\033[2m%s\033[0m\n", p.Message)
 	}
 }
 
@@ -100,68 +162,6 @@ func (e *Engine) HandlePrompt(req *proto.PromptRequest) *proto.PromptResponse {
 	}
 }
 
-func (e *Engine) handleSpinner(req *proto.SendProgressRequest) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	switch req.Type {
-	case proto.ProgressType_STEP:
-		fmt.Fprintf(e.stdout, "\033[32m✔\033[0m \033[2m%s\033[0m\n", req.Message)
-	case proto.ProgressType_SPINNER_START:
-		e.spinners[req.Id] = req.Message
-		fmt.Fprintf(e.stdout, "\033[2m⠋ %s...\033[0m\n", req.Message)
-	case proto.ProgressType_SPINNER_UPDATE:
-		e.spinners[req.Id] = req.Message
-		fmt.Fprintf(e.stdout, "\033[2m⠋ %s...\033[0m\n", req.Message)
-	case proto.ProgressType_SPINNER_STOP:
-		delete(e.spinners, req.Id)
-		if req.Success {
-			fmt.Fprintf(e.stdout, "\033[32m✔\033[0m \033[2m%s\033[0m\n", req.Message)
-		} else {
-			fmt.Fprintf(e.stdout, "\033[31m✗\033[0m \033[2m%s\033[0m\n", req.Message)
-		}
-	default:
-		fmt.Fprintf(e.stdout, "\033[2m%s\033[0m\n", req.Message)
-	}
-}
-
-func (e *Engine) renderTextOutput(req *proto.SendCommandOutputRequest) {
-	for _, block := range req.Blocks {
-		switch block.Type {
-		case "data":
-			var data map[string]interface{}
-			if err := json.Unmarshal([]byte(block.Payload), &data); err == nil {
-				for k, v := range data {
-					fmt.Fprintf(e.stdout, "  %s: %v\n", k, v)
-				}
-			}
-		case "warning":
-			var w struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			}
-			if err := json.Unmarshal([]byte(block.Payload), &w); err == nil {
-				fmt.Fprintf(e.stdout, "\033[33m⚠\033[0m  %s\n", w.Message)
-			}
-		case "nextstep":
-			var ns struct {
-				Description string `json:"description"`
-				Command     string `json:"command"`
-			}
-			if err := json.Unmarshal([]byte(block.Payload), &ns); err == nil {
-				fmt.Fprintf(e.stdout, "\033[34m→\033[0m %s: %s\n", ns.Description, ns.Command)
-			}
-		case "error":
-			var errBlock struct {
-				Code    string `json:"code"`
-				Message string `json:"message"`
-			}
-			if err := json.Unmarshal([]byte(block.Payload), &errBlock); err == nil {
-				fmt.Fprintf(e.stdout, "\033[31m✗\033[0m %s\n", errBlock.Message)
-			}
-		}
-	}
-}
 
 func levelPrefix(level proto.MessageLevel) string {
 	switch level {

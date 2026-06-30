@@ -41,10 +41,8 @@ service CoreCLIHelper {
   rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse);
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
 
-  // Centralized UI Rendering (Milestone 1+2)
-  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  // Centralized UI Rendering
   rpc SendCommandOutput(SendCommandOutputRequest) returns (SendCommandOutputResponse);
-  rpc SendProgress(SendProgressRequest) returns (SendProgressResponse);
   rpc Prompt(PromptRequest) returns (PromptResponse);
 }
 
@@ -128,39 +126,39 @@ enum PromptType {
   SELECT = 2;
 }
 
-message SendMessageRequest {
+// OutputBlock is a single unit of plugin output. All output types are
+// expressed as blocks, and the rendering engine dispatches on the variant.
+message OutputBlock {
+  oneof block {
+    MessageBlock message = 1;
+    DataBlock data = 2;
+    ProgressBlock progress = 3;
+  }
+}
+
+message MessageBlock {
   string message = 1;
   MessageLevel level = 2;
-  // Future (milestone 4): string key = 3; map<string, string> args = 4;
 }
 
-message SendMessageResponse {
-}
-
-message OutputBlock {
+message DataBlock {
   string type = 1;               // "data", "warning", "nextstep", "error"
   string payload = 2;            // JSON-encoded payload (shape varies per type)
+}
+
+message ProgressBlock {
+  string id = 1;                 // caller-generated, supports concurrent spinners
+  string message = 2;
+  ProgressType type = 3;
+  bool success = 4;              // relevant on SPINNER_STOP only
 }
 
 message SendCommandOutputRequest {
   string command = 1;
   repeated OutputBlock blocks = 2;
-  // NOTE: `ok` field intentionally omitted. Errors go to stderr via SendMessage
-  // (level=ERROR) + non-zero exit code, following Go/Cobra CLI conventions (gh, docker).
-  // Adding `ok` later is not a breaking change if needed for agentic workflows.
 }
 
 message SendCommandOutputResponse {
-}
-
-message SendProgressRequest {
-  string id = 1;               // caller-generated, supports concurrent spinners
-  string message = 2;
-  ProgressType type = 3;
-  bool success = 4;            // relevant on SPINNER_STOP only
-}
-
-message SendProgressResponse {
 }
 
 message PromptRequest {

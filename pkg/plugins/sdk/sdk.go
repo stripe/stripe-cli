@@ -27,33 +27,49 @@ func New(helper plugins.CoreCLIHelper) *CLI {
 
 // Message sends an informational message to the user.
 func (c *CLI) Message(msg string) error {
-	return c.helper.SendMessage(&proto.SendMessageRequest{
-		Message: msg,
-		Level:   proto.MessageLevel_INFO,
+	return c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Message{Message: &proto.MessageBlock{
+				Message: msg,
+				Level:   proto.MessageLevel_INFO,
+			}},
+		}},
 	})
 }
 
 // Success sends a success message to the user.
 func (c *CLI) Success(msg string) error {
-	return c.helper.SendMessage(&proto.SendMessageRequest{
-		Message: msg,
-		Level:   proto.MessageLevel_SUCCESS,
+	return c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Message{Message: &proto.MessageBlock{
+				Message: msg,
+				Level:   proto.MessageLevel_SUCCESS,
+			}},
+		}},
 	})
 }
 
 // Warn sends a warning message to the user.
 func (c *CLI) Warn(msg string) error {
-	return c.helper.SendMessage(&proto.SendMessageRequest{
-		Message: msg,
-		Level:   proto.MessageLevel_WARNING,
+	return c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Message{Message: &proto.MessageBlock{
+				Message: msg,
+				Level:   proto.MessageLevel_WARNING,
+			}},
+		}},
 	})
 }
 
 // Error sends an error message to the user.
 func (c *CLI) Error(msg string) error {
-	return c.helper.SendMessage(&proto.SendMessageRequest{
-		Message: msg,
-		Level:   proto.MessageLevel_ERROR,
+	return c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Message{Message: &proto.MessageBlock{
+				Message: msg,
+				Level:   proto.MessageLevel_ERROR,
+			}},
+		}},
 	})
 }
 
@@ -61,10 +77,14 @@ func (c *CLI) Error(msg string) error {
 
 // Progress sends a one-shot step indicator (checkmark line, no animation).
 func (c *CLI) Progress(msg string) error {
-	return c.helper.SendProgress(&proto.SendProgressRequest{
-		Id:      fmt.Sprintf("step-%d", atomic.AddUint64(&spinnerCounter, 1)),
-		Message: msg,
-		Type:    proto.ProgressType_STEP,
+	return c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Progress{Progress: &proto.ProgressBlock{
+				Id:      fmt.Sprintf("step-%d", atomic.AddUint64(&spinnerCounter, 1)),
+				Message: msg,
+				Type:    proto.ProgressType_STEP,
+			}},
+		}},
 	})
 }
 
@@ -77,30 +97,42 @@ type Spinner struct {
 // ProgressStart begins a spinner and returns a handle to control it.
 func (c *CLI) ProgressStart(msg string) *Spinner {
 	id := fmt.Sprintf("spinner-%d", atomic.AddUint64(&spinnerCounter, 1))
-	c.helper.SendProgress(&proto.SendProgressRequest{
-		Id:      id,
-		Message: msg,
-		Type:    proto.ProgressType_SPINNER_START,
+	c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Progress{Progress: &proto.ProgressBlock{
+				Id:      id,
+				Message: msg,
+				Type:    proto.ProgressType_SPINNER_START,
+			}},
+		}},
 	})
 	return &Spinner{id: id, helper: c.helper}
 }
 
 // Update changes the spinner's message while it's still running.
 func (s *Spinner) Update(msg string) {
-	s.helper.SendProgress(&proto.SendProgressRequest{
-		Id:      s.id,
-		Message: msg,
-		Type:    proto.ProgressType_SPINNER_UPDATE,
+	s.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Progress{Progress: &proto.ProgressBlock{
+				Id:      s.id,
+				Message: msg,
+				Type:    proto.ProgressType_SPINNER_UPDATE,
+			}},
+		}},
 	})
 }
 
-// Stop stops the spinner. Pass true for success (✔), false for failure (✗).
+// Stop stops the spinner. Pass true for success (checkmark), false for failure (x).
 func (s *Spinner) Stop(success bool) {
-	s.helper.SendProgress(&proto.SendProgressRequest{
-		Id:      s.id,
-		Message: "",
-		Type:    proto.ProgressType_SPINNER_STOP,
-		Success: success,
+	s.helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{{
+			Block: &proto.OutputBlock_Progress{Progress: &proto.ProgressBlock{
+				Id:      s.id,
+				Message: "",
+				Type:    proto.ProgressType_SPINNER_STOP,
+				Success: success,
+			}},
+		}},
 	})
 }
 
@@ -175,8 +207,10 @@ func (c *CLI) Output(command string, blocks ...OutputBlock) error {
 			return err
 		}
 		req.Blocks = append(req.Blocks, &proto.OutputBlock{
-			Type:    b.blockType,
-			Payload: string(payload),
+			Block: &proto.OutputBlock_Data{Data: &proto.DataBlock{
+				Type:    b.blockType,
+				Payload: string(payload),
+			}},
 		})
 	}
 
