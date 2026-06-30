@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,11 +21,7 @@ const (
 	LocalClaudePlugin     = "stripe@stripe"
 	ClaudeMarketplace     = "claude-plugins-official"
 	ClaudePluginStatePath = ".claude/plugins/installed_plugins.json"
-
-	StatusNotDetected = "not_detected"
-	StatusInstalled   = "installed"
-	StatusMissing     = "missing"
-	StatusError       = "error"
+	ClaudeDisplayName     = "Claude Code"
 )
 
 // LookPathFunc matches exec.LookPath and exists to make detection testable.
@@ -50,19 +47,72 @@ type Scanner struct {
 	WorkDir  WorkDirFunc
 }
 
-// ClaudeStatus is the read-only setup status for Claude Code.
-type ClaudeStatus struct {
-	Client          string `json:"client"`
-	Detected        bool   `json:"detected"`
-	ExecutablePath  string `json:"executable_path,omitempty"`
-	PluginInstalled bool   `json:"plugin_installed"`
-	PluginID        string `json:"plugin_id,omitempty"`
-	PluginVersion   string `json:"plugin_version,omitempty"`
-	PluginScope     string `json:"plugin_scope,omitempty"`
-	PluginProject   string `json:"plugin_project_path,omitempty"`
-	PluginStatePath string `json:"plugin_state_path,omitempty"`
-	Status          string `json:"status"`
-	Error           string `json:"error,omitempty"`
+// ClaudeProvider detects and configures the Stripe plugin for Claude Code.
+type ClaudeProvider struct {
+	Scanner    Scanner
+	RunCommand RunCommandFunc
+}
+
+// NewClaudeProvider returns a Claude Code setup provider.
+func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) ClaudeProvider {
+	if runCommand == nil {
+		runCommand = RunCommand
+	}
+	return ClaudeProvider{
+		Scanner:    scanner,
+		RunCommand: runCommand,
+	}
+}
+
+func (p ClaudeProvider) ID() string {
+	return ClientClaudeCode
+}
+
+func (p ClaudeProvider) Detect() Status {
+	return p.Scanner.ScanClaude()
+}
+
+func (p ClaudeProvider) Plan(status Status, force bool) Plan {
+	name, args := ClaudeInstallCommand()
+	command := append([]string{name}, args...)
+
+	switch {
+	case status.Status == StatusError:
+		return Plan{Action: ActionNone}
+	case !status.Detected:
+		return Plan{Action: ActionNone}
+	case status.Plugin.Installed && force:
+		return Plan{Action: ActionReinstall, Command: command}
+	case status.Plugin.Installed:
+		return Plan{Action: ActionNone}
+	default:
+		return Plan{Action: ActionInstall, Command: command}
+	}
+}
+
+func (p ClaudeProvider) Apply(ctx context.Context, out io.Writer, plan Plan) error {
+	if plan.Action == ActionNone {
+		return nil
+	}
+	if len(plan.Command) == 0 {
+		return fmt.Errorf("missing command for %s action", plan.Action)
+	}
+
+	name, installArgs := plan.Command[0], plan.Command[1:]
+	if err := p.RunCommand(ctx, name, installArgs...); err == nil {
+		return nil
+	} else {
+		updateName, updateArgs := ClaudeMarketplaceUpdateCommand()
+		updateCommand := append([]string{updateName}, updateArgs...)
+		fmt.Fprintf(out, "Install failed. Updating Claude plugin marketplace and retrying: %s\n", strings.Join(updateCommand, " "))
+		if updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
+			return fmt.Errorf("running %q after install failed: %w", strings.Join(updateCommand, " "), updateErr)
+		}
+		if retryErr := p.RunCommand(ctx, name, installArgs...); retryErr != nil {
+			return fmt.Errorf("running %q after marketplace update: %w", strings.Join(plan.Command, " "), retryErr)
+		}
+		return nil
+	}
 }
 
 type installedPluginState struct {
@@ -88,12 +138,13 @@ func DefaultScanner() Scanner {
 }
 
 // ScanClaude returns Claude Code installation and Stripe plugin status.
-func (s Scanner) ScanClaude() ClaudeStatus {
+func (s Scanner) ScanClaude() Status {
 	s = s.withDefaults()
 
-	status := ClaudeStatus{
-		Client: ClientClaudeCode,
-		Status: StatusNotDetected,
+	status := Status{
+		Client:      ClientClaudeCode,
+		DisplayName: ClaudeDisplayName,
+		Status:      StatusNotDetected,
 	}
 
 	claudePath, err := s.LookPath(ClaudeBinaryName)
@@ -110,9 +161,9 @@ func (s Scanner) ScanClaude() ClaudeStatus {
 		status.Error = fmt.Sprintf("locating home directory: %v", err)
 		return status
 	}
-	status.PluginStatePath = filepath.Join(home, ClaudePluginStatePath)
+	status.Plugin.StatePath = filepath.Join(home, ClaudePluginStatePath)
 
-	body, err := s.ReadFile(status.PluginStatePath)
+	body, err := s.ReadFile(status.Plugin.StatePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return status
@@ -137,11 +188,11 @@ func (s Scanner) ScanClaude() ClaudeStatus {
 	}
 
 	if id, ref, ok := findStripePlugin(pluginState.Plugins, workDir); ok {
-		status.PluginInstalled = true
-		status.PluginID = id
-		status.PluginVersion = ref.Version
-		status.PluginScope = ref.Scope
-		status.PluginProject = ref.ProjectPath
+		status.Plugin.Installed = true
+		status.Plugin.ID = id
+		status.Plugin.Version = ref.Version
+		status.Plugin.Scope = ref.Scope
+		status.Plugin.Project = ref.ProjectPath
 		status.Status = StatusInstalled
 	}
 

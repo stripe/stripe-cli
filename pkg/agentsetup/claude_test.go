@@ -28,9 +28,9 @@ func TestScanClaude_MissingPluginState(t *testing.T) {
 	status := scanner.ScanClaude()
 
 	require.True(t, status.Detected)
-	require.False(t, status.PluginInstalled)
+	require.False(t, status.Plugin.Installed)
 	require.Equal(t, StatusMissing, status.Status)
-	require.Equal(t, filepath.Join(home, ClaudePluginStatePath), status.PluginStatePath)
+	require.Equal(t, filepath.Join(home, ClaudePluginStatePath), status.Plugin.StatePath)
 }
 
 func TestScanClaude_OfficialPluginInstalled(t *testing.T) {
@@ -47,10 +47,10 @@ func TestScanClaude_OfficialPluginInstalled(t *testing.T) {
 	status := testScanner(home).ScanClaude()
 
 	require.Equal(t, StatusInstalled, status.Status)
-	require.True(t, status.PluginInstalled)
-	require.Equal(t, TargetClaudePlugin, status.PluginID)
-	require.Equal(t, "2.4.1", status.PluginVersion)
-	require.Equal(t, "user", status.PluginScope)
+	require.True(t, status.Plugin.Installed)
+	require.Equal(t, TargetClaudePlugin, status.Plugin.ID)
+	require.Equal(t, "2.4.1", status.Plugin.Version)
+	require.Equal(t, "user", status.Plugin.Scope)
 }
 
 func TestScanClaude_LocalStripePluginInstalled(t *testing.T) {
@@ -68,11 +68,11 @@ func TestScanClaude_LocalStripePluginInstalled(t *testing.T) {
 	status := testScannerWithWorkDir(home, filepath.Join(projectPath, "subdir")).ScanClaude()
 
 	require.Equal(t, StatusInstalled, status.Status)
-	require.True(t, status.PluginInstalled)
-	require.Equal(t, LocalClaudePlugin, status.PluginID)
-	require.Equal(t, "0.1.0", status.PluginVersion)
-	require.Equal(t, "local", status.PluginScope)
-	require.Equal(t, projectPath, status.PluginProject)
+	require.True(t, status.Plugin.Installed)
+	require.Equal(t, LocalClaudePlugin, status.Plugin.ID)
+	require.Equal(t, "0.1.0", status.Plugin.Version)
+	require.Equal(t, "local", status.Plugin.Scope)
+	require.Equal(t, projectPath, status.Plugin.Project)
 }
 
 func TestScanClaude_LocalStripePluginForDifferentProjectIsMissing(t *testing.T) {
@@ -90,7 +90,7 @@ func TestScanClaude_LocalStripePluginForDifferentProjectIsMissing(t *testing.T) 
 	status := testScannerWithWorkDir(home, filepath.Join(home, "current-project")).ScanClaude()
 
 	require.Equal(t, StatusMissing, status.Status)
-	require.False(t, status.PluginInstalled)
+	require.False(t, status.Plugin.Installed)
 }
 
 func TestScanClaude_MalformedPluginState(t *testing.T) {

@@ -48,10 +48,33 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 
 	var result agentSetupJSON
 	require.NoError(t, json.Unmarshal([]byte(output), &result))
-	require.True(t, result.Detected)
-	require.False(t, result.PluginInstalled)
-	require.Equal(t, "install", result.Action)
-	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Command)
+	require.Equal(t, agentsetup.StatusMissing, result.Status)
+	require.Len(t, result.Clients, 1)
+	require.True(t, result.Clients[0].Detected)
+	require.False(t, result.Clients[0].Plugin.Installed)
+	require.Len(t, result.Actions, 1)
+	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
+	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
+}
+
+func TestAgentSetupJSONPropagatesScanError(t *testing.T) {
+	setup := newTestAgentSetupCmd(t, agentsetup.Scanner{
+		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
+		HomeDir:  func() (string, error) { return "", errors.New("home failed") },
+	}, func(context.Context, string, ...string) error {
+		t.Fatal("installer should not run when scan fails")
+		return nil
+	})
+
+	output, err := executeCommand(setup.cmd, "--json")
+
+	require.Error(t, err)
+
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Equal(t, agentsetup.StatusError, result.Status)
+	require.Len(t, result.Errors, 1)
+	require.Contains(t, result.Errors[0], "home failed")
 }
 
 func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
@@ -115,10 +138,8 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
 	t.Helper()
 	setup := newAgentSetupCmd()
-	setup.scanner = scanner
-	if runInstall != nil {
-		setup.runInstall = runInstall
-	}
+	claude := agentsetup.NewClaudeProvider(scanner, runInstall)
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
 	setup.cmd.SetContext(context.Background())
 	return setup
 }
