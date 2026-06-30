@@ -242,6 +242,7 @@ func init() {
 	// also, bind flags to the environment variables
 	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
+	rootCmd.AddCommand(newAgentCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
