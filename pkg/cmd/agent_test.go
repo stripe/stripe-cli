@@ -163,6 +163,7 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 
 	setup := newAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "" } // no agent -> install all detected
 	setup.cmd.SetContext(context.Background())
 
 	// executeCommand is non-interactive, so all detected clients install without a TUI.
@@ -187,12 +188,38 @@ func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 
 	setup := newAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "" }
 	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd, "--client", "codex")
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"codex"}, installed)
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	// Simulate being invoked by Codex CLI — only its plugin should install,
+	// even though Claude is also detected, and with no --client flag.
+	setup.callingAgent = func() string { return "codex_cli" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed) // Claude NOT installed
+	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
@@ -331,11 +358,39 @@ func TestAgentSetupCursorIsManualStepNotError(t *testing.T) {
 	require.Contains(t, output, "0 installed, 1 skipped, 0 errors")
 }
 
+func TestAgentSetupUnsupportedAgentInstallsSkills(t *testing.T) {
+	var skillsCalled bool
+	// Claude is detected, but we're invoked by an agent with no Stripe plugin.
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+		t.Fatal("no plugin should be installed for an unsupported agent")
+		return nil
+	})
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
+	setup.callingAgent = func() string { return "gemini_cli" }
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		skillsCalled = true
+		return []string{"stripe-best-practices"}, nil
+	}
+	setup.skillsLocalDir = func() (string, error) { return filepath.Join(t.TempDir(), ".agents", "skills"), nil }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.True(t, skillsCalled)
+	require.Contains(t, output, "Detected gemini_cli, which has no Stripe plugin — installing Stripe skills instead.")
+	require.Contains(t, output, "Stripe skills (local)")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
 func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
 	t.Helper()
 	setup := newAgentSetupCmd()
 	claude := agentsetup.NewClaudeProvider(scanner, runInstall)
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
+	setup.callingAgent = func() string { return "" }
 	setup.cmd.SetContext(context.Background())
 	return setup
 }
