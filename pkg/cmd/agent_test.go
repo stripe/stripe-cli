@@ -385,6 +385,35 @@ func TestAgentSetupUnsupportedAgentInstallsSkills(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupAgentNeverUsesInteractivePicker(t *testing.T) {
+	// Gemini CLI allocates a PTY, so isInteractive() reports true even though no
+	// human is present. When an agent is detected we must skip the picker and
+	// fall back to non-interactive behavior (skills for an unsupported agent).
+	var skillsCalled bool
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+		t.Fatal("no plugin should install; and the picker must not run")
+		return nil
+	})
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
+	setup.callingAgent = func() string { return "gemini_cli" }
+	setup.isInteractive = func() bool { return true } // simulate a PTY
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		skillsCalled = true
+		return []string{"stripe-best-practices"}, nil
+	}
+	setup.skillsLocalDir = func() (string, error) { return filepath.Join(t.TempDir(), ".agents", "skills"), nil }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.True(t, skillsCalled)
+	require.Contains(t, output, "installing Stripe skills instead")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
 func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
 	t.Helper()
 	setup := newAgentSetupCmd()
