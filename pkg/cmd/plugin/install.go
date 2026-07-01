@@ -164,7 +164,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if prevVersion != "" {
-		sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)
+		sendPluginLifecycleEvent(cmd.Context(), "Plugin Installed", version)
 		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
 	} else {
 		sendPluginLifecycleEvent(cmd.Context(), "Plugin Installed", version)
