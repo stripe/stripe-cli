@@ -388,7 +388,7 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		return err
 	}
 	if len(result.Errors) > 0 {
-		return fmt.Errorf("%s", result.Errors[0])
+		return fmt.Errorf("%s", strings.Join(result.Errors, "; "))
 	}
 	return nil
 }
