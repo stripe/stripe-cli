@@ -200,7 +200,7 @@ func sendPluginLifecycleEvent(ctx context.Context, eventName, pluginVersion stri
 	if m := stripe.GetEventMetadata(ctx); m != nil {
 		m.SetPluginVersion(pluginVersion)
 	}
-	go telemetryClient.SendEvent(ctx, eventName, pluginVersion)
+	telemetryClient.SendEvent(ctx, eventName, pluginVersion)
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
