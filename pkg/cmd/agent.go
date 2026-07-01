@@ -157,7 +157,9 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 			printNothingDetected(out)
 			return nil
 		}
-		printStatusTable(out, statuses)
+		// Only show clients that are actually installed on this machine; there's
+		// no value in listing clients the user doesn't have.
+		printStatusTable(out, detected)
 		return nil
 	}
 
