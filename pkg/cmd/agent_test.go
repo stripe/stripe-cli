@@ -23,8 +23,21 @@ func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--status")
 
 	require.NoError(t, err)
-	require.Contains(t, output, "Claude Code: detected")
-	require.Contains(t, output, "Stripe plugin: missing")
+	require.Contains(t, output, "AI coding clients")
+	require.Contains(t, output, "Claude Code")
+	require.Contains(t, output, "Stripe plugin not installed")
+}
+
+func TestAgentSetupStatusShowsInstalledDetail(t *testing.T) {
+	setup := newTestAgentSetupCmd(t, claudeInstalledPluginScanner(t), nil)
+
+	output, err := executeCommand(setup.cmd, "--status")
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Claude Code")
+	require.Contains(t, output, "Stripe plugin installed")
+	require.Contains(t, output, agentsetup.TargetClaudePlugin) // plugin id in the dimmed detail
+	require.Contains(t, output, "2.4.1")
 }
 
 func TestAgentSetupUnsupportedClient(t *testing.T) {
@@ -90,8 +103,10 @@ func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, called)
-	require.Contains(t, output, "Installing Stripe agent tooling")
-	require.Contains(t, output, "Installed Stripe agent tooling")
+	require.Contains(t, output, "Setting up Stripe agent tooling")
+	require.Contains(t, output, "Claude Code")
+	require.Contains(t, output, "done")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
 func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
@@ -117,7 +132,8 @@ func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 		"claude plugin install " + agentsetup.TargetClaudePlugin,
 	}, calls)
 	require.Contains(t, output, "Updating Claude plugin marketplace and retrying")
-	require.Contains(t, output, "Installed Stripe agent tooling")
+	require.Contains(t, output, "done")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
 func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
@@ -131,8 +147,188 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.Contains(t, output, "Claude Code: not detected")
-	require.Contains(t, output, "Nothing to do")
+	require.Contains(t, output, "No AI coding clients detected on this machine.")
+	require.Contains(t, output, "re-run: stripe agent setup")
+}
+
+func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.cmd.SetContext(context.Background())
+
+	// executeCommand is non-interactive, so all detected clients install without a TUI.
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"claude", "codex"}, installed)
+	require.Contains(t, output, "Claude Code")
+	require.Contains(t, output, "Codex CLI")
+	require.Contains(t, output, "2 installed, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--client", "codex")
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed)
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
+// codexMissingProvider returns a Codex provider that detects the binary, starts
+// with the Stripe plugin not installed, records install commands via record, and
+// reports the plugin as installed once the add command has run (mirroring the
+// post-install verification the provider performs).
+func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProvider {
+	installed := false
+	return agentsetup.CodexProvider{
+		Scanner: agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
+		RunCommand: func(ctx context.Context, name string, args ...string) error {
+			installed = true
+			if record != nil {
+				return record(ctx, name, args...)
+			}
+			return nil
+		},
+		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+			if installed {
+				return []byte(`{"installed":[{"name":"stripe","marketplace":"openai-curated","version":"1.0.0"}]}`), nil
+			}
+			return []byte(`{"installed":[]}`), nil
+		},
+	}
+}
+
+func TestAgentSetupSkillsFlagInstallsToLocalDir(t *testing.T) {
+	var gotDir string
+	setup := newAgentSetupCmd()
+	// No agents registered, so only the skills path runs.
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.cmd.SetContext(context.Background())
+	setup.skillsInstall = func(_ context.Context, destDir string) ([]string, error) {
+		gotDir = destDir
+		return []string{"stripe-best-practices", "upgrade-stripe"}, nil
+	}
+	localDir := filepath.Join(t.TempDir(), ".agents", "skills")
+	setup.skillsLocalDir = func() (string, error) { return localDir, nil }
+
+	output, err := executeCommand(setup.cmd, "--skills")
+
+	require.NoError(t, err)
+	require.Equal(t, localDir, gotDir)
+	require.Contains(t, output, "Stripe skills (local)")
+	require.Contains(t, output, "installed 2 skill(s)")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupSkillsGlobalScope(t *testing.T) {
+	var gotDir string
+	globalDir := filepath.Join(t.TempDir(), ".agents", "skills")
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.cmd.SetContext(context.Background())
+	setup.skillsInstall = func(_ context.Context, destDir string) ([]string, error) {
+		gotDir = destDir
+		return []string{"stripe-best-practices"}, nil
+	}
+	setup.skillsGlobalDir = func() (string, error) { return globalDir, nil }
+
+	output, err := executeCommand(setup.cmd, "--skills", "--skills-scope", "global")
+
+	require.NoError(t, err)
+	require.Equal(t, globalDir, gotDir)
+	require.Contains(t, output, "Stripe skills (global)")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupSkillsInstallFailureReportsError(t *testing.T) {
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.cmd.SetContext(context.Background())
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		return nil, errors.New("index unreachable")
+	}
+	setup.skillsLocalDir = func() (string, error) { return t.TempDir(), nil }
+
+	output, err := executeCommand(setup.cmd, "--skills")
+
+	require.Error(t, err)
+	require.Contains(t, output, "error: index unreachable")
+	require.Contains(t, output, "0 installed, 0 skipped, 1 errors")
+}
+
+func TestAgentSetupInvalidSkillsScope(t *testing.T) {
+	setup := newAgentSetupCmd()
+	setup.cmd.SetContext(context.Background())
+
+	_, err := executeCommand(setup.cmd, "--skills", "--skills-scope", "sideways")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid --skills-scope")
+}
+
+func TestAgentSetupSkillsAlongsideAgent(t *testing.T) {
+	var skillsCalled bool
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error { return nil })
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
+	setup.cmd.SetContext(context.Background())
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		skillsCalled = true
+		return []string{"stripe-best-practices"}, nil
+	}
+	setup.skillsLocalDir = func() (string, error) { return filepath.Join(t.TempDir(), ".agents", "skills"), nil }
+
+	// --yes installs the detected agent; --skills adds skills in the same run.
+	output, err := executeCommand(setup.cmd, "--yes", "--skills")
+
+	require.NoError(t, err)
+	require.True(t, skillsCalled)
+	require.Contains(t, output, "Claude Code")
+	require.Contains(t, output, "Stripe skills (local)")
+	require.Contains(t, output, "2 installed, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupCursorIsManualStepNotError(t *testing.T) {
+	// Cursor detected, plugin not installed (empty temp home) -> manual step.
+	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
+		LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil },
+		ReadFile: os.ReadFile,
+		HomeDir:  func() (string, error) { return t.TempDir(), nil },
+	}, nil)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{cursor.ID(): cursor}
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--client", "cursor", "--yes")
+
+	require.NoError(t, err) // manual step must not fail the command
+	require.Contains(t, output, "manual step: run /add-plugin stripe inside Cursor")
+	require.Contains(t, output, "0 installed, 1 skipped, 0 errors")
 }
 
 func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
