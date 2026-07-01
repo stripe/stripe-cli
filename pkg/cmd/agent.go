@@ -64,6 +64,9 @@ type agentSetupCmd struct {
 	// callingAgent returns the AI agent invoking this command (e.g.
 	// "claude_code"), or "" for a human shell. Injectable for tests.
 	callingAgent func() string
+	// isInteractive reports whether an interactive picker can be shown.
+	// Injectable for tests.
+	isInteractive func() bool
 }
 
 type agentSetupJSON struct {
@@ -94,6 +97,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 		skillsLocalDir:  func() (string, error) { return skillsDirUnder(os.Getwd) },
 		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
 		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
+		isInteractive:   isInteractiveTerminal,
 	}
 
 	asc.cmd = &cobra.Command{
@@ -175,7 +179,13 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, detected []agentsetup.Status) (*Selection, string, error) {
 	scope := asc.skillsScope
 
-	useTUI := isInteractiveTerminal() && !asc.yes && !asc.skills
+	// Detect the calling agent up front. When an agent invoked us we must never
+	// show the interactive picker — some agent runtimes (e.g. Gemini CLI)
+	// allocate a PTY, so a TTY check alone would wrongly think a human is present
+	// and the picker would hang/fail.
+	agent := asc.callingAgent()
+
+	useTUI := asc.isInteractive() && !asc.yes && !asc.skills && agent == ""
 	if !useTUI {
 		// --skills on its own means "install skills only" (the alternative to
 		// configuring agents). Agents are installed when --yes is given, or via
@@ -186,7 +196,6 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		// picker), install just that agent's plugin rather than every detected
 		// client. --client and --yes are explicit overrides and win.
 		if asc.client == "" && !asc.yes && !asc.skills {
-			agent := asc.callingAgent()
 			if id := agentClientID[agent]; id != "" {
 				if scoped := statusesForClient(detected, id); len(scoped) > 0 {
 					fmt.Fprintf(out, "Detected %s — setting up its Stripe plugin.\n", scoped[0].DisplayName)
