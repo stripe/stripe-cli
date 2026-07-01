@@ -147,7 +147,7 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.Contains(t, output, "No AI coding clients detected on this machine.")
+	require.Contains(t, output, "No supported AI coding clients detected on this machine.")
 	require.Contains(t, output, "re-run: stripe agent setup")
 }
 
@@ -417,7 +417,7 @@ func TestAgentSetupNoClientsNonInteractiveShowsHint(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.Contains(t, output, "No AI coding clients detected on this machine.")
+	require.Contains(t, output, "No supported AI coding clients detected on this machine.")
 	require.Contains(t, output, "Supported clients for automatic setup:")
 	require.Contains(t, output, "Once a client is installed, re-run: stripe agent setup")
 	require.Contains(t, output, "stripe agent setup --skills")
