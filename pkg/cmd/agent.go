@@ -207,10 +207,20 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		}
 	}
 
-	// Nothing detected: always show the informative message (supported clients +
-	// how to install skills), rather than a context-free picker. This is the same
-	// whether or not we're on an interactive terminal.
+	// Nothing detected: show guidance, and if interactive, offer to install skills.
 	if len(detected) == 0 {
+		if asc.isInteractive() && agent == "" {
+			printNothingDetectedInteractive(out)
+			chosen, ok, err := RunSkillsScopeTUI()
+			if err != nil {
+				return nil, scope, err
+			}
+			if !ok {
+				fmt.Fprintln(out, "Canceled. No changes made.")
+				return nil, scope, nil
+			}
+			return &Selection{InstallSkills: true}, chosen, nil
+		}
 		printNothingDetected(out)
 		return nil, scope, nil
 	}
@@ -515,6 +525,18 @@ func pluginDetail(p agentsetup.PluginStatus) string {
 		detail += ", " + p.Scope
 	}
 	return detail
+}
+
+func printNothingDetectedInteractive(w io.Writer) {
+	fmt.Fprint(w, `No AI coding clients detected on this machine.
+
+Supported clients for automatic setup:
+  • Claude Code   https://claude.ai/code
+  • Cursor        https://cursor.com
+  • Codex CLI     https://github.com/openai/codex
+
+You can still install Stripe skills directly.
+`)
 }
 
 func printNothingDetected(w io.Writer) {
