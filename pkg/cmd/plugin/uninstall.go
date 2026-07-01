@@ -12,6 +12,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -52,9 +53,16 @@ func (uc *UninstallCmd) runUninstallCmd(cmd *cobra.Command, args []string) error
 		return errors.New("this plugin doesn't seem to exist")
 	}
 
+	if m := stripe.GetEventMetadata(cmd.Context()); m != nil {
+		m.SetPluginName(plugin.Shortname)
+	}
+
+	installedVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
+
 	err = plugin.Uninstall(ctx, uc.cfg, uc.fs)
 
 	if err == nil {
+		sendPluginLifecycleEvent(cmd.Context(), "Plugin Uninstalled", installedVersion)
 		color := ansi.Color(os.Stdout)
 		successMsg := fmt.Sprintf("✔ %s has been uninstalled.", plugin.Shortname)
 		fmt.Println(color.Green(successMsg))

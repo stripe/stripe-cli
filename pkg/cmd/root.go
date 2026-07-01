@@ -78,6 +78,7 @@ var rootCmd = &cobra.Command{
 				telemetryMetadata.SetCommandPath(resolvePluginTelemetryCommandPath(cmd, os.Args))
 			}
 			telemetryMetadata.SetMerchant(merchant)
+			telemetryMetadata.SetMachineUUID(Config.GetMachineUUID())
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
 			flags := []string{}

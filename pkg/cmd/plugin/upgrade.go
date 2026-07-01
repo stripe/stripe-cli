@@ -64,6 +64,10 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
+	if m := stripe.GetEventMetadata(cmd.Context()); m != nil {
+		m.SetPluginName(args[0])
+	}
+
 	resolvedPlugin, err := plugins.ResolvePluginForUpgrade(ctx, uc.cfg, uc.fs, args[0], uc.apiBaseURL, dashboardBaseURL)
 	if err != nil {
 		return err
@@ -86,6 +90,8 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	if err := resolvedPlugin.Install(ctx, uc.cfg, uc.fs, uc.apiBaseURL, dashboardBaseURL); err != nil {
 		return err
 	}
+
+	sendPluginLifecycleEvent(cmd.Context(), "Plugin Installed", version)
 
 	if prevVersion != "" {
 		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
