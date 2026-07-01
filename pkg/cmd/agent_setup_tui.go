@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -187,13 +188,25 @@ func RunSelectionTUI(statuses []agentsetup.Status) (*Selection, error) {
 // scopeModel is a small radio prompt for choosing where to install skills.
 type scopeModel struct {
 	options []string
+	labels  []string
 	cursor  int
 	done    bool
 	quit    bool
 }
 
 func newScopeModel() scopeModel {
-	return scopeModel{options: []string{skillsScopeLocal, skillsScopeGlobal}}
+	localLabel := "This project (current directory only)"
+	if cwd, err := os.Getwd(); err == nil {
+		localLabel = fmt.Sprintf("This project   %s/.agents/skills", cwd)
+	}
+	globalLabel := "Global (available everywhere)"
+	if home, err := os.UserHomeDir(); err == nil {
+		globalLabel = fmt.Sprintf("Global         %s/.agents/skills", home)
+	}
+	return scopeModel{
+		options: []string{skillsScopeLocal, skillsScopeGlobal},
+		labels:  []string{localLabel, globalLabel},
+	}
 }
 
 func (m scopeModel) Init() tea.Cmd { return nil }
@@ -224,16 +237,12 @@ func (m scopeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m scopeModel) View() tea.View {
 	body := "Install Stripe skills where?\n\n"
-	labels := map[string]string{
-		skillsScopeLocal:  "This project   ./.agents/skills",
-		skillsScopeGlobal: "Global         ~/.agents/skills",
-	}
-	for i, opt := range m.options {
+	for i := range m.options {
 		marker := "( )"
 		if i == m.cursor {
 			marker = "(•)"
 		}
-		line := fmt.Sprintf("  %s %s", marker, labels[opt])
+		line := fmt.Sprintf("  %s %s", marker, m.labels[i])
 		if i == m.cursor {
 			line = cursorRowStyle.Render(line)
 		}
