@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 )
 
@@ -109,7 +108,7 @@ func (s Scanner) ScanCursor() Status {
 // marker file indicates the install finished.
 func findCursorStripePlugin(s Scanner, pluginsRoot string) (string, cursorPluginRef, bool) {
 	cacheRoot := filepath.Join(pluginsRoot, "cache")
-	marketplaces, err := os.ReadDir(cacheRoot)
+	marketplaces, err := s.ReadDir(cacheRoot)
 	if err != nil {
 		return "", cursorPluginRef{}, false
 	}
@@ -119,7 +118,7 @@ func findCursorStripePlugin(s Scanner, pluginsRoot string) (string, cursorPlugin
 			continue
 		}
 		stripeDir := filepath.Join(cacheRoot, marketplace.Name(), CursorPluginName)
-		hashes, err := os.ReadDir(stripeDir)
+		hashes, err := s.ReadDir(stripeDir)
 		if err != nil {
 			continue
 		}
@@ -128,7 +127,7 @@ func findCursorStripePlugin(s Scanner, pluginsRoot string) (string, cursorPlugin
 				continue
 			}
 			hashPath := filepath.Join(stripeDir, hash.Name())
-			if _, err := os.Stat(filepath.Join(hashPath, ".cache-complete")); err != nil {
+			if _, err := s.Stat(filepath.Join(hashPath, ".cache-complete")); err != nil {
 				continue
 			}
 
