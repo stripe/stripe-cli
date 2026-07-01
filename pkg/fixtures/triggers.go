@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/spf13/afero"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -87,7 +89,7 @@ func FixtureContents(eventName string) (string, error) {
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
-func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
+func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, param, add, remove []string, edit bool) (*Fixture, error) {
 	fixture, err := NewFixtureFromFile(
 		fs,
 		apiKey,
@@ -104,6 +106,21 @@ func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFi
 		return nil, err
 	}
 
+	// Validate required params before proceeding
+	if err := ValidateRequiredParams(fixture, jsonFile, param); err != nil {
+		return nil, err
+	}
+
+	// Merge params with overrides (params take precedence, same syntax)
+	mergedOverrides := make([]string, 0, len(override)+len(param))
+	mergedOverrides = append(mergedOverrides, override...)
+	mergedOverrides = append(mergedOverrides, param...)
+	if len(mergedOverrides) > 0 {
+		if err := fixture.Override(mergedOverrides); err != nil {
+			return nil, err
+		}
+	}
+
 	return fixture, nil
 }
 
@@ -117,13 +134,69 @@ func BuildFromFixtureString(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, raw 
 }
 
 // EventList prints out a padded list of supported trigger events for printing the help file
+// Events that require parameters show the --param syntax inline, vertically aligned
 func EventList() string {
+	eventNames := EventNames()
+
+	// First pass: find the maximum event name length ONLY for events that require params
+	maxLength := 0
+	for _, event := range eventNames {
+		if file, ok := getEvents()[event]; ok {
+			params := getRequiredParamsForEvent(file)
+			if len(params) > 0 && len(event) > maxLength {
+				maxLength = len(event)
+			}
+		}
+	}
+
+	// Second pass: build the list with proper padding for vertical alignment
 	var eventList string
-	for _, event := range EventNames() {
-		eventList += fmt.Sprintf("  %s\n", event)
+	for _, event := range eventNames {
+		// Try to load fixture metadata to check for required params
+		if file, ok := getEvents()[event]; ok {
+			params := getRequiredParamsForEvent(file)
+			if len(params) > 0 {
+				// Show event with required params syntax, padded for vertical alignment
+				paramSyntax := ""
+				for i, param := range params {
+					if i > 0 {
+						paramSyntax += " "
+					}
+					paramSyntax += fmt.Sprintf("--param %s=<value>", param.Name)
+				}
+				// Pad event name to max length for vertical alignment
+				padding := maxLength - len(event)
+				eventList += fmt.Sprintf("  %s%s  %s\n", event, strings.Repeat(" ", padding), paramSyntax)
+			} else {
+				eventList += fmt.Sprintf("  %s\n", event)
+			}
+		} else {
+			eventList += fmt.Sprintf("  %s\n", event)
+		}
 	}
 
 	return eventList
+}
+
+// getRequiredParamsForEvent loads fixture metadata and returns required params if any
+func getRequiredParamsForEvent(fixtureFile string) []RequiredParam {
+	f, err := triggers.Open(fixtureFile)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	filedata, err := io.ReadAll(f)
+	if err != nil {
+		return nil
+	}
+
+	var fixtureData FixtureData
+	if err := json.Unmarshal(filedata, &fixtureData); err != nil {
+		return nil
+	}
+
+	return fixtureData.Meta.RequiredParams
 }
 
 // EventNames returns an array of all the event names
@@ -139,7 +212,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string, edit bool) ([]string, error) {
+func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, param, add, remove []string, raw string, apiVersion string, edit bool) ([]string, error) {
 	var fixture *Fixture
 	var err error
 	fs := afero.NewOsFs()
@@ -152,7 +225,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 
 	if len(raw) == 0 {
 		if file, ok := getEvents()[event]; ok {
-			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, file, skip, override, add, remove, edit)
+			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, file, skip, override, param, add, remove, edit)
 			if err != nil {
 				return nil, err
 			}
@@ -162,7 +235,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 				return nil, fmt.Errorf("%s", fmt.Sprintf("The event `%s` is not supported by Stripe CLI. To trigger unsupported events, use the Stripe API or Dashboard to perform actions that lead to the event you want to trigger (for example, create a Customer to generate a `customer.created` event). You can also create a custom fixture: https://docs.stripe.com/cli/fixtures", event))
 			}
 
-			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, event, skip, override, add, remove, edit)
+			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, event, skip, override, param, add, remove, edit)
 			if err != nil {
 				return nil, err
 			}
@@ -189,4 +262,88 @@ func reverseMap() map[string]string {
 	}
 
 	return reversed
+}
+
+// ValidateRequiredParams checks if all required parameters specified in fixture metadata
+// have been provided via the --param flag. Returns an actionable error if any are missing.
+func ValidateRequiredParams(fixture *Fixture, jsonFile string, providedParams []string) error {
+	requiredParams := fixture.FixtureData.Meta.RequiredParams
+
+	// Look up event name from file path for error messages
+	eventName := reverseMap()[jsonFile]
+	if eventName == "" {
+		eventName = "<event>"
+	}
+
+	// If params were provided but none are required, show helpful error suggesting --override
+	if len(requiredParams) == 0 && len(providedParams) > 0 {
+		color := ansi.Color(os.Stdout)
+		return fmt.Errorf("%s\n\nThis trigger does not accept required parameters.\n\nIf you're trying to customize fixture values, use --override instead:\n  stripe trigger <event> --override %s",
+			color.Red("✘ Unexpected parameters").String(),
+			providedParams[0]) // Show first param as example
+	}
+
+	if len(requiredParams) == 0 {
+		return nil // No required params, nothing to validate
+	}
+
+	// Parse provided params by fixture path
+	// Format: "fixtureName:path.to.field=value" (same as --override)
+	providedParamNames := make(map[string]bool)
+	for _, param := range providedParams {
+		parts := strings.SplitN(param, "=", 2)
+		if len(parts) != 2 {
+			color := ansi.Color(os.Stdout)
+			return fmt.Errorf("%s\n\nInvalid parameter format: %s\n\nParameters must use the format: fixtureName:path.to.field=value\n\nExample:\n  --param charge:transfer_data.destination=acct_123",
+				color.Red("✘ Malformed parameter").String(),
+				param)
+		}
+		if parts[0] == "" {
+			color := ansi.Color(os.Stdout)
+			return fmt.Errorf("%s\n\nParameter name cannot be empty: %s\n\nParameters must use the format: fixtureName:path.to.field=value",
+				color.Red("✘ Malformed parameter").String(),
+				param)
+		}
+		if parts[1] == "" {
+			color := ansi.Color(os.Stdout)
+			return fmt.Errorf("%s\n\nParameter value cannot be empty: %s\n\nIf you want to set an empty value, use --override instead:\n  --override %s=",
+				color.Red("✘ Malformed parameter").String(),
+				param,
+				parts[0])
+		}
+		providedParamNames[parts[0]] = true
+	}
+
+	// Check if all required params were provided
+	var missingParams []RequiredParam
+	for _, required := range requiredParams {
+		if !providedParamNames[required.Name] {
+			missingParams = append(missingParams, required)
+		}
+	}
+
+	if len(missingParams) > 0 {
+		// Build actionable error message
+		color := ansi.Color(os.Stdout)
+		var errorMsg strings.Builder
+
+		errorMsg.WriteString(color.Red("✘ Missing required parameters").String())
+		errorMsg.WriteString("\n")
+
+		for _, param := range missingParams {
+			errorMsg.WriteString(fmt.Sprintf("\n  %s - %s\n", color.Bold(param.Name).String(), param.Description))
+			errorMsg.WriteString("  Example:\n\n")
+			errorMsg.WriteString(fmt.Sprintf("     stripe trigger %s \\\n", eventName))
+
+			placeholderValue := param.Placeholder
+			if placeholderValue == "" {
+				placeholderValue = "VALUE"
+			}
+			errorMsg.WriteString(fmt.Sprintf("        --param %s=%s\n", param.Name, placeholderValue))
+		}
+
+		return fmt.Errorf("%s", errorMsg.String())
+	}
+
+	return nil
 }
