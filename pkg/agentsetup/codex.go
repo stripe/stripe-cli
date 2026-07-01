@@ -142,16 +142,15 @@ type codexPluginList struct {
 	Installed []codexInstalledPlugin `json:"installed"`
 }
 
-// codexInstalledPlugin captures the fields we might use to identify a plugin.
-// The exact schema is not fully documented, so several possible identifier
-// fields are parsed and a raw-substring fallback covers the rest.
+// codexInstalledPlugin is an entry in `codex plugin list --json`'s "installed"
+// array. Field names match the real Codex CLI output (verified against
+// codex-cli 0.142.0), e.g. {"pluginId":"stripe@openai-curated","name":"stripe",
+// "marketplaceName":"openai-curated","version":"..."}.
 type codexInstalledPlugin struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	QualifiedName string `json:"qualified_name"`
-	FullName      string `json:"full_name"`
-	Marketplace   string `json:"marketplace"`
-	Version       string `json:"version"`
+	PluginID    string `json:"pluginId"`
+	Name        string `json:"name"`
+	Marketplace string `json:"marketplaceName"`
+	Version     string `json:"version"`
 }
 
 // findCodexStripePlugin reports whether the Stripe plugin appears in the
@@ -171,10 +170,8 @@ func findCodexStripePlugin(listJSON []byte) (string, bool) {
 }
 
 func codexPluginIsStripe(plugin codexInstalledPlugin) bool {
-	for _, id := range []string{plugin.QualifiedName, plugin.FullName, plugin.ID} {
-		if strings.EqualFold(id, TargetCodexPlugin) {
-			return true
-		}
+	if strings.EqualFold(plugin.PluginID, TargetCodexPlugin) {
+		return true
 	}
 	return strings.EqualFold(plugin.Name, CodexPluginName) &&
 		strings.EqualFold(plugin.Marketplace, CodexMarketplace)
