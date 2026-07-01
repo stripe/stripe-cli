@@ -23,6 +23,12 @@ type HomeDirFunc func() (string, error)
 // WorkDirFunc matches os.Getwd and exists to make local plugin scope testable.
 type WorkDirFunc func() (string, error)
 
+// ReadDirFunc matches os.ReadDir and exists to make directory listing testable.
+type ReadDirFunc func(string) ([]os.DirEntry, error)
+
+// StatFunc matches os.Stat and exists to make file existence checks testable.
+type StatFunc func(string) (os.FileInfo, error)
+
 // RunCommandFunc runs a command. The production implementation streams stdio.
 type RunCommandFunc func(context.Context, string, ...string) error
 
@@ -32,6 +38,8 @@ type Scanner struct {
 	ReadFile ReadFileFunc
 	HomeDir  HomeDirFunc
 	WorkDir  WorkDirFunc
+	ReadDir  ReadDirFunc
+	Stat     StatFunc
 }
 
 // DefaultScanner returns a Scanner backed by the real OS.
@@ -41,6 +49,8 @@ func DefaultScanner() Scanner {
 		ReadFile: os.ReadFile,
 		HomeDir:  os.UserHomeDir,
 		WorkDir:  os.Getwd,
+		ReadDir:  os.ReadDir,
+		Stat:     os.Stat,
 	}
 }
 
@@ -57,6 +67,12 @@ func (s Scanner) withDefaults() Scanner {
 	}
 	if s.WorkDir == nil {
 		s.WorkDir = defaults.WorkDir
+	}
+	if s.ReadDir == nil {
+		s.ReadDir = defaults.ReadDir
+	}
+	if s.Stat == nil {
+		s.Stat = defaults.Stat
 	}
 	return s
 }
