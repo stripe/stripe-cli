@@ -51,6 +51,20 @@ func TestResourcesHidesDatabases(t *testing.T) {
 	require.NotContains(t, output, "databases")
 }
 
+func TestResourcesHelpAlias(t *testing.T) {
+	helpOutput, err := executeCommand(newResourcesTestRoot(t), "resources", "--help")
+	require.NoError(t, err)
+
+	aliasOutput, err := executeCommand(newResourcesTestRoot(t), "resources", "help")
+	require.NoError(t, err)
+	require.Equal(t, helpOutput, aliasOutput)
+}
+
+func TestResourcesRejectsUnexpectedPositionalArgs(t *testing.T) {
+	_, err := executeCommand(newResourcesTestRoot(t), "resources", "foo")
+	require.EqualError(t, err, "`stripe resources` does not take any positional arguments. See `stripe resources --help` for supported flags and usage")
+}
+
 func TestResourcesListAliasedName(t *testing.T) {
 	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 	require.NoError(t, err)
