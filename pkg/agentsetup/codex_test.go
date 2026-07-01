@@ -36,19 +36,21 @@ func TestScanCodex_PluginMissing(t *testing.T) {
 }
 
 func TestScanCodex_PluginInstalled(t *testing.T) {
-	provider := codexTestProvider(`{"installed":[{"name":"stripe","marketplace":"openai-curated","version":"1.2.3"}]}`, nil, nil)
+	// Real codex-cli schema: pluginId + marketplaceName.
+	provider := codexTestProvider(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"3fdeeb49"}]}`, nil, nil)
 
 	status := provider.Detect()
 
 	require.Equal(t, StatusInstalled, status.Status)
 	require.True(t, status.Plugin.Installed)
 	require.Equal(t, TargetCodexPlugin, status.Plugin.ID)
-	require.Equal(t, "1.2.3", status.Plugin.Version)
+	require.Equal(t, "3fdeeb49", status.Plugin.Version)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
-func TestScanCodex_PluginInstalledByQualifiedName(t *testing.T) {
-	provider := codexTestProvider(`{"installed":[{"qualified_name":"stripe@openai-curated","version":"2.0.0"}]}`, nil, nil)
+func TestScanCodex_PluginInstalledByNameAndMarketplace(t *testing.T) {
+	// Entry without pluginId still matches on name + marketplaceName.
+	provider := codexTestProvider(`{"installed":[{"name":"stripe","marketplaceName":"openai-curated","version":"2.0.0"}]}`, nil, nil)
 
 	status := provider.Detect()
 
@@ -81,7 +83,7 @@ func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {
 		},
 		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
 			if installed {
-				return []byte(`{"installed":[{"name":"stripe","marketplace":"openai-curated","version":"1.0.0"}]}`), nil
+				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
 			}
 			return []byte(`{"installed":[]}`), nil
 		},
