@@ -46,7 +46,7 @@ func (p CursorProvider) Detect() Status { return p.Scanner.ScanCursor() }
 
 func (p CursorProvider) Plan(status Status, _ bool) Plan {
 	if status.Detected && !status.Plugin.Installed && status.Status != StatusError {
-		return Plan{Action: ActionManual, Manual: "run /add-plugin stripe inside Cursor to install the Stripe plugin"}
+		return Plan{Action: ActionManual, Manual: "run /add-plugin stripe inside Cursor Agent to install the Stripe plugin"}
 	}
 	return Plan{Action: ActionNone}
 }

@@ -69,7 +69,12 @@ func (p CodexProvider) Detect() Status {
 	ctx, cancel := context.WithTimeout(context.Background(), codexListTimeout)
 	defer cancel()
 
-	if version, ok := p.stripePluginVersion(ctx); ok {
+	version, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	if !supportsPlugins {
+		status.Error = "upgrade Codex to enable plugin support"
+		return status
+	}
+	if ok {
 		status.Plugin.Installed = true
 		status.Plugin.ID = TargetCodexPlugin
 		status.Plugin.Version = version
@@ -80,19 +85,21 @@ func (p CodexProvider) Detect() Status {
 	return status
 }
 
-// stripePluginVersion runs `codex plugin list --json` and reports the installed
-// Stripe plugin version, if any. A command or parse failure is treated as "not
-// installed" so a single flaky call does not fail the whole scan.
-func (p CodexProvider) stripePluginVersion(ctx context.Context) (string, bool) {
+// stripePluginStatus runs `codex plugin list --json` and reports whether (1)
+// the command is supported (supportsPlugins), and if so (2) whether the Stripe
+// plugin is installed and its version. When the command fails (e.g. old Codex
+// version without plugin support), supportsPlugins is false.
+func (p CodexProvider) stripePluginStatus(ctx context.Context) (version string, installed bool, supportsPlugins bool) {
 	runOutput := p.RunOutput
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
 	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--json")
 	if err != nil {
-		return "", false
+		return "", false, false
 	}
-	return findCodexStripePlugin(out)
+	v, ok := findCodexStripePlugin(out)
+	return v, ok, true
 }
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
@@ -130,7 +137,7 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 	// `codex plugin add` exits 0 even when it fails (e.g. the marketplace is not
 	// configured), so the exit code cannot be trusted. Confirm the plugin is
 	// actually installed before reporting success.
-	if _, ok := p.stripePluginVersion(ctx); !ok {
+	if _, installed, _ := p.stripePluginStatus(ctx); !installed {
 		return fmt.Errorf("codex reported success but %s is not installed; run `%s` to see the underlying error",
 			TargetCodexPlugin, strings.Join(plan.Command, " "))
 	}
