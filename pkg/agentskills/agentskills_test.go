@@ -104,6 +104,27 @@ func TestInstall_SkillWithNoRetrievableFilesIsOmitted(t *testing.T) {
 	require.NoDirExists(t, filepath.Join(dest, "broken"))
 }
 
+func TestInstall_RejectsPathTraversal(t *testing.T) {
+	index := Index{Skills: []Skill{
+		{Name: "../escape", Files: []string{"SKILL.md"}},
+		{Name: "legit", Files: []string{"../../etc/passwd"}},
+		{Name: "good", Files: []string{"SKILL.md"}},
+	}}
+	server := startSkillsServer(t, index, map[string]string{
+		"../escape/SKILL.md":     "# evil",
+		"legit/../../etc/passwd": "# evil",
+		"good/SKILL.md":          "# good",
+	})
+
+	dest := t.TempDir()
+	installed, err := Install(context.Background(), server.Client(), dest)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"good"}, installed)
+	require.NoFileExists(t, filepath.Join(dest, "..", "escape", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(dest, "..", "..", "etc", "passwd"))
+}
+
 func TestInstall_IndexError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

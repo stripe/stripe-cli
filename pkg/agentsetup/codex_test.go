@@ -58,14 +58,16 @@ func TestScanCodex_PluginInstalledByNameAndMarketplace(t *testing.T) {
 	require.Equal(t, "2.0.0", status.Plugin.Version)
 }
 
-func TestScanCodex_ListCommandErrorIsMissing(t *testing.T) {
-	provider := codexTestProvider("", errors.New("no marketplace configured"), nil)
+func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
+	provider := codexTestProvider("", errors.New("unrecognized subcommand 'plugin'"), nil)
 
 	status := provider.Detect()
 
+	// Old Codex shows as detected but with an error hint — the TUI renders
+	// it as disabled (visible but not selectable).
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
-	require.False(t, status.Plugin.Installed)
+	require.Contains(t, status.Error, "upgrade Codex")
 }
 
 func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {

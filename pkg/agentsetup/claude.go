@@ -91,7 +91,7 @@ func (p ClaudeProvider) Apply(ctx context.Context, out io.Writer, plan Plan) err
 
 	updateName, updateArgs := ClaudeMarketplaceUpdateCommand()
 	updateCommand := append([]string{updateName}, updateArgs...)
-	fmt.Fprintf(out, "Install failed. Updating Claude plugin marketplace and retrying: %s\n", strings.Join(updateCommand, " "))
+	fmt.Fprintf(out, "First install failed. Updating Claude plugin marketplace and retrying: %s\n", strings.Join(updateCommand, " "))
 	if updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
 		return fmt.Errorf("running %q after install failed: %w", strings.Join(updateCommand, " "), updateErr)
 	}
