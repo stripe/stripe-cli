@@ -28,6 +28,8 @@ type selectRow struct {
 	label    string
 	detail   string
 	selected bool
+	disabled bool   // shown but not selectable (e.g. unsupported version)
+	hint     string // explanation shown when disabled
 }
 
 type selectModel struct {
@@ -46,13 +48,20 @@ type Selection struct {
 func newSelectModel(statuses []agentsetup.Status) selectModel {
 	rows := make([]selectRow, 0, len(statuses)+1)
 	for _, s := range statuses {
-		rows = append(rows, selectRow{
-			kind:     rowAgent,
-			status:   s,
-			label:    s.DisplayName,
-			detail:   s.ExecutablePath,
-			selected: true, // agents are the recommended default
-		})
+		row := selectRow{
+			kind:   rowAgent,
+			status: s,
+			label:  s.DisplayName,
+			detail: s.ExecutablePath,
+		}
+		// Disable rows where a capability issue prevents installation (e.g. old
+		// Codex without plugin support). These show but are grayed out.
+		if s.Error != "" && s.Status != agentsetup.StatusError {
+			row.disabled = true
+			row.hint = s.Error
+		}
+		row.selected = !row.disabled
+		rows = append(rows, row)
 	}
 	rows = append(rows, selectRow{
 		kind:     rowSkills,
@@ -82,7 +91,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 	case key.Code == tea.KeySpace:
-		if len(m.rows) > 0 {
+		if len(m.rows) > 0 && !m.rows[m.cursor].disabled {
 			m.rows[m.cursor].selected = !m.rows[m.cursor].selected
 		}
 	case key.Code == 'a':
@@ -98,17 +107,20 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// toggleAll selects every row when any is unselected, otherwise deselects all.
+// toggleAll selects every non-disabled row when any is unselected, otherwise
+// deselects all non-disabled rows.
 func (m *selectModel) toggleAll() {
 	anyUnselected := false
 	for _, r := range m.rows {
-		if !r.selected {
+		if !r.selected && !r.disabled {
 			anyUnselected = true
 			break
 		}
 	}
 	for i := range m.rows {
-		m.rows[i].selected = anyUnselected
+		if !m.rows[i].disabled {
+			m.rows[i].selected = anyUnselected
+		}
 	}
 }
 
@@ -146,14 +158,20 @@ func (m selectModel) View() tea.View {
 			skillsDividerShown = true
 		}
 
-		box := uncheckedStyle.Render("·")
-		if r.selected {
-			box = checkedStyle.Render("✔")
-		}
-
 		pointer := "  "
 		if i == m.cursor {
 			pointer = "▶ "
+		}
+
+		if r.disabled {
+			line := fmt.Sprintf("%s[-] %-22s %s", pointer, r.label, dividerStyle.Render(r.hint))
+			body += line + "\n"
+			continue
+		}
+
+		box := uncheckedStyle.Render("·")
+		if r.selected {
+			box = checkedStyle.Render("✔")
 		}
 
 		line := fmt.Sprintf("%s[%s] %-22s %s", pointer, box, r.label, r.detail)

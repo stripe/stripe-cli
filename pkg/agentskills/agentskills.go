@@ -87,11 +87,14 @@ func Install(ctx context.Context, httpClient *http.Client, destDir string) ([]st
 			if file == "" {
 				continue
 			}
+			target := filepath.Join(destDir, skill.Name, filepath.FromSlash(file))
+			if !isUnderDir(target, destDir) {
+				continue
+			}
 			content, err := get(ctx, client, base+skill.Name+"/"+file)
 			if err != nil {
 				continue
 			}
-			target := filepath.Join(destDir, skill.Name, filepath.FromSlash(file))
 			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 				continue
 			}
@@ -106,6 +109,14 @@ func Install(ctx context.Context, httpClient *http.Client, destDir string) ([]st
 	}
 
 	return installed, nil
+}
+
+// isUnderDir reports whether target is strictly under dir after cleaning both
+// paths. This rejects path traversal via "../" or absolute paths in skill names.
+func isUnderDir(target, dir string) bool {
+	cleanTarget := filepath.Clean(target)
+	cleanDir := filepath.Clean(dir) + string(filepath.Separator)
+	return strings.HasPrefix(cleanTarget, cleanDir)
 }
 
 func get(ctx context.Context, client *http.Client, rawURL string) ([]byte, error) {
