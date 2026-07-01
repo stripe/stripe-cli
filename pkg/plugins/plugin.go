@@ -21,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
+	"github.com/stripe/stripe-cli/pkg/plugins/rendering"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
@@ -716,7 +717,11 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelper(ctx, config, fs)); err != nil {
+		format := rendering.FormatText
+		if config.Format == "json" {
+			format = rendering.FormatJSON
+		}
+		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelperWithFormat(ctx, config, fs, format)); err != nil {
 			return err
 		}
 	default:

@@ -40,6 +40,10 @@ service CoreCLIHelper {
   rpc KeychainDeletePassword(KeychainDeletePasswordRequest) returns (KeychainDeletePasswordResponse);
   rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse);
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
+
+  // Centralized UI Rendering
+  rpc SendCommandOutput(SendCommandOutputRequest) returns (SendCommandOutputResponse);
+  rpc Prompt(PromptRequest) returns (PromptResponse);
 }
 
 message EchoRequest {
@@ -97,4 +101,73 @@ message RunPeerPluginRequest {
 }
 
 message RunPeerPluginResponse {
+}
+
+// --- Centralized UI Rendering messages ---
+
+enum MessageLevel {
+  INFO = 0;
+  SUCCESS = 1;
+  WARNING = 2;
+  ERROR = 3;
+}
+
+enum ProgressType {
+  PROGRESS_INFO = 0;
+  STEP = 1;
+  SPINNER_START = 2;
+  SPINNER_UPDATE = 3;
+  SPINNER_STOP = 4;
+}
+
+enum PromptType {
+  TEXT = 0;
+  CONFIRM = 1;
+  SELECT = 2;
+}
+
+// OutputBlock is a single unit of plugin output. All output types are
+// expressed as blocks, and the rendering engine dispatches on the variant.
+message OutputBlock {
+  oneof block {
+    MessageBlock message = 1;
+    DataBlock data = 2;
+    ProgressBlock progress = 3;
+  }
+}
+
+message MessageBlock {
+  string message = 1;
+  MessageLevel level = 2;
+}
+
+message DataBlock {
+  string type = 1;               // "data", "warning", "nextstep", "error"
+  string payload = 2;            // JSON-encoded payload (shape varies per type)
+}
+
+message ProgressBlock {
+  string id = 1;                 // caller-generated, supports concurrent spinners
+  string message = 2;
+  ProgressType type = 3;
+  bool success = 4;              // relevant on SPINNER_STOP only
+}
+
+message SendCommandOutputRequest {
+  string command = 1;
+  repeated OutputBlock blocks = 2;
+}
+
+message SendCommandOutputResponse {
+}
+
+message PromptRequest {
+  string message = 1;
+  PromptType type = 2;
+  repeated string options = 3;   // required for SELECT
+  string default_value = 4;
+}
+
+message PromptResponse {
+  string value = 1;              // "true"/"false" for CONFIRM, selected value for SELECT
 }

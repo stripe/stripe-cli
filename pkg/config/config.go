@@ -53,6 +53,7 @@ type IConfig interface {
 // Config handles all overall configuration for the CLI
 type Config struct {
 	Color            string
+	Format           string
 	LogLevel         string
 	Profile          Profile
 	ProfilesFile     string
