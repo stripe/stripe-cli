@@ -385,6 +385,26 @@ func TestAgentSetupUnsupportedAgentInstallsSkills(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupStatusHidesUndetectedClients(t *testing.T) {
+	// Claude detected, Cursor not — --status should list only Claude.
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), nil)
+	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
+		LookPath: func(string) (string, error) { return "", errors.New("not found") },
+	}, nil)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, cursor.ID(): cursor}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--status")
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Claude Code")
+	require.NotContains(t, output, "Cursor")
+	require.NotContains(t, output, "not detected")
+}
+
 func TestAgentSetupNoClientsShowsMessageNotPicker(t *testing.T) {
 	// No clients detected. Even on an interactive terminal we must show the
 	// informative "nothing detected" message, not a context-free skills picker.
