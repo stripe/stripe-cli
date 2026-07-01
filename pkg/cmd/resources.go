@@ -18,7 +18,7 @@ func newResourcesCmd() *resourcesCmd {
 
 	rc.cmd = &cobra.Command{
 		Use:   "resources",
-		Args:  validators.NoArgs,
+		Args:  rc.args,
 		Short: "List resource commands",
 		RunE:  rc.run,
 	}
@@ -27,6 +27,14 @@ func newResourcesCmd() *resourcesCmd {
 	})
 
 	return rc
+}
+
+func (rc *resourcesCmd) args(cmd *cobra.Command, args []string) error {
+	if len(args) == 1 && args[0] == "help" {
+		return nil
+	}
+
+	return validators.NoArgs(cmd, args)
 }
 
 func (rc *resourcesCmd) run(cmd *cobra.Command, _ []string) error {
