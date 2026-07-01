@@ -1,6 +1,7 @@
 package agentsetup
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func TestScanClaude_LocalStripePluginInstalled(t *testing.T) {
 		"version": 2,
 		"plugins": {
 			"stripe@stripe": [
-				{"scope": "local", "version": "0.1.0", "installPath": "/tmp/stripe", "projectPath": "`+projectPath+`"}
+				{"scope": "local", "version": "0.1.0", "installPath": "/tmp/stripe", "projectPath": `+jsonString(t, projectPath)+`}
 			]
 		}
 	}`)
@@ -82,7 +83,7 @@ func TestScanClaude_LocalStripePluginForDifferentProjectIsMissing(t *testing.T) 
 		"version": 2,
 		"plugins": {
 			"stripe@stripe": [
-				{"scope": "local", "version": "0.1.0", "installPath": "/tmp/stripe", "projectPath": "`+projectPath+`"}
+				{"scope": "local", "version": "0.1.0", "installPath": "/tmp/stripe", "projectPath": `+jsonString(t, projectPath)+`}
 			]
 		}
 	}`)
@@ -114,6 +115,16 @@ func testScannerWithWorkDir(home, workDir string) Scanner {
 		HomeDir:  func() (string, error) { return home, nil },
 		WorkDir:  func() (string, error) { return workDir, nil },
 	}
+}
+
+// jsonString returns s as a JSON string literal (with surrounding quotes and
+// proper escaping). This matters on Windows, where filepath.Join produces paths
+// with backslashes that would otherwise be invalid JSON escapes.
+func jsonString(t *testing.T, s string) string {
+	t.Helper()
+	b, err := json.Marshal(s)
+	require.NoError(t, err)
+	return string(b)
 }
 
 func writeClaudePluginState(t *testing.T, home string, body string) {
