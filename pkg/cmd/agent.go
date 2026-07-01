@@ -528,24 +528,24 @@ func pluginDetail(p agentsetup.PluginStatus) string {
 }
 
 func printNothingDetectedInteractive(w io.Writer) {
-	fmt.Fprint(w, `No AI coding clients detected on this machine.
+	fmt.Fprint(w, `No supported AI coding clients detected on this machine.
 
 Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
-  • Codex CLI     https://github.com/openai/codex
+  • Codex CLI     https://openai.com/codex/
 
 You can still install Stripe skills directly.
 `)
 }
 
 func printNothingDetected(w io.Writer) {
-	fmt.Fprint(w, `No AI coding clients detected on this machine.
+	fmt.Fprint(w, `No supported AI coding clients detected on this machine.
 
 Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
-  • Codex CLI     https://github.com/openai/codex
+  • Codex CLI     https://openai.com/codex/
 
 Once a client is installed, re-run: stripe agent setup
 
