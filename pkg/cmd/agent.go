@@ -17,8 +17,18 @@ import (
 	"github.com/stripe/stripe-cli/pkg/agentskills"
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/docs/spinner"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
+
+// agentClientID maps the AI agent identifiers returned by
+// useragent.DetectAIAgent to this command's provider ids. Agents not backed by
+// a provider (e.g. gemini_cli) map to "".
+var agentClientID = map[string]string{
+	"claude_code": agentsetup.ClientClaudeCode,
+	"codex_cli":   agentsetup.ClientCodex,
+	"cursor":      agentsetup.ClientCursor,
+}
 
 // providerOrder is the canonical display order for known clients. Providers not
 // listed here are appended afterward in alphabetical order.
@@ -50,6 +60,10 @@ type agentSetupCmd struct {
 	skillsInstall   func(ctx context.Context, destDir string) ([]string, error)
 	skillsLocalDir  func() (string, error)
 	skillsGlobalDir func() (string, error)
+
+	// callingAgent returns the AI agent invoking this command (e.g.
+	// "claude_code"), or "" for a human shell. Injectable for tests.
+	callingAgent func() string
 }
 
 type agentSetupJSON struct {
@@ -79,6 +93,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 		},
 		skillsLocalDir:  func() (string, error) { return skillsDirUnder(os.Getwd) },
 		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
+		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
 	}
 
 	asc.cmd = &cobra.Command{
@@ -166,6 +181,25 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		// configuring agents). Agents are installed when --yes is given, or via
 		// the interactive picker.
 		agents := detected
+
+		// When an AI agent invokes this non-interactively (it can't use the
+		// picker), install just that agent's plugin rather than every detected
+		// client. --client and --yes are explicit overrides and win.
+		if asc.client == "" && !asc.yes && !asc.skills {
+			agent := asc.callingAgent()
+			if id := agentClientID[agent]; id != "" {
+				if scoped := statusesForClient(detected, id); len(scoped) > 0 {
+					fmt.Fprintf(out, "Detected %s — setting up its Stripe plugin.\n", scoped[0].DisplayName)
+					agents = scoped
+				}
+			} else if agent != "" {
+				// Known agent with no Stripe plugin (e.g. Gemini CLI): install
+				// client-agnostic skills instead of every detected client's plugin.
+				fmt.Fprintf(out, "Detected %s, which has no Stripe plugin — installing Stripe skills instead.\n", agent)
+				return &Selection{InstallSkills: true}, scope, nil
+			}
+		}
+
 		if asc.skills && !asc.yes {
 			agents = nil
 		}
@@ -363,6 +397,16 @@ func orderedProviderIDs(providers map[string]agentsetup.Provider) []string {
 	}
 	sort.Strings(rest)
 	return append(ids, rest...)
+}
+
+func statusesForClient(statuses []agentsetup.Status, client string) []agentsetup.Status {
+	var out []agentsetup.Status
+	for _, s := range statuses {
+		if s.Client == client {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func detectedStatuses(statuses []agentsetup.Status) []agentsetup.Status {
