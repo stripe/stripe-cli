@@ -68,7 +68,7 @@ func TestResourcesListAliasedName(t *testing.T) {
 
 func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.URL.Path, "/v1/invoices/in_123/lines")
+		assert.Equal(t, "/v1/invoices/in_123/lines", r.URL.Path)
 	}))
 	defer ts.Close()
 

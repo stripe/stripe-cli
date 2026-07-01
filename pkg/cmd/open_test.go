@@ -9,11 +9,11 @@ import (
 func TestGetLongestShortcut(t *testing.T) {
 	shortcuts := []string{"bender", "fry", "leela"}
 
-	require.Equal(t, getLongestShortcut(shortcuts), 6)
+	require.Equal(t, 6, getLongestShortcut(shortcuts))
 }
 
 func TestNamePadding(t *testing.T) {
-	require.Equal(t, padName("fry", 6), "fry   ")
-	require.Equal(t, padName("leela", 6), "leela ")
-	require.Equal(t, padName("bender", 6), "bender")
+	require.Equal(t, "fry   ", padName("fry", 6))
+	require.Equal(t, "leela ", padName("leela", 6))
+	require.Equal(t, "bender", padName("bender", 6))
 }
