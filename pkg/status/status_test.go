@@ -26,9 +26,9 @@ func TestGetMap(t *testing.T) {
 	response := buildResponse()
 
 	responseMap := response.getMap(false)
-	require.Equal(t, responseMap["status"], "up")
-	require.Equal(t, responseMap["message"], "All systems operational")
-	require.Equal(t, responseMap["time"], "July 21, 4:00 +0:00")
+	require.Equal(t, "up", responseMap["status"])
+	require.Equal(t, "All systems operational", responseMap["message"])
+	require.Equal(t, "July 21, 4:00 +0:00", responseMap["time"])
 	require.Nil(t, responseMap["statuses"])
 }
 
@@ -36,15 +36,15 @@ func TestGetMapVerbose(t *testing.T) {
 	response := buildResponse()
 
 	responseMap := response.getMap(true)
-	require.Equal(t, responseMap["status"], "up")
-	require.Equal(t, responseMap["message"], "All systems operational")
-	require.Equal(t, responseMap["time"], "July 21, 4:00 +0:00")
+	require.Equal(t, "up", responseMap["status"])
+	require.Equal(t, "All systems operational", responseMap["message"])
+	require.Equal(t, "July 21, 4:00 +0:00", responseMap["time"])
 
 	statuses := responseMap["statuses"].(map[string]string)
-	require.Equal(t, statuses["api"], "up")
-	require.Equal(t, statuses["dashboard"], "up")
-	require.Equal(t, statuses["stripejs"], "up")
-	require.Equal(t, statuses["checkoutjs"], "up")
+	require.Equal(t, "up", statuses["api"])
+	require.Equal(t, "up", statuses["dashboard"])
+	require.Equal(t, "up", statuses["stripejs"])
+	require.Equal(t, "up", statuses["checkoutjs"])
 }
 
 func TestFormatJSON(t *testing.T) {
@@ -57,7 +57,7 @@ func TestFormatJSON(t *testing.T) {
 }`
 
 	formatted, _ := response.FormattedMessage("json", false)
-	require.Equal(t, formatted, expected)
+	require.Equal(t, expected, formatted)
 }
 
 func TestFormatJSONVerbose(t *testing.T) {
@@ -76,7 +76,7 @@ func TestFormatJSONVerbose(t *testing.T) {
 }`
 
 	formatted, _ := response.FormattedMessage("json", true)
-	require.Equal(t, formatted, expected)
+	require.Equal(t, expected, formatted)
 }
 
 func TestFormatDefault(t *testing.T) {
@@ -86,7 +86,7 @@ func TestFormatDefault(t *testing.T) {
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", false)
-	require.Equal(t, formatted, expected)
+	require.Equal(t, expected, formatted)
 }
 
 func TestFormatDefaultVerbose(t *testing.T) {
@@ -100,7 +100,7 @@ func TestFormatDefaultVerbose(t *testing.T) {
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", true)
-	require.Equal(t, formatted, expected)
+	require.Equal(t, expected, formatted)
 }
 
 func TestEmojification(t *testing.T) {

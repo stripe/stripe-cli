@@ -53,7 +53,7 @@ func TestGetOpenEditorCommand(t *testing.T) {
 
 		command, _ := editor.getOpenEditorCommand()
 
-		assert.Equal(t, len(command.Args), 5)
+		assert.Equal(t, 5, len(command.Args))
 		assert.Contains(t, command.Args[len(command.Args)-1], editor.File)
 	})
 }
@@ -64,7 +64,7 @@ func TestGetDefaultGitEditor(t *testing.T) {
 			setEditorTo(t, e)
 
 			defaultIDE, _ := getDefaultGitEditor()
-			assert.Equal(t, defaultIDE, e)
+			assert.Equal(t, e, defaultIDE)
 		}
 	})
 
@@ -73,7 +73,7 @@ func TestGetDefaultGitEditor(t *testing.T) {
 		setEditorTo(t, "$STRIPE_CLI_TEST_GIT_EDITOR")
 
 		defaultIDE, _ := getDefaultGitEditor()
-		assert.Equal(t, defaultIDE, "value")
+		assert.Equal(t, "value", defaultIDE)
 	})
 
 	t.Run("no GIT_EDITOR falls back to EDITOR or OS fallback", func(t *testing.T) {
