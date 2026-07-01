@@ -385,6 +385,54 @@ func TestAgentSetupUnsupportedAgentInstallsSkills(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupAgentScopingWinsOverYes(t *testing.T) {
+	// Inside a coding agent, --yes must NOT broaden to all clients — it still
+	// only sets up the calling agent.
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+		t.Fatal("Claude must not be installed when the calling agent is Codex")
+		return nil
+	})
+	codex := codexMissingProvider(record)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "codex_cli" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--yes")
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed) // only codex, despite --yes and Claude detected
+	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
+	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupYesInstallsAllWhenNoAgent(t *testing.T) {
+	// In a plain CLI (no calling agent), --yes still installs every detected client.
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+
+	_, err := executeCommand(setup.cmd, "--yes")
+
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"claude", "codex"}, installed)
+}
+
 func TestAgentSetupAgentNeverUsesInteractivePicker(t *testing.T) {
 	// Gemini CLI allocates a PTY, so isInteractive() reports true even though no
 	// human is present. When an agent is detected we must skip the picker and
