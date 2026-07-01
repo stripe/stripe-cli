@@ -339,22 +339,21 @@ func TestAgentSetupSkillsAlongsideAgent(t *testing.T) {
 	require.Contains(t, output, "2 installed, 0 skipped, 0 errors")
 }
 
-func TestAgentSetupCursorIsManualStepNotError(t *testing.T) {
-	// Cursor detected, plugin not installed (empty temp home) -> manual step.
+func TestAgentSetupCursorIsSkippedNotInstalled(t *testing.T) {
+	// Cursor detected but always skipped (Plan returns ActionNone).
 	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil },
-		ReadFile: os.ReadFile,
-		HomeDir:  func() (string, error) { return t.TempDir(), nil },
 	}, nil)
 
 	setup := newAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{cursor.ID(): cursor}
+	setup.callingAgent = func() string { return "" }
 	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd, "--client", "cursor", "--yes")
 
-	require.NoError(t, err) // manual step must not fail the command
-	require.Contains(t, output, "manual step: run /add-plugin stripe inside Cursor")
+	require.NoError(t, err)
+	require.Contains(t, output, "already set up")
 	require.Contains(t, output, "0 installed, 1 skipped, 0 errors")
 }
 

@@ -34,8 +34,8 @@ var agentClientID = map[string]string{
 // listed here are appended afterward in alphabetical order.
 var providerOrder = []string{
 	agentsetup.ClientClaudeCode,
-	agentsetup.ClientCursor,
 	agentsetup.ClientCodex,
+	agentsetup.ClientCursor,
 }
 
 type agentCmd struct {
@@ -499,6 +499,9 @@ func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 			if detail := pluginDetail(s.Plugin); detail != "" {
 				state += "  " + color.Faint(detail).String()
 			}
+		case s.Error != "":
+			icon = color.Yellow("•").String()
+			state = color.Faint(s.Error).String()
 		default:
 			icon = color.Yellow("•").String()
 			state = "Stripe plugin not installed"
