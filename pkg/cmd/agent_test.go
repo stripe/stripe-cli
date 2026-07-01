@@ -405,13 +405,13 @@ func TestAgentSetupStatusHidesUndetectedClients(t *testing.T) {
 	require.NotContains(t, output, "not detected")
 }
 
-func TestAgentSetupNoClientsShowsMessageNotPicker(t *testing.T) {
-	// No clients detected. Even on an interactive terminal we must show the
-	// informative "nothing detected" message, not a context-free skills picker.
+func TestAgentSetupNoClientsNonInteractiveShowsHint(t *testing.T) {
+	// No clients detected, non-interactive: show the full info message with the
+	// --skills hint so scripts/CI know what to do.
 	setup := newAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{} // nothing detected
 	setup.callingAgent = func() string { return "" }
-	setup.isInteractive = func() bool { return true } // pretend TTY
+	setup.isInteractive = func() bool { return false }
 	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd)
