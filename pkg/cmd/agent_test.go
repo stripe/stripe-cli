@@ -385,6 +385,24 @@ func TestAgentSetupUnsupportedAgentInstallsSkills(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupNoClientsShowsMessageNotPicker(t *testing.T) {
+	// No clients detected. Even on an interactive terminal we must show the
+	// informative "nothing detected" message, not a context-free skills picker.
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{} // nothing detected
+	setup.callingAgent = func() string { return "" }
+	setup.isInteractive = func() bool { return true } // pretend TTY
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Contains(t, output, "No AI coding clients detected on this machine.")
+	require.Contains(t, output, "Supported clients for automatic setup:")
+	require.Contains(t, output, "Once a client is installed, re-run: stripe agent setup")
+	require.Contains(t, output, "stripe agent setup --skills")
+}
+
 func TestAgentSetupAgentScopingWinsOverYes(t *testing.T) {
 	// Inside a coding agent, --yes must NOT broaden to all clients — it still
 	// only sets up the calling agent.

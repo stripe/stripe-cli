@@ -179,43 +179,46 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, detected []agentsetup.Status) (*Selection, string, error) {
 	scope := asc.skillsScope
 
-	// Detect the calling agent up front. When an agent invoked us we must never
-	// show the interactive picker — some agent runtimes (e.g. Gemini CLI)
-	// allocate a PTY, so a TTY check alone would wrongly think a human is present
-	// and the picker would hang/fail.
+	// Detect the calling agent up front.
 	agent := asc.callingAgent()
 
-	useTUI := asc.isInteractive() && !asc.yes && !asc.skills && agent == ""
-	if !useTUI {
-		// Explicit "skills only" request (--skills without --yes) wins everywhere.
-		if asc.skills && !asc.yes {
+	// Explicit "skills only" request (--skills without --yes) wins everywhere.
+	if asc.skills && !asc.yes {
+		return &Selection{InstallSkills: true}, scope, nil
+	}
+
+	// Inside a coding agent (and no explicit --client), only ever set up that
+	// agent — never other clients, even with --yes, since the agent can't act on
+	// another client's plugin. --client is the explicit escape hatch.
+	if agent != "" && asc.client == "" {
+		if id := agentClientID[agent]; id != "" {
+			if scoped := statusesForClient(detected, id); len(scoped) > 0 {
+				fmt.Fprintf(out, "Detected %s — setting up its Stripe plugin.\n", scoped[0].DisplayName)
+				return &Selection{Agents: scoped, InstallSkills: asc.skills}, scope, nil
+			}
+			// The agent's binary isn't among the detected clients; fall through.
+		} else {
+			// Known agent with no Stripe plugin (e.g. Gemini CLI): install
+			// client-agnostic skills instead of another client's plugin.
+			fmt.Fprintf(out, "Detected %s, which has no Stripe plugin — installing Stripe skills instead.\n", agent)
 			return &Selection{InstallSkills: true}, scope, nil
 		}
+	}
 
-		// Inside a coding agent (and no explicit --client), only ever set up that
-		// agent — never other clients, even with --yes, since the agent can't act
-		// on another client's plugin. --client is the explicit escape hatch.
-		if agent != "" && asc.client == "" {
-			if id := agentClientID[agent]; id != "" {
-				if scoped := statusesForClient(detected, id); len(scoped) > 0 {
-					fmt.Fprintf(out, "Detected %s — setting up its Stripe plugin.\n", scoped[0].DisplayName)
-					return &Selection{Agents: scoped, InstallSkills: asc.skills}, scope, nil
-				}
-				// The agent's binary isn't among the detected clients; fall
-				// through to the generic path rather than claim nothing to do.
-			} else {
-				// Known agent with no Stripe plugin (e.g. Gemini CLI): install
-				// client-agnostic skills instead of another client's plugin.
-				fmt.Fprintf(out, "Detected %s, which has no Stripe plugin — installing Stripe skills instead.\n", agent)
-				return &Selection{InstallSkills: true}, scope, nil
-			}
-		}
+	// Nothing detected: always show the informative message (supported clients +
+	// how to install skills), rather than a context-free picker. This is the same
+	// whether or not we're on an interactive terminal.
+	if len(detected) == 0 {
+		printNothingDetected(out)
+		return nil, scope, nil
+	}
 
+	// A human at a terminal picks interactively. Agent runtimes can allocate a
+	// PTY, so we also require no calling agent (checked above via the early
+	// returns) before trusting the TTY.
+	useTUI := asc.isInteractive() && !asc.yes && !asc.skills && agent == ""
+	if !useTUI {
 		// Human CLI (or explicit --client): --yes installs every detected client.
-		if len(detected) == 0 && !asc.skills {
-			printNothingDetected(out)
-			return nil, scope, nil
-		}
 		return &Selection{Agents: detected, InstallSkills: asc.skills}, scope, nil
 	}
 
