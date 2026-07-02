@@ -23,8 +23,9 @@ if [ -z "$VIRUSTOTAL_API_KEY" ]; then
 fi
 
 VIRUSTOTAL_DIRECT_UPLOAD_LIMIT_BYTES=$((32 * 1024 * 1024))
-VIRUSTOTAL_SCAN_URL="https://www.virustotal.com/vtapi/v2/file/scan"
-VIRUSTOTAL_LARGE_FILE_UPLOAD_URL="https://www.virustotal.com/vtapi/v2/file/scan/upload_url"
+VIRUSTOTAL_V2_SCAN_URL="https://www.virustotal.com/vtapi/v2/file/scan"
+VIRUSTOTAL_V2_COMMENT_URL="https://www.virustotal.com/vtapi/v2/comments/put"
+VIRUSTOTAL_V3_LARGE_FILE_UPLOAD_URL="https://www.virustotal.com/api/v3/files/upload_url"
 
 getResponseBody() {
   printf '%s' "$1" | sed -e 's/HTTPSTATUS\:.*//g'
@@ -40,22 +41,42 @@ getLargeFileUploadURL() {
   local upload_url_response
   local upload_url_response_code
 
-  upload_url_response=$(curl -s "$VIRUSTOTAL_LARGE_FILE_UPLOAD_URL?apikey=$VIRUSTOTAL_API_KEY" -w "HTTPSTATUS:%{http_code}")
+  upload_url_response=$(curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "$VIRUSTOTAL_V3_LARGE_FILE_UPLOAD_URL" -w "HTTPSTATUS:%{http_code}")
   upload_url_body=$(getResponseBody "$upload_url_response")
   upload_url_response_code=$(getResponseCode "$upload_url_response")
 
-  if [[ "$(echo "$upload_url_response_code" | head -c2)" != "20" ]]; then
-    echo "Unable to get large-file upload URL, HTTP response code: $upload_url_response_code" >&2
-    exit 1
+  if [ "$upload_url_response_code" = "403" ]; then
+    echo "VirusTotal API key is not allowed to request large-file upload URLs; skipping this oversized file." >&2
+    return 3
   fi
 
-  upload_url=$(echo "$upload_url_body" | jq -r ".upload_url")
+  if [[ "$(echo "$upload_url_response_code" | head -c2)" != "20" ]]; then
+    echo "Unable to get large-file upload URL, HTTP response code: $upload_url_response_code" >&2
+    return 1
+  fi
+
+  upload_url=$(echo "$upload_url_body" | jq -er ".data" 2>/dev/null || true)
   if [ -z "$upload_url" ] || [ "$upload_url" = "null" ]; then
     echo "VirusTotal did not return a large-file upload URL" >&2
-    exit 1
+    return 1
   fi
 
   printf '%s' "$upload_url"
+}
+
+calculateSHA256() {
+  if [ -x "$(command -v sha256sum)" ]; then
+    sha256sum "$1" | awk '{print $1}'
+    return
+  fi
+
+  if [ -x "$(command -v shasum)" ]; then
+    shasum -a 256 "$1" | awk '{print $1}'
+    return
+  fi
+
+  echo "Neither sha256sum nor shasum is installed." >&2
+  exit 1
 }
 
 setVersion () {
@@ -85,9 +106,10 @@ downloadWindowsArtifacts() {
 virustotalUpload () {
   for i in $FILES; do
     local executable_size_bytes
+    local large_file_upload_url_status
     local upload_url
+    local sha256
     local response
-    local body
     local response_code
     FILENAME=${i##*/}
 
@@ -98,23 +120,41 @@ virustotalUpload () {
     echo "Uploading to VirusTotal..."
 
     executable_size_bytes=$(wc -c < ./stripe.exe | tr -d '[:space:]')
-    upload_url="$VIRUSTOTAL_SCAN_URL"
+    upload_url="$VIRUSTOTAL_V2_SCAN_URL"
+    sha256=$(calculateSHA256 ./stripe.exe)
 
     if [ "$executable_size_bytes" -gt "$VIRUSTOTAL_DIRECT_UPLOAD_LIMIT_BYTES" ]; then
-      echo "Executable exceeds VirusTotal's 32 MB direct-upload limit ($executable_size_bytes bytes); requesting a large-file upload URL..."
-      upload_url=$(getLargeFileUploadURL)
-      response=$(curl -s "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+      echo "Executable exceeds VirusTotal's 32 MB direct-upload limit ($executable_size_bytes bytes); requesting a v3 large-file upload URL..."
+      if upload_url=$(getLargeFileUploadURL); then
+        response=$(curl -s "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+      else
+        large_file_upload_url_status=$?
+        if [ "$large_file_upload_url_status" -eq 3 ]; then
+          echo "Skipping VirusTotal upload for $FILENAME because the configured API key cannot upload large files."
+          rm -f ./stripe.exe
+          continue
+        fi
+        exit 1
+      fi
     else
       response=$(curl -s "$upload_url" -X POST -F "apikey=$VIRUSTOTAL_API_KEY" -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
 
       if [ "$(getResponseCode "$response")" = "413" ]; then
         echo "VirusTotal rejected the direct upload with 413; retrying with a large-file upload URL..."
-        upload_url=$(getLargeFileUploadURL)
-        response=$(curl -s "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+        if upload_url=$(getLargeFileUploadURL); then
+          response=$(curl -s "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+        else
+          large_file_upload_url_status=$?
+          if [ "$large_file_upload_url_status" -eq 3 ]; then
+            echo "Skipping VirusTotal upload for $FILENAME because the configured API key cannot upload large files."
+            rm -f ./stripe.exe
+            continue
+          fi
+          exit 1
+        fi
       fi
     fi
 
-    body=$(getResponseBody "$response")
     response_code=$(getResponseCode "$response")
 
     if [[ "$(echo "$response_code" | head -c2)" != "20" ]]; then
@@ -126,20 +166,14 @@ virustotalUpload () {
 
     echo "Adding comment..."
 
-    SHA256=$(echo "$body" | jq -r ".sha256")
-    if [ -z "$SHA256" ] || [ "$SHA256" = "null" ]; then
-      echo "VirusTotal upload did not return a sha256 hash"
-      exit 1
-    fi
-
-    RESPONSE_CODE=$(curl "https://www.virustotal.com/vtapi/v2/comments/put" -X POST -d "apikey=$VIRUSTOTAL_API_KEY" -d "resource=$SHA256" -d "comment=Stripe CLI $VERSION, uncompressed from $i" -o /dev/null -w "%{http_code}")
+    RESPONSE_CODE=$(curl -s "$VIRUSTOTAL_V2_COMMENT_URL" -X POST -d "apikey=$VIRUSTOTAL_API_KEY" -d "resource=$sha256" -d "comment=Stripe CLI $VERSION, uncompressed from $i" -o /dev/null -w "%{http_code}")
 
     if [[ "$(echo "$RESPONSE_CODE" | head -c2)" != "20" ]]; then
       echo "Unable to add comment, HTTP response code: $RESPONSE_CODE"
       exit 1
     fi
 
-    PERMALINK=$(echo "$body" | jq -r ".permalink")
+    PERMALINK="https://www.virustotal.com/gui/file/$sha256"
     echo "Permalink: $PERMALINK"
   done;
 }
