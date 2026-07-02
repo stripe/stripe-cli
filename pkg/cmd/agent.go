@@ -114,7 +114,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 	asc.cmd.Flags().BoolVar(&asc.force, "force", false, "Reinstall even when agent tooling is already installed")
 	asc.cmd.Flags().StringVar(&asc.client, "client", "", "Limit setup to a single client (default: all detected clients)")
 	asc.cmd.Flags().BoolVar(&asc.jsonOutput, "json", false, "Write machine-readable status output")
-	asc.cmd.Flags().BoolVar(&asc.skills, "skills", false, "Install Stripe skills directly, without the interactive prompt")
+	asc.cmd.Flags().BoolVar(&asc.skills, "skills", false, "Install Stripe skills without the interactive prompt")
 	asc.cmd.Flags().StringVar(&asc.skillsScope, "skills-scope", skillsScopeLocal, "Where to install skills: local (current directory) or global (home directory)")
 
 	return asc
@@ -211,6 +211,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 	if len(detected) == 0 {
 		if asc.isInteractive() && agent == "" {
 			printNothingDetectedInteractive(out)
+			fmt.Fprintln(out)
 			chosen, ok, err := RunSkillsScopeTUI()
 			if err != nil {
 				return nil, scope, err
@@ -250,6 +251,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 	// Mirror `npx skills add` by asking where to install skills, unless the
 	// scope was already pinned with --skills-scope.
 	if sel.InstallSkills && !cmd.Flags().Changed("skills-scope") {
+		fmt.Fprintln(out)
 		chosen, ok, err := RunSkillsScopeTUI()
 		if err != nil {
 			return nil, scope, err
@@ -473,7 +475,7 @@ func aggregateStatus(statuses []agentsetup.Status) string {
 func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 	color := ansi.Color(w)
 
-	fmt.Fprintln(w, color.Bold("AI coding clients").String())
+	fmt.Fprintln(w, color.Bold("Detected agents with supported Stripe plugins:").String())
 	fmt.Fprintln(w)
 
 	nameWidth := 0
@@ -538,7 +540,7 @@ Supported clients for automatic setup:
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
 
-You can still install Stripe skills directly.
+You can still install Stripe skills.
 `)
 }
 
@@ -552,7 +554,7 @@ Supported clients for automatic setup:
 
 Once a client is installed, re-run: stripe agent setup
 
-Or install Stripe skills directly (no agent required):
+Or install Stripe skills:
   stripe agent setup --skills               # into ./.agents/skills
   stripe agent setup --skills --skills-scope global   # into ~/.agents/skills
 `)
