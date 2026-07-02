@@ -65,8 +65,8 @@ func newSelectModel(statuses []agentsetup.Status) selectModel {
 	}
 	rows = append(rows, selectRow{
 		kind:     rowSkills,
-		label:    "Install Stripe skills directly",
-		detail:   "no agent required",
+		label:    "Install Stripe skills",
+		detail:   "",
 		selected: len(statuses) == 0, // pre-selected only when it's the sole option
 	})
 
@@ -149,12 +149,12 @@ var (
 )
 
 func (m selectModel) View() tea.View {
-	body := "Select agents to configure with Stripe:\n\n"
+	body := "Select agents to install the Stripe plugin:\n\n"
 
 	skillsDividerShown := false
 	for i, r := range m.rows {
 		if r.kind == rowSkills && !skillsDividerShown {
-			body += "\n" + dividerStyle.Render("── or install Stripe skills directly ──") + "\n"
+			body += "\n" + dividerStyle.Render("──────────────────── OR ────────────────────") + "\n"
 			skillsDividerShown = true
 		}
 

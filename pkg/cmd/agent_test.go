@@ -23,7 +23,7 @@ func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--status")
 
 	require.NoError(t, err)
-	require.Contains(t, output, "AI coding clients")
+	require.Contains(t, output, "Detected agents with supported Stripe plugins:")
 	require.Contains(t, output, "Claude Code")
 	require.Contains(t, output, "Stripe plugin not installed")
 }
