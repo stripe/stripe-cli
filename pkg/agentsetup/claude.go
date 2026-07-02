@@ -4,37 +4,28 @@ package agentsetup
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
 const (
-	ClientClaudeCode      = "claude-code"
-	ClaudeBinaryName      = "claude"
-	TargetClaudePlugin    = "stripe@claude-plugins-official"
-	LocalClaudePlugin     = "stripe@stripe"
-	ClaudeMarketplace     = "claude-plugins-official"
-	ClaudePluginStatePath = ".claude/plugins/installed_plugins.json"
-	ClaudeDisplayName     = "Claude Code"
-)
+	ClientClaudeCode   = "claude-code"
+	ClaudeBinaryName   = "claude"
+	TargetClaudePlugin = "stripe@claude-plugins-official"
+	ClaudeMarketplace  = "claude-plugins-official"
+	ClaudeDisplayName  = "Claude Code"
 
-func claudeClient() pluginClient {
-	return pluginClient{
-		id:           ClientClaudeCode,
-		displayName:  ClaudeDisplayName,
-		shortName:    "Claude",
-		binaryName:   ClaudeBinaryName,
-		targetPlugin: TargetClaudePlugin,
-		localPlugin:  LocalClaudePlugin,
-		pluginState:  ClaudePluginStatePath,
-	}
-}
+	claudeListTimeout = 10 * time.Second
+)
 
 // ClaudeProvider detects and configures the Stripe plugin for Claude Code.
 type ClaudeProvider struct {
 	Scanner    Scanner
 	RunCommand RunCommandFunc
+	RunOutput  RunOutputFunc
 }
 
 // NewClaudeProvider returns a Claude Code setup provider.
@@ -45,6 +36,7 @@ func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) ClaudeProvide
 	return ClaudeProvider{
 		Scanner:    scanner,
 		RunCommand: runCommand,
+		RunOutput:  runCommandOutput,
 	}
 }
 
@@ -53,7 +45,39 @@ func (p ClaudeProvider) ID() string {
 }
 
 func (p ClaudeProvider) Detect() Status {
-	return p.Scanner.ScanClaude()
+	scanner := p.Scanner.withDefaults()
+
+	status := Status{
+		Client:      ClientClaudeCode,
+		DisplayName: ClaudeDisplayName,
+		Status:      StatusNotDetected,
+	}
+
+	binPath, err := scanner.LookPath(ClaudeBinaryName)
+	if err != nil {
+		return status
+	}
+	status.Detected = true
+	status.ExecutablePath = binPath
+	status.Status = StatusMissing
+
+	ctx, cancel := context.WithTimeout(context.Background(), claudeListTimeout)
+	defer cancel()
+
+	pluginID, version, scope, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	if !supportsPlugins {
+		status.Error = "upgrade Claude Code to enable plugin support"
+		return status
+	}
+	if ok {
+		status.Plugin.Installed = true
+		status.Plugin.ID = pluginID
+		status.Plugin.Version = version
+		status.Plugin.Scope = scope
+		status.Status = StatusInstalled
+	}
+
+	return status
 }
 
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
@@ -101,9 +125,48 @@ func (p ClaudeProvider) Apply(ctx context.Context, out io.Writer, plan Plan) err
 	return nil
 }
 
-// ScanClaude returns Claude Code installation and Stripe plugin status.
-func (s Scanner) ScanClaude() Status {
-	return s.scanPlugin(claudeClient())
+// stripePluginStatus runs `claude plugin list --json` and reports whether the
+// Stripe plugin is installed. When the command fails (e.g. old Claude version
+// without plugin support), supportsPlugins is false.
+func (p ClaudeProvider) stripePluginStatus(ctx context.Context) (id, version, scope string, installed bool, supportsPlugins bool) {
+	runOutput := p.RunOutput
+	if runOutput == nil {
+		runOutput = runCommandOutput
+	}
+	out, err := runOutput(ctx, ClaudeBinaryName, "plugin", "list", "--json")
+	if err != nil {
+		return "", "", "", false, false
+	}
+	pluginID, v, s, ok := findClaudeStripePlugin(out)
+	return pluginID, v, s, ok, true
+}
+
+// claudeInstalledPlugin is an entry in `claude plugin list --json` output.
+type claudeInstalledPlugin struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+	Scope   string `json:"scope"`
+	Enabled bool   `json:"enabled"`
+}
+
+// findClaudeStripePlugin reports whether the Stripe plugin appears in the
+// output of `claude plugin list --json`.
+func findClaudeStripePlugin(listJSON []byte) (id, version, scope string, found bool) {
+	var plugins []claudeInstalledPlugin
+	if err := json.Unmarshal(listJSON, &plugins); err != nil {
+		return "", "", "", false
+	}
+
+	for _, plugin := range plugins {
+		if claudePluginIsStripe(plugin) {
+			return plugin.ID, plugin.Version, plugin.Scope, true
+		}
+	}
+	return "", "", "", false
+}
+
+func claudePluginIsStripe(plugin claudeInstalledPlugin) bool {
+	return strings.EqualFold(plugin.ID, TargetClaudePlugin)
 }
 
 // ClaudeInstallCommand returns the command used to install the Stripe Claude

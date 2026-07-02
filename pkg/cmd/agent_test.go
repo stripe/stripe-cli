@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -29,7 +28,7 @@ func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 }
 
 func TestAgentSetupStatusShowsInstalledDetail(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, claudeInstalledPluginScanner(t), nil)
+	setup := newTestAgentSetupCmdInstalled(t, nil)
 
 	output, err := executeCommand(setup.cmd, "--status")
 
@@ -70,29 +69,32 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
 }
 
-func TestAgentSetupJSONPropagatesScanError(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, agentsetup.Scanner{
+func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
+	setup := newAgentSetupCmd()
+	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
-		HomeDir:  func() (string, error) { return "", errors.New("home failed") },
-	}, func(context.Context, string, ...string) error {
-		t.Fatal("installer should not run when scan fails")
-		return nil
-	})
+	}, nil)
+	claude.RunOutput = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+		return nil, errors.New("unknown command")
+	}
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd, "--json")
 
-	require.Error(t, err)
+	require.NoError(t, err)
 
 	var result agentSetupJSON
 	require.NoError(t, json.Unmarshal([]byte(output), &result))
-	require.Equal(t, agentsetup.StatusError, result.Status)
-	require.Len(t, result.Errors, 1)
-	require.Contains(t, result.Errors[0], "home failed")
+	require.Len(t, result.Clients, 1)
+	require.True(t, result.Clients[0].Detected)
+	require.Contains(t, result.Clients[0].Error, "upgrade Claude Code")
 }
 
 func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
 	var called bool
-	setup := newTestAgentSetupCmd(t, claudeInstalledPluginScanner(t), func(ctx context.Context, name string, args ...string) error {
+	setup := newTestAgentSetupCmdInstalled(t, func(ctx context.Context, name string, args ...string) error {
 		called = true
 		require.Equal(t, "claude", name)
 		require.Equal(t, []string{"plugin", "install", agentsetup.TargetClaudePlugin}, args)
@@ -504,6 +506,20 @@ func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall a
 	t.Helper()
 	setup := newAgentSetupCmd()
 	claude := agentsetup.NewClaudeProvider(scanner, runInstall)
+	claude.RunOutput = claudeListEmpty
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+	return setup
+}
+
+func newTestAgentSetupCmdInstalled(t *testing.T, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
+	t.Helper()
+	setup := newAgentSetupCmd()
+	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
+		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
+	}, runInstall)
+	claude.RunOutput = claudeListInstalled
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
 	setup.callingAgent = func() string { return "" }
 	setup.cmd.SetContext(context.Background())
@@ -512,30 +528,15 @@ func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall a
 
 func claudeMissingPluginScanner(t *testing.T) agentsetup.Scanner {
 	t.Helper()
-	home := t.TempDir()
 	return agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
-		ReadFile: os.ReadFile,
-		HomeDir:  func() (string, error) { return home, nil },
 	}
 }
 
-func claudeInstalledPluginScanner(t *testing.T) agentsetup.Scanner {
-	t.Helper()
-	home := t.TempDir()
-	statePath := filepath.Join(home, agentsetup.ClaudePluginStatePath)
-	require.NoError(t, os.MkdirAll(filepath.Dir(statePath), 0755))
-	require.NoError(t, os.WriteFile(statePath, []byte(`{
-		"version": 2,
-		"plugins": {
-			"stripe@claude-plugins-official": [
-				{"scope": "user", "version": "2.4.1", "installPath": "/tmp/stripe"}
-			]
-		}
-	}`), 0600))
-	return agentsetup.Scanner{
-		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
-		ReadFile: os.ReadFile,
-		HomeDir:  func() (string, error) { return home, nil },
-	}
+func claudeListEmpty(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	return []byte(`[]`), nil
+}
+
+func claudeListInstalled(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	return []byte(`[{"id":"stripe@claude-plugins-official","version":"2.4.1","scope":"user","enabled":true}]`), nil
 }
