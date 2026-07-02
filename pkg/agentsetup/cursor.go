@@ -57,7 +57,13 @@ func (p CursorProvider) Detect() Status {
 	return status
 }
 
-func (p CursorProvider) Plan(_ Status, _ bool) Plan {
+func (p CursorProvider) Plan(status Status, _ bool) Plan {
+	if !status.Plugin.Installed {
+		return Plan{
+			Action: ActionManual,
+			Manual: "run /add-plugin stripe inside Cursor",
+		}
+	}
 	return Plan{Action: ActionNone}
 }
 
