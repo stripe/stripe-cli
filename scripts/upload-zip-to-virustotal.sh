@@ -126,7 +126,7 @@ virustotalUpload () {
     if [ "$executable_size_bytes" -gt "$VIRUSTOTAL_DIRECT_UPLOAD_LIMIT_BYTES" ]; then
       echo "Executable exceeds VirusTotal's 32 MB direct-upload limit ($executable_size_bytes bytes); requesting a v3 large-file upload URL..."
       if upload_url=$(getLargeFileUploadURL); then
-        response=$(curl -s "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+        response=$(curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
       else
         large_file_upload_url_status=$?
         if [ "$large_file_upload_url_status" -eq 3 ]; then
@@ -142,7 +142,7 @@ virustotalUpload () {
       if [ "$(getResponseCode "$response")" = "413" ]; then
         echo "VirusTotal rejected the direct upload with 413; retrying with a large-file upload URL..."
         if upload_url=$(getLargeFileUploadURL); then
-          response=$(curl -s "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+          response=$(curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "$upload_url" -X POST -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
         else
           large_file_upload_url_status=$?
           if [ "$large_file_upload_url_status" -eq 3 ]; then
