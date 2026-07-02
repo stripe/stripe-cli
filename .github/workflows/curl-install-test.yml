@@ -14,26 +14,16 @@ jobs:
   curl-install-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            scripts/install.sh
-          sparse-checkout-cone-mode: false
       - run: |
-          sh scripts/install.sh
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
 
   curl-install-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            scripts/install.sh
-          sparse-checkout-cone-mode: false
       - run: |
-          sh scripts/install.sh
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
 
