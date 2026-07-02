@@ -340,7 +340,7 @@ func TestAgentSetupSkillsAlongsideAgent(t *testing.T) {
 }
 
 func TestAgentSetupCursorIsSkippedNotInstalled(t *testing.T) {
-	// Cursor detected but always skipped (Plan returns ActionNone).
+	// Cursor detected but plugin not installed — shows manual step hint.
 	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil },
 	}, nil)
@@ -353,7 +353,8 @@ func TestAgentSetupCursorIsSkippedNotInstalled(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--client", "cursor", "--yes")
 
 	require.NoError(t, err)
-	require.Contains(t, output, "already set up")
+	require.Contains(t, output, "manual step")
+	require.Contains(t, output, "/add-plugin stripe")
 	require.Contains(t, output, "0 installed, 1 skipped, 0 errors")
 }
 
