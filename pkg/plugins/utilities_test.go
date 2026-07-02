@@ -304,9 +304,9 @@ func TestPersistInstalledPluginState(t *testing.T) {
 	}
 
 	require.NoError(t, PersistInstalledPluginState(config, fs, plugin))
-	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+	require.Equal(t, []string{"sample-plugin"}, config.GetInstalledPlugins())
 
-	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "sample-plugin")
 	require.NoError(t, err)
 	require.Equal(t, plugin, cachedPlugin)
 }
@@ -380,7 +380,7 @@ func TestPersistInstalledPluginStateRestoresPreviousMetadataOnConfigWriteFailure
 	err := PersistInstalledPluginState(config, fs, updatedPlugin)
 	require.ErrorIs(t, err, config.WriteErr)
 
-	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "sample-plugin")
 	require.NoError(t, err)
 	require.Equal(t, existingPlugin, cachedPlugin)
 	require.Empty(t, config.GetInstalledPlugins())
