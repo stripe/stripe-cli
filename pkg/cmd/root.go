@@ -268,6 +268,12 @@ func init() {
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
 	registerHTTPCmds(rootCmd)
+
+	// Data Reporting query runs is a preview API, so nest it under `stripe
+	// preview` to signal it's not GA. The command itself is also hidden.
+	if preview, ok := cmdutil.FindSubCmd(rootCmd, "preview"); ok {
+		preview.AddCommand(newReportingCmd().cmd)
+	}
 	err := resource.AddDatabasesCmd(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
