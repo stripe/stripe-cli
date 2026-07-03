@@ -78,10 +78,16 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 		if err := requireActiveSession(session); err != nil {
 			return err
 		}
-		if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
+		node, err := session.NodeByNumber(nodeNumber)
+		if err != nil {
 			return err
 		}
-		node, _ := session.NodeByNumber(nodeNumber)
+		if node.State != coop.NodeActive {
+			if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
+				return err
+			}
+			node, _ = session.NodeByNumber(nodeNumber)
+		}
 		node.Activity = note
 		return nil
 	})

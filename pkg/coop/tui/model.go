@@ -58,8 +58,10 @@ type Model struct {
 	err            error
 	sdkSnippet     string
 	sdkSnippetNode int
+	sdkSnippetKey  string
 	sdkLoading     bool
 	sdkLoadingNode int
+	sdkLoadingKey  string
 
 	waiting            bool
 	waitingMessage     string
@@ -125,6 +127,8 @@ func NewModel(store *coop.Store, sessionID string, opts ...Option) Model {
 		focused:        true,
 		sdkSnippetNode: -1,
 		sdkLoadingNode: -1,
+		sdkSnippetKey:  "",
+		sdkLoadingKey:  "",
 	}
 	for _, opt := range opts {
 		opt(&m)
@@ -147,6 +151,8 @@ func NewWaitingModel(store *coop.Store, existingSessionIDs map[string]bool, opts
 		focused:            true,
 		sdkSnippetNode:     -1,
 		sdkLoadingNode:     -1,
+		sdkSnippetKey:      "",
+		sdkLoadingKey:      "",
 		waiting:            true,
 		existingSessionIDs: existingSessionIDs,
 	}
@@ -248,13 +254,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case sdkSnippetMsg:
-		if msg.step == m.sdkLoadingNode {
+		if msg.step == m.sdkLoadingNode && msg.key == m.sdkLoadingKey {
 			m.sdkLoading = false
 			m.sdkLoadingNode = -1
+			m.sdkLoadingKey = ""
 		}
-		if msg.err == nil && msg.step == m.selectionCursor {
+		if msg.err == nil && msg.step == m.selectionCursor && m.snippetKeyForNode(msg.step) == msg.key {
 			m.sdkSnippet = msg.snippet
 			m.sdkSnippetNode = msg.step
+			m.sdkSnippetKey = msg.key
 		}
 		m.syncViewport()
 		return m, nil
@@ -423,8 +431,10 @@ func (m *Model) clearStatus() {
 func (m *Model) clearSDKSnippetState() {
 	m.sdkSnippet = ""
 	m.sdkSnippetNode = -1
+	m.sdkSnippetKey = ""
 	m.sdkLoading = false
 	m.sdkLoadingNode = -1
+	m.sdkLoadingKey = ""
 }
 
 func (m *Model) handleWindowSize(msg tea.WindowSizeMsg) {
@@ -995,7 +1005,11 @@ func (m Model) selectedReviewCommand() string {
 	if !ok {
 		return ""
 	}
-	return m.reviewCommandLabel(target.nodeNumbers)
+	commands := m.reviewCommands(target.nodeNumbers)
+	if len(commands) == 0 {
+		return ""
+	}
+	return strings.Join(commands, " && ")
 }
 
 func (m *Model) setStatus(message string, ttl time.Duration) {

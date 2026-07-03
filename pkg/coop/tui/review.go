@@ -332,6 +332,17 @@ func reviewConfirmationSummary(checks []string, limit int) string {
 }
 
 func (m Model) reviewCommandLabel(nodeNumbers []int) string {
+	commands := m.reviewCommands(nodeNumbers)
+	if len(commands) == 0 {
+		return ""
+	}
+	if len(commands) > 2 {
+		return strings.Join(commands[:2], " && ") + fmt.Sprintf(" && # +%d more", len(commands)-2)
+	}
+	return strings.Join(commands, " && ")
+}
+
+func (m Model) reviewCommands(nodeNumbers []int) []string {
 	var commands []string
 	seen := map[string]bool{}
 	for _, nodeNumber := range nodeNumbers {
@@ -346,10 +357,7 @@ func (m Model) reviewCommandLabel(nodeNumbers []int) string {
 		seen[command] = true
 		commands = append(commands, command)
 	}
-	if len(commands) == 0 {
-		return ""
-	}
-	return strings.Join(commands, "\n")
+	return commands
 }
 
 func reviewCommandForNode(node *coop.SessionNode) string {

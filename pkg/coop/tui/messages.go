@@ -45,6 +45,7 @@ type sessionDiscoveredMsg struct {
 // sdkSnippetMsg carries a fetched SDK snippet.
 type sdkSnippetMsg struct {
 	step    int
+	key     string
 	snippet string
 	err     error
 }

@@ -56,7 +56,7 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 
 	assert.Contains(t, prompt, session.ID)
 	assert.Contains(t, prompt, `"agent_instructions"`)
-	assert.Contains(t, prompt, `"nodes"`)
+	assert.Contains(t, prompt, `"steps"`)
 	assert.Contains(t, prompt, `"next": "stripe coop agent start-work --session=`+session.ID+` --step=1`)
 	assert.Contains(t, prompt, "Understand the project")
 	assert.Contains(t, prompt, "Start by running the \"next\" command exactly as written")

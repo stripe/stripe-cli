@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"encoding/json"
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
@@ -76,7 +79,7 @@ func (m Model) snapshotWaitingBaseline() tea.Cmd {
 
 func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 	nodeIndex, ok := m.selectedNodeIndex()
-	if m.session == nil || !ok || m.sdkSnippetNode == nodeIndex {
+	if m.session == nil || !ok {
 		return nil
 	}
 	node, err := m.session.NodeByNumber(nodeIndex + 1)
@@ -90,6 +93,10 @@ func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 	path := node.Request.Path
 	method := node.Request.Method
 	params := node.Request.Params
+	key := m.snippetKeyForNode(nodeIndex)
+	if m.sdkSnippetNode == nodeIndex && m.sdkSnippetKey == key {
+		return nil
+	}
 	cursor := nodeIndex
 	if !coop.ShouldFetchSDKSnippet(node.Request) {
 		return func() tea.Msg {
@@ -98,10 +105,27 @@ func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 	}
 	m.sdkLoading = true
 	m.sdkLoadingNode = cursor
+	m.sdkLoadingKey = key
 	return func() tea.Msg {
 		snippet, err := coop.FetchSDKSnippet(path, method, params, lang)
-		return sdkSnippetMsg{step: cursor, snippet: snippet, err: err}
+		return sdkSnippetMsg{step: cursor, key: key, snippet: snippet, err: err}
 	}
+}
+
+func (m Model) snippetKeyForNode(nodeIndex int) string {
+	if m.session == nil || nodeIndex < 0 {
+		return ""
+	}
+	node, err := m.session.NodeByNumber(nodeIndex + 1)
+	if err != nil || node.Request == nil {
+		return ""
+	}
+	lang := m.session.Settings["language"]
+	if lang == "" {
+		lang = "node"
+	}
+	params, _ := json.Marshal(node.Request.Params)
+	return fmt.Sprintf("%d\x00%s\x00%s\x00%s\x00%s", nodeIndex, node.Request.Method, node.Request.Path, lang, string(params))
 }
 
 func (m *Model) selectCompletionOption() tea.Cmd {

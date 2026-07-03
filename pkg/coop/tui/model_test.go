@@ -1116,6 +1116,7 @@ func TestFetchSnippetCached(t *testing.T) {
 	m := readyModel()
 	m.selectionCursor = 0
 	m.sdkSnippetNode = 0 // already cached for this step
+	m.sdkSnippetKey = m.snippetKeyForNode(0)
 	cmd := m.fetchSnippetIfNeeded()
 	assert.Nil(t, cmd) // should not re-fetch
 }
