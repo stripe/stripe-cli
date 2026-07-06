@@ -67,6 +67,10 @@ type agentSetupCmd struct {
 	// isInteractive reports whether an interactive picker can be shown.
 	// Injectable for tests.
 	isInteractive func() bool
+	// runSelectionTUI and runSkillsScopeTUI are injectable for tests so TUI
+	// outcomes can be asserted without needing a PTY.
+	runSelectionTUI   func([]agentsetup.Status) (*Selection, error)
+	runSkillsScopeTUI func() (string, bool, error)
 }
 
 type agentSetupJSON struct {
@@ -98,6 +102,10 @@ func newAgentSetupCmd() *agentSetupCmd {
 		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
 		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
 		isInteractive:   isInteractiveTerminal,
+		runSelectionTUI: RunSelectionTUI,
+		runSkillsScopeTUI: func() (string, bool, error) {
+			return RunSkillsScopeTUI()
+		},
 	}
 
 	asc.cmd = &cobra.Command{
@@ -144,7 +152,9 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	ctx := commandContextOrBackground(cmd)
 	out := cmd.OutOrStdout()
 
-	statuses := detectAll(providers)
+	allStatuses := detectAll(asc.providers)
+	emitAgentSetupDetectedEvents(ctx, allStatuses)
+	statuses := filterStatuses(allStatuses, providers)
 
 	if asc.jsonOutput {
 		return asc.writeJSON(out, providers, statuses)
@@ -163,7 +173,7 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	sel, scope, err := asc.resolveSelection(cmd, out, detected)
+	sel, scope, err := asc.resolveSelection(ctx, cmd, out, detected)
 	if err != nil {
 		return err
 	}
@@ -178,7 +188,7 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 // interactive TUI when attached to a terminal (and neither --yes nor --skills
 // forced a non-interactive run), otherwise it derives the selection from flags.
 // A nil Selection means there is nothing to do and a message has been printed.
-func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, detected []agentsetup.Status) (*Selection, string, error) {
+func (asc *agentSetupCmd) resolveSelection(ctx context.Context, cmd *cobra.Command, out io.Writer, detected []agentsetup.Status) (*Selection, string, error) {
 	scope := asc.skillsScope
 
 	// Detect the calling agent up front.
@@ -212,14 +222,16 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		if asc.isInteractive() && agent == "" {
 			printNothingDetectedInteractive(out)
 			fmt.Fprintln(out)
-			chosen, ok, err := RunSkillsScopeTUI()
+			chosen, ok, err := asc.runSkillsScopeTUI()
 			if err != nil {
 				return nil, scope, err
 			}
 			if !ok {
+				emitAgentSetupTUIEvent(ctx, agentSetupTUIScopeCanceled)
 				fmt.Fprintln(out, "Canceled. No changes made.")
 				return nil, scope, nil
 			}
+			emitAgentSetupConfirmedSelection(ctx, Selection{InstallSkills: true}, chosen)
 			return &Selection{InstallSkills: true}, chosen, nil
 		}
 		printNothingDetected(out)
@@ -235,15 +247,17 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		return &Selection{Agents: detected, InstallSkills: asc.skills}, scope, nil
 	}
 
-	sel, err := RunSelectionTUI(detected)
+	sel, err := asc.runSelectionTUI(detected)
 	if err != nil {
 		return nil, scope, err
 	}
 	if sel == nil {
+		emitAgentSetupTUIEvent(ctx, agentSetupTUISelectionCanceled)
 		fmt.Fprintln(out, "Canceled. No changes made.")
 		return nil, scope, nil
 	}
 	if len(sel.Agents) == 0 && !sel.InstallSkills {
+		emitAgentSetupTUIEvent(ctx, agentSetupTUINoSelection)
 		fmt.Fprintln(out, "Nothing selected. No changes made.")
 		return nil, scope, nil
 	}
@@ -252,17 +266,19 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 	// scope was already pinned with --skills-scope.
 	if sel.InstallSkills && !cmd.Flags().Changed("skills-scope") {
 		fmt.Fprintln(out)
-		chosen, ok, err := RunSkillsScopeTUI()
+		chosen, ok, err := asc.runSkillsScopeTUI()
 		if err != nil {
 			return nil, scope, err
 		}
 		if !ok {
+			emitAgentSetupTUIEvent(ctx, agentSetupTUIScopeCanceled)
 			fmt.Fprintln(out, "Canceled. No changes made.")
 			return nil, scope, nil
 		}
 		scope = chosen
 	}
 
+	emitAgentSetupConfirmedSelection(ctx, *sel, scope)
 	return sel, scope, nil
 }
 
@@ -299,12 +315,14 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		switch plan.Action {
 		case agentsetup.ActionNone:
 			fmt.Fprintln(out, "  already set up")
+			emitAgentSetupClientResult(ctx, status.Client, agentSetupResultSkipped)
 			skipCount++
 			continue
 		case agentsetup.ActionManual:
 			// Setup can't be automated (e.g. Cursor). Surface the instruction and
 			// treat it as skipped, not a failure.
 			fmt.Fprintf(out, "  %s manual step: %s\n", warn, plan.Manual)
+			emitAgentSetupClientResult(ctx, status.Client, agentSetupResultManual)
 			skipCount++
 			continue
 		}
@@ -315,18 +333,22 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 			Run(func() error { return provider.Apply(ctx, out, plan) })
 		if err != nil {
 			fmt.Fprintf(out, "  %s error: %v\n", cross, err)
+			emitAgentSetupClientResult(ctx, status.Client, agentSetupResultFailed)
 			errCount++
 			continue
 		}
 		fmt.Fprintf(out, "  %s done\n", check)
+		emitAgentSetupClientResult(ctx, status.Client, agentSetupResultSuccess)
 		successCount++
 	}
 
 	if sel.InstallSkills {
-		if asc.installSkills(ctx, out, scope, check, cross) {
+		if installed, ok := asc.installSkills(ctx, out, scope, check, cross); ok {
 			successCount++
+			emitAgentSetupSkillsInstalled(ctx, scope, installed)
 		} else {
 			errCount++
+			emitAgentSetupSkillsFailure(ctx, scope)
 		}
 	}
 
@@ -338,8 +360,8 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 }
 
 // installSkills fetches and writes Stripe skills to the local or global
-// .agents/skills directory. It returns true on success.
-func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scope, check, cross string) bool {
+// .agents/skills directory. It returns the installed skills on success.
+func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scope, check, cross string) ([]string, bool) {
 	fmt.Fprintf(out, "\n  Stripe skills (%s)\n", scope)
 
 	dirFn := asc.skillsLocalDir
@@ -349,7 +371,7 @@ func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scop
 	dir, err := dirFn()
 	if err != nil {
 		fmt.Fprintf(out, "  %s error: resolving skills directory: %v\n", cross, err)
-		return false
+		return nil, false
 	}
 
 	var installed []string
@@ -363,11 +385,11 @@ func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scop
 		})
 	if runErr != nil {
 		fmt.Fprintf(out, "  %s error: %v\n", cross, runErr)
-		return false
+		return nil, false
 	}
 
 	fmt.Fprintf(out, "  %s installed %d skill(s) to %s: %s\n", check, len(installed), dir, strings.Join(installed, ", "))
-	return true
+	return installed, true
 }
 
 func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status) error {
@@ -404,6 +426,22 @@ func detectAll(providers map[string]agentsetup.Provider) []agentsetup.Status {
 		statuses = append(statuses, providers[id].Detect())
 	}
 	return statuses
+}
+
+func filterStatuses(statuses []agentsetup.Status, providers map[string]agentsetup.Provider) []agentsetup.Status {
+	allowed := make(map[string]bool, len(providers))
+	for id := range providers {
+		allowed[id] = true
+	}
+
+	filtered := make([]agentsetup.Status, 0, len(providers))
+	for _, status := range statuses {
+		if allowed[status.Client] {
+			filtered = append(filtered, status)
+		}
+	}
+
+	return filtered
 }
 
 func orderedProviderIDs(providers map[string]agentsetup.Provider) []string {

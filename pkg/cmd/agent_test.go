@@ -5,12 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
@@ -67,6 +72,199 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.Len(t, result.Actions, 1)
 	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
 	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
+}
+
+func TestAgentSetupTelemetryDetectsAllSupportedClientsEvenWhenFiltered(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+	ctx := telemetryContext(telemetryClient)
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), nil)
+	claude.RunOutput = claudeListEmpty
+	codex := codexMissingProvider(nil)
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(ctx)
+
+	_, err := executeCommand(setup.cmd, "--client", "codex", "--status")
+
+	require.NoError(t, err)
+	telemetryClient.waitForEventCount(t, 2)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: agentsetup.ClientClaudeCode},
+		{name: eventAgentSetupDetected, value: agentsetup.ClientCodex},
+	}, telemetryClient.snapshot())
+}
+
+func TestAgentSetupTelemetrySelectionCancel(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), nil)
+	setup.isInteractive = func() bool { return true }
+	setup.runSelectionTUI = func([]agentsetup.Status) (*Selection, error) { return nil, nil }
+	setup.cmd.SetContext(telemetryContext(telemetryClient))
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Canceled. No changes made.")
+	telemetryClient.waitForEventCount(t, 2)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: agentsetup.ClientClaudeCode},
+		{name: eventAgentSetupTUI, value: agentSetupTUISelectionCanceled},
+	}, telemetryClient.snapshot())
+}
+
+func TestAgentSetupTelemetryScopeCancelWhenNoClientsDetected(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.callingAgent = func() string { return "" }
+	setup.isInteractive = func() bool { return true }
+	setup.runSkillsScopeTUI = func() (string, bool, error) { return "", false, nil }
+	setup.cmd.SetContext(telemetryContext(telemetryClient))
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Canceled. No changes made.")
+	telemetryClient.waitForEventCount(t, 2)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: "none"},
+		{name: eventAgentSetupTUI, value: agentSetupTUIScopeCanceled},
+	}, telemetryClient.snapshot())
+}
+
+func TestAgentSetupTelemetryNoSelection(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), nil)
+	setup.isInteractive = func() bool { return true }
+	setup.runSelectionTUI = func([]agentsetup.Status) (*Selection, error) {
+		return &Selection{}, nil
+	}
+	setup.cmd.SetContext(telemetryContext(telemetryClient))
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Nothing selected. No changes made.")
+	telemetryClient.waitForEventCount(t, 2)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: agentsetup.ClientClaudeCode},
+		{name: eventAgentSetupTUI, value: agentSetupTUINoSelection},
+	}, telemetryClient.snapshot())
+}
+
+func TestAgentSetupTelemetryConfirmedSelectionAndSkills(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error { return nil })
+	setup.isInteractive = func() bool { return true }
+	setup.runSelectionTUI = func(statuses []agentsetup.Status) (*Selection, error) {
+		return &Selection{Agents: statuses, InstallSkills: true}, nil
+	}
+	setup.runSkillsScopeTUI = func() (string, bool, error) { return skillsScopeGlobal, true, nil }
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		return []string{"stripe-best-practices", "upgrade-stripe"}, nil
+	}
+	setup.skillsGlobalDir = func() (string, error) { return filepath.Join(t.TempDir(), ".agents", "skills"), nil }
+	setup.cmd.SetContext(telemetryContext(telemetryClient))
+
+	_, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	telemetryClient.waitForEventCount(t, 7)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: agentsetup.ClientClaudeCode},
+		{name: eventAgentSetupTUI, value: agentSetupTUIConfirmed},
+		{name: eventAgentSetupSelected, value: "client:" + agentsetup.ClientClaudeCode},
+		{name: eventAgentSetupSelected, value: "skills:" + skillsScopeGlobal},
+		{name: eventAgentSetupClientResult, value: agentsetup.ClientClaudeCode + ":" + agentSetupResultSuccess},
+		{name: eventAgentSetupSkillInstalled, value: skillsScopeGlobal + ":stripe-best-practices"},
+		{name: eventAgentSetupSkillInstalled, value: skillsScopeGlobal + ":upgrade-stripe"},
+	}, telemetryClient.snapshot())
+}
+
+func TestAgentSetupTelemetryClientResultStates(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+
+	skipped := testAgentProvider{
+		id: "skipped",
+		status: agentsetup.Status{
+			Client:      "skipped",
+			DisplayName: "Skipped",
+			Detected:    true,
+			Status:      agentsetup.StatusInstalled,
+		},
+		plan: agentsetup.Plan{Action: agentsetup.ActionNone},
+	}
+	manual := testAgentProvider{
+		id: "manual",
+		status: agentsetup.Status{
+			Client:      "manual",
+			DisplayName: "Manual",
+			Detected:    true,
+			Status:      agentsetup.StatusMissing,
+		},
+		plan: agentsetup.Plan{Action: agentsetup.ActionManual, Manual: "manual step"},
+	}
+	failed := testAgentProvider{
+		id: "failed",
+		status: agentsetup.Status{
+			Client:      "failed",
+			DisplayName: "Failed",
+			Detected:    true,
+			Status:      agentsetup.StatusMissing,
+		},
+		plan:     agentsetup.Plan{Action: agentsetup.ActionInstall, Command: []string{"failed", "install"}},
+		applyErr: errors.New("boom"),
+	}
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{
+		skipped.ID(): skipped,
+		manual.ID():  manual,
+		failed.ID():  failed,
+	}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(telemetryContext(telemetryClient))
+
+	_, err := executeCommand(setup.cmd, "--yes")
+
+	require.Error(t, err)
+	telemetryClient.waitForEventCount(t, 6)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: "skipped"},
+		{name: eventAgentSetupDetected, value: "manual"},
+		{name: eventAgentSetupDetected, value: "failed"},
+		{name: eventAgentSetupClientResult, value: "skipped:" + agentSetupResultSkipped},
+		{name: eventAgentSetupClientResult, value: "manual:" + agentSetupResultManual},
+		{name: eventAgentSetupClientResult, value: "failed:" + agentSetupResultFailed},
+	}, telemetryClient.snapshot())
+}
+
+func TestAgentSetupTelemetrySkillsFailure(t *testing.T) {
+	telemetryClient := &recordingTelemetryClient{}
+
+	setup := newAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		return nil, errors.New("index unreachable")
+	}
+	setup.skillsLocalDir = func() (string, error) { return t.TempDir(), nil }
+	setup.cmd.SetContext(telemetryContext(telemetryClient))
+
+	_, err := executeCommand(setup.cmd, "--skills")
+
+	require.Error(t, err)
+	telemetryClient.waitForEventCount(t, 2)
+	require.ElementsMatch(t, []telemetryEvent{
+		{name: eventAgentSetupDetected, value: "none"},
+		{name: eventAgentSetupSkillsResult, value: skillsScopeLocal + ":" + agentSetupResultFailed},
+	}, telemetryClient.snapshot())
 }
 
 func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
@@ -539,4 +737,75 @@ func claudeListEmpty(_ context.Context, _ string, _ ...string) ([]byte, error) {
 
 func claudeListInstalled(_ context.Context, _ string, _ ...string) ([]byte, error) {
 	return []byte(`[{"id":"stripe@claude-plugins-official","version":"2.4.1","scope":"user","enabled":true}]`), nil
+}
+
+type telemetryEvent struct {
+	name  string
+	value string
+}
+
+type recordingTelemetryClient struct {
+	mu     sync.Mutex
+	events []telemetryEvent
+}
+
+func (c *recordingTelemetryClient) SendAPIRequestEvent(context.Context, string, bool) (*http.Response, error) {
+	return nil, nil
+}
+
+func (c *recordingTelemetryClient) SendEvent(_ context.Context, eventName string, eventValue string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.events = append(c.events, telemetryEvent{name: eventName, value: eventValue})
+}
+
+func (c *recordingTelemetryClient) snapshot() []telemetryEvent {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	events := make([]telemetryEvent, len(c.events))
+	copy(events, c.events)
+	return events
+}
+
+func (c *recordingTelemetryClient) waitForEventCount(t *testing.T, count int) {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if len(c.snapshot()) >= count {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatalf("timed out waiting for %d telemetry events; saw %v", count, c.snapshot())
+}
+
+func telemetryContext(client stripe.TelemetryClient) context.Context {
+	ctx := stripe.WithTelemetryClient(context.Background(), client)
+	return stripe.WithEventMetadata(ctx, stripe.NewEventMetadata())
+}
+
+type testAgentProvider struct {
+	id       string
+	status   agentsetup.Status
+	plan     agentsetup.Plan
+	applyErr error
+}
+
+func (p testAgentProvider) ID() string {
+	return p.id
+}
+
+func (p testAgentProvider) Detect() agentsetup.Status {
+	return p.status
+}
+
+func (p testAgentProvider) Plan(agentsetup.Status, bool) agentsetup.Plan {
+	return p.plan
+}
+
+func (p testAgentProvider) Apply(context.Context, io.Writer, agentsetup.Plan) error {
+	return p.applyErr
 }
