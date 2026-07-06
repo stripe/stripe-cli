@@ -222,3 +222,205 @@ func TestUsageTemplate_RootShowsCommandGroups(t *testing.T) {
 	assert.Contains(t, output, "Webhook commands")
 	assert.Contains(t, output, "API commands")
 }
+
+func TestHasAnnotatedCommands(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"tools": "installed_plugin",
+			"apps":  "available_plugin",
+		},
+	}
+	root.AddCommand(&cobra.Command{Use: "tools", RunE: noop})
+	root.AddCommand(&cobra.Command{Use: "apps", RunE: noop})
+	root.AddCommand(&cobra.Command{Use: "login", RunE: noop})
+
+	assert.True(t, hasAnnotatedCommands(root, "installed_plugin"))
+	assert.True(t, hasAnnotatedCommands(root, "available_plugin"))
+	assert.False(t, hasAnnotatedCommands(root, "nonexistent"))
+}
+
+func TestHasAnnotatedCommands_NoMatches(t *testing.T) {
+	root := &cobra.Command{
+		Use:         "stripe",
+		Annotations: map[string]string{},
+	}
+	root.AddCommand(&cobra.Command{Use: "login", RunE: noop})
+
+	assert.False(t, hasAnnotatedCommands(root, "installed_plugin"))
+}
+
+func TestPluginDescription_UsesLongWhenPresent(t *testing.T) {
+	cmd := &cobra.Command{
+		Use:   "tools",
+		Short: "Short text",
+		Long:  "A longer description of the plugin.",
+	}
+	// Attach to a parent so NamePadding() is valid.
+	parent := &cobra.Command{Use: "stripe"}
+	parent.AddCommand(cmd)
+
+	result := pluginDescription(cmd)
+	assert.Contains(t, result, "A longer description of the plugin.")
+	assert.NotContains(t, result, "Short text")
+}
+
+func TestPluginDescription_FallsBackToShort(t *testing.T) {
+	cmd := &cobra.Command{
+		Use:   "tools",
+		Short: "Fallback short description",
+	}
+	parent := &cobra.Command{Use: "stripe"}
+	parent.AddCommand(cmd)
+
+	result := pluginDescription(cmd)
+	assert.Contains(t, result, "Fallback short description")
+}
+
+func TestPluginDescription_WrapsLongText(t *testing.T) {
+	longText := "Manage your account from the terminal and update settings like branding, checkout color and more. These capabilities are typically accessible only from the dashboard and not available on the public API."
+	cmd := &cobra.Command{
+		Use:   "tools",
+		Short: "Short",
+		Long:  longText,
+	}
+	parent := &cobra.Command{Use: "stripe"}
+	parent.AddCommand(cmd)
+
+	result := pluginDescription(cmd)
+	lines := strings.Split(result, "\n")
+	assert.Greater(t, len(lines), 1, "long text should wrap to multiple lines")
+	for _, line := range lines[1:] {
+		assert.True(t, strings.HasPrefix(line, "    "), "continuation lines should be indented")
+	}
+}
+
+func TestUsageTemplate_InstalledPluginsSection(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":   "http",
+			"tools": "installed_plugin",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	tools := &cobra.Command{Use: "tools", Short: "Manage account", Long: "Manage your account from the terminal.", RunE: noop}
+	root.AddCommand(get, tools)
+
+	output := root.UsageString()
+	assert.Contains(t, output, "Installed plugins:")
+	assert.Contains(t, output, "tools")
+	assert.Contains(t, output, "Manage your account from the terminal.")
+	assert.NotContains(t, output, "Available plugins:")
+}
+
+func TestUsageTemplate_AvailablePluginsSection(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":  "http",
+			"apps": "available_plugin",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	apps := &cobra.Command{Use: "apps", Short: "Build and manage Stripe Apps.", RunE: noop}
+	root.AddCommand(get, apps)
+
+	output := root.UsageString()
+	assert.Contains(t, output, "Available plugins:")
+	assert.Contains(t, output, "apps")
+	assert.Contains(t, output, "Build and manage Stripe Apps.")
+	assert.NotContains(t, output, "Installed plugins:")
+}
+
+func TestUsageTemplate_BothPluginSections(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":   "http",
+			"tools": "installed_plugin",
+			"apps":  "available_plugin",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	tools := &cobra.Command{Use: "tools", Short: "Manage account", Long: "Manage your account from the terminal.", RunE: noop}
+	apps := &cobra.Command{Use: "apps", Short: "Build and manage Stripe Apps.", RunE: noop}
+	root.AddCommand(get, tools, apps)
+
+	output := root.UsageString()
+	assert.Contains(t, output, "Installed plugins:")
+	assert.Contains(t, output, "Available plugins:")
+	installedIdx := strings.Index(output, "Installed plugins:")
+	availableIdx := strings.Index(output, "Available plugins:")
+	assert.Less(t, installedIdx, availableIdx, "Installed plugins should appear before Available plugins")
+}
+
+func TestUsageTemplate_PluginsExcludedFromOtherCommands(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":   "http",
+			"tools": "installed_plugin",
+			"apps":  "available_plugin",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	tools := &cobra.Command{Use: "tools", Short: "Manage account", RunE: noop}
+	apps := &cobra.Command{Use: "apps", Short: "Build Stripe Apps", RunE: noop}
+	login := &cobra.Command{Use: "login", Short: "Login to Stripe", RunE: noop}
+	root.AddCommand(get, tools, apps, login)
+
+	output := root.UsageString()
+	otherIdx := strings.Index(output, "Other commands:")
+	installedIdx := strings.Index(output, "Installed plugins:")
+
+	// "login" should be in Other commands, not in plugin sections
+	loginIdx := strings.Index(output, "login")
+	assert.Greater(t, loginIdx, otherIdx, "login should appear after Other commands header")
+	assert.Less(t, loginIdx, installedIdx, "login should appear before Installed plugins header")
+}
+
+func TestUsageTemplate_InstalledPluginFallsBackToShort(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":    "http",
+			"simple": "installed_plugin",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	simple := &cobra.Command{Use: "simple", Short: "A simple plugin with no Long", RunE: noop}
+	root.AddCommand(get, simple)
+
+	output := root.UsageString()
+	assert.Contains(t, output, "Installed plugins:")
+	assert.Contains(t, output, "A simple plugin with no Long")
+}
+
+func TestUsageTemplate_NoPluginSectionsWhenNoPlugins(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get": "http",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	login := &cobra.Command{Use: "login", Short: "Login", RunE: noop}
+	root.AddCommand(get, login)
+
+	output := root.UsageString()
+	assert.NotContains(t, output, "Installed plugins:")
+	assert.NotContains(t, output, "Available plugins:")
+}

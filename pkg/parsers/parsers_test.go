@@ -155,9 +155,9 @@ func TestParseInterfaceFromRaw(t *testing.T) {
 	output, _ := ParseToFormData(parsedFixtureData, make(map[string]gjson.Result))
 	sort.Strings(output)
 
-	require.Equal(t, len(output), 2)
-	require.Equal(t, output[0], "email=person@example.com")
-	require.Equal(t, output[1], "salary=1000000000")
+	require.Equal(t, 2, len(output))
+	require.Equal(t, "email=person@example.com", output[0])
+	require.Equal(t, "salary=1000000000", output[1])
 }
 
 func TestParseInterfaceToJSONFromRaw(t *testing.T) {
@@ -279,7 +279,7 @@ func TestParseInterfaceToJSON(t *testing.T) {
 	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 	sort.Strings(output)
 
-	require.Equal(t, len(output), 8)
+	require.Equal(t, 8, len(output))
 	require.Equal(t, "address[city]=New New York", output[0])
 	require.Equal(t, "address[line1]=1 Planet Express St", output[1])
 	require.Equal(t, "email=bender@test.com", output[2])
@@ -304,7 +304,7 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	output, _ := ParseToFormData(data, queryRespMap)
 	sort.Strings(output)
 
-	require.Equal(t, len(output), 4)
+	require.Equal(t, 4, len(output))
 	require.Equal(t, "amount=100", output[0])
 	require.Equal(t, "currency=eur", output[1])
 	require.Equal(t, "customer=cust_bend123456789", output[2])
@@ -342,7 +342,7 @@ func TestParseWithQueryDefaultValue(t *testing.T) {
 
 	output, _ := ParseToFormData(data, queryRespMap)
 
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	require.Equal(t, "currency=usd", output[0])
 }
 
@@ -352,7 +352,7 @@ func TestParseNoEnv(t *testing.T) {
 
 	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	require.Equal(t, "phone=+1234567890", output[0])
 }
 
@@ -372,7 +372,7 @@ func TestParseWithLocalEnv(t *testing.T) {
 
 	output, _ := ParseToFormData(data, queryRespMap)
 
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	require.Equal(t, "phone=+1234", output[0])
 }
 
@@ -386,7 +386,7 @@ func TestParseWithEnvFile(t *testing.T) {
 	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
 	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	require.Equal(t, "phone=+1234", output[0])
 
 	fs.Remove(envPath)
@@ -402,7 +402,7 @@ func TestParseWithEnvSubstring(t *testing.T) {
 	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
 	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
 
 	fs.Remove(envPath)
@@ -418,7 +418,7 @@ func TestParseWithTimeNow(t *testing.T) {
 
 	output, _ := ParseToFormData(data, queryRespMap)
 	expectedOutput := time.Now().Format(time.RFC3339)
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	// Check for equality except for seconds
 	require.True(t, strings.HasPrefix(output[0], "time="+expectedOutput[:len(expectedOutput)-3]))
 }
@@ -432,7 +432,7 @@ func TestParseWithUUID(t *testing.T) {
 	data["identifier"] = "${generate-uuid}"
 
 	output, _ := ParseToFormData(data, queryRespMap)
-	require.Equal(t, len(output), 1)
+	require.Equal(t, 1, len(output))
 	require.True(t, strings.HasPrefix(output[0], "identifier="))
 	generatedUUID := strings.Split(output[0], "=")
 	res, err := uuid.Parse(generatedUUID[1])
@@ -455,7 +455,7 @@ func TestParseArray(t *testing.T) {
 	output, _ := ParseToFormData(data, queryRespMap)
 	sort.Strings(output)
 
-	require.Equal(t, len(output), 5)
+	require.Equal(t, 5, len(output))
 	require.Equal(t, "customer=cust_bend123456789", output[0])
 	require.Equal(t, "first_timezone=Europe/Brussels", output[1])
 	require.Equal(t, "second_timezone=Europe/Berlin", output[2])

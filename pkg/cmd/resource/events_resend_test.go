@@ -27,7 +27,7 @@ func TestRunEventsResendCmd(t *testing.T) {
 		vals, err := url.ParseQuery(string(body))
 		require.NoError(t, err)
 		require.Equal(t, 1, len(vals))
-		require.Equal(t, vals["for_stripecli"][0], "true")
+		require.Equal(t, "true", vals["for_stripecli"][0])
 	}))
 	defer ts.Close()
 
@@ -58,7 +58,7 @@ func TestRunEventsResendCmd_WithWebhookEndpoint(t *testing.T) {
 		vals, err := url.ParseQuery(string(body))
 		require.NoError(t, err)
 		require.Equal(t, 1, len(vals))
-		require.Equal(t, vals["webhook_endpoint"][0], "we_123")
+		require.Equal(t, "we_123", vals["webhook_endpoint"][0])
 	}))
 	defer ts.Close()
 

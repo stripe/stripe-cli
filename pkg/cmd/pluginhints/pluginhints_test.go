@@ -51,7 +51,7 @@ func findChildCommand(rootCmd *cobra.Command, name string) *cobra.Command {
 // --- AddHintCommands ---
 
 func TestAddHintCommands_DirectoryHintRoutesAliasesWhenPluginMissing(t *testing.T) {
-	rootCmd := &cobra.Command{Use: "stripe"}
+	rootCmd := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
 
 	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{})
 
@@ -76,13 +76,40 @@ func TestAddHintCommands_DirectoryHintRoutesAliasesWhenPluginMissing(t *testing.
 }
 
 func TestAddHintCommands_DirectoryHintSkippedWhenPluginInstalled(t *testing.T) {
-	rootCmd := &cobra.Command{Use: "stripe"}
+	rootCmd := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
 
 	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{
 		"directory": true,
 	})
 
 	assert.Nil(t, findChildCommand(rootCmd, "directory"))
+}
+
+func TestAddHintCommands_SetsAvailablePluginAnnotations(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
+
+	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{})
+
+	for _, name := range []string{"apps", "generate", "projects", "directory", "tools"} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, "available_plugin", rootCmd.Annotations[name])
+		})
+	}
+}
+
+func TestAddHintCommands_NoAnnotationWhenPluginInstalled(t *testing.T) {
+	rootCmd := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
+
+	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{
+		"tools": true,
+		"apps":  true,
+	})
+
+	assert.Empty(t, rootCmd.Annotations["tools"])
+	assert.Empty(t, rootCmd.Annotations["apps"])
+	assert.Equal(t, "available_plugin", rootCmd.Annotations["generate"])
+	assert.Equal(t, "available_plugin", rootCmd.Annotations["projects"])
+	assert.Equal(t, "available_plugin", rootCmd.Annotations["directory"])
 }
 
 // --- run ---
