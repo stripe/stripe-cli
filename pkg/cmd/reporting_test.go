@@ -101,6 +101,24 @@ func TestResolveSQL_EmptyFile(t *testing.T) {
 	assert.Contains(t, err.Error(), "no SQL found")
 }
 
+// The CLI intentionally does not validate SQL client-side; syntactically
+// invalid or non-SQL content is passed through verbatim (after trimming) and
+// the API is responsible for rejecting it (query_run_invalid_sql). This test
+// documents that pass-through behavior.
+func TestResolveSQL_NonSQLContentPassedThrough(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "notsql.txt")
+	content := "this is not valid sql; DROP???\nrandom text 123"
+	require.NoError(t, os.WriteFile(path, []byte("\n"+content+"\n  "), 0600))
+
+	cc := newReportingQueryRunsCreateCmd()
+	cc.sqlFile = path
+
+	sql, err := cc.resolveSQL(cc.cmd)
+	require.NoError(t, err)
+	assert.Equal(t, content, sql, "file contents are passed through as-is (only outer whitespace trimmed)")
+}
+
 // --- Integration tests: create HTTP request shape ---
 
 func newTestReportingCreateCmd(t *testing.T, serverURL string) *reportingQueryRunsCreateCmd {

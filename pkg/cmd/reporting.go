@@ -49,9 +49,6 @@ func newReportingCmd() *reportingCmd {
 Use the query-runs subcommands to kick off a new query and retrieve its
 results. This uses the /v2/data/reporting/query_runs preview API.`,
 		Args: validators.NoArgs,
-		// Hidden while the underlying Query Runs API is in preview. The command
-		// is still runnable; it's just omitted from help output and --map.
-		Hidden: true,
 	}
 
 	rc.cmd.AddCommand(newReportingQueryRunsCmd().cmd)
@@ -95,19 +92,19 @@ the Stripe-Version preview header is set automatically.
 
 The query runs asynchronously. The response contains the query run's id and
 status ("running", "succeeded", or "failed"); poll it with
-"stripe preview reporting query-runs retrieve <id>" until the status is
-"succeeded", then use the result's download_url to fetch the output.
+"stripe reporting query-runs retrieve <id>" until the status is "succeeded",
+then use the result's download_url to fetch the output.
 
 Provide the SQL inline with --sql, from a file with --sql-file, or via stdin
 by passing --sql-file -.`,
 		Example: `  # Run an ad hoc query
-  stripe preview reporting query-runs create --sql "SELECT * FROM charges LIMIT 10"
+  stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10"
 
   # Read the SQL from a file
-  stripe preview reporting query-runs create --sql-file ./query.sql
+  stripe reporting query-runs create --sql-file ./query.sql
 
   # Read the SQL from stdin
-  cat query.sql | stripe preview reporting query-runs create --sql-file -`,
+  cat query.sql | stripe reporting query-runs create --sql-file -`,
 		RunE: cc.runReportingQueryRunsCreateCmd,
 		Args: validators.NoArgs,
 	}
@@ -146,7 +143,7 @@ API — the Stripe-Version preview header is set automatically.
 Once the query run's status is "succeeded", the result's download_url can be
 used to download the query output.`,
 		Example: `  # Retrieve a query run
-  stripe preview reporting query-runs retrieve qryrun_test_123`,
+  stripe reporting query-runs retrieve qryrun_test_123`,
 		Args: validators.ExactArgs(1),
 		RunE: rc.runReportingQueryRunsRetrieveCmd,
 	}
@@ -178,7 +175,10 @@ func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra
 		if err != nil {
 			return err
 		}
-		b, _ := json.MarshalIndent(output, "", "  ")
+		b, err := json.MarshalIndent(output, "", "  ")
+		if err != nil {
+			return err
+		}
 		fmt.Fprintln(cmd.OutOrStdout(), string(b))
 		return nil
 	}
