@@ -294,7 +294,6 @@ func TestAgentSetupCursorIsSkippedNotInstalled(t *testing.T) {
 	require.Contains(t, output, "0 installed, 1 skipped, 0 errors")
 }
 
-
 func TestAgentSetupStatusHidesUndetectedClients(t *testing.T) {
 	// Claude detected, Cursor not — --status should list only Claude.
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), nil)
