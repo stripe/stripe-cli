@@ -45,13 +45,11 @@ type agentCmd struct {
 type agentSetupCmd struct {
 	cmd *cobra.Command
 
-	statusOnly  bool
-	yes         bool
-	force       bool
-	jsonOutput  bool
-	client      string
-	skills      bool
-	skillsScope string
+	statusOnly bool
+	yes        bool
+	force      bool
+	jsonOutput bool
+	client     string
 
 	providers map[string]agentsetup.Provider
 
@@ -114,8 +112,6 @@ func newAgentSetupCmd() *agentSetupCmd {
 	asc.cmd.Flags().BoolVar(&asc.force, "force", false, "Reinstall even when agent tooling is already installed")
 	asc.cmd.Flags().StringVar(&asc.client, "client", "", fmt.Sprintf("Limit setup to a single client; supported values: %s", agentsetup.SupportedProviderIDs(asc.providers)))
 	asc.cmd.Flags().BoolVar(&asc.jsonOutput, "json", false, "Write machine-readable status output")
-	asc.cmd.Flags().BoolVar(&asc.skills, "skills", false, "Install Stripe skills without the interactive prompt")
-	asc.cmd.Flags().StringVar(&asc.skillsScope, "skills-scope", skillsScopeLocal, "Where to install skills: local (current directory) or global (home directory)")
 
 	return asc
 }
@@ -135,10 +131,6 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	providers, err := asc.selectedProviders()
 	if err != nil {
 		return err
-	}
-
-	if asc.skillsScope != skillsScopeLocal && asc.skillsScope != skillsScopeGlobal {
-		return fmt.Errorf("invalid --skills-scope %q; use %q or %q", asc.skillsScope, skillsScopeLocal, skillsScopeGlobal)
 	}
 
 	ctx := commandContextOrBackground(cmd)
@@ -175,19 +167,12 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 }
 
 // resolveSelection decides which agents and/or skills to install. It uses the
-// interactive TUI when attached to a terminal (and neither --yes nor --skills
-// forced a non-interactive run), otherwise it derives the selection from flags.
+// interactive TUI when attached to a terminal (and --yes was not passed),
+// otherwise it derives the selection from flags.
 // A nil Selection means there is nothing to do and a message has been printed.
 func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, detected []agentsetup.Status) (*Selection, string, error) {
-	scope := asc.skillsScope
-
 	// Detect the calling agent up front.
 	agent := asc.callingAgent()
-
-	// Explicit "skills only" request (--skills without --yes) wins everywhere.
-	if asc.skills && !asc.yes {
-		return &Selection{InstallSkills: true}, scope, nil
-	}
 
 	// Inside a coding agent (and no explicit --client), only ever set up that
 	// agent — never other clients, even with --yes, since the agent can't act on
@@ -196,14 +181,14 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		if id := agentClientID[agent]; id != "" {
 			if scoped := statusesForClient(detected, id); len(scoped) > 0 {
 				fmt.Fprintf(out, "Detected %s — setting up its Stripe plugin.\n", scoped[0].DisplayName)
-				return &Selection{Agents: scoped, InstallSkills: asc.skills}, scope, nil
+				return &Selection{Agents: scoped}, "", nil
 			}
 			// The agent's binary isn't among the detected clients; fall through.
 		} else {
 			// Known agent with no Stripe plugin (e.g. Gemini CLI): install
 			// client-agnostic skills instead of another client's plugin.
 			fmt.Fprintf(out, "Detected %s, which has no Stripe plugin — installing Stripe skills instead.\n", agent)
-			return &Selection{InstallSkills: true}, scope, nil
+			return &Selection{InstallSkills: true}, skillsScopeLocal, nil
 		}
 	}
 
@@ -214,56 +199,55 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 			fmt.Fprintln(out)
 			chosen, ok, err := RunSkillsScopeTUI()
 			if err != nil {
-				return nil, scope, err
+				return nil, "", err
 			}
 			if !ok {
 				fmt.Fprintln(out, "Canceled. No changes made.")
-				return nil, scope, nil
+				return nil, "", nil
 			}
 			return &Selection{InstallSkills: true}, chosen, nil
 		}
 		printNothingDetected(out)
-		return nil, scope, nil
+		return nil, "", nil
 	}
 
 	// A human at a terminal picks interactively. Agent runtimes can allocate a
 	// PTY, so we also require no calling agent (checked above via the early
 	// returns) before trusting the TTY.
-	useTUI := asc.isInteractive() && !asc.yes && !asc.skills && agent == ""
+	useTUI := asc.isInteractive() && !asc.yes && agent == ""
 	if !useTUI {
-		// Human CLI (or explicit --client): --yes installs every detected client.
-		return &Selection{Agents: detected, InstallSkills: asc.skills}, scope, nil
+		// --yes installs every detected client (no skills).
+		return &Selection{Agents: detected}, "", nil
 	}
 
 	sel, err := RunSelectionTUI(detected)
 	if err != nil {
-		return nil, scope, err
+		return nil, "", err
 	}
 	if sel == nil {
 		fmt.Fprintln(out, "Canceled. No changes made.")
-		return nil, scope, nil
+		return nil, "", nil
 	}
 	if len(sel.Agents) == 0 && !sel.InstallSkills {
 		fmt.Fprintln(out, "Nothing selected. No changes made.")
-		return nil, scope, nil
+		return nil, "", nil
 	}
 
-	// Mirror `npx skills add` by asking where to install skills, unless the
-	// scope was already pinned with --skills-scope.
-	if sel.InstallSkills && !cmd.Flags().Changed("skills-scope") {
+	// If skills were selected in the TUI, ask where to install them.
+	if sel.InstallSkills {
 		fmt.Fprintln(out)
 		chosen, ok, err := RunSkillsScopeTUI()
 		if err != nil {
-			return nil, scope, err
+			return nil, "", err
 		}
 		if !ok {
 			fmt.Fprintln(out, "Canceled. No changes made.")
-			return nil, scope, nil
+			return nil, "", nil
 		}
-		scope = chosen
+		return sel, chosen, nil
 	}
 
-	return sel, scope, nil
+	return sel, "", nil
 }
 
 // selectedProviders returns the providers to operate on, honoring the --client
@@ -553,10 +537,6 @@ Supported clients for automatic setup:
   • Codex CLI     https://openai.com/codex/
 
 Once a client is installed, re-run: stripe agent setup
-
-Or install Stripe skills:
-  stripe agent setup --skills               # into ./.agents/skills
-  stripe agent setup --skills --skills-scope global   # into ~/.agents/skills
 `)
 }
 
