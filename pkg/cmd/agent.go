@@ -17,6 +17,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/agentskills"
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/docs/spinner"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -138,6 +139,12 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 
 	statuses := detectAll(providers)
 
+	for _, s := range statuses {
+		if s.Detected {
+			sendAgentEvent(ctx, "Agent Setup: Client Detected", s.Client)
+		}
+	}
+
 	if asc.jsonOutput {
 		return asc.writeJSON(out, providers, statuses)
 	}
@@ -214,6 +221,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 	// A human at a terminal picks interactively. Agent runtimes can allocate a
 	// PTY, so we also require no calling agent (checked above via the early
 	// returns) before trusting the TTY.
+	ctx := cmd.Context()
 	useTUI := asc.isInteractive() && !asc.yes && agent == ""
 	if !useTUI {
 		// --yes installs every detected client (no skills).
@@ -225,13 +233,17 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		return nil, "", err
 	}
 	if sel == nil {
+		sendAgentEvent(ctx, "Agent Setup: TUI", "canceled")
 		fmt.Fprintln(out, "Canceled. No changes made.")
 		return nil, "", nil
 	}
 	if len(sel.Agents) == 0 && !sel.InstallSkills {
+		sendAgentEvent(ctx, "Agent Setup: TUI", "nothing_selected")
 		fmt.Fprintln(out, "Nothing selected. No changes made.")
 		return nil, "", nil
 	}
+
+	sendAgentEvent(ctx, "Agent Setup: TUI", "confirmed")
 
 	// If skills were selected in the TUI, ask where to install them.
 	if sel.InstallSkills {
@@ -283,12 +295,14 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		switch plan.Action {
 		case agentsetup.ActionNone:
 			fmt.Fprintln(out, "  already set up")
+			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":skip")
 			skipCount++
 			continue
 		case agentsetup.ActionManual:
 			// Setup can't be automated (e.g. Cursor). Surface the instruction and
 			// treat it as skipped, not a failure.
 			fmt.Fprintf(out, "  %s manual step: %s\n", warn, plan.Manual)
+			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":manual")
 			skipCount++
 			continue
 		}
@@ -299,10 +313,12 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 			Run(func() error { return provider.Apply(ctx, out, plan) })
 		if err != nil {
 			fmt.Fprintf(out, "  %s error: %v\n", cross, err)
+			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":error")
 			errCount++
 			continue
 		}
 		fmt.Fprintf(out, "  %s done\n", check)
+		sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":success")
 		successCount++
 	}
 
@@ -333,6 +349,7 @@ func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scop
 	dir, err := dirFn()
 	if err != nil {
 		fmt.Fprintf(out, "  %s error: resolving skills directory: %v\n", cross, err)
+		sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":error")
 		return false
 	}
 
@@ -347,9 +364,11 @@ func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scop
 		})
 	if runErr != nil {
 		fmt.Fprintf(out, "  %s error: %v\n", cross, runErr)
+		sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":error")
 		return false
 	}
 
+	sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":success")
 	fmt.Fprintf(out, "  %s installed %d skill(s) to %s: %s\n", check, len(installed), dir, strings.Join(installed, ", "))
 	return true
 }
@@ -542,4 +561,10 @@ Once a client is installed, re-run: stripe agent setup
 
 func isInteractiveTerminal() bool {
 	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+}
+
+func sendAgentEvent(ctx context.Context, eventName, eventValue string) {
+	if tc := stripe.GetTelemetryClient(ctx); tc != nil {
+		go tc.SendEvent(ctx, eventName, eventValue)
+	}
 }
