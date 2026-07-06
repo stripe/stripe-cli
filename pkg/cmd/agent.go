@@ -98,14 +98,12 @@ func newAgentSetupCmd() *agentSetupCmd {
 		skillsInstall: func(ctx context.Context, destDir string) ([]string, error) {
 			return agentskills.Install(ctx, nil, destDir)
 		},
-		skillsLocalDir:  func() (string, error) { return skillsDirUnder(os.Getwd) },
-		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
-		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
-		isInteractive:   isInteractiveTerminal,
-		runSelectionTUI: RunSelectionTUI,
-		runSkillsScopeTUI: func() (string, bool, error) {
-			return RunSkillsScopeTUI()
-		},
+		skillsLocalDir:    func() (string, error) { return skillsDirUnder(os.Getwd) },
+		skillsGlobalDir:   func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
+		callingAgent:      func() string { return useragent.DetectAIAgent(os.Getenv) },
+		isInteractive:     isInteractiveTerminal,
+		runSelectionTUI:   RunSelectionTUI,
+		runSkillsScopeTUI: RunSkillsScopeTUI,
 	}
 
 	asc.cmd = &cobra.Command{
