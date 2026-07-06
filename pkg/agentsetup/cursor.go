@@ -13,25 +13,28 @@ const (
 
 // CursorProvider detects the Stripe plugin for Cursor.
 //
-// Unlike Claude Code, Cursor has no `cursor plugin` CLI and no JSON registry:
-// the `cursor` binary is only the editor launcher, and installed plugins are
-// recorded as a directory tree under ~/.cursor/plugins/cache/<marketplace>/
-// <plugin>/<hash>/ (a `.cache-complete` marker plus a .cursor-plugin/plugin.json
-// metadata file). Detection therefore walks the filesystem.
+// Unlike Claude Code, Cursor has no `cursor plugin` CLI: the `cursor` binary is
+// only the editor launcher. Enabled plugins are recorded in
+// ~/Library/Application Support/Cursor/User/globalStorage/state.vscdb (macOS)
+// under cursor.plugins.installedIds.* keys. When sqlite3 is available, this
+// provider queries that registry; otherwise it falls back to prompting the user
+// to run /add-plugin stripe inside Cursor.
 //
 // Cursor plugins are installed from inside Cursor via the `/add-plugin stripe`
-// slash command; there is no shell CLI installer. This provider therefore
-// detects the plugin from disk and, when it is missing, points the user at the
-// in-app command rather than shelling out.
+// slash command; there is no shell CLI installer.
 type CursorProvider struct {
-	Scanner Scanner
+	Scanner   Scanner
+	RunOutput RunOutputFunc
 }
 
 // NewCursorProvider returns a Cursor setup provider. The RunCommandFunc argument
 // is accepted for signature parity with the other providers but is unused,
 // because Cursor has no CLI installer.
 func NewCursorProvider(scanner Scanner, _ RunCommandFunc) Provider {
-	return CursorProvider{Scanner: scanner}
+	return CursorProvider{
+		Scanner:   scanner,
+		RunOutput: runCommandOutput,
+	}
 }
 
 func (p CursorProvider) ID() string { return ClientCursor }
@@ -52,8 +55,33 @@ func (p CursorProvider) Detect() Status {
 	status.Detected = true
 	status.ExecutablePath = binPath
 	status.Status = StatusMissing
+
+	runOutput := p.RunOutput
+	if runOutput == nil {
+		runOutput = runCommandOutput
+	}
+
+	pluginStatus, err := cursorStripePluginFromVscdb(s, runOutput)
+	if err != nil {
+		status.Error = cursorManualInstallHint
+		return status
+	}
+
+	if pluginStatus.installed {
+		status.Plugin.Installed = true
+		status.Plugin.ID = TargetCursorPlugin
+		status.Plugin.Scope = pluginStatus.scope
+		status.Plugin.Project = pluginStatus.projectPath
+		status.Status = StatusInstalled
+
+		if home, homeErr := s.HomeDir(); homeErr == nil {
+			status.Plugin.Version = cursorPluginVersionFromCache(s, home)
+		}
+		return status
+	}
+
 	// Signal to the TUI that this row is not actionable from the CLI.
-	status.Error = "run /add-plugin stripe inside Cursor agent"
+	status.Error = cursorManualInstallHint
 	return status
 }
 
