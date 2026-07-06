@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +15,6 @@ import (
 )
 
 type mockUnknownCmdTelemetryClient struct {
-	mu     sync.Mutex
 	events []struct {
 		name  string
 		value string
@@ -29,8 +26,6 @@ func (m *mockUnknownCmdTelemetryClient) SendAPIRequestEvent(_ context.Context, _
 }
 
 func (m *mockUnknownCmdTelemetryClient) SendEvent(_ context.Context, eventName string, eventValue string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.events = append(m.events, struct {
 		name  string
 		value string
@@ -88,9 +83,7 @@ func TestRecordUnknownCommand_InAgentEnv_BatchesCommands(t *testing.T) {
 	assert.Equal(t, "stripe foobar", entries[0].Command)
 	assert.Equal(t, "claude_code", entries[0].Agent)
 
-	mock.mu.Lock()
 	assert.Len(t, mock.events, 0)
-	mock.mu.Unlock()
 }
 
 func TestRecordUnknownCommand_InAgentEnv_SendsAtBatchSize(t *testing.T) {
@@ -111,14 +104,7 @@ func TestRecordUnknownCommand_InAgentEnv_SendsAtBatchSize(t *testing.T) {
 	_, err := os.Stat(batchPath)
 	assert.True(t, os.IsNotExist(err))
 
-	require.Eventually(t, func() bool {
-		mock.mu.Lock()
-		defer mock.mu.Unlock()
-		return len(mock.events) == 1
-	}, 1*time.Second, 10*time.Millisecond)
-
-	mock.mu.Lock()
-	defer mock.mu.Unlock()
+	require.Len(t, mock.events, 1)
 	assert.Equal(t, unknownCmdEventName, mock.events[0].name)
 
 	var entries []unknownCommandEntry

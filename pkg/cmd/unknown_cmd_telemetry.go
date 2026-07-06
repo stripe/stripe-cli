@@ -96,5 +96,5 @@ func sendUnknownCommandBatch(ctx context.Context, client stripe.TelemetryClient,
 		return
 	}
 
-	go client.SendEvent(ctx, unknownCmdEventName, string(data))
+	client.SendEvent(ctx, unknownCmdEventName, string(data))
 }
