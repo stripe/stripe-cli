@@ -45,6 +45,17 @@ func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 	require.Contains(t, plan.Manual, "/add-plugin stripe")
 }
 
+func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
+	provider := CursorProvider{
+		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
+	}
+
+	status := provider.Detect()
+	plan := provider.Plan(status, false)
+
+	require.Equal(t, ActionNone, plan.Action)
+}
+
 func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 	provider := CursorProvider{
 		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }},
