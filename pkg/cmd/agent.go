@@ -112,7 +112,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 	asc.cmd.Flags().BoolVar(&asc.statusOnly, "status", false, "Check installed agent tooling without making changes")
 	asc.cmd.Flags().BoolVarP(&asc.yes, "yes", "y", false, "Set up every detected client without prompting")
 	asc.cmd.Flags().BoolVar(&asc.force, "force", false, "Reinstall even when agent tooling is already installed")
-	asc.cmd.Flags().StringVar(&asc.client, "client", "", "Limit setup to a single client (default: all detected clients)")
+	asc.cmd.Flags().StringVar(&asc.client, "client", "", fmt.Sprintf("Limit setup to a single client; supported values: %s", agentsetup.SupportedProviderIDs(asc.providers)))
 	asc.cmd.Flags().BoolVar(&asc.jsonOutput, "json", false, "Write machine-readable status output")
 	asc.cmd.Flags().BoolVar(&asc.skills, "skills", false, "Install Stripe skills without the interactive prompt")
 	asc.cmd.Flags().StringVar(&asc.skillsScope, "skills-scope", skillsScopeLocal, "Where to install skills: local (current directory) or global (home directory)")
