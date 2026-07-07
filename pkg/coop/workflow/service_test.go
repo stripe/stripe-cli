@@ -107,6 +107,109 @@ func TestRequestChangesMovesReviewNodeBackToActive(t *testing.T) {
 	assert.Nil(t, node.Implementation)
 }
 
+func TestAgentWorkflowRejectsInactiveSessions(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(*Service, string) (coop.CommandResponse, error)
+	}{
+		{
+			name: "start work",
+			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
+				return service.StartWork(sessionID, 1, "Starting")
+			},
+		},
+		{
+			name: "report work",
+			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
+				return service.ReportWork(sessionID, 1, ReportWorkInput{File: "server.go"}, false)
+			},
+		},
+		{
+			name: "report check",
+			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
+				return service.ReportCheck(sessionID, 1, "Manual checkout passed", true)
+			},
+		},
+		{
+			name: "skip",
+			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
+				return service.Skip(sessionID, 1, "Not needed")
+			},
+		},
+		{
+			name: "await review",
+			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
+				return service.AwaitReview(sessionID, 1)
+			},
+		},
+	}
+
+	for _, status := range []coop.SessionStatus{coop.SessionCompleted, coop.SessionAborted} {
+		t.Run(string(status), func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					store, session := workflowTestStore(t)
+					service := NewService(store)
+					_, err := store.Update(session.ID, func(session *coop.Session) error {
+						session.Status = status
+						return nil
+					})
+					require.NoError(t, err)
+
+					resp, err := tt.run(service, session.ID)
+					require.NoError(t, err)
+					assert.False(t, resp.OK)
+					assert.Contains(t, resp.Error, "session workflow_test is "+string(status)+" and cannot be advanced")
+
+					loaded, err := store.Read(session.ID)
+					require.NoError(t, err)
+					node, err := loaded.NodeByNumber(1)
+					require.NoError(t, err)
+					assert.Equal(t, coop.NodePending, node.State)
+				})
+			}
+		})
+	}
+}
+
+func TestReviewWorkflowRejectsInactiveSessions(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(*Service, string) error
+	}{
+		{
+			name: "confirm review",
+			run: func(service *Service, sessionID string) error {
+				_, err := service.ConfirmReview(sessionID, []int{1})
+				return err
+			},
+		},
+		{
+			name: "request changes",
+			run: func(service *Service, sessionID string) error {
+				_, err := service.RequestChanges(sessionID, []int{1}, "Needs tests")
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store, session := workflowTestStore(t)
+			service := NewService(store)
+			_, err := store.Update(session.ID, func(session *coop.Session) error {
+				session.Status = coop.SessionAborted
+				return nil
+			})
+			require.NoError(t, err)
+
+			err = tt.run(service, session.ID)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "session workflow_test is aborted and cannot be advanced")
+		})
+	}
+}
+
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {
 	t.Helper()
 	store, err := coop.NewStoreAt(t.TempDir())

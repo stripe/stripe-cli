@@ -75,6 +75,9 @@ type ReportWorkInput struct {
 
 func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop.CommandResponse, error) {
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
+		if err := requireActiveSession(session); err != nil {
+			return err
+		}
 		if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
 			return err
 		}
@@ -107,6 +110,9 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 func (s *Service) ReportWork(sessionID string, nodeNumber int, input ReportWorkInput, autoConfirm bool) (coop.CommandResponse, error) {
 	var targetState coop.NodeState
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
+		if err := requireActiveSession(session); err != nil {
+			return err
+		}
 		node, err := session.NodeByNumber(nodeNumber)
 		if err != nil {
 			return err
@@ -145,6 +151,9 @@ func (s *Service) ReportCheck(sessionID string, nodeNumber int, check string, pa
 		return errorResponse(fmt.Errorf("--check flag is required"), fmt.Sprintf("stripe coop agent report-check --session=%s --step=%d --check=\"<label>\" --passed", sessionID, nodeNumber)), nil
 	}
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
+		if err := requireActiveSession(session); err != nil {
+			return err
+		}
 		node, err := session.NodeByNumber(nodeNumber)
 		if err != nil {
 			return err
@@ -172,6 +181,9 @@ func (s *Service) ReportCheck(sessionID string, nodeNumber int, check string, pa
 
 func (s *Service) Skip(sessionID string, nodeNumber int, note string) (coop.CommandResponse, error) {
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
+		if err := requireActiveSession(session); err != nil {
+			return err
+		}
 		if err := session.TransitionNode(nodeNumber, coop.NodeSkipped); err != nil {
 			return err
 		}
@@ -198,6 +210,9 @@ func (s *Service) Skip(sessionID string, nodeNumber int, note string) (coop.Comm
 
 func (s *Service) ConfirmReview(sessionID string, nodeNumbers []int) (*coop.Session, error) {
 	return s.store.Update(sessionID, func(session *coop.Session) error {
+		if err := requireActiveSession(session); err != nil {
+			return err
+		}
 		for _, nodeNumber := range nodeNumbers {
 			node, err := session.NodeByNumber(nodeNumber)
 			if err != nil {
@@ -222,6 +237,9 @@ func (s *Service) RequestChanges(sessionID string, nodeNumbers []int, note strin
 		return nil, fmt.Errorf("request changes note is required")
 	}
 	return s.store.Update(sessionID, func(session *coop.Session) error {
+		if err := requireActiveSession(session); err != nil {
+			return err
+		}
 		for _, nodeNumber := range nodeNumbers {
 			node, err := session.NodeByNumber(nodeNumber)
 			if err != nil {
@@ -244,6 +262,9 @@ func (s *Service) RequestChanges(sessionID string, nodeNumbers []int, note strin
 func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
 	session, err := s.store.Read(sessionID)
 	if err != nil {
+		return errorResponse(err, "stripe coop status"), nil
+	}
+	if err := requireActiveSession(session); err != nil {
 		return errorResponse(err, "stripe coop status"), nil
 	}
 	node, err := session.NodeByNumber(nodeNumber)
@@ -515,6 +536,13 @@ func timeoutResponse(sessionID string, nodeNumber int) coop.CommandResponse {
 
 func errorResponse(err error, hint string) coop.CommandResponse {
 	return coop.CommandResponse{OK: false, Error: err.Error(), Hint: hint}
+}
+
+func requireActiveSession(session *coop.Session) error {
+	if session.Status == coop.SessionActive {
+		return nil
+	}
+	return fmt.Errorf("session %s is %s and cannot be advanced", session.ID, session.Status)
 }
 
 func language(session *coop.Session) string {
