@@ -163,24 +163,19 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 
 	detected := detectedStatuses(statuses)
 
-	var skills skillsScopes
-	runErr := spinner.New().
-		WithLabel("Checking skills...").
-		WithOutput(os.Stderr).
-		Run(func() error {
-			var e error
-			skills, e = asc.checkSkillsScopes(ctx)
-			return e
-		})
-	if runErr != nil {
-		return runErr
-	}
-
 	if asc.jsonOutput {
+		skills, err := asc.loadSkillsScopes(ctx)
+		if err != nil {
+			return err
+		}
 		return asc.writeJSON(out, providers, statuses, skills)
 	}
 
 	if asc.statusOnly {
+		skills, err := asc.loadSkillsScopes(ctx)
+		if err != nil {
+			return err
+		}
 		if len(detected) > 0 {
 			printStatusTable(out, detected)
 			fmt.Fprintln(out)
@@ -192,6 +187,15 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
+	var skills skillsScopes
+	if asc.needsInteractiveSkills() {
+		var err error
+		skills, err = asc.loadSkillsScopes(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
 	sel, scope, err := asc.resolveSelection(cmd, out, detected, skills)
 	if err != nil {
 		return err
@@ -201,6 +205,29 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	}
 
 	return asc.install(ctx, out, providers, *sel, scope)
+}
+
+func (asc *agentSetupCmd) loadSkillsScopes(ctx context.Context) (skillsScopes, error) {
+	var skills skillsScopes
+	runErr := spinner.New().
+		WithLabel("Checking skills...").
+		WithOutput(os.Stderr).
+		Run(func() error {
+			var e error
+			skills, e = asc.checkSkillsScopes(ctx)
+			return e
+		})
+	return skills, runErr
+}
+
+func (asc *agentSetupCmd) needsInteractiveSkills() bool {
+	if asc.yes {
+		return false
+	}
+	if asc.callingAgent() != "" {
+		return false
+	}
+	return asc.isInteractive()
 }
 
 // resolveSelection decides which agents and/or skills to install. It uses the

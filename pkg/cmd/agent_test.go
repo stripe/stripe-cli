@@ -204,6 +204,32 @@ func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "" }
+	setup.skillsCheck = func(context.Context, string) (*agentskills.DirStatus, error) {
+		t.Fatal("plugin-only setup should not check skills")
+		return nil, nil
+	}
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--client", "codex")
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed)
+	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
 func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) error {
@@ -227,6 +253,32 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	require.Equal(t, []string{"codex"}, installed) // Claude NOT installed
 	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "codex_cli" }
+	setup.skillsCheck = func(context.Context, string) (*agentskills.DirStatus, error) {
+		t.Fatal("calling-agent plugin setup should not check skills")
+		return nil, nil
+	}
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed)
+	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 }
 
 // codexMissingProvider returns a Codex provider that detects the binary, starts
