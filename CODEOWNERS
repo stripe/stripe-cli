@@ -2,3 +2,4 @@
 
 # `stripe docs` ownership
 /pkg/docs/ @stripe/docs-product
+/pkg/cmd/docs/ @stripe/docs-product
