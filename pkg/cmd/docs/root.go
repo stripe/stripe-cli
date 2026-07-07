@@ -25,7 +25,7 @@ import (
 
 const colorValueOff = "off"
 
-// RootCommand is the root command for the docs plugin.
+// RootCommand is the root command for the docs subcommand.
 type RootCommand struct {
 	cmd *cobra.Command
 
