@@ -24,7 +24,7 @@ func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, output, "Detected agents with supported Stripe plugins:")
 	require.Contains(t, output, "Claude Code")
-	require.Contains(t, output, "Stripe plugin not installed")
+	require.Contains(t, output, "plugin not installed")
 }
 
 func TestAgentSetupStatusShowsInstalledDetail(t *testing.T) {
@@ -34,7 +34,7 @@ func TestAgentSetupStatusShowsInstalledDetail(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Contains(t, output, "Claude Code")
-	require.Contains(t, output, "Stripe plugin installed")
+	require.Contains(t, output, "plugin installed")
 	require.Contains(t, output, agentsetup.TargetClaudePlugin) // plugin id in the dimmed detail
 	require.Contains(t, output, "2.4.1")
 }

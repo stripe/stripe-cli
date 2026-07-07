@@ -500,16 +500,16 @@ func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 			state = color.Red("error: " + s.Error).String()
 		case s.Status == agentsetup.StatusInstalled:
 			icon = color.Green("✔").String()
-			state = "Stripe plugin installed"
+			state = "plugin installed"
 			if detail := pluginDetail(s.Plugin); detail != "" {
 				state += "  " + color.Faint(detail).String()
 			}
 		case s.Error != "":
 			icon = color.Yellow("•").String()
-			state = color.Faint(s.Error).String()
+			state = s.Error
 		default:
 			icon = color.Yellow("•").String()
-			state = "Stripe plugin not installed"
+			state = "plugin not installed"
 			needsSetup = true
 		}
 		fmt.Fprintf(w, "  %s  %-*s  %s\n", icon, nameWidth, s.DisplayName, state)

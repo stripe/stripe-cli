@@ -52,13 +52,16 @@ func newSelectModel(statuses []agentsetup.Status) selectModel {
 			kind:   rowAgent,
 			status: s,
 			label:  s.DisplayName,
-			detail: s.ExecutablePath,
 		}
-		// Disable rows where a capability issue prevents installation (e.g. old
-		// Codex without plugin support). These show but are grayed out.
-		if s.Error != "" && s.Status != agentsetup.StatusError {
+		switch {
+		case s.Plugin.Installed:
+			row.disabled = true
+			row.hint = "plugin already installed"
+		case s.Error != "" && s.Status != agentsetup.StatusError:
 			row.disabled = true
 			row.hint = s.Error
+		default:
+			row.detail = "plugin not installed"
 		}
 		row.selected = !row.disabled
 		rows = append(rows, row)
@@ -164,7 +167,7 @@ func (m selectModel) View() tea.View {
 		}
 
 		if r.disabled {
-			line := fmt.Sprintf("%s[-] %-22s %s", pointer, r.label, dividerStyle.Render(r.hint))
+			line := fmt.Sprintf("%s[-] %-22s %s", pointer, r.label, r.hint)
 			body += line + "\n"
 			continue
 		}
