@@ -281,22 +281,30 @@ func scopeStatusHint(status agentskills.DirStatus) string {
 		return "(out of date)"
 	case agentskills.StatusNotInstalled:
 		return "(not installed)"
+	case agentskills.StatusError:
+		return "(unavailable — could not check)"
 	default:
 		return ""
 	}
 }
 
 func preferredSkillsScope(skills skillsScopes) string {
-	if skillsScopeNeedsUpdate(skills.Local) {
+	if skillsScopeNeedsUpdate(skills.Local) && !skillsScopeCheckFailed(skills.Local) {
 		return skillsScopeLocal
 	}
-	if skillsScopeNeedsUpdate(skills.Global) {
+	if skillsScopeNeedsUpdate(skills.Global) && !skillsScopeCheckFailed(skills.Global) {
 		return skillsScopeGlobal
 	}
-	if skillsScopeNeedsInstall(skills.Local) {
+	if skillsScopeNeedsInstall(skills.Local) && !skillsScopeCheckFailed(skills.Local) {
 		return skillsScopeLocal
 	}
-	if skillsScopeNeedsInstall(skills.Global) {
+	if skillsScopeNeedsInstall(skills.Global) && !skillsScopeCheckFailed(skills.Global) {
+		return skillsScopeGlobal
+	}
+	if !skillsScopeCheckFailed(skills.Local) {
+		return skillsScopeLocal
+	}
+	if !skillsScopeCheckFailed(skills.Global) {
 		return skillsScopeGlobal
 	}
 	return skillsScopeLocal

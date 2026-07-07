@@ -591,6 +591,46 @@ func mockSkillsCheckOutOfDate(_ context.Context, destDir string) (*agentskills.D
 	}, nil
 }
 
+func mockSkillsCheckError(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+	err := fmt.Errorf("fetching skills index: request failed")
+	return &agentskills.DirStatus{
+		Dir:    destDir,
+		Status: agentskills.StatusError,
+		Error:  err.Error(),
+	}, err
+}
+
+func TestAgentSetupStatusWithSkillsCheckError(t *testing.T) {
+	setup := newTestAgentSetupCmdInstalled(t, nil)
+	setup.skillsCheck = mockSkillsCheckError
+
+	output, err := executeCommand(setup.cmd, "--status")
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Stripe skills:")
+	require.Contains(t, output, "error: fetching skills index: request failed")
+	require.Contains(t, output, "Claude Code")
+}
+
+func TestAgentSetupJSONWithSkillsCheckError(t *testing.T) {
+	setup := newTestAgentSetupCmdInstalled(t, func(context.Context, string, ...string) error {
+		t.Fatal("installer should not run in --json mode")
+		return nil
+	})
+	setup.skillsCheck = mockSkillsCheckError
+
+	output, err := executeCommand(setup.cmd, "--json")
+
+	require.NoError(t, err)
+
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Equal(t, agentskills.StatusError, result.Skills.Local.Status)
+	require.Equal(t, agentskills.StatusError, result.Skills.Global.Status)
+	require.Contains(t, result.Skills.Local.Error, "fetching skills index")
+	require.Empty(t, result.Errors)
+}
+
 func testAgentSetupCmd() *agentSetupCmd {
 	setup := newAgentSetupCmd()
 	setup.skillsCheck = mockSkillsCheckNotInstalled

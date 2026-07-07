@@ -489,15 +489,19 @@ func (asc *agentSetupCmd) checkSkillsScopes(ctx context.Context) (skillsScopes, 
 	}
 
 	local, err := asc.skillsCheck(ctx, localDir)
-	if err != nil {
+	if local == nil {
 		return skillsScopes{}, err
 	}
 	global, err := asc.skillsCheck(ctx, globalDir)
-	if err != nil {
+	if global == nil {
 		return skillsScopes{}, err
 	}
 
 	return skillsScopes{Local: *local, Global: *global}, nil
+}
+
+func skillsScopeCheckFailed(d agentskills.DirStatus) bool {
+	return d.Status == agentskills.StatusError
 }
 
 func skillsScopeNeedsUpdate(d agentskills.DirStatus) bool {
