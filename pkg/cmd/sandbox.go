@@ -59,8 +59,10 @@ func newSandboxCmd() *sandboxCmd {
 
 	createCmd := newSandboxCreateCmd()
 	claimCmd := newSandboxClaimCmd()
+	newCmd := newSandboxNewCmd()
 	sc.cmd.AddCommand(createCmd.cmd)
 	sc.cmd.AddCommand(claimCmd.cmd)
+	sc.cmd.AddCommand(newCmd.cmd)
 	return sc
 }
 
@@ -400,6 +402,14 @@ type sandboxClaimCmd struct {
 	nonInteractive bool
 }
 
+type sandboxNewCmd struct {
+	cmd           *cobra.Command
+	name          string
+	replicaOf     string
+	stripeContext string
+	apiBase       string
+}
+
 func newSandboxClaimCmd() *sandboxClaimCmd {
 	scc := &sandboxClaimCmd{}
 	scc.cmd = &cobra.Command{
@@ -446,6 +456,58 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 	default:
 		fmt.Printf("Visit %s\n", claimURL)
 	}
+	return nil
+}
+
+func newSandboxNewCmd() *sandboxNewCmd {
+	snc := &sandboxNewCmd{}
+	snc.cmd = &cobra.Command{
+		Use:   "new",
+		Short: "Create a sandbox for the logged-in account",
+		Long: `Create a new sandbox via the authenticated Stripe API using your logged-in session (UAT).
+
+This command creates a sandbox using the authenticated Stripe API. It requires
+that you have previously logged in with your Stripe account credentials.`,
+		Args: validators.NoArgs,
+		RunE: snc.runSandboxNewCmd,
+		// Hidden while this is an experimental POC: keep it out of help/completion.
+		// The real access gate is the backend (the UAT flag + hzn_sandbox_create).
+		// Remove this when the command is ready to GA.
+		Hidden: true,
+	}
+
+	snc.cmd.Flags().StringVar(&snc.name, "name", "", "Name for the new sandbox")
+	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID to replicate (wksp_...)")
+	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Stripe-Context compartment to scope the request to")
+	snc.cmd.Flags().StringVar(&snc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
+	_ = snc.cmd.Flags().MarkHidden("api-base")
+
+	return snc
+}
+
+func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) error {
+	// Scaffolded only. The intended behavior is described below as plain steps so
+	// the follow-up PR can implement it directly. The end-to-end flow has already
+	// been validated; authenticating with the logged-in session token works.
+	//
+	//   1. Load the user's session token from the local credential store. If the
+	//      store is unavailable or no token is present, return an error telling the
+	//      user to run `stripe login` first.
+	//   2. Determine which compartment to scope the request to. Prefer the
+	//      --stripe-context and --replica-of flags when provided; otherwise fall
+	//      back to the compartment saved at login. Sandbox creation must be scoped
+	//      to a playground compartment, so this needs to resolve to a playground (or
+	//      be supplied explicitly by flag); return a clear error if it can't be
+	//      determined.
+	//   3. Build the create-sandbox request body, matching the dashboard flow: the
+	//      sandbox name, the workspace to replicate, an "activate" flag, and an
+	//      idempotency token.
+	//   4. Send the create request to the v2 sandboxes endpoint, attaching the
+	//      session token as the request credential along with the API version, the
+	//      compartment context, and a JSON content type.
+	//   5. If the response is not a success status, return an error that includes
+	//      the status and body; otherwise pretty-print the created sandbox as JSON.
+	fmt.Fprintln(cmd.OutOrStdout(), "stripe sandbox new: scaffolded, not yet implemented")
 	return nil
 }
 
