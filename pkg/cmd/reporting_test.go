@@ -119,6 +119,29 @@ func TestResolveSQL_NonSQLContentPassedThrough(t *testing.T) {
 	assert.Equal(t, content, sql, "file contents are passed through as-is (only outer whitespace trimmed)")
 }
 
+// --- Unit tests: API base URL validation ---
+
+func TestReportingCreateCmd_InvalidAPIBaseURL(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "")
+	cc := newReportingQueryRunsCreateCmd()
+	cc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
+	cc.rb.APIBaseURL = "http://evil.example.com"
+	cc.sql = "SELECT 1"
+
+	err := cc.runReportingQueryRunsCreateCmd(cc.cmd, []string{})
+	require.Error(t, err)
+}
+
+func TestReportingRetrieveCmd_InvalidAPIBaseURL(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "")
+	rc := newReportingQueryRunsRetrieveCmd()
+	rc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
+	rc.rb.APIBaseURL = "http://evil.example.com"
+
+	err := rc.runReportingQueryRunsRetrieveCmd(rc.cmd, []string{"qryrun_test_123"})
+	require.Error(t, err)
+}
+
 // --- Integration tests: create HTTP request shape ---
 
 func newTestReportingCreateCmd(t *testing.T, serverURL string) *reportingQueryRunsCreateCmd {

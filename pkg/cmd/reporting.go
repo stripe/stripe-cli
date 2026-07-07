@@ -158,6 +158,10 @@ used to download the query output.`,
 }
 
 func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(cc.rb.APIBaseURL); err != nil {
+		return err
+	}
+
 	sql, err := cc.resolveSQL(cmd)
 	if err != nil {
 		return err
@@ -234,6 +238,10 @@ func (cc *reportingQueryRunsCreateCmd) buildRequestBody(sql string) map[string]i
 }
 
 func (rc *reportingQueryRunsRetrieveCmd) runReportingQueryRunsRetrieveCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(rc.rb.APIBaseURL); err != nil {
+		return err
+	}
+
 	apiKey, err := rc.rb.Profile.GetAPIKey(rc.rb.Livemode)
 	if err != nil {
 		return err
