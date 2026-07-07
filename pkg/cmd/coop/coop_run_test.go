@@ -66,7 +66,7 @@ func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
 
 func TestCoopRunReturnsStructuredErrorForMalformedSetting(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	cmd := newCoopStartCmd().cmd
+	cmd := newCoopAgentRunCmd().cmd
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.SetArgs([]string{"one-time-payment", "--setting", "framework"})
@@ -91,7 +91,7 @@ func TestCoopRunReturnsStructuredErrorForMalformedSetting(t *testing.T) {
 
 func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	cmd := newCoopStartCmd().cmd
+	cmd := newCoopAgentRunCmd().cmd
 	cmd.SilenceErrors = true
 	cmd.SilenceUsage = true
 	cmd.SetArgs([]string{"one-time-payment", "--param", "=existing"})

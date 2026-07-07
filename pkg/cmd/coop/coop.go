@@ -54,7 +54,7 @@ The developer confirms each step before the agent moves on.`,
 		},
 	}
 
-	cc.cmd.AddCommand(newCoopStartCmd().cmd)
+	cc.cmd.AddCommand(newCoopAgentRunCmd().cmd)
 	cc.cmd.AddCommand(newCoopAgentCmd().cmd)
 	cc.cmd.AddCommand(newCoopStatusCmd().cmd)
 	cc.cmd.AddCommand(newCoopStopCmd().cmd)

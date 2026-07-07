@@ -14,7 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
-type coopStartCmd struct {
+type coopAgentRunCmd struct {
 	cmd           *cobra.Command
 	language      string
 	settings      []string
@@ -23,9 +23,9 @@ type coopStartCmd struct {
 	parentStep    string
 }
 
-func newCoopStartCmd() *coopStartCmd {
-	sc := &coopStartCmd{}
-	sc.cmd = &cobra.Command{
+func newCoopAgentRunCmd() *coopAgentRunCmd {
+	rc := &coopAgentRunCmd{}
+	rc.cmd = &cobra.Command{
 		Use:   "run <blueprint-id>",
 		Short: "Create a co-op session from a blueprint (agent-facing)",
 		Long: `Creates a new co-op session using the specified blueprint. The session file
@@ -36,19 +36,19 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
   stripe coop run one-time-payment --language=node
   stripe coop run setup-future-payments --setting=framework=express --param=customer_type=existing`,
 		Args: cobra.ExactArgs(1),
-		RunE: sc.runStartCmd,
+		RunE: rc.runCmd,
 	}
 
-	sc.cmd.Flags().StringVar(&sc.language, "language", "", "Programming language for the integration")
-	sc.cmd.Flags().StringArrayVar(&sc.settings, "setting", nil, "Blueprint settings as key=value pairs")
-	sc.cmd.Flags().StringArrayVar(&sc.params, "param", nil, "Blueprint params as key=value pairs")
-	sc.cmd.Flags().StringVar(&sc.parentSession, "parent-session", "", "Parent co-op session ID for follow-up work")
-	sc.cmd.Flags().StringVar(&sc.parentStep, "parent-step", "", "Parent next-step ID this session fulfills")
+	rc.cmd.Flags().StringVar(&rc.language, "language", "", "Programming language for the integration")
+	rc.cmd.Flags().StringArrayVar(&rc.settings, "setting", nil, "Blueprint settings as key=value pairs")
+	rc.cmd.Flags().StringArrayVar(&rc.params, "param", nil, "Blueprint params as key=value pairs")
+	rc.cmd.Flags().StringVar(&rc.parentSession, "parent-session", "", "Parent co-op session ID for follow-up work")
+	rc.cmd.Flags().StringVar(&rc.parentStep, "parent-step", "", "Parent next-step ID this session fulfills")
 
-	return sc
+	return rc
 }
 
-func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
+func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	blueprintID := args[0]
 
 	bp, err := coop.LoadBlueprint(blueprintID)
@@ -63,7 +63,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 
 	sessionID := "coop_" + uuid.New().String()[:8]
 
-	session, err := newCoopSession(bp, sessionID, sc.language, sc.settings, sc.params, sc.parentSession, sc.parentStep)
+	session, err := newCoopSession(bp, sessionID, rc.language, rc.settings, rc.params, rc.parentSession, rc.parentStep)
 	if err != nil {
 		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
 	}
@@ -90,7 +90,7 @@ func (sc *coopStartCmd) runStartCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp := coopStartResponse{
+	resp := coopAgentRunResponse{
 		CommandResponse: coop.CommandResponse{
 			OK:        true,
 			SessionID: sessionID,
@@ -143,7 +143,7 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 	return nil
 }
 
-type coopStartResponse struct {
+type coopAgentRunResponse struct {
 	coop.CommandResponse
 	AgentInstructions string      `json:"agent_instructions"`
 	Nodes             []nodeBrief `json:"nodes"`

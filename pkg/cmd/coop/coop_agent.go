@@ -184,14 +184,25 @@ func runCoopNextAction(sessionID, completed string) error {
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
 	}
+	return runCoopNextActionWithStore(store, sessionID, completed)
+}
+
+func runCoopNextActionWithStore(store helpers.Store, sessionID, completed string) error {
 	resp, err := helpers.Run(store, helpers.Input{SessionID: sessionID, Completed: completed})
 	if errors.Is(err, helpers.ErrNoSession) {
 		return outputCoopError("No session found.", "stripe coop run <blueprint>")
 	}
 	if err != nil {
-		return err
+		return outputCoopError(err.Error(), nextActionHint(sessionID))
 	}
 	return outputJSON(resp)
+}
+
+func nextActionHint(sessionID string) string {
+	if sessionID == "" {
+		return "stripe coop agent next-action --session=<session>"
+	}
+	return fmt.Sprintf("stripe coop agent next-action --session=%s", sessionID)
 }
 
 func outputAgentResponse(resp coop.CommandResponse, err error) error {

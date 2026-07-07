@@ -2,6 +2,7 @@ package coopcmd
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,4 +90,42 @@ func TestCoopAgentReportCheckCommand(t *testing.T) {
 	require.Len(t, node.Verifications, 1)
 	assert.Equal(t, "Manual checkout passed", node.Verifications[0].Check)
 	assert.True(t, node.Verifications[0].Passed)
+}
+
+func TestCoopAgentNextActionReturnsStructuredErrorForHelperFailure(t *testing.T) {
+	store := &nextActionErrorStore{
+		session: &coop.Session{
+			ID:     "agent_test_session",
+			Status: coop.SessionCompleted,
+		},
+	}
+
+	stderr := captureStderr(t, func() {
+		err := runCoopNextActionWithStore(store, "agent_test_session", "")
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, "writing next-action suggestions")
+	assert.Contains(t, resp.Error, "disk full")
+	assert.Equal(t, "stripe coop agent next-action --session=agent_test_session", resp.Hint)
+}
+
+type nextActionErrorStore struct {
+	session *coop.Session
+}
+
+func (s *nextActionErrorStore) Read(id string) (*coop.Session, error) {
+	return s.session, nil
+}
+
+func (s *nextActionErrorStore) LatestSession() (*coop.Session, error) {
+	return s.session, nil
+}
+
+func (s *nextActionErrorStore) Write(session *coop.Session) error {
+	return errors.New("disk full")
 }
