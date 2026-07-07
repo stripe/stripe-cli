@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	unknownCmdBatchFile  = "unknown_commands.json"
-	unknownCmdBatchSize  = 10
-	unknownCmdEventName  = "Unknown Command Attempted"
+	unknownCmdBatchFile = "unknown_commands.json"
+	unknownCmdBatchSize = 10
+	unknownCmdEventName = "Unknown Command Attempted"
 )
 
 type unknownCommandEntry struct {
