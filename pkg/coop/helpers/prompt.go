@@ -77,8 +77,12 @@ func Select[T comparable](title string, options []huh.Option[T], value *T) error
 	if err == nil {
 		return nil
 	}
+	return normalizePromptError(err)
+}
+
+func normalizePromptError(err error) error {
 	if errors.Is(err, huh.ErrUserAborted) {
-		return fmt.Errorf("canceled")
+		return fmt.Errorf("canceled: %w", err)
 	}
 	return err
 }
