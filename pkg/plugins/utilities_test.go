@@ -60,10 +60,10 @@ func TestGetPluginListIgnoresLocalPluginMetadataOutsideManifest(t *testing.T) {
 	config := &TestConfig{}
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Releases: []Release{
 			{
 				Arch:    runtime.GOARCH,
@@ -238,9 +238,9 @@ func TestGetInstalledPluginNamesIncludesLocalMetadata(t *testing.T) {
 	config.InstalledPlugins = []string{"projects"}
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Releases: []Release{
 			{
 				Arch:    runtime.GOARCH,
@@ -255,7 +255,7 @@ func TestGetInstalledPluginNamesIncludesLocalMetadata(t *testing.T) {
 
 	pluginNames, err := GetInstalledPluginNames(config, fs)
 	require.NoError(t, err)
-	require.Equal(t, []string{"projects", "docs"}, pluginNames)
+	require.Equal(t, []string{"projects", "sample-plugin"}, pluginNames)
 }
 
 func TestRecordInstalledPlugin(t *testing.T) {
@@ -283,14 +283,14 @@ func TestPersistInstalledPluginState(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 	plugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Commands: []CommandInfo{
 			{
-				Name: "search",
-				Desc: "Search docs",
+				Name: "hello",
+				Desc: "Say hello",
 			},
 		},
 		Releases: []Release{
@@ -304,9 +304,9 @@ func TestPersistInstalledPluginState(t *testing.T) {
 	}
 
 	require.NoError(t, PersistInstalledPluginState(config, fs, plugin))
-	require.Equal(t, []string{"docs"}, config.GetInstalledPlugins())
+	require.Equal(t, []string{"sample-plugin"}, config.GetInstalledPlugins())
 
-	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "sample-plugin")
 	require.NoError(t, err)
 	require.Equal(t, plugin, cachedPlugin)
 }
@@ -318,10 +318,10 @@ func TestPersistInstalledPluginStateRollsBackOnConfigWriteFailure(t *testing.T) 
 		MutateInstalledPluginsOn: true,
 	}
 	plugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Releases: []Release{
 			{
 				Arch:    runtime.GOARCH,
@@ -348,10 +348,10 @@ func TestPersistInstalledPluginStateRestoresPreviousMetadataOnConfigWriteFailure
 		MutateInstalledPluginsOn: true,
 	}
 	existingPlugin := Plugin{
-		Shortname:        "docs",
+		Shortname:        "sample-plugin",
 		Shortdesc:        "Existing docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Releases: []Release{
 			{
 				Arch:    runtime.GOARCH,
@@ -362,10 +362,10 @@ func TestPersistInstalledPluginStateRestoresPreviousMetadataOnConfigWriteFailure
 		},
 	}
 	updatedPlugin := Plugin{
-		Shortname:        "docs",
+		Shortname:        "sample-plugin",
 		Shortdesc:        "Updated docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Releases: []Release{
 			{
 				Arch:    runtime.GOARCH,
@@ -380,7 +380,7 @@ func TestPersistInstalledPluginStateRestoresPreviousMetadataOnConfigWriteFailure
 	err := PersistInstalledPluginState(config, fs, updatedPlugin)
 	require.ErrorIs(t, err, config.WriteErr)
 
-	cachedPlugin, err := readLocalPluginMetadata(config, fs, "docs")
+	cachedPlugin, err := readLocalPluginMetadata(config, fs, "sample-plugin")
 	require.NoError(t, err)
 	require.Equal(t, existingPlugin, cachedPlugin)
 	require.Empty(t, config.GetInstalledPlugins())
@@ -572,14 +572,14 @@ func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) 
 	config.InitConfig()
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Commands: []CommandInfo{
 			{
-				Name: "search",
-				Desc: "Search docs",
+				Name: "hello",
+				Desc: "Say hello",
 			},
 		},
 		Releases: []Release{
@@ -600,12 +600,12 @@ func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) 
 			metadataLookups++
 			require.Equal(t, "", req.URL.Query().Get("version"))
 			body, err := json.Marshal(requests.PluginMetadata{
-				BinaryURL: "https://example.test/docs/latest",
+				BinaryURL: "https://example.test/sample-plugin/latest",
 				PluginManifest: fmt.Sprintf(`[[Plugin]]
-  Shortname = "docs"
-  Shortdesc = "Docs plugin"
-  Binary = "stripe-cli-docs"
-  MagicCookieValue = "DOCS-COOKIE"
+  Shortname = "sample-plugin"
+  Shortdesc = "Sample plugin"
+  Binary = "stripe-cli-sample-plugin"
+  MagicCookieValue = "SAMPLE-COOKIE"
 
   [[Plugin.Release]]
     Arch = "%s"
@@ -624,14 +624,14 @@ func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) 
 	}))
 	defer stripeServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", stripeServer.URL, stripeServer.URL)
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "sample-plugin", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
 	require.Equal(t, "0.1.26", resolvedPlugin.Version)
-	require.Equal(t, "https://example.test/docs/latest", resolvedPlugin.BinaryURL)
+	require.Equal(t, "https://example.test/sample-plugin/latest", resolvedPlugin.BinaryURL)
 	require.Len(t, plugin.Commands, 1)
-	require.Equal(t, "search", plugin.Commands[0].Name)
+	require.Equal(t, "hello", plugin.Commands[0].Name)
 	require.Equal(t, 1, metadataLookups)
 
 	_, err = fs.Stat("/plugins.toml")
@@ -645,14 +645,14 @@ func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailab
 	config.Profile.APIKey = ""
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Commands: []CommandInfo{
 			{
-				Name: "search",
-				Desc: "Search docs",
+				Name: "hello",
+				Desc: "Say hello",
 			},
 		},
 		Releases: []Release{
@@ -678,12 +678,12 @@ func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailab
 			metadataLookups++
 			require.Equal(t, "", req.URL.Query().Get("version"))
 			body, err := json.Marshal(requests.PluginMetadata{
-				BinaryURL: "https://example.test/docs/latest",
+				BinaryURL: "https://example.test/sample-plugin/latest",
 				PluginManifest: fmt.Sprintf(`[[Plugin]]
-  Shortname = "docs"
-  Shortdesc = "Docs plugin"
-  Binary = "stripe-cli-docs"
-  MagicCookieValue = "DOCS-COOKIE"
+  Shortname = "sample-plugin"
+  Shortdesc = "Sample plugin"
+  Binary = "stripe-cli-sample-plugin"
+  MagicCookieValue = "SAMPLE-COOKIE"
 
   [[Plugin.Release]]
     Arch = "%s"
@@ -702,14 +702,14 @@ func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailab
 	}))
 	defer dashboardServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", apiServer.URL, dashboardServer.URL)
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "sample-plugin", apiServer.URL, dashboardServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
 	require.Equal(t, "0.1.26", resolvedPlugin.Version)
-	require.Equal(t, "https://example.test/docs/latest", resolvedPlugin.BinaryURL)
+	require.Equal(t, "https://example.test/sample-plugin/latest", resolvedPlugin.BinaryURL)
 	require.Len(t, plugin.Commands, 1)
-	require.Equal(t, "search", plugin.Commands[0].Name)
+	require.Equal(t, "hello", plugin.Commands[0].Name)
 	require.Equal(t, 1, metadataLookups)
 
 	_, err = fs.Stat("/plugins.toml")
@@ -722,14 +722,14 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	config.InitConfig()
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Commands: []CommandInfo{
 			{
-				Name: "search",
-				Desc: "Search docs",
+				Name: "hello",
+				Desc: "Say hello",
 			},
 		},
 		Releases: []Release{
@@ -749,7 +749,7 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	}))
 	defer failingServer.Close()
 
-	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", failingServer.URL, failingServer.URL)
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "sample-plugin", failingServer.URL, failingServer.URL)
 	require.NoError(t, err)
 	plugin := resolvedPlugin.Plugin
 	require.Equal(t, localPlugin, *plugin)
@@ -762,14 +762,14 @@ func TestResolveCachedPluginForUpgradeUsesLocalMetadataWhenManifestMissing(t *te
 	config := &TestConfig{}
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Commands: []CommandInfo{
 			{
-				Name: "search",
-				Desc: "Search docs",
+				Name: "hello",
+				Desc: "Say hello",
 			},
 		},
 		Releases: []Release{
@@ -783,7 +783,7 @@ func TestResolveCachedPluginForUpgradeUsesLocalMetadataWhenManifestMissing(t *te
 	}
 	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
 
-	plugin, err := resolveCachedPluginForUpgrade(config, fs, "docs")
+	plugin, err := resolveCachedPluginForUpgrade(config, fs, "sample-plugin")
 	require.NoError(t, err)
 	require.Equal(t, localPlugin, *plugin)
 }
@@ -793,14 +793,14 @@ func TestResolveCachedPluginForUpgradePrefersNewerManifestVersion(t *testing.T) 
 	config := &TestConfig{}
 
 	localPlugin := Plugin{
-		Shortname:        "docs",
-		Shortdesc:        "Docs plugin",
-		Binary:           "stripe-cli-docs",
-		MagicCookieValue: "DOCS-COOKIE",
+		Shortname:        "sample-plugin",
+		Shortdesc:        "Sample plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
 		Commands: []CommandInfo{
 			{
-				Name: "search",
-				Desc: "Search docs",
+				Name: "hello",
+				Desc: "Say hello",
 			},
 		},
 		Releases: []Release{
@@ -815,10 +815,10 @@ func TestResolveCachedPluginForUpgradePrefersNewerManifestVersion(t *testing.T) 
 	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
 
 	manifestContent := fmt.Sprintf(`[[Plugin]]
-  Shortname = "docs"
-  Shortdesc = "Docs plugin"
-  Binary = "stripe-cli-docs"
-  MagicCookieValue = "DOCS-COOKIE"
+  Shortname = "sample-plugin"
+  Shortdesc = "Sample plugin"
+  Binary = "stripe-cli-sample-plugin"
+  MagicCookieValue = "SAMPLE-COOKIE"
 
   [[Plugin.Release]]
     Arch = "%s"
@@ -828,11 +828,11 @@ func TestResolveCachedPluginForUpgradePrefersNewerManifestVersion(t *testing.T) 
 `, runtime.GOARCH, runtime.GOOS)
 	require.NoError(t, afero.WriteFile(fs, "/plugins.toml", []byte(manifestContent), os.ModePerm))
 
-	plugin, err := resolveCachedPluginForUpgrade(config, fs, "docs")
+	plugin, err := resolveCachedPluginForUpgrade(config, fs, "sample-plugin")
 	require.NoError(t, err)
 	require.Equal(t, "0.1.26", plugin.LookUpLatestVersion())
 	require.Len(t, plugin.Commands, 1)
-	require.Equal(t, "search", plugin.Commands[0].Name)
+	require.Equal(t, "hello", plugin.Commands[0].Name)
 }
 
 func TestRefreshPluginManifest(t *testing.T) {
