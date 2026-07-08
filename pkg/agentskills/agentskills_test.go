@@ -206,7 +206,7 @@ func TestCheck_OutOfDate(t *testing.T) {
 	require.Equal(t, []string{"SKILL.md"}, status.Skills[0].ChangedFiles)
 }
 
-func TestCheck_Partial(t *testing.T) {
+func TestCheck_SomeSkillsMissing(t *testing.T) {
 	index := Index{Skills: []Skill{
 		{Name: "stripe-best-practices", Files: []string{"SKILL.md"}},
 		{Name: "upgrade-stripe", Files: []string{"SKILL.md"}},
@@ -223,7 +223,7 @@ func TestCheck_Partial(t *testing.T) {
 	status, err := Check(context.Background(), server.Client(), dest)
 
 	require.NoError(t, err)
-	require.Equal(t, StatusPartial, status.Status)
+	require.Equal(t, StatusOutOfDate, status.Status)
 	require.Equal(t, 1, status.InstalledCount)
 	require.Equal(t, 0, status.OutOfDateCount)
 	require.Equal(t, StatusCurrent, status.Skills[0].Status)

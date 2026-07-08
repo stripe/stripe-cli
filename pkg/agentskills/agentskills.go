@@ -48,7 +48,6 @@ const (
 	StatusNotInstalled = "not_installed"
 	StatusCurrent      = "current"
 	StatusOutOfDate    = "out_of_date"
-	StatusPartial      = "partial"
 	StatusError        = "error"
 )
 
@@ -267,14 +266,8 @@ func aggregateDirStatus(result *DirStatus) string {
 	}
 
 	total := len(result.Skills)
-	if result.OutOfDateCount > 0 {
-		if result.InstalledCount < total {
-			return StatusPartial
-		}
+	if result.OutOfDateCount > 0 || result.InstalledCount < total {
 		return StatusOutOfDate
-	}
-	if result.InstalledCount < total {
-		return StatusPartial
 	}
 	return StatusCurrent
 }
