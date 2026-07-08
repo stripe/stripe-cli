@@ -473,20 +473,12 @@ func (asc *agentSetupCmd) checkSkillsScopes(ctx context.Context) (skillsScopes, 
 	return skillsScopes{Local: *local, Global: *global}, nil
 }
 
-func skillsNeedsAction(s skillsScopes) bool {
-	return skillsScopeNeedsAction(s.Local) || skillsScopeNeedsAction(s.Global)
-}
-
 func skillsScopeNeedsUpdate(d agentskills.DirStatus) bool {
-	return d.Status == agentskills.StatusOutOfDate || d.Status == agentskills.StatusPartial
+	return d.Status == agentskills.StatusOutOfDate
 }
 
 func skillsScopeNeedsInstall(d agentskills.DirStatus) bool {
 	return d.Status == agentskills.StatusNotInstalled
-}
-
-func skillsScopeNeedsAction(d agentskills.DirStatus) bool {
-	return skillsScopeNeedsUpdate(d) || skillsScopeNeedsInstall(d)
 }
 
 func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status, skills skillsScopes) error {
@@ -696,8 +688,6 @@ func skillsScopeStatusLine(w io.Writer, d agentskills.DirStatus) (icon, state st
 		return color.Green("✔").String(), fmt.Sprintf("%d skills up to date", total)
 	case agentskills.StatusOutOfDate:
 		return color.Yellow("⚠").String(), fmt.Sprintf("%d of %d skills out of date", d.OutOfDateCount, total)
-	case agentskills.StatusPartial:
-		return color.Yellow("⚠").String(), fmt.Sprintf("%d of %d skills installed, some out of date", d.InstalledCount, total)
 	default:
 		return color.Yellow("•").String(), "not installed"
 	}

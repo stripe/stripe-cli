@@ -279,8 +279,6 @@ func scopeStatusHint(status agentskills.DirStatus) string {
 		return "(up to date)"
 	case agentskills.StatusOutOfDate:
 		return "(out of date)"
-	case agentskills.StatusPartial:
-		return "(partially installed)"
 	case agentskills.StatusNotInstalled:
 		return "(not installed)"
 	default:
