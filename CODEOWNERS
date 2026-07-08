@@ -2,3 +2,7 @@
 
 # `stripe docs` ownership
 /pkg/docs/ @stripe/docs-product
+
+# `stripe sandbox` commands + client package
+/pkg/cmd/sandbox*.go @stripe/sandboxes-engineering
+/pkg/sandbox/ @stripe/sandboxes-engineering
