@@ -13,34 +13,45 @@ permissions:
 jobs:
   homebrew:
     runs-on: macos-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh homebrew
+      - id: install_test
+        run: bash scripts/install-test.sh homebrew
   homebrew-core:
     runs-on: macos-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh homebrew-core
+      - id: install_test
+        run: bash scripts/install-test.sh homebrew-core
   apt:
     runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh apt
+      - id: install_test
+        run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
     container: fedora:latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - run: |
           if [ ! -d "/etc/yum.repos.d" ]; then
@@ -57,9 +68,12 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh yum
+      - id: install_test
+        run: bash scripts/install-test.sh yum
   scoop:
     runs-on: windows-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
     - uses: actions/checkout@v6
       with:
@@ -67,34 +81,43 @@ jobs:
           scripts/install-test.sh
         sparse-checkout-cone-mode: false
     - uses: MinoruSekine/setup-scoop@v4
-    - shell: powershell
+    - id: install_test
+      shell: powershell
       run: bash scripts/install-test.sh scoop
   winget:
     runs-on: windows-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
     - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           scripts/install-test.sh
         sparse-checkout-cone-mode: false
-    - shell: powershell
+    - id: install_test
+      shell: powershell
       run: bash scripts/install-test.sh winget
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: sh scripts/install-test.sh docker
+      - id: install_test
+        run: sh scripts/install-test.sh docker
 
   npm:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -104,10 +127,13 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - run: bash scripts/install-test.sh npm
+      - id: install_test
+        run: bash scripts/install-test.sh npm
 
   npm-no-optional:
     runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -117,10 +143,13 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - run: bash scripts/install-test.sh npm-no-optional
+      - id: install_test
+        run: bash scripts/install-test.sh npm-no-optional
 
   npx:
     runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -133,7 +162,8 @@ jobs:
       # npm 10 has a bug where conflicting bin entries across a package and its
       # optional dependency silently drop the bin link, causing "stripe: not found".
       - run: npm install -g npm@11
-      - run: bash scripts/install-test.sh npx
+      - id: install_test
+        run: bash scripts/install-test.sh npx
 
   notify:
     runs-on: ubuntu-latest
@@ -147,7 +177,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - run: bash scripts/notify.sh
         env:
-          OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+          OVERALL_RESULT: ${{ contains(needs.*.outputs.install_test_result, 'failure') && 'failure' || contains(needs.*.result, 'failure') && 'skip' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
           PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-install-test
           PAGERDUTY_SUMMARY: "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
