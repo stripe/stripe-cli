@@ -537,7 +537,7 @@ func skillsScopeCheckFailed(d agentskills.DirStatus) bool {
 
 func skillsScopeHasInstalled(d agentskills.DirStatus) bool {
 	switch d.Status {
-	case agentskills.StatusCurrent, agentskills.StatusOutOfDate, agentskills.StatusPartial:
+	case agentskills.StatusCurrent, agentskills.StatusOutOfDate:
 		return true
 	case agentskills.StatusError:
 		return d.InstalledCount > 0
