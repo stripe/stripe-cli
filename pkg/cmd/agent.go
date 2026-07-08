@@ -60,6 +60,7 @@ type agentSetupCmd struct {
 	skillsCheck     func(ctx context.Context, destDir string) (*agentskills.DirStatus, error)
 	skillsLocalDir  func() (string, error)
 	skillsGlobalDir func() (string, error)
+	skillsDirsExist func(localDir, globalDir string) bool
 
 	// callingAgent returns the AI agent invoking this command (e.g.
 	// "claude_code"), or "" for a human shell. Injectable for tests.
@@ -72,7 +73,7 @@ type agentSetupCmd struct {
 type agentSetupJSON struct {
 	Status  string              `json:"status"`
 	Clients []agentsetup.Status `json:"clients"`
-	Skills  skillsScopesJSON    `json:"skills"`
+	Skills  *skillsScopesJSON   `json:"skills,omitempty"`
 	Actions []agentsetup.Plan   `json:"actions,omitempty"`
 	Errors  []string            `json:"errors,omitempty"`
 }
@@ -111,6 +112,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 		},
 		skillsLocalDir:  func() (string, error) { return skillsDirUnder(os.Getwd) },
 		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
+		skillsDirsExist: skillsDirsExist,
 		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
 		isInteractive:   isInteractiveTerminal,
 	}
@@ -163,18 +165,13 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 
 	detected := detectedStatuses(statuses)
 
-	if asc.jsonOutput {
-		skills, err := asc.loadSkillsScopes(ctx)
+	if asc.jsonOutput || asc.statusOnly {
+		view, err := asc.skillsStatusView(ctx, detected)
 		if err != nil {
 			return err
 		}
-		return asc.writeJSON(out, providers, statuses, skills)
-	}
-
-	if asc.statusOnly {
-		skills, err := asc.loadSkillsScopes(ctx)
-		if err != nil {
-			return err
+		if asc.jsonOutput {
+			return asc.writeJSON(out, providers, statuses, view)
 		}
 		if len(detected) > 0 {
 			printStatusTable(out, detected)
@@ -183,7 +180,9 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 			printNothingDetected(out)
 			fmt.Fprintln(out)
 		}
-		printSkillsStatusTable(out, skills)
+		if view.show {
+			printSkillsStatusTable(out, view.scopes, view.allowInstall)
+		}
 		return nil
 	}
 
@@ -218,6 +217,38 @@ func (asc *agentSetupCmd) loadSkillsScopes(ctx context.Context) (skillsScopes, e
 			return e
 		})
 	return skills, runErr
+}
+
+type skillsStatusView struct {
+	scopes       skillsScopes
+	show         bool
+	allowInstall bool
+}
+
+func (asc *agentSetupCmd) skillsStatusView(ctx context.Context, detected []agentsetup.Status) (skillsStatusView, error) {
+	if len(detected) == 0 {
+		scopes, err := asc.loadSkillsScopes(ctx)
+		return skillsStatusView{scopes: scopes, show: true, allowInstall: true}, err
+	}
+	localDir, err := asc.skillsLocalDir()
+	if err != nil {
+		return skillsStatusView{}, fmt.Errorf("resolving local skills directory: %w", err)
+	}
+	globalDir, err := asc.skillsGlobalDir()
+	if err != nil {
+		return skillsStatusView{}, fmt.Errorf("resolving global skills directory: %w", err)
+	}
+	if !asc.skillsDirsExist(localDir, globalDir) {
+		return skillsStatusView{}, nil
+	}
+	scopes, err := asc.loadSkillsScopes(ctx)
+	if err != nil {
+		return skillsStatusView{}, err
+	}
+	if !skillsScopesHasInstalled(scopes) {
+		return skillsStatusView{}, nil
+	}
+	return skillsStatusView{scopes: scopes, show: true}, nil
 }
 
 func (asc *agentSetupCmd) needsInteractiveSkills() bool {
@@ -504,6 +535,36 @@ func skillsScopeCheckFailed(d agentskills.DirStatus) bool {
 	return d.Status == agentskills.StatusError
 }
 
+func skillsScopeHasInstalled(d agentskills.DirStatus) bool {
+	switch d.Status {
+	case agentskills.StatusCurrent, agentskills.StatusOutOfDate, agentskills.StatusPartial:
+		return true
+	case agentskills.StatusError:
+		return d.InstalledCount > 0
+	default:
+		return false
+	}
+}
+
+func skillsScopesHasInstalled(scopes skillsScopes) bool {
+	return skillsScopeHasInstalled(scopes.Local) || skillsScopeHasInstalled(scopes.Global)
+}
+
+func skillsDirsExist(localDir, globalDir string) bool {
+	for _, dir := range []string{localDir, globalDir} {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func skillsScopeNeedsUpdate(d agentskills.DirStatus) bool {
 	return d.Status == agentskills.StatusOutOfDate
 }
@@ -512,11 +573,10 @@ func skillsScopeNeedsInstall(d agentskills.DirStatus) bool {
 	return d.Status == agentskills.StatusNotInstalled
 }
 
-func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status, skills skillsScopes) error {
+func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status, view skillsStatusView) error {
 	result := agentSetupJSON{
 		Status:  aggregateStatus(statuses),
 		Clients: statuses,
-		Skills:  skillsScopesJSON(skills),
 	}
 	for _, status := range statuses {
 		if plan := providers[status.Client].Plan(status, asc.force); plan.Action != agentsetup.ActionNone {
@@ -526,16 +586,19 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 			result.Errors = append(result.Errors, status.Error)
 		}
 	}
-	if skillsScopeNeedsUpdate(skills.Local) || skillsScopeNeedsUpdate(skills.Global) {
-		result.Actions = append(result.Actions, agentsetup.Plan{
-			Action:  "update_skills",
-			Command: []string{"stripe", "agent", "setup"},
-		})
-	} else if skillsScopeNeedsInstall(skills.Local) || skillsScopeNeedsInstall(skills.Global) {
-		result.Actions = append(result.Actions, agentsetup.Plan{
-			Action:  "install_skills",
-			Command: []string{"stripe", "agent", "setup"},
-		})
+	if view.show {
+		result.Skills = &skillsScopesJSON{Local: view.scopes.Local, Global: view.scopes.Global}
+		if skillsScopeNeedsUpdate(view.scopes.Local) || skillsScopeNeedsUpdate(view.scopes.Global) {
+			result.Actions = append(result.Actions, agentsetup.Plan{
+				Action:  "update_skills",
+				Command: []string{"stripe", "agent", "setup"},
+			})
+		} else if view.allowInstall && (skillsScopeNeedsInstall(view.scopes.Local) || skillsScopeNeedsInstall(view.scopes.Global)) {
+			result.Actions = append(result.Actions, agentsetup.Plan{
+				Action:  "install_skills",
+				Command: []string{"stripe", "agent", "setup"},
+			})
+		}
 	}
 
 	enc := json.NewEncoder(w)
@@ -672,7 +735,7 @@ func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 }
 
 // printSkillsStatusTable renders the local and global skills install state.
-func printSkillsStatusTable(w io.Writer, skills skillsScopes) {
+func printSkillsStatusTable(w io.Writer, skills skillsScopes, allowInstall bool) {
 	color := ansi.Color(w)
 
 	fmt.Fprintln(w, color.Bold("Stripe skills:").String())
@@ -701,7 +764,7 @@ func printSkillsStatusTable(w io.Writer, skills skillsScopes) {
 	switch {
 	case needsUpdate:
 		fmt.Fprintf(w, "\nRun %s to update your Stripe skills.\n", color.Bold("stripe agent setup").String())
-	case needsInstall:
+	case needsInstall && allowInstall:
 		fmt.Fprintf(w, "\nRun %s to install your Stripe skills.\n", color.Bold("stripe agent setup").String())
 	}
 }
