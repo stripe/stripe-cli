@@ -1,3 +1,4 @@
+// Package autoupdate implements automatic version updates for curl-installed Stripe CLI binaries.
 package autoupdate
 
 import (
@@ -25,7 +26,7 @@ func isOptedOut() bool {
 		return false
 	}
 
-	return v.GetBool("settings.auto_update") == false && v.IsSet("settings.auto_update")
+	return !v.GetBool("settings.auto_update") && v.IsSet("settings.auto_update")
 }
 
 func isCurlInstall() bool {
