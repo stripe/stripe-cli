@@ -57,6 +57,7 @@ type agentSetupCmd struct {
 	// Skills installation is injectable so tests can avoid the network and
 	// point installs at temp directories.
 	skillsInstall   func(ctx context.Context, destDir string) ([]string, error)
+	skillsCheck     func(ctx context.Context, destDir string) (*agentskills.DirStatus, error)
 	skillsLocalDir  func() (string, error)
 	skillsGlobalDir func() (string, error)
 
@@ -71,8 +72,20 @@ type agentSetupCmd struct {
 type agentSetupJSON struct {
 	Status  string              `json:"status"`
 	Clients []agentsetup.Status `json:"clients"`
+	Skills  skillsScopesJSON    `json:"skills"`
 	Actions []agentsetup.Plan   `json:"actions,omitempty"`
 	Errors  []string            `json:"errors,omitempty"`
+}
+
+type skillsScopesJSON struct {
+	Local  agentskills.DirStatus `json:"local"`
+	Global agentskills.DirStatus `json:"global"`
+}
+
+// skillsScopes holds the check result for local and global skill directories.
+type skillsScopes struct {
+	Local  agentskills.DirStatus
+	Global agentskills.DirStatus
 }
 
 func newAgentCmd() *agentCmd {
@@ -93,6 +106,9 @@ func newAgentSetupCmd() *agentSetupCmd {
 		skillsInstall: func(ctx context.Context, destDir string) ([]string, error) {
 			return agentskills.Install(ctx, nil, destDir)
 		},
+		skillsCheck: func(ctx context.Context, destDir string) (*agentskills.DirStatus, error) {
+			return agentskills.Check(ctx, nil, destDir)
+		},
 		skillsLocalDir:  func() (string, error) { return skillsDirUnder(os.Getwd) },
 		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
 		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
@@ -110,7 +126,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 	}
 	asc.cmd.Flags().BoolVar(&asc.statusOnly, "status", false, "Check installed agent tooling without making changes")
 	asc.cmd.Flags().BoolVarP(&asc.yes, "yes", "y", false, "Set up every detected client without prompting")
-	asc.cmd.Flags().BoolVar(&asc.force, "force", false, "Reinstall even when agent tooling is already installed")
+	asc.cmd.Flags().BoolVar(&asc.force, "force", false, "Reinstall even when agent tooling or skills are already up to date")
 	asc.cmd.Flags().StringVar(&asc.client, "client", "", fmt.Sprintf("Limit setup to a single client; supported values: %s", agentsetup.SupportedProviderIDs(asc.providers)))
 	asc.cmd.Flags().BoolVar(&asc.jsonOutput, "json", false, "Write machine-readable status output")
 
@@ -145,24 +161,38 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	if asc.jsonOutput {
-		return asc.writeJSON(out, providers, statuses)
-	}
-
 	detected := detectedStatuses(statuses)
 
+	var skills skillsScopes
+	runErr := spinner.New().
+		WithLabel("Checking skills...").
+		WithOutput(os.Stderr).
+		Run(func() error {
+			var e error
+			skills, e = asc.checkSkillsScopes(ctx)
+			return e
+		})
+	if runErr != nil {
+		return runErr
+	}
+
+	if asc.jsonOutput {
+		return asc.writeJSON(out, providers, statuses, skills)
+	}
+
 	if asc.statusOnly {
-		if len(detected) == 0 {
+		if len(detected) > 0 {
+			printStatusTable(out, detected)
+			fmt.Fprintln(out)
+		} else {
 			printNothingDetected(out)
-			return nil
+			fmt.Fprintln(out)
 		}
-		// Only show clients that are actually installed on this machine; there's
-		// no value in listing clients the user doesn't have.
-		printStatusTable(out, detected)
+		printSkillsStatusTable(out, skills)
 		return nil
 	}
 
-	sel, scope, err := asc.resolveSelection(cmd, out, detected)
+	sel, scope, err := asc.resolveSelection(cmd, out, detected, skills)
 	if err != nil {
 		return err
 	}
@@ -177,7 +207,7 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 // interactive TUI when attached to a terminal (and --yes was not passed),
 // otherwise it derives the selection from flags.
 // A nil Selection means there is nothing to do and a message has been printed.
-func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, detected []agentsetup.Status) (*Selection, string, error) {
+func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, detected []agentsetup.Status, skills skillsScopes) (*Selection, string, error) {
 	// Detect the calling agent up front.
 	agent := asc.callingAgent()
 
@@ -204,7 +234,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		if asc.isInteractive() && agent == "" {
 			printNothingDetectedInteractive(out)
 			fmt.Fprintln(out)
-			chosen, ok, err := RunSkillsScopeTUI()
+			chosen, ok, err := RunSkillsScopeTUI(skills)
 			if err != nil {
 				return nil, "", err
 			}
@@ -228,7 +258,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		return &Selection{Agents: detected}, "", nil
 	}
 
-	sel, err := RunSelectionTUI(detected)
+	sel, err := RunSelectionTUI(detected, skills)
 	if err != nil {
 		return nil, "", err
 	}
@@ -248,7 +278,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 	// If skills were selected in the TUI, ask where to install them.
 	if sel.InstallSkills {
 		fmt.Fprintln(out)
-		chosen, ok, err := RunSkillsScopeTUI()
+		chosen, ok, err := RunSkillsScopeTUI(skills)
 		if err != nil {
 			return nil, "", err
 		}
@@ -286,7 +316,7 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 	cross := color.Red("✗").String()
 	warn := color.Yellow("⚠").String()
 
-	var successCount, skipCount, errCount int
+	var installedCount, updatedCount, skipCount, errCount int
 	for _, status := range sel.Agents {
 		provider := providers[status.Client]
 		plan := provider.Plan(status, asc.force)
@@ -319,18 +349,21 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		}
 		fmt.Fprintf(out, "  %s done\n", check)
 		sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":success")
-		successCount++
+		installedCount++
 	}
 
 	if sel.InstallSkills {
-		if asc.installSkills(ctx, out, scope, check, cross) {
-			successCount++
-		} else {
+		ok, installed, updated, skipped := asc.installSkills(ctx, out, scope, check, cross)
+		if !ok {
 			errCount++
+		} else if !skipped {
+			installedCount += installed
+			updatedCount += updated
 		}
+		// Skills already up to date are a successful no-op; they don't count as skipped.
 	}
 
-	fmt.Fprintf(out, "\n%d installed, %d skipped, %d errors\n", successCount, skipCount, errCount)
+	fmt.Fprintf(out, "\n%d installed, %d updated, %d skipped, %d errors\n", installedCount, updatedCount, skipCount, errCount)
 	if errCount > 0 {
 		return fmt.Errorf("%d item(s) failed to set up", errCount)
 	}
@@ -338,8 +371,9 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 }
 
 // installSkills fetches and writes Stripe skills to the local or global
-// .agents/skills directory. It returns true on success.
-func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scope, check, cross string) bool {
+// .agents/skills directory. It returns (ok, installed, updated, skipped):
+// skipped is true when skills were already current and --force was not set.
+func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scope, check, cross string) (bool, int, int, bool) {
 	fmt.Fprintf(out, "\n  Stripe skills (%s)\n", scope)
 
 	dirFn := asc.skillsLocalDir
@@ -350,33 +384,119 @@ func (asc *agentSetupCmd) installSkills(ctx context.Context, out io.Writer, scop
 	if err != nil {
 		fmt.Fprintf(out, "  %s error: resolving skills directory: %v\n", cross, err)
 		sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":error")
-		return false
+		return false, 0, 0, false
 	}
 
-	var installed []string
+	var priorStatus *agentskills.DirStatus
+	checkErr := spinner.New().
+		WithLabel("Checking skills...").
+		WithOutput(os.Stderr).
+		Run(func() error {
+			var e error
+			priorStatus, e = asc.skillsCheck(ctx, dir)
+			return e
+		})
+	if checkErr != nil {
+		fmt.Fprintf(out, "  %s error: %v\n", cross, checkErr)
+		sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":error")
+		return false, 0, 0, false
+	}
+
+	if priorStatus.Status == agentskills.StatusCurrent && !asc.force {
+		fmt.Fprintf(out, "  %s already up to date\n", check)
+		sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":skip")
+		return true, 0, 0, true
+	}
+
+	var skillNames []string
 	runErr := spinner.New().
 		WithLabel("Installing skills...").
 		WithOutput(os.Stderr).
 		Run(func() error {
 			var e error
-			installed, e = asc.skillsInstall(ctx, dir)
+			skillNames, e = asc.skillsInstall(ctx, dir)
 			return e
 		})
 	if runErr != nil {
 		fmt.Fprintf(out, "  %s error: %v\n", cross, runErr)
 		sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":error")
-		return false
+		return false, 0, 0, false
+	}
+
+	priorByName := make(map[string]agentskills.SkillCheck, len(priorStatus.Skills))
+	for _, skill := range priorStatus.Skills {
+		priorByName[skill.Name] = skill
+	}
+
+	var installed, updated int
+	for _, name := range skillNames {
+		prior, ok := priorByName[name]
+		if !ok || prior.Status == agentskills.StatusNotInstalled {
+			installed++
+			continue
+		}
+		updated++
+	}
+
+	switch {
+	case installed > 0 && updated > 0:
+		fmt.Fprintf(out, "  %s installed %d and updated %d skill(s) to %s: %s\n", check, installed, updated, dir, strings.Join(skillNames, ", "))
+	case updated > 0:
+		fmt.Fprintf(out, "  %s updated %d skill(s) to %s: %s\n", check, updated, dir, strings.Join(skillNames, ", "))
+	default:
+		fmt.Fprintf(out, "  %s installed %d skill(s) to %s: %s\n", check, installed, dir, strings.Join(skillNames, ", "))
 	}
 
 	sendAgentEvent(ctx, "Agent Setup: Skills Install", scope+":success")
-	fmt.Fprintf(out, "  %s installed %d skill(s) to %s: %s\n", check, len(installed), dir, strings.Join(installed, ", "))
-	return true
+	return true, installed, updated, false
 }
 
-func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status) error {
+func (asc *agentSetupCmd) checkSkillsScopes(ctx context.Context) (skillsScopes, error) {
+	localDir, err := asc.skillsLocalDir()
+	if err != nil {
+		return skillsScopes{}, fmt.Errorf("resolving local skills directory: %w", err)
+	}
+	globalDir, err := asc.skillsGlobalDir()
+	if err != nil {
+		return skillsScopes{}, fmt.Errorf("resolving global skills directory: %w", err)
+	}
+
+	local, err := asc.skillsCheck(ctx, localDir)
+	if err != nil {
+		return skillsScopes{}, err
+	}
+	global, err := asc.skillsCheck(ctx, globalDir)
+	if err != nil {
+		return skillsScopes{}, err
+	}
+
+	return skillsScopes{Local: *local, Global: *global}, nil
+}
+
+func skillsNeedsAction(s skillsScopes) bool {
+	return skillsScopeNeedsAction(s.Local) || skillsScopeNeedsAction(s.Global)
+}
+
+func skillsScopeNeedsUpdate(d agentskills.DirStatus) bool {
+	return d.Status == agentskills.StatusOutOfDate || d.Status == agentskills.StatusPartial
+}
+
+func skillsScopeNeedsInstall(d agentskills.DirStatus) bool {
+	return d.Status == agentskills.StatusNotInstalled
+}
+
+func skillsScopeNeedsAction(d agentskills.DirStatus) bool {
+	return skillsScopeNeedsUpdate(d) || skillsScopeNeedsInstall(d)
+}
+
+func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status, skills skillsScopes) error {
 	result := agentSetupJSON{
 		Status:  aggregateStatus(statuses),
 		Clients: statuses,
+		Skills: skillsScopesJSON{
+			Local:  skills.Local,
+			Global: skills.Global,
+		},
 	}
 	for _, status := range statuses {
 		if plan := providers[status.Client].Plan(status, asc.force); plan.Action != agentsetup.ActionNone {
@@ -385,6 +505,17 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		if status.Status == agentsetup.StatusError {
 			result.Errors = append(result.Errors, status.Error)
 		}
+	}
+	if skillsScopeNeedsUpdate(skills.Local) || skillsScopeNeedsUpdate(skills.Global) {
+		result.Actions = append(result.Actions, agentsetup.Plan{
+			Action:  "update_skills",
+			Command: []string{"stripe", "agent", "setup"},
+		})
+	} else if skillsScopeNeedsInstall(skills.Local) || skillsScopeNeedsInstall(skills.Global) {
+		result.Actions = append(result.Actions, agentsetup.Plan{
+			Action:  "install_skills",
+			Command: []string{"stripe", "agent", "setup"},
+		})
 	}
 
 	enc := json.NewEncoder(w)
@@ -517,6 +648,58 @@ func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 
 	if needsSetup {
 		fmt.Fprintf(w, "\nRun %s to install the Stripe plugin where it's missing.\n", color.Bold("stripe agent setup").String())
+	}
+}
+
+// printSkillsStatusTable renders the local and global skills install state.
+func printSkillsStatusTable(w io.Writer, skills skillsScopes) {
+	color := ansi.Color(w)
+
+	fmt.Fprintln(w, color.Bold("Stripe skills:").String())
+	fmt.Fprintln(w)
+
+	scopeWidth := len("global")
+	needsInstall := false
+	needsUpdate := false
+	for _, entry := range []struct {
+		name string
+		dir  agentskills.DirStatus
+	}{
+		{"local", skills.Local},
+		{"global", skills.Global},
+	} {
+		icon, state := skillsScopeStatusLine(w, entry.dir)
+		if skillsScopeNeedsInstall(entry.dir) {
+			needsInstall = true
+		}
+		if skillsScopeNeedsUpdate(entry.dir) {
+			needsUpdate = true
+		}
+		fmt.Fprintf(w, "  %s  %-*s  %s  %s\n", icon, scopeWidth, entry.name, state, color.Faint(entry.dir.Dir).String())
+	}
+
+	switch {
+	case needsUpdate:
+		fmt.Fprintf(w, "\nRun %s to update your Stripe skills.\n", color.Bold("stripe agent setup").String())
+	case needsInstall:
+		fmt.Fprintf(w, "\nRun %s to install your Stripe skills.\n", color.Bold("stripe agent setup").String())
+	}
+}
+
+func skillsScopeStatusLine(w io.Writer, d agentskills.DirStatus) (icon, state string) {
+	color := ansi.Color(w)
+	total := len(d.Skills)
+	switch d.Status {
+	case agentskills.StatusError:
+		return color.Red("✗").String(), color.Red("error: " + d.Error).String()
+	case agentskills.StatusCurrent:
+		return color.Green("✔").String(), fmt.Sprintf("%d skills up to date", total)
+	case agentskills.StatusOutOfDate:
+		return color.Yellow("⚠").String(), fmt.Sprintf("%d of %d skills out of date", d.OutOfDateCount, total)
+	case agentskills.StatusPartial:
+		return color.Yellow("⚠").String(), fmt.Sprintf("%d of %d skills installed, some out of date", d.InstalledCount, total)
+	default:
+		return color.Yellow("•").String(), "not installed"
 	}
 }
 

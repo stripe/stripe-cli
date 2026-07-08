@@ -3,11 +3,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
+	"github.com/stripe/stripe-cli/pkg/agentskills"
 )
 
 const (
@@ -45,7 +47,7 @@ type Selection struct {
 	InstallSkills bool
 }
 
-func newSelectModel(statuses []agentsetup.Status) selectModel {
+func newSelectModel(statuses []agentsetup.Status, skills skillsScopes) selectModel {
 	rows := make([]selectRow, 0, len(statuses)+1)
 	for _, s := range statuses {
 		row := selectRow{
@@ -66,14 +68,31 @@ func newSelectModel(statuses []agentsetup.Status) selectModel {
 		row.selected = !row.disabled
 		rows = append(rows, row)
 	}
+
+	skillsLabel, skillsDetail, skillsSelected := skillsRowPresentation(statuses, skills)
 	rows = append(rows, selectRow{
 		kind:     rowSkills,
-		label:    "Install Stripe skills",
-		detail:   "",
-		selected: len(statuses) == 0, // pre-selected only when it's the sole option
+		label:    skillsLabel,
+		detail:   skillsDetail,
+		selected: skillsSelected,
 	})
 
 	return selectModel{rows: rows}
+}
+
+func skillsRowPresentation(statuses []agentsetup.Status, skills skillsScopes) (label, detail string, selected bool) {
+	label = "Install Stripe skills"
+
+	hasOutOfDate := skillsScopeNeedsUpdate(skills.Local) || skillsScopeNeedsUpdate(skills.Global)
+	if hasOutOfDate {
+		return label, "Detected outdated Stripe skills", true
+	}
+
+	if skills.Local.Status == agentskills.StatusCurrent && skills.Global.Status == agentskills.StatusCurrent {
+		return "Stripe skills", "up to date", false
+	}
+
+	return label, "", len(statuses) == 0
 }
 
 func (m selectModel) Init() tea.Cmd { return nil }
@@ -191,8 +210,8 @@ func (m selectModel) View() tea.View {
 
 // RunSelectionTUI shows the checklist and returns the user's selection. It
 // returns nil (not an error) when the user quits without confirming.
-func RunSelectionTUI(statuses []agentsetup.Status) (*Selection, error) {
-	m := newSelectModel(statuses)
+func RunSelectionTUI(statuses []agentsetup.Status, skills skillsScopes) (*Selection, error) {
+	m := newSelectModel(statuses, skills)
 	final, err := tea.NewProgram(m).Run()
 	if err != nil {
 		return nil, fmt.Errorf("agent selection: %w", err)
@@ -210,24 +229,79 @@ func RunSelectionTUI(statuses []agentsetup.Status) (*Selection, error) {
 type scopeModel struct {
 	options []string
 	labels  []string
+	title   string
 	cursor  int
 	done    bool
 	quit    bool
 }
 
-func newScopeModel() scopeModel {
-	localLabel := "This project (current directory only)"
+func newScopeModel(skills skillsScopes) scopeModel {
+	localPath := ".agents/skills"
 	if cwd, err := os.Getwd(); err == nil {
-		localLabel = fmt.Sprintf("This project   %s/.agents/skills", cwd)
+		localPath = filepath.Join(cwd, ".agents", "skills")
 	}
-	globalLabel := "Global (available everywhere)"
+	globalPath := ".agents/skills"
 	if home, err := os.UserHomeDir(); err == nil {
-		globalLabel = fmt.Sprintf("Global         %s/.agents/skills", home)
+		globalPath = filepath.Join(home, ".agents", "skills")
 	}
+
+	title := "Install Stripe skills where?"
+	if skillsScopeNeedsUpdate(skills.Local) || skillsScopeNeedsUpdate(skills.Global) {
+		title = "Update Stripe skills where?"
+	}
+
+	cursor := 0
+	if preferred := preferredSkillsScope(skills); preferred == skillsScopeGlobal {
+		cursor = 1
+	}
+
 	return scopeModel{
 		options: []string{skillsScopeLocal, skillsScopeGlobal},
-		labels:  []string{localLabel, globalLabel},
+		labels: []string{
+			scopeOptionLabel("This project", localPath, skills.Local),
+			scopeOptionLabel("Global", globalPath, skills.Global),
+		},
+		title:  title,
+		cursor: cursor,
 	}
+}
+
+func scopeOptionLabel(prefix, path string, status agentskills.DirStatus) string {
+	if hint := scopeStatusHint(status); hint != "" {
+		return fmt.Sprintf("%-14s %s  %s", prefix, path, hint)
+	}
+	return fmt.Sprintf("%-14s %s", prefix, path)
+}
+
+func scopeStatusHint(status agentskills.DirStatus) string {
+	switch status.Status {
+	case agentskills.StatusCurrent:
+		return "(up to date)"
+	case agentskills.StatusOutOfDate:
+		return "(out of date)"
+	case agentskills.StatusPartial:
+		return "(partially installed)"
+	case agentskills.StatusNotInstalled:
+		return "(not installed)"
+	default:
+		return ""
+	}
+}
+
+func preferredSkillsScope(skills skillsScopes) string {
+	if skillsScopeNeedsUpdate(skills.Local) {
+		return skillsScopeLocal
+	}
+	if skillsScopeNeedsUpdate(skills.Global) {
+		return skillsScopeGlobal
+	}
+	if skillsScopeNeedsInstall(skills.Local) {
+		return skillsScopeLocal
+	}
+	if skillsScopeNeedsInstall(skills.Global) {
+		return skillsScopeGlobal
+	}
+	return skillsScopeLocal
 }
 
 func (m scopeModel) Init() tea.Cmd { return nil }
@@ -257,7 +331,7 @@ func (m scopeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m scopeModel) View() tea.View {
-	body := "Install Stripe skills where?\n\n"
+	body := m.title + "\n\n"
 	for i := range m.options {
 		marker := "( )"
 		if i == m.cursor {
@@ -275,8 +349,8 @@ func (m scopeModel) View() tea.View {
 
 // RunSkillsScopeTUI prompts for the skills install scope, returning "local" or
 // "global". ok is false when the user cancels.
-func RunSkillsScopeTUI() (scope string, ok bool, err error) {
-	final, runErr := tea.NewProgram(newScopeModel()).Run()
+func RunSkillsScopeTUI(skills skillsScopes) (scope string, ok bool, err error) {
+	final, runErr := tea.NewProgram(newScopeModel(skills)).Run()
 	if runErr != nil {
 		return "", false, fmt.Errorf("skills scope selection: %w", runErr)
 	}
