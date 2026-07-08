@@ -7,11 +7,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/autoupdate"
 	"github.com/stripe/stripe-cli/pkg/cmd"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func main() {
+	// Apply pending update (downloads + re-execs if an update was staged)
+	autoupdate.ApplyIfPending()
+
 	ctx := context.Background()
 
 	if stripe.TelemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) || stripe.TelemetryOptedOut(os.Getenv("DO_NOT_TRACK")) {
@@ -35,4 +39,7 @@ func main() {
 		// Wait for all telemetry calls to finish before existing the process
 		telemetryClient.Wait()
 	}
+
+	// Check for updates after command completes (once per day, synchronous)
+	autoupdate.CheckInBackground()
 }
