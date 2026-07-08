@@ -45,6 +45,8 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
+      - name: simulated setup failure (remove before merge)
+        run: exit 1
       - id: install_test
         run: bash scripts/install-test.sh apt
   yum:
