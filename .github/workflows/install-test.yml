@@ -46,7 +46,7 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - id: install_test
-        run: exit 1 # simulated install-test failure (remove before merge)
+        run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
     container: fedora:latest
