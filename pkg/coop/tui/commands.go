@@ -38,9 +38,9 @@ func (m Model) checkForUpdates() tea.Cmd {
 
 func (m Model) discoverNewSession() tea.Cmd {
 	store := m.store
-	existingIDs := m.existingIDs
+	existingSessionIDs := m.existingSessionIDs
 	return func() tea.Msg {
-		if existingIDs == nil {
+		if existingSessionIDs == nil {
 			return noUpdateMsg{}
 		}
 		ids, err := store.List()
@@ -48,7 +48,7 @@ func (m Model) discoverNewSession() tea.Cmd {
 			return noUpdateMsg{}
 		}
 		for _, id := range ids {
-			if !existingIDs[id] {
+			if !existingSessionIDs[id] {
 				session, err := store.Read(id)
 				if err == nil && session.Status == coop.SessionActive {
 					return sessionDiscoveredMsg{sessionID: id}
@@ -66,11 +66,11 @@ func (m Model) snapshotWaitingBaseline() tea.Cmd {
 		if err != nil {
 			return waitingBaselineMsg{err: err}
 		}
-		existingIDs := make(map[string]bool, len(ids))
+		existingSessionIDs := make(map[string]bool, len(ids))
 		for _, id := range ids {
-			existingIDs[id] = true
+			existingSessionIDs[id] = true
 		}
-		return waitingBaselineMsg{existingIDs: existingIDs}
+		return waitingBaselineMsg{existingSessionIDs: existingSessionIDs}
 	}
 }
 
@@ -101,10 +101,10 @@ func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 
 func (m *Model) selectCompletionOption() tea.Cmd {
 	suggestions := m.getCompletionSuggestions()
-	if m.cursor >= len(suggestions) {
+	if m.selectionCursor >= len(suggestions) {
 		return nil
 	}
-	selected := suggestions[m.cursor]
+	selected := suggestions[m.selectionCursor]
 	if m.session != nil {
 		session, err := m.store.Update(m.session.ID, func(session *coop.Session) error {
 			if session.NextSteps == nil {
@@ -129,6 +129,8 @@ func (m *Model) selectCompletionOption() tea.Cmd {
 }
 
 func (m Model) returnToParent() tea.Cmd {
+	// Follow-up sessions keep immediate parentage. For A -> B -> C, completing C
+	// returns to B; B can then surface its own parent relationship if needed.
 	parentID := m.session.ParentSessionID
 	stepID := m.session.ParentStepID
 	store := m.store

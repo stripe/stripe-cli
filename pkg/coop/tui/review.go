@@ -345,10 +345,7 @@ func (m Model) reviewCommandLabel(nodeNumbers []int) string {
 	if len(commands) == 0 {
 		return ""
 	}
-	if len(commands) > 2 {
-		return strings.Join(commands[:2], " && ") + fmt.Sprintf(" && # +%d more", len(commands)-2)
-	}
-	return strings.Join(commands, " && ")
+	return strings.Join(commands, "\n")
 }
 
 func reviewCommandForNode(node *coop.SessionNode) string {

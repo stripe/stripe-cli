@@ -22,14 +22,19 @@ type sessionUpdatedMsg struct {
 	session *coop.Session
 }
 
-// errMsg wraps file read errors.
+// errMsg wraps errors that should replace the TUI with an error view.
 type errMsg struct {
 	err error
 }
 
+type statusMsg struct {
+	message string
+	ttl     time.Duration
+}
+
 type waitingBaselineMsg struct {
-	existingIDs map[string]bool
-	err         error
+	existingSessionIDs map[string]bool
+	err                error
 }
 
 // sessionDiscoveredMsg is sent when a new session is found in waiting mode.

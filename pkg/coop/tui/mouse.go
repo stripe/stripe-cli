@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -69,24 +67,7 @@ func (m Model) navigationContentLines() map[int]navigationItem {
 }
 
 func (m Model) completionSuggestionLines() map[int]int {
-	result := map[int]int{}
-	suggestions := m.getCompletionSuggestions()
-	if len(suggestions) == 0 {
-		return result
-	}
-	lines := strings.Split(m.renderCompletionBody(), "\n")
-	for suggestionIdx, suggestion := range suggestions {
-		for lineIdx, line := range lines {
-			if _, exists := result[lineIdx]; exists {
-				continue
-			}
-			if strings.Contains(line, suggestion.title) {
-				result[lineIdx] = suggestionIdx
-				break
-			}
-		}
-	}
-	return result
+	return m.renderCompletionBodyWithLines().suggestionLines
 }
 
 func (m Model) handleMouseAction(msg mouseActionMsg) (tea.Model, tea.Cmd) {
@@ -120,7 +101,7 @@ func (m Model) handleMouseAction(msg mouseActionMsg) (tea.Model, tea.Cmd) {
 		if msg.index < 0 || msg.index >= len(suggestions) {
 			return m, nil
 		}
-		m.cursor = msg.index
+		m.selectionCursor = msg.index
 		m.syncViewport()
 		return m.handleEnter()
 	case mouseActionOpenClaim:

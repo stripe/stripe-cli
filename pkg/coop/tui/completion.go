@@ -20,6 +20,16 @@ func (m Model) renderCompletionView() string {
 }
 
 func (m Model) renderCompletionBody() string {
+	return m.renderCompletionBodyWithLines().body
+}
+
+type completionBody struct {
+	body            string
+	suggestionLines map[int]int
+}
+
+func (m Model) renderCompletionBodyWithLines() completionBody {
+	suggestionLines := map[int]int{}
 	w := m.contentWidth() - 4
 
 	summary := m.session.NodeSummary()
@@ -56,13 +66,13 @@ func (m Model) renderCompletionBody() string {
 	suggestions := m.getCompletionSuggestions()
 	if len(suggestions) == 0 {
 		content += "\n\n  " + m.spinner.View() + " Waiting for agent to publish next steps..."
-		return content
+		return completionBody{body: content, suggestionLines: suggestionLines}
 	}
 	completed := m.getCompletedSuggestionIDs()
 
 	for i, s := range suggestions {
 		cur := "  "
-		if i == m.cursor {
+		if i == m.selectionCursor {
 			cur = m.theme.BrandStyle.Render(cursorMarker)
 		}
 		isDone := completed[s.id]
@@ -71,11 +81,12 @@ func (m Model) renderCompletionBody() string {
 			icon = m.theme.SuccessStyle.Render("✓")
 		}
 		title := s.title
-		if i == m.cursor {
+		if i == m.selectionCursor {
 			title = lipgloss.NewStyle().Bold(true).Render(title)
 		} else if isDone {
 			title = m.theme.DimmedStyle.Render(title)
 		}
+		suggestionLines[strings.Count(content, "\n")+1] = i
 		content += "\n" + fmt.Sprintf("  %s%s %s", cur, icon, title)
 		if s.desc != "" && !isDone {
 			descW := min(w-10, 55)
@@ -85,7 +96,7 @@ func (m Model) renderCompletionBody() string {
 		}
 	}
 
-	return content
+	return completionBody{body: content, suggestionLines: suggestionLines}
 }
 
 func (m Model) renderCompletionReceipt(width int) string {

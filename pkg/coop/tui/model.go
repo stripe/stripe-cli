@@ -26,18 +26,17 @@ type Model struct {
 	lastVersion     int
 	sandboxClaimURL string
 
-	cursor         int
-	selected       navigationItem
-	collapsedSteps map[int]bool
-	expanded       bool
-	detailTab      int
-	width          int
-	height         int
-	userMoved      bool
+	selectionCursor int // node index in work view, completion option index in completion view
+	selected        navigationItem
+	collapsedSteps  map[int]bool
+	expanded        bool
+	detailTab       int
+	width           int
+	height          int
+	userMoved       bool
 
-	rejecting       bool
+	rejecting       bool // true while the request-changes input is active
 	rejectTarget    reviewTarget
-	hasRejectTarget bool
 	rejectionInput  textarea.Model
 	rejectionError  string
 	statusMessage   string
@@ -57,11 +56,11 @@ type Model struct {
 	sdkLoading     bool
 	sdkLoadingNode int
 
-	waiting        bool
-	waitingMessage string
-	existingIDs    map[string]bool
-	lastUpdateTime time.Time
-	agentIsIdle    bool
+	waiting            bool
+	waitingMessage     string
+	existingSessionIDs map[string]bool
+	lastUpdateTime     time.Time
+	agentIsIdle        bool
 
 	isDark  bool
 	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
@@ -129,22 +128,22 @@ func NewModel(store *coop.Store, sessionID string, opts ...Option) Model {
 }
 
 // NewWaitingModel creates a TUI model that waits for a new session to appear.
-func NewWaitingModel(store *coop.Store, existingIDs map[string]bool, opts ...Option) Model {
+func NewWaitingModel(store *coop.Store, existingSessionIDs map[string]bool, opts ...Option) Model {
 	t := NewTheme(true)
 
 	m := Model{
-		store:          store,
-		spinner:        newThemedSpinner(t),
-		rejectionInput: newThemedRejectionInput(t),
-		keys:           newKeyMap(),
-		help:           newThemedHelp(t),
-		theme:          t,
-		isDark:         true,
-		focused:        true,
-		sdkSnippetNode: -1,
-		sdkLoadingNode: -1,
-		waiting:        true,
-		existingIDs:    existingIDs,
+		store:              store,
+		spinner:            newThemedSpinner(t),
+		rejectionInput:     newThemedRejectionInput(t),
+		keys:               newKeyMap(),
+		help:               newThemedHelp(t),
+		theme:              t,
+		isDark:             true,
+		focused:            true,
+		sdkSnippetNode:     -1,
+		sdkLoadingNode:     -1,
+		waiting:            true,
+		existingSessionIDs: existingSessionIDs,
 	}
 	for _, opt := range opts {
 		opt(&m)
@@ -176,18 +175,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleMouseAction(msg)
 
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		if !m.ready {
-			m.viewport = viewport.New(viewport.WithWidth(msg.Width), viewport.WithHeight(10))
-			m.viewport.MouseWheelEnabled = true
-			m.viewport.MouseWheelDelta = 3
-			m.viewport.FillHeight = true
-			m.viewport.SoftWrap = true
-			m.ready = true
-		}
-		m.resizeViewport()
-		m.syncViewport()
+		m.handleWindowSize(msg)
 		return m, nil
 
 	case tickMsg:
@@ -206,28 +194,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = fmt.Errorf("failed to snapshot existing sessions: %w", msg.err)
 			return m, nil
 		}
-		m.existingIDs = msg.existingIDs
+		m.existingSessionIDs = msg.existingSessionIDs
 		return m, nil
 
 	case sessionDiscoveredMsg:
 		m.waiting = false
 		m.waitingMessage = ""
 		m.sessionID = msg.sessionID
-		m.cursor = 0
-		m.selected = navigationItem{}
-		m.collapsedSteps = nil
-		m.expanded = false
-		m.userMoved = false
-		m.rejecting = false
-		m.hasRejectTarget = false
-		m.rejectionInput.SetValue("")
-		m.rejectionError = ""
-		m.statusMessage = ""
-		m.statusExpiresAt = time.Time{}
-		m.sdkSnippet = ""
-		m.sdkSnippetNode = -1
-		m.sdkLoading = false
-		m.sdkLoadingNode = -1
+		m.resetSessionViewState()
 		return m, m.loadSession()
 
 	case sessionUpdatedMsg:
@@ -242,19 +216,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.returnToParent()
 		}
 
-		// Reset cursor when transitioning to completion view
+		// Reset selection when transitioning to completion view.
 		if !wasComplete && m.session.IsComplete() {
-			m.cursor = 0
-			m.selected = navigationItem{}
-			m.collapsedSteps = nil
-			m.expanded = false
-			m.userMoved = false
-			m.statusMessage = ""
-			m.statusExpiresAt = time.Time{}
-			m.rejecting = false
-			m.hasRejectTarget = false
-			m.rejectionInput.SetValue("")
-			m.rejectionError = ""
+			m.resetSelectionState()
+			m.clearStatus()
+			m.clearRejectionState()
 			if m.ready {
 				m.viewport.SetYOffset(0)
 			}
@@ -270,12 +236,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		return m, tickCmd()
 
+	case statusMsg:
+		m.setStatus(msg.message, msg.ttl)
+		m.resizeViewport()
+		m.syncViewport()
+		return m, nil
+
 	case sdkSnippetMsg:
 		if msg.step == m.sdkLoadingNode {
 			m.sdkLoading = false
 			m.sdkLoadingNode = -1
 		}
-		if msg.err == nil && msg.step == m.cursor {
+		if msg.err == nil && msg.step == m.selectionCursor {
 			m.sdkSnippet = msg.snippet
 			m.sdkSnippetNode = msg.step
 		}
@@ -415,6 +387,56 @@ func (m Model) rejectionCursor(content string) *tea.Cursor {
 
 // --- State management ---
 
+func (m *Model) resetSessionViewState() {
+	m.resetSelectionState()
+	m.clearRejectionState()
+	m.clearStatus()
+	m.clearSDKSnippetState()
+}
+
+func (m *Model) resetSelectionState() {
+	m.selectionCursor = 0
+	m.selected = navigationItem{}
+	m.collapsedSteps = nil
+	m.expanded = false
+	m.userMoved = false
+}
+
+func (m *Model) clearRejectionState() {
+	m.rejecting = false
+	m.rejectTarget = reviewTarget{}
+	m.rejectionInput.SetValue("")
+	m.rejectionInput.Blur()
+	m.rejectionError = ""
+}
+
+func (m *Model) clearStatus() {
+	m.statusMessage = ""
+	m.statusExpiresAt = time.Time{}
+}
+
+func (m *Model) clearSDKSnippetState() {
+	m.sdkSnippet = ""
+	m.sdkSnippetNode = -1
+	m.sdkLoading = false
+	m.sdkLoadingNode = -1
+}
+
+func (m *Model) handleWindowSize(msg tea.WindowSizeMsg) {
+	m.width = msg.Width
+	m.height = msg.Height
+	if !m.ready {
+		m.viewport = viewport.New(viewport.WithWidth(msg.Width), viewport.WithHeight(10))
+		m.viewport.MouseWheelEnabled = true
+		m.viewport.MouseWheelDelta = 3
+		m.viewport.FillHeight = true
+		m.viewport.SoftWrap = true
+		m.ready = true
+	}
+	m.resizeViewport()
+	m.syncViewport()
+}
+
 func (m *Model) resizeViewport() {
 	if !m.ready || m.height == 0 {
 		return
@@ -489,11 +511,11 @@ func (m *Model) ensureCompletionCursorVisible() {
 }
 
 func (m Model) completionLineForCursor() (int, bool) {
-	if m.cursor < 0 {
+	if m.selectionCursor < 0 {
 		return 0, false
 	}
 	for line, suggestion := range m.completionSuggestionLines() {
-		if suggestion == m.cursor {
+		if suggestion == m.selectionCursor {
 			return line, true
 		}
 	}
@@ -685,10 +707,10 @@ func (m *Model) moveCursorUp() {
 		if len(suggestions) == 0 {
 			return
 		}
-		if m.cursor > 0 {
-			m.cursor--
+		if m.selectionCursor > 0 {
+			m.selectionCursor--
 		} else {
-			m.cursor = len(suggestions) - 1
+			m.selectionCursor = len(suggestions) - 1
 		}
 	} else {
 		items := m.navigationItems()
@@ -710,10 +732,10 @@ func (m *Model) moveCursorDown() {
 		if len(suggestions) == 0 {
 			return
 		}
-		if m.cursor < len(suggestions)-1 {
-			m.cursor++
+		if m.selectionCursor < len(suggestions)-1 {
+			m.selectionCursor++
 		} else {
-			m.cursor = 0
+			m.selectionCursor = 0
 		}
 	} else {
 		items := m.navigationItems()
@@ -732,8 +754,8 @@ func (m *Model) moveCursorDown() {
 func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	if m.session != nil && m.session.IsComplete() {
 		suggestions := m.getCompletionSuggestions()
-		if m.cursor < len(suggestions) {
-			selected := suggestions[m.cursor]
+		if m.selectionCursor < len(suggestions) {
+			selected := suggestions[m.selectionCursor]
 			cmd := m.selectCompletionOption()
 
 			switch selected.id {
@@ -763,18 +785,8 @@ func (m *Model) enterWaitingMode(message string) tea.Cmd {
 	m.waiting = true
 	m.waitingMessage = message
 	m.session = nil
-	m.cursor = 0
-	m.selected = navigationItem{}
-	m.collapsedSteps = nil
-	m.expanded = false
-	m.userMoved = false
-	m.rejecting = false
-	m.hasRejectTarget = false
-	m.rejectionInput.SetValue("")
-	m.rejectionError = ""
-	m.statusMessage = ""
-	m.statusExpiresAt = time.Time{}
-	m.existingIDs = nil
+	m.resetSessionViewState()
+	m.existingSessionIDs = nil
 	return m.snapshotWaitingBaseline()
 }
 
@@ -798,17 +810,10 @@ func (m *Model) handleConfirm() tea.Cmd {
 	}
 	m.userMoved = false
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
-	m.rejecting = false
-	m.hasRejectTarget = false
-	m.rejectionInput.SetValue("")
-	m.rejectionError = ""
+	m.clearRejectionState()
 	if m.session.IsComplete() {
-		m.cursor = 0
-		m.selected = navigationItem{}
-		m.collapsedSteps = nil
-		m.expanded = false
-		m.statusMessage = ""
-		m.statusExpiresAt = time.Time{}
+		m.resetSelectionState()
+		m.clearStatus()
 	}
 	m.resizeViewport()
 	m.syncViewport()
@@ -825,12 +830,10 @@ func (m *Model) startReject() tea.Cmd {
 	if target, ok := m.selectedReviewTarget(); ok {
 		m.rejecting = true
 		m.rejectTarget = target
-		m.hasRejectTarget = true
 		m.rejectionInput.SetValue("")
 		m.rejectionInput.Placeholder = m.requestChangesPlaceholder(target)
 		m.rejectionError = ""
-		m.statusMessage = ""
-		m.statusExpiresAt = time.Time{}
+		m.clearStatus()
 		m.resizeViewport()
 		m.syncViewport()
 		return m.rejectionInput.Focus()
@@ -841,11 +844,7 @@ func (m *Model) startReject() tea.Cmd {
 func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Escape):
-		m.rejecting = false
-		m.hasRejectTarget = false
-		m.rejectionInput.SetValue("")
-		m.rejectionInput.Blur()
-		m.rejectionError = ""
+		m.clearRejectionState()
 		m.setStatus("Request changes canceled.", 3*time.Second)
 		m.resizeViewport()
 		m.syncViewport()
@@ -872,11 +871,8 @@ func (m *Model) handleReject(note string) {
 		m.syncViewport()
 		return
 	}
-	if !m.hasRejectTarget || !m.reviewTargetStillValid(m.rejectTarget) {
-		m.rejecting = false
-		m.hasRejectTarget = false
-		m.rejectionInput.SetValue("")
-		m.rejectionError = ""
+	if !m.reviewTargetStillValid(m.rejectTarget) {
+		m.clearRejectionState()
 		m.setStatus("Review target changed. Request changes canceled.", 4*time.Second)
 		m.resizeViewport()
 		m.syncViewport()
@@ -894,10 +890,7 @@ func (m *Model) handleReject(note string) {
 		m.selectNode(target.nodeNumbers[0] - 1)
 	}
 	m.userMoved = false
-	m.rejecting = false
-	m.hasRejectTarget = false
-	m.rejectionInput.SetValue("")
-	m.rejectionError = ""
+	m.clearRejectionState()
 	m.setStatus("Feedback sent. Waiting for agent...", 5*time.Second)
 	m.resizeViewport()
 	m.syncViewport()

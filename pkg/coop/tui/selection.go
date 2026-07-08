@@ -47,7 +47,7 @@ func (m Model) selectedNavigationIndex() int {
 		}
 	}
 	if m.selected.kind == navigationNode {
-		if stepIndex, ok := m.stepIndexForNode(m.cursor); ok {
+		if stepIndex, ok := m.stepIndexForNode(m.selectionCursor); ok {
 			for i, item := range items {
 				if item.kind == navigationStep && item.stepIndex == stepIndex {
 					return i
@@ -80,7 +80,7 @@ func (m Model) navigationItemSelected(item navigationItem) bool {
 	case navigationStep:
 		return m.selected.kind == navigationStep && m.selected.stepIndex == item.stepIndex
 	case navigationNode:
-		return m.selected.kind == navigationNode && m.cursor == item.nodeIndex
+		return m.selected.kind == navigationNode && m.selectionCursor == item.nodeIndex
 	default:
 		return false
 	}
@@ -97,7 +97,7 @@ func (m *Model) selectNavigationItem(item navigationItem) {
 
 func (m *Model) selectNode(nodeIndex int) {
 	m.selected = navigationItem{kind: navigationNode}
-	m.cursor = nodeIndex
+	m.selectionCursor = nodeIndex
 	if stepIndex, ok := m.stepIndexForNode(nodeIndex); ok {
 		m.expandStep(stepIndex)
 	}
@@ -106,7 +106,7 @@ func (m *Model) selectNode(nodeIndex int) {
 func (m *Model) selectStep(stepIndex int) {
 	m.selected = navigationItem{kind: navigationStep, stepIndex: stepIndex}
 	if nodeIndex := firstNodeIndexInStep(m.session, stepIndex); nodeIndex >= 0 {
-		m.cursor = nodeIndex
+		m.selectionCursor = nodeIndex
 	}
 }
 
@@ -114,7 +114,7 @@ func (m Model) selectedNodeIndex() (int, bool) {
 	if m.selected.kind != navigationNode {
 		return 0, false
 	}
-	return m.cursor, true
+	return m.selectionCursor, true
 }
 
 func (m Model) selectedStepIndex() (int, bool) {
@@ -122,7 +122,7 @@ func (m Model) selectedStepIndex() (int, bool) {
 	case navigationStep:
 		return m.selected.stepIndex, true
 	case navigationNode:
-		return m.stepIndexForNode(m.cursor)
+		return m.stepIndexForNode(m.selectionCursor)
 	default:
 		return 0, false
 	}

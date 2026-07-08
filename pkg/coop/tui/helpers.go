@@ -16,7 +16,7 @@ var openBrowserFn = open.Browser
 func openBrowserCmd(url string) tea.Cmd {
 	return func() tea.Msg {
 		if err := openBrowserFn(url); err != nil {
-			return errMsg{err: err}
+			return statusMsg{message: fmt.Sprintf("Could not open browser: %s", err), ttl: 5 * time.Second}
 		}
 		return nil
 	}

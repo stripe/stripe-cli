@@ -24,9 +24,9 @@ func Run(store *coop.Store, sessionID string, opts ...Option) error {
 }
 
 // RunWaiting launches the TUI in "waiting" mode — it polls for a new session
-// to appear (ignoring the provided existing IDs) and transitions once found.
-func RunWaiting(store *coop.Store, existingIDs map[string]bool, opts ...Option) error {
-	model := NewWaitingModel(store, existingIDs, opts...)
+// to appear (ignoring the provided existing session IDs) and transitions once found.
+func RunWaiting(store *coop.Store, existingSessionIDs map[string]bool, opts ...Option) error {
+	model := NewWaitingModel(store, existingSessionIDs, opts...)
 	p := tea.NewProgram(model)
 	_, err := p.Run()
 	return err

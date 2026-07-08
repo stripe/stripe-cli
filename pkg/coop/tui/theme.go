@@ -5,6 +5,8 @@ import (
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/lipgloss/v2"
+
+	"github.com/stripe/stripe-cli/pkg/coop/colors"
 )
 
 func newThemedHelp(t Theme) help.Model {
@@ -21,22 +23,22 @@ func newThemedHelp(t Theme) help.Model {
 
 // Sail Design System hue palette (from tokensColor.ts)
 var (
-	HuePurple500 = lipgloss.Color("#625afa")
-	HuePurple400 = lipgloss.Color("#8d7ffa")
-	HuePurple700 = lipgloss.Color("#3f32a1")
+	HuePurple500 = colors.Purple500
+	HuePurple400 = colors.Purple400
+	HuePurple700 = colors.Purple700
 
-	HueGreen300 = lipgloss.Color("#48c404")
-	HueGreen400 = lipgloss.Color("#3fa40d")
+	HueGreen300 = colors.Green300
+	HueGreen400 = colors.Green400
 
-	HueBlue400 = lipgloss.Color("#00a3ff")
-	HueBlue700 = lipgloss.Color("#0b3a5b")
+	HueBlue400 = colors.Blue400
+	HueBlue700 = colors.Blue700
 
-	HueOrange400 = lipgloss.Color("#ed6704")
+	HueOrange400 = colors.Orange400
 
-	HueGray300 = lipgloss.Color("#a3acba")
-	HueGray400 = lipgloss.Color("#87909f")
-	HueGray500 = lipgloss.Color("#687385")
-	HueGray700 = lipgloss.Color("#414552")
+	HueGray300 = colors.Gray300
+	HueGray400 = colors.Gray400
+	HueGray500 = colors.Gray500
+	HueGray700 = colors.Gray700
 )
 
 type Theme struct {
@@ -79,28 +81,28 @@ type Theme struct {
 }
 
 func NewTheme(isDark bool) Theme {
-	lightDark := lipgloss.LightDark(isDark)
+	palette := colors.NewPalette(isDark)
 	t := Theme{
 		IsDark:       isDark,
-		HuePurple500: lightDark(lipgloss.Color("#4f46d8"), HuePurple500),
-		HuePurple400: lightDark(lipgloss.Color("#5f52e8"), HuePurple400),
-		HuePurple700: lightDark(lipgloss.Color("#3f32a1"), HuePurple700),
-		HueGreen300:  lightDark(lipgloss.Color("#237500"), HueGreen300),
-		HueGreen400:  lightDark(lipgloss.Color("#2f8506"), HueGreen400),
-		HueBlue400:   lightDark(lipgloss.Color("#006bb6"), HueBlue400),
-		HueBlue700:   lightDark(lipgloss.Color("#dff2ff"), HueBlue700),
-		HueOrange400: lightDark(lipgloss.Color("#b34800"), HueOrange400),
-		HueGray300:   lightDark(lipgloss.Color("#2f3640"), HueGray300),
-		HueGray400:   lightDark(lipgloss.Color("#4f5967"), HueGray400),
-		HueGray500:   lightDark(lipgloss.Color("#697384"), HueGray500),
-		HueGray700:   lightDark(lipgloss.Color("#d9dee7"), HueGray700),
-		HueError:     lightDark(lipgloss.Color("#b00020"), lipgloss.Color("#df1b41")),
-		HueText:      lightDark(lipgloss.Color("#1f2430"), lipgloss.Color("#ffffff")),
-		HueOnBrand:   lipgloss.Color("#ffffff"),
+		HuePurple500: palette.Purple500,
+		HuePurple400: palette.Purple400,
+		HuePurple700: palette.Purple700,
+		HueGreen300:  palette.Green300,
+		HueGreen400:  palette.Green400,
+		HueBlue400:   palette.Blue400,
+		HueBlue700:   palette.Blue700,
+		HueOrange400: palette.Orange400,
+		HueGray300:   palette.Gray300,
+		HueGray400:   palette.Gray400,
+		HueGray500:   palette.Gray500,
+		HueGray700:   palette.Gray700,
+		HueError:     palette.Error,
+		HueText:      palette.Text,
+		HueOnBrand:   palette.OnBrand,
+		HueBorder:    palette.Border,
+		HuePanel:     palette.Panel,
+		HueSelection: palette.Selection,
 	}
-	t.HueBorder = lipgloss.Blend1D(3, t.HueGray500, t.HuePurple400)[1]
-	t.HuePanel = lightDark(lipgloss.Darken(t.HueGray700, 0.04), lipgloss.Lighten(t.HueGray700, 0.08))
-	t.HueSelection = lipgloss.Blend1D(4, t.HuePurple700, t.HuePurple500)[1]
 	t.BrandStyle = lipgloss.NewStyle().Foreground(t.HuePurple500)
 	t.SuccessStyle = lipgloss.NewStyle().Foreground(t.HueGreen400)
 	t.AttentionStyle = lipgloss.NewStyle().Foreground(t.HueOrange400)
