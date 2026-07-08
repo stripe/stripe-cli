@@ -72,11 +72,11 @@ func markdownRenderer(width int, isDark bool) (*glamour.TermRenderer, error) {
 
 func compactMarkdownStyle(isDark bool) glamouransi.StyleConfig {
 	theme := NewTheme(isDark)
-	text := colorHex(theme.HueText)
-	muted := colorHex(theme.HueGray400)
-	accent := colorHex(theme.HuePurple400)
-	rule := colorHex(theme.HueBorder)
-	codeBG := colorHex(theme.HuePanel)
+	text := colorHex(theme.Text)
+	muted := colorHex(theme.Gray400)
+	accent := colorHex(theme.Purple400)
+	rule := colorHex(theme.Border)
+	codeBG := colorHex(theme.Panel)
 	codeTheme := "monokai"
 	if !isDark {
 		codeTheme = "github"

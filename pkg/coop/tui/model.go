@@ -69,7 +69,7 @@ type Model struct {
 func newThemedSpinner(t Theme) spinner.Model {
 	return spinner.New(
 		spinner.WithSpinner(spinner.MiniDot),
-		spinner.WithStyle(lipgloss.NewStyle().Foreground(t.HuePurple500)),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(t.Purple500)),
 	)
 }
 
@@ -87,8 +87,8 @@ func newThemedRejectionInput(t Theme) textarea.Model {
 	ti.SetVirtualCursor(false)
 	ti.SetWidth(60)
 	styles := ti.Styles()
-	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(t.HueGray500).Italic(true)
-	styles.Focused.Text = lipgloss.NewStyle().Foreground(t.HueText)
+	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(t.Gray500).Italic(true)
+	styles.Focused.Text = lipgloss.NewStyle().Foreground(t.Text)
 	styles.Focused.CursorLine = lipgloss.NewStyle()
 	styles.Focused.Base = lipgloss.NewStyle()
 	styles.Blurred = styles.Focused
@@ -99,7 +99,7 @@ func newThemedRejectionInput(t Theme) textarea.Model {
 func (m *Model) applyTheme(isDark bool) {
 	m.isDark = isDark
 	m.theme = NewTheme(isDark)
-	m.spinner.Style = lipgloss.NewStyle().Foreground(m.theme.HuePurple500)
+	m.spinner.Style = lipgloss.NewStyle().Foreground(m.theme.Purple500)
 	m.rejectionInput.SetStyles(newThemedRejectionInput(m.theme).Styles())
 	m.help = newThemedHelp(m.theme)
 }
@@ -378,7 +378,7 @@ func (m Model) rejectionCursor(content string) *tea.Cursor {
 		cursor.X += lipgloss.Width(plain[:idx+len(prefix)])
 		cursor.Y += y
 		cursor.Shape = tea.CursorBar
-		cursor.Color = m.theme.HuePurple500
+		cursor.Color = m.theme.Purple500
 		cursor.Blink = true
 		return cursor
 	}

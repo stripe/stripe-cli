@@ -125,7 +125,7 @@ func (m Model) renderDetailHeader(section string) string {
 		return ""
 	}
 	return lipgloss.NewStyle().
-		Foreground(m.theme.HuePurple400).
+		Foreground(m.theme.Purple400).
 		Bold(true).
 		Render(section)
 }
