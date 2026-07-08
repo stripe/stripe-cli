@@ -401,7 +401,7 @@ func TestBackgroundColorUpdatesTheme(t *testing.T) {
 
 	assert.False(t, updated.theme.IsDark)
 	assert.False(t, updated.isDark)
-	assert.NotEqual(t, m.theme.HueGray300, updated.theme.HueGray300)
+	assert.NotEqual(t, m.theme.Gray300, updated.theme.Gray300)
 }
 
 func TestUpdateKeyConfirmStepReview(t *testing.T) {
