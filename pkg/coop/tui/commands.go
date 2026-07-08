@@ -158,3 +158,12 @@ func (m Model) returnToParent() tea.Cmd {
 		return sessionDiscoveredMsg{sessionID: parentID}
 	}
 }
+
+func (m Model) shouldTransitionToNewSession() bool {
+	suggestions := m.getCompletionSuggestions()
+	if m.selectionCursor >= len(suggestions) {
+		return false
+	}
+	id := suggestions[m.selectionCursor].id
+	return id == "add-integration"
+}
