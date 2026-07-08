@@ -179,7 +179,7 @@ jobs:
           sparse-checkout-cone-mode: false
       - run: bash scripts/notify.sh
         env:
-          OVERALL_RESULT: ${{ contains(needs.*.outputs.install_test_result, 'failure') && 'failure' || 'success' }}
+          OVERALL_RESULT: ${{ contains(needs.*.outputs.install_test_result, 'failure') && 'failure' || contains(needs.*.result, 'failure') && 'skip' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
           PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-install-test
           PAGERDUTY_SUMMARY: "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"

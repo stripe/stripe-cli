@@ -71,7 +71,9 @@ resolve_pagerduty_alert() {
     }'
 }
 
-if [ "${OVERALL_RESULT:-failure}" = "success" ]; then
+if [ "${OVERALL_RESULT}" = "skip" ]; then
+    echo "Setup failures detected; skipping PagerDuty notification"
+elif [ "${OVERALL_RESULT:-failure}" = "success" ]; then
     resolve_pagerduty_alert
 else
     trigger_pagerduty_alert
