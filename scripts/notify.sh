@@ -1,5 +1,10 @@
 #!/bin/sh
 
+DEDUP_KEY="${PAGERDUTY_DEDUP_KEY:?must be set}"
+SUMMARY="${PAGERDUTY_SUMMARY:?must be set}"
+RESOLVE_SUMMARY="${PAGERDUTY_RESOLVE_SUMMARY:?must be set}"
+SEVERITY="${PAGERDUTY_SEVERITY:?must be set}"
+
 if [ "${DRYRUN:-false}" = "true" ]; then
     echo "Dry run mode: PagerDuty alerts will be suppressed"
 else
@@ -25,21 +30,21 @@ trigger_pagerduty_alert() {
     if [ "${DRYRUN:-false}" = "true" ]; then
         echo "Dry run: PagerDuty alert would have fired with:"
         echo "  action:    trigger"
-        echo "  dedup_key: gh-actions-stripe-cli-install-test"
-        echo "  summary:   Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+        echo "  dedup_key: $DEDUP_KEY"
+        echo "  summary:   $SUMMARY"
         echo "  timestamp: $(date)"
         echo "  source:    Stripe CLI GitHub Actions"
-        echo "  severity:  critical"
+        echo "  severity:  $SEVERITY"
         return 0
     fi
     send_pagerduty_event '{
         "routing_key": "'"$PAGERDUTY_INTEGRATION_KEY"'",
         "event_action": "trigger",
-        "dedup_key": "gh-actions-stripe-cli-install-test",
+        "dedup_key": "'"$DEDUP_KEY"'",
         "payload": {
-            "summary": "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml",
+            "summary": "'"$SUMMARY"'",
             "source": "Stripe CLI GitHub Actions",
-            "severity": "critical",
+            "severity": "'"$SEVERITY"'",
             "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
         }
     }'
@@ -49,17 +54,17 @@ resolve_pagerduty_alert() {
     if [ "${DRYRUN:-false}" = "true" ]; then
         echo "Dry run: PagerDuty resolve would have fired with:"
         echo "  action:    resolve"
-        echo "  dedup_key: gh-actions-stripe-cli-install-test"
-        echo "  summary:   Stripe CLI installation is passing again"
+        echo "  dedup_key: $DEDUP_KEY"
+        echo "  summary:   $RESOLVE_SUMMARY"
         echo "  source:    Stripe CLI GitHub Actions"
         return 0
     fi
     send_pagerduty_event '{
         "routing_key": "'"$PAGERDUTY_INTEGRATION_KEY"'",
         "event_action": "resolve",
-        "dedup_key": "gh-actions-stripe-cli-install-test",
+        "dedup_key": "'"$DEDUP_KEY"'",
         "payload": {
-            "summary": "Stripe CLI installation is passing again",
+            "summary": "'"$RESOLVE_SUMMARY"'",
             "source": "Stripe CLI GitHub Actions",
             "severity": "info"
         }

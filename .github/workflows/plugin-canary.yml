@@ -5,6 +5,11 @@ on:
     # Run every 6 hours
     - cron: '0 */6 * * *'
   workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -32,12 +37,22 @@ jobs:
         run: stripe version
         shell: bash
 
+      - name: Checkout notify script
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/notify.sh
+          sparse-checkout-cone-mode: false
+
       - name: Install and test recent projects plugin versions
         shell: bash
         env:
           STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          GH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DRYRUN: ${{ inputs.dryrun }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
           # Fetch the plugin manifest and extract recent versions
           VERSIONS=$(curl -fsSL "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml" \
@@ -52,27 +67,40 @@ jobs:
           echo "$VERSIONS"
           echo ""
 
+          FAILURES=0
+
           while IFS= read -r VERSION; do
             echo "=== Testing projects@${VERSION} ==="
 
-            # Install specific version
-            stripe plugin install "projects@${VERSION}"
+            if stripe plugin install "projects@${VERSION}" && \
+               stripe projects --help && \
+               stripe projects catalog; then
+              echo "=== projects@${VERSION} PASSED ==="
 
-            # Verify plugin loads
-            stripe projects --help
+              PAGERDUTY_DEDUP_KEY="plugin-canary-projects-${VERSION}" \
+              PAGERDUTY_SUMMARY="Plugin canary: projects@${VERSION} failed. Investigate: ${GH_RUN_URL}" \
+              PAGERDUTY_RESOLVE_SUMMARY="Plugin canary: projects@${VERSION} is passing again" \
+              PAGERDUTY_SEVERITY="warning" \
+              DRYRUN="${DRYRUN}" \
+              OVERALL_RESULT="success" \
+              bash scripts/notify.sh
+            else
+              echo "=== projects@${VERSION} FAILED ==="
+              FAILURES=$((FAILURES + 1))
 
-            # Verify a subcommand works
-            stripe projects catalog
+              PAGERDUTY_DEDUP_KEY="plugin-canary-projects-${VERSION}" \
+              PAGERDUTY_SUMMARY="Plugin canary: projects@${VERSION} failed. Investigate: ${GH_RUN_URL}" \
+              PAGERDUTY_RESOLVE_SUMMARY="Plugin canary: projects@${VERSION} is passing again" \
+              PAGERDUTY_SEVERITY="warning" \
+              DRYRUN="${DRYRUN}" \
+              OVERALL_RESULT="failure" \
+              bash scripts/notify.sh
+            fi
 
-            echo "=== projects@${VERSION} PASSED ==="
             echo ""
           done <<< "$VERSIONS"
 
-      # TODO: Add alerting once tests are proven stable
-      # - name: Alert on failure
-      #   if: failure() && github.event_name == 'schedule'
-      #   run: |
-      #     curl -X POST "${{ secrets.PLUGIN_CANARY_SLACK_WEBHOOK_URL }}" \
-      #       -H 'Content-Type: application/json' \
-      #       -d "{\"text\": \"🚨 Plugin canary tests failed on ${{ matrix.os }}. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>\"}"
-      #   shell: bash
+          if [ "$FAILURES" -gt 0 ]; then
+            echo "$FAILURES version(s) failed"
+            exit 1
+          fi

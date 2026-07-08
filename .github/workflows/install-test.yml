@@ -149,4 +149,8 @@ jobs:
         env:
           OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-install-test
+          PAGERDUTY_SUMMARY: "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+          PAGERDUTY_RESOLVE_SUMMARY: "Stripe CLI installation is passing again"
+          PAGERDUTY_SEVERITY: critical
           DRYRUN: ${{ inputs.dryrun }}
