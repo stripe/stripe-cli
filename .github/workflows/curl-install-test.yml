@@ -1,0 +1,44 @@
+on:
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
+  schedule:
+    - cron: '*/10 * * * *' # Every 10 minutes
+name: Curl install test
+permissions:
+  contents: read
+jobs:
+  curl-install-macos:
+    runs-on: macos-latest
+    steps:
+      - run: |
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
+          export PATH="$HOME/.stripe/bin:$PATH"
+          stripe --version
+
+  curl-install-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
+          export PATH="$HOME/.stripe/bin:$PATH"
+          stripe --version
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [curl-install-macos, curl-install-linux]
+    if: always()
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/notify.sh
+          sparse-checkout-cone-mode: false
+      - run: bash scripts/notify.sh
+        env:
+          OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          DRYRUN: ${{ inputs.dryrun }}

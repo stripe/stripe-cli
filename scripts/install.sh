@@ -1,8 +1,9 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
 
 INSTALL_DIR="${STRIPE_INSTALL_DIR:-$HOME/.stripe/bin}"
 GITHUB_REPO="stripe/stripe-cli"
+NEEDS_SOURCE=false
 
 main() {
   detect_platform
