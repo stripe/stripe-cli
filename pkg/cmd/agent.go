@@ -79,8 +79,8 @@ type agentSetupJSON struct {
 }
 
 type skillsScopesJSON struct {
-	Local  agentskills.DirStatus `json:"local"`
-	Global agentskills.DirStatus `json:"global"`
+	Local  *agentskills.DirStatus `json:"local,omitempty"`
+	Global *agentskills.DirStatus `json:"global,omitempty"`
 }
 
 // skillsScopes holds the check result for local and global skill directories.
@@ -573,6 +573,15 @@ func skillsScopeNeedsInstall(d agentskills.DirStatus) bool {
 	return d.Status == agentskills.StatusNotInstalled
 }
 
+// skillsScopeVisible reports whether a scope should be surfaced to the user
+// given the other scope's state. A not-installed scope is hidden when the other
+// scope already has skills, so we don't nag about the scope the user isn't
+// using. Shared by the text (--status) and JSON output paths so they stay
+// consistent.
+func skillsScopeVisible(d agentskills.DirStatus, scopes skillsScopes) bool {
+	return !skillsScopeNeedsInstall(d) || !skillsScopesHasInstalled(scopes)
+}
+
 func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status, view skillsStatusView) error {
 	result := agentSetupJSON{
 		Status:  aggregateStatus(statuses),
@@ -587,13 +596,20 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		}
 	}
 	if view.show {
-		result.Skills = &skillsScopesJSON{Local: view.scopes.Local, Global: view.scopes.Global}
+		result.Skills = &skillsScopesJSON{}
+		if skillsScopeVisible(view.scopes.Local, view.scopes) {
+			result.Skills.Local = &view.scopes.Local
+		}
+		if skillsScopeVisible(view.scopes.Global, view.scopes) {
+			result.Skills.Global = &view.scopes.Global
+		}
 		if skillsScopeNeedsUpdate(view.scopes.Local) || skillsScopeNeedsUpdate(view.scopes.Global) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
 				Action:  "update_skills",
 				Command: []string{"stripe", "agent", "setup"},
 			})
-		} else if view.allowInstall && (skillsScopeNeedsInstall(view.scopes.Local) || skillsScopeNeedsInstall(view.scopes.Global)) {
+		} else if view.allowInstall && !skillsScopesHasInstalled(view.scopes) &&
+			(skillsScopeNeedsInstall(view.scopes.Local) || skillsScopeNeedsInstall(view.scopes.Global)) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
 				Action:  "install_skills",
 				Command: []string{"stripe", "agent", "setup"},
@@ -751,12 +767,20 @@ func printSkillsStatusTable(w io.Writer, skills skillsScopes, allowInstall bool)
 		{"local", skills.Local},
 		{"global", skills.Global},
 	} {
-		icon, state := skillsScopeStatusLine(w, entry.dir)
 		if skillsScopeNeedsInstall(entry.dir) {
 			needsInstall = true
+			if allowInstall && skillsScopeVisible(entry.dir, skills) {
+				icon := color.Yellow("•").String()
+				fmt.Fprintf(w, "  %s  %-*s  %s  %s\n", icon, scopeWidth, entry.name, "not installed", color.Faint(entry.dir.Dir).String())
+			}
+			continue
 		}
 		if skillsScopeNeedsUpdate(entry.dir) {
 			needsUpdate = true
+		}
+		icon, state := skillsScopeStatusLine(w, entry.dir)
+		if state == "" {
+			continue
 		}
 		fmt.Fprintf(w, "  %s  %-*s  %s  %s\n", icon, scopeWidth, entry.name, state, color.Faint(entry.dir.Dir).String())
 	}
@@ -764,23 +788,22 @@ func printSkillsStatusTable(w io.Writer, skills skillsScopes, allowInstall bool)
 	switch {
 	case needsUpdate:
 		fmt.Fprintf(w, "\nRun %s to update your Stripe skills.\n", color.Bold("stripe agent setup").String())
-	case needsInstall && allowInstall:
+	case needsInstall && allowInstall && !skillsScopesHasInstalled(skills):
 		fmt.Fprintf(w, "\nRun %s to install your Stripe skills.\n", color.Bold("stripe agent setup").String())
 	}
 }
 
 func skillsScopeStatusLine(w io.Writer, d agentskills.DirStatus) (icon, state string) {
 	color := ansi.Color(w)
-	total := len(d.Skills)
 	switch d.Status {
 	case agentskills.StatusError:
 		return color.Red("✗").String(), color.Red("error: " + d.Error).String()
 	case agentskills.StatusCurrent:
-		return color.Green("✔").String(), fmt.Sprintf("%d skills up to date", total)
+		return color.Green("✔").String(), "installed"
 	case agentskills.StatusOutOfDate:
-		return color.Yellow("⚠").String(), fmt.Sprintf("%d of %d skills out of date", d.OutOfDateCount, total)
+		return color.Yellow("⚠").String(), "outdated"
 	default:
-		return color.Yellow("•").String(), "not installed"
+		return "", ""
 	}
 }
 

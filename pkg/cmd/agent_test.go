@@ -483,7 +483,7 @@ func TestAgentSetupStatusShowsSkillsWhenInstalled(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Contains(t, output, "Stripe skills:")
-	require.Contains(t, output, "out of date")
+	require.Contains(t, output, "outdated")
 	require.Contains(t, output, "Run stripe agent setup to update your Stripe skills.")
 	require.NotContains(t, output, "install your Stripe skills")
 }
@@ -512,6 +512,109 @@ func TestAgentSetupStatusWithNoClientsShowsSkills(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, output, "No supported AI coding clients detected on this machine.")
 	require.Contains(t, output, "Stripe skills:")
+	require.Contains(t, output, "not installed")
+}
+
+func TestAgentSetupStatusWithNoClientsHidesUninstalledScopeWhenOtherInstalled(t *testing.T) {
+	localDir := filepath.Join(t.TempDir(), ".agents", "skills")
+	globalDir := filepath.Join(t.TempDir(), ".agents", "skills")
+
+	tests := []struct {
+		name           string
+		currentScope   string
+		wantInstalled  string
+		wantNotContain string
+	}{
+		{
+			name:           "local installed hides global not installed",
+			currentScope:   localDir,
+			wantInstalled:  "local",
+			wantNotContain: "global",
+		},
+		{
+			name:           "global installed hides local not installed",
+			currentScope:   globalDir,
+			wantInstalled:  "global",
+			wantNotContain: "local",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup := testAgentSetupCmd()
+			setup.providers = map[string]agentsetup.Provider{}
+			setup.callingAgent = func() string { return "" }
+			setup.skillsLocalDir = func() (string, error) { return localDir, nil }
+			setup.skillsGlobalDir = func() (string, error) { return globalDir, nil }
+			setup.skillsCheck = func(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+				if destDir == tc.currentScope {
+					return mockSkillsCheckCurrent(context.Background(), destDir)
+				}
+				return mockSkillsCheckNotInstalled(context.Background(), destDir)
+			}
+			setup.cmd.SetContext(context.Background())
+
+			output, err := executeCommand(setup.cmd, "--status")
+
+			require.NoError(t, err)
+			require.Contains(t, output, "Stripe skills:")
+			require.Contains(t, output, tc.wantInstalled)
+			require.Contains(t, output, "installed")
+			require.NotContains(t, output, "not installed")
+			require.NotContains(t, output, tc.wantNotContain)
+			require.NotContains(t, output, "install your Stripe skills")
+		})
+	}
+}
+
+func TestAgentSetupJSONOmitsUninstalledScopeWhenOtherInstalled(t *testing.T) {
+	localDir := filepath.Join(t.TempDir(), ".agents", "skills")
+	globalDir := filepath.Join(t.TempDir(), ".agents", "skills")
+
+	tests := []struct {
+		name         string
+		currentScope string
+	}{
+		{name: "local installed omits global", currentScope: localDir},
+		{name: "global installed omits local", currentScope: globalDir},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setup := testAgentSetupCmd()
+			setup.providers = map[string]agentsetup.Provider{}
+			setup.callingAgent = func() string { return "" }
+			setup.skillsLocalDir = func() (string, error) { return localDir, nil }
+			setup.skillsGlobalDir = func() (string, error) { return globalDir, nil }
+			setup.skillsCheck = func(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+				if destDir == tc.currentScope {
+					return mockSkillsCheckCurrent(context.Background(), destDir)
+				}
+				return mockSkillsCheckNotInstalled(context.Background(), destDir)
+			}
+			setup.cmd.SetContext(context.Background())
+
+			output, err := executeCommand(setup.cmd, "--json")
+
+			require.NoError(t, err)
+
+			var result agentSetupJSON
+			require.NoError(t, json.Unmarshal([]byte(output), &result))
+			require.NotNil(t, result.Skills)
+			if tc.currentScope == localDir {
+				require.NotNil(t, result.Skills.Local)
+				require.Equal(t, agentskills.StatusCurrent, result.Skills.Local.Status)
+				require.Nil(t, result.Skills.Global)
+			} else {
+				require.NotNil(t, result.Skills.Global)
+				require.Equal(t, agentskills.StatusCurrent, result.Skills.Global.Status)
+				require.Nil(t, result.Skills.Local)
+			}
+			for _, action := range result.Actions {
+				require.NotEqual(t, "install_skills", action.Action)
+			}
+		})
+	}
 }
 
 func TestAgentSetupStatusShowsCTAWhenOutOfDate(t *testing.T) {
@@ -524,7 +627,7 @@ func TestAgentSetupStatusShowsCTAWhenOutOfDate(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--status")
 
 	require.NoError(t, err)
-	require.Contains(t, output, "out of date")
+	require.Contains(t, output, "outdated")
 	require.Contains(t, output, "Run stripe agent setup to update your Stripe skills.")
 }
 

@@ -145,7 +145,7 @@ func TestSelectModel_OutOfDatePreselectsUpdateRow(t *testing.T) {
 	m := newSelectModel(testStatuses(), skills)
 
 	require.Equal(t, "Install Stripe skills", m.rows[len(m.rows)-1].label)
-	require.Equal(t, "Detected outdated Stripe skills", m.rows[len(m.rows)-1].detail)
+	require.Equal(t, "detected outdated Stripe skills", m.rows[len(m.rows)-1].detail)
 	require.True(t, m.rows[len(m.rows)-1].selected)
 }
 
@@ -157,8 +157,8 @@ func TestSelectModel_CurrentSkillsNotPreselected(t *testing.T) {
 
 	m := newSelectModel(testStatuses(), skills)
 
-	require.Equal(t, "Stripe skills", m.rows[len(m.rows)-1].label)
-	require.Equal(t, "up to date", m.rows[len(m.rows)-1].detail)
+	require.Equal(t, "Install Stripe skills", m.rows[len(m.rows)-1].label)
+	require.Empty(t, m.rows[len(m.rows)-1].detail)
 	require.False(t, m.rows[len(m.rows)-1].selected)
 }
 
