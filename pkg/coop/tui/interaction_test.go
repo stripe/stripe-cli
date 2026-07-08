@@ -63,12 +63,12 @@ func TestFollowInteractionJourney(t *testing.T) {
 	m = prepareInteractiveModel(m, 69, 50)
 
 	assert.True(t, m.userMoved)
-	assert.Equal(t, 2, m.cursor)
+	assert.Equal(t, 2, m.selectionCursor)
 	assertInteractionLayout(t, m, "manual navigation")
 
 	m = updateWithRunes(t, m, "f")
 	assert.False(t, m.userMoved)
-	assert.Equal(t, 0, m.cursor)
+	assert.Equal(t, 0, m.selectionCursor)
 	assert.Contains(t, m.statusMessage, "Following")
 	assertInteractionLayout(t, m, "follow resumed")
 }
@@ -104,11 +104,11 @@ func TestCompletionInteractionJourney(t *testing.T) {
 	assertInteractionLayout(t, m, "completion initial")
 
 	m = updateWithRunes(t, m, "j")
-	assert.Equal(t, 1, m.cursor)
+	assert.Equal(t, 1, m.selectionCursor)
 	assertInteractionLayout(t, m, "completion moved")
 
 	m = updateWithRunes(t, m, "k")
-	assert.Equal(t, 0, m.cursor)
+	assert.Equal(t, 0, m.selectionCursor)
 	assertInteractionLayout(t, m, "completion moved back")
 }
 
@@ -162,7 +162,7 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 		{Check: "Handled duplicate events", Passed: true},
 		{Check: "Ran stripe trigger checkout.session.completed", Passed: true},
 	}
-	m.cursor = 1
+	m.selectionCursor = 1
 	m = prepareInteractiveModel(m, 69, 50)
 
 	m = updateWithKey(t, m, tea.KeyEnter)
@@ -176,7 +176,7 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	m = updateWithRunes(t, m, "j")
 	assertInteractionLayout(t, m, "moved onto step")
 	m = updateWithRunes(t, m, "j")
-	assert.Equal(t, 2, m.cursor)
+	assert.Equal(t, 2, m.selectionCursor)
 	assertInteractionLayout(t, m, "moved onto review card")
 	assert.Equal(t, m.height-1, lineIndexContaining(m.View().Content, "enter"))
 	assert.Contains(t, m.View().Content, "Review")

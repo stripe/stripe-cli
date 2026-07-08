@@ -149,7 +149,7 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	m.width = 56
 	m.height = 18
 	m.viewport = viewport.New(viewport.WithWidth(m.width), viewport.WithHeight(10))
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.session.Steps[0].Nodes[0].State = coop.NodeDone
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].Title = "Review Checkout Session creation, saved IDs, redirect behavior, and webhook assumptions"
@@ -283,7 +283,7 @@ func activeStepLayoutModel() Model {
 	m.session.Steps[0].Nodes[0].State = coop.NodeDone
 	m.session.Steps[0].Nodes[1].State = coop.NodeActive
 	m.session.Steps[0].Nodes[1].Activity = "Adding the Checkout endpoint and wiring the returned session URL into the app"
-	m.cursor = 1
+	m.selectionCursor = 1
 	return m
 }
 
@@ -303,7 +303,7 @@ func reviewStepLongPromptLayoutModel() Model {
 		{Check: "Saved price ID for Checkout", Passed: true},
 		{Check: "Ran local Checkout flow", Passed: true},
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 	return m
 }
 
@@ -331,7 +331,7 @@ func requestChangesLayoutModel() Model {
 
 func manualNavigationLayoutModel() Model {
 	m := reviewStepLongPromptLayoutModel()
-	m.cursor = 2
+	m.selectionCursor = 2
 	m.userMoved = true
 	return m
 }
@@ -351,7 +351,7 @@ func completionLayoutModel() Model {
 			m.session.Steps[i].Nodes[j].State = coop.NodeDone
 		}
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 	return m
 }
 

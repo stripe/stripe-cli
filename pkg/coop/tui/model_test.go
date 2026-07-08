@@ -23,18 +23,18 @@ func readyModel() Model {
 
 func TestUpdateKeyDown(t *testing.T) {
 	m := readyModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
-	assert.Equal(t, 1, updated.cursor)
+	assert.Equal(t, 1, updated.selectionCursor)
 	assert.True(t, updated.userMoved)
 }
 
 func TestUpdateKeyUp(t *testing.T) {
 	m := readyModel()
-	m.cursor = 2
+	m.selectionCursor = 2
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
@@ -45,22 +45,22 @@ func TestUpdateKeyUp(t *testing.T) {
 
 func TestUpdateKeyUpAtTop(t *testing.T) {
 	m := readyModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
 
-	assert.Equal(t, 0, updated.cursor)
+	assert.Equal(t, 0, updated.selectionCursor)
 }
 
 func TestUpdateKeyDownAtBottom(t *testing.T) {
 	m := readyModel()
-	m.cursor = m.session.TotalNodes() - 1
+	m.selectionCursor = m.session.TotalNodes() - 1
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
-	assert.Equal(t, m.session.TotalNodes()-1, updated.cursor)
+	assert.Equal(t, m.session.TotalNodes()-1, updated.selectionCursor)
 }
 
 func TestUpdatePageKeysMoveViewport(t *testing.T) {
@@ -126,7 +126,7 @@ func TestUpdateKeyConfirm(t *testing.T) {
 	m.store = store
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
@@ -144,7 +144,7 @@ func TestUpdateKeyConfirmIgnoresRepeat(t *testing.T) {
 	m.store = store
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c", IsRepeat: true})
@@ -217,7 +217,7 @@ func TestSyncViewportPreservesManualScroll(t *testing.T) {
 	m.width = 80
 	m.height = 12
 	m.resizeViewport()
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.sdkSnippet = strings.Repeat("const product = await stripe.products.create({});\n", 20)
 	m.sdkSnippetNode = 0
@@ -249,7 +249,7 @@ func TestMouseActionSelectsVisibleStep(t *testing.T) {
 	result, _ := m.Update(mouseActionMsg{action: mouseActionSelectStep, index: 1})
 	updated := result.(Model)
 
-	assert.Equal(t, 2, updated.cursor)
+	assert.Equal(t, 2, updated.selectionCursor)
 	assert.True(t, updated.userMoved)
 }
 
@@ -267,7 +267,7 @@ func TestNavigationMovesBetweenStepAndStepRows(t *testing.T) {
 
 	m.moveCursorDown()
 	assert.Equal(t, navigationNode, m.selected.kind)
-	assert.Equal(t, 0, m.cursor)
+	assert.Equal(t, 0, m.selectionCursor)
 }
 
 func TestMouseActionSelectsStep(t *testing.T) {
@@ -314,7 +314,7 @@ func TestLeftFromStepMovesToParentStep(t *testing.T) {
 
 func TestUpdateKeyConfirmNotOnReviewStep(t *testing.T) {
 	m := readyModel()
-	m.cursor = 0 // step is Done, not Review
+	m.selectionCursor = 0 // step is Done, not Review
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	updated := result.(Model)
@@ -333,7 +333,7 @@ func TestUpdateKeyReject(t *testing.T) {
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
 	m.session.Steps[0].Nodes[0].Implementation = &coop.Implementation{File: "a.js"}
-	m.cursor = 0
+	m.selectionCursor = 0
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
@@ -360,7 +360,7 @@ func TestUpdateKeyRejectRequiresNote(t *testing.T) {
 	m.store = store
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
@@ -381,7 +381,7 @@ func TestRejectingViewSetsRealCursor(t *testing.T) {
 	m.height = 20
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.startReject()
 
 	view := m.View()
@@ -450,7 +450,7 @@ func TestSelectedReviewTargetStepRequiresReadyStep(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodePending
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	_, ok := m.selectedReviewTarget()
 	assert.False(t, ok)
@@ -511,7 +511,7 @@ func TestUpdateKeyRejectCancel(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	updated := result.(Model)
@@ -534,7 +534,7 @@ func TestRejectSubmissionCancelsWhenTargetChanges(t *testing.T) {
 	m.store = store
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	store.Write(m.session)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
@@ -656,7 +656,7 @@ func TestAutoScrollToReview(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeDone
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	m.autoScroll()
 
@@ -668,30 +668,30 @@ func TestAutoScrollToActive(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeDone
 	m.session.Steps[0].Nodes[1].State = coop.NodeActive
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	m.autoScroll()
 
-	assert.Equal(t, 1, m.cursor)
+	assert.Equal(t, 1, m.selectionCursor)
 }
 
 func TestAutoScrollReviewPriority(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 2
+	m.selectionCursor = 2
 
 	m.autoScroll()
 
 	// Should go to review (index 0), not active (index 1)
-	assert.Equal(t, 0, m.cursor)
+	assert.Equal(t, 0, m.selectionCursor)
 }
 
 func TestFollowKeyResumesAutoFollow(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeDone
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.userMoved = true
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
@@ -727,12 +727,12 @@ func TestCompletionViewKeyDown(t *testing.T) {
 			m.session.Steps[i].Nodes[j].State = coop.NodeDone
 		}
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
-	assert.Equal(t, 1, updated.cursor)
+	assert.Equal(t, 1, updated.selectionCursor)
 }
 
 func TestCompletionViewWaitsForAgentSuggestions(t *testing.T) {
@@ -742,13 +742,13 @@ func TestCompletionViewWaitsForAgentSuggestions(t *testing.T) {
 			m.session.Steps[i].Nodes[j].State = coop.NodeDone
 		}
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	result, cmd := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
 	assert.Nil(t, cmd)
-	assert.Equal(t, 0, updated.cursor)
+	assert.Equal(t, 0, updated.selectionCursor)
 	assert.Contains(t, updated.renderCompletionView(), "Waiting for agent to publish next steps")
 }
 
@@ -770,7 +770,7 @@ func TestCompletionViewportKeepsReceiptAtTop(t *testing.T) {
 			{ID: "done", Title: "Finish", Description: "Close this session"},
 		},
 	}
-	m.cursor = 4
+	m.selectionCursor = 4
 
 	m.syncViewport()
 
@@ -789,12 +789,12 @@ func TestCompletionViewKeyDownWraps(t *testing.T) {
 		}
 	}
 	suggestions := m.getCompletionSuggestions()
-	m.cursor = len(suggestions) - 1
+	m.selectionCursor = len(suggestions) - 1
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
-	assert.Equal(t, 0, updated.cursor)
+	assert.Equal(t, 0, updated.selectionCursor)
 }
 
 func TestCompletionEnterSelectsDone(t *testing.T) {
@@ -812,7 +812,7 @@ func TestCompletionEnterSelectsDone(t *testing.T) {
 	store.Write(m.session)
 	// "Finish" is the last suggestion
 	suggestions := m.getCompletionSuggestions()
-	m.cursor = len(suggestions) - 1
+	m.selectionCursor = len(suggestions) - 1
 
 	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	// Should return tea.Quit
@@ -836,7 +836,7 @@ func TestCompletionEnterWritesSelection(t *testing.T) {
 	}
 	m.session.ID = "completion_test"
 	store.Write(m.session)
-	m.cursor = 0 // "Write a STRIPE.md summary"
+	m.selectionCursor = 0 // "Write a STRIPE.md summary"
 
 	m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
@@ -883,7 +883,7 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	suggestions := m.getCompletionSuggestions()
 	for i, s := range suggestions {
 		if s.id == "add-integration" {
-			m.cursor = i
+			m.selectionCursor = i
 			break
 		}
 	}
@@ -893,13 +893,13 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 
 	session, err := store.Read("parent_session")
 	require.NoError(t, err)
-	assert.Equal(t, suggestions[m.cursor].id, session.NextSteps.Selected)
+	assert.Equal(t, suggestions[m.selectionCursor].id, session.NextSteps.Selected)
 	assert.True(t, updated.waiting)
 	require.NotNil(t, cmd)
 	msg := cmd()
 	baseline, ok := msg.(waitingBaselineMsg)
 	require.True(t, ok)
-	assert.NotNil(t, baseline.existingIDs)
+	assert.NotNil(t, baseline.existingSessionIDs)
 
 	assert.Equal(t, "add-integration", session.NextSteps.Selected)
 }
@@ -917,7 +917,7 @@ func TestSelectCompletionOptionSummarize(t *testing.T) {
 	}
 	m.session.ID = "test_summarize"
 	store.Write(m.session)
-	m.cursor = 0 // "Write a STRIPE.md summary" is first
+	m.selectionCursor = 0 // "Write a STRIPE.md summary" is first
 
 	m.selectCompletionOption()
 
@@ -941,7 +941,7 @@ func TestNewWaitingModel(t *testing.T) {
 	ids := map[string]bool{"old_session": true}
 	m := NewWaitingModel(store, ids)
 	assert.True(t, m.waiting)
-	assert.Equal(t, ids, m.existingIDs)
+	assert.Equal(t, ids, m.existingSessionIDs)
 }
 
 func TestHandleKeyOpenBrowser(t *testing.T) {
@@ -968,7 +968,7 @@ func TestHandleKeyOpenBrowser(t *testing.T) {
 func TestHandleKeyCopyReviewCommand(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
-	m.cursor = 2
+	m.selectionCursor = 2
 
 	result, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	updated := result.(Model)
@@ -995,12 +995,12 @@ func TestAutoScrollFocusesReviewWithoutExpanding(t *testing.T) {
 	m.autoScroll()
 
 	assert.False(t, m.expanded)
-	assert.Equal(t, 0, m.cursor)
+	assert.Equal(t, 0, m.selectionCursor)
 }
 
 func TestCompletionTransitionResetsCursor(t *testing.T) {
 	m := readyModel()
-	m.cursor = 2
+	m.selectionCursor = 2
 	m.viewport.SetYOffset(5)
 
 	// Simulate session becoming complete
@@ -1032,7 +1032,7 @@ func TestCompletionTransitionResetsCursor(t *testing.T) {
 	result, _ := m.Update(sessionUpdatedMsg{session: newSession})
 	updated := result.(Model)
 
-	assert.Equal(t, 0, updated.cursor)
+	assert.Equal(t, 0, updated.selectionCursor)
 	assert.False(t, updated.expanded)
 	assert.Equal(t, 0, updated.viewport.YOffset())
 }
@@ -1071,7 +1071,7 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 	for i, s := range suggestions {
 		if s.id == "add-integration" {
-			m.cursor = i
+			m.selectionCursor = i
 			assert.True(t, m.shouldTransitionToNewSession())
 			break
 		}
@@ -1080,7 +1080,7 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 	// Find "Finish" — should NOT transition
 	for i, s := range suggestions {
 		if s.id == "done" {
-			m.cursor = i
+			m.selectionCursor = i
 			assert.False(t, m.shouldTransitionToNewSession())
 			break
 		}
@@ -1089,14 +1089,14 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 func TestFetchSnippetNotAPIRequest(t *testing.T) {
 	m := readyModel()
-	m.cursor = 2 // asyncHandler node
+	m.selectionCursor = 2 // asyncHandler node
 	cmd := m.fetchSnippetIfNeeded()
 	assert.Nil(t, cmd) // should not fetch for non-apiRequest
 }
 
 func TestFetchSnippetCached(t *testing.T) {
 	m := readyModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.sdkSnippetNode = 0 // already cached for this step
 	cmd := m.fetchSnippetIfNeeded()
 	assert.Nil(t, cmd) // should not re-fetch

@@ -173,7 +173,7 @@ func stressManyStepsManualNavigationModel() Model {
 		}
 		m.session.Steps = append(m.session.Steps, step)
 	}
-	m.cursor = stepCount - 1
+	m.selectionCursor = stepCount - 1
 	m.userMoved = true
 	return m
 }

@@ -201,7 +201,7 @@ func TestRenderStepLineActivity(t *testing.T) {
 
 func TestRenderStepLineCursor(t *testing.T) {
 	m := testModel()
-	m.cursor = 1
+	m.selectionCursor = 1
 	node := m.session.Steps[0].Nodes[1]
 	line := m.renderNodeLine(node, 1, false, true)
 
@@ -210,7 +210,7 @@ func TestRenderStepLineCursor(t *testing.T) {
 
 func TestRenderStepLineNoCursor(t *testing.T) {
 	m := testModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	node := m.session.Steps[0].Nodes[1]
 	line := m.renderNodeLine(node, 1, false, false)
 
@@ -219,7 +219,7 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 
 func TestRenderDetail(t *testing.T) {
 	m := testModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.detailTab = 1
 	detail := m.renderDetail()
@@ -232,7 +232,7 @@ func TestRenderDetail(t *testing.T) {
 
 func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	m := testModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.detailTab = 0
 
@@ -249,7 +249,7 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 
 func TestRenderSummaryDetailShowsStepSDKSnippet(t *testing.T) {
 	m := testModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.detailTab = 0
 	m.sdkSnippet = "const product = await stripe.products.create({name: 'Gold plan'});"
@@ -278,7 +278,7 @@ func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 
 func TestRenderDetailWebhook(t *testing.T) {
 	m := testModel()
-	m.cursor = 2 // asyncHandler node
+	m.selectionCursor = 2 // asyncHandler node
 	m.expanded = true
 	m.detailTab = 2
 	detail := m.renderDetail()
@@ -292,7 +292,7 @@ func TestRenderDetailWebhook(t *testing.T) {
 
 func TestRenderDetailWithSDKSnippet(t *testing.T) {
 	m := testModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.detailTab = 3
 	m.sdkSnippet = "const product = await stripe.products.create({});"
@@ -306,7 +306,7 @@ func TestRenderDetailWithSDKSnippet(t *testing.T) {
 func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
 	m := testModel()
 	m.width = 69
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.detailTab = 1
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
@@ -322,7 +322,7 @@ func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
 func TestRenderDetailBoxMatchesOutlineWidth(t *testing.T) {
 	m := testModel()
 	m.width = 69
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 
 	detail := ansi.Strip(m.renderDetail())
@@ -346,7 +346,7 @@ func TestRenderMarkdownDoesNotIndentSubsequentLines(t *testing.T) {
 
 func TestRenderFooter(t *testing.T) {
 	m := testModel()
-	m.cursor = 0
+	m.selectionCursor = 0
 	footer := m.renderFooter()
 
 	// Step 0 is done — no review actions
@@ -359,7 +359,7 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "confirm")
@@ -378,7 +378,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 		{Check: "Visit http://localhost:3000/checkout, click Pay, and confirm Checkout opens with the saved price.", Passed: true},
 		{Check: "Confirm the failure banner appears for declined cards.", Passed: false},
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	card := m.renderReviewCard()
 
@@ -401,7 +401,7 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
 	m.session.Steps[0].Nodes[0].ReviewPrompt = "Confirm Checkout uses the saved price ID."
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	card := m.renderReviewCard()
 
@@ -428,7 +428,7 @@ func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
 func TestRenderReviewCardFallbackCheck(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
-	m.cursor = 2
+	m.selectionCursor = 2
 
 	card := m.renderReviewCard()
 
@@ -438,7 +438,7 @@ func TestRenderReviewCardFallbackCheck(t *testing.T) {
 func TestRenderFooterReviewCommand(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
-	m.cursor = 2
+	m.selectionCursor = 2
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Run:")
@@ -639,7 +639,7 @@ func TestRenderDetailSkipped(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeSkipped
 	m.session.Steps[0].Nodes[0].Activity = "Already handled"
-	m.cursor = 0
+	m.selectionCursor = 0
 	detail := m.renderDetail()
 	assertContainsPlain(t, detail, "Skipped")
 }
@@ -684,7 +684,7 @@ func TestRenderFooterRejectionInput(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.rejecting = true
 	m.rejectionInput.SetValue("Missing webhook test")
 
@@ -698,7 +698,7 @@ func TestRenderFooterRejectionInput(t *testing.T) {
 func TestRenderFooterRejectionPlaceholder(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
-	m.cursor = 2
+	m.selectionCursor = 2
 	m.rejecting = true
 	target, _ := m.selectedReviewTarget()
 	m.rejectionInput.Placeholder = m.requestChangesPlaceholder(target)
@@ -723,7 +723,7 @@ func TestReviewCardFitsWithinShortViewport(t *testing.T) {
 		{Check: "Saved price ID for Checkout", Passed: true},
 		{Check: "Ran local Checkout flow", Passed: true},
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	m.resizeViewport()
 	m.syncViewport()
@@ -749,7 +749,7 @@ func TestReviewCardShowsDetailsHintWhenClipped(t *testing.T) {
 		{Check: "Created price", Passed: true},
 		{Check: "Created Checkout Session", Passed: true},
 	}
-	m.cursor = 0
+	m.selectionCursor = 0
 
 	footer := m.renderFooter()
 
@@ -809,7 +809,7 @@ func TestViewportShowsMoreBelowIndicator(t *testing.T) {
 			{NodeDefinition: coop.NodeDefinition{Title: "Six"}, State: coop.NodeDone},
 		},
 	}}
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.resizeViewport()
 	m.syncViewport()
 	m.viewport.SetHeight(4)
@@ -828,7 +828,7 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 	m.height = 12
 	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(6))
 	m.session.Steps[0].Nodes[0].ReviewPrompt = strings.Repeat("Confirm the Checkout flow uses the saved price ID and redirects correctly. ", 5)
-	m.cursor = 0
+	m.selectionCursor = 0
 	m.expanded = true
 	m.resizeViewport()
 	m.syncViewport()
