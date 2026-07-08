@@ -39,15 +39,15 @@ func TestMetricRef_HypotheticalNameWithMetricPrefix(t *testing.T) {
 
 // --- Unit tests: buildRequestBody ---
 
-func TestAnalyticsBuildRequestBody_Minimal(t *testing.T) {
-	aqc := &analyticsQueryCmd{
+func TestBuildRequestBody_Minimal(t *testing.T) {
+	c := &dataMetricsRunCmd{
 		metrics:     []string{"revenue.mrr"},
 		startsAt:    "2026-01-01T00:00:00Z",
 		endsAt:      "2026-01-31T23:59:59Z",
 		granularity: "day",
 	}
 
-	body, err := aqc.buildRequestBody()
+	body, err := c.buildRequestBody(false)
 	require.NoError(t, err)
 
 	metrics := body["metrics"].([]map[string]interface{})
@@ -64,15 +64,15 @@ func TestAnalyticsBuildRequestBody_Minimal(t *testing.T) {
 	assert.Nil(t, body["filters"])
 }
 
-func TestAnalyticsBuildRequestBody_MultipleMetrics(t *testing.T) {
-	aqc := &analyticsQueryCmd{
+func TestBuildRequestBody_MultipleMetrics(t *testing.T) {
+	c := &dataMetricsRunCmd{
 		metrics:     []string{"revenue.mrr", "revenue.arr"},
 		startsAt:    "2026-01-01T00:00:00Z",
 		endsAt:      "2026-01-31T23:59:59Z",
 		granularity: "month",
 	}
 
-	body, err := aqc.buildRequestBody()
+	body, err := c.buildRequestBody(false)
 	require.NoError(t, err)
 
 	metrics := body["metrics"].([]map[string]interface{})
@@ -81,15 +81,15 @@ func TestAnalyticsBuildRequestBody_MultipleMetrics(t *testing.T) {
 	assert.Equal(t, "revenue.arr", metrics[1]["name"])
 }
 
-func TestAnalyticsBuildRequestBody_MetricByID(t *testing.T) {
-	aqc := &analyticsQueryCmd{
+func TestBuildRequestBody_MetricByID(t *testing.T) {
+	c := &dataMetricsRunCmd{
 		metrics:     []string{"metric_61Sud3n5oAGVCWiSr5", "metric_test_61UYChCcFUOh6ieln5"},
 		startsAt:    "2026-01-01T00:00:00Z",
 		endsAt:      "2026-01-31T23:59:59Z",
 		granularity: "day",
 	}
 
-	body, err := aqc.buildRequestBody()
+	body, err := c.buildRequestBody(false)
 	require.NoError(t, err)
 
 	metrics := body["metrics"].([]map[string]interface{})
@@ -100,15 +100,15 @@ func TestAnalyticsBuildRequestBody_MetricByID(t *testing.T) {
 	assert.Nil(t, metrics[1]["name"])
 }
 
-func TestAnalyticsBuildRequestBody_MixedNameAndID(t *testing.T) {
-	aqc := &analyticsQueryCmd{
+func TestBuildRequestBody_MixedNameAndID(t *testing.T) {
+	c := &dataMetricsRunCmd{
 		metrics:     []string{"revenue.mrr", "metric_61Sud3n5oAGVCWiSr5"},
 		startsAt:    "2026-01-01T00:00:00Z",
 		endsAt:      "2026-01-31T23:59:59Z",
 		granularity: "month",
 	}
 
-	body, err := aqc.buildRequestBody()
+	body, err := c.buildRequestBody(false)
 	require.NoError(t, err)
 
 	metrics := body["metrics"].([]map[string]interface{})
@@ -119,8 +119,8 @@ func TestAnalyticsBuildRequestBody_MixedNameAndID(t *testing.T) {
 	assert.Nil(t, metrics[1]["name"])
 }
 
-func TestAnalyticsBuildRequestBody_AllFields(t *testing.T) {
-	aqc := &analyticsQueryCmd{
+func TestBuildRequestBody_AllFields(t *testing.T) {
+	c := &dataMetricsRunCmd{
 		metrics:     []string{"revenue.mrr"},
 		startsAt:    "2026-01-01T00:00:00Z",
 		endsAt:      "2026-01-31T23:59:59Z",
@@ -132,7 +132,7 @@ func TestAnalyticsBuildRequestBody_AllFields(t *testing.T) {
 		filters:     []string{"price=price_abc", "price=price_xyz"},
 	}
 
-	body, err := aqc.buildRequestBody()
+	body, err := c.buildRequestBody(true)
 	require.NoError(t, err)
 
 	assert.Equal(t, "usd", body["currency"])
@@ -144,8 +144,24 @@ func TestAnalyticsBuildRequestBody_AllFields(t *testing.T) {
 	assert.Equal(t, []string{"price_abc", "price_xyz"}, filters["price"])
 }
 
-func TestAnalyticsBuildRequestBody_LimitZeroOmitted(t *testing.T) {
-	aqc := &analyticsQueryCmd{
+func TestBuildRequestBody_LimitOmittedWhenNotSet(t *testing.T) {
+	c := &dataMetricsRunCmd{
+		metrics:     []string{"revenue.mrr"},
+		startsAt:    "2026-01-01T00:00:00Z",
+		endsAt:      "2026-01-31T23:59:59Z",
+		granularity: "day",
+		limit:       50,
+	}
+
+	body, err := c.buildRequestBody(false)
+	require.NoError(t, err)
+	assert.Nil(t, body["limit"], "limit should be omitted when the flag was not set")
+}
+
+func TestBuildRequestBody_LimitForwardedWhenSet(t *testing.T) {
+	// When the user explicitly sets --limit we forward the value as-is (even a
+	// nonsensical one like 0) so the API validates it rather than the CLI.
+	c := &dataMetricsRunCmd{
 		metrics:     []string{"revenue.mrr"},
 		startsAt:    "2026-01-01T00:00:00Z",
 		endsAt:      "2026-01-31T23:59:59Z",
@@ -153,121 +169,72 @@ func TestAnalyticsBuildRequestBody_LimitZeroOmitted(t *testing.T) {
 		limit:       0,
 	}
 
-	body, err := aqc.buildRequestBody()
+	body, err := c.buildRequestBody(true)
 	require.NoError(t, err)
-	assert.Nil(t, body["limit"], "limit=0 should be omitted from the request")
+	assert.Equal(t, 0, body["limit"], "explicitly set limit should be forwarded, even when 0")
 }
 
-// --- Unit tests: parseAnalyticsFilters ---
+// --- Unit tests: parseMetricFilters ---
 
-func TestParseAnalyticsFilters_SingleKey(t *testing.T) {
-	result, err := parseAnalyticsFilters([]string{"currency=usd"})
+func TestParseMetricFilters_SingleKey(t *testing.T) {
+	result, err := parseMetricFilters([]string{"currency=usd"})
 	require.NoError(t, err)
 	assert.Equal(t, map[string][]string{"currency": {"usd"}}, result)
 }
 
-func TestParseAnalyticsFilters_MultipleValuesForKey(t *testing.T) {
-	result, err := parseAnalyticsFilters([]string{"price=price_abc", "price=price_xyz"})
+func TestParseMetricFilters_MultipleValuesForKey(t *testing.T) {
+	result, err := parseMetricFilters([]string{"price=price_abc", "price=price_xyz"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"price_abc", "price_xyz"}, result["price"])
 }
 
-func TestParseAnalyticsFilters_MultipleKeys(t *testing.T) {
-	result, err := parseAnalyticsFilters([]string{"currency=usd", "product=prod_123"})
+func TestParseMetricFilters_MultipleKeys(t *testing.T) {
+	result, err := parseMetricFilters([]string{"currency=usd", "product=prod_123"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"usd"}, result["currency"])
 	assert.Equal(t, []string{"prod_123"}, result["product"])
 }
 
-func TestParseAnalyticsFilters_ValueWithEquals(t *testing.T) {
+func TestParseMetricFilters_ValueWithEquals(t *testing.T) {
 	// values that themselves contain = should be preserved
-	result, err := parseAnalyticsFilters([]string{"key=val=ue"})
+	result, err := parseMetricFilters([]string{"key=val=ue"})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"val=ue"}, result["key"])
 }
 
-func TestParseAnalyticsFilters_InvalidNoEquals(t *testing.T) {
-	_, err := parseAnalyticsFilters([]string{"noequals"})
+func TestParseMetricFilters_InvalidNoEquals(t *testing.T) {
+	_, err := parseMetricFilters([]string{"noequals"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid filter")
 }
 
-func TestParseAnalyticsFilters_InvalidEmptyKey(t *testing.T) {
-	_, err := parseAnalyticsFilters([]string{"=value"})
+func TestParseMetricFilters_InvalidEmptyKey(t *testing.T) {
+	_, err := parseMetricFilters([]string{"=value"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid filter")
 }
 
-func TestParseAnalyticsFilters_InvalidEmptyValue(t *testing.T) {
-	_, err := parseAnalyticsFilters([]string{"key="})
+func TestParseMetricFilters_InvalidEmptyValue(t *testing.T) {
+	_, err := parseMetricFilters([]string{"key="})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid filter")
-}
-
-// --- Unit tests: runAnalyticsQueryCmd validation ---
-
-func TestAnalyticsQueryCmd_MissingMetric(t *testing.T) {
-	aqc := newAnalyticsQueryCmd()
-	aqc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
-	require.Error(t, err)
-	assert.Equal(t, "--metric is required", err.Error())
-}
-
-func TestAnalyticsQueryCmd_MissingStartsAt(t *testing.T) {
-	aqc := newAnalyticsQueryCmd()
-	aqc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
-	require.Error(t, err)
-	assert.Equal(t, "--starts-at is required", err.Error())
-}
-
-func TestAnalyticsQueryCmd_TooManyGroupBy(t *testing.T) {
-	aqc := newAnalyticsQueryCmd()
-	aqc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-	aqc.groupBy = []string{"price", "product"}
-
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--group-by accepts at most one dimension")
-	assert.Contains(t, err.Error(), "price, product")
-}
-
-func TestAnalyticsQueryCmd_MissingEndsAt(t *testing.T) {
-	aqc := newAnalyticsQueryCmd()
-	aqc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
-	require.Error(t, err)
-	assert.Equal(t, "--ends-at is required", err.Error())
 }
 
 // --- Integration tests: HTTP request shape ---
 
-// newTestAnalyticsCmd creates an analyticsQueryCmd wired to a test server URL with a
-// fake API key and a background context (required so the telemetry goroutine spawned
-// by stripe.Client.PerformRequest doesn't panic on a nil context).
-func newTestAnalyticsCmd(t *testing.T, serverURL string) *analyticsQueryCmd {
+// newTestDataMetricsRunCmd creates a dataMetricsRunCmd wired to a test server URL
+// with a fake API key and a background context (required so the telemetry goroutine
+// spawned by stripe.Client.PerformRequest doesn't panic on a nil context).
+func newTestDataMetricsRunCmd(t *testing.T, serverURL string) *dataMetricsRunCmd {
 	t.Helper()
-	aqc := newAnalyticsQueryCmd()
-	aqc.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	aqc.rb.APIBaseURL = serverURL
-	aqc.cmd.SetContext(context.Background())
-	return aqc
+	c := newDataMetricsRunCmd()
+	c.rb.Profile = &config.Profile{APIKey: "sk_test_1234567890abcdef"}
+	c.rb.APIBaseURL = serverURL
+	c.cmd.SetContext(context.Background())
+	return c
 }
 
-func TestAnalyticsQueryCmd_HTTPRequest(t *testing.T) {
+func TestDataMetricsRunCmd_HTTPRequest(t *testing.T) {
 	var capturedReq *http.Request
 	var capturedBody []byte
 
@@ -279,18 +246,18 @@ func TestAnalyticsQueryCmd_HTTPRequest(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	aqc := newTestAnalyticsCmd(t, ts.URL)
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-	aqc.granularity = "month"
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+	c.granularity = "month"
 
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.NoError(t, err)
 	require.NotNil(t, capturedReq)
 
 	assert.Equal(t, http.MethodPost, capturedReq.Method)
-	assert.Equal(t, analyticsQueryPath, capturedReq.URL.Path)
+	assert.Equal(t, dataMetricsRunPath, capturedReq.URL.Path)
 	assert.Equal(t, "Bearer sk_test_1234567890abcdef", capturedReq.Header.Get("Authorization"))
 	assert.Equal(t, "application/json", capturedReq.Header.Get("Content-Type"))
 	assert.Equal(t, requests.StripePreviewVersionHeaderValue, capturedReq.Header.Get("Stripe-Version"))
@@ -306,7 +273,7 @@ func TestAnalyticsQueryCmd_HTTPRequest(t *testing.T) {
 	assert.Equal(t, "month", body["granularity"])
 }
 
-func TestAnalyticsQueryCmd_HTTPRequest_WithFiltersAndGroupBy(t *testing.T) {
+func TestDataMetricsRunCmd_HTTPRequest_WithFiltersAndGroupBy(t *testing.T) {
 	var capturedBody []byte
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -316,16 +283,16 @@ func TestAnalyticsQueryCmd_HTTPRequest_WithFiltersAndGroupBy(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	aqc := newTestAnalyticsCmd(t, ts.URL)
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-	aqc.granularity = "day"
-	aqc.currency = "usd"
-	aqc.groupBy = []string{"price"}
-	aqc.filters = []string{"price=price_abc123", "price=price_xyz789"}
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+	c.granularity = "day"
+	c.currency = "usd"
+	c.groupBy = []string{"price"}
+	c.filters = []string{"price=price_abc123", "price=price_xyz789"}
 
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.NoError(t, err)
 
 	var body map[string]interface{}
@@ -342,7 +309,7 @@ func TestAnalyticsQueryCmd_HTTPRequest_WithFiltersAndGroupBy(t *testing.T) {
 	assert.Equal(t, "price_xyz789", priceFilters[1])
 }
 
-func TestAnalyticsQueryCmd_HTTPRequest_MultipleMetrics(t *testing.T) {
+func TestDataMetricsRunCmd_HTTPRequest_MultipleMetrics(t *testing.T) {
 	var capturedBody []byte
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -352,13 +319,13 @@ func TestAnalyticsQueryCmd_HTTPRequest_MultipleMetrics(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	aqc := newTestAnalyticsCmd(t, ts.URL)
-	aqc.metrics = []string{"revenue.mrr", "revenue.arr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-	aqc.granularity = "month"
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr", "revenue.arr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+	c.granularity = "month"
 
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.NoError(t, err)
 
 	var body map[string]interface{}
@@ -370,21 +337,21 @@ func TestAnalyticsQueryCmd_HTTPRequest_MultipleMetrics(t *testing.T) {
 	assert.Equal(t, "revenue.arr", metrics[1].(map[string]interface{})["name"])
 }
 
-func TestAnalyticsQueryCmd_HTTPError(t *testing.T) {
+func TestDataMetricsRunCmd_HTTPError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":{"code":"metric_invalid_parameter_value","type":"invalid_request_error"}}`))
 	}))
 	defer ts.Close()
 
-	aqc := newTestAnalyticsCmd(t, ts.URL)
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
-	aqc.granularity = "day"
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+	c.granularity = "day"
 
 	// errOnStatus=true: 4xx responses are returned as a Go error (exit 1).
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.Error(t, err)
 
 	var reqErr requests.RequestError
@@ -393,7 +360,7 @@ func TestAnalyticsQueryCmd_HTTPError(t *testing.T) {
 	assert.Equal(t, "metric_invalid_parameter_value", reqErr.ErrorCode)
 }
 
-func TestAnalyticsQueryCmd_StripeVersionHeader(t *testing.T) {
+func TestDataMetricsRunCmd_StripeVersionHeader(t *testing.T) {
 	var versionHeader string
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -403,12 +370,12 @@ func TestAnalyticsQueryCmd_StripeVersionHeader(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	aqc := newTestAnalyticsCmd(t, ts.URL)
-	aqc.metrics = []string{"revenue.mrr"}
-	aqc.startsAt = "2026-01-01T00:00:00Z"
-	aqc.endsAt = "2026-01-31T23:59:59Z"
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
 
-	err := aqc.runAnalyticsQueryCmd(aqc.cmd, []string{})
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.NoError(t, err)
 
 	assert.Equal(t, requests.StripePreviewVersionHeaderValue, versionHeader,
@@ -417,39 +384,52 @@ func TestAnalyticsQueryCmd_StripeVersionHeader(t *testing.T) {
 
 // --- Unit tests: command construction ---
 
-func TestNewAnalyticsQueryCmd_Flags(t *testing.T) {
-	aqc := newAnalyticsQueryCmd()
+func TestNewDataMetricsRunCmd_Flags(t *testing.T) {
+	c := newDataMetricsRunCmd()
 
-	require.NotNil(t, aqc.cmd.Flags().Lookup("metric"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("starts-at"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("ends-at"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("granularity"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("group-by"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("filter"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("currency"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("timezone"))
-	require.NotNil(t, aqc.cmd.Flags().Lookup("limit"))
+	require.NotNil(t, c.cmd.Flags().Lookup("metric"))
+	require.NotNil(t, c.cmd.Flags().Lookup("starts-at"))
+	require.NotNil(t, c.cmd.Flags().Lookup("ends-at"))
+	require.NotNil(t, c.cmd.Flags().Lookup("granularity"))
+	require.NotNil(t, c.cmd.Flags().Lookup("group-by"))
+	require.NotNil(t, c.cmd.Flags().Lookup("filter"))
+	require.NotNil(t, c.cmd.Flags().Lookup("currency"))
+	require.NotNil(t, c.cmd.Flags().Lookup("timezone"))
+	require.NotNil(t, c.cmd.Flags().Lookup("limit"))
 
-	granularity, err := aqc.cmd.Flags().GetString("granularity")
+	granularity, err := c.cmd.Flags().GetString("granularity")
 	require.NoError(t, err)
 	assert.Equal(t, "day", granularity, "granularity should default to 'day'")
 }
 
-func TestNewAnalyticsQueryCmd_IsPreview(t *testing.T) {
-	aqc := newAnalyticsQueryCmd()
-	assert.True(t, aqc.rb.IsPreviewCommand, "analytics query must use the preview Stripe-Version header")
-	assert.Equal(t, http.MethodPost, aqc.rb.Method)
+func TestNewDataMetricsRunCmd_IsPreview(t *testing.T) {
+	c := newDataMetricsRunCmd()
+	assert.True(t, c.rb.IsPreviewCommand, "data metrics run must use the preview Stripe-Version header")
+	assert.Equal(t, http.MethodPost, c.rb.Method)
 }
 
-func TestNewAnalyticsCmd_HasQuerySubcommand(t *testing.T) {
-	ac := newAnalyticsCmd()
-	_, _, err := ac.cmd.Find([]string{"query"})
+func TestNewDataCmd_HasRunSubcommand(t *testing.T) {
+	dc := newDataCmd()
+	_, _, err := dc.cmd.Find([]string{"metrics", "run"})
 	require.NoError(t, err)
 }
 
-func TestAnalyticsQueryCmd_CommandPath(t *testing.T) {
-	ac := newAnalyticsCmd()
-	queryCmd, _, err := ac.cmd.Find([]string{"query"})
+func TestDataMetricsRunCmd_CommandPath(t *testing.T) {
+	dc := newDataCmd()
+	runCmd, _, err := dc.cmd.Find([]string{"metrics", "run"})
 	require.NoError(t, err)
-	assert.Equal(t, "analytics query", queryCmd.CommandPath())
+	assert.Equal(t, "data metrics run", runCmd.CommandPath())
+}
+
+func TestNewDataCmd_HiddenForPrivatePreview(t *testing.T) {
+	dc := newDataCmd()
+	assert.True(t, dc.cmd.Hidden, "data command is a Private Preview API and must be hidden")
+
+	metricsCmd, _, err := dc.cmd.Find([]string{"metrics"})
+	require.NoError(t, err)
+	assert.True(t, metricsCmd.Hidden, "metrics command is a Private Preview API and must be hidden")
+
+	runCmd, _, err := dc.cmd.Find([]string{"metrics", "run"})
+	require.NoError(t, err)
+	assert.True(t, runCmd.Hidden, "run command is a Private Preview API and must be hidden")
 }
