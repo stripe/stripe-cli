@@ -103,6 +103,12 @@ func TestLoadBlueprintNotFound(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestLoadBlueprintPrefixMatch(t *testing.T) {
+	bp, err := LoadBlueprint("setup-future")
+	require.NoError(t, err)
+	assert.Equal(t, "setup-future-payments", bp.ID)
+}
+
 func TestLoadBlueprintPrefixMatchUnique(t *testing.T) {
 	bp, err := LoadBlueprint("one-time")
 	require.NoError(t, err)

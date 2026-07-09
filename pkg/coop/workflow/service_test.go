@@ -210,6 +210,45 @@ func TestReviewWorkflowRejectsInactiveSessions(t *testing.T) {
 	}
 }
 
+func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
+	store, err := coop.NewStoreAt(t.TempDir())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Blueprint:     "one-time-payment",
+		Status:        coop.SessionCompleted,
+	}
+	require.NoError(t, store.Write(parent))
+	child := &coop.Session{
+		SchemaVersion:   coop.CurrentSessionSchemaVersion,
+		ID:              "child_session",
+		Blueprint:       "follow-up-integration",
+		Status:          coop.SessionActive,
+		ParentSessionID: "parent_session",
+		ParentStepID:    "add-integration",
+		Steps: []coop.SessionStep{
+			{
+				StepDefinition: coop.StepDefinition{Key: "add-integration", Title: "Add integration"},
+				Nodes: []coop.SessionNode{
+					{
+						NodeDefinition: coop.NodeDefinition{Key: "add-integration", Title: "Add integration"},
+						State:          coop.NodeActive,
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, store.Write(child))
+	service := NewService(store)
+
+	resp, err := service.ReportWork(child.ID, 1, ReportWorkInput{File: "server.go", Note: "Added another integration"}, true)
+
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=add-integration", resp.Next)
+}
+
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {
 	t.Helper()
 	store, err := coop.NewStoreAt(t.TempDir())

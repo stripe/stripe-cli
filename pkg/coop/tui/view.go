@@ -30,7 +30,7 @@ func (m Model) renderWaitingView() string {
 		waitingText = "Waiting for agent"
 	}
 	waitingLines := strings.Split(wordWrap(waitingText, w), "\n")
-	subtitleLines := strings.Split(wordWrap("The agent is scanning the project and will start a session here. You can leave this open.", w), "\n")
+	subtitleLines := strings.Split(wordWrap("The agent will start the next session here. You can leave this open.", w), "\n")
 
 	var content string
 	content = m.theme.HeaderStyle.Render("● Stripe Co-op") + "\n\n"
