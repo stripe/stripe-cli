@@ -388,12 +388,13 @@ func (lc *listenCmd) getFeatures() []string {
 // event lists for the proxy, which still uses two separate channels internally.
 func (lc *listenCmd) splitEventsByType() (snapshotEvents []string, thinEvents []string) {
 	for _, e := range lc.events {
-		if e == "*" {
+		switch {
+		case e == "*":
 			snapshotEvents = append(snapshotEvents, "*")
 			thinEvents = append(thinEvents, "*")
-		} else if isThinEvent(e) {
+		case isThinEvent(e):
 			thinEvents = append(thinEvents, e)
-		} else {
+		default:
 			snapshotEvents = append(snapshotEvents, e)
 		}
 	}
