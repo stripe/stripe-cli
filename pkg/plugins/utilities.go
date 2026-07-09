@@ -46,6 +46,43 @@ type ResolvedPluginVersion struct {
 	BinaryURL string
 }
 
+type pluginResolutionSource string
+
+const (
+	pluginResolutionEventName = "Plugin Resolution"
+
+	pluginResolutionSourceMetadataEndpoint pluginResolutionSource = "metadata_endpoint"
+	pluginResolutionSourceRemoteManifest   pluginResolutionSource = "remote_manifest"
+	pluginResolutionSourceCachedManifest   pluginResolutionSource = "cached_manifest"
+	pluginResolutionSourceLocalMetadata    pluginResolutionSource = "local_metadata"
+)
+
+// emitPluginResolutionTelemetry records which source was used to resolve a plugin.
+// This is temporary telemetry to measure plugins.toml fallback usage before the
+// legacy manifest path is removed.
+func emitPluginResolutionTelemetry(ctx context.Context, pluginName string, source pluginResolutionSource) {
+	if ctx == nil || pluginName == "" || source == "" {
+		return
+	}
+
+	telemetryClient := stripe.GetTelemetryClient(ctx)
+	if telemetryClient == nil {
+		return
+	}
+
+	metadata := stripe.GetEventMetadata(ctx)
+	if metadata == nil {
+		return
+	}
+
+	metadataCopy := *metadata
+	metadataCopy.SetPluginName(pluginName)
+	metadataCopy.SetPluginResolutionSource(string(source))
+	telemetryCtx := stripe.WithEventMetadata(ctx, &metadataCopy)
+
+	go telemetryClient.SendEvent(telemetryCtx, string(pluginResolutionEventName), string(source))
+}
+
 // Install installs the resolved plugin version. If the metadata lookup already
 // resolved a concrete binary URL, it reuses that result and skips a second
 // metadata request. Otherwise it retries metadata during install so manifest or
@@ -316,28 +353,35 @@ func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboa
 // TODO: Remove this legacy plugins.toml path once the minimum supported CLI
 // version no longer depends on the cached manifest for backward compatibility.
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
+	pluginList, _, err := getPluginListWithSource(ctx, config, fs)
+	return pluginList, err
+}
+
+func getPluginListWithSource(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, pluginResolutionSource, error) {
 	pluginList, err := getCachedPluginList(config, fs)
 	if os.IsNotExist(err) {
 		log.Debug("The plugin manifest file does not exist. Downloading...")
 		err = RefreshPluginManifest(ctx, config, fs, stripe.DefaultAPIBaseURL)
 		if err != nil {
 			log.Debug("Could not download plugin manifest")
-			return pluginList, err
+			return pluginList, "", err
 		}
-		return getCachedPluginList(config, fs)
+		pluginList, err = getCachedPluginList(config, fs)
+		return pluginList, pluginResolutionSourceRemoteManifest, err
 	}
 
 	if err != nil {
-		return pluginList, err
+		return pluginList, "", err
 	}
 
-	return pluginList, nil
+	return pluginList, pluginResolutionSourceCachedManifest, nil
 }
 
 // LookUpPlugin returns the matching plugin object
 func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
 	plugin, err := readLocalPluginMetadata(config, fs, pluginName)
 	if err == nil {
+		emitPluginResolutionTelemetry(ctx, pluginName, pluginResolutionSourceLocalMetadata)
 		return plugin, nil
 	}
 
@@ -348,19 +392,40 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		}).Debugf("could not read local plugin metadata, falling back to manifest lookup: %s", err)
 	}
 
-	return LookUpPluginInManifest(ctx, config, fs, pluginName)
+	plugin, source, err := lookUpPluginInManifestWithSource(ctx, config, fs, pluginName)
+	if err != nil {
+		return Plugin{}, err
+	}
+
+	emitPluginResolutionTelemetry(ctx, pluginName, source)
+	return plugin, nil
 }
 
 // LookUpPluginInManifest returns plugin metadata from the cached global manifest.
 // TODO: Keep this only while older plugin flows still require plugins.toml for
 // backward compatibility.
 func LookUpPluginInManifest(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
-	pluginList, err := GetPluginList(ctx, config, fs)
+	plugin, source, err := lookUpPluginInManifestWithSource(ctx, config, fs, pluginName)
 	if err != nil {
 		return Plugin{}, err
 	}
 
-	return findPlugin(pluginList, pluginName)
+	emitPluginResolutionTelemetry(ctx, pluginName, source)
+	return plugin, nil
+}
+
+func lookUpPluginInManifestWithSource(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName string) (Plugin, pluginResolutionSource, error) {
+	pluginList, source, err := getPluginListWithSource(ctx, config, fs)
+	if err != nil {
+		return Plugin{}, "", err
+	}
+
+	plugin, err := findPlugin(pluginList, pluginName)
+	if err != nil {
+		return Plugin{}, "", err
+	}
+
+	return plugin, source, nil
 }
 
 // ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
@@ -373,6 +438,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 	resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey)
 	if err == nil {
+		emitPluginResolutionTelemetry(ctx, pluginName, pluginResolutionSourceMetadataEndpoint)
 		return resolvedPlugin, nil
 	}
 
@@ -388,7 +454,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	manifestPlugin, err := LookUpPluginInManifest(ctx, config, fs, pluginName)
+	manifestPlugin, err := lookUpPluginInCachedManifest(config, fs, pluginName)
 	if err != nil {
 		return nil, &ErrPluginNotFound{Name: pluginName}
 	}
@@ -401,10 +467,12 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, fmt.Errorf("could not determine latest version for plugin %s", pluginName)
 	}
 
-	return &ResolvedPluginVersion{
+	resolvedPlugin = &ResolvedPluginVersion{
 		Plugin:  &manifestPlugin,
 		Version: manifestVersion,
-	}, nil
+	}
+	emitPluginResolutionTelemetry(ctx, pluginName, pluginResolutionSourceRemoteManifest)
+	return resolvedPlugin, nil
 }
 
 // ResolvePluginForUpgrade resolves the latest plugin metadata for
@@ -418,6 +486,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 
 	resolvedPlugin, endpointErr := resolvePluginFromMetadata(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL, apiKey)
 	if endpointErr == nil {
+		emitPluginResolutionTelemetry(ctx, pluginName, pluginResolutionSourceMetadataEndpoint)
 		return resolvedPlugin, nil
 	}
 
@@ -436,17 +505,24 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		}).Debugf("could not refresh plugin manifest for upgrade fallback: %s", refreshErr)
 	}
 
-	cachedPlugin, cachedErr := resolveCachedPluginForUpgrade(config, fs, pluginName)
+	manifestSource := pluginResolutionSourceCachedManifest
+	if refreshErr == nil {
+		manifestSource = pluginResolutionSourceRemoteManifest
+	}
+
+	cachedPlugin, source, cachedErr := resolveCachedPluginForUpgradeWithSource(config, fs, pluginName, manifestSource)
 	if cachedErr == nil {
 		version, versionErr := getLatestResolvedPluginVersion(pluginName, cachedPlugin)
 		if versionErr != nil {
 			return nil, versionErr
 		}
 
-		return &ResolvedPluginVersion{
+		resolvedPlugin = &ResolvedPluginVersion{
 			Plugin:  cachedPlugin,
 			Version: version,
-		}, nil
+		}
+		emitPluginResolutionTelemetry(ctx, pluginName, source)
+		return resolvedPlugin, nil
 	}
 
 	if refreshErr != nil {
@@ -459,6 +535,11 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 // resolveCachedPluginForUpgrade resolves plugin metadata for upgrade using
 // persisted local metadata and the cached global manifest.
 func resolveCachedPluginForUpgrade(config config.IConfig, fs afero.Fs, pluginName string) (*Plugin, error) {
+	plugin, _, err := resolveCachedPluginForUpgradeWithSource(config, fs, pluginName, pluginResolutionSourceCachedManifest)
+	return plugin, err
+}
+
+func resolveCachedPluginForUpgradeWithSource(config config.IConfig, fs afero.Fs, pluginName string, manifestSource pluginResolutionSource) (*Plugin, pluginResolutionSource, error) {
 	var localPlugin *Plugin
 	localPluginValue, localErr := readLocalPluginMetadata(config, fs, pluginName)
 	if localErr == nil {
@@ -476,16 +557,16 @@ func resolveCachedPluginForUpgrade(config config.IConfig, fs afero.Fs, pluginNam
 		manifestPlugin = &manifestPluginValue
 	}
 
-	plugin := selectPluginForUpgrade(localPlugin, manifestPlugin)
+	plugin, source := selectPluginForUpgradeWithSource(localPlugin, manifestPlugin, manifestSource)
 	if plugin != nil {
-		return plugin, nil
+		return plugin, source, nil
 	}
 
 	if localErr != nil && !os.IsNotExist(localErr) {
-		return nil, localErr
+		return nil, "", localErr
 	}
 
-	return nil, manifestErr
+	return nil, "", manifestErr
 }
 
 // resolvePluginForAutoInstall resolves the freshest plugin metadata to use when
@@ -501,7 +582,7 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 		"plugin": pluginName,
 	}).Debugf("could not resolve latest plugin metadata for auto-install, falling back to cached metadata: %s", err)
 
-	cachedPlugin, cachedErr := resolveCachedPluginForUpgrade(config, fs, pluginName)
+	cachedPlugin, source, cachedErr := resolveCachedPluginForUpgradeWithSource(config, fs, pluginName, pluginResolutionSourceCachedManifest)
 	if cachedErr != nil {
 		return nil, fmt.Errorf("could not resolve plugin %s for auto-install: latest lookup failed: %v; cached lookup failed: %w", pluginName, err, cachedErr)
 	}
@@ -511,10 +592,12 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 		return nil, versionErr
 	}
 
-	return &ResolvedPluginVersion{
+	resolvedPlugin = &ResolvedPluginVersion{
 		Plugin:  cachedPlugin,
 		Version: version,
-	}, nil
+	}
+	emitPluginResolutionTelemetry(ctx, pluginName, source)
+	return resolvedPlugin, nil
 }
 
 func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error) {
@@ -546,15 +629,20 @@ func findPlugin(pluginList PluginList, pluginName string) (Plugin, error) {
 }
 
 func selectPluginForUpgrade(localPlugin, manifestPlugin *Plugin) *Plugin {
+	plugin, _ := selectPluginForUpgradeWithSource(localPlugin, manifestPlugin, pluginResolutionSourceCachedManifest)
+	return plugin
+}
+
+func selectPluginForUpgradeWithSource(localPlugin, manifestPlugin *Plugin, manifestSource pluginResolutionSource) (*Plugin, pluginResolutionSource) {
 	switch {
 	case localPlugin == nil:
-		return mergePluginMetadata(manifestPlugin, nil)
+		return mergePluginMetadata(manifestPlugin, nil), manifestSource
 	case manifestPlugin == nil:
-		return mergePluginMetadata(localPlugin, nil)
+		return mergePluginMetadata(localPlugin, nil), pluginResolutionSourceLocalMetadata
 	case comparePluginVersions(localPlugin.LookUpLatestVersion(), manifestPlugin.LookUpLatestVersion()) >= 0:
-		return mergePluginMetadata(localPlugin, manifestPlugin)
+		return mergePluginMetadata(localPlugin, manifestPlugin), pluginResolutionSourceLocalMetadata
 	default:
-		return mergePluginMetadata(manifestPlugin, localPlugin)
+		return mergePluginMetadata(manifestPlugin, localPlugin), manifestSource
 	}
 }
 
