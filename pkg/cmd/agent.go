@@ -71,7 +71,6 @@ type agentSetupCmd struct {
 }
 
 type agentSetupJSON struct {
-	Status  string              `json:"status"`
 	Clients []agentsetup.Status `json:"clients"`
 	Skills  *skillsScopesJSON   `json:"skills,omitempty"`
 	Actions []agentsetup.Plan   `json:"actions,omitempty"`
@@ -584,7 +583,6 @@ func skillsScopeVisible(d agentskills.DirStatus, scopes skillsScopes) bool {
 
 func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup.Provider, statuses []agentsetup.Status, view skillsStatusView) error {
 	result := agentSetupJSON{
-		Status:  aggregateStatus(statuses),
 		Clients: statuses,
 	}
 	for _, status := range statuses {
@@ -676,30 +674,6 @@ func detectedStatuses(statuses []agentsetup.Status) []agentsetup.Status {
 		}
 	}
 	return detected
-}
-
-// aggregateStatus collapses per-client statuses into a single headline status,
-// surfacing the most actionable state first.
-func aggregateStatus(statuses []agentsetup.Status) string {
-	var missing, installed bool
-	for _, s := range statuses {
-		switch s.Status {
-		case agentsetup.StatusError:
-			return agentsetup.StatusError
-		case agentsetup.StatusMissing:
-			missing = true
-		case agentsetup.StatusInstalled:
-			installed = true
-		}
-	}
-	switch {
-	case missing:
-		return agentsetup.StatusMissing
-	case installed:
-		return agentsetup.StatusInstalled
-	default:
-		return agentsetup.StatusNotDetected
-	}
 }
 
 // printStatusTable renders a compact, aligned, color-coded view of each client
