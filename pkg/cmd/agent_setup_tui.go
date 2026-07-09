@@ -85,11 +85,11 @@ func skillsRowPresentation(statuses []agentsetup.Status, skills skillsScopes) (l
 
 	hasOutOfDate := skillsScopeNeedsUpdate(skills.Local) || skillsScopeNeedsUpdate(skills.Global)
 	if hasOutOfDate {
-		return label, "Detected outdated Stripe skills", true
+		return label, "detected outdated Stripe skills", true
 	}
 
 	if skills.Local.Status == agentskills.StatusCurrent && skills.Global.Status == agentskills.StatusCurrent {
-		return "Stripe skills", "up to date", false
+		return label, "", false
 	}
 
 	return label, "", len(statuses) == 0
