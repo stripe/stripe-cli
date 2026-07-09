@@ -35,13 +35,51 @@ func TestSplitEventsByType(t *testing.T) {
 	tests := []struct {
 		name         string
 		events       []string
+		allSnapshot  bool
+		allThin      bool
 		wantSnapshot []string
 		wantThin     []string
 	}{
 		{
-			name:         "wildcard splits to both",
-			events:       []string{"*"},
+			name:         "bare listen with no flags subscribes to everything",
+			events:       []string{},
 			wantSnapshot: []string{"*"},
+			wantThin:     []string{"*"},
+		},
+		{
+			name:         "all-snapshot adds wildcard for snapshot",
+			allSnapshot:  true,
+			events:       []string{},
+			wantSnapshot: []string{"*"},
+			wantThin:     nil,
+		},
+		{
+			name:         "all-thin adds wildcard for thin",
+			allThin:      true,
+			events:       []string{},
+			wantSnapshot: nil,
+			wantThin:     []string{"*"},
+		},
+		{
+			name:         "both all-snapshot and all-thin",
+			allSnapshot:  true,
+			allThin:      true,
+			events:       []string{},
+			wantSnapshot: []string{"*"},
+			wantThin:     []string{"*"},
+		},
+		{
+			name:         "all-snapshot with specific thin events",
+			allSnapshot:  true,
+			events:       []string{"v1.billing.meter.no_meter_found"},
+			wantSnapshot: []string{"*"},
+			wantThin:     []string{"v1.billing.meter.no_meter_found"},
+		},
+		{
+			name:         "all-thin with specific snapshot events",
+			allThin:      true,
+			events:       []string{"charge.captured"},
+			wantSnapshot: []string{"charge.captured"},
 			wantThin:     []string{"*"},
 		},
 		{
@@ -62,17 +100,11 @@ func TestSplitEventsByType(t *testing.T) {
 			wantSnapshot: []string{"charge.captured"},
 			wantThin:     []string{"v1.billing.meter.no_meter_found"},
 		},
-		{
-			name:         "empty events returns nil",
-			events:       []string{},
-			wantSnapshot: nil,
-			wantThin:     nil,
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snapshot, thin := splitEventsByType(tt.events)
+			snapshot, thin := splitEventsByType(tt.events, tt.allSnapshot, tt.allThin)
 			assert.Equal(t, tt.wantSnapshot, snapshot)
 			assert.Equal(t, tt.wantThin, thin)
 		})
@@ -81,14 +113,31 @@ func TestSplitEventsByType(t *testing.T) {
 
 func TestGetFeatures(t *testing.T) {
 	tests := []struct {
-		name   string
-		events []string
-		want   []string
+		name        string
+		events      []string
+		allSnapshot bool
+		allThin     bool
+		want        []string
 	}{
 		{
-			name:   "wildcard opens both channels",
-			events: []string{"*"},
-			want:   []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
+			name: "bare listen opens both channels",
+			want: []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
+		},
+		{
+			name:        "all-snapshot opens webhooks only",
+			allSnapshot: true,
+			want:        []string{webhooksWebSocketFeature},
+		},
+		{
+			name:    "all-thin opens v2_events only",
+			allThin: true,
+			want:    []string{destinationsWebSocketFeature},
+		},
+		{
+			name:        "both all flags open both channels",
+			allSnapshot: true,
+			allThin:     true,
+			want:        []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
 		},
 		{
 			name:   "snapshot events only opens webhooks",
@@ -109,7 +158,11 @@ func TestGetFeatures(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lc := &listenCmd{events: tt.events}
+			lc := &listenCmd{
+				events:      tt.events,
+				allSnapshot: tt.allSnapshot,
+				allThin:     tt.allThin,
+			}
 			got := lc.getFeatures()
 			assert.Equal(t, tt.want, got)
 		})
@@ -169,7 +222,7 @@ func TestMergeAndSplitEvents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snapshot, thin := mergeAndSplitEvents(tt.events, tt.thinEvents, tt.eventsExplicit)
+			snapshot, thin := mergeAndSplitEvents(tt.events, tt.thinEvents, tt.eventsExplicit, false, false)
 			assert.Equal(t, tt.wantSnapshot, snapshot)
 			assert.Equal(t, tt.wantThin, thin)
 		})

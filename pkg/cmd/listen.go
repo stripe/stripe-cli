@@ -42,6 +42,8 @@ type listenCmd struct {
 	forwardConnectURL     string
 	eventsFrom            string
 	events                []string
+	allSnapshot           bool
+	allThin               bool
 	latestAPIVersion      bool
 	livemode              bool
 	useConfiguredWebhooks bool
@@ -73,12 +75,12 @@ local machine by connecting directly to Stripe's API. You can test the latest
 API version, filter events, or even load your saved webhook endpoints from your
 Stripe account.`,
 		Example: `stripe listen
-  stripe listen --events charge.captured,charge.updated \
+  stripe listen --all-snapshot --forward-to localhost:3000/events
+  stripe listen --all-thin --forward-to localhost:3000/events
+  stripe listen --events charge.captured,v1.billing.meter.no_meter_found \
     --forward-to localhost:3000/events
-  stripe listen --events v1.billing.meter.no_meter_found \
-    --forward-to localhost:3000/events
-  stripe listen --events v2.core.account.created \
-    --events-from @accounts --forward-to localhost:3000/events`,
+  stripe listen --all-thin --events-from @accounts \
+    --forward-to localhost:3000/events`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
@@ -89,7 +91,9 @@ Stripe account.`,
 	}
 
 	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. Supports both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found)")
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{}, "A comma-separated list of specific events to listen for. Supports both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found)")
+	lc.cmd.Flags().BoolVar(&lc.allSnapshot, "all-snapshot", false, "Subscribe to all snapshot events")
+	lc.cmd.Flags().BoolVar(&lc.allThin, "all-thin", false, "Subscribe to all thin events")
 	lc.cmd.Flags().StringVar(&lc.eventsFrom, "events-from", "all", "Event source filter: '@self' (your account only), '@accounts' (connected accounts only), or 'all' (default)")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
@@ -385,20 +389,21 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 }
 
 func (lc *listenCmd) getFeatures() []string {
-	needsSnapshot := false
-	needsThin := len(lc.thinEvents) > 0
+	needsSnapshot := lc.allSnapshot
+	needsThin := lc.allThin || len(lc.thinEvents) > 0
 
 	for _, e := range lc.events {
-		if e == "*" {
-			needsSnapshot = true
-			needsThin = true
-			break
-		}
 		if isThinEvent(e) {
 			needsThin = true
 		} else {
 			needsSnapshot = true
 		}
+	}
+
+	// bare "stripe listen" with no event flags opens both channels
+	if !needsSnapshot && !needsThin {
+		needsSnapshot = true
+		needsThin = true
 	}
 
 	features := []string{}
@@ -415,12 +420,12 @@ func (lc *listenCmd) getFeatures() []string {
 // then splits into snapshot and thin event lists for the proxy.
 func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
 	eventsExplicit := lc.cmd.Flags().Changed("events")
-	return mergeAndSplitEvents(lc.events, lc.thinEvents, eventsExplicit)
+	return mergeAndSplitEvents(lc.events, lc.thinEvents, eventsExplicit, lc.allSnapshot, lc.allThin)
 }
 
 // mergeAndSplitEvents combines the events and deprecated thinEvents lists,
 // then splits into snapshot and thin event lists for the proxy.
-func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit bool) (snapshotEvents []string, thinEventsOut []string) {
+func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit, allSnapshot, allThin bool) (snapshotEvents []string, thinEventsOut []string) {
 	if len(thinEvents) > 0 && !eventsExplicit {
 		// --thin-events used without explicit --events: subscribe to all snapshot
 		// events (the default behavior) plus only the specified thin events.
@@ -433,11 +438,18 @@ func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit bool) (snap
 		merged = append(merged, thinEvents...)
 	}
 
-	return splitEventsByType(merged)
+	return splitEventsByType(merged, allSnapshot, allThin)
 }
 
 // splitEventsByType separates an event list into snapshot and thin event lists.
-func splitEventsByType(events []string) (snapshotEvents []string, thinEvents []string) {
+func splitEventsByType(events []string, allSnapshot, allThin bool) (snapshotEvents []string, thinEvents []string) {
+	if allSnapshot {
+		snapshotEvents = append(snapshotEvents, "*")
+	}
+	if allThin {
+		thinEvents = append(thinEvents, "*")
+	}
+
 	for _, e := range events {
 		switch {
 		case e == "*":
@@ -449,6 +461,13 @@ func splitEventsByType(events []string) (snapshotEvents []string, thinEvents []s
 			snapshotEvents = append(snapshotEvents, e)
 		}
 	}
+
+	// bare "stripe listen" with no event flags subscribes to everything
+	if len(snapshotEvents) == 0 && len(thinEvents) == 0 {
+		snapshotEvents = []string{"*"}
+		thinEvents = []string{"*"}
+	}
+
 	return
 }
 
