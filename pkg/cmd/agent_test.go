@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -65,12 +66,10 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.Len(t, result.Clients, 1)
 	require.True(t, result.Clients[0].Detected)
 	require.False(t, result.Clients[0].Plugin.Installed)
-	require.Len(t, result.Actions, 2)
+	require.Len(t, result.Actions, 1)
 	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
 	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
-	require.Equal(t, "install_skills", result.Actions[1].Action)
-	require.Equal(t, agentskills.StatusNotInstalled, result.Skills.Local.Status)
-	require.Equal(t, agentskills.StatusNotInstalled, result.Skills.Global.Status)
+	require.Nil(t, result.Skills)
 }
 
 func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
@@ -204,6 +203,32 @@ func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "" }
+	setup.skillsCheck = func(context.Context, string) (*agentskills.DirStatus, error) {
+		t.Fatal("plugin-only setup should not check skills")
+		return nil, nil
+	}
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--client", "codex")
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed)
+	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
 func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) error {
@@ -227,6 +252,32 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	require.Equal(t, []string{"codex"}, installed) // Claude NOT installed
 	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
+	var installed []string
+	record := func(_ context.Context, name string, args ...string) error {
+		installed = append(installed, name)
+		return nil
+	}
+
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	codex := codexMissingProvider(record)
+
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.callingAgent = func() string { return "codex_cli" }
+	setup.skillsCheck = func(context.Context, string) (*agentskills.DirStatus, error) {
+		t.Fatal("calling-agent plugin setup should not check skills")
+		return nil, nil
+	}
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, installed)
+	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 }
 
 // codexMissingProvider returns a Codex provider that detects the binary, starts
@@ -411,17 +462,43 @@ func TestAgentSetupAgentNeverUsesInteractivePicker(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
-func TestAgentSetupStatusShowsSkillsForBothScopes(t *testing.T) {
+func TestAgentSetupStatusOmitsSkillsWhenAgentsDetected(t *testing.T) {
 	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), nil)
 
 	output, err := executeCommand(setup.cmd, "--status")
 
 	require.NoError(t, err)
+	require.Contains(t, output, "Claude Code")
+	require.NotContains(t, output, "Stripe skills:")
+}
+
+func TestAgentSetupStatusShowsSkillsWhenInstalled(t *testing.T) {
+	localDir, globalDir := testSkillsDirs(t)
+	setup := newTestAgentSetupCmdInstalled(t, nil)
+	setup.skillsCheck = mockSkillsCheckOutOfDate
+	setup.skillsLocalDir = func() (string, error) { return localDir, nil }
+	setup.skillsGlobalDir = func() (string, error) { return globalDir, nil }
+
+	output, err := executeCommand(setup.cmd, "--status")
+
+	require.NoError(t, err)
 	require.Contains(t, output, "Stripe skills:")
-	require.Contains(t, output, "local")
-	require.Contains(t, output, "global")
-	require.Contains(t, output, "not installed")
-	require.Contains(t, output, "Run stripe agent setup to install your Stripe skills.")
+	require.Contains(t, output, "out of date")
+	require.Contains(t, output, "Run stripe agent setup to update your Stripe skills.")
+	require.NotContains(t, output, "install your Stripe skills")
+}
+
+func TestAgentSetupStatusDoesNotCheckSkillsWhenNoDirs(t *testing.T) {
+	setup := newTestAgentSetupCmdInstalled(t, nil)
+	setup.skillsCheck = func(context.Context, string) (*agentskills.DirStatus, error) {
+		t.Fatal("skills check should be skipped when no local skill dirs exist")
+		return nil, nil
+	}
+
+	output, err := executeCommand(setup.cmd, "--status")
+
+	require.NoError(t, err)
+	require.NotContains(t, output, "Stripe skills:")
 }
 
 func TestAgentSetupStatusWithNoClientsShowsSkills(t *testing.T) {
@@ -438,8 +515,11 @@ func TestAgentSetupStatusWithNoClientsShowsSkills(t *testing.T) {
 }
 
 func TestAgentSetupStatusShowsCTAWhenOutOfDate(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), nil)
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.callingAgent = func() string { return "" }
 	setup.skillsCheck = mockSkillsCheckOutOfDate
+	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd, "--status")
 
@@ -539,12 +619,62 @@ func mockSkillsCheckOutOfDate(_ context.Context, destDir string) (*agentskills.D
 	}, nil
 }
 
+func mockSkillsCheckError(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+	err := fmt.Errorf("fetching skills index: request failed")
+	return &agentskills.DirStatus{
+		Dir:    destDir,
+		Status: agentskills.StatusError,
+		Error:  err.Error(),
+	}, err
+}
+
+func TestAgentSetupStatusWithSkillsCheckError(t *testing.T) {
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.callingAgent = func() string { return "" }
+	setup.skillsCheck = mockSkillsCheckError
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--status")
+
+	require.NoError(t, err)
+	require.Contains(t, output, "Stripe skills:")
+	require.Contains(t, output, "error: fetching skills index: request failed")
+}
+
+func TestAgentSetupJSONWithSkillsCheckError(t *testing.T) {
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{}
+	setup.callingAgent = func() string { return "" }
+	setup.skillsCheck = mockSkillsCheckError
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--json")
+
+	require.NoError(t, err)
+
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.NotNil(t, result.Skills)
+	require.Equal(t, agentskills.StatusError, result.Skills.Local.Status)
+	require.Equal(t, agentskills.StatusError, result.Skills.Global.Status)
+	require.Contains(t, result.Skills.Local.Error, "fetching skills index")
+	require.Empty(t, result.Errors)
+}
+
 func testAgentSetupCmd() *agentSetupCmd {
 	setup := newAgentSetupCmd()
 	setup.skillsCheck = mockSkillsCheckNotInstalled
 	setup.skillsLocalDir = func() (string, error) { return "/tmp/project/.agents/skills", nil }
 	setup.skillsGlobalDir = func() (string, error) { return "/tmp/home/.agents/skills", nil }
 	return setup
+}
+
+func testSkillsDirs(t *testing.T) (localDir, globalDir string) {
+	t.Helper()
+	localRoot := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(localRoot, ".agents", "skills", "stripe-best-practices"), 0755))
+	return filepath.Join(localRoot, ".agents", "skills"), filepath.Join(t.TempDir(), ".agents", "skills")
 }
 
 func claudeMissingPluginScanner(t *testing.T) agentsetup.Scanner {

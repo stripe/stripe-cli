@@ -189,3 +189,32 @@ func TestScopeModel_PrefersOutOfDateLocalScope(t *testing.T) {
 	require.Contains(t, m.labels[0], "(out of date)")
 	require.Contains(t, m.labels[1], "(up to date)")
 }
+
+func TestScopeStatusHintError(t *testing.T) {
+	require.Equal(t, "(unavailable — could not check)", scopeStatusHint(agentskills.DirStatus{
+		Status: agentskills.StatusError,
+		Error:  "fetching skills index: request failed",
+	}))
+}
+
+func TestScopeModel_PrefersScopeWhenOtherScopeCheckFailed(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+		Global: agentskills.DirStatus{Status: agentskills.StatusError, Error: "fetching skills index: request failed"},
+	}
+
+	m := newScopeModel(skills)
+
+	require.Equal(t, skillsScopeLocal, m.options[m.cursor])
+	require.Contains(t, m.labels[0], "(not installed)")
+	require.Contains(t, m.labels[1], "(unavailable — could not check)")
+}
+
+func TestPreferredSkillsScopeSkipsCheckFailedScope(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusError, Error: "fetching skills index: request failed"},
+		Global: agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+	}
+
+	require.Equal(t, skillsScopeGlobal, preferredSkillsScope(skills))
+}
