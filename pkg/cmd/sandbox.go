@@ -1,11 +1,15 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -19,6 +23,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -59,10 +64,15 @@ func newSandboxCmd() *sandboxCmd {
 
 	createCmd := newSandboxCreateCmd()
 	claimCmd := newSandboxClaimCmd()
-	newCmd := newSandboxNewCmd()
 	sc.cmd.AddCommand(createCmd.cmd)
 	sc.cmd.AddCommand(claimCmd.cmd)
-	sc.cmd.AddCommand(newCmd.cmd)
+
+	// `sandbox new` is an experimental POC. It stays Hidden (kept out of
+	// help/completion) but is always registered — this ships only to the
+	// long-lived sandboxes-cli feature branch, never to master pre-GA, so no
+	// client-side env gate is needed. The authoritative access gate remains
+	// server-side (the UAT allowlist + hzn_sandbox_create), not the client.
+	sc.cmd.AddCommand(newSandboxNewCmd().cmd)
 	return sc
 }
 
@@ -403,11 +413,15 @@ type sandboxClaimCmd struct {
 }
 
 type sandboxNewCmd struct {
-	cmd           *cobra.Command
-	name          string
-	replicaOf     string
-	stripeContext string
-	apiBase       string
+	cmd              *cobra.Command
+	name             string
+	replicaOf        string
+	businessLocation string
+	stripeContext    string
+	activate         bool
+	batch            int
+	stripeVersion    string
+	apiBase          string
 }
 
 func newSandboxClaimCmd() *sandboxClaimCmd {
@@ -477,8 +491,16 @@ that you have previously logged in with your Stripe account credentials.`,
 	}
 
 	snc.cmd.Flags().StringVar(&snc.name, "name", "", "Name for the new sandbox")
-	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID to replicate (wksp_...)")
-	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Stripe-Context compartment to scope the request to")
+	_ = snc.cmd.MarkFlagRequired("name")
+	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID to replicate (wksp_...); mutually exclusive with --business-location")
+	snc.cmd.Flags().StringVar(&snc.businessLocation, "business-location", "", "Country for a fresh blank sandbox (e.g. US); mutually exclusive with --replica-of")
+	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Playground compartment (play_...) to create the sandbox under")
+	snc.cmd.Flags().BoolVar(&snc.activate, "activate", true, "Request capabilities and activate the sandbox after creation")
+	snc.cmd.Flags().IntVar(&snc.batch, "batch", 1, "Number of sandboxes to create (currently only 1 is supported)")
+
+	snc.cmd.Flags().StringVar(&snc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
+	_ = snc.cmd.Flags().MarkHidden("stripe-version")
+
 	snc.cmd.Flags().StringVar(&snc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = snc.cmd.Flags().MarkHidden("api-base")
 
@@ -486,29 +508,131 @@ that you have previously logged in with your Stripe account credentials.`,
 }
 
 func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) error {
-	// Scaffolded only. The intended behavior is described below as plain steps so
-	// the follow-up PR can implement it directly. The end-to-end flow has already
-	// been validated; authenticating with the logged-in session token works.
-	//
-	//   1. Load the user's session token from the local credential store. If the
-	//      store is unavailable or no token is present, return an error telling the
-	//      user to run `stripe login` first.
-	//   2. Determine which compartment to scope the request to. Prefer the
-	//      --stripe-context and --replica-of flags when provided; otherwise fall
-	//      back to the compartment saved at login. Sandbox creation must be scoped
-	//      to a playground compartment, so this needs to resolve to a playground (or
-	//      be supplied explicitly by flag); return a clear error if it can't be
-	//      determined.
-	//   3. Build the create-sandbox request body, matching the dashboard flow: the
-	//      sandbox name, the workspace to replicate, an "activate" flag, and an
-	//      idempotency token.
-	//   4. Send the create request to the v2 sandboxes endpoint, attaching the
-	//      session token as the request credential along with the API version, the
-	//      compartment context, and a JSON content type.
-	//   5. If the response is not a success status, return an error that includes
-	//      the status and body; otherwise pretty-print the created sandbox as JSON.
-	fmt.Fprintln(cmd.OutOrStdout(), "stripe sandbox new: scaffolded, not yet implemented")
+	// The UAT is stored under the bare keyring key (config.UATKeychainItemKey),
+	// not the per-profile field, so read it directly from the keyring rather
+	// than going through the profile helpers (which read live/test API keys).
+	if config.KeyRing == nil {
+		return fmt.Errorf("credential store unavailable; run `stripe login` first")
+	}
+	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
+	if err != nil || len(uatBytes) == 0 {
+		return fmt.Errorf("no user access token found; run `stripe login` first")
+	}
+	uat := strings.TrimSpace(string(uatBytes))
+
+	// --batch is scaffolded for a future bulk-create shape and currently only
+	// supports 1. Future shape: create N sandboxes under the same playground in a
+	// single invocation via a bounded fan-out (or a batched backend request) that
+	// shares an idempotency prefix, returns the list of created sandboxes, and
+	// reports per-item partial failures instead of aborting the whole batch.
+	// Until that lands, reject >1 explicitly rather than silently creating one.
+	if snc.batch < 1 {
+		return fmt.Errorf("--batch must be >= 1")
+	}
+	if snc.batch > 1 {
+		return fmt.Errorf("--batch > 1 is not yet implemented; only --batch 1 is supported today")
+	}
+
+	// Stripe-Context must be a playground (play_...) compartment. The backend
+	// (CreateSandboxOp) rejects any non-playground context, so validate it here
+	// to give a clear error rather than a server-side rejection.
+	stripeContext := strings.TrimSpace(snc.stripeContext)
+	if stripeContext == "" {
+		return fmt.Errorf("--stripe-context is required; pass the playground id (play_...) to create the sandbox under")
+	}
+	if !strings.HasPrefix(stripeContext, "play_") {
+		return fmt.Errorf("--stripe-context must be a playground id (play_...), got %q", stripeContext)
+	}
+
+	// The backend requires exactly one of replica_of / business_location (a oneof):
+	// replica_of (a livemode wksp_...) clones a live workspace; business_location
+	// (a country) creates a fresh blank sandbox. Enforce the oneof up front.
+	replicaOf := strings.TrimSpace(snc.replicaOf)
+	businessLocation := strings.TrimSpace(snc.businessLocation)
+	switch {
+	case replicaOf != "" && businessLocation != "":
+		return fmt.Errorf("--replica-of and --business-location are mutually exclusive")
+	case replicaOf == "" && businessLocation == "":
+		return fmt.Errorf("pass one of --replica-of (wksp_...) to clone a live workspace, or --business-location (e.g. US) for a blank sandbox")
+	case replicaOf != "" && !strings.HasPrefix(replicaOf, "wksp_"):
+		return fmt.Errorf("--replica-of must be a livemode workspace id (wksp_...), got %q", replicaOf)
+	}
+
+	baseURL, err := url.Parse(snc.apiBase)
+	if err != nil {
+		return fmt.Errorf("invalid --api-base %q: %w", snc.apiBase, err)
+	}
+
+	// Mirror the dashboard's create-sandbox request body, including the
+	// idempotency_token derived from the create inputs (see newIdempotencyToken).
+	reqBody := map[string]interface{}{
+		"name":              snc.name,
+		"activate_sandbox":  snc.activate,
+		"idempotency_token": newIdempotencyToken(snc.name, businessLocation, replicaOf),
+	}
+	if replicaOf != "" {
+		reqBody["replica_of"] = replicaOf
+	} else {
+		reqBody["business_location"] = businessLocation
+	}
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return err
+	}
+
+	// Use the low-level client with an empty APIKey so it doesn't set a Bearer
+	// Authorization header; the UAT is injected via the configure hook below as
+	// a STRIPE-V2-SIG token instead.
+	client := &stripe.Client{
+		BaseURL: baseURL,
+		APIKey:  "",
+	}
+
+	configure := func(req *http.Request) error {
+		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)
+		req.Header.Set("Stripe-Version", snc.stripeVersion)
+		req.Header.Set("Stripe-Context", stripeContext)
+		// Content-Type is set to application/json automatically by the client
+		// for /v2/ paths, but set it explicitly to be safe.
+		req.Header.Set("Content-Type", stripe.V2ContentType)
+		return nil
+	}
+
+	resp, err := client.PerformRequest(cmd.Context(), http.MethodPost, "/v2/sandboxes", string(bodyBytes), configure)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("create sandbox failed: %s\n%s", resp.Status, string(respBytes))
+	}
+
+	// Pretty-print the JSON response when possible; otherwise print as-is.
+	var pretty bytes.Buffer
+	if json.Indent(&pretty, respBytes, "", "  ") == nil {
+		fmt.Fprintln(cmd.OutOrStdout(), pretty.String())
+	} else {
+		fmt.Fprintln(cmd.OutOrStdout(), string(respBytes))
+	}
+
 	return nil
+}
+
+// newIdempotencyToken mirrors the dashboard's create-sandbox flow
+// (CreateSandboxFlow.tsx): the token is derived from the create inputs (name,
+// business_location country, and the replica_of parent workspace) plus a
+// wall-clock second. An accidental double-submit of the same command within the
+// same second collapses to one create; distinct invocations create distinct
+// sandboxes. Sent as the body idempotency_token field, matching the dashboard's
+// v2CreateSandbox call (which does not use the Idempotency-Key header).
+func newIdempotencyToken(name, country, parent string) string {
+	return fmt.Sprintf("%s-%s-%s-%d", name, country, parent, time.Now().Unix())
 }
 
 func isSSHSession() bool {
