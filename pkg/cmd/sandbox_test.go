@@ -546,43 +546,41 @@ func TestSandboxNewCmd_Success(t *testing.T) {
 	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
 	require.NoError(t, err)
 
-	// Stand up a test server to validate the request shape
+	// --replica-of pins the live workspace; the command resolves its playground,
+	// then creates. The server serves the playground GET and the create POST.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Assert request properties
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "/v2/sandboxes", r.URL.Path)
-		assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
-		// Stripe-Context must be the playground id, not the livemode workspace.
-		assert.Equal(t, "play_livetest", r.Header.Get("Stripe-Context"))
-		assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-
-		// Decode and validate the JSON body
-		var body map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&body)
-		assert.NoError(t, err)
-		assert.Equal(t, "mytest", body["name"])
-		assert.Equal(t, "wksp_livetest", body["replica_of"])
-		assert.Equal(t, true, body["activate_sandbox"])
-
-		// Return success response
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"id":     "sbx_123",
-			"object": "sandbox",
-		})
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/playground/wksp_livetest":
+			assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
+			// Resolution GETs are self-scoped by the UAT; no Stripe-Context header.
+			assert.Empty(t, r.Header.Get("Stripe-Context"))
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "play_livetest"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/sandboxes":
+			assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
+			// Stripe-Context must be the resolved playground id, not the workspace.
+			assert.Equal(t, "play_livetest", r.Header.Get("Stripe-Context"))
+			assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
+			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+			var body map[string]interface{}
+			assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			assert.Equal(t, "mytest", body["name"])
+			assert.Equal(t, "wksp_livetest", body["replica_of"])
+			assert.Equal(t, true, body["activate_sandbox"])
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "sbx_123", "object": "sandbox"})
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}))
 	defer server.Close()
 
-	// Execute the command with explicit flags
 	output, err := executeCommand(
 		rootCmd,
 		"sandbox", "new",
 		"--api-base="+server.URL,
 		"--copy-live-account=true",
 		"--create-blank=false",
-		"--stripe-context=play_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
 	)
@@ -600,13 +598,14 @@ func TestSandboxNewCmd_ActivateFalse(t *testing.T) {
 	require.NoError(t, err)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&body)
-		assert.NoError(t, err)
-		assert.Equal(t, false, body["activate_sandbox"])
-
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		if r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/playground/wksp_livetest" {
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "play_livetest"})
+			return
+		}
+		var body map[string]interface{}
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, false, body["activate_sandbox"])
 		json.NewEncoder(w).Encode(map[string]interface{}{"id": "sbx_123", "object": "sandbox"})
 	}))
 	defer server.Close()
@@ -617,7 +616,6 @@ func TestSandboxNewCmd_ActivateFalse(t *testing.T) {
 		"--api-base="+server.URL,
 		"--copy-live-account=true",
 		"--create-blank=false",
-		"--stripe-context=play_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
 		"--activate=false",
@@ -625,19 +623,31 @@ func TestSandboxNewCmd_ActivateFalse(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSandboxNewCmd_RejectsNonPlaygroundContext(t *testing.T) {
+func TestSandboxNewCmd_RejectsResolvedNonPlayground(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
 	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
 	require.NoError(t, err)
 
+	// If the playground endpoint returns a non-play_ id, the command must reject it.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/playground/wksp_livetest" {
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "wksp_notaplayground"})
+			return
+		}
+		t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
+		"--api-base="+server.URL,
 		"--copy-live-account=true",
 		"--create-blank=false",
-		"--stripe-context=wksp_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
 	)
@@ -657,7 +667,6 @@ func TestSandboxNewCmd_RejectsNonWorkspaceReplicaOf(t *testing.T) {
 		"sandbox", "new",
 		"--copy-live-account=true",
 		"--create-blank=false",
-		"--stripe-context=play_livetest",
 		"--replica-of=acct_123",
 		"--name=mytest",
 	)
@@ -672,19 +681,31 @@ func TestSandboxNewCmd_BlankPath(t *testing.T) {
 	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
 	require.NoError(t, err)
 
+	// Blank mode has no --replica-of, so the live workspace is resolved via
+	// user_accessible, then its playground, then create.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]interface{}
-		err := json.NewDecoder(r.Body).Decode(&body)
-		assert.NoError(t, err)
-		// Blank path sends business_location and omits replica_of entirely.
-		assert.Equal(t, "US", body["business_location"])
-		_, hasReplica := body["replica_of"]
-		assert.False(t, hasReplica)
-		assert.Equal(t, true, body["activate_sandbox"])
-
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{"id": "wksp_test_blank", "object": "sandbox"})
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"standalone_workspaces": []map[string]interface{}{{"id": "wksp_blankparent"}},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/playground/wksp_blankparent":
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "play_blank"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/sandboxes":
+			assert.Equal(t, "play_blank", r.Header.Get("Stripe-Context"))
+			var body map[string]interface{}
+			assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			// Blank path sends business_location and omits replica_of entirely.
+			assert.Equal(t, "US", body["business_location"])
+			_, hasReplica := body["replica_of"]
+			assert.False(t, hasReplica)
+			assert.Equal(t, true, body["activate_sandbox"])
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "wksp_test_blank", "object": "sandbox"})
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}))
 	defer server.Close()
 
@@ -694,7 +715,6 @@ func TestSandboxNewCmd_BlankPath(t *testing.T) {
 		"--api-base="+server.URL,
 		"--create-blank=true",
 		"--copy-live-account=false",
-		"--stripe-context=play_livetest",
 		"--replica-of=", // clear any value leaked from a prior test's flag state
 		"--business-location=US",
 		"--activate=true", // clear any --activate=false leaked from a prior test
@@ -747,8 +767,8 @@ func TestSandboxNewCmd_AutoResolveViaUserAccessible(t *testing.T) {
 	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
 	require.NoError(t, err)
 
-	// No --replica-of and no --stripe-context: the command must resolve the live
-	// workspace via /v2/compartments/user_accessible, the playground via
+	// No --replica-of: the command must resolve the live workspace via
+	// /v2/compartments/user_accessible, the playground via
 	// /v2/compartments/playground/:id, then create.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -779,7 +799,6 @@ func TestSandboxNewCmd_AutoResolveViaUserAccessible(t *testing.T) {
 		"--copy-live-account=true",
 		"--create-blank=false",
 		"--replica-of=",
-		"--stripe-context=",
 		"--business-location=",
 		"--activate=true",
 		"--name=autotest",
@@ -815,7 +834,6 @@ func TestSandboxNewCmd_MultipleWorkspacesError(t *testing.T) {
 		"--copy-live-account=true",
 		"--create-blank=false",
 		"--replica-of=",
-		"--stripe-context=",
 		"--business-location=",
 		"--name=autotest",
 	)
@@ -848,7 +866,6 @@ func TestSandboxNewCmd_NoWorkspaceError(t *testing.T) {
 		"--copy-live-account=true",
 		"--create-blank=false",
 		"--replica-of=",
-		"--stripe-context=",
 		"--business-location=",
 		"--name=autotest",
 	)
@@ -866,7 +883,6 @@ func TestSandboxNewCmd_NoUAT(t *testing.T) {
 		rootCmd,
 		"sandbox", "new",
 		"--name=mytest",
-		"--stripe-context=wksp_livetest",
 		"--replica-of=wksp_livetest",
 	)
 
@@ -888,7 +904,6 @@ func TestSandboxNewCmd_BatchNotYetSupported(t *testing.T) {
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
-		"--stripe-context=play_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
 		"--batch=3",
@@ -900,7 +915,6 @@ func TestSandboxNewCmd_BatchNotYetSupported(t *testing.T) {
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
-		"--stripe-context=play_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
 		"--batch=0",

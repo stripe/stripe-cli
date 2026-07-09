@@ -417,7 +417,6 @@ type sandboxNewCmd struct {
 	name             string
 	replicaOf        string
 	businessLocation string
-	stripeContext    string
 	copyLiveAccount  bool
 	createBlank      bool
 	activate         bool
@@ -503,12 +502,6 @@ that you have previously logged in with your Stripe account credentials.`,
 	snc.cmd.Flags().BoolVar(&snc.activate, "activate", true, "Request capabilities and activate the sandbox after creation")
 	snc.cmd.Flags().IntVar(&snc.batch, "batch", 1, "Number of sandboxes to create (currently only 1 is supported)")
 
-	// --stripe-context is an internal-only override; playground (play_...) ids are
-	// not user-facing and the command resolves the playground automatically. Kept
-	// hidden for our own testing.
-	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Internal: playground compartment (play_...) override")
-	_ = snc.cmd.Flags().MarkHidden("stripe-context")
-
 	snc.cmd.Flags().StringVar(&snc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
 	_ = snc.cmd.Flags().MarkHidden("stripe-version")
 
@@ -585,30 +578,25 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return nil
 	}
 
-	// Resolve the live workspace to copy / derive the playground from. Copy mode
-	// always needs it (sent as replica_of); blank mode needs it only to resolve
-	// the internal playground when no --stripe-context override is given.
-	// Order: --replica-of override, the livemode compartment saved at login, then
-	// GET /v2/compartments/user_accessible.
-	stripeContext := strings.TrimSpace(snc.stripeContext)
+	// Resolve the live workspace to copy / derive the playground from (both modes
+	// need it). Order: --replica-of override, the livemode compartment saved at
+	// login, then GET /v2/compartments/user_accessible.
 	liveWorkspace := replicaOf
-	if liveWorkspace == "" && (snc.copyLiveAccount || stripeContext == "") {
+	if liveWorkspace == "" {
 		liveWorkspace, err = snc.resolveLiveWorkspace(cmd.Context(), client, authConfigure)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Resolve the playground (play_) unless the internal --stripe-context override
-	// was supplied. Playground ids are not user-facing.
-	if stripeContext == "" {
-		stripeContext, err = snc.resolvePlayground(cmd.Context(), client, authConfigure, liveWorkspace)
-		if err != nil {
-			return err
-		}
+	// Resolve the internal playground (play_) for the live workspace. Playground
+	// ids are not user-facing, so there is no override: the command always derives it.
+	stripeContext, err := snc.resolvePlayground(cmd.Context(), client, authConfigure, liveWorkspace)
+	if err != nil {
+		return err
 	}
 	if !strings.HasPrefix(stripeContext, "play_") {
-		return fmt.Errorf("resolved a non-playground context %q; pass --stripe-context play_... to override", stripeContext)
+		return fmt.Errorf("resolved a non-playground context %q for %s", stripeContext, liveWorkspace)
 	}
 
 	// Mirror the dashboard's create-sandbox request body, including the
@@ -722,7 +710,7 @@ func (snc *sandboxNewCmd) resolveLiveWorkspace(ctx context.Context, client *stri
 // livemode workspace/org via GET /v2/compartments/playground/:id.
 func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, compartmentID string) (string, error) {
 	if compartmentID == "" {
-		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from; pass --replica-of wksp_... or --stripe-context play_...")
+		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from; pass --replica-of wksp_...")
 	}
 	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/playground/"+url.PathEscape(compartmentID), "", configure)
 	if err != nil {
@@ -743,7 +731,7 @@ func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.
 		return "", fmt.Errorf("could not parse playground response: %w", err)
 	}
 	if parsed.ID == "" {
-		return "", fmt.Errorf("no playground found for %s; pass --stripe-context play_... to override", compartmentID)
+		return "", fmt.Errorf("no playground found for %s; run 'stripe login' again or pass a different --replica-of wksp_...", compartmentID)
 	}
 	return parsed.ID, nil
 }
