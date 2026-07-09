@@ -26,7 +26,7 @@ Co-op mode enables an AI agent and a human developer to build Stripe integration
 
 No server, no HTTP, no WebSocket. Communication is through a shared JSON session file with atomic writes (write to .tmp, rename).
 
-## Step State Machine
+## Node State Machine
 
 ```
 pending ──→ active ──→ review ──→ done     (normal flow)
@@ -66,14 +66,15 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | Command | Purpose |
 |---------|---------|
 | `stripe coop run <blueprint>` | Create a session (outputs JSON with instructions) |
-| `stripe coop agent start-work --step <n>` | Mark node as active |
-| `stripe coop agent report-work --step <n>` | Mark node as complete (→ review or → done if auto_confirm) |
+| `stripe coop agent start-work --step <n>` | Mark a node as active |
+| `stripe coop agent report-work --step <n>` | Mark a node complete (→ review or → done if auto_confirm) |
 | `stripe coop agent report-check --step <n>` | Add a verification check |
 | `stripe coop agent skip --step <n>` | Skip a node |
 | `stripe coop agent await-review --step <n>` | Block until developer confirms or requests changes |
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
+| `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 
-All agent commands output JSON with an `ok` field and a `next` field suggesting the next command.
+All agent commands output JSON with an `ok` field and a `next` field suggesting the next command. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
 
 ## TUI Keybindings
 
@@ -81,9 +82,18 @@ All agent commands output JSON with an `ok` field and a `next` field suggesting 
 |-----|--------|
 | `↑`/`k` | Move cursor up |
 | `↓`/`j` | Move cursor down |
-| `e` / `Enter` | Toggle detail panel for selected step or node |
+| `PgUp`/`b` | Page up |
+| `PgDn`/`Space` | Page down |
+| `Home`/`g` | Jump to top |
+| `End`/`G` | Jump to bottom |
+| `←` | Collapse selected step |
+| `→` | Expand selected step |
+| `e` / `?` / `Enter` | Toggle detail panel for selected step or node |
+| `Tab` | Move to the next detail tab |
+| `Esc` | Close details or cancel a prompt |
 | `c` | Confirm the selected review item |
 | `r` | Request changes for the selected review item |
+| `y` | Copy the selected review command when one is available |
 | `f` | Resume following the active/review node after manual navigation |
 | `o` | Open claim URL in browser (when sandbox is unclaimed) |
 | `q` / `Ctrl+C` | Quit TUI |
@@ -131,14 +141,14 @@ $ stripe coop start
 #   stripe coop run <blueprint-id> --language=<lang>
 ```
 
-Post-completion choices are written into the session file for the agent. Deploy follow-ups use `stripe coop run deploy-stripe-projects --parent-session=<id> --parent-step=<selection>` so the child session can return to the completed parent and mark that next step done.
+Post-completion choices are written into the session file for the agent. Deploy follow-ups are internal guided sessions, not blueprints: the agent runs `stripe coop agent start-followup --session=<parent> --action=deploy` or `--action=deploy-update`. The child session returns to the completed parent by running `stripe coop agent next-action --session=<parent> --completed=<action>` when it finishes.
 
 ## Auto-Confirm
 
 Nodes with `"auto_confirm": true` skip human review:
 - `agent report-work` transitions directly to `done` (not `review`)
-- `agent await-review` returns immediately if the step is auto-confirmed
-- The prepended "Understand the project" step is always auto-confirmed
+- `agent await-review` returns immediately if the node is auto-confirmed
+- The prepended "Project context" step contains an auto-confirmed "Understand the project" node
 - Blueprint nodes can set `"auto_confirm": true` for mechanical steps
 
 ## Heartbeat
@@ -157,8 +167,8 @@ Use `stripe coop join --resume` to pick from recent sessions.
 
 | Issue | What to do |
 |-------|------------|
-| Step is active | Rejoin the session and check the agent pane/TUI state |
-| Step is in review | Rejoin the session and confirm or request changes |
+| Node is active | Rejoin the session and check the agent pane/TUI state |
+| Node or step is in review | Rejoin the session and confirm or request changes |
 | Agent appears idle | Rejoin the session; the TUI shows heartbeat/idle state |
 | Need a specific older session | Run `stripe coop join --resume` |
 
@@ -170,19 +180,27 @@ Blueprints are embedded JSON in `pkg/coop/blueprints/`. Each has:
 - `steps` — ordered groups of nodes
 
 Each node has:
-- `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `testHelper`
+- `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `dashboard`, `setUpWebhooks`, `testHelper`
 - `auto_confirm` — skip human review for this node
 - `description` — what the agent should do (source of truth)
 - `review_prompt` — what the human should check before confirming
+- `review_command` — optional command the TUI can show/copy for developer verification
 - `request` — API request details (for `apiRequest` nodes with SDK snippet support)
+- `request.hidden_params` — request fields that should not be shown directly in the TUI
+- `requests` — API-backed test helper requests for `testHelper` nodes
 - `events` — webhook events (for `asyncHandler` nodes)
 
-### Adding a Blueprint
+`testHelper` request metadata tells the agent which Stripe-backed test helpers can advance test state. Agents should use those helpers while verifying work, but should not encode helper-only request parameters into the user's application.
 
-1. Create `pkg/coop/blueprints/your-blueprint.json`
-2. Follow the schema above
-3. Test: `go run ./cmd/stripe coop run your-blueprint`
-4. Prefix matching works: short prefixes resolve to full IDs if unambiguous
+### Syncing Blueprints
+
+Workbench blueprint definitions are the source of truth. Do not supplement or modify `pkg/coop/blueprints/` by hand to add CLI-only product work. Update the upstream blueprint source, then export the CLI-friendly JSON:
+
+```bash
+BLUEPRINT_SOURCE=/path/to/blueprintDefinitions make sync-blueprints
+```
+
+After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix matching works: short prefixes resolve to full IDs if unambiguous.
 
 ## Troubleshooting
 
@@ -191,15 +209,16 @@ Each node has:
 | TUI shows "Agent appears idle" | Agent crashed or stopped | Check the agent pane; restart with `stripe coop start` |
 | Agent stuck on "await" | Developer hasn't confirmed | Press `c` in TUI to confirm, or `r` to request changes |
 | "Version conflict" error | TUI and agent wrote simultaneously | Agent retries the command (safe to re-run) |
+| "timed out waiting for session lock" | A previous writer left a `.lock` file behind | If no `stripe coop` command is running, remove the named lock file and retry |
 | TUI shows wrong session | Multiple sessions exist | Use `stripe coop join <session-id>` with the correct ID |
 | Steps not updating in TUI | Agent created a duplicate session | Check `stripe coop status` for the correct session ID |
 | Agent ignores "next" hint | LLM didn't follow instructions | Copy the `next` value and run it manually, or restart |
 | Double footer / layout broken | Terminal resize not detected | Resize the terminal window (triggers recalculation) |
 | "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend` to see available IDs |
 
-## Optimistic Locking
+## Locking
 
-`Store.Write()` checks the file's current version before writing. If another writer changed the file since you read it, the write fails with a version conflict error. This prevents the TUI and agent from clobbering each other's changes.
+Writes are serialized with a per-session `.lock` file. `Store.Write()` also checks the file's current version before writing. If another writer changed the file since you read it, the write fails with a version conflict error. This prevents the TUI and agent from clobbering each other's changes.
 
 ## File Structure
 
@@ -207,16 +226,28 @@ Each node has:
 pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
-  store.go          — Atomic file I/O, heartbeat, optimistic locking
+  store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
   blueprint.go      — Blueprint type, embed loader, prefix matching
+  guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)
   blueprints/       — Embedded JSON blueprints
+  colors/           — Sail Design System palette helpers
+  followups/        — Built-in guided follow-up definitions
 
 pkg/coop/tui/
   app.go            — tea.Program entry points
-  model.go          — Bubbletea model, Update, key handling
-  view.go           — All rendering (header, steps, detail, footer, completion)
+  model.go          — Bubbletea model and Update loop
+  view.go           — Top-level rendering
   commands.go       — Async commands (polling, snippets, session discovery)
+  completion.go     — Post-completion suggestion view
+  detail.go         — Detail panel rendering
+  keymap.go         — Keyboard bindings
+  layout.go         — Responsive layout calculations
+  markdown.go       — Glamour rendering helpers
+  mouse.go          — Mouse interactions
+  outline.go        — Step/node outline rendering
+  review.go         — Review card rendering
+  selection.go      — Navigation and selection helpers
   helpers.go        — Word wrap, formatting, browser open
   messages.go       — Custom message types
   theme.go          — Sail Design System colors
