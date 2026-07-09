@@ -25,12 +25,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
 
-// `stripe sandbox new` is gated behind this env flag and is only registered on
-// the package-level rootCmd during init(). This package-level initializer runs
-// before any init() function, so it guarantees the command is present for the
-// TestSandboxNewCmd_* tests that execute via the global rootCmd.
-var _ = os.Setenv("STRIPE_CLI_ENABLE_SANDBOX_NEW", "true")
-
 func setupSandboxTestConfig(t *testing.T) func() {
 	t.Helper()
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
@@ -738,25 +732,6 @@ func TestSandboxNewCmd_RequiresReplicaOfOrBusinessLocation(t *testing.T) {
 	// Unique to the "neither provided" error; the mutually-exclusive error also
 	// mentions --business-location, so assert on this distinct phrase.
 	assert.Contains(t, err.Error(), "pass one of")
-}
-
-func TestSandboxNewCmd_GatedByEnv(t *testing.T) {
-	hasNew := func(sc *sandboxCmd) bool {
-		for _, c := range sc.cmd.Commands() {
-			if c.Name() == "new" {
-				return true
-			}
-		}
-		return false
-	}
-
-	// With the flag set, the command is registered.
-	t.Setenv("STRIPE_CLI_ENABLE_SANDBOX_NEW", "true")
-	assert.True(t, hasNew(newSandboxCmd()))
-
-	// Without it, the command is not registered at all.
-	t.Setenv("STRIPE_CLI_ENABLE_SANDBOX_NEW", "")
-	assert.False(t, hasNew(newSandboxCmd()))
 }
 
 func TestSandboxNewCmd_NoUAT(t *testing.T) {

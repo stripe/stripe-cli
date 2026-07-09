@@ -68,21 +68,13 @@ func newSandboxCmd() *sandboxCmd {
 	sc.cmd.AddCommand(createCmd.cmd)
 	sc.cmd.AddCommand(claimCmd.cmd)
 
-	// `sandbox new` is an experimental POC. It is gated behind an env flag so it
-	// is not registered at all (invisible AND unrunnable — `unknown command`)
-	// unless explicitly enabled, on top of being Hidden. This keeps it out of
-	// users' hands pre-GA; the authoritative access gate remains server-side
-	// (the UAT allowlist + hzn_sandbox_create), not the client.
-	if sandboxNewEnabled() {
-		sc.cmd.AddCommand(newSandboxNewCmd().cmd)
-	}
+	// `sandbox new` is an experimental POC. It stays Hidden (kept out of
+	// help/completion) but is always registered — this ships only to the
+	// long-lived sandboxes-cli feature branch, never to master pre-GA, so no
+	// client-side env gate is needed. The authoritative access gate remains
+	// server-side (the UAT allowlist + hzn_sandbox_create), not the client.
+	sc.cmd.AddCommand(newSandboxNewCmd().cmd)
 	return sc
-}
-
-// sandboxNewEnabled reports whether the experimental `stripe sandbox new` command
-// should be registered. Mirrors the STRIPE_CLI_CANARY env-gating pattern.
-func sandboxNewEnabled() bool {
-	return os.Getenv("STRIPE_CLI_ENABLE_SANDBOX_NEW") == "true"
 }
 
 func newSandboxCreateCmd() *sandboxCreateCmd {
