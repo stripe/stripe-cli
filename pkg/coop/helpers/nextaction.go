@@ -65,7 +65,10 @@ func Run(store Store, input Input) (Response, error) {
 		return Response{}, ErrNoSession
 	}
 
-	suggestions := BuildSuggestions(session, DetectProjectEnvironment())
+	suggestions := filterCompletedSuggestions(
+		BuildSuggestions(session, DetectProjectEnvironment()),
+		completedActionIDs(session, input.Completed),
+	)
 	if err := ShowSuggestions(store, session, suggestions, input.Completed); err != nil {
 		return Response{}, err
 	}
@@ -78,6 +81,14 @@ func Run(store Store, input Input) (Response, error) {
 }
 
 func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestion, completed string) error {
+	if session.NextSteps == nil {
+		session.NextSteps = &coop.NextStepsState{}
+	}
+	if completed != "" && !containsString(session.NextSteps.Completed, completed) {
+		session.NextSteps.Completed = append(session.NextSteps.Completed, completed)
+	}
+	suggestions = filterCompletedSuggestions(suggestions, completedActionIDs(session, ""))
+
 	var tuiSuggestions []coop.NextStepSuggestion
 	for _, s := range suggestions {
 		tuiSuggestions = append(tuiSuggestions, coop.NextStepSuggestion{
@@ -88,21 +99,11 @@ func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestio
 		})
 	}
 
-	if session.NextSteps == nil {
-		session.NextSteps = &coop.NextStepsState{}
-	}
 	session.NextSteps.Suggestions = tuiSuggestions
 	session.NextSteps.Selected = ""
 	session.Status = coop.SessionCompleted
 	if err := store.Write(session); err != nil {
 		return fmt.Errorf("writing next-action suggestions: %w", err)
-	}
-
-	if completed != "" {
-		session.NextSteps.Completed = append(session.NextSteps.Completed, completed)
-		if err := store.Write(session); err != nil {
-			return fmt.Errorf("marking next-action completed: %w", err)
-		}
 	}
 	return nil
 }
@@ -187,7 +188,43 @@ func BuildSuggestions(session *coop.Session, env Environment) []Suggestion {
 		Available:   true,
 	})
 
-	return suggestions
+	return filterCompletedSuggestions(suggestions, completedActionIDs(session, ""))
+}
+
+func completedActionIDs(session *coop.Session, current string) map[string]bool {
+	completed := map[string]bool{}
+	if session != nil && session.NextSteps != nil {
+		for _, id := range session.NextSteps.Completed {
+			completed[id] = true
+		}
+	}
+	if current != "" {
+		completed[current] = true
+	}
+	return completed
+}
+
+func filterCompletedSuggestions(suggestions []Suggestion, completed map[string]bool) []Suggestion {
+	if len(completed) == 0 {
+		return suggestions
+	}
+	filtered := suggestions[:0]
+	for _, suggestion := range suggestions {
+		if completed[suggestion.ID] {
+			continue
+		}
+		filtered = append(filtered, suggestion)
+	}
+	return filtered
+}
+
+func containsString(values []string, value string) bool {
+	for _, candidate := range values {
+		if candidate == value {
+			return true
+		}
+	}
+	return false
 }
 
 func BuildResponse(session *coop.Session, suggestions []Suggestion, selected string) Response {

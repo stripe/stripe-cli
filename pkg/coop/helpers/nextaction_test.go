@@ -33,6 +33,47 @@ func TestBuildSuggestionsUsesExistingDeployTarget(t *testing.T) {
 	assert.Equal(t, "Detected: Vercel", suggestions[0].Reason)
 }
 
+func TestBuildSuggestionsFiltersAlreadyCompletedActions(t *testing.T) {
+	session := &coop.Session{
+		ID:        "sess_123",
+		Blueprint: "one-time-payment",
+		NextSteps: &coop.NextStepsState{
+			Completed: []string{"deploy", "summarize"},
+		},
+	}
+
+	suggestions := BuildSuggestions(session, Environment{HasStripeProjects: true})
+
+	ids := suggestionIDs(suggestions)
+	assert.NotContains(t, ids, "deploy")
+	assert.NotContains(t, ids, "summarize")
+	assert.Contains(t, ids, "add-integration")
+	assert.Contains(t, ids, "done")
+}
+
+func TestShowSuggestionsFiltersCurrentCompletedAction(t *testing.T) {
+	store := &nextActionTestStore{
+		session: &coop.Session{
+			ID:        "sess_123",
+			Blueprint: "one-time-payment",
+			NextSteps: &coop.NextStepsState{
+				Completed: []string{"summarize"},
+			},
+		},
+	}
+	suggestions := BuildSuggestions(store.session, Environment{HasStripeProjects: true})
+
+	err := ShowSuggestions(store, store.session, suggestions, "deploy")
+
+	require.NoError(t, err)
+	ids := nextStepSuggestionIDs(store.session.NextSteps.Suggestions)
+	assert.NotContains(t, ids, "deploy")
+	assert.NotContains(t, ids, "summarize")
+	assert.Contains(t, ids, "add-integration")
+	assert.Contains(t, ids, "done")
+	assert.ElementsMatch(t, []string{"summarize", "deploy"}, store.session.NextSteps.Completed)
+}
+
 func TestBuildResponseForDeployStartsGuidedFollowup(t *testing.T) {
 	session := &coop.Session{
 		ID:        "sess_123",
@@ -144,4 +185,20 @@ func (s *nextActionTestStore) LatestSession() (*coop.Session, error) {
 func (s *nextActionTestStore) Write(session *coop.Session) error {
 	s.session = session
 	return nil
+}
+
+func suggestionIDs(suggestions []Suggestion) []string {
+	ids := make([]string, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		ids = append(ids, suggestion.ID)
+	}
+	return ids
+}
+
+func nextStepSuggestionIDs(suggestions []coop.NextStepSuggestion) []string {
+	ids := make([]string, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		ids = append(ids, suggestion.ID)
+	}
+	return ids
 }

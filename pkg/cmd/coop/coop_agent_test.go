@@ -124,6 +124,11 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 		Blueprint:     "one-time-payment",
 		Status:        coop.SessionCompleted,
 		Settings:      map[string]string{"language": "node"},
+		NextSteps: &coop.NextStepsState{
+			Suggestions: []coop.NextStepSuggestion{
+				{ID: "deploy-update", Title: "Deploy your changes"},
+			},
+		},
 	}
 	require.NoError(t, store.Write(parent))
 
@@ -164,6 +169,106 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 	assert.Equal(t, "Vercel", child.Settings["deploy_target"])
 	assert.Equal(t, "deploy-update", child.Settings["guided_action"])
 	assert.Len(t, child.Steps, 3)
+}
+
+func TestCoopAgentStartFollowupRequiresCompletedParent(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Status:        coop.SessionActive,
+		NextSteps: &coop.NextStepsState{
+			Suggestions: []coop.NextStepSuggestion{
+				{ID: "deploy", Title: "Deploy with Stripe Projects"},
+			},
+		},
+	}
+	require.NoError(t, store.Write(parent))
+
+	cmd := newCoopAgentStartFollowupCmd().cmd
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--session", parent.ID, "--action", "deploy"})
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, `parent session "parent_session" is not completed`)
+}
+
+func TestCoopAgentStartFollowupRequiresSuggestedAction(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Status:        coop.SessionCompleted,
+		NextSteps: &coop.NextStepsState{
+			Suggestions: []coop.NextStepSuggestion{
+				{ID: "summarize", Title: "Write a STRIPE.md summary"},
+			},
+		},
+	}
+	require.NoError(t, store.Write(parent))
+
+	cmd := newCoopAgentStartFollowupCmd().cmd
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--session", parent.ID, "--action", "deploy"})
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, `follow-up action "deploy" is not available for parent session "parent_session"`)
+}
+
+func TestCoopAgentStartFollowupRejectsCompletedAction(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Status:        coop.SessionCompleted,
+		NextSteps: &coop.NextStepsState{
+			Suggestions: []coop.NextStepSuggestion{
+				{ID: "deploy", Title: "Deploy with Stripe Projects"},
+			},
+			Completed: []string{"deploy"},
+		},
+	}
+	require.NoError(t, store.Write(parent))
+
+	cmd := newCoopAgentStartFollowupCmd().cmd
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--session", parent.ID, "--action", "deploy"})
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, `follow-up action "deploy" is already completed for parent session "parent_session"`)
 }
 
 func TestCoopAgentStartFollowupRejectsUnknownAction(t *testing.T) {

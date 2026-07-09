@@ -241,6 +241,9 @@ func runCoopStartFollowup(parentSessionID, actionID, target string) error {
 	if err != nil {
 		return outputCoopError(err.Error(), "stripe coop agent start-followup --session=<session> --action=deploy")
 	}
+	if err := validateFollowupParent(parent, action.ID); err != nil {
+		return outputCoopError(err.Error(), "stripe coop agent next-action --session="+parent.ID)
+	}
 
 	settings := make(map[string]string, len(parent.Settings)+1)
 	for key, value := range parent.Settings {
@@ -262,6 +265,26 @@ func runCoopStartFollowup(parentSessionID, actionID, target string) error {
 	}
 
 	return outputJSON(newCoopAgentGuidedActionResponse(action, session))
+}
+
+func validateFollowupParent(parent *coop.Session, actionID string) error {
+	if parent.Status != coop.SessionCompleted {
+		return fmt.Errorf("parent session %q is not completed", parent.ID)
+	}
+	if parent.NextSteps == nil {
+		return fmt.Errorf("parent session %q has no next-step suggestions", parent.ID)
+	}
+	for _, completed := range parent.NextSteps.Completed {
+		if completed == actionID {
+			return fmt.Errorf("follow-up action %q is already completed for parent session %q", actionID, parent.ID)
+		}
+	}
+	for _, suggestion := range parent.NextSteps.Suggestions {
+		if suggestion.ID == actionID {
+			return nil
+		}
+	}
+	return fmt.Errorf("follow-up action %q is not available for parent session %q", actionID, parent.ID)
 }
 
 func outputAgentResponse(resp coop.CommandResponse, err error) error {
