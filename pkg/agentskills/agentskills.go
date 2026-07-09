@@ -222,6 +222,12 @@ func checkSkill(ctx context.Context, remote *limitedGetter, destDir, base string
 			outcome := fileOutcome{file: job.file, hasLocal: true}
 			remoteContent, err := remote.get(ctx, base+skill.Name+"/"+job.file)
 			if err != nil {
+				// We have a local copy but couldn't fetch the remote to
+				// compare. Bias toward "out of date" rather than "current":
+				// updating is idempotent and never discards local work, so a
+				// false positive just re-syncs, whereas a false "current" could
+				// hide real drift. (A fully unreachable index is already caught
+				// earlier and reported as StatusError.)
 				outcome.changed = true
 				outcomes[i] = outcome
 				return nil
