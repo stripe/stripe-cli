@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/followups"
 	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
@@ -236,7 +237,7 @@ func runCoopStartFollowup(parentSessionID, actionID, target string) error {
 		return outputCoopError(fmt.Sprintf("Parent session %q not found.", parentSessionID), "stripe coop agent next-action --session=<session>")
 	}
 
-	action, err := coop.GuidedActionByID(actionID, target)
+	action, err := followups.GuidedActionByID(actionID, target)
 	if err != nil {
 		return outputCoopError(err.Error(), "stripe coop agent start-followup --session=<session> --action=deploy")
 	}

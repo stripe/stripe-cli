@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/followups"
 )
 
 func TestBuildSuggestionsUsesStripeProjectsWhenConfigured(t *testing.T) {
@@ -72,7 +73,7 @@ func TestDeployGuidedActionDoesNotReadKeyMaterialFromWhoami(t *testing.T) {
 	}
 
 	resp := BuildResponse(session, nil, "deploy")
-	action, err := coop.GuidedActionByID(coop.GuidedActionDeploy, "")
+	action, err := followups.GuidedActionByID(followups.Deploy, "")
 	require.NoError(t, err)
 
 	prompt := resp.AgentPrompt + "\n" + action.AgentContext
