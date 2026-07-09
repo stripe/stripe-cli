@@ -524,37 +524,11 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	}
 	uat := strings.TrimSpace(string(uatBytes))
 
-	// --batch is scaffolded for a future bulk-create shape and currently only
-	// supports 1. Future shape: create N sandboxes under the same playground in a
-	// single invocation via a bounded fan-out (or a batched backend request) that
-	// shares an idempotency prefix, returns the list of created sandboxes, and
-	// reports per-item partial failures instead of aborting the whole batch.
-	// Until that lands, reject >1 explicitly rather than silently creating one.
-	if snc.batch < 1 {
-		return fmt.Errorf("--batch must be >= 1")
+	if err := snc.validateFlags(); err != nil {
+		return err
 	}
-	if snc.batch > 1 {
-		return fmt.Errorf("--batch > 1 is not yet implemented; only --batch 1 is supported today")
-	}
-
-	// Mode selection mirrors the dashboard's create-sandbox modal: copy a live
-	// account, or create a blank sandbox for a country. Exactly one is required.
 	replicaOf := strings.TrimSpace(snc.replicaOf)
 	businessLocation := strings.TrimSpace(snc.businessLocation)
-	switch {
-	case snc.copyLiveAccount && snc.createBlank:
-		return fmt.Errorf("--copy-live-account and --create-blank are mutually exclusive")
-	case !snc.copyLiveAccount && !snc.createBlank:
-		return fmt.Errorf("pass one of --copy-live-account (copy your live account) or --create-blank (a fresh sandbox)")
-	case snc.createBlank && businessLocation == "":
-		return fmt.Errorf("--create-blank requires --business-location (e.g. US)")
-	case snc.createBlank && replicaOf != "":
-		return fmt.Errorf("--replica-of is only valid with --copy-live-account")
-	case snc.copyLiveAccount && businessLocation != "":
-		return fmt.Errorf("--business-location is only valid with --create-blank")
-	case replicaOf != "" && !strings.HasPrefix(replicaOf, "wksp_"):
-		return fmt.Errorf("--replica-of must be a livemode workspace id (wksp_...), got %q", replicaOf)
-	}
 
 	baseURL, err := url.Parse(snc.apiBase)
 	if err != nil {
@@ -651,6 +625,45 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	return nil
 }
 
+// validateFlags checks --batch and the mutually-exclusive mode selectors
+// (--copy-live-account / --create-blank) and their inputs, mirroring the
+// dashboard's create-sandbox modal. Extracted from runSandboxNewCmd to keep its
+// cyclomatic complexity manageable.
+func (snc *sandboxNewCmd) validateFlags() error {
+	// --batch is scaffolded for a future bulk-create shape and currently only
+	// supports 1. Future shape: create N sandboxes under the same playground in a
+	// single invocation via a bounded fan-out (or a batched backend request) that
+	// shares an idempotency prefix, returns the list of created sandboxes, and
+	// reports per-item partial failures instead of aborting the whole batch.
+	// Until that lands, reject >1 explicitly rather than silently creating one.
+	if snc.batch < 1 {
+		return fmt.Errorf("--batch must be >= 1")
+	}
+	if snc.batch > 1 {
+		return fmt.Errorf("--batch > 1 is not yet implemented; only --batch 1 is supported today")
+	}
+
+	// Mode selection mirrors the dashboard's create-sandbox modal: copy a live
+	// account, or create a blank sandbox for a country. Exactly one is required.
+	replicaOf := strings.TrimSpace(snc.replicaOf)
+	businessLocation := strings.TrimSpace(snc.businessLocation)
+	switch {
+	case snc.copyLiveAccount && snc.createBlank:
+		return fmt.Errorf("--copy-live-account and --create-blank are mutually exclusive")
+	case !snc.copyLiveAccount && !snc.createBlank:
+		return fmt.Errorf("pass one of --copy-live-account (copy your live account) or --create-blank (a fresh sandbox)")
+	case snc.createBlank && businessLocation == "":
+		return fmt.Errorf("--create-blank requires --business-location (e.g. US)")
+	case snc.createBlank && replicaOf != "":
+		return fmt.Errorf("--replica-of is only valid with --copy-live-account")
+	case snc.copyLiveAccount && businessLocation != "":
+		return fmt.Errorf("--business-location is only valid with --create-blank")
+	case replicaOf != "" && !strings.HasPrefix(replicaOf, "wksp_"):
+		return fmt.Errorf("--replica-of must be a livemode workspace id (wksp_...), got %q", replicaOf)
+	}
+	return nil
+}
+
 // resolveLiveWorkspace determines the livemode workspace/org compartment to use
 // as the sandbox's live parent. It first reads the livemode compartment saved at
 // login (no network), then falls back to GET /v2/compartments/user_accessible.
@@ -698,7 +711,7 @@ func (snc *sandboxNewCmd) resolveLiveWorkspace(ctx context.Context, client *stri
 	}
 	switch len(workspaces) {
 	case 0:
-		return "", fmt.Errorf("no livemode workspace found for your account; run `stripe login`, or pass --replica-of wksp_...")
+		return "", fmt.Errorf("no livemode workspace found for your account; run `stripe login`, or pass --replica-of with a wksp_ id")
 	case 1:
 		return workspaces[0], nil
 	default:
@@ -710,7 +723,7 @@ func (snc *sandboxNewCmd) resolveLiveWorkspace(ctx context.Context, client *stri
 // livemode workspace/org via GET /v2/compartments/playground/:id.
 func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, compartmentID string) (string, error) {
 	if compartmentID == "" {
-		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from; pass --replica-of wksp_...")
+		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from; pass --replica-of with a wksp_ id")
 	}
 	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/playground/"+url.PathEscape(compartmentID), "", configure)
 	if err != nil {
@@ -731,7 +744,7 @@ func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.
 		return "", fmt.Errorf("could not parse playground response: %w", err)
 	}
 	if parsed.ID == "" {
-		return "", fmt.Errorf("no playground found for %s; run 'stripe login' again or pass a different --replica-of wksp_...", compartmentID)
+		return "", fmt.Errorf("no playground found for %s; run 'stripe login' again or pass a different --replica-of wksp_ id", compartmentID)
 	}
 	return parsed.ID, nil
 }
