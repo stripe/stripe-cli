@@ -98,14 +98,25 @@ func replaceSessionFile(tmpPath, path string) error {
 	}
 
 	// Windows does not replace an existing destination with os.Rename.
-	// Writers are already serialized by the session lock, so remove first.
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("removing existing session file: %w", err)
+	// Writers are already serialized by the session lock, but readers may
+	// briefly hold the existing file. Retry the remove/rename pair so polling
+	// readers do not make writes spuriously fail.
+	deadline := time.Now().Add(500 * time.Millisecond)
+	var lastErr error
+	for {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			lastErr = fmt.Errorf("removing existing session file: %w", err)
+		} else if err := os.Rename(tmpPath, path); err != nil {
+			lastErr = fmt.Errorf("renaming temp file: %w", err)
+		} else {
+			return nil
+		}
+
+		if time.Now().After(deadline) {
+			return lastErr
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		return fmt.Errorf("renaming temp file: %w", err)
-	}
-	return nil
 }
 
 func (s *Store) acquireSessionLock(path string) (func(), error) {

@@ -54,7 +54,7 @@ type BlueprintParam struct {
 }
 
 // LoadBlueprint loads a blueprint by ID from the embedded filesystem.
-// If no exact match is found, it tries prefix matching (e.g. "deploy" → "deploy-stripe-projects").
+// If no exact match is found, it tries prefix matching (e.g. "one-time" -> "one-time-payment").
 func LoadBlueprint(id string) (*Blueprint, error) {
 	filename := fmt.Sprintf("blueprints/%s.json", id)
 	data, err := blueprintFS.ReadFile(filename)

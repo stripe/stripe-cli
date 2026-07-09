@@ -866,11 +866,11 @@ func TestSpinnerTickDoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
+func TestCompletionEnterDeployWaitsForGuidedFollowupSession(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
 
-	m := withCompletionSuggestions(readyModel())
+	m := withDeployCompletionSuggestion(readyModel())
 	m.store = store
 	for i := range m.session.Steps {
 		for j := range m.session.Steps[i].Nodes {
@@ -880,9 +880,10 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	m.session.ID = "parent_session"
 	store.Write(m.session)
 
+	// Find deploy position in agent-published suggestions
 	suggestions := m.getCompletionSuggestions()
 	for i, s := range suggestions {
-		if s.id == "add-integration" {
+		if s.id == "deploy" || s.id == "deploy-update" {
 			m.selectionCursor = i
 			break
 		}
@@ -895,13 +896,12 @@ func TestCompletionEnterAddIntegrationWaitsForAgentSession(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, suggestions[m.selectionCursor].id, session.NextSteps.Selected)
 	assert.True(t, updated.waiting)
+	assert.Equal(t, "Waiting for agent to start the guided deploy flow...", updated.waitingMessage)
 	require.NotNil(t, cmd)
 	msg := cmd()
 	baseline, ok := msg.(waitingBaselineMsg)
 	require.True(t, ok)
 	assert.NotNil(t, baseline.existingSessionIDs)
-
-	assert.Equal(t, "add-integration", session.NextSteps.Selected)
 }
 
 func TestSelectCompletionOptionSummarize(t *testing.T) {
@@ -1060,7 +1060,7 @@ func TestStatusWithoutTTLDoesNotExpire(t *testing.T) {
 }
 
 func TestShouldTransitionToNewSession(t *testing.T) {
-	m := withCompletionSuggestions(readyModel())
+	m := withDeployCompletionSuggestion(readyModel())
 	for i := range m.session.Steps {
 		for j := range m.session.Steps[i].Nodes {
 			m.session.Steps[i].Nodes[j].State = coop.NodeDone
@@ -1069,6 +1069,16 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 	suggestions := m.getCompletionSuggestions()
 
+	// Find deploy. This starts an internal guided follow-up session.
+	for i, s := range suggestions {
+		if s.id == "deploy" || s.id == "deploy-update" {
+			m.selectionCursor = i
+			assert.True(t, m.shouldTransitionToNewSession())
+			break
+		}
+	}
+
+	// Find add-integration. This starts another co-op session.
 	for i, s := range suggestions {
 		if s.id == "add-integration" {
 			m.selectionCursor = i
@@ -1085,6 +1095,14 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 			break
 		}
 	}
+}
+
+func withDeployCompletionSuggestion(m Model) Model {
+	m = withCompletionSuggestions(m)
+	m.session.NextSteps.Suggestions = append([]coop.NextStepSuggestion{
+		{ID: "deploy", Title: "Deploy with Stripe Projects", Description: "Set up hosting, CI/CD, and environment management"},
+	}, m.session.NextSteps.Suggestions...)
+	return m
 }
 
 func TestFetchSnippetNotAPIRequest(t *testing.T) {
