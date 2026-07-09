@@ -78,7 +78,10 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	autoApprove := rc.promptAutoApprove(agent)
+	autoApprove, err := rc.promptAutoApprove(agent)
+	if err != nil {
+		return err
+	}
 	fmt.Println()
 
 	agentPrompt := rc.buildAgentPrompt(blueprintID)

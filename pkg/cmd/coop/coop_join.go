@@ -2,12 +2,12 @@ package coopcmd
 
 import (
 	"fmt"
+	"sort"
 
 	"charm.land/huh/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
-	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 	"github.com/stripe/stripe-cli/pkg/coop/tui"
 )
 
@@ -90,18 +90,38 @@ func (jc *coopJoinCmd) runJoinCmd(cmd *cobra.Command, args []string) error {
 	return tui.Run(store, session.ID, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
 }
 
+type sessionChoice struct {
+	session *coop.Session
+	label   string
+}
+
 func (jc *coopJoinCmd) pickSession(store *coop.Store) (*coop.Session, error) {
+	entries, err := recentSessionChoices(store)
+	if err != nil {
+		return nil, err
+	}
+
+	var options []huh.Option[string]
+	for _, e := range entries {
+		options = append(options, huh.NewOption(e.label, e.session.ID))
+	}
+
+	var choice string
+	err = selectString("Pick a session to resume:", options, &choice)
+	if err != nil {
+		return nil, err
+	}
+
+	return store.Read(choice)
+}
+
+func recentSessionChoices(store *coop.Store) ([]sessionChoice, error) {
 	ids, err := store.List()
 	if err != nil || len(ids) == 0 {
 		return nil, fmt.Errorf("no sessions found. Start one with 'stripe coop start <blueprint>'")
 	}
 
-	// Load sessions and build options (most recent first)
-	type sessionEntry struct {
-		session *coop.Session
-		label   string
-	}
-	var entries []sessionEntry
+	var entries []sessionChoice
 
 	for _, id := range ids {
 		s, err := store.Read(id)
@@ -112,25 +132,19 @@ func (jc *coopJoinCmd) pickSession(store *coop.Store) (*coop.Session, error) {
 		status := string(s.Status)
 		label := fmt.Sprintf("%s  %s  %d/%d done  [%s]",
 			s.ID, s.Blueprint, summary[coop.NodeDone], s.TotalNodes(), status)
-		entries = append(entries, sessionEntry{session: s, label: label})
+		entries = append(entries, sessionChoice{session: s, label: label})
 	}
 
 	if len(entries) == 0 {
 		return nil, fmt.Errorf("no readable sessions found")
 	}
 
-	// Build huh options
-	var options []huh.Option[string]
-	for _, e := range entries {
-		options = append(options, huh.NewOption(e.label, e.session.ID))
-	}
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].session.UpdatedAt.Equal(entries[j].session.UpdatedAt) {
+			return entries[i].session.ID < entries[j].session.ID
+		}
+		return entries[i].session.UpdatedAt.After(entries[j].session.UpdatedAt)
+	})
 
-	var choice string
-
-	err = helpers.Select("Pick a session to resume:", options, &choice)
-	if err != nil {
-		return nil, err
-	}
-
-	return store.Read(choice)
+	return entries, nil
 }

@@ -23,6 +23,13 @@ type agentInfo struct {
 
 type coopPaneCommandBuilder func(session *coop.Session) (string, func(), error)
 
+var (
+	selectString = helpers.Select[string]
+	runTmux      = func(args ...string) error {
+		return exec.Command("tmux", args...).Run()
+	}
+)
+
 const (
 	defaultCoopTmuxSessionWidth  = 200
 	defaultCoopTmuxSessionHeight = 50
@@ -52,7 +59,7 @@ func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	switch {
 	case hasClaude && hasCodex:
 		var choice string
-		err := helpers.Select("Multiple agents detected. Which would you like to use?",
+		err := selectString("Multiple agents detected. Which would you like to use?",
 			[]huh.Option[string]{
 				huh.NewOption("Claude Code", "claude"),
 				huh.NewOption("Codex", "codex"),
@@ -76,7 +83,7 @@ func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	}
 }
 
-func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) bool {
+func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 	var choice string
 
 	var title string
@@ -86,10 +93,10 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) bool {
 	case "codex":
 		title = "Permission mode for Codex:"
 	default:
-		return false
+		return false, nil
 	}
 
-	err := helpers.Select(title,
+	err := selectString(title,
 		[]huh.Option[string]{
 			huh.NewOption("Normal — agent asks before running commands", "normal"),
 			huh.NewOption("Auto-approve — skip all permission prompts (faster, less safe)", "auto"),
@@ -97,9 +104,9 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) bool {
 		&choice,
 	)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return choice == "auto"
+	return choice == "auto", nil
 }
 
 func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
@@ -200,8 +207,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 		return err
 	}
 
-	split := exec.Command("tmux", "split-window", "-h", "-p", "60", "bash", "-c", paneCmd)
-	if err := split.Run(); err != nil {
+	if err := runTmux("split-window", "-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -229,9 +235,9 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	sessionName := "stripe-coop"
 
 	// Check for existing session
-	if err := exec.Command("tmux", "has-session", "-t", sessionName).Run(); err == nil {
+	if err := runTmux("has-session", "-t", sessionName); err == nil {
 		var choice string
-		if err := helpers.Select("A co-op tmux session already exists. What would you like to do?",
+		if err := selectString("A co-op tmux session already exists. What would you like to do?",
 			[]huh.Option[string]{
 				huh.NewOption("Reattach to existing session", "attach"),
 				huh.NewOption("Start fresh (kills existing session)", "fresh"),
@@ -248,7 +254,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 			attach.Stderr = os.Stderr
 			return attach.Run()
 		}
-		exec.Command("tmux", "kill-session", "-t", sessionName).Run()
+		killTmuxSession(sessionName)
 	}
 
 	var session *coop.Session
@@ -273,9 +279,8 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	}
 
 	width, height := coopTmuxSessionDimensions()
-	create := exec.Command("tmux", "new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
-		"bash", "-c", tuiCmd)
-	if err := create.Run(); err != nil {
+	if err := runTmux("new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
+		"bash", "-c", tuiCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -283,23 +288,27 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
-	split := exec.Command("tmux", "split-window", "-h", "-t", sessionName, "-p", "60",
-		"bash", "-c", paneCmd)
-	if err := split.Run(); err != nil {
+	if err := runTmux("split-window", "-h", "-t", sessionName, "-p", "60",
+		"bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
+		killTmuxSession(sessionName)
 		rc.abortStartedSession(session, "tmux split-window failed")
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	exec.Command("tmux", "select-pane", "-t", sessionName+":0.1").Run()
+	runTmux("select-pane", "-t", sessionName+":0.1")
 
 	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
 	attach.Stdin = os.Stdin
 	attach.Stdout = os.Stdout
 	attach.Stderr = os.Stderr
 	return attach.Run()
+}
+
+func killTmuxSession(sessionName string) {
+	_ = runTmux("kill-session", "-t", sessionName)
 }
 
 func coopTmuxSessionDimensions() (int, int) {

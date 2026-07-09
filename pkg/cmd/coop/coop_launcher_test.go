@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"charm.land/huh/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -59,6 +60,22 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	assert.Contains(t, prompt, "Start by running the \"next\" command exactly as written")
 }
 
+func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
+	promptErr := errors.New("permission prompt canceled")
+	originalSelectString := selectString
+	selectString = func(title string, options []huh.Option[string], value *string) error {
+		return promptErr
+	}
+	t.Cleanup(func() {
+		selectString = originalSelectString
+	})
+
+	autoApprove, err := (&coopRunCmd{}).promptAutoApprove(&agentInfo{name: "claude"})
+
+	require.ErrorIs(t, err, promptErr)
+	assert.False(t, autoApprove)
+}
+
 func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -82,4 +99,64 @@ func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 
 	_, err = store.LatestActiveSession()
 	assert.Error(t, err)
+}
+
+func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	splitErr := errors.New("split failed")
+	var tmuxCalls [][]string
+	originalRunTmux := runTmux
+	runTmux = func(args ...string) error {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		switch args[0] {
+		case "has-session":
+			return errors.New("session not found")
+		case "split-window":
+			return splitErr
+		default:
+			return nil
+		}
+	}
+	t.Cleanup(func() {
+		runTmux = originalRunTmux
+	})
+
+	cleanupCalled := false
+	rc := &coopRunCmd{language: "node"}
+	err := rc.runInNewTmuxWithCommand("/stripe", "one-time-payment", func(session *coop.Session) (string, func(), error) {
+		require.NotNil(t, session)
+		return "agent", func() { cleanupCalled = true }, nil
+	})
+	require.ErrorIs(t, err, splitErr)
+	assert.True(t, cleanupCalled)
+	assert.True(t, hasTmuxCall(tmuxCalls, "kill-session", "-t", "stripe-coop"))
+
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+	session, err := store.LatestSession()
+	require.NoError(t, err)
+	assert.Equal(t, coop.SessionAborted, session.Status)
+	node, err := session.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Contains(t, node.Activity, "tmux split-window failed")
+}
+
+func hasTmuxCall(calls [][]string, want ...string) bool {
+	for _, call := range calls {
+		if len(call) != len(want) {
+			continue
+		}
+		matches := true
+		for i := range call {
+			if call[i] != want[i] {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			return true
+		}
+	}
+	return false
 }
