@@ -11,6 +11,7 @@ const (
 	StatusNotDetected = "not_detected"
 	StatusInstalled   = "installed"
 	StatusMissing     = "missing"
+	StatusUnknown     = "unknown"
 	StatusError       = "error"
 
 	ActionNone      = "none"

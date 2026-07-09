@@ -51,7 +51,7 @@ func (p CursorProvider) Detect() Status {
 	}
 	status.Detected = true
 	status.ExecutablePath = binPath
-	status.Status = StatusMissing
+	status.Status = StatusUnknown
 	// Signal to the TUI that this row is not actionable from the CLI.
 	status.Error = "run /add-plugin stripe inside Cursor agent"
 	return status

@@ -20,7 +20,7 @@ func TestCursor_NotDetected(t *testing.T) {
 	require.Equal(t, StatusNotDetected, status.Status)
 }
 
-func TestCursor_DetectedAlwaysMissing(t *testing.T) {
+func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 	provider := CursorProvider{
 		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }},
 	}
@@ -29,7 +29,7 @@ func TestCursor_DetectedAlwaysMissing(t *testing.T) {
 
 	require.True(t, status.Detected)
 	require.Equal(t, "/usr/local/bin/cursor", status.ExecutablePath)
-	require.Equal(t, StatusMissing, status.Status)
+	require.Equal(t, StatusUnknown, status.Status)
 	require.False(t, status.Plugin.Installed)
 }
 

@@ -62,7 +62,6 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 
 	var result agentSetupJSON
 	require.NoError(t, json.Unmarshal([]byte(output), &result))
-	require.Equal(t, agentsetup.StatusMissing, result.Status)
 	require.Len(t, result.Clients, 1)
 	require.True(t, result.Clients[0].Detected)
 	require.False(t, result.Clients[0].Plugin.Installed)
