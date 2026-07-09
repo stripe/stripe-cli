@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -492,6 +491,7 @@ that you have previously logged in with your Stripe account credentials.`,
 	}
 
 	snc.cmd.Flags().StringVar(&snc.name, "name", "", "Name for the new sandbox")
+	_ = snc.cmd.MarkFlagRequired("name")
 	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID to replicate (wksp_...); mutually exclusive with --business-location")
 	snc.cmd.Flags().StringVar(&snc.businessLocation, "business-location", "", "Country for a fresh blank sandbox (e.g. US); mutually exclusive with --replica-of")
 	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Playground compartment (play_...) to create the sandbox under")
@@ -519,10 +519,6 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("no user access token found; run `stripe login` first")
 	}
 	uat := strings.TrimSpace(string(uatBytes))
-
-	if strings.TrimSpace(snc.name) == "" {
-		return fmt.Errorf("--name is required")
-	}
 
 	// --batch is scaffolded for a future bulk-create shape and currently only
 	// supports 1. Future shape: create N sandboxes under the same playground in a
@@ -567,12 +563,12 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("invalid --api-base %q: %w", snc.apiBase, err)
 	}
 
-	// Mirror the dashboard's create-sandbox request body. The idempotency token
-	// guards against duplicate creates if the request is retried.
+	// Mirror the dashboard's create-sandbox request body, including the
+	// idempotency_token derived from the create inputs (see newIdempotencyToken).
 	reqBody := map[string]interface{}{
 		"name":              snc.name,
 		"activate_sandbox":  snc.activate,
-		"idempotency_token": newIdempotencyToken(snc.name),
+		"idempotency_token": newIdempotencyToken(snc.name, businessLocation, replicaOf),
 	}
 	if replicaOf != "" {
 		reqBody["replica_of"] = replicaOf
@@ -628,15 +624,15 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	return nil
 }
 
-// newIdempotencyToken builds a stable-per-invocation idempotency token from the
-// sandbox name and a random UUID so retried requests within a run don't create
-// duplicate sandboxes.
-func newIdempotencyToken(name string) string {
-	suffix := uuid.NewString()
-	if name == "" {
-		return suffix
-	}
-	return name + "-" + suffix
+// newIdempotencyToken mirrors the dashboard's create-sandbox flow
+// (CreateSandboxFlow.tsx): the token is derived from the create inputs (name,
+// business_location country, and the replica_of parent workspace) plus a
+// wall-clock second. An accidental double-submit of the same command within the
+// same second collapses to one create; distinct invocations create distinct
+// sandboxes. Sent as the body idempotency_token field, matching the dashboard's
+// v2CreateSandbox call (which does not use the Idempotency-Key header).
+func newIdempotencyToken(name, country, parent string) string {
+	return fmt.Sprintf("%s-%s-%s-%d", name, country, parent, time.Now().Unix())
 }
 
 func isSSHSession() bool {
