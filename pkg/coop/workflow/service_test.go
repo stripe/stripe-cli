@@ -223,16 +223,16 @@ func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
 	child := &coop.Session{
 		SchemaVersion:   coop.CurrentSessionSchemaVersion,
 		ID:              "child_session",
-		Blueprint:       "deploy-stripe-projects",
+		Blueprint:       "follow-up-integration",
 		Status:          coop.SessionActive,
 		ParentSessionID: "parent_session",
-		ParentStepID:    "deploy",
+		ParentStepID:    "add-integration",
 		Steps: []coop.SessionStep{
 			{
-				StepDefinition: coop.StepDefinition{Key: "deploy", Title: "Deploy"},
+				StepDefinition: coop.StepDefinition{Key: "add-integration", Title: "Add integration"},
 				Nodes: []coop.SessionNode{
 					{
-						NodeDefinition: coop.NodeDefinition{Key: "deploy", Title: "Deploy"},
+						NodeDefinition: coop.NodeDefinition{Key: "add-integration", Title: "Add integration"},
 						State:          coop.NodeActive,
 					},
 				},
@@ -242,11 +242,11 @@ func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
 	require.NoError(t, store.Write(child))
 	service := NewService(store)
 
-	resp, err := service.ReportWork(child.ID, 1, ReportWorkInput{File: "stripe.json", Note: "Deployed"}, true)
+	resp, err := service.ReportWork(child.ID, 1, ReportWorkInput{File: "server.go", Note: "Added another integration"}, true)
 
 	require.NoError(t, err)
 	require.True(t, resp.OK)
-	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=deploy", resp.Next)
+	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=add-integration", resp.Next)
 }
 
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {

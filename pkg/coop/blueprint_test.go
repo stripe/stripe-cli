@@ -104,29 +104,9 @@ func TestLoadBlueprintNotFound(t *testing.T) {
 }
 
 func TestLoadBlueprintPrefixMatch(t *testing.T) {
-	bp, err := LoadBlueprint("deploy")
+	bp, err := LoadBlueprint("setup-future")
 	require.NoError(t, err)
-	assert.Equal(t, "deploy-stripe-projects", bp.ID)
-}
-
-func TestDeployBlueprintDoesNotReadKeyMaterialFromWhoami(t *testing.T) {
-	bp, err := LoadBlueprint("deploy-stripe-projects")
-	require.NoError(t, err)
-
-	var description string
-	for _, step := range bp.Steps {
-		for _, node := range step.Nodes {
-			if node.Key == "stripe-keys" {
-				description = node.Description
-			}
-		}
-	}
-	require.NotEmpty(t, description)
-	lower := strings.ToLower(description)
-	assert.NotContains(t, lower, "stripe whoami --json")
-	assert.NotContains(t, lower, "using the keys from")
-	assert.Contains(t, lower, "stripe whoami --format json")
-	assert.Contains(t, lower, "does not print key material")
+	assert.Equal(t, "setup-future-payments", bp.ID)
 }
 
 func TestLoadBlueprintPrefixMatchUnique(t *testing.T) {

@@ -866,7 +866,7 @@ func TestSpinnerTickDoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestCompletionEnterDeployWaitsForAgentSession(t *testing.T) {
+func TestCompletionEnterDeploySelectsActionWithoutWaitingForNewSession(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
 
@@ -895,15 +895,9 @@ func TestCompletionEnterDeployWaitsForAgentSession(t *testing.T) {
 	session, err := store.Read("parent_session")
 	require.NoError(t, err)
 	assert.Equal(t, suggestions[m.selectionCursor].id, session.NextSteps.Selected)
-	assert.True(t, updated.waiting)
-	require.NotNil(t, cmd)
-	msg := cmd()
-	baseline, ok := msg.(waitingBaselineMsg)
-	require.True(t, ok)
-	assert.NotNil(t, baseline.existingSessionIDs)
-
-	_, err = store.Read("coop_deploy")
-	assert.Error(t, err)
+	assert.False(t, updated.waiting)
+	assert.Equal(t, "Waiting for agent to deploy your changes...", updated.statusMessage)
+	assert.Nil(t, cmd)
 }
 
 func TestSelectCompletionOptionSummarize(t *testing.T) {
@@ -1071,9 +1065,18 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 	suggestions := m.getCompletionSuggestions()
 
-	// Find deploy
+	// Find deploy. This is an agent prompt, not a new co-op session.
 	for i, s := range suggestions {
 		if s.id == "deploy" || s.id == "deploy-update" {
+			m.selectionCursor = i
+			assert.False(t, m.shouldTransitionToNewSession())
+			break
+		}
+	}
+
+	// Find add-integration. This starts another co-op session.
+	for i, s := range suggestions {
+		if s.id == "add-integration" {
 			m.selectionCursor = i
 			assert.True(t, m.shouldTransitionToNewSession())
 			break

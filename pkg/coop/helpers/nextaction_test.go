@@ -32,30 +32,54 @@ func TestBuildSuggestionsUsesExistingDeployTarget(t *testing.T) {
 	assert.Equal(t, "Detected: Vercel", suggestions[0].Reason)
 }
 
-func TestBuildResponseForDeploy(t *testing.T) {
+func TestBuildResponseForDeployUsesStripeProjectsPrompt(t *testing.T) {
 	session := &coop.Session{
 		ID:        "sess_123",
 		Blueprint: "one-time-payment",
-		Settings:  map[string]string{"language": "go"},
 	}
 
 	resp := BuildResponse(session, nil, "deploy")
 
 	assert.True(t, resp.OK)
 	assert.Equal(t, "sess_123", resp.SessionID)
-	assert.Equal(t, "stripe coop run deploy-stripe-projects --language=\"go\" --parent-session=\"sess_123\" --parent-step=\"deploy\"", resp.Next)
+	assert.Contains(t, resp.AgentPrompt, "Stripe Projects")
+	assert.Contains(t, resp.AgentPrompt, "stripe projects --help")
+	assert.Contains(t, resp.AgentPrompt, "stripe plugin install projects")
+	assert.Contains(t, resp.AgentPrompt, "Do not start a new co-op blueprint")
+	assert.Contains(t, resp.Next, "stripe coop agent next-action --session=sess_123 --completed=deploy")
+	assert.NotContains(t, resp.Next, "stripe coop run")
 }
 
-func TestBuildResponseForDeployQuotesLanguage(t *testing.T) {
+func TestBuildResponseForDeployDoesNotReadKeyMaterialFromWhoami(t *testing.T) {
 	session := &coop.Session{
 		ID:        "sess_123",
 		Blueprint: "one-time-payment",
-		Settings:  map[string]string{"language": "go; echo bad"},
 	}
 
 	resp := BuildResponse(session, nil, "deploy")
 
-	assert.Equal(t, "stripe coop run deploy-stripe-projects --language=\"go; echo bad\" --parent-session=\"sess_123\" --parent-step=\"deploy\"", resp.Next)
+	prompt := resp.AgentPrompt
+	assert.NotContains(t, prompt, "stripe whoami --json")
+	assert.NotContains(t, prompt, "using the keys from")
+	assert.Contains(t, prompt, "stripe whoami --format json")
+	assert.Contains(t, prompt, "does not print key material")
+}
+
+func TestBuildResponseForDeployUpdateUsesDetectedTarget(t *testing.T) {
+	session := &coop.Session{
+		ID:        "sess_123",
+		Blueprint: "one-time-payment",
+	}
+	suggestions := BuildSuggestions(session, Environment{HasExistingDeploy: true, HasVercel: true})
+
+	resp := BuildResponse(session, suggestions, "deploy-update")
+
+	assert.True(t, resp.OK)
+	assert.Contains(t, resp.AgentPrompt, "deploy the integration changes to Vercel")
+	assert.Contains(t, resp.AgentPrompt, "push the new integration code to Vercel")
+	assert.Contains(t, resp.AgentPrompt, "Do not start a Stripe Projects co-op blueprint")
+	assert.Equal(t, "Push your integration code to Vercel, then run: stripe coop agent next-action --session=sess_123 --completed=deploy-update", resp.Next)
+	assert.NotContains(t, resp.Next, "stripe coop run")
 }
 
 func TestWaitForSelectionTimesOut(t *testing.T) {
