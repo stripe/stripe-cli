@@ -32,7 +32,7 @@ func TestBuildSuggestionsUsesExistingDeployTarget(t *testing.T) {
 	assert.Equal(t, "Detected: Vercel", suggestions[0].Reason)
 }
 
-func TestBuildResponseForDeployUsesStripeProjectsPrompt(t *testing.T) {
+func TestBuildResponseForDeployStartsGuidedFollowup(t *testing.T) {
 	session := &coop.Session{
 		ID:        "sess_123",
 		Blueprint: "one-time-payment",
@@ -42,30 +42,14 @@ func TestBuildResponseForDeployUsesStripeProjectsPrompt(t *testing.T) {
 
 	assert.True(t, resp.OK)
 	assert.Equal(t, "sess_123", resp.SessionID)
-	assert.Contains(t, resp.AgentPrompt, "Stripe Projects")
-	assert.Contains(t, resp.AgentPrompt, "stripe projects --help")
-	assert.Contains(t, resp.AgentPrompt, "stripe plugin install projects")
-	assert.Contains(t, resp.AgentPrompt, "Do not start a new co-op blueprint")
-	assert.Contains(t, resp.Next, "stripe coop agent next-action --session=sess_123 --completed=deploy")
+	assert.Contains(t, resp.AgentPrompt, "guided deploy flow")
+	assert.Contains(t, resp.AgentPrompt, `Do not use "stripe coop run"`)
+	assert.Contains(t, resp.AgentPrompt, "not co-op blueprints")
+	assert.Equal(t, `stripe coop agent start-followup --session="sess_123" --action="deploy"`, resp.Next)
 	assert.NotContains(t, resp.Next, "stripe coop run")
 }
 
-func TestBuildResponseForDeployDoesNotReadKeyMaterialFromWhoami(t *testing.T) {
-	session := &coop.Session{
-		ID:        "sess_123",
-		Blueprint: "one-time-payment",
-	}
-
-	resp := BuildResponse(session, nil, "deploy")
-
-	prompt := resp.AgentPrompt
-	assert.NotContains(t, prompt, "stripe whoami --json")
-	assert.NotContains(t, prompt, "using the keys from")
-	assert.Contains(t, prompt, "stripe whoami --format json")
-	assert.Contains(t, prompt, "does not print key material")
-}
-
-func TestBuildResponseForDeployUpdateUsesDetectedTarget(t *testing.T) {
+func TestBuildResponseForDeployUpdateStartsGuidedFollowupWithDetectedTarget(t *testing.T) {
 	session := &coop.Session{
 		ID:        "sess_123",
 		Blueprint: "one-time-payment",
@@ -75,11 +59,27 @@ func TestBuildResponseForDeployUpdateUsesDetectedTarget(t *testing.T) {
 	resp := BuildResponse(session, suggestions, "deploy-update")
 
 	assert.True(t, resp.OK)
-	assert.Contains(t, resp.AgentPrompt, "deploy the integration changes to Vercel")
-	assert.Contains(t, resp.AgentPrompt, "push the new integration code to Vercel")
-	assert.Contains(t, resp.AgentPrompt, "Do not start a Stripe Projects co-op blueprint")
-	assert.Equal(t, "Push your integration code to Vercel, then run: stripe coop agent next-action --session=sess_123 --completed=deploy-update", resp.Next)
+	assert.Contains(t, resp.AgentPrompt, "guided deploy-update flow for Vercel")
+	assert.Contains(t, resp.AgentPrompt, "existing Vercel deployment configuration")
+	assert.Equal(t, `stripe coop agent start-followup --session="sess_123" --action="deploy-update" --target="Vercel"`, resp.Next)
 	assert.NotContains(t, resp.Next, "stripe coop run")
+}
+
+func TestDeployGuidedActionDoesNotReadKeyMaterialFromWhoami(t *testing.T) {
+	session := &coop.Session{
+		ID:        "sess_123",
+		Blueprint: "one-time-payment",
+	}
+
+	resp := BuildResponse(session, nil, "deploy")
+	action, err := coop.GuidedActionByID(coop.GuidedActionDeploy, "")
+	require.NoError(t, err)
+
+	prompt := resp.AgentPrompt + "\n" + action.AgentContext
+	assert.NotContains(t, prompt, "stripe whoami --json")
+	assert.NotContains(t, prompt, "using the keys from")
+	assert.Contains(t, prompt, "stripe whoami --format json")
+	assert.Contains(t, prompt, "does not print key material")
 }
 
 func TestWaitForSelectionTimesOut(t *testing.T) {

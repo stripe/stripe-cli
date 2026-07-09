@@ -114,6 +114,87 @@ func TestCoopAgentNextActionReturnsStructuredErrorForHelperFailure(t *testing.T)
 	assert.Equal(t, "stripe coop agent next-action --session=agent_test_session", resp.Hint)
 }
 
+func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Blueprint:     "one-time-payment",
+		Status:        coop.SessionCompleted,
+		Settings:      map[string]string{"language": "node"},
+	}
+	require.NoError(t, store.Write(parent))
+
+	cmd := newCoopAgentStartFollowupCmd().cmd
+	cmd.SetArgs([]string{"--session", parent.ID, "--action", "deploy-update", "--target", "Vercel"})
+
+	output := captureStdout(t, func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	var resp coopAgentRunResponse
+	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	require.True(t, resp.OK)
+	assert.Contains(t, resp.Message, "Deploy your changes")
+	assert.Contains(t, resp.Next, "stripe coop agent start-work")
+	assert.Contains(t, resp.AgentInstructions, "guided co-op follow-up")
+	assert.Contains(t, resp.AgentInstructions, "Vercel")
+	require.Len(t, resp.Nodes, 3)
+	assert.Equal(t, "Inspect existing deploy config", resp.Nodes[0].Title)
+
+	ids, err := store.List()
+	require.NoError(t, err)
+	require.Len(t, ids, 2)
+
+	var child *coop.Session
+	for _, id := range ids {
+		if id == parent.ID {
+			continue
+		}
+		child, err = store.Read(id)
+		require.NoError(t, err)
+	}
+	require.NotNil(t, child)
+	assert.Equal(t, "Deploy your changes", child.Blueprint)
+	assert.Equal(t, parent.ID, child.ParentSessionID)
+	assert.Equal(t, "deploy-update", child.ParentStepID)
+	assert.Equal(t, "node", child.Settings["language"])
+	assert.Equal(t, "Vercel", child.Settings["deploy_target"])
+	assert.Equal(t, "deploy-update", child.Settings["guided_action"])
+	assert.Len(t, child.Steps, 3)
+}
+
+func TestCoopAgentStartFollowupRejectsUnknownAction(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	store, err := coop.NewStore(coopConfigFolder())
+	require.NoError(t, err)
+	parent := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "parent_session",
+		Status:        coop.SessionCompleted,
+	}
+	require.NoError(t, store.Write(parent))
+
+	cmd := newCoopAgentStartFollowupCmd().cmd
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	cmd.SetArgs([]string{"--session", parent.ID, "--action", "unknown"})
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, `guided action "unknown" not found`)
+	assert.Equal(t, "stripe coop agent start-followup --session=<session> --action=deploy", resp.Hint)
+}
+
 type nextActionErrorStore struct {
 	session *coop.Session
 }

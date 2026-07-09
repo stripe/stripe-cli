@@ -28,6 +28,8 @@ type coopAgentActionCmd struct {
 	passed  bool
 
 	completed string
+	action    string
+	target    string
 }
 
 func newCoopAgentCmd() *coopAgentCmd {
@@ -43,6 +45,7 @@ func newCoopAgentCmd() *coopAgentCmd {
 	ac.cmd.AddCommand(newCoopAgentSkipCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentAwaitReviewCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentNextActionCmd().cmd)
+	ac.cmd.AddCommand(newCoopAgentStartFollowupCmd().cmd)
 	return ac
 }
 
@@ -164,6 +167,23 @@ func newCoopAgentNextActionCmd() *coopAgentActionCmd {
 	return c
 }
 
+func newCoopAgentStartFollowupCmd() *coopAgentActionCmd {
+	c := &coopAgentActionCmd{}
+	c.cmd = &cobra.Command{
+		Use:   "start-followup",
+		Short: "Start an internal guided follow-up session",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCoopStartFollowup(c.session, c.action, c.target)
+		},
+	}
+	c.cmd.Flags().StringVar(&c.session, "session", "", "Parent session ID")
+	c.cmd.Flags().StringVar(&c.action, "action", "", "Follow-up action ID")
+	c.cmd.Flags().StringVar(&c.target, "target", "", "Detected deployment target")
+	mustMarkFlagRequired(c.cmd, "session")
+	mustMarkFlagRequired(c.cmd, "action")
+	return c
+}
+
 func (c *coopAgentActionCmd) addSessionStepFlags() {
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
 	c.cmd.Flags().IntVar(&c.step, "step", 0, "1-based node number")
@@ -203,6 +223,44 @@ func nextActionHint(sessionID string) string {
 		return "stripe coop agent next-action --session=<session>"
 	}
 	return fmt.Sprintf("stripe coop agent next-action --session=%s", sessionID)
+}
+
+func runCoopStartFollowup(parentSessionID, actionID, target string) error {
+	store, err := coop.NewStore(coopConfigFolder())
+	if err != nil {
+		return fmt.Errorf("creating store: %w", err)
+	}
+
+	parent, err := store.Read(parentSessionID)
+	if err != nil {
+		return outputCoopError(fmt.Sprintf("Parent session %q not found.", parentSessionID), "stripe coop agent next-action --session=<session>")
+	}
+
+	action, err := coop.GuidedActionByID(actionID, target)
+	if err != nil {
+		return outputCoopError(err.Error(), "stripe coop agent start-followup --session=<session> --action=deploy")
+	}
+
+	settings := make(map[string]string, len(parent.Settings)+1)
+	for key, value := range parent.Settings {
+		settings[key] = value
+	}
+	if target != "" {
+		settings["deploy_target"] = target
+	}
+
+	sessionID := "coop_" + generateShortID()
+	session := coop.NewSessionFromGuidedAction(action, sessionID, coop.GuidedActionSessionOptions{
+		ParentSessionID: parent.ID,
+		ParentStepID:    action.ID,
+		Settings:        settings,
+		UsedSandbox:     parent.UsedSandbox || coopSandboxClaimURL() != "",
+	})
+	if err := store.Write(session); err != nil {
+		return fmt.Errorf("writing guided follow-up session: %w", err)
+	}
+
+	return outputJSON(newCoopAgentGuidedActionResponse(action, session))
 }
 
 func outputAgentResponse(resp coop.CommandResponse, err error) error {

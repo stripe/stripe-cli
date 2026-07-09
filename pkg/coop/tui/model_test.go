@@ -866,7 +866,7 @@ func TestSpinnerTickDoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestCompletionEnterDeploySelectsActionWithoutWaitingForNewSession(t *testing.T) {
+func TestCompletionEnterDeployWaitsForGuidedFollowupSession(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
 
@@ -895,9 +895,13 @@ func TestCompletionEnterDeploySelectsActionWithoutWaitingForNewSession(t *testin
 	session, err := store.Read("parent_session")
 	require.NoError(t, err)
 	assert.Equal(t, suggestions[m.selectionCursor].id, session.NextSteps.Selected)
-	assert.False(t, updated.waiting)
-	assert.Equal(t, "Waiting for agent to deploy your changes...", updated.statusMessage)
-	assert.Nil(t, cmd)
+	assert.True(t, updated.waiting)
+	assert.Equal(t, "Waiting for agent to start the guided deploy flow...", updated.waitingMessage)
+	require.NotNil(t, cmd)
+	msg := cmd()
+	baseline, ok := msg.(waitingBaselineMsg)
+	require.True(t, ok)
+	assert.NotNil(t, baseline.existingSessionIDs)
 }
 
 func TestSelectCompletionOptionSummarize(t *testing.T) {
@@ -1065,11 +1069,11 @@ func TestShouldTransitionToNewSession(t *testing.T) {
 
 	suggestions := m.getCompletionSuggestions()
 
-	// Find deploy. This is an agent prompt, not a new co-op session.
+	// Find deploy. This starts an internal guided follow-up session.
 	for i, s := range suggestions {
 		if s.id == "deploy" || s.id == "deploy-update" {
 			m.selectionCursor = i
-			assert.False(t, m.shouldTransitionToNewSession())
+			assert.True(t, m.shouldTransitionToNewSession())
 			break
 		}
 	}

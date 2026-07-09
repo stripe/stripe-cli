@@ -760,9 +760,8 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 
 			switch selected.id {
 			case "deploy", "deploy-update":
-				m.setStatus("Waiting for agent to deploy your changes...", 0)
-				m.syncViewport()
-				return m, cmd
+				waitCmd := m.enterWaitingMode("Waiting for agent to start the guided deploy flow...")
+				return m, tea.Batch(cmd, waitCmd)
 			case "add-integration":
 				waitCmd := m.enterWaitingMode("Waiting for agent to ask which Stripe feature to add...")
 				return m, tea.Batch(cmd, waitCmd)

@@ -78,6 +78,14 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 }
 
 func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgentRunResponse {
+	return newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp, session))
+}
+
+func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coopAgentRunResponse {
+	return newCoopAgentSessionResponse(action.Title, session, guidedActionAgentInstructions(action, session))
+}
+
+func newCoopAgentSessionResponse(title string, session *coop.Session, instructions string) coopAgentRunResponse {
 	var nodes []nodeBrief
 	nodeNumber := 0
 	for _, step := range session.Steps {
@@ -101,10 +109,10 @@ func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgen
 			SessionID: session.ID,
 			Node:      1,
 			State:     "created",
-			Message:   fmt.Sprintf("Session started: %s (%d nodes)", bp.Title, session.TotalNodes()),
+			Message:   fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
 			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
 		},
-		AgentInstructions: agentInstructions(bp, session),
+		AgentInstructions: instructions,
 		Nodes:             nodes,
 	}
 	return resp
@@ -165,7 +173,15 @@ type nodeBrief struct {
 
 func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
 	preamble := fmt.Sprintf("You are building a working Stripe integration: %q", bp.Title)
+	return sessionLifecycleInstructions(preamble, session)
+}
 
+func guidedActionAgentInstructions(action *coop.GuidedAction, session *coop.Session) string {
+	preamble := fmt.Sprintf("You are completing a guided co-op follow-up: %q.\n\n%s", action.Title, action.AgentContext)
+	return sessionLifecycleInstructions(preamble, session)
+}
+
+func sessionLifecycleInstructions(preamble string, session *coop.Session) string {
 	return fmt.Sprintf(`%s
 
 BEFORE YOU START — ensure you have API access:
@@ -184,7 +200,7 @@ Each node has a description that tells you what to do. Follow the description �
 
 If a node includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
-Node 1 is always "Understand the project" — scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
+If a node asks you to understand the project, scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
 
 Agent lifecycle commands (use this session id: %s):
 1. stripe coop agent start-work --session=%s --step=<n> --note="<what you're about to do>"
@@ -194,7 +210,7 @@ Agent lifecycle commands (use this session id: %s):
 5. Follow the JSON response's next command. Most nodes continue to the next node in the same step.
 6. Only run stripe coop agent await-review --session=%s --step=<n> when the response says the step is ready for review. Await blocks until the human confirms the step or requests changes.
 7. If confirmed: move to next node. If rejected: redo the affected node (check the message for feedback).
-8. When the final node is confirmed: IMMEDIATELY run "stripe coop agent next-action --session=%s". Do not stop or ask — just run it. It shows the developer their options in the TUI and blocks until they choose.
+8. When the final node is confirmed: IMMEDIATELY run the JSON response's next command. Do not stop or ask. It will return to the parent session for follow-up work or show the developer their options in the TUI.
 
 Steps are the default human-review unit. Build and verify each node one at a time, but do not interrupt the developer for every node. At the end of each step, before running await, help the developer verify the step: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop agent report-check --session=%s --step=<n> --check="..." --passed so the review card has useful evidence.
 
@@ -209,7 +225,7 @@ Important:
 - If a node doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
 - Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
   Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
-  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
+  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
 }
 
 func outputJSON(v interface{}) error {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -207,7 +208,7 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: BuildDeployPrompt(session),
-			Next:        fmt.Sprintf("Use Stripe Projects to deploy, then run: stripe coop agent next-action --session=%s --completed=deploy", session.ID),
+			Next:        followupCommand(session.ID, "deploy", ""),
 		}
 	case "deploy-update":
 		target := deployTargetFromSuggestion(suggestions, selected)
@@ -217,7 +218,7 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: BuildDeployUpdatePrompt(session, target),
-			Next:        fmt.Sprintf("Push your integration code to %s, then run: stripe coop agent next-action --session=%s --completed=deploy-update", target, session.ID),
+			Next:        followupCommand(session.ID, "deploy-update", target),
 		}
 	case "add-integration":
 		return Response{
@@ -264,33 +265,32 @@ func deployTargetFromSuggestion(suggestions []Suggestion, selected string) strin
 	return "the detected deployment target"
 }
 
+func followupCommand(sessionID, action, target string) string {
+	cmd := fmt.Sprintf("stripe coop agent start-followup --session=%s --action=%s", strconv.Quote(sessionID), strconv.Quote(action))
+	if target != "" {
+		cmd += fmt.Sprintf(" --target=%s", strconv.Quote(target))
+	}
+	return cmd
+}
+
 func BuildDeployPrompt(session *coop.Session) string {
-	return fmt.Sprintf(`The developer wants to deploy this integration.
+	return fmt.Sprintf(`The developer wants a guided deploy flow.
 
-Use the Stripe Projects CLI plugin's own detection and commands. Do not start a new co-op blueprint, and do not supplement or modify blueprints as the deployment source of truth.
+Start an internal deploy follow-up session by running the next command exactly as written. Do not use "stripe coop run"; deploy follow-ups are not co-op blueprints.
 
-- Run "stripe projects --help" to check whether the plugin is available.
-- If the command is unavailable, install it with "stripe plugin install projects" and rerun the help command.
-- Use the Stripe Projects plugin to detect the current project configuration before choosing deployment commands.
-- Configure and deploy through Stripe Projects.
-- Do not print secret key material. Use "stripe whoami --format json" only for account context; it does not print key material.
+The guided session will show the step-by-step deploy work in the developer's TUI and will use Stripe Projects as the deployment source of truth.
 
-When deployment is complete, run:
-stripe coop agent next-action --session=%s --completed=deploy`, session.ID)
+Parent session: %s`, session.ID)
 }
 
 func BuildDeployUpdatePrompt(session *coop.Session, target string) string {
-	return fmt.Sprintf(`The developer wants to deploy the integration changes to %s.
+	return fmt.Sprintf(`The developer wants a guided deploy-update flow for %s.
 
-Use the existing %s deployment configuration and push the new integration code to %s. Do not start a Stripe Projects co-op blueprint unless the developer explicitly asks to migrate deployment infrastructure.
+Start an internal deploy-update follow-up session by running the next command exactly as written. Do not use "stripe coop run"; deploy follow-ups are not co-op blueprints.
 
-- Inspect the existing deployment config to confirm the right provider and project.
-- Use the provider's established deploy path for this repository.
-- Make sure the Stripe environment variables required by the integration are configured, but do not print secret values.
-- Verify the deployed integration if the provider returns a preview or production URL.
+The guided session will show the step-by-step deploy work in the developer's TUI and will use the existing %s deployment configuration.
 
-When the deployment update is complete, run:
-stripe coop agent next-action --session=%s --completed=deploy-update`, target, target, target, session.ID)
+Parent session: %s`, target, target, session.ID)
 }
 
 func BuildSummarizePrompt(session *coop.Session) string {
