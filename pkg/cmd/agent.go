@@ -485,10 +485,7 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 	result := agentSetupJSON{
 		Status:  aggregateStatus(statuses),
 		Clients: statuses,
-		Skills: skillsScopesJSON{
-			Local:  skills.Local,
-			Global: skills.Global,
-		},
+		Skills:  skillsScopesJSON(skills),
 	}
 	for _, status := range statuses {
 		if plan := providers[status.Client].Plan(status, asc.force); plan.Action != agentsetup.ActionNone {
