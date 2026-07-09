@@ -21,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
 
@@ -535,4 +536,253 @@ func TestSandboxClaimCmd_WithClaimURL(t *testing.T) {
 	require.NoError(t, err)
 	// In non-interactive mode, the claim URL is printed to stdout.
 	// Verified by no error — URL goes to os.Stdout which we can't capture.
+}
+
+func TestSandboxNewCmd_Success(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	// Seed a UAT into the in-memory keyring
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	// Stand up a test server to validate the request shape
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Assert request properties
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/v2/sandboxes", r.URL.Path)
+		assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
+		// Stripe-Context must be the playground id, not the livemode workspace.
+		assert.Equal(t, "play_livetest", r.Header.Get("Stripe-Context"))
+		assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		// Decode and validate the JSON body
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		assert.NoError(t, err)
+		assert.Equal(t, "mytest", body["name"])
+		assert.Equal(t, "wksp_livetest", body["replica_of"])
+		assert.Equal(t, true, body["activate_sandbox"])
+
+		// Return success response
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":     "sbx_123",
+			"object": "sandbox",
+		})
+	}))
+	defer server.Close()
+
+	// Execute the command with explicit flags
+	output, err := executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--stripe-context=play_livetest",
+		"--replica-of=wksp_livetest",
+		"--name=mytest",
+	)
+
+	require.NoError(t, err)
+	assert.Contains(t, output, "sbx_123")
+	assert.Contains(t, output, "sandbox")
+}
+
+func TestSandboxNewCmd_ActivateFalse(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		assert.NoError(t, err)
+		assert.Equal(t, false, body["activate_sandbox"])
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"id": "sbx_123", "object": "sandbox"})
+	}))
+	defer server.Close()
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--stripe-context=play_livetest",
+		"--replica-of=wksp_livetest",
+		"--name=mytest",
+		"--activate=false",
+	)
+	require.NoError(t, err)
+}
+
+func TestSandboxNewCmd_RejectsNonPlaygroundContext(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--stripe-context=wksp_livetest",
+		"--replica-of=wksp_livetest",
+		"--name=mytest",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "playground id (play_...)")
+}
+
+func TestSandboxNewCmd_RejectsNonWorkspaceReplicaOf(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--stripe-context=play_livetest",
+		"--replica-of=acct_123",
+		"--name=mytest",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "workspace id (wksp_...)")
+}
+
+func TestSandboxNewCmd_BlankPath(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		assert.NoError(t, err)
+		// Blank path sends business_location and omits replica_of entirely.
+		assert.Equal(t, "US", body["business_location"])
+		_, hasReplica := body["replica_of"]
+		assert.False(t, hasReplica)
+		assert.Equal(t, true, body["activate_sandbox"])
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"id": "wksp_test_blank", "object": "sandbox"})
+	}))
+	defer server.Close()
+
+	output, err := executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--stripe-context=play_livetest",
+		"--replica-of=", // clear any value leaked from a prior test's flag state
+		"--business-location=US",
+		"--activate=true", // clear any --activate=false leaked from a prior test
+		"--name=blanktest",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, output, "wksp_test_blank")
+}
+
+func TestSandboxNewCmd_ReplicaOfAndBusinessLocationMutuallyExclusive(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--stripe-context=play_livetest",
+		"--replica-of=wksp_livetest",
+		"--business-location=US",
+		"--name=mytest",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "mutually exclusive")
+}
+
+func TestSandboxNewCmd_RequiresReplicaOfOrBusinessLocation(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--stripe-context=play_livetest",
+		"--replica-of=",        // clear leaked flag state so neither is set
+		"--business-location=", // clear leaked flag state so neither is set
+		"--name=mytest",
+	)
+	require.Error(t, err)
+	// Unique to the "neither provided" error; the mutually-exclusive error also
+	// mentions --business-location, so assert on this distinct phrase.
+	assert.Contains(t, err.Error(), "pass one of")
+}
+
+func TestSandboxNewCmd_NoUAT(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	// Don't seed a UAT — keyring is empty
+	// Execute the command
+	_, err := executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--name=mytest",
+		"--stripe-context=wksp_livetest",
+		"--replica-of=wksp_livetest",
+	)
+
+	// Should fail with an error mentioning stripe login
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "stripe login")
+}
+
+// Placed last: sets --batch, which leaks onto the singleton rootCmd flag; keeping
+// it after the other tests avoids that value bleeding into their default (1).
+func TestSandboxNewCmd_BatchNotYetSupported(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	// --batch is optional (defaults to 1); >1 is rejected until bulk-create lands.
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--stripe-context=play_livetest",
+		"--replica-of=wksp_livetest",
+		"--name=mytest",
+		"--batch=3",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not yet implemented")
+
+	// batch < 1 is invalid.
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--stripe-context=play_livetest",
+		"--replica-of=wksp_livetest",
+		"--name=mytest",
+		"--batch=0",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--batch must be >= 1")
 }
