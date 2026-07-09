@@ -78,7 +78,7 @@ Stripe account.`,
   stripe listen --events v1.billing.meter.no_meter_found \
     --forward-to localhost:3000/events
   stripe listen --events v2.core.account.created \
-    --events-from accounts --forward-to localhost:3000/events`,
+    --events-from @accounts --forward-to localhost:3000/events`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
@@ -90,7 +90,7 @@ Stripe account.`,
 
 	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. Supports both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found)")
-	lc.cmd.Flags().StringVar(&lc.eventsFrom, "events-from", "all", "Event source filter: 'self' (your account only), 'accounts' (connected accounts only), or 'all' (default)")
+	lc.cmd.Flags().StringVar(&lc.eventsFrom, "events-from", "all", "Event source filter: '@self' (your account only), '@accounts' (connected accounts only), or 'all' (default)")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
@@ -460,10 +460,10 @@ func isThinEvent(eventType string) bool {
 // the --events-from flag and the --forward-to / --forward-connect-to flags.
 func (lc *listenCmd) resolveForwardURLs() (directURL, connectURL string) {
 	switch lc.eventsFrom {
-	case "self":
+	case "@self":
 		directURL = lc.forwardURL
 		connectURL = ""
-	case "accounts":
+	case "@accounts":
 		directURL = ""
 		connectURL = lc.forwardURL
 		if lc.forwardConnectURL != "" {
