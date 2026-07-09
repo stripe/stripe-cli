@@ -628,11 +628,6 @@ func findPlugin(pluginList PluginList, pluginName string) (Plugin, error) {
 	return Plugin{}, fmt.Errorf("could not find a plugin named %s", pluginName)
 }
 
-func selectPluginForUpgrade(localPlugin, manifestPlugin *Plugin) *Plugin {
-	plugin, _ := selectPluginForUpgradeWithSource(localPlugin, manifestPlugin, pluginResolutionSourceCachedManifest)
-	return plugin
-}
-
 func selectPluginForUpgradeWithSource(localPlugin, manifestPlugin *Plugin, manifestSource pluginResolutionSource) (*Plugin, pluginResolutionSource) {
 	switch {
 	case localPlugin == nil:
