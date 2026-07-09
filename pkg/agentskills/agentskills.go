@@ -239,6 +239,9 @@ func checkSkill(ctx context.Context, remote *limitedGetter, destDir, base string
 			return nil
 		})
 	}
+	// Each goroutine records its result in outcomes[i] and always returns nil,
+	// so g.Wait never reports an error; we intentionally ignore its return and
+	// derive the skill status from the collected outcomes below.
 	_ = g.Wait()
 
 	hasFiles := false
