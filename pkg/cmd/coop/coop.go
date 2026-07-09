@@ -54,11 +54,14 @@ The developer confirms each step before the agent moves on.`,
 		},
 	}
 
+	cc.cmd.AddCommand(newCoopRunCmd().cmd)
 	cc.cmd.AddCommand(newCoopAgentRunCmd().cmd)
+	cc.cmd.AddCommand(newCoopJoinCmd().cmd)
 	cc.cmd.AddCommand(newCoopAgentCmd().cmd)
 	cc.cmd.AddCommand(newCoopStatusCmd().cmd)
 	cc.cmd.AddCommand(newCoopStopCmd().cmd)
 	cc.cmd.AddCommand(newCoopRecommendCmd().cmd)
+	cc.cmd.AddCommand(newCoopDebugAgentCmd().cmd)
 
 	return cc
 }
@@ -81,5 +84,11 @@ func coopSandboxClaimURL() string {
 func mustMarkFlagRequired(cmd *cobra.Command, name string) {
 	if err := cmd.MarkFlagRequired(name); err != nil {
 		panic("marking required flag " + name + ": " + err.Error())
+	}
+}
+
+func mustMarkFlagHidden(cmd *cobra.Command, name string) {
+	if err := cmd.Flags().MarkHidden(name); err != nil {
+		panic("hiding flag " + name + ": " + err.Error())
 	}
 }
