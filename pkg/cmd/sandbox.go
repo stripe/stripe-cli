@@ -418,6 +418,8 @@ type sandboxNewCmd struct {
 	replicaOf        string
 	businessLocation string
 	stripeContext    string
+	copyLiveAccount  bool
+	createBlank      bool
 	activate         bool
 	batch            int
 	stripeVersion    string
@@ -492,11 +494,20 @@ that you have previously logged in with your Stripe account credentials.`,
 
 	snc.cmd.Flags().StringVar(&snc.name, "name", "", "Name for the new sandbox")
 	_ = snc.cmd.MarkFlagRequired("name")
-	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID to replicate (wksp_...); mutually exclusive with --business-location")
-	snc.cmd.Flags().StringVar(&snc.businessLocation, "business-location", "", "Country for a fresh blank sandbox (e.g. US); mutually exclusive with --replica-of")
-	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Playground compartment (play_...) to create the sandbox under")
+	// Mode selectors mirror the dashboard's create-sandbox modal: copy a live
+	// account, or create a blank sandbox for a country. Exactly one is required.
+	snc.cmd.Flags().BoolVar(&snc.copyLiveAccount, "copy-live-account", false, "Copy your live account into a new sandbox")
+	snc.cmd.Flags().BoolVar(&snc.createBlank, "create-blank", false, "Create a fresh blank sandbox (requires --business-location)")
+	snc.cmd.Flags().StringVar(&snc.businessLocation, "business-location", "", "Country for a --create-blank sandbox (e.g. US)")
+	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID (wksp_...) to copy; defaults to your logged-in account")
 	snc.cmd.Flags().BoolVar(&snc.activate, "activate", true, "Request capabilities and activate the sandbox after creation")
 	snc.cmd.Flags().IntVar(&snc.batch, "batch", 1, "Number of sandboxes to create (currently only 1 is supported)")
+
+	// --stripe-context is an internal-only override; playground (play_...) ids are
+	// not user-facing and the command resolves the playground automatically. Kept
+	// hidden for our own testing.
+	snc.cmd.Flags().StringVar(&snc.stripeContext, "stripe-context", "", "Internal: playground compartment (play_...) override")
+	_ = snc.cmd.Flags().MarkHidden("stripe-context")
 
 	snc.cmd.Flags().StringVar(&snc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
 	_ = snc.cmd.Flags().MarkHidden("stripe-version")
@@ -533,27 +544,21 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("--batch > 1 is not yet implemented; only --batch 1 is supported today")
 	}
 
-	// Stripe-Context must be a playground (play_...) compartment. The backend
-	// (CreateSandboxOp) rejects any non-playground context, so validate it here
-	// to give a clear error rather than a server-side rejection.
-	stripeContext := strings.TrimSpace(snc.stripeContext)
-	if stripeContext == "" {
-		return fmt.Errorf("--stripe-context is required; pass the playground id (play_...) to create the sandbox under")
-	}
-	if !strings.HasPrefix(stripeContext, "play_") {
-		return fmt.Errorf("--stripe-context must be a playground id (play_...), got %q", stripeContext)
-	}
-
-	// The backend requires exactly one of replica_of / business_location (a oneof):
-	// replica_of (a livemode wksp_...) clones a live workspace; business_location
-	// (a country) creates a fresh blank sandbox. Enforce the oneof up front.
+	// Mode selection mirrors the dashboard's create-sandbox modal: copy a live
+	// account, or create a blank sandbox for a country. Exactly one is required.
 	replicaOf := strings.TrimSpace(snc.replicaOf)
 	businessLocation := strings.TrimSpace(snc.businessLocation)
 	switch {
-	case replicaOf != "" && businessLocation != "":
-		return fmt.Errorf("--replica-of and --business-location are mutually exclusive")
-	case replicaOf == "" && businessLocation == "":
-		return fmt.Errorf("pass one of --replica-of (wksp_...) to clone a live workspace, or --business-location (e.g. US) for a blank sandbox")
+	case snc.copyLiveAccount && snc.createBlank:
+		return fmt.Errorf("--copy-live-account and --create-blank are mutually exclusive")
+	case !snc.copyLiveAccount && !snc.createBlank:
+		return fmt.Errorf("pass one of --copy-live-account (copy your live account) or --create-blank (a fresh sandbox)")
+	case snc.createBlank && businessLocation == "":
+		return fmt.Errorf("--create-blank requires --business-location (e.g. US)")
+	case snc.createBlank && replicaOf != "":
+		return fmt.Errorf("--replica-of is only valid with --copy-live-account")
+	case snc.copyLiveAccount && businessLocation != "":
+		return fmt.Errorf("--business-location is only valid with --create-blank")
 	case replicaOf != "" && !strings.HasPrefix(replicaOf, "wksp_"):
 		return fmt.Errorf("--replica-of must be a livemode workspace id (wksp_...), got %q", replicaOf)
 	}
@@ -563,42 +568,76 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("invalid --api-base %q: %w", snc.apiBase, err)
 	}
 
+	// Low-level client with an empty APIKey so it doesn't set a Bearer auth
+	// header; the UAT is injected per-request as a STRIPE-V2-SIG token instead.
+	client := &stripe.Client{
+		BaseURL: baseURL,
+		APIKey:  "",
+	}
+
+	// authConfigure sets the UAT auth + version headers shared by every call.
+	// The context-resolution GETs (user_accessible, playground) are self-scoped
+	// by the UAT and take no Stripe-Context; only the create call sets it.
+	authConfigure := func(req *http.Request) error {
+		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)
+		req.Header.Set("Stripe-Version", snc.stripeVersion)
+		req.Header.Set("Content-Type", stripe.V2ContentType)
+		return nil
+	}
+
+	// Resolve the live workspace to copy / derive the playground from. Copy mode
+	// always needs it (sent as replica_of); blank mode needs it only to resolve
+	// the internal playground when no --stripe-context override is given.
+	// Order: --replica-of override, the livemode compartment saved at login, then
+	// GET /v2/compartments/user_accessible.
+	stripeContext := strings.TrimSpace(snc.stripeContext)
+	liveWorkspace := replicaOf
+	if liveWorkspace == "" && (snc.copyLiveAccount || stripeContext == "") {
+		liveWorkspace, err = snc.resolveLiveWorkspace(cmd.Context(), client, authConfigure)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Resolve the playground (play_) unless the internal --stripe-context override
+	// was supplied. Playground ids are not user-facing.
+	if stripeContext == "" {
+		stripeContext, err = snc.resolvePlayground(cmd.Context(), client, authConfigure, liveWorkspace)
+		if err != nil {
+			return err
+		}
+	}
+	if !strings.HasPrefix(stripeContext, "play_") {
+		return fmt.Errorf("resolved a non-playground context %q; pass --stripe-context play_... to override", stripeContext)
+	}
+
 	// Mirror the dashboard's create-sandbox request body, including the
 	// idempotency_token derived from the create inputs (see newIdempotencyToken).
 	reqBody := map[string]interface{}{
 		"name":              snc.name,
 		"activate_sandbox":  snc.activate,
-		"idempotency_token": newIdempotencyToken(snc.name, businessLocation, replicaOf),
+		"idempotency_token": newIdempotencyToken(snc.name, businessLocation, liveWorkspace),
 	}
-	if replicaOf != "" {
-		reqBody["replica_of"] = replicaOf
-	} else {
+	if snc.createBlank {
 		reqBody["business_location"] = businessLocation
+	} else {
+		reqBody["replica_of"] = liveWorkspace
 	}
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
 		return err
 	}
 
-	// Use the low-level client with an empty APIKey so it doesn't set a Bearer
-	// Authorization header; the UAT is injected via the configure hook below as
-	// a STRIPE-V2-SIG token instead.
-	client := &stripe.Client{
-		BaseURL: baseURL,
-		APIKey:  "",
-	}
-
-	configure := func(req *http.Request) error {
-		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)
-		req.Header.Set("Stripe-Version", snc.stripeVersion)
+	// The create call additionally scopes to the resolved playground.
+	createConfigure := func(req *http.Request) error {
+		if cfgErr := authConfigure(req); cfgErr != nil {
+			return cfgErr
+		}
 		req.Header.Set("Stripe-Context", stripeContext)
-		// Content-Type is set to application/json automatically by the client
-		// for /v2/ paths, but set it explicitly to be safe.
-		req.Header.Set("Content-Type", stripe.V2ContentType)
 		return nil
 	}
 
-	resp, err := client.PerformRequest(cmd.Context(), http.MethodPost, "/v2/sandboxes", string(bodyBytes), configure)
+	resp, err := client.PerformRequest(cmd.Context(), http.MethodPost, "/v2/sandboxes", string(bodyBytes), createConfigure)
 	if err != nil {
 		return err
 	}
@@ -622,6 +661,91 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	}
 
 	return nil
+}
+
+// resolveLiveWorkspace determines the livemode workspace/org compartment to use
+// as the sandbox's live parent. It first reads the livemode compartment saved at
+// login (no network), then falls back to GET /v2/compartments/user_accessible.
+// It returns an error if zero or more than one livemode workspace is found so the
+// caller can disambiguate with --replica-of.
+func (snc *sandboxNewCmd) resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure func(*http.Request) error) (string, error) {
+	// 1. The livemode compartment pinned at login (what the user was scoped to).
+	if ui, uiErr := Config.Profile.GetUserInfo(); uiErr == nil && ui != nil {
+		for _, c := range ui.Compartments {
+			if c.Livemode && strings.TrimSpace(c.CompartmentID) != "" {
+				return c.CompartmentID, nil
+			}
+		}
+	}
+
+	// 2. Ask the server which accounts this credential can access.
+	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/user_accessible", "", configure)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("could not list your accounts: %s\n%s", resp.Status, string(respBytes))
+	}
+
+	// standalone_workspaces are already filtered to livemode roots by the backend.
+	var parsed struct {
+		StandaloneWorkspaces []struct {
+			ID string `json:"id"`
+		} `json:"standalone_workspaces"`
+	}
+	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		return "", fmt.Errorf("could not parse accounts response: %w", err)
+	}
+
+	var workspaces []string
+	for _, w := range parsed.StandaloneWorkspaces {
+		if strings.HasPrefix(w.ID, "wksp_") {
+			workspaces = append(workspaces, w.ID)
+		}
+	}
+	switch len(workspaces) {
+	case 0:
+		return "", fmt.Errorf("no livemode workspace found for your account; run `stripe login`, or pass --replica-of wksp_...")
+	case 1:
+		return workspaces[0], nil
+	default:
+		return "", fmt.Errorf("you have multiple livemode workspaces; pass --replica-of wksp_... to choose one")
+	}
+}
+
+// resolvePlayground resolves the internal playground compartment (play_) for a
+// livemode workspace/org via GET /v2/compartments/playground/:id.
+func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, compartmentID string) (string, error) {
+	if compartmentID == "" {
+		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from; pass --replica-of wksp_... or --stripe-context play_...")
+	}
+	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/playground/"+url.PathEscape(compartmentID), "", configure)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("could not resolve the playground for %s: %s\n%s", compartmentID, resp.Status, string(respBytes))
+	}
+	var parsed struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		return "", fmt.Errorf("could not parse playground response: %w", err)
+	}
+	if parsed.ID == "" {
+		return "", fmt.Errorf("no playground found for %s; pass --stripe-context play_... to override", compartmentID)
+	}
+	return parsed.ID, nil
 }
 
 // newIdempotencyToken mirrors the dashboard's create-sandbox flow

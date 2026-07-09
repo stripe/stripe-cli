@@ -580,6 +580,8 @@ func TestSandboxNewCmd_Success(t *testing.T) {
 		rootCmd,
 		"sandbox", "new",
 		"--api-base="+server.URL,
+		"--copy-live-account=true",
+		"--create-blank=false",
 		"--stripe-context=play_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
@@ -613,6 +615,8 @@ func TestSandboxNewCmd_ActivateFalse(t *testing.T) {
 		rootCmd,
 		"sandbox", "new",
 		"--api-base="+server.URL,
+		"--copy-live-account=true",
+		"--create-blank=false",
 		"--stripe-context=play_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
@@ -631,12 +635,14 @@ func TestSandboxNewCmd_RejectsNonPlaygroundContext(t *testing.T) {
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
+		"--copy-live-account=true",
+		"--create-blank=false",
 		"--stripe-context=wksp_livetest",
 		"--replica-of=wksp_livetest",
 		"--name=mytest",
 	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "playground id (play_...)")
+	assert.Contains(t, err.Error(), "non-playground context")
 }
 
 func TestSandboxNewCmd_RejectsNonWorkspaceReplicaOf(t *testing.T) {
@@ -649,6 +655,8 @@ func TestSandboxNewCmd_RejectsNonWorkspaceReplicaOf(t *testing.T) {
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
+		"--copy-live-account=true",
+		"--create-blank=false",
 		"--stripe-context=play_livetest",
 		"--replica-of=acct_123",
 		"--name=mytest",
@@ -684,6 +692,8 @@ func TestSandboxNewCmd_BlankPath(t *testing.T) {
 		rootCmd,
 		"sandbox", "new",
 		"--api-base="+server.URL,
+		"--create-blank=true",
+		"--copy-live-account=false",
 		"--stripe-context=play_livetest",
 		"--replica-of=", // clear any value leaked from a prior test's flag state
 		"--business-location=US",
@@ -694,7 +704,7 @@ func TestSandboxNewCmd_BlankPath(t *testing.T) {
 	assert.Contains(t, output, "wksp_test_blank")
 }
 
-func TestSandboxNewCmd_ReplicaOfAndBusinessLocationMutuallyExclusive(t *testing.T) {
+func TestSandboxNewCmd_ModesMutuallyExclusive(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
@@ -704,16 +714,15 @@ func TestSandboxNewCmd_ReplicaOfAndBusinessLocationMutuallyExclusive(t *testing.
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
-		"--stripe-context=play_livetest",
-		"--replica-of=wksp_livetest",
-		"--business-location=US",
+		"--copy-live-account=true",
+		"--create-blank=true",
 		"--name=mytest",
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "mutually exclusive")
 }
 
-func TestSandboxNewCmd_RequiresReplicaOfOrBusinessLocation(t *testing.T) {
+func TestSandboxNewCmd_RequiresMode(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
@@ -723,15 +732,128 @@ func TestSandboxNewCmd_RequiresReplicaOfOrBusinessLocation(t *testing.T) {
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
-		"--stripe-context=play_livetest",
-		"--replica-of=",        // clear leaked flag state so neither is set
-		"--business-location=", // clear leaked flag state so neither is set
+		"--copy-live-account=false", // clear leaked flag state so neither mode is set
+		"--create-blank=false",      // clear leaked flag state so neither mode is set
 		"--name=mytest",
 	)
 	require.Error(t, err)
-	// Unique to the "neither provided" error; the mutually-exclusive error also
-	// mentions --business-location, so assert on this distinct phrase.
 	assert.Contains(t, err.Error(), "pass one of")
+}
+
+func TestSandboxNewCmd_AutoResolveViaUserAccessible(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	// No --replica-of and no --stripe-context: the command must resolve the live
+	// workspace via /v2/compartments/user_accessible, the playground via
+	// /v2/compartments/playground/:id, then create.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"standalone_workspaces": []map[string]interface{}{{"id": "wksp_auto"}},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/playground/wksp_auto":
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "play_auto"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/sandboxes":
+			assert.Equal(t, "play_auto", r.Header.Get("Stripe-Context"))
+			var body map[string]interface{}
+			assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			assert.Equal(t, "wksp_auto", body["replica_of"])
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "sbx_auto", "object": "sandbox"})
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	output, err := executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--copy-live-account=true",
+		"--create-blank=false",
+		"--replica-of=",
+		"--stripe-context=",
+		"--business-location=",
+		"--activate=true",
+		"--name=autotest",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, output, "sbx_auto")
+}
+
+func TestSandboxNewCmd_MultipleWorkspacesError(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible" {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"standalone_workspaces": []map[string]interface{}{{"id": "wksp_a"}, {"id": "wksp_b"}},
+			})
+			return
+		}
+		t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--copy-live-account=true",
+		"--create-blank=false",
+		"--replica-of=",
+		"--stripe-context=",
+		"--business-location=",
+		"--name=autotest",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "multiple livemode workspaces")
+}
+
+func TestSandboxNewCmd_NoWorkspaceError(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible" {
+			json.NewEncoder(w).Encode(map[string]interface{}{"standalone_workspaces": []map[string]interface{}{}})
+			return
+		}
+		t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--copy-live-account=true",
+		"--create-blank=false",
+		"--replica-of=",
+		"--stripe-context=",
+		"--business-location=",
+		"--name=autotest",
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no livemode workspace")
 }
 
 func TestSandboxNewCmd_NoUAT(t *testing.T) {
