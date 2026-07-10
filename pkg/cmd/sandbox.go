@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/logrusorgru/aurora"
@@ -73,6 +74,7 @@ func newSandboxCmd() *sandboxCmd {
 	// client-side env gate is needed. The authoritative access gate remains
 	// server-side (the UAT allowlist + hzn_sandbox_create), not the client.
 	sc.cmd.AddCommand(newSandboxNewCmd().cmd)
+	sc.cmd.AddCommand(newSandboxListCmd().cmd)
 	return sc
 }
 
@@ -425,6 +427,13 @@ type sandboxNewCmd struct {
 	apiBase          string
 }
 
+type sandboxListCmd struct {
+	cmd           *cobra.Command
+	stripeAccount string
+	stripeVersion string
+	apiBase       string
+}
+
 func newSandboxClaimCmd() *sandboxClaimCmd {
 	scc := &sandboxClaimCmd{}
 	scc.cmd = &cobra.Command{
@@ -557,7 +566,7 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	// login, then GET /v2/compartments/user_accessible.
 	liveWorkspace := replicaOf
 	if liveWorkspace == "" {
-		liveWorkspace, err = snc.resolveLiveWorkspace(cmd.Context(), client, authConfigure)
+		liveWorkspace, err = resolveLiveWorkspace(cmd.Context(), client, authConfigure)
 		if err != nil {
 			return err
 		}
@@ -664,12 +673,54 @@ func (snc *sandboxNewCmd) validateFlags() error {
 	return nil
 }
 
+// accessibleWorkspace is the subset of a user_accessible / user_accessible_sandboxes
+// entry the sandbox resolvers need. The same shape appears as a standalone workspace,
+// nested under organizations[].workspaces, and as a sandbox entry.
+type accessibleWorkspace struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	MerchantID string `json:"merchant_id"`
+	ReplicaOf  string `json:"replica_of"`
+	Livemode   string `json:"livemode"`
+}
+
+// fetchAccessibleWorkspaces returns the caller's accessible live workspaces (standalone
+// plus org-nested) from GET /v2/compartments/user_accessible.
+func fetchAccessibleWorkspaces(ctx context.Context, client *stripe.Client, configure func(*http.Request) error) ([]accessibleWorkspace, error) {
+	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/user_accessible", "", configure)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("could not list your accounts: %s\n%s", resp.Status, string(respBytes))
+	}
+	var parsed struct {
+		StandaloneWorkspaces []accessibleWorkspace `json:"standalone_workspaces"`
+		Organizations        []struct {
+			Workspaces []accessibleWorkspace `json:"workspaces"`
+		} `json:"organizations"`
+	}
+	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		return nil, fmt.Errorf("could not parse accounts response: %w", err)
+	}
+	out := append([]accessibleWorkspace{}, parsed.StandaloneWorkspaces...)
+	for _, org := range parsed.Organizations {
+		out = append(out, org.Workspaces...)
+	}
+	return out, nil
+}
+
 // resolveLiveWorkspace determines the livemode workspace/org compartment to use
 // as the sandbox's live parent. It first reads the livemode compartment saved at
 // login (no network), then falls back to GET /v2/compartments/user_accessible.
 // It returns an error if zero or more than one livemode workspace is found so the
 // caller can disambiguate with --replica-of.
-func (snc *sandboxNewCmd) resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure func(*http.Request) error) (string, error) {
+func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure func(*http.Request) error) (string, error) {
 	// 1. The livemode compartment pinned at login (what the user was scoped to).
 	if ui, uiErr := Config.Profile.GetUserInfo(); uiErr == nil && ui != nil {
 		for _, c := range ui.Compartments {
@@ -758,6 +809,163 @@ func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.
 // v2CreateSandbox call (which does not use the Idempotency-Key header).
 func newIdempotencyToken(name, country, parent string) string {
 	return fmt.Sprintf("%s-%s-%s-%d", name, country, parent, time.Now().Unix())
+}
+
+func newSandboxListCmd() *sandboxListCmd {
+	slc := &sandboxListCmd{}
+	slc.cmd = &cobra.Command{
+		Use:    "list",
+		Short:  "List the sandboxes under a live account",
+		Args:   validators.NoArgs,
+		RunE:   slc.runSandboxListCmd,
+		Hidden: true,
+	}
+
+	slc.cmd.Flags().StringVar(&slc.stripeAccount, "stripe-account", "", "Live account (acct_...) whose sandboxes to list; defaults to your logged-in account")
+	slc.cmd.Flags().StringVar(&slc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
+	_ = slc.cmd.Flags().MarkHidden("stripe-version")
+
+	slc.cmd.Flags().StringVar(&slc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
+	_ = slc.cmd.Flags().MarkHidden("api-base")
+
+	return slc
+}
+
+func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) error {
+	if config.KeyRing == nil {
+		return fmt.Errorf("credential store unavailable; run `stripe login` first")
+	}
+	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
+	if err != nil || len(uatBytes) == 0 {
+		return fmt.Errorf("no user access token found; run `stripe login` first")
+	}
+	uat := strings.TrimSpace(string(uatBytes))
+
+	stripeAccount := strings.TrimSpace(slc.stripeAccount)
+	if stripeAccount != "" {
+		if strings.HasPrefix(stripeAccount, "org_") {
+			return fmt.Errorf("--stripe-account must be an account (acct_...), not an organization (org_...)")
+		}
+		if !strings.HasPrefix(stripeAccount, "acct_") {
+			return fmt.Errorf("--stripe-account must be an account id (acct_...), got %q", stripeAccount)
+		}
+	}
+
+	baseURL, err := url.Parse(slc.apiBase)
+	if err != nil {
+		return fmt.Errorf("invalid --api-base %q: %w", slc.apiBase, err)
+	}
+
+	client := &stripe.Client{
+		BaseURL: baseURL,
+		APIKey:  "",
+	}
+
+	authConfigure := func(req *http.Request) error {
+		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)
+		req.Header.Set("Stripe-Version", slc.stripeVersion)
+		req.Header.Set("Content-Type", stripe.V2ContentType)
+		return nil
+	}
+
+	// Fetch accessible workspaces once and build maps for translation
+	accessible, err := fetchAccessibleWorkspaces(cmd.Context(), client, authConfigure)
+	if err != nil {
+		return err
+	}
+	acctByWksp := make(map[string]string, len(accessible))
+	nameByWksp := make(map[string]string, len(accessible))
+	for _, w := range accessible {
+		if w.ID != "" {
+			acctByWksp[w.ID] = w.MerchantID
+			nameByWksp[w.ID] = w.Name
+		}
+	}
+
+	// Resolve the live parent (workspace id, acct_, and name)
+	var liveWorkspace, liveAccount, liveName string
+	if stripeAccount != "" {
+		for _, w := range accessible {
+			if w.MerchantID == stripeAccount && strings.HasPrefix(w.ID, "wksp_") {
+				liveWorkspace, liveName = w.ID, w.Name
+				break
+			}
+		}
+		if liveWorkspace == "" {
+			return fmt.Errorf("no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
+		}
+		liveAccount = stripeAccount
+	} else {
+		liveWorkspace, err = resolveLiveWorkspace(cmd.Context(), client, authConfigure)
+		if err != nil {
+			return err
+		}
+		liveAccount = acctByWksp[liveWorkspace]
+		liveName = nameByWksp[liveWorkspace]
+	}
+	if !strings.HasPrefix(liveWorkspace, "wksp_") {
+		return fmt.Errorf("resolved live parent %q is not a workspace (wksp_...)", liveWorkspace)
+	}
+
+	// Transparency line (stderr): prefer name, then acct_, never show wksp_ unless nothing else
+	switch {
+	case liveName != "":
+		fmt.Fprintf(cmd.ErrOrStderr(), "Listing sandboxes under live account %q (%s)\n", liveName, liveAccount)
+	case liveAccount != "":
+		fmt.Fprintf(cmd.ErrOrStderr(), "Listing sandboxes under live account %s\n", liveAccount)
+	default:
+		fmt.Fprintf(cmd.ErrOrStderr(), "Listing sandboxes under live workspace %s\n", liveWorkspace)
+	}
+
+	query := "live_compartment_parent_id=" + url.QueryEscape(liveWorkspace)
+	resp, err := client.PerformRequest(cmd.Context(), http.MethodGet, "/v2/compartments/user_accessible_sandboxes", query, authConfigure)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("list sandboxes failed: %s\n%s", resp.Status, string(respBytes))
+	}
+
+	var parsed struct {
+		Workspaces    []accessibleWorkspace `json:"workspaces"`
+		Organizations []struct {
+			Workspaces []accessibleWorkspace `json:"workspaces"`
+		} `json:"organizations"`
+	}
+	if err := json.Unmarshal(respBytes, &parsed); err != nil {
+		return fmt.Errorf("could not parse sandboxes response: %w", err)
+	}
+
+	var sandboxes []accessibleWorkspace
+	sandboxes = append(sandboxes, parsed.Workspaces...)
+	for _, org := range parsed.Organizations {
+		sandboxes = append(sandboxes, org.Workspaces...)
+	}
+
+	if len(sandboxes) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No sandboxes found.")
+		return nil
+	}
+
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ACCOUNT\tNAME\tREPLICA OF")
+	for _, s := range sandboxes {
+		replicaAcct := ""
+		if s.ReplicaOf != "" {
+			replicaAcct = acctByWksp[s.ReplicaOf] // parent's acct_; empty if not found — never show wksp_
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\n", s.MerchantID, s.Name, replicaAcct)
+	}
+	w.Flush()
+
+	return nil
 }
 
 func isSSHSession() bool {
