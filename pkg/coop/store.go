@@ -28,6 +28,11 @@ var (
 var (
 	sessionLockTimeout      = 5 * time.Second
 	sessionLockPollInterval = 25 * time.Millisecond
+	// sessionLockStale bounds how long a lock file may sit untouched before it's
+	// treated as abandoned by a crashed writer and reclaimed. Healthy writers hold
+	// the lock only for the duration of a single write (well under a second), so a
+	// much larger threshold reliably distinguishes a crash from an active writer.
+	sessionLockStale = 30 * time.Second
 )
 
 // NewStore creates a Store, ensuring the coop directory exists.
@@ -126,11 +131,21 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 	for {
 		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err == nil {
+			// Record the owning pid and time so a lock abandoned by a crashed
+			// writer can be recognized and reclaimed below.
+			fmt.Fprintf(f, "%d\n%d\n", os.Getpid(), time.Now().UnixNano())
 			f.Close()
 			return func() { os.Remove(lockPath) }, nil
 		}
 		if !os.IsExist(err) {
 			return nil, fmt.Errorf("creating lock file: %w", err)
+		}
+
+		// Reclaim a stale lock left behind by a crashed writer. O_EXCL on the next
+		// iteration ensures only one contender wins the recreate.
+		if info, statErr := os.Stat(lockPath); statErr == nil && time.Since(info.ModTime()) > sessionLockStale {
+			os.Remove(lockPath)
+			continue
 		}
 
 		if time.Now().After(deadline) {
@@ -239,13 +254,33 @@ func (s *Store) writeUnlocked(path string, session *Session) error {
 		tmp.Close()
 		return fmt.Errorf("writing temp file: %w", err)
 	}
+	// Flush file contents before the rename so a crash can't leave a renamed but
+	// empty/truncated session file (the atomic rename guarantees name-swap
+	// atomicity, not data durability).
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return fmt.Errorf("syncing temp file: %w", err)
+	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 	if err := replaceSessionFile(tmpPath, path); err != nil {
 		return err
 	}
+	syncDir(filepath.Dir(path))
 	return nil
+}
+
+// syncDir best-effort fsyncs a directory so a completed rename survives a crash.
+// Errors are ignored: directory fsync is not supported on all platforms and a
+// failure here shouldn't fail an otherwise-successful write.
+func syncDir(dir string) {
+	d, err := os.Open(dir)
+	if err != nil {
+		return
+	}
+	_ = d.Sync()
+	_ = d.Close()
 }
 
 // ModTime returns the file modification time (for polling).
