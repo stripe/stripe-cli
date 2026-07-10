@@ -196,17 +196,21 @@ func (s *Session) NextPendingNode(after int) int {
 	return 0
 }
 
-// IsComplete returns true when all nodes are done or skipped.
+// IsComplete returns true when the session has at least one node and every node
+// is done or skipped. A session with no nodes is not complete (avoids reporting
+// a freshly created or malformed empty session as finished).
 func (s *Session) IsComplete() bool {
+	hasNode := false
 	for i := range s.Steps {
 		for j := range s.Steps[i].Nodes {
+			hasNode = true
 			state := s.Steps[i].Nodes[j].State
 			if state != NodeDone && state != NodeSkipped {
 				return false
 			}
 		}
 	}
-	return true
+	return hasNode
 }
 
 // NodeSummary returns counts of each state.

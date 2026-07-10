@@ -289,7 +289,15 @@ func validateFollowupParent(parent *coop.Session, actionID string) error {
 
 func outputAgentResponse(resp coop.CommandResponse, err error) error {
 	if err != nil {
-		return err
+		// Emit a structured ok:false response (on stdout, like every other agent
+		// command) so an agent parsing JSON always gets an error + recovery hint,
+		// even on infra failures (e.g. a heartbeat/store write error mid-await).
+		resp = coop.CommandResponse{
+			OK:    false,
+			Error: err.Error(),
+			Hint:  "stripe coop status",
+			Next:  "stripe coop status",
+		}
 	}
 	if outErr := outputJSON(resp); outErr != nil {
 		return outErr

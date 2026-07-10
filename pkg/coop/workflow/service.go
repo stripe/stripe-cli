@@ -292,10 +292,10 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 		}
 		return s.awaitStepReview(session.ID, step.Title, stepIndex, nodeNumber)
 	}
-	if node.State != coop.NodeReview {
-		return alreadyMovedResponse(session, nodeNumber, node.State), nil
-	}
-	return s.awaitNodeReview(session.ID, nodeNumber)
+	// Node is not in review (auto-confirm handled above, review handled in the
+	// block above): it has already moved on. Review always waits at step
+	// granularity via awaitStepReview.
+	return alreadyMovedResponse(session, nodeNumber, node.State), nil
 }
 
 func (s *Service) SelectNextAction(sessionID, selected, completed string, suggestions []coop.NextStepSuggestion) (*coop.Session, error) {
@@ -328,45 +328,6 @@ func (s *Service) autoConfirm(sessionID string, nodeNumber int) (coop.CommandRes
 		Message:   fmt.Sprintf("Node %d auto-confirmed. Proceed to next node.", nodeNumber),
 		Next:      nextAfterNode(session, nodeNumber),
 	}, nil
-}
-
-func (s *Service) awaitNodeReview(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
-	if err := s.store.WriteHeartbeat(sessionID); err != nil {
-		return coop.CommandResponse{}, err
-	}
-	defer func() {
-		_ = s.store.RemoveHeartbeat(sessionID)
-	}()
-
-	deadline := s.now().Add(s.awaitTimeout)
-	for {
-		if s.now().After(deadline) {
-			return timeoutResponse(sessionID, nodeNumber), nil
-		}
-		s.sleep(500 * time.Millisecond)
-		if err := s.store.WriteHeartbeat(sessionID); err != nil {
-			return coop.CommandResponse{}, err
-		}
-
-		session, err := s.store.Read(sessionID)
-		if err != nil {
-			return coop.CommandResponse{}, err
-		}
-		node, err := session.NodeByNumber(nodeNumber)
-		if err != nil {
-			return coop.CommandResponse{}, err
-		}
-		if node.State == coop.NodeReview {
-			continue
-		}
-		if node.State == coop.NodeDone {
-			return confirmedResponse(session, nodeNumber), nil
-		}
-		if node.State == coop.NodeActive {
-			return rejectedResponse(session, nodeNumber, node), nil
-		}
-		return alreadyMovedResponse(session, nodeNumber, node.State), nil
-	}
 }
 
 func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNumber int) (coop.CommandResponse, error) {
@@ -507,22 +468,6 @@ func confirmedResponse(session *coop.Session, nodeNumber int) coop.CommandRespon
 		State:     "confirmed",
 		Message:   fmt.Sprintf("Node %d confirmed by developer. Proceed to next node.", nodeNumber),
 		Next:      nextAfterNode(session, nodeNumber),
-	}
-}
-
-func rejectedResponse(session *coop.Session, nodeNumber int, node *coop.SessionNode) coop.CommandResponse {
-	msg := fmt.Sprintf("Node %d rejected by developer.", nodeNumber)
-	if node.RejectionNote != "" {
-		msg += fmt.Sprintf("\nFeedback: %s", node.RejectionNote)
-	}
-	msg += "\nRedo the node."
-	return coop.CommandResponse{
-		OK:        true,
-		SessionID: session.ID,
-		Node:      nodeNumber,
-		State:     "rejected",
-		Message:   msg,
-		Next:      fmt.Sprintf("stripe coop agent report-work --session=%s --step=%d --file=<path> --note=\"<what you fixed>\"", session.ID, nodeNumber),
 	}
 }
 

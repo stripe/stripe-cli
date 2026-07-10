@@ -411,3 +411,10 @@ func TestTransitionNodeReviewToSkipped(t *testing.T) {
 	node, _ := s.NodeByNumber(1)
 	assert.Equal(t, NodeSkipped, node.State)
 }
+
+func TestIsCompleteEmptySession(t *testing.T) {
+	// A session with no nodes must not report complete (avoids showing a fresh
+	// or malformed empty session as "Integration complete").
+	assert.False(t, (&Session{}).IsComplete())
+	assert.False(t, (&Session{Steps: []SessionStep{{}}}).IsComplete())
+}
