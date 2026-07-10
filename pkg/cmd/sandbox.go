@@ -572,6 +572,17 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		}
 	}
 
+	// Never copy an organization: replica_of / playground resolution both require a
+	// workspace (wksp_). Guard every resolution path (login context, user_accessible,
+	// --replica-of) at one choke point so an org_ can never slip through.
+	if !strings.HasPrefix(liveWorkspace, "wksp_") {
+		return fmt.Errorf("resolved live parent %q is not a workspace (wksp_...); sandboxes can only copy an account, not an organization", liveWorkspace)
+	}
+	// Surface the auto-resolved account so the default is never silent.
+	if snc.copyLiveAccount {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Copying live workspace %s\n", liveWorkspace)
+	}
+
 	// Resolve the internal playground (play_) for the live workspace. Playground
 	// ids are not user-facing, so there is no override: the command always derives it.
 	stripeContext, err := snc.resolvePlayground(cmd.Context(), client, authConfigure, liveWorkspace)
@@ -623,12 +634,28 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("create sandbox failed: %s\n%s", resp.Status, string(respBytes))
 	}
 
+	// Lead with the actionable ids (name, the acct_ to target, the sandbox id), then
+	// include the full response for anything else the caller needs.
+	var created struct {
+		ID          string `json:"id"`
+		V1AccountID string `json:"v1_account_id"`
+		Name        string `json:"name"`
+	}
+	_ = json.Unmarshal(respBytes, &created)
+	out := cmd.OutOrStdout()
+	if created.ID != "" {
+		fmt.Fprintf(out, "Created sandbox %q\n", created.Name)
+		if created.V1AccountID != "" {
+			fmt.Fprintf(out, "  account: %s\n", created.V1AccountID)
+		}
+		fmt.Fprintf(out, "  sandbox: %s\n", created.ID)
+	}
 	// Pretty-print the JSON response when possible; otherwise print as-is.
 	var pretty bytes.Buffer
 	if json.Indent(&pretty, respBytes, "", "  ") == nil {
-		fmt.Fprintln(cmd.OutOrStdout(), pretty.String())
+		fmt.Fprintln(out, pretty.String())
 	} else {
-		fmt.Fprintln(cmd.OutOrStdout(), string(respBytes))
+		fmt.Fprintln(out, string(respBytes))
 	}
 
 	return nil
@@ -724,7 +751,7 @@ func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure 
 	// 1. The livemode compartment pinned at login (what the user was scoped to).
 	if ui, uiErr := Config.Profile.GetUserInfo(); uiErr == nil && ui != nil {
 		for _, c := range ui.Compartments {
-			if c.Livemode && strings.TrimSpace(c.CompartmentID) != "" {
+			if c.Livemode && strings.HasPrefix(strings.TrimSpace(c.CompartmentID), "wksp_") {
 				return c.CompartmentID, nil
 			}
 		}

@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -805,6 +806,87 @@ func TestSandboxNewCmd_AutoResolveViaUserAccessible(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Contains(t, output, "sbx_auto")
+}
+
+func TestSandboxNewCmd_SkipsOrgLoginContext(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	// Write a profiles file with user_info containing an org_ in livemode.
+	// resolveLiveWorkspace must skip it and fall through to user_accessible.
+	profilesFile := Config.ProfilesFile
+	tomlContent := `[default]
+
+[[user_info.compartments]]
+compartment_id = "org_shouldbeskipped"
+livemode = true
+`
+	os.WriteFile(profilesFile, []byte(tomlContent), 0600)
+
+	// Re-read viper with the new file so GetUserInfo sees the org
+	viper.Reset()
+	viper.SetConfigFile(Config.ProfilesFile)
+	err = viper.ReadInConfig()
+	require.NoError(t, err)
+
+	// Verify the org was seeded correctly
+	var ui config.UserInfo
+	err = viper.UnmarshalKey("user_info", &ui)
+	require.NoError(t, err)
+	require.Len(t, ui.Compartments, 1)
+	require.Equal(t, "org_shouldbeskipped", ui.Compartments[0].CompartmentID)
+
+	// Server mock: user_accessible returns wksp_fromlist, playground GET for that,
+	// then create returns sbx_orgskip
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
+			// This is the fallback the test is checking: org_ should be skipped,
+			// so we must hit this endpoint
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"standalone_workspaces": []map[string]interface{}{{"id": "wksp_fromlist"}},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/playground/wksp_fromlist":
+			json.NewEncoder(w).Encode(map[string]interface{}{"id": "play_x"})
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/sandboxes":
+			var body map[string]interface{}
+			err := json.NewDecoder(r.Body).Decode(&body)
+			require.NoError(t, err)
+			// Must use wksp_fromlist (from user_accessible), NOT the org_
+			assert.Equal(t, "wksp_fromlist", body["replica_of"])
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id":            "sbx_orgskip",
+				"v1_account_id": "acct_x",
+				"object":        "sandbox",
+			})
+		case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "org_shouldbeskipped"):
+			// If the server ever sees a playground GET for the org_, fail
+			t.Errorf("server received request for org_shouldbeskipped playground, but org_ should have been skipped")
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	output, err := executeCommand(
+		rootCmd,
+		"sandbox", "new",
+		"--api-base="+server.URL,
+		"--copy-live-account=true",
+		"--create-blank=false",
+		"--replica-of=",
+		"--business-location=",
+		"--activate=true",
+		"--name=orgskiptest",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, output, "sbx_orgskip")
 }
 
 func TestSandboxNewCmd_MultipleWorkspacesError(t *testing.T) {
