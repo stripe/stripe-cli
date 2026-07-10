@@ -21,6 +21,15 @@ type agentInfo struct {
 	path string
 }
 
+// shellQuote wraps s in POSIX single quotes so it is safe to interpolate into a
+// `bash -c` command line. Unlike strconv.Quote (which produces a Go string
+// literal), single quoting neutralizes shell metacharacters including command
+// substitution ($(...), backticks), which would otherwise execute when the
+// generated launcher script runs. Embedded single quotes are escaped as '\”.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
 type coopPaneCommandBuilder func(session *coop.Session) (string, func(), error)
 
 var (
@@ -120,7 +129,7 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 			flags = " --dangerously-skip-permissions"
 		}
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			strconv.Quote(promptPath), strconv.Quote(promptPath), strconv.Quote(launcherPath), strconv.Quote(agent.path), flags)
+			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
 
 	case "codex":
 		flags := ""
@@ -128,11 +137,11 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 			flags = " --dangerously-bypass-approvals-and-sandbox"
 		}
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			strconv.Quote(promptPath), strconv.Quote(promptPath), strconv.Quote(launcherPath), strconv.Quote(agent.path), flags)
+			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
 
 	default:
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s \"$prompt\"\n",
-			strconv.Quote(promptPath), strconv.Quote(promptPath), strconv.Quote(launcherPath), strconv.Quote(agent.path))
+			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path))
 	}
 
 	if err := os.WriteFile(launcherPath, []byte(script), 0700); err != nil {
@@ -179,9 +188,9 @@ func (rc *coopRunCmd) debugAgentPaneCommandBuilder(stripeBin string) coopPaneCom
 		if session != nil {
 			sessionID = session.ID
 		}
-		cmd := fmt.Sprintf("%s coop debug-agent --session %s", strconv.Quote(stripeBin), strconv.Quote(sessionID))
+		cmd := fmt.Sprintf("%s coop debug-agent --session %s", shellQuote(stripeBin), shellQuote(sessionID))
 		if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
-			cmd = fmt.Sprintf("XDG_CONFIG_HOME=%s %s", strconv.Quote(xdgConfigHome), cmd)
+			cmd = fmt.Sprintf("XDG_CONFIG_HOME=%s %s", shellQuote(xdgConfigHome), cmd)
 		}
 		return cmd, nil, nil
 	}
@@ -266,7 +275,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 		}
 	}
 
-	tuiCmd := fmt.Sprintf("%s coop join", strconv.Quote(stripeBin))
+	tuiCmd := fmt.Sprintf("%s coop join", shellQuote(stripeBin))
 	if blueprintID == "" {
 		tuiCmd += " --wait"
 	} else {

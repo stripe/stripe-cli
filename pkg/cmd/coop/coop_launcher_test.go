@@ -160,3 +160,26 @@ func hasTmuxCall(calls [][]string, want ...string) bool {
 	}
 	return false
 }
+
+func TestShellQuoteNeutralizesShellMetacharacters(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "/usr/local/bin/claude", `'/usr/local/bin/claude'`},
+		{"command substitution", "/tmp/a$(touch pwned)b", `'/tmp/a$(touch pwned)b'`},
+		{"backticks", "/tmp/`whoami`", "'/tmp/`whoami`'"},
+		{"embedded single quote", "it's", `'it'\''s'`},
+		{"empty", "", `''`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shellQuote(tc.in)
+			assert.Equal(t, tc.want, got)
+			// The quoted form must contain no bare $(, backtick, or unescaped quote
+			// that could break out of the single-quoted context.
+			assert.True(t, len(got) >= 2 && got[0] == '\'' && got[len(got)-1] == '\'')
+		})
+	}
+}
