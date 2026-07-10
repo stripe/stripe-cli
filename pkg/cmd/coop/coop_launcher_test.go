@@ -131,6 +131,13 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	require.ErrorIs(t, err, splitErr)
 	assert.True(t, cleanupCalled)
 	assert.True(t, hasTmuxCall(tmuxCalls, "kill-session", "-t", "stripe-coop"))
+	newSessionCall := findTmuxCall(tmuxCalls, "new-session")
+	require.NotNil(t, newSessionCall)
+	assert.Contains(t, newSessionCall[len(newSessionCall)-1], "XDG_CONFIG_HOME=")
+	assert.Contains(t, newSessionCall[len(newSessionCall)-1], " coop join ")
+	splitCall := findTmuxCall(tmuxCalls, "split-window")
+	require.NotNil(t, splitCall)
+	assert.Contains(t, splitCall[len(splitCall)-1], "XDG_CONFIG_HOME=")
 
 	store, err := coop.NewStore(coopConfigFolder())
 	require.NoError(t, err)
@@ -159,4 +166,13 @@ func hasTmuxCall(calls [][]string, want ...string) bool {
 		}
 	}
 	return false
+}
+
+func findTmuxCall(calls [][]string, command string) []string {
+	for _, call := range calls {
+		if len(call) > 0 && call[0] == command {
+			return call
+		}
+	}
+	return nil
 }

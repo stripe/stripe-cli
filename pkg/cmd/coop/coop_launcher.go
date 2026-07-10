@@ -180,11 +180,15 @@ func (rc *coopRunCmd) debugAgentPaneCommandBuilder(stripeBin string) coopPaneCom
 			sessionID = session.ID
 		}
 		cmd := fmt.Sprintf("%s coop debug-agent --session %s", strconv.Quote(stripeBin), strconv.Quote(sessionID))
-		if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
-			cmd = fmt.Sprintf("XDG_CONFIG_HOME=%s %s", strconv.Quote(xdgConfigHome), cmd)
-		}
-		return cmd, nil, nil
+		return shellCommandWithCoopEnv(cmd), nil, nil
 	}
+}
+
+func shellCommandWithCoopEnv(cmd string) string {
+	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" && !strings.HasPrefix(cmd, "XDG_CONFIG_HOME=") {
+		return fmt.Sprintf("XDG_CONFIG_HOME=%s %s", strconv.Quote(xdgConfigHome), cmd)
+	}
+	return cmd
 }
 
 func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
@@ -206,6 +210,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
+	paneCmd = shellCommandWithCoopEnv(paneCmd)
 
 	if err := runTmux("split-window", "-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
@@ -272,11 +277,14 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	} else {
 		tuiCmd += " " + session.ID
 	}
+	tuiCmd = shellCommandWithCoopEnv(tuiCmd)
+
 	paneCmd, cleanup, err := buildPaneCmd(session)
 	if err != nil {
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
+	paneCmd = shellCommandWithCoopEnv(paneCmd)
 
 	width, height := coopTmuxSessionDimensions()
 	if err := runTmux("new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
