@@ -11,7 +11,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/spf13/afero"
@@ -21,6 +23,65 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+type telemetryEvent struct {
+	eventName              string
+	eventValue             string
+	pluginName             string
+	pluginResolutionSource string
+}
+
+type recordingTelemetryClient struct {
+	mu     sync.Mutex
+	events []telemetryEvent
+}
+
+func (c *recordingTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
+	return nil, nil
+}
+
+func (c *recordingTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) {
+	event := telemetryEvent{
+		eventName:  eventName,
+		eventValue: eventValue,
+	}
+	if metadata := stripe.GetEventMetadata(ctx); metadata != nil {
+		event.pluginName = metadata.PluginName
+		event.pluginResolutionSource = metadata.PluginResolutionSource
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.events = append(c.events, event)
+}
+
+func (c *recordingTelemetryClient) snapshot() []telemetryEvent {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	events := make([]telemetryEvent, len(c.events))
+	copy(events, c.events)
+	return events
+}
+
+func pluginTelemetryContext(client stripe.TelemetryClient) context.Context {
+	metadata := stripe.NewEventMetadata()
+	metadata.SetCommandPath("stripe test")
+	return stripe.WithTelemetryClient(stripe.WithEventMetadata(context.Background(), metadata), client)
+}
+
+func requireSinglePluginResolutionEvent(t *testing.T, client *recordingTelemetryClient) telemetryEvent {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		return len(client.snapshot()) == 1
+	}, time.Second, 10*time.Millisecond)
+
+	events := client.snapshot()
+	require.Len(t, events, 1)
+	require.Equal(t, pluginResolutionEventName, events[0].eventName)
+	return events[0]
+}
 
 // CustomTestConfig is a test config that allows overriding the config folder path
 type CustomTestConfig struct {
@@ -230,6 +291,55 @@ func TestLookUpPluginUsesLocalMetadataWhenManifestMissing(t *testing.T) {
 	plugin, err := LookUpPlugin(context.Background(), config, fs, "local-plugin")
 	require.NoError(t, err)
 	require.Equal(t, localPlugin, plugin)
+}
+
+func TestLookUpPluginEmitsLocalMetadataTelemetry(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	localPlugin := Plugin{
+		Shortname:        "local-plugin",
+		Binary:           "stripe-cli-local-plugin",
+		MagicCookieValue: "LOCAL-PLUGIN-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.0.0",
+				Sum:     "abc123",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	telemetryClient := &recordingTelemetryClient{}
+	ctx := pluginTelemetryContext(telemetryClient)
+
+	plugin, err := LookUpPlugin(ctx, config, fs, "local-plugin")
+	require.NoError(t, err)
+	require.Equal(t, localPlugin, plugin)
+
+	event := requireSinglePluginResolutionEvent(t, telemetryClient)
+	require.Equal(t, string(pluginResolutionSourceLocalMetadata), event.eventValue)
+	require.Equal(t, "local-plugin", event.pluginName)
+	require.Equal(t, string(pluginResolutionSourceLocalMetadata), event.pluginResolutionSource)
+}
+
+func TestLookUpPluginEmitsCachedManifestTelemetry(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	telemetryClient := &recordingTelemetryClient{}
+	ctx := pluginTelemetryContext(telemetryClient)
+
+	plugin, err := LookUpPlugin(ctx, config, fs, "appB")
+	require.NoError(t, err)
+	require.Equal(t, "appB", plugin.Shortname)
+
+	event := requireSinglePluginResolutionEvent(t, telemetryClient)
+	require.Equal(t, string(pluginResolutionSourceCachedManifest), event.eventValue)
+	require.Equal(t, "appB", event.pluginName)
+	require.Equal(t, string(pluginResolutionSourceCachedManifest), event.pluginResolutionSource)
 }
 
 func TestGetInstalledPluginNamesIncludesLocalMetadata(t *testing.T) {
@@ -524,6 +634,40 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 	require.True(t, os.IsNotExist(err))
 }
 
+func TestResolvePluginForInstallEmitsMetadataEndpointTelemetry(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	telemetryClient := &recordingTelemetryClient{}
+	ctx := pluginTelemetryContext(telemetryClient)
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			_, _ = res.Write(body)
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer stripeServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(ctx, config, fs, "appA", "2.0.1", stripeServer.URL, stripeServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
+
+	event := requireSinglePluginResolutionEvent(t, telemetryClient)
+	require.Equal(t, string(pluginResolutionSourceMetadataEndpoint), event.eventValue)
+	require.Equal(t, "appA", event.pluginName)
+	require.Equal(t, string(pluginResolutionSourceMetadataEndpoint), event.pluginResolutionSource)
+}
+
 func TestResolvePluginForInstallFallsBackToManifestLookupWhenAnonymousMetadataFails(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
@@ -564,6 +708,45 @@ func TestResolvePluginForInstallFallsBackToManifestLookupWhenAnonymousMetadataFa
 
 	_, err = fs.Stat("/plugins.toml")
 	require.NoError(t, err)
+}
+
+func TestResolvePluginForInstallEmitsRemoteManifestTelemetry(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	telemetryClient := &recordingTelemetryClient{}
+	ctx := pluginTelemetryContext(telemetryClient)
+
+	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			res.WriteHeader(http.StatusInternalServerError)
+			_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
+		case "/v1/stripecli/get-plugin-url":
+			body, err := json.Marshal(requests.PluginData{
+				PluginBaseURL:       testServers.ArtifactoryServer.URL,
+				AdditionalManifests: nil,
+			})
+			require.NoError(t, err)
+			_, _ = res.Write(body)
+		default:
+			t.Fatalf("unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer failingServer.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(ctx, config, fs, "appA", "2.0.1", failingServer.URL, failingServer.URL)
+	require.NoError(t, err)
+	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
+
+	event := requireSinglePluginResolutionEvent(t, telemetryClient)
+	require.Equal(t, string(pluginResolutionSourceRemoteManifest), event.eventValue)
+	require.Equal(t, "appA", event.pluginName)
+	require.Equal(t, string(pluginResolutionSourceRemoteManifest), event.pluginResolutionSource)
 }
 
 func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
+	"github.com/stripe/stripe-cli/pkg/agentskills"
 )
 
 func testStatuses() []agentsetup.Status {
@@ -17,13 +18,20 @@ func testStatuses() []agentsetup.Status {
 	}
 }
 
+func testSkillsScopes() skillsScopes {
+	return skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+		Global: agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+	}
+}
+
 func pressSelect(m selectModel, code rune) selectModel {
 	next, _ := m.Update(tea.KeyPressMsg{Code: code})
 	return next.(selectModel)
 }
 
 func TestSelectModel_AgentsSelectedSkillsRowNot(t *testing.T) {
-	m := newSelectModel(testStatuses())
+	m := newSelectModel(testStatuses(), testSkillsScopes())
 
 	// 3 agent rows + 1 skills row.
 	require.Len(t, m.rows, 4)
@@ -36,7 +44,7 @@ func TestSelectModel_AgentsSelectedSkillsRowNot(t *testing.T) {
 }
 
 func TestSelectModel_NoAgentsPreselectsSkills(t *testing.T) {
-	m := newSelectModel(nil)
+	m := newSelectModel(nil, testSkillsScopes())
 
 	require.Len(t, m.rows, 1)
 	require.Equal(t, rowSkills, m.rows[0].kind)
@@ -44,7 +52,7 @@ func TestSelectModel_NoAgentsPreselectsSkills(t *testing.T) {
 }
 
 func TestSelectModel_SelectionSeparatesAgentsAndSkills(t *testing.T) {
-	m := newSelectModel(testStatuses())
+	m := newSelectModel(testStatuses(), testSkillsScopes())
 
 	// Toggle the skills row (index 3) on.
 	m.cursor = 3
@@ -61,7 +69,7 @@ func TestSelectModel_SelectionSeparatesAgentsAndSkills(t *testing.T) {
 }
 
 func TestSelectModel_SelectAllTogglesEveryRow(t *testing.T) {
-	m := newSelectModel(testStatuses())
+	m := newSelectModel(testStatuses(), testSkillsScopes())
 
 	// Skills row starts unselected, so 'a' selects all.
 	m = pressSelect(m, 'a')
@@ -76,7 +84,7 @@ func TestSelectModel_SelectAllTogglesEveryRow(t *testing.T) {
 }
 
 func TestSelectModel_CursorClampedAcrossAllRows(t *testing.T) {
-	m := newSelectModel(testStatuses())
+	m := newSelectModel(testStatuses(), testSkillsScopes())
 
 	m = pressSelect(m, tea.KeyUp)
 	require.Equal(t, 0, m.cursor)
@@ -88,14 +96,14 @@ func TestSelectModel_CursorClampedAcrossAllRows(t *testing.T) {
 }
 
 func TestSelectModel_EnterConfirmsQuitCancels(t *testing.T) {
-	m := newSelectModel(testStatuses())
+	m := newSelectModel(testStatuses(), testSkillsScopes())
 	next, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = next.(selectModel)
 	require.True(t, m.done)
 	require.False(t, m.quit)
 	require.NotNil(t, cmd)
 
-	m2 := newSelectModel(testStatuses())
+	m2 := newSelectModel(testStatuses(), testSkillsScopes())
 	next2, cmd2 := m2.Update(tea.KeyPressMsg{Code: 'q'})
 	m2 = next2.(selectModel)
 	require.True(t, m2.quit)
@@ -104,7 +112,7 @@ func TestSelectModel_EnterConfirmsQuitCancels(t *testing.T) {
 }
 
 func TestScopeModel_DefaultsToLocalAndConfirms(t *testing.T) {
-	m := newScopeModel()
+	m := newScopeModel(testSkillsScopes())
 	require.Equal(t, skillsScopeLocal, m.options[m.cursor])
 
 	next, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -118,9 +126,95 @@ func TestScopeModel_DefaultsToLocalAndConfirms(t *testing.T) {
 }
 
 func TestScopeModel_QuitCancels(t *testing.T) {
-	m := newScopeModel()
+	m := newScopeModel(testSkillsScopes())
 	next, _ := m.Update(tea.KeyPressMsg{Code: 'q'})
 	m = next.(scopeModel)
 	require.True(t, m.quit)
 	require.False(t, m.done)
+}
+
+func TestSelectModel_OutOfDatePreselectsUpdateRow(t *testing.T) {
+	skills := skillsScopes{
+		Local: agentskills.DirStatus{
+			Status:         agentskills.StatusOutOfDate,
+			OutOfDateCount: 2,
+		},
+		Global: agentskills.DirStatus{Status: agentskills.StatusCurrent},
+	}
+
+	m := newSelectModel(testStatuses(), skills)
+
+	require.Equal(t, "Install Stripe skills", m.rows[len(m.rows)-1].label)
+	require.Equal(t, "detected outdated Stripe skills", m.rows[len(m.rows)-1].detail)
+	require.True(t, m.rows[len(m.rows)-1].selected)
+}
+
+func TestSelectModel_CurrentSkillsNotPreselected(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusCurrent},
+		Global: agentskills.DirStatus{Status: agentskills.StatusCurrent},
+	}
+
+	m := newSelectModel(testStatuses(), skills)
+
+	require.Equal(t, "Install Stripe skills", m.rows[len(m.rows)-1].label)
+	require.Empty(t, m.rows[len(m.rows)-1].detail)
+	require.False(t, m.rows[len(m.rows)-1].selected)
+}
+
+func TestScopeModel_PrefersScopeNeedingInstall(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusCurrent, InstalledCount: 4},
+		Global: agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+	}
+
+	m := newScopeModel(skills)
+
+	require.Equal(t, "Install Stripe skills where?", m.title)
+	require.Equal(t, skillsScopeGlobal, m.options[m.cursor])
+	require.Contains(t, m.labels[0], "(up to date)")
+	require.Contains(t, m.labels[1], "(not installed)")
+}
+
+func TestScopeModel_PrefersOutOfDateLocalScope(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusOutOfDate, InstalledCount: 1},
+		Global: agentskills.DirStatus{Status: agentskills.StatusCurrent, InstalledCount: 4},
+	}
+
+	m := newScopeModel(skills)
+
+	require.Equal(t, "Update Stripe skills where?", m.title)
+	require.Equal(t, skillsScopeLocal, m.options[m.cursor])
+	require.Contains(t, m.labels[0], "(out of date)")
+	require.Contains(t, m.labels[1], "(up to date)")
+}
+
+func TestScopeStatusHintError(t *testing.T) {
+	require.Equal(t, "(unavailable — could not check)", scopeStatusHint(agentskills.DirStatus{
+		Status: agentskills.StatusError,
+		Error:  "fetching skills index: request failed",
+	}))
+}
+
+func TestScopeModel_PrefersScopeWhenOtherScopeCheckFailed(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+		Global: agentskills.DirStatus{Status: agentskills.StatusError, Error: "fetching skills index: request failed"},
+	}
+
+	m := newScopeModel(skills)
+
+	require.Equal(t, skillsScopeLocal, m.options[m.cursor])
+	require.Contains(t, m.labels[0], "(not installed)")
+	require.Contains(t, m.labels[1], "(unavailable — could not check)")
+}
+
+func TestPreferredSkillsScopeSkipsCheckFailedScope(t *testing.T) {
+	skills := skillsScopes{
+		Local:  agentskills.DirStatus{Status: agentskills.StatusError, Error: "fetching skills index: request failed"},
+		Global: agentskills.DirStatus{Status: agentskills.StatusNotInstalled},
+	}
+
+	require.Equal(t, skillsScopeGlobal, preferredSkillsScope(skills))
 }

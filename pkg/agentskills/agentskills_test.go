@@ -141,3 +141,112 @@ func TestInstall_IndexError(t *testing.T) {
 	require.Nil(t, installed)
 	require.Contains(t, err.Error(), "fetching skills index")
 }
+
+func TestCheck_NotInstalled(t *testing.T) {
+	index := Index{Skills: []Skill{
+		{Name: "stripe-best-practices", Files: []string{"SKILL.md"}},
+	}}
+	server := startSkillsServer(t, index, map[string]string{
+		"stripe-best-practices/SKILL.md": "# best practices",
+	})
+
+	status, err := Check(context.Background(), server.Client(), t.TempDir())
+
+	require.NoError(t, err)
+	require.Equal(t, StatusNotInstalled, status.Status)
+	require.Equal(t, 0, status.InstalledCount)
+	require.Equal(t, 0, status.OutOfDateCount)
+	require.Len(t, status.Skills, 1)
+	require.Equal(t, StatusNotInstalled, status.Skills[0].Status)
+}
+
+func TestCheck_Current(t *testing.T) {
+	content := "# best practices"
+	index := Index{Skills: []Skill{
+		{Name: "stripe-best-practices", Files: []string{"SKILL.md"}},
+		{Name: "upgrade-stripe", Files: []string{"SKILL.md"}},
+	}}
+	server := startSkillsServer(t, index, map[string]string{
+		"stripe-best-practices/SKILL.md": content,
+		"upgrade-stripe/SKILL.md":        "# upgrade",
+	})
+
+	dest := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "stripe-best-practices"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, "stripe-best-practices", "SKILL.md"), []byte(content), 0600))
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "upgrade-stripe"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, "upgrade-stripe", "SKILL.md"), []byte("# upgrade"), 0600))
+
+	status, err := Check(context.Background(), server.Client(), dest)
+
+	require.NoError(t, err)
+	require.Equal(t, StatusCurrent, status.Status)
+	require.Equal(t, 2, status.InstalledCount)
+	require.Equal(t, 0, status.OutOfDateCount)
+}
+
+func TestCheck_OutOfDate(t *testing.T) {
+	index := Index{Skills: []Skill{
+		{Name: "stripe-best-practices", Files: []string{"SKILL.md"}},
+	}}
+	server := startSkillsServer(t, index, map[string]string{
+		"stripe-best-practices/SKILL.md": "# updated",
+	})
+
+	dest := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "stripe-best-practices"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, "stripe-best-practices", "SKILL.md"), []byte("# stale"), 0600))
+
+	status, err := Check(context.Background(), server.Client(), dest)
+
+	require.NoError(t, err)
+	require.Equal(t, StatusOutOfDate, status.Status)
+	require.Equal(t, 1, status.InstalledCount)
+	require.Equal(t, 1, status.OutOfDateCount)
+	require.Equal(t, []string{"SKILL.md"}, status.Skills[0].ChangedFiles)
+}
+
+func TestCheck_SomeSkillsMissing(t *testing.T) {
+	index := Index{Skills: []Skill{
+		{Name: "stripe-best-practices", Files: []string{"SKILL.md"}},
+		{Name: "upgrade-stripe", Files: []string{"SKILL.md"}},
+	}}
+	server := startSkillsServer(t, index, map[string]string{
+		"stripe-best-practices/SKILL.md": "# best practices",
+		"upgrade-stripe/SKILL.md":        "# upgrade",
+	})
+
+	dest := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "stripe-best-practices"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, "stripe-best-practices", "SKILL.md"), []byte("# best practices"), 0600))
+
+	status, err := Check(context.Background(), server.Client(), dest)
+
+	require.NoError(t, err)
+	require.Equal(t, StatusOutOfDate, status.Status)
+	require.Equal(t, 1, status.InstalledCount)
+	require.Equal(t, 0, status.OutOfDateCount)
+	require.Equal(t, StatusCurrent, status.Skills[0].Status)
+	require.Equal(t, StatusNotInstalled, status.Skills[1].Status)
+}
+
+func TestCheck_MissingFileWithinSkill(t *testing.T) {
+	index := Index{Skills: []Skill{
+		{Name: "stripe-best-practices", Files: []string{"SKILL.md", "references/billing.md"}},
+	}}
+	server := startSkillsServer(t, index, map[string]string{
+		"stripe-best-practices/SKILL.md":              "# best practices",
+		"stripe-best-practices/references/billing.md": "# billing",
+	})
+
+	dest := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dest, "stripe-best-practices"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dest, "stripe-best-practices", "SKILL.md"), []byte("# best practices"), 0600))
+
+	status, err := Check(context.Background(), server.Client(), dest)
+
+	require.NoError(t, err)
+	require.Equal(t, StatusOutOfDate, status.Status)
+	require.Equal(t, 1, status.OutOfDateCount)
+	require.Equal(t, []string{"references/billing.md"}, status.Skills[0].MissingFiles)
+}
