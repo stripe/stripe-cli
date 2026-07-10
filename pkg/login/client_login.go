@@ -101,6 +101,7 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 			fmt.Printf("> %s\n", message)
 			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+			warnIfInsecureStorage()
 			return nil
 		}
 	}

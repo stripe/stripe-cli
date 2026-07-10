@@ -1,0 +1,16 @@
+╭──────────────────────────────────────────────────────────╮
+│  ⣿ >                                                     │
+│                                                          │
+│  Open file                                               │
+│  open a file in the editor                               │
+│  Save                                                    │
+│  save the current buffer                                 │
+│  Open in new tab                                         │
+│  open in a new tab                                       │
+│  Quit                                                    │
+│  exit the program                                        │
+│                                                          │
+│                                                          │
+│                                                          │
+│  ↑↓ navigate • enter execute • esc cancel                │
+╰──────────────────────────────────────────────────────────╯

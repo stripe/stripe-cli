@@ -46,10 +46,9 @@ type sandboxCreateCmd struct {
 func newSandboxCmd() *sandboxCmd {
 	sc := &sandboxCmd{}
 	sc.cmd = &cobra.Command{
-		Use:    "sandbox",
-		Short:  "Manage Stripe sandbox environments",
-		Hidden: true,
-		Args:   validators.NoArgs,
+		Use:   "sandbox",
+		Short: "Manage Stripe sandbox environments",
+		Args:  validators.NoArgs,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `stripe sandbox create --from-git` to provision a sandbox using your git email.\n" +
 				"  Use `stripe sandbox create --email you@example.com` to provision with an explicit email.\n" +

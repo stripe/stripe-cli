@@ -276,11 +276,11 @@ func TestMakeMultiPartRequest(t *testing.T) {
 	rb := Base{APIBaseURL: ts.URL}
 	rb.Method = http.MethodPost
 
-	tempFile, err := os.CreateTemp("", "upload.zip")
+	tempFile, err := os.CreateTemp(t.TempDir(), "upload*.zip")
 	if err != nil {
 		t.Error("Error creating temp file")
 	}
-	defer os.Remove(tempFile.Name())
+	tempFile.Close()
 
 	params := &RequestParameters{
 		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},

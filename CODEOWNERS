@@ -1,1 +1,4 @@
 * @stripe/developer-products
+
+# `stripe docs` ownership
+/pkg/docs/ @stripe/docs-product

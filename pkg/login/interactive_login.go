@@ -21,32 +21,32 @@ import (
 )
 
 // InteractiveLogin lets the user set configuration on the command line
-func InteractiveLogin(ctx context.Context, config *config.Config) error {
-	return interactiveLoginWithParams(ctx, config, os.Stdin, stripe.DefaultAPIBaseURL)
+func InteractiveLogin(ctx context.Context, cfg *config.Config) error {
+	return interactiveLoginWithParams(ctx, cfg, os.Stdin, stripe.DefaultAPIBaseURL)
 }
 
-func interactiveLoginWithParams(ctx context.Context, config *config.Config, input io.Reader, baseURL string) error {
+func interactiveLoginWithParams(ctx context.Context, cfg *config.Config, input io.Reader, baseURL string) error {
 	apiKey, err := getConfigureAPIKey(input)
 	if err != nil {
 		return err
 	}
 
-	config.Profile.DeviceName = getConfigureDeviceName(input)
+	cfg.Profile.DeviceName = getConfigureDeviceName(input)
 
 	livemode := strings.HasPrefix(apiKey, "sk_live_") || strings.HasPrefix(apiKey, "rk_live_")
 	if livemode {
-		config.Profile.LiveModeAPIKey = apiKey
+		cfg.Profile.LiveModeAPIKey = apiKey
 	} else {
-		config.Profile.TestModeAPIKey = apiKey
+		cfg.Profile.TestModeAPIKey = apiKey
 	}
 
 	account, err := acct.GetUserAccount(ctx, baseURL, apiKey)
 	if err == nil {
-		config.Profile.DisplayName = account.Settings.Dashboard.DisplayName
-		config.Profile.AccountID = account.ID
+		cfg.Profile.DisplayName = account.Settings.Dashboard.DisplayName
+		cfg.Profile.AccountID = account.ID
 	}
 
-	profileErr := config.Profile.CreateProfile()
+	profileErr := cfg.Profile.CreateProfile()
 	if profileErr != nil {
 		return profileErr
 	}
@@ -60,6 +60,8 @@ func interactiveLoginWithParams(ctx context.Context, config *config.Config, inpu
 	} else {
 		fmt.Printf("> %s\n", message)
 	}
+
+	warnIfInsecureStorage()
 
 	return nil
 }

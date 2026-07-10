@@ -49,6 +49,7 @@ type CommandInfo struct {
 type Plugin struct {
 	Shortname        string        `toml:"Shortname" json:"shortname"`
 	Shortdesc        string        `toml:"Shortdesc" json:"shortdesc"`
+	Description      string        `toml:"Description,omitempty" json:"description,omitempty"`
 	Binary           string        `toml:"Binary" json:"binary"`
 	Releases         []Release     `toml:"Release" json:"releases"`
 	MagicCookieValue string        `toml:"MagicCookieValue" json:"magic_cookie_value,omitempty"`
