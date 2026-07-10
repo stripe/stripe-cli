@@ -1,4 +1,6 @@
 on:
+  push:
+    branches: [yx-0708-1] # temporary, remove before merge
   workflow_dispatch:
     inputs:
       dryrun:
@@ -15,7 +17,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - run: |
-          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/${{ github.sha }}/scripts/install.sh | sh
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
 
@@ -23,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/${{ github.sha }}/scripts/install.sh | sh
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
 
