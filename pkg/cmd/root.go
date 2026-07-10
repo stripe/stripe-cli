@@ -19,8 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
-	"github.com/stripe/stripe-cli/pkg/reporting"
-
+	coopcmd "github.com/stripe/stripe-cli/pkg/cmd/coop"
 	cmddocs "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
@@ -29,6 +28,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/reporting"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -155,11 +155,14 @@ func Execute(ctx context.Context) {
 
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
+		var renderedCoopError coopcmd.RenderedError
 
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
+		case errors.As(err, &renderedCoopError):
+			// Co-op agent-facing commands already rendered structured JSON.
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
@@ -294,6 +297,15 @@ func init() {
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newSandboxCmd().cmd)
+	rootCmd.AddCommand(coopcmd.New(coopcmd.Options{
+		ConfigFolder: func() string {
+			return Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		},
+		SandboxClaimURL: func() string {
+			return viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
+		},
+		AIAgentHelpAnnotationKey: AIAgentHelpAnnotationKey,
+	}))
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
 	registerHTTPCmds(rootCmd)
