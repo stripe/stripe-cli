@@ -417,7 +417,7 @@ type sandboxClaimCmd struct {
 type sandboxNewCmd struct {
 	cmd              *cobra.Command
 	name             string
-	replicaOf        string
+	stripeAccount    string
 	businessLocation string
 	copyLiveAccount  bool
 	createBlank      bool
@@ -507,7 +507,7 @@ that you have previously logged in with your Stripe account credentials.`,
 	snc.cmd.Flags().BoolVar(&snc.copyLiveAccount, "copy-live-account", false, "Copy your live account into a new sandbox")
 	snc.cmd.Flags().BoolVar(&snc.createBlank, "create-blank", false, "Create a fresh blank sandbox (requires --business-location)")
 	snc.cmd.Flags().StringVar(&snc.businessLocation, "business-location", "", "Country for a --create-blank sandbox (e.g. US)")
-	snc.cmd.Flags().StringVar(&snc.replicaOf, "replica-of", "", "Livemode workspace ID (wksp_...) to copy; defaults to your logged-in account")
+	snc.cmd.Flags().StringVar(&snc.stripeAccount, "stripe-account", "", "Live account (acct_...) the sandbox belongs to; defaults to your logged-in account")
 	snc.cmd.Flags().BoolVar(&snc.activate, "activate", true, "Request capabilities and activate the sandbox after creation")
 	snc.cmd.Flags().IntVar(&snc.batch, "batch", 1, "Number of sandboxes to create (currently only 1 is supported)")
 
@@ -536,7 +536,7 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	if err := snc.validateFlags(); err != nil {
 		return err
 	}
-	replicaOf := strings.TrimSpace(snc.replicaOf)
+	stripeAccount := strings.TrimSpace(snc.stripeAccount)
 	businessLocation := strings.TrimSpace(snc.businessLocation)
 
 	baseURL, err := url.Parse(snc.apiBase)
@@ -561,26 +561,34 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return nil
 	}
 
-	// Resolve the live workspace to copy / derive the playground from (both modes
-	// need it). Order: --replica-of override, the livemode compartment saved at
-	// login, then GET /v2/compartments/user_accessible.
-	liveWorkspace := replicaOf
-	if liveWorkspace == "" {
+	// Resolve the live account/workspace the sandbox belongs to (its parent). Both
+	// modes need it: copy replicates its settings and blank is still placed under its
+	// playground. --stripe-account (acct_) selects it; otherwise it is resolved from
+	// the logged-in context.
+	var liveAccountName string
+	var liveWorkspace string
+	if stripeAccount != "" {
+		liveWorkspace, liveAccountName, err = resolveWorkspaceByAccount(cmd.Context(), client, authConfigure, stripeAccount)
+		if err != nil {
+			return err
+		}
+	} else {
 		liveWorkspace, err = resolveLiveWorkspace(cmd.Context(), client, authConfigure)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Never copy an organization: replica_of / playground resolution both require a
-	// workspace (wksp_). Guard every resolution path (login context, user_accessible,
-	// --replica-of) at one choke point so an org_ can never slip through.
+	// Guard every resolution path at one choke point: the live parent must be a
+	// workspace (wksp_). A sandbox belongs to an account, never an organization.
 	if !strings.HasPrefix(liveWorkspace, "wksp_") {
-		return fmt.Errorf("resolved live parent %q is not a workspace (wksp_...); sandboxes can only copy an account, not an organization", liveWorkspace)
+		return fmt.Errorf("resolved live parent %q is not a workspace (wksp_...); a sandbox belongs to an account, not an organization", liveWorkspace)
 	}
-	// Surface the auto-resolved account so the default is never silent.
-	if snc.copyLiveAccount {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Copying live workspace %s\n", liveWorkspace)
+	// Surface the resolved parent so it is never a silent default.
+	if liveAccountName != "" {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Creating sandbox under live account %q (%s)\n", liveAccountName, stripeAccount)
+	} else {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Creating sandbox under live workspace %s\n", liveWorkspace)
 	}
 
 	// Resolve the internal playground (play_) for the live workspace. Playground
@@ -634,21 +642,20 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("create sandbox failed: %s\n%s", resp.Status, string(respBytes))
 	}
 
-	// Lead with the actionable ids (name, the acct_ to target, the sandbox id), then
-	// include the full response for anything else the caller needs.
+	// Identify the sandbox by its account (acct_); the wksp_test_ compartment id is
+	// internal, so it is not surfaced here (it remains in the full response below).
+	// The create response carries no name, so echo the requested --name.
 	var created struct {
 		ID          string `json:"id"`
 		V1AccountID string `json:"v1_account_id"`
-		Name        string `json:"name"`
 	}
 	_ = json.Unmarshal(respBytes, &created)
 	out := cmd.OutOrStdout()
 	if created.ID != "" {
-		fmt.Fprintf(out, "Created sandbox %q\n", created.Name)
+		fmt.Fprintf(out, "Created sandbox %q\n", snc.name)
 		if created.V1AccountID != "" {
 			fmt.Fprintf(out, "  account: %s\n", created.V1AccountID)
 		}
-		fmt.Fprintf(out, "  sandbox: %s\n", created.ID)
 	}
 	// Pretty-print the JSON response when possible; otherwise print as-is.
 	var pretty bytes.Buffer
@@ -681,7 +688,7 @@ func (snc *sandboxNewCmd) validateFlags() error {
 
 	// Mode selection mirrors the dashboard's create-sandbox modal: copy a live
 	// account, or create a blank sandbox for a country. Exactly one is required.
-	replicaOf := strings.TrimSpace(snc.replicaOf)
+	stripeAccount := strings.TrimSpace(snc.stripeAccount)
 	businessLocation := strings.TrimSpace(snc.businessLocation)
 	switch {
 	case snc.copyLiveAccount && snc.createBlank:
@@ -690,12 +697,12 @@ func (snc *sandboxNewCmd) validateFlags() error {
 		return fmt.Errorf("pass one of --copy-live-account (copy your live account) or --create-blank (a fresh sandbox)")
 	case snc.createBlank && businessLocation == "":
 		return fmt.Errorf("--create-blank requires --business-location (e.g. US)")
-	case snc.createBlank && replicaOf != "":
-		return fmt.Errorf("--replica-of is only valid with --copy-live-account")
 	case snc.copyLiveAccount && businessLocation != "":
 		return fmt.Errorf("--business-location is only valid with --create-blank")
-	case replicaOf != "" && !strings.HasPrefix(replicaOf, "wksp_"):
-		return fmt.Errorf("--replica-of must be a livemode workspace id (wksp_...), got %q", replicaOf)
+	case strings.HasPrefix(stripeAccount, "org_"):
+		return fmt.Errorf("--stripe-account must be an account (acct_...), not an organization (org_...)")
+	case stripeAccount != "" && !strings.HasPrefix(stripeAccount, "acct_"):
+		return fmt.Errorf("--stripe-account must be an account id (acct_...), got %q", stripeAccount)
 	}
 	return nil
 }
@@ -742,11 +749,28 @@ func fetchAccessibleWorkspaces(ctx context.Context, client *stripe.Client, confi
 	return out, nil
 }
 
+// resolveWorkspaceByAccount resolves a live account id (acct_...) to its workspace
+// compartment (wksp_...) by matching the accessible workspace whose merchant_id equals
+// the account. Returns the workspace id and the account's display name. Searches both
+// standalone and org-nested workspaces via fetchAccessibleWorkspaces.
+func resolveWorkspaceByAccount(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, account string) (string, string, error) {
+	accessible, err := fetchAccessibleWorkspaces(ctx, client, configure)
+	if err != nil {
+		return "", "", err
+	}
+	for _, w := range accessible {
+		if w.MerchantID == account && strings.HasPrefix(w.ID, "wksp_") {
+			return w.ID, w.Name, nil
+		}
+	}
+	return "", "", fmt.Errorf("no accessible live account matches %s; check the id or run `stripe login` again", account)
+}
+
 // resolveLiveWorkspace determines the livemode workspace/org compartment to use
 // as the sandbox's live parent. It first reads the livemode compartment saved at
 // login (no network), then falls back to GET /v2/compartments/user_accessible.
 // It returns an error if zero or more than one livemode workspace is found so the
-// caller can disambiguate with --replica-of.
+// caller can disambiguate with --stripe-account.
 func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure func(*http.Request) error) (string, error) {
 	// 1. The livemode compartment pinned at login (what the user was scoped to).
 	if ui, uiErr := Config.Profile.GetUserInfo(); uiErr == nil && ui != nil {
@@ -789,11 +813,11 @@ func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure 
 	}
 	switch len(workspaces) {
 	case 0:
-		return "", fmt.Errorf("no livemode workspace found for your account; run `stripe login`, or pass --replica-of with a wksp_ id")
+		return "", fmt.Errorf("no livemode workspace found for your account; run `stripe login`, or pass --stripe-account with an acct_ id")
 	case 1:
 		return workspaces[0], nil
 	default:
-		return "", fmt.Errorf("you have multiple livemode workspaces; pass --replica-of wksp_... to choose one")
+		return "", fmt.Errorf("you have multiple livemode workspaces; pass --stripe-account acct_... to choose one")
 	}
 }
 
@@ -801,7 +825,7 @@ func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure 
 // livemode workspace/org via GET /v2/compartments/playground/:id.
 func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, compartmentID string) (string, error) {
 	if compartmentID == "" {
-		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from; pass --replica-of with a wksp_ id")
+		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from")
 	}
 	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/playground/"+url.PathEscape(compartmentID), "", configure)
 	if err != nil {
@@ -822,7 +846,7 @@ func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.
 		return "", fmt.Errorf("could not parse playground response: %w", err)
 	}
 	if parsed.ID == "" {
-		return "", fmt.Errorf("no playground found for %s; run 'stripe login' again or pass a different --replica-of wksp_ id", compartmentID)
+		return "", fmt.Errorf("no playground found for %s; run 'stripe login' again", compartmentID)
 	}
 	return parsed.ID, nil
 }
