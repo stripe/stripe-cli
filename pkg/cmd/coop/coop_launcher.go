@@ -214,6 +214,15 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 		}
 	}
 
+	// Create the store before launching the agent pane, so a store failure
+	// doesn't leave an orphaned agent pane and a dangling "active" session with
+	// no TUI driving it.
+	store, err := coop.NewStore(coopConfigFolder())
+	if err != nil {
+		rc.abortStartedSession(session, "store creation failed")
+		return err
+	}
+
 	paneCmd, cleanup, err := buildPaneCmd(session)
 	if err != nil {
 		rc.abortStartedSession(session, "agent pane command failed")
@@ -226,11 +235,6 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 		}
 		rc.abortStartedSession(session, "tmux split failed")
 		return fmt.Errorf("tmux split failed: %w", err)
-	}
-
-	store, err := coop.NewStore(coopConfigFolder())
-	if err != nil {
-		return err
 	}
 
 	if blueprintID != "" {

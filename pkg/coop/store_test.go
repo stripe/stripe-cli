@@ -355,3 +355,22 @@ func TestStoreHeartbeatInvalidSessionID(t *testing.T) {
 	_, err = os.Stat(filepath.Join(dir, "invalid.heartbeat"))
 	assert.True(t, errors.Is(err, os.ErrNotExist))
 }
+
+func TestLatestSessionSkipsCorruptNewest(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	require.NoError(t, store.Write(&Session{ID: "coop_valid", Status: SessionActive}))
+	corrupt := filepath.Join(dir, "coop_corrupt.json")
+	require.NoError(t, os.WriteFile(corrupt, []byte("{ not json"), 0o600))
+
+	// Force the corrupt file to be the most-recently-modified entry.
+	now := time.Now()
+	require.NoError(t, os.Chtimes(filepath.Join(dir, "coop_valid.json"), now.Add(-time.Hour), now.Add(-time.Hour)))
+	require.NoError(t, os.Chtimes(corrupt, now, now))
+
+	got, err := store.LatestSession()
+	require.NoError(t, err)
+	assert.Equal(t, "coop_valid", got.ID, "LatestSession should skip the corrupt newest file")
+}

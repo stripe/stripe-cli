@@ -584,6 +584,13 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.rejecting {
 		return m.handleRejectionKey(msg)
 	}
+	// In the completion view only suggestion navigation, selection, quit, and
+	// claim-open are meaningful. Gate everything else so work-view keys (expand,
+	// collapse, confirm, follow, etc.) can't leak in and mutate hidden state or
+	// fire stray commands against a completion cursor reinterpreted as a node.
+	if m.session != nil && m.session.IsComplete() {
+		return m.handleCompletionKey(msg)
+	}
 	if msg.IsRepeat && (key.Matches(msg, m.keys.Confirm) || key.Matches(msg, m.keys.Reject) || key.Matches(msg, m.keys.Copy) || key.Matches(msg, m.keys.OpenClaim)) {
 		return m, nil
 	}
@@ -595,6 +602,32 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return next, cmd
 	}
 	return m.handleActionKey(msg)
+}
+
+// handleCompletionKey handles the limited key set valid in the completion view.
+func (m Model) handleCompletionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Up):
+		m.moveCursorUp()
+		m.resizeViewport()
+		m.syncViewport()
+		return m, nil
+	case key.Matches(msg, m.keys.Down):
+		m.moveCursorDown()
+		m.resizeViewport()
+		m.syncViewport()
+		return m, nil
+	case key.Matches(msg, m.keys.Enter):
+		return m.handleEnter()
+	case key.Matches(msg, m.keys.OpenClaim):
+		if claimURL := m.sandboxClaimLink(); claimURL != "" {
+			return m, openBrowserCmd(claimURL)
+		}
+		return m, nil
+	case key.Matches(msg, m.keys.Quit):
+		return m, tea.Quit
+	}
+	return m, nil
 }
 
 func (m Model) handleNavigationKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
@@ -640,10 +673,20 @@ func (m Model) handleViewportKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
 		return m, nil, true
 	case key.Matches(msg, m.keys.Top):
 		m.userMoved = true
+		if items := m.navigationItems(); len(items) > 0 {
+			m.selectNavigationItem(items[0])
+		}
+		m.resizeViewport()
+		m.syncViewport()
 		m.viewport.GotoTop()
 		return m, nil, true
 	case key.Matches(msg, m.keys.Bottom):
 		m.userMoved = true
+		if items := m.navigationItems(); len(items) > 0 {
+			m.selectNavigationItem(items[len(items)-1])
+		}
+		m.resizeViewport()
+		m.syncViewport()
 		m.viewport.GotoBottom()
 		return m, nil, true
 	}
