@@ -315,13 +315,22 @@ func (s *Store) sortedSessionEntries() ([]sessionEntry, error) {
 	return entries, nil
 }
 
-// LatestSession returns the most recently updated session.
+// LatestSession returns the most recently updated readable session. Unreadable
+// or corrupt session files are skipped so a single bad file (e.g. a truncated
+// write) doesn't mask other valid sessions from "status"/"join".
 func (s *Store) LatestSession() (*Session, error) {
 	entries, err := s.sortedSessionEntries()
 	if err != nil {
 		return nil, err
 	}
-	return s.Read(entries[0].id)
+	for _, e := range entries {
+		session, err := s.Read(e.id)
+		if err != nil {
+			continue
+		}
+		return session, nil
+	}
+	return nil, fmt.Errorf("no readable coop sessions found")
 }
 
 // LatestActiveSession returns the most recently updated session with status "active".

@@ -1198,3 +1198,53 @@ func TestResizeViewportOnSessionUpdate(t *testing.T) {
 	// Footer now has the review notice line — viewport should shrink
 	assert.True(t, m.viewport.Height() <= initialHeight)
 }
+
+func completedReadyModel() Model {
+	m := readyModel()
+	for si := range m.session.Steps {
+		for ni := range m.session.Steps[si].Nodes {
+			m.session.Steps[si].Nodes[ni].State = coop.NodeDone
+		}
+	}
+	m.session.NextSteps = &coop.NextStepsState{
+		Suggestions: []coop.NextStepSuggestion{
+			{ID: "deploy", Title: "Deploy"},
+			{ID: "summarize", Title: "Write STRIPE.md"},
+		},
+	}
+	return m
+}
+
+func TestCompletionViewGatesWorkViewKeys(t *testing.T) {
+	m := completedReadyModel()
+	require.True(t, m.session.IsComplete())
+	require.False(t, m.expanded)
+
+	// 'e' (expand) must be inert in the completion view.
+	res, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	assert.False(t, res.(Model).expanded, "expand must not toggle in completion view")
+
+	// 'r' (request changes) must not enter rejecting mode in the completion view.
+	res, _ = m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
+	assert.False(t, res.(Model).rejecting, "reject must not start in completion view")
+
+	// Suggestion navigation still works.
+	m.selectionCursor = 0
+	res, _ = m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	assert.Equal(t, 1, res.(Model).selectionCursor, "down navigates completion suggestions")
+}
+
+func TestTopBottomKeysMoveSelection(t *testing.T) {
+	m := readyModel()
+	require.False(t, m.session.IsComplete())
+	items := m.navigationItems()
+	require.NotEmpty(t, items)
+
+	res, _ := m.Update(tea.KeyPressMsg{Code: 'G', Text: "G"})
+	end := res.(Model)
+	assert.True(t, end.navigationItemSelected(items[len(items)-1]), "G selects the last outline item")
+
+	res, _ = end.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	top := res.(Model)
+	assert.True(t, top.navigationItemSelected(items[0]), "g selects the first outline item")
+}
