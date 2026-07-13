@@ -2,7 +2,9 @@ package coop
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -373,4 +375,69 @@ func TestLatestSessionSkipsCorruptNewest(t *testing.T) {
 	got, err := store.LatestSession()
 	require.NoError(t, err)
 	assert.Equal(t, "coop_valid", got.ID, "LatestSession should skip the corrupt newest file")
+}
+
+func writeLockFile(t *testing.T, lockPath string, pid int, age time.Duration) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(lockPath, []byte(fmt.Sprintf("%d\n%d\n", pid, time.Now().UnixNano())), 0o600))
+	when := time.Now().Add(-age)
+	require.NoError(t, os.Chtimes(lockPath, when, when))
+}
+
+// TestLockNotReclaimedWhileOwnerAlive is the core of the review feedback: a lock
+// held by a live process must never be reclaimed, even if it is older than
+// sessionLockStale (a slow Store.Update callback must keep its lock).
+func TestLockNotReclaimedWhileOwnerAlive(t *testing.T) {
+	if _, known := processAlive(os.Getpid()); !known {
+		t.Skip("process liveness not determinable on this platform")
+	}
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	lockPath := filepath.Join(dir, "s.json.lock")
+	writeLockFile(t, lockPath, os.Getpid(), 2*sessionLockStale) // old, but owner alive
+
+	assert.False(t, store.lockAbandoned(lockPath), "live owner's lock must not be reclaimed despite age")
+}
+
+// TestLockReclaimedWhenOwnerDead confirms crash recovery still works: a lock
+// whose owning process has exited is reclaimed immediately, regardless of age.
+func TestLockReclaimedWhenOwnerDead(t *testing.T) {
+	// Spawn the test binary matching no tests so it exits promptly, then reap it
+	// to obtain a PID that is no longer running.
+	sub := exec.Command(os.Args[0], "-test.run=^$")
+	require.NoError(t, sub.Run())
+	deadPID := sub.Process.Pid
+	if _, known := processAlive(deadPID); !known {
+		t.Skip("process liveness not determinable on this platform")
+	}
+
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	lockPath := filepath.Join(dir, "s.json.lock")
+	writeLockFile(t, lockPath, deadPID, 0) // fresh, but owner dead
+
+	assert.True(t, store.lockAbandoned(lockPath), "dead owner's lock should be reclaimed even when fresh")
+}
+
+// TestLockReclaimedByAgeWhenOwnerUnknown covers the fallback used when the PID
+// can't be parsed or liveness can't be determined: reclaim only once stale.
+func TestLockReclaimedByAgeWhenOwnerUnknown(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	lockPath := filepath.Join(dir, "s.json.lock")
+	require.NoError(t, os.WriteFile(lockPath, []byte("not-a-pid"), 0o600))
+
+	fresh := time.Now()
+	require.NoError(t, os.Chtimes(lockPath, fresh, fresh))
+	assert.False(t, store.lockAbandoned(lockPath), "fresh lock with unknown owner must not be reclaimed")
+
+	old := time.Now().Add(-2 * sessionLockStale)
+	require.NoError(t, os.Chtimes(lockPath, old, old))
+	assert.True(t, store.lockAbandoned(lockPath), "stale lock with unknown owner should be reclaimed by age")
 }

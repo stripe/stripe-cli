@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -141,9 +143,9 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 			return nil, fmt.Errorf("creating lock file: %w", err)
 		}
 
-		// Reclaim a stale lock left behind by a crashed writer. O_EXCL on the next
-		// iteration ensures only one contender wins the recreate.
-		if info, statErr := os.Stat(lockPath); statErr == nil && time.Since(info.ModTime()) > sessionLockStale {
+		// Reclaim a lock only when its owner is gone. O_EXCL on the next iteration
+		// ensures a single contender wins the recreate.
+		if s.lockAbandoned(lockPath) {
 			os.Remove(lockPath)
 			continue
 		}
@@ -152,6 +154,60 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 			return nil, fmt.Errorf("%w: %s is still present; if no stripe coop command is running, remove this lock file and retry", ErrLockTimeout, lockPath)
 		}
 		time.Sleep(sessionLockPollInterval)
+	}
+}
+
+// lockAbandoned reports whether a lock file can be safely reclaimed. The lock
+// records its owner's PID: if that process is alive the lock must be left alone,
+// even if it is old, so a slow Store.Update callback can't have its lock deleted
+// out from under it. Only when the owner is known-dead is the lock reclaimed
+// immediately. When the owner can't be determined — an unparseable PID, or a
+// platform where liveness can't be checked (e.g. Windows) — fall back to
+// reclaiming by age so a crashed writer still can't wedge the session forever.
+func (s *Store) lockAbandoned(lockPath string) bool {
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		return false
+	}
+	if pid, ok := readLockPID(lockPath); ok {
+		if alive, known := processAlive(pid); known {
+			return !alive
+		}
+	}
+	return time.Since(info.ModTime()) > sessionLockStale
+}
+
+// readLockPID parses the owning PID from the first line of a lock file.
+func readLockPID(lockPath string) (int, bool) {
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		return 0, false
+	}
+	firstLine, _, _ := strings.Cut(strings.TrimSpace(string(data)), "\n")
+	pid, err := strconv.Atoi(strings.TrimSpace(firstLine))
+	if err != nil || pid <= 0 {
+		return 0, false
+	}
+	return pid, true
+}
+
+// processAlive reports whether the process with the given PID is running. The
+// second return value is false when liveness can't be determined (e.g. Windows,
+// where signal 0 is unsupported), so callers can fall back to another heuristic.
+func processAlive(pid int) (alive bool, known bool) {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false, false
+	}
+	switch err := proc.Signal(syscall.Signal(0)); {
+	case err == nil:
+		return true, true // signal accepted → process exists
+	case errors.Is(err, syscall.ESRCH), errors.Is(err, os.ErrProcessDone):
+		return false, true // no such process → dead
+	case errors.Is(err, syscall.EPERM):
+		return true, true // exists but not permitted to signal → alive
+	default:
+		return false, false // indeterminate (e.g. unsupported platform)
 	}
 }
 
