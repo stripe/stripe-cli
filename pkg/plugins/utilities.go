@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -47,6 +48,10 @@ type ResolvedPluginVersion struct {
 
 // checkLatestPluginVersionResolver is swappable for test injection.
 var checkLatestPluginVersionResolver = ResolvePluginForUpgrade
+
+// checkLatestPluginVersionTimeout bounds the best-effort upgrade hint lookup so
+// plugin commands do not hang on exit when the metadata endpoint is slow.
+var checkLatestPluginVersionTimeout = 2 * time.Second
 
 // ValidatePluginShortname rejects names that could escape the plugin install or
 // metadata directories when joined onto local filesystem paths.
@@ -1180,6 +1185,13 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	if dashboardBaseURL == "" {
 		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
 	}
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, checkLatestPluginVersionTimeout)
+	defer cancel()
 
 	resolvedPlugin, err := checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
 	if err != nil {

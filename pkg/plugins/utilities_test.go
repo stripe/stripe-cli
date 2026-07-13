@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -1054,6 +1055,50 @@ func TestCheckLatestPluginVersionSilentWhenNoInstalledVersion(t *testing.T) {
 	})
 
 	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentWhenLookupTimesOut(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	origResolver := checkLatestPluginVersionResolver
+	origTimeout := checkLatestPluginVersionTimeout
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	checkLatestPluginVersionTimeout = 10 * time.Millisecond
+	defer func() {
+		checkLatestPluginVersionResolver = origResolver
+		checkLatestPluginVersionTimeout = origTimeout
+	}()
+
+	done := make(chan string, 1)
+	go func() {
+		done <- captureStderr(t, func() {
+			CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+		})
+	}()
+
+	select {
+	case output := <-done:
+		require.Empty(t, output)
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("CheckLatestPluginVersion did not return before the timeout guard")
+	}
 }
 
 func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
