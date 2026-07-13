@@ -298,23 +298,6 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 	return alreadyMovedResponse(session, nodeNumber, node.State), nil
 }
 
-func (s *Service) SelectNextAction(sessionID, selected, completed string, suggestions []coop.NextStepSuggestion) (*coop.Session, error) {
-	return s.store.Update(sessionID, func(session *coop.Session) error {
-		if session.NextSteps == nil {
-			session.NextSteps = &coop.NextStepsState{}
-		}
-		if len(suggestions) > 0 {
-			session.NextSteps.Suggestions = suggestions
-		}
-		if completed != "" && !contains(session.NextSteps.Completed, completed) {
-			session.NextSteps.Completed = append(session.NextSteps.Completed, completed)
-		}
-		session.NextSteps.Selected = selected
-		session.Status = coop.SessionCompleted
-		return nil
-	})
-}
-
 func (s *Service) autoConfirm(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
 	session, err := s.ConfirmReview(sessionID, []int{nodeNumber})
 	if err != nil {
@@ -502,13 +485,4 @@ func language(session *coop.Session) string {
 
 func quoteArg(value string) string {
 	return fmt.Sprintf("%q", value)
-}
-
-func contains(values []string, needle string) bool {
-	for _, value := range values {
-		if value == needle {
-			return true
-		}
-	}
-	return false
 }

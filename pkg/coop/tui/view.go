@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -83,8 +84,9 @@ func (m Model) renderHeader() string {
 	if claimURL := m.sandboxClaimLink(); claimURL != "" {
 		url := claimURL
 		maxW := available - 10
-		if maxW > 0 && len(url) > maxW {
-			url = url[:maxW-1] + "…"
+		if maxW > 0 {
+			// Width-aware truncation (byte-slicing could split a multibyte rune).
+			url = ansi.Truncate(url, maxW, "…")
 		}
 		header += "\n" + m.theme.DimmedStyle.Render("  ⚡ ") + m.theme.BrandStyle.Hyperlink(claimURL).Render(url)
 	}
