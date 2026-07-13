@@ -20,6 +20,187 @@ func TestLoadBlueprint(t *testing.T) {
 	assert.Equal(t, NodeAPIRequest, bp.Steps[0].Nodes[0].Type)
 }
 
+func TestParseBlueprintCanonicalWireFields(t *testing.T) {
+	bp, err := ParseBlueprint([]byte(`{
+  "id": "platform-payment",
+  "title": "Facilitate payments as a platform",
+  "settings": [],
+  "steps": [
+    {
+      "key": "accounts",
+      "title": "Accounts",
+      "nodes": [
+        {
+          "type": "apiRequests",
+          "key": "create-account",
+          "title": "Create account",
+          "requests": [
+            {
+              "key": "create-account-request",
+              "path": "/v1/accounts",
+              "method": "post"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "payments",
+      "title": "Payments",
+      "nodes": [
+        {
+          "type": "apiRequests",
+          "key": "create-checkout",
+          "title": "Create checkout",
+          "requests": [
+            {
+              "key": "create-checkout-request",
+              "path": "/v1/checkout/sessions",
+              "method": "post",
+              "params": {
+                "metadata": {
+                  "${node.accounts.create-account.create-account-request:id}": "seller"
+                }
+              },
+              "requestOptions": {
+                "headers": {
+                  "Stripe-Account": "${node.accounts.create-account.create-account-request:id}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Complete checkout",
+          "link": "${node.payments.create-checkout.create-checkout-request:url}"
+        },
+        {
+          "type": "asyncHandler",
+          "key": "wait-for-checkout",
+          "title": "Wait for checkout",
+          "events": [
+            {
+              "eventType": "checkout.session.completed",
+              "eventPayloadType": "snapshot"
+            }
+          ],
+          "expectedNumberOfEvents": 1
+        }
+      ]
+    }
+  ]
+}`))
+	require.NoError(t, err)
+
+	requestNode := bp.Steps[1].Nodes[0]
+	assert.Equal(t, NodeAPIRequest, requestNode.Type)
+	require.NotNil(t, requestNode.Request)
+	assert.Empty(t, requestNode.TestRequests)
+	request := requestNode.Request
+	headers, ok := request.RequestOptions["headers"].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "${node.accounts.create-account:id}", headers["Stripe-Account"])
+	params, ok := request.Params.(map[string]interface{})
+	require.True(t, ok)
+	metadata, ok := params["metadata"].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, "seller", metadata["${node.accounts.create-account:id}"])
+	assert.NotContains(t, metadata, "${node.accounts.create-account.create-account-request:id}")
+	assert.Equal(t, "${node.payments.create-checkout:url}", bp.Steps[1].Nodes[1].Link)
+	assert.Equal(t, []string{"checkout.session.completed"}, bp.Steps[1].Nodes[2].EventTypes())
+	assert.Equal(t, "snapshot", bp.Steps[1].Nodes[2].Events[0].EventPayloadType)
+	assert.Equal(t, 1, bp.Steps[1].Nodes[2].ExpectedNumberOfEvents)
+	assert.Equal(t, 1, CurrentBlueprintContractVersion)
+}
+
+func TestRewriteBlueprintReferenceValuesRejectsKeyCollisions(t *testing.T) {
+	value := map[string]interface{}{
+		"${node.step.node.request:id}": "named request",
+		"${node.step.node:id}":         "node",
+	}
+
+	_, err := rewriteBlueprintReferenceValues(value, map[string]string{
+		"step.node.request": "step.node",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "duplicate object key")
+}
+
+func TestParseBlueprintRequiresCoreFields(t *testing.T) {
+	tests := []struct {
+		name      string
+		raw       string
+		wantError string
+	}{
+		{name: "id", raw: `{"title":"Title","steps":[{"nodes":[]}]}`, wantError: "id is required"},
+		{name: "title", raw: `{"id":"test","steps":[{"nodes":[]}]}`, wantError: "title is required"},
+		{name: "steps", raw: `{"id":"test","title":"Title"}`, wantError: "steps are required"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseBlueprint([]byte(tt.raw))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantError)
+		})
+	}
+}
+
+func TestParseBlueprintValidatesRuntimeStructure(t *testing.T) {
+	tests := []struct {
+		name      string
+		steps     string
+		wantError string
+	}{
+		{name: "blank step key", steps: `[{"key":"","title":"Step","nodes":[{"type":"uiComponent","key":"node","title":"Node"}]}]`, wantError: "step 0 key is required"},
+		{name: "duplicate step key", steps: `[{"key":"step","title":"Step","nodes":[{"type":"uiComponent","key":"one","title":"One"}]},{"key":"step","title":"Step","nodes":[{"type":"uiComponent","key":"two","title":"Two"}]}]`, wantError: "duplicate blueprint step key"},
+		{name: "empty nodes", steps: `[{"key":"step","title":"Step","nodes":[]}]`, wantError: "nodes are required"},
+		{name: "duplicate node key", steps: `[{"key":"step","title":"Step","nodes":[{"type":"uiComponent","key":"node","title":"One"},{"type":"uiComponent","key":"node","title":"Two"}]}]`, wantError: "duplicate node key"},
+		{name: "unsupported node type", steps: `[{"key":"step","title":"Step","nodes":[{"type":"futureNode","key":"node","title":"Node"}]}]`, wantError: "unsupported type"},
+		{name: "missing API request", steps: `[{"key":"step","title":"Step","nodes":[{"type":"apiRequest","key":"node","title":"Node"}]}]`, wantError: "request is required"},
+		{name: "missing async events", steps: `[{"key":"step","title":"Step","nodes":[{"type":"asyncHandler","key":"node","title":"Node"}]}]`, wantError: "events are required"},
+		{name: "plural API request list empty", steps: `[{"key":"step","title":"Step","nodes":[{"type":"apiRequests","key":"node","title":"Node","requests":[]}]}]`, wantError: "require exactly one request"},
+		{name: "plural API request list ambiguous", steps: `[{"key":"step","title":"Step","nodes":[{"type":"apiRequests","key":"node","title":"Node","requests":[{"key":"one","path":"/v1/one","method":"get"},{"key":"two","path":"/v1/two","method":"get"}]}]}]`, wantError: "require exactly one request"},
+		{name: "duplicate request key", steps: `[{"key":"step","title":"Step","nodes":[{"type":"testHelper","key":"node","title":"Node","requests":[{"key":"request","path":"/v1/one","method":"get"},{"key":"request","path":"/v1/two","method":"get"}]}]}]`, wantError: "duplicate request key"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := `{"id":"test","title":"Title","steps":` + tt.steps + `}`
+			_, err := ParseBlueprint([]byte(raw))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantError)
+		})
+	}
+}
+
+func TestParseBlueprintValidatesReferencesInCanonicalWireFields(t *testing.T) {
+	tests := []struct {
+		name string
+		node string
+	}{
+		{
+			name: "request options",
+			node: `{"type":"apiRequests","key":"request","title":"Request","requests":[{"key":"request","path":"/v1/test","method":"post","requestOptions":{"headers":{"Stripe-Account":"${node.missing.node:id}"}}}]}`,
+		},
+		{
+			name: "link",
+			node: `{"type":"uiComponent","key":"link","title":"Link","link":"${node.missing.node:url}"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := `{"id":"test","title":"Title","steps":[{"key":"step","title":"Step","nodes":[` + tt.node + `]}]}`
+			_, err := ParseBlueprint([]byte(raw))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "unknown node reference")
+		})
+	}
+}
+
 func TestAllEmbeddedBlueprintsHaveQualityMetadata(t *testing.T) {
 	ids, err := ListBlueprints()
 	require.NoError(t, err)
@@ -329,12 +510,56 @@ func TestNewSessionFromBlueprintPreservesEvents(t *testing.T) {
 	for _, ch := range session.Steps {
 		for _, n := range ch.Nodes {
 			if n.Type == NodeAsyncHandler {
-				assert.Contains(t, n.Events, "checkout.session.completed")
+				assert.Contains(t, n.EventTypes(), "checkout.session.completed")
 				return
 			}
 		}
 	}
 	t.Fatal("expected to find asyncHandler node")
+}
+
+func TestNewSessionFromBlueprintPreservesCanonicalWireFields(t *testing.T) {
+	bp := &Blueprint{
+		ID:    "canonical-fields",
+		Title: "Canonical fields",
+		Steps: []BlueprintStep{{
+			StepDefinition: StepDefinition{Key: "step", Title: "Step"},
+			Nodes: []NodeDefinition{
+				{
+					Type:  NodeAPIRequest,
+					Key:   "request",
+					Title: "Request",
+					Request: &APIRequest{
+						Path:           "/v1/test",
+						Method:         "post",
+						RequestOptions: map[string]interface{}{"idempotency_key": "test-key"},
+					},
+				},
+				{
+					Type:                   NodeAsyncHandler,
+					Key:                    "event",
+					Title:                  "Event",
+					Events:                 []EventDefinition{{EventType: "invoice.paid", EventPayloadType: "snapshot"}},
+					ExpectedNumberOfEvents: 1,
+				},
+				{
+					Type:  NodeUIComponent,
+					Key:   "link",
+					Title: "Link",
+					Link:  "https://example.com/checkout",
+				},
+			},
+		}},
+	}
+
+	session := NewSessionFromBlueprint(bp, "test_123", nil, nil)
+	requestNode := session.Steps[1].Nodes[0]
+	assert.Equal(t, "test-key", requestNode.Request.RequestOptions["idempotency_key"])
+	eventNode := session.Steps[1].Nodes[1]
+	assert.Equal(t, []string{"invoice.paid"}, eventNode.EventTypes())
+	assert.Equal(t, "snapshot", eventNode.Events[0].EventPayloadType)
+	assert.Equal(t, 1, eventNode.ExpectedNumberOfEvents)
+	assert.Equal(t, "https://example.com/checkout", session.Steps[1].Nodes[2].Link)
 }
 
 func TestEmbeddedBlueprintsUseCanonicalJSON(t *testing.T) {

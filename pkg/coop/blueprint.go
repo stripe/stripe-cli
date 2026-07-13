@@ -16,6 +16,7 @@ var blueprintFS embed.FS
 const (
 	blueprintNodeCandidatePrefix = "${node"
 	blueprintNodeRefPrefix       = "${node."
+	blueprintNodeAPIRequests     = NodeType("apiRequests")
 )
 
 // BlueprintStep is a step definition within a blueprint.
@@ -77,15 +78,216 @@ func LoadBlueprint(id string) (*Blueprint, error) {
 		}
 	}
 
-	var bp Blueprint
-	if err := json.Unmarshal(data, &bp); err != nil {
+	bp, err := decodeBlueprint(data)
+	if err != nil {
 		return nil, fmt.Errorf("parsing blueprint %q: %w", id, err)
 	}
-	if err := validateBlueprintReferences(&bp); err != nil {
+	if err := prepareBlueprint(bp); err != nil {
 		return nil, fmt.Errorf("validating blueprint %q: %w", id, err)
 	}
 
+	return bp, nil
+}
+
+// ParseBlueprint parses and validates a blueprint JSON document.
+func ParseBlueprint(data []byte) (*Blueprint, error) {
+	bp, err := decodeBlueprint(data)
+	if err != nil {
+		return nil, fmt.Errorf("parsing blueprint: %w", err)
+	}
+	if err := prepareBlueprint(bp); err != nil {
+		return nil, fmt.Errorf("validating blueprint: %w", err)
+	}
+	return bp, nil
+}
+
+func decodeBlueprint(data []byte) (*Blueprint, error) {
+	var bp Blueprint
+	if err := json.Unmarshal(data, &bp); err != nil {
+		return nil, err
+	}
 	return &bp, nil
+}
+
+func prepareBlueprint(bp *Blueprint) error {
+	if err := normalizeBlueprint(bp); err != nil {
+		return err
+	}
+	return validateBlueprint(bp)
+}
+
+func normalizeBlueprint(bp *Blueprint) error {
+	requestRefs := make(map[string]string)
+	for stepIndex := range bp.Steps {
+		step := &bp.Steps[stepIndex]
+		for nodeIndex := range step.Nodes {
+			node := &step.Nodes[nodeIndex]
+			if node.Type != blueprintNodeAPIRequests {
+				continue
+			}
+			if node.Request != nil || len(node.TestRequests) != 1 {
+				return fmt.Errorf("step %q node %q: apiRequests nodes require exactly one request", step.Key, node.Key)
+			}
+
+			requestDefinition := node.TestRequests[0]
+			request := requestDefinition.APIRequest
+			node.Type = NodeAPIRequest
+			node.Request = &request
+			node.TestRequests = nil
+			if step.Key != "" && node.Key != "" && requestDefinition.Key != "" {
+				requestRefs[step.Key+"."+node.Key+"."+requestDefinition.Key] = step.Key + "." + node.Key
+			}
+		}
+	}
+	return rewriteBlueprintReferences(bp, requestRefs)
+}
+
+func rewriteBlueprintReferences(bp *Blueprint, refs map[string]string) error {
+	if len(refs) == 0 {
+		return nil
+	}
+
+	data, err := json.Marshal(bp)
+	if err != nil {
+		return fmt.Errorf("marshaling blueprint for reference normalization: %w", err)
+	}
+	var document interface{}
+	if err := json.Unmarshal(data, &document); err != nil {
+		return fmt.Errorf("decoding blueprint for reference normalization: %w", err)
+	}
+	document, err = rewriteBlueprintReferenceValues(document, refs)
+	if err != nil {
+		return err
+	}
+	data, err = json.Marshal(document)
+	if err != nil {
+		return fmt.Errorf("marshaling normalized blueprint: %w", err)
+	}
+	var normalized Blueprint
+	if err := json.Unmarshal(data, &normalized); err != nil {
+		return fmt.Errorf("decoding normalized blueprint: %w", err)
+	}
+	*bp = normalized
+	return nil
+}
+
+func rewriteBlueprintReferenceValues(value interface{}, refs map[string]string) (interface{}, error) {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		rewritten := make(map[string]interface{}, len(typed))
+		for key, child := range typed {
+			normalizedKey := rewriteBlueprintReferenceString(key, refs)
+			if _, exists := rewritten[normalizedKey]; exists {
+				return nil, fmt.Errorf("reference normalization creates duplicate object key %q", normalizedKey)
+			}
+			normalizedChild, err := rewriteBlueprintReferenceValues(child, refs)
+			if err != nil {
+				return nil, err
+			}
+			rewritten[normalizedKey] = normalizedChild
+		}
+		return rewritten, nil
+	case []interface{}:
+		for i, child := range typed {
+			normalizedChild, err := rewriteBlueprintReferenceValues(child, refs)
+			if err != nil {
+				return nil, err
+			}
+			typed[i] = normalizedChild
+		}
+		return typed, nil
+	case string:
+		return rewriteBlueprintReferenceString(typed, refs), nil
+	default:
+		return value, nil
+	}
+}
+
+func rewriteBlueprintReferenceString(value string, refs map[string]string) string {
+	for requestRef, nodeRef := range refs {
+		value = strings.ReplaceAll(value, "${node."+requestRef+":", "${node."+nodeRef+":")
+	}
+	return value
+}
+
+func validateBlueprint(bp *Blueprint) error {
+	if strings.TrimSpace(bp.ID) == "" {
+		return fmt.Errorf("blueprint id is required")
+	}
+	if strings.TrimSpace(bp.Title) == "" {
+		return fmt.Errorf("blueprint title is required")
+	}
+	if len(bp.Steps) == 0 {
+		return fmt.Errorf("blueprint steps are required")
+	}
+
+	stepKeys := make(map[string]bool, len(bp.Steps))
+	for stepIndex, step := range bp.Steps {
+		if strings.TrimSpace(step.Key) == "" {
+			return fmt.Errorf("blueprint step %d key is required", stepIndex)
+		}
+		if stepKeys[step.Key] {
+			return fmt.Errorf("duplicate blueprint step key %q", step.Key)
+		}
+		stepKeys[step.Key] = true
+		if strings.TrimSpace(step.Title) == "" {
+			return fmt.Errorf("blueprint step %q title is required", step.Key)
+		}
+		if len(step.Nodes) == 0 {
+			return fmt.Errorf("blueprint step %q nodes are required", step.Key)
+		}
+
+		nodeKeys := make(map[string]bool, len(step.Nodes))
+		for nodeIndex, node := range step.Nodes {
+			if strings.TrimSpace(node.Key) == "" {
+				return fmt.Errorf("blueprint step %q node %d key is required", step.Key, nodeIndex)
+			}
+			if nodeKeys[node.Key] {
+				return fmt.Errorf("blueprint step %q has duplicate node key %q", step.Key, node.Key)
+			}
+			nodeKeys[node.Key] = true
+			if strings.TrimSpace(node.Title) == "" {
+				return fmt.Errorf("blueprint step %q node %q title is required", step.Key, node.Key)
+			}
+			if !supportedBlueprintNodeType(node.Type) {
+				return fmt.Errorf("blueprint step %q node %q has unsupported type %q for contract version %d", step.Key, node.Key, node.Type, CurrentBlueprintContractVersion)
+			}
+			if node.Type == NodeAPIRequest {
+				if node.Request == nil {
+					return fmt.Errorf("blueprint step %q apiRequest node %q request is required", step.Key, node.Key)
+				}
+				if strings.TrimSpace(node.Request.Path) == "" || strings.TrimSpace(node.Request.Method) == "" {
+					return fmt.Errorf("blueprint step %q apiRequest node %q request path and method are required", step.Key, node.Key)
+				}
+			}
+			if node.Type == NodeAsyncHandler && len(node.Events) == 0 {
+				return fmt.Errorf("blueprint step %q asyncHandler node %q events are required", step.Key, node.Key)
+			}
+			if node.ExpectedNumberOfEvents < 0 {
+				return fmt.Errorf("blueprint step %q node %q expectedNumberOfEvents must not be negative", step.Key, node.Key)
+			}
+			requestKeys := make(map[string]bool, len(node.TestRequests))
+			for _, request := range node.TestRequests {
+				if strings.TrimSpace(request.Key) == "" || strings.TrimSpace(request.Path) == "" || strings.TrimSpace(request.Method) == "" {
+					return fmt.Errorf("blueprint step %q node %q requests require key, path, and method", step.Key, node.Key)
+				}
+				if requestKeys[request.Key] {
+					return fmt.Errorf("blueprint step %q node %q has duplicate request key %q", step.Key, node.Key, request.Key)
+				}
+				requestKeys[request.Key] = true
+			}
+		}
+	}
+	return validateBlueprintReferences(bp)
+}
+
+func supportedBlueprintNodeType(nodeType NodeType) bool {
+	switch nodeType {
+	case NodeAPIRequest, NodeAsyncHandler, NodeUIComponent, NodeTestHelper, NodeCLICommand, NodeDashboard, NodeSetUpWebhooks:
+		return true
+	default:
+		return false
+	}
 }
 
 func validateBlueprintReferences(bp *Blueprint) error {

@@ -356,8 +356,9 @@ func reviewCommandForNode(node *coop.SessionNode) string {
 	if node.ReviewCommand != "" {
 		return node.ReviewCommand
 	}
-	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-		return "stripe trigger " + node.Events[0]
+	events := node.EventTypes()
+	if node.Type == coop.NodeAsyncHandler && len(events) > 0 {
+		return "stripe trigger " + events[0]
 	}
 	return ""
 }

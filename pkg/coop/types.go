@@ -8,7 +8,9 @@ import "time"
 type NodeState string
 
 const (
-	CurrentSessionSchemaVersion = 2
+	// CurrentBlueprintContractVersion is the supported external blueprint JSON contract.
+	CurrentBlueprintContractVersion = 1
+	CurrentSessionSchemaVersion     = 2
 )
 
 const (
@@ -57,11 +59,12 @@ type Verification struct {
 
 // APIRequest describes the expected API call for a node.
 type APIRequest struct {
-	Path         string            `json:"path"`
-	Method       string            `json:"method"`
-	Headers      map[string]string `json:"headers,omitempty"`
-	Params       interface{}       `json:"params,omitempty"`
-	HiddenParams interface{}       `json:"hidden_params,omitempty"`
+	Path           string                 `json:"path"`
+	Method         string                 `json:"method"`
+	Headers        map[string]string      `json:"headers,omitempty"`
+	Params         interface{}            `json:"params,omitempty"`
+	HiddenParams   interface{}            `json:"hidden_params,omitempty"`
+	RequestOptions map[string]interface{} `json:"requestOptions,omitempty"`
 }
 
 // TestHelperRequest describes an API-backed request used to advance test state.
@@ -72,16 +75,33 @@ type TestHelperRequest struct {
 
 // NodeDefinition is the source-derived static definition for a node.
 type NodeDefinition struct {
-	Type          NodeType            `json:"type"`
-	Key           string              `json:"key"`
-	Title         string              `json:"title"`
-	Description   string              `json:"description,omitempty"`
-	ReviewPrompt  string              `json:"review_prompt,omitempty"`
-	ReviewCommand string              `json:"review_command,omitempty"`
-	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
-	Request       *APIRequest         `json:"request,omitempty"`
-	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
-	Events        []string            `json:"events,omitempty"`
+	Type                   NodeType            `json:"type"`
+	Key                    string              `json:"key"`
+	Title                  string              `json:"title"`
+	Description            string              `json:"description,omitempty"`
+	ReviewPrompt           string              `json:"review_prompt,omitempty"`
+	ReviewCommand          string              `json:"review_command,omitempty"`
+	AutoConfirm            bool                `json:"auto_confirm,omitempty"`
+	Request                *APIRequest         `json:"request,omitempty"`
+	TestRequests           []TestHelperRequest `json:"requests,omitempty"`
+	Events                 []EventDefinition   `json:"events,omitempty"`
+	ExpectedNumberOfEvents int                 `json:"expectedNumberOfEvents,omitempty"`
+	Link                   string              `json:"link,omitempty"`
+}
+
+// EventTypes returns the event type names required by this node.
+func (n NodeDefinition) EventTypes() []string {
+	if len(n.Events) == 0 {
+		return nil
+	}
+
+	eventTypes := make([]string, 0, len(n.Events))
+	for _, event := range n.Events {
+		if event.EventType != "" {
+			eventTypes = append(eventTypes, event.EventType)
+		}
+	}
+	return eventTypes
 }
 
 // StepDefinition is the source-derived static definition for a step.

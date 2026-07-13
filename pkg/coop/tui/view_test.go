@@ -78,7 +78,7 @@ func testModel() Model {
 								Key:    "n3",
 								Title:  "Handle event",
 								Type:   coop.NodeAsyncHandler,
-								Events: []string{"checkout.session.completed"},
+								Events: []coop.EventDefinition{{EventType: "checkout.session.completed"}},
 							},
 							State: coop.NodePending,
 						},
