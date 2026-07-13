@@ -192,7 +192,10 @@ func TestShellQuoteNeutralizesShellMetacharacters(t *testing.T) {
 func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
 	tmp := filepath.Join(t.TempDir(), "dir with $(spaces)")
 	require.NoError(t, os.MkdirAll(tmp, 0o755))
+	// Redirect os.CreateTemp across platforms: Unix reads TMPDIR, Windows TMP/TEMP.
 	t.Setenv("TMPDIR", tmp)
+	t.Setenv("TMP", tmp)
+	t.Setenv("TEMP", tmp)
 
 	rc := &coopRunCmd{}
 	build := rc.agentPaneCommandBuilder(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, "discovery prompt", false)
