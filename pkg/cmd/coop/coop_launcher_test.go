@@ -101,6 +101,38 @@ func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFallbackJoinInstructionsIncludeCoopEnv(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	rc := &coopRunCmd{language: "node"}
+	output := captureStdout(t, func() {
+		err := rc.runFallbackWithCommand("/stripe", "one-time-payment", func(session *coop.Session) (string, func(), error) {
+			require.NotNil(t, session)
+			return "true", nil, nil
+		})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "Open another terminal and run: XDG_CONFIG_HOME=")
+	assert.Contains(t, output, " stripe coop join coop_")
+}
+
+func TestFallbackWaitInstructionsIncludeCoopEnv(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	rc := &coopRunCmd{language: "node"}
+	output := captureStdout(t, func() {
+		err := rc.runFallbackWithCommand("/stripe", "", func(session *coop.Session) (string, func(), error) {
+			require.Nil(t, session)
+			return "true", nil, nil
+		})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "Open another terminal and run: XDG_CONFIG_HOME=")
+	assert.Contains(t, output, " stripe coop join --wait")
+}
+
 func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 

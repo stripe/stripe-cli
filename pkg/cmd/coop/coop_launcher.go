@@ -346,9 +346,9 @@ func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprintID strin
 			return err
 		}
 		fmt.Printf("Session started: %s\n", session.ID)
-		fmt.Printf("Open another terminal and run: stripe coop join %s\n", session.ID)
+		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv("stripe coop join "+session.ID))
 	} else {
-		fmt.Println("Open another terminal and run: stripe coop join --wait")
+		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv("stripe coop join --wait"))
 	}
 	fmt.Println()
 
