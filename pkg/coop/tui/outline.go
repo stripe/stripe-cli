@@ -21,6 +21,16 @@ func (m Model) useSplitWorkspace() bool {
 	return m.width >= 100 && m.session != nil && !m.session.IsComplete()
 }
 
+// outlineWidth returns the column width the step outline should render into.
+// In the split workspace this is the narrow left column; otherwise the full
+// content width.
+func (m Model) outlineWidth() int {
+	if m.outlineWidthOverride > 0 {
+		return m.outlineWidthOverride
+	}
+	return m.contentWidth()
+}
+
 func (m Model) renderSplitWorkspace() string {
 	leftW := m.width / 3
 	if leftW < 34 {
@@ -35,7 +45,12 @@ func (m Model) renderSplitWorkspace() string {
 		return m.renderStepOutline().content
 	}
 
-	nav := m.renderStepOutline().content
+	// Constrain the outline's rules and wrapping to the left column so dividers
+	// and long titles don't overflow and wrap into a broken multi-line mess.
+	// Scoped to the outline copy only — the right detail panel keeps full width.
+	navModel := m
+	navModel.outlineWidthOverride = leftW
+	nav := navModel.renderStepOutline().content
 	detail := m.renderSplitDetail(rightW)
 	left := lipgloss.NewStyle().
 		Width(leftW).
@@ -136,7 +151,7 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	if m.stepCollapsed(stepIndex) {
 		if summary := m.collapsedStepSummary(stepIndex); summary != "" {
 			candidate := line + "  " + m.theme.MutedStyle.Render(summary)
-			if lipgloss.Width(candidate) <= m.contentWidth() {
+			if lipgloss.Width(candidate) <= m.outlineWidth() {
 				line = candidate
 			}
 		}
@@ -145,7 +160,7 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 }
 
 func (m Model) outlineRuleWidth() int {
-	w := m.contentWidth() - rowCursorWidth - rowRightGap
+	w := m.outlineWidth() - rowCursorWidth - rowRightGap
 	if w < 20 {
 		return 20
 	}
@@ -286,7 +301,7 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, includedInStepRevi
 	}
 
 	if annText != "" {
-		wrapW := m.contentWidth() - 8
+		wrapW := m.outlineWidth() - 8
 		if wrapW < 20 {
 			wrapW = 20
 		}
