@@ -377,11 +377,10 @@ func TestLatestSessionSkipsCorruptNewest(t *testing.T) {
 	assert.Equal(t, "coop_valid", got.ID, "LatestSession should skip the corrupt newest file")
 }
 
-func writeLockFile(t *testing.T, lockPath string, pid int, age time.Duration) {
+func writeLockFile(t *testing.T, lockPath string, pid int, created, mtime time.Time) {
 	t.Helper()
-	require.NoError(t, os.WriteFile(lockPath, []byte(fmt.Sprintf("%d\n%d\n", pid, time.Now().UnixNano())), 0o600))
-	when := time.Now().Add(-age)
-	require.NoError(t, os.Chtimes(lockPath, when, when))
+	require.NoError(t, os.WriteFile(lockPath, []byte(fmt.Sprintf("%d\n%d\n", pid, created.UnixNano())), 0o600))
+	require.NoError(t, os.Chtimes(lockPath, mtime, mtime))
 }
 
 // TestLockNotReclaimedWhileOwnerAlive is the core of the review feedback: a lock
@@ -396,9 +395,30 @@ func TestLockNotReclaimedWhileOwnerAlive(t *testing.T) {
 	require.NoError(t, err)
 
 	lockPath := filepath.Join(dir, "s.json.lock")
-	writeLockFile(t, lockPath, os.Getpid(), 2*sessionLockStale) // old, but owner alive
+	// Owner alive, created while this process was running, but an old mtime.
+	writeLockFile(t, lockPath, os.Getpid(), time.Now(), time.Now().Add(-2*sessionLockStale))
 
 	assert.False(t, store.lockAbandoned(lockPath), "live owner's lock must not be reclaimed despite age")
+}
+
+// TestLockReclaimedWhenPIDReused covers the PID-reuse edge case raised in review:
+// the original writer crashed and an unrelated live process now holds the same
+// PID. Because that process started after the lock was created, it can't be the
+// owner, so the lock is reclaimed.
+func TestLockReclaimedWhenPIDReused(t *testing.T) {
+	start, ok := processStartTime(os.Getpid())
+	if !ok {
+		t.Skip("process start time not available on this platform")
+	}
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	lockPath := filepath.Join(dir, "s.json.lock")
+	// Lock created an hour before this process started → this PID is a reuse.
+	writeLockFile(t, lockPath, os.Getpid(), start.Add(-time.Hour), time.Now())
+
+	assert.True(t, store.lockAbandoned(lockPath), "lock predating the owning PID's start should be reclaimed")
 }
 
 // TestLockReclaimedWhenOwnerDead confirms crash recovery still works: a lock
@@ -418,7 +438,7 @@ func TestLockReclaimedWhenOwnerDead(t *testing.T) {
 	require.NoError(t, err)
 
 	lockPath := filepath.Join(dir, "s.json.lock")
-	writeLockFile(t, lockPath, deadPID, 0) // fresh, but owner dead
+	writeLockFile(t, lockPath, deadPID, time.Now(), time.Now()) // fresh, but owner dead
 
 	assert.True(t, store.lockAbandoned(lockPath), "dead owner's lock should be reclaimed even when fresh")
 }

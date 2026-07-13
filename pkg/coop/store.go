@@ -158,37 +158,56 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 }
 
 // lockAbandoned reports whether a lock file can be safely reclaimed. The lock
-// records its owner's PID: if that process is alive the lock must be left alone,
-// even if it is old, so a slow Store.Update callback can't have its lock deleted
-// out from under it. Only when the owner is known-dead is the lock reclaimed
-// immediately. When the owner can't be determined — an unparseable PID, or a
-// platform where liveness can't be checked (e.g. Windows) — fall back to
-// reclaiming by age so a crashed writer still can't wedge the session forever.
+// records its owner's PID and creation time:
+//   - If that process is alive the lock is left alone, even if old, so a slow
+//     Store.Update callback can't have its lock deleted out from under it.
+//   - Unless the process started *after* the lock was created: then the original
+//     writer crashed and the PID was reused by an unrelated process, so the lock
+//     is stale and reclaimed.
+//   - A known-dead owner's lock is reclaimed immediately.
+//   - When the owner can't be determined — an unparseable PID, or a platform
+//     where liveness can't be checked (e.g. Windows) — fall back to reclaiming by
+//     age so a crashed writer still can't wedge the session forever.
 func (s *Store) lockAbandoned(lockPath string) bool {
 	info, err := os.Stat(lockPath)
 	if err != nil {
 		return false
 	}
-	if pid, ok := readLockPID(lockPath); ok {
+	if pid, created, ok := readLock(lockPath); ok {
 		if alive, known := processAlive(pid); known {
-			return !alive
+			if !alive {
+				return true
+			}
+			// PID reuse guard: if we know when both the lock and the process began
+			// and the process started after the lock, it can't be the writer that
+			// created the lock. Only reclaim when we're certain.
+			if start, ok := processStartTime(pid); ok && !created.IsZero() && start.After(created) {
+				return true
+			}
+			return false
 		}
 	}
 	return time.Since(info.ModTime()) > sessionLockStale
 }
 
-// readLockPID parses the owning PID from the first line of a lock file.
-func readLockPID(lockPath string) (int, bool) {
+// readLock parses the owning PID and creation time from a lock file. The lock
+// format is two lines: the PID, then the creation time as Unix nanoseconds.
+func readLock(lockPath string) (pid int, created time.Time, ok bool) {
 	data, err := os.ReadFile(lockPath)
 	if err != nil {
-		return 0, false
+		return 0, time.Time{}, false
 	}
-	firstLine, _, _ := strings.Cut(strings.TrimSpace(string(data)), "\n")
-	pid, err := strconv.Atoi(strings.TrimSpace(firstLine))
+	lines := strings.SplitN(strings.TrimSpace(string(data)), "\n", 3)
+	pid, err = strconv.Atoi(strings.TrimSpace(lines[0]))
 	if err != nil || pid <= 0 {
-		return 0, false
+		return 0, time.Time{}, false
 	}
-	return pid, true
+	if len(lines) >= 2 {
+		if nanos, err := strconv.ParseInt(strings.TrimSpace(lines[1]), 10, 64); err == nil {
+			created = time.Unix(0, nanos)
+		}
+	}
+	return pid, created, true
 }
 
 // processAlive reports whether the process with the given PID is running. The
