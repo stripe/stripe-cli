@@ -13,7 +13,7 @@ func TestLoadBlueprint(t *testing.T) {
 	bp, err := LoadBlueprint("one-time-payment")
 	require.NoError(t, err)
 	assert.Equal(t, "one-time-payment", bp.ID)
-	assert.Equal(t, "Accept a one-time payment", bp.Title)
+	assert.Equal(t, "Accept a one-time payment with Checkout", bp.Title)
 	assert.Contains(t, bp.Products, "Payments")
 	assert.Len(t, bp.Steps, 3)
 	assert.Equal(t, "setup-chapter", bp.Steps[0].Key)
@@ -232,7 +232,7 @@ func TestListBlueprintsWithMetadata(t *testing.T) {
 	for _, bp := range bps {
 		if bp.ID == "setup-future-payments" {
 			found = true
-			assert.Equal(t, "Save a card for future payments", bp.Title)
+			assert.Equal(t, "Set up future payments", bp.Title)
 		}
 	}
 	assert.True(t, found, "expected to find setup-future-payments")
