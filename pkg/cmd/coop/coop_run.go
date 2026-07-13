@@ -53,7 +53,7 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 
 	bp, err := coop.LoadBlueprint(blueprintID)
 	if err != nil {
-		return outputCoopError(fmt.Sprintf("Blueprint %q not found. Run 'stripe coop recommend' to see available blueprints.", blueprintID), "stripe coop recommend")
+		return outputCoopError(err.Error(), "stripe coop recommend")
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())

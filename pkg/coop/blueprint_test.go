@@ -103,6 +103,63 @@ func TestLoadBlueprintNotFound(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestValidateBlueprintReferences(t *testing.T) {
+	newBlueprint := func(reference string) *Blueprint {
+		return &Blueprint{
+			ID: "test",
+			Steps: []BlueprintStep{{
+				StepDefinition: StepDefinition{Key: "setup", Title: "Setup"},
+				Nodes: []NodeDefinition{
+					{Key: "create-product", Request: &APIRequest{Path: "/v1/products", Method: "post"}},
+					{Key: "create-clock", TestRequests: []TestHelperRequest{{
+						Key: "create-clock-request",
+						APIRequest: APIRequest{
+							Path:   "/v1/test_helpers/test_clocks",
+							Method: "post",
+						},
+					}}},
+					{Key: "wait-for-invoice"},
+					{Key: "use-reference", Request: &APIRequest{Path: reference, Method: "get"}},
+				},
+			}},
+		}
+	}
+
+	tests := []struct {
+		name      string
+		reference string
+		wantError string
+	}{
+		{name: "direct node", reference: "${node.setup.create-product:default_price}"},
+		{name: "named request", reference: "${node.setup.create-clock.create-clock-request:id}"},
+		{name: "numeric result", reference: "${node.setup.wait-for-invoice.0:id}"},
+		{name: "nested field path", reference: "${node.setup.create-product:data[0].price.id}"},
+		{name: "non-node interpolation", reference: "${env:randomName}"},
+		{name: "different placeholder with node prefix", reference: "${nodeVersion}"},
+		{name: "missing field delimiter", reference: "${node.setup.create-product}", wantError: "malformed node reference"},
+		{name: "missing closing brace", reference: "${node.setup.create-product:id", wantError: "malformed node reference"},
+		{name: "missing namespace dot", reference: "${node:setup.create-product:id}", wantError: "malformed node reference"},
+		{name: "empty reference", reference: "${node.:id}", wantError: "malformed node reference"},
+		{name: "empty field", reference: "${node.setup.create-product:}", wantError: "malformed node reference"},
+		{name: "unclosed reference before another", reference: "${node.setup.create-product:id/${node.setup.create-product:id}", wantError: "malformed node reference"},
+		{name: "unknown node", reference: "${node.old.create-product:id}", wantError: "unknown node reference"},
+		{name: "unknown named request", reference: "${node.setup.create-clock.old-request:id}", wantError: "unknown node reference"},
+		{name: "unknown second reference", reference: "${node.setup.create-product:id}/${node.old.create-product:id}", wantError: "unknown node reference"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateBlueprintReferences(newBlueprint(tt.reference))
+			if tt.wantError == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantError)
+		})
+	}
+}
+
 func TestLoadBlueprintPrefixMatch(t *testing.T) {
 	bp, err := LoadBlueprint("setup-future")
 	require.NoError(t, err)
