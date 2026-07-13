@@ -58,7 +58,7 @@ func newCoopAgentStartWorkCmd() *coopAgentActionCmd {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
-				return err
+				return outputAgentError(err)
 			}
 			resp, err := service.StartWork(c.session, c.step, c.note)
 			return outputAgentResponse(resp, err)
@@ -77,7 +77,7 @@ func newCoopAgentReportWorkCmd() *coopAgentActionCmd {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
-				return err
+				return outputAgentError(err)
 			}
 			resp, err := service.ReportWork(c.session, c.step, workflow.ReportWorkInput{
 				File:    c.file,
@@ -104,7 +104,7 @@ func newCoopAgentReportCheckCmd() *coopAgentActionCmd {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
-				return err
+				return outputAgentError(err)
 			}
 			resp, err := service.ReportCheck(c.session, c.step, c.check, c.passed)
 			return outputAgentResponse(resp, err)
@@ -124,7 +124,7 @@ func newCoopAgentSkipCmd() *coopAgentActionCmd {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
-				return err
+				return outputAgentError(err)
 			}
 			resp, err := service.Skip(c.session, c.step, c.note)
 			return outputAgentResponse(resp, err)
@@ -143,7 +143,7 @@ func newCoopAgentAwaitReviewCmd() *coopAgentActionCmd {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
-				return err
+				return outputAgentError(err)
 			}
 			resp, err := service.AwaitReview(c.session, c.step)
 			return outputAgentResponse(resp, err)
@@ -285,6 +285,14 @@ func validateFollowupParent(parent *coop.Session, actionID string) error {
 		}
 	}
 	return fmt.Errorf("follow-up action %q is not available for parent session %q", actionID, parent.ID)
+}
+
+// outputAgentError renders err as a structured agent JSON response. Used for
+// failures that happen before a workflow CommandResponse exists (e.g.
+// newWorkflowService / store creation), so agent commands never emit a bare
+// plain-text error on that path.
+func outputAgentError(err error) error {
+	return outputAgentResponse(coop.CommandResponse{}, err)
 }
 
 func outputAgentResponse(resp coop.CommandResponse, err error) error {

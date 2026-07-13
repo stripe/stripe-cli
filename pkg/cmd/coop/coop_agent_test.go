@@ -315,3 +315,20 @@ func (s *nextActionErrorStore) LatestSession() (*coop.Session, error) {
 func (s *nextActionErrorStore) Write(session *coop.Session) error {
 	return errors.New("disk full")
 }
+
+func TestOutputAgentErrorEmitsStructuredJSON(t *testing.T) {
+	// Failures before a workflow response exists (e.g. newWorkflowService/store
+	// creation in start-work, report-work, etc.) must still emit structured JSON,
+	// not a bare plain-text error, so an agent parsing stdout can recover.
+	output := captureStdout(t, func() {
+		err := outputAgentError(errors.New("creating store: disk full"))
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, "creating store: disk full")
+	assert.NotEmpty(t, resp.Next)
+}
