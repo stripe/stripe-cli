@@ -234,6 +234,31 @@ func newTestDataMetricsRunCmd(t *testing.T, serverURL string) *dataMetricsRunCmd
 	return c
 }
 
+func TestDataMetricsRunCmd_ForwardsToAPIWithoutClientValidation(t *testing.T) {
+	var capturedBody []byte
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedBody, _ = io.ReadAll(r.Body)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":{"code":"metric_invalid_parameter_value","type":"invalid_request_error"}}`))
+	}))
+	defer ts.Close()
+
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	// Omit starts-at and ends-at — the CLI forwards them (empty) to the API
+	// instead of rejecting locally; only --metric is guarded client-side.
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
+	require.Error(t, err)
+
+	var body map[string]interface{}
+	require.NoError(t, json.Unmarshal(capturedBody, &body))
+
+	assert.Equal(t, "", body["starts_at"])
+	assert.Equal(t, "", body["ends_at"])
+	assert.Equal(t, "day", body["granularity"])
+}
+
 func TestDataMetricsRunCmd_HTTPRequest(t *testing.T) {
 	var capturedReq *http.Request
 	var capturedBody []byte
@@ -384,6 +409,9 @@ func TestDataMetricsRunCmd_StripeVersionHeader(t *testing.T) {
 
 // --- Unit tests: command construction ---
 
+// TestNewDataMetricsRunCmd_Flags only checks that each flag is registered, not
+// that it is required. group-by, filter, currency, timezone, and limit are all
+// optional; requiredness is enforced by the API, not the CLI.
 func TestNewDataMetricsRunCmd_Flags(t *testing.T) {
 	c := newDataMetricsRunCmd()
 
@@ -406,6 +434,16 @@ func TestNewDataMetricsRunCmd_IsPreview(t *testing.T) {
 	c := newDataMetricsRunCmd()
 	assert.True(t, c.rb.IsPreviewCommand, "data metrics run must use the preview Stripe-Version header")
 	assert.Equal(t, http.MethodPost, c.rb.Method)
+}
+
+func TestDataMetricsRunCmd_RequiresMetric(t *testing.T) {
+	c := newDataMetricsRunCmd()
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--metric is required")
 }
 
 func TestNewDataCmd_HasRunSubcommand(t *testing.T) {
