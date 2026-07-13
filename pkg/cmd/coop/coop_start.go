@@ -55,7 +55,7 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		blueprintID = args[0]
 		if _, err := coop.LoadBlueprint(blueprintID); err != nil {
-			return fmt.Errorf("blueprint %q not found. Run 'stripe coop recommend' to see available blueprints", blueprintID)
+			return fmt.Errorf("%w. Run 'stripe coop recommend' to see available blueprints", err)
 		}
 	}
 

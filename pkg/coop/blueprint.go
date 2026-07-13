@@ -1,10 +1,11 @@
 package coop
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
-	"regexp"
+	"io"
 	"strings"
 	"time"
 )
@@ -12,7 +13,10 @@ import (
 //go:embed blueprints/*.json
 var blueprintFS embed.FS
 
-var blueprintNodeRefRE = regexp.MustCompile(`\$\{node\.([^}:]+):[^}]+\}`)
+const (
+	blueprintNodeCandidatePrefix = "${node"
+	blueprintNodeRefPrefix       = "${node."
+)
 
 // BlueprintStep is a step definition within a blueprint.
 type BlueprintStep struct {
@@ -101,18 +105,83 @@ func validateBlueprintReferences(bp *Blueprint) error {
 	if err != nil {
 		return err
 	}
-	for _, match := range blueprintNodeRefRE.FindAllSubmatch(data, -1) {
-		ref := string(match[1])
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		value, ok := token.(string)
+		if !ok {
+			continue
+		}
+		if err := validateBlueprintReferenceString(value, validRefs); err != nil {
+			return err
+		}
+	}
+}
+
+func validateBlueprintReferenceString(value string, validRefs map[string]bool) error {
+	for {
+		start := findBlueprintNodeCandidate(value)
+		if start == -1 {
+			return nil
+		}
+		value = value[start:]
+
+		end := strings.IndexByte(value, '}')
+		next := findBlueprintNodeCandidate(value[len(blueprintNodeCandidatePrefix):])
+		if next != -1 {
+			next += len(blueprintNodeCandidatePrefix)
+		}
+		if end == -1 || (next != -1 && next < end) {
+			candidate := value
+			if next != -1 {
+				candidate = value[:next]
+			}
+			return fmt.Errorf("malformed node reference %q: missing closing brace", candidate)
+		}
+
+		placeholder := value[:end+1]
+		if !strings.HasPrefix(placeholder, blueprintNodeRefPrefix) {
+			return fmt.Errorf("malformed node reference %q: expected ${node.<ref>:<field>}", placeholder)
+		}
+		body := placeholder[len(blueprintNodeRefPrefix) : len(placeholder)-1]
+		ref, field, ok := strings.Cut(body, ":")
+		if !ok || ref == "" || field == "" {
+			return fmt.Errorf("malformed node reference %q: expected ${node.<ref>:<field>}", placeholder)
+		}
+
 		if validRefs[ref] {
+			value = value[end+1:]
 			continue
 		}
 		parts := strings.Split(ref, ".")
 		if len(parts) == 3 && validRefs[parts[0]+"."+parts[1]] && isIntegerRefSegment(parts[2]) {
+			value = value[end+1:]
 			continue
 		}
 		return fmt.Errorf("unknown node reference %q", ref)
 	}
-	return nil
+}
+
+func findBlueprintNodeCandidate(value string) int {
+	offset := 0
+	for {
+		start := strings.Index(value[offset:], blueprintNodeCandidatePrefix)
+		if start == -1 {
+			return -1
+		}
+		start += offset
+		after := start + len(blueprintNodeCandidatePrefix)
+		if after == len(value) || value[after] == '.' || value[after] == ':' || value[after] == '}' {
+			return start
+		}
+		offset = after
+	}
 }
 
 func isIntegerRefSegment(value string) bool {
