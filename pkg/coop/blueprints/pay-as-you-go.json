@@ -1,7 +1,7 @@
 {
-  "id": "flat-fee-and-overages",
-  "title": "Set up flat fee and overages pricing",
-  "description": "Charge customers a flat recurring fee with overage charges for usage beyond included limits.",
+  "id": "pay-as-you-go",
+  "title": "Set up pay-as-you-go pricing",
+  "description": "Charge customers based on their actual usage with per-unit pricing.",
   "type": "learning",
   "products": [
     "Billing"
@@ -24,9 +24,9 @@
             "path": "/v1/customers",
             "method": "post",
             "params": {
-              "description": "Customer for flat fee and overages billing blueprint",
+              "description": "Customer for pay-as-you-go billing blueprint",
               "email": "customer@example.com",
-              "name": "Flat Fee Customer"
+              "name": "Pay-as-you-go Customer"
             }
           }
         }
@@ -42,14 +42,14 @@
           "type": "apiRequest",
           "key": "createEmptyPricingPlan",
           "title": "Create a Pricing Plan",
-          "description": "Create a Pricing Plan to serve as the container for your flat fee and overage pricing components.",
+          "description": "Create a Pricing Plan to serve as the container for your pay-as-you-go pricing components.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v2/billing/pricing_plans",
             "method": "post",
             "params": {
               "currency": "usd",
-              "display_name": "Flat Fee and Overages Pricing Plan",
+              "display_name": "Pay-as-you-go Pricing Plan",
               "tax_behavior": "exclusive"
             }
           }
@@ -68,7 +68,7 @@
                 "formula": "sum"
               },
               "display_name": "API Requests Meter",
-              "event_name": "blueprint_flat_fee_meter+${env:randomName}"
+              "event_name": "blueprint_payg_meter+${env:randomName}"
             }
           }
         }
@@ -76,8 +76,8 @@
     },
     {
       "key": "create-rate-card-chapter",
-      "title": "Add a rate card with graduated pricing",
-      "description": "Configure a rate card with graduated pricing to include a free tier and charge overages beyond the included amount.",
+      "title": "Add a rate card",
+      "description": "Configure and attach a rate card to define per-unit usage pricing.",
       "required": true,
       "nodes": [
         {
@@ -91,7 +91,7 @@
             "method": "post",
             "params": {
               "currency": "usd",
-              "display_name": "Overages Rate Card",
+              "display_name": "Pay-as-you-go Rate Card",
               "service_interval": "month",
               "service_interval_count": 1,
               "tax_behavior": "exclusive"
@@ -115,26 +115,16 @@
         },
         {
           "type": "apiRequest",
-          "key": "addGraduatedRateToRateCard",
-          "title": "Add graduated rate to rate card",
-          "description": "Add a graduated rate with a free tier of 1000 units and $0.05 per unit for overages.",
+          "key": "addRateToRateCard",
+          "title": "Add rate to rate card",
+          "description": "Add a flat per-unit rate to the rate card.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard:id}/rates",
             "method": "post",
             "params": {
               "metered_item": "${node.create-rate-card-chapter.createMeteredItem:id}",
-              "tiering_mode": "graduated",
-              "tiers": [
-                {
-                  "unit_amount": "0",
-                  "up_to_decimal": "1000"
-                },
-                {
-                  "unit_amount": "5",
-                  "up_to_inf": "inf"
-                }
-              ]
+              "unit_amount": "5"
             }
           }
         },
@@ -142,7 +132,7 @@
           "type": "apiRequest",
           "key": "attachRateCardToPricingPlan",
           "title": "Attach rate card to Pricing Plan",
-          "description": "Attach the rate card to the Pricing Plan.",
+          "description": "Attach the rate card to the Pricing Plan to complete the pay-as-you-go billing structure.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
@@ -159,71 +149,9 @@
       ]
     },
     {
-      "key": "create-licensed-fee-chapter",
-      "title": "Add a license fee",
-      "description": "Add a flat recurring license fee to the Pricing Plan.",
-      "required": true,
-      "nodes": [
-        {
-          "type": "apiRequest",
-          "key": "createLicensedItem",
-          "title": "Create a licensed item",
-          "description": "Create a licensed item to represent the flat fee component.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
-          "request": {
-            "path": "/v2/billing/licensed_items",
-            "method": "post",
-            "params": {
-              "display_name": "Per Seat License",
-              "lookup_key": "seat-license+${env:randomName}"
-            }
-          }
-        },
-        {
-          "type": "apiRequest",
-          "key": "createLicenseFee",
-          "title": "Create a license fee",
-          "description": "Create a license fee for $20.00/month per seat.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
-          "request": {
-            "path": "/v2/billing/license_fees",
-            "method": "post",
-            "params": {
-              "currency": "usd",
-              "display_name": "Per Seat License Fee",
-              "licensed_item": "${node.create-licensed-fee-chapter.createLicensedItem:id}",
-              "service_interval": "month",
-              "service_interval_count": 1,
-              "tax_behavior": "exclusive",
-              "unit_amount": "2000"
-            }
-          }
-        },
-        {
-          "type": "apiRequest",
-          "key": "attachLicenseFeeToPricingPlan",
-          "title": "Attach license fee to Pricing Plan",
-          "description": "Attach the license fee to the Pricing Plan alongside the usage-based component.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
-          "request": {
-            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
-            "method": "post",
-            "params": {
-              "license_fee": {
-                "id": "${node.create-licensed-fee-chapter.createLicenseFee:id}",
-                "version": "${node.create-licensed-fee-chapter.createLicenseFee:latest_version}"
-              },
-              "lookup_key": "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}",
-              "type": "license_fee"
-            }
-          }
-        }
-      ]
-    },
-    {
       "key": "subscribe-customer-chapter",
       "title": "Subscribe customer to Pricing Plan",
-      "description": "Create a checkout session to subscribe the customer to the flat fee and overages Pricing Plan.",
+      "description": "Create a checkout session to subscribe the customer to the pay-as-you-go Pricing Plan.",
       "nodes": [
         {
           "type": "apiRequest",
@@ -243,7 +171,7 @@
           "type": "apiRequest",
           "key": "createCheckoutSession",
           "title": "Create checkout session",
-          "description": "Create a checkout session with license fee quantity to activate the subscription.",
+          "description": "Create a checkout session to activate the Pricing Plan subscription.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/checkout/sessions",
@@ -252,20 +180,12 @@
               "checkout_items": [
                 {
                   "pricing_plan_subscription_item": {
-                    "component_configurations": {
-                      "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}": {
-                        "license_fee_component": {
-                          "quantity": 1
-                        },
-                        "type": "license_fee_component"
-                      }
-                    },
                     "pricing_plan": "${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}"
                   },
                   "type": "pricing_plan_subscription_item"
                 }
               ],
-              "success_url": "https://dashboard.stripe.com/workbench/blueprints/flat-fee-and-overages/subscribe-customer-chapter?confirmation-redirect=createCheckoutSession"
+              "success_url": "https://dashboard.stripe.com/workbench/blueprints/pay-as-you-go/subscribe-customer-chapter?confirmation-redirect=createCheckoutSession"
             }
           }
         },

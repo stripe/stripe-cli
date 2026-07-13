@@ -1,25 +1,25 @@
 {
   "id": "setup-future-payments",
-  "title": "Save a card for future payments",
-  "description": "Use Checkout in setup mode to collect payment details and charge customers later.",
+  "title": "Set up future payments",
+  "description": "Save payment details in a Checkout Session and charge your customers later.",
   "type": "learning",
   "products": [
     "Payments"
   ],
-  "settings": [],
+  "settings": null,
   "steps": [
     {
       "key": "create-new-customer-chapter",
       "title": "Create a new customer",
-      "description": "Create a customer to attach the saved payment method to.",
+      "description": "Create a new customer for future payments.",
       "required": true,
       "nodes": [
         {
           "type": "apiRequest",
           "key": "create-new-customer",
           "title": "Create a new customer",
-          "description": "Create a customer to attach the saved payment method to.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Create a new customer to associate with the payment method you save for later use.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/customers",
             "method": "post",
@@ -34,15 +34,15 @@
     },
     {
       "key": "create-checkout-session-chapter",
-      "title": "Create a Checkout Session",
-      "description": "Create a Checkout Session in setup mode to collect payment details.",
+      "title": "Save the customer payment details",
+      "description": "Create a checkout session in \"setup mode\" to collect customer payment details. Ensure that the customer successfully completes the Checkout Session.",
       "nodes": [
         {
           "type": "apiRequest",
           "key": "create-checkout-session",
-          "title": "Create a Checkout Session",
-          "description": "Create a Checkout Session with mode=setup to save a payment method.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "title": "Create a checkout interface",
+          "description": "Initiate a checkout session to securely save customer payment details for future charges.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/checkout/sessions",
             "method": "post",
@@ -50,23 +50,23 @@
               "currency": "usd",
               "customer": "${node.create-new-customer-chapter.create-new-customer:id}",
               "mode": "setup",
-              "success_url": "https://example.com/success"
+              "success_url": "https://dashboard.stripe.com/workbench/blueprints/setup-future-payments/create-checkout-session-chapter?confirmation-redirect=create-checkout-session"
             }
           }
         },
         {
           "type": "uiComponent",
           "key": "complete-checkout",
-          "title": "Complete the checkout",
-          "description": "Redirect the customer to Checkout so they can save their payment method.",
+          "title": "Complete checkout process in setup mode",
+          "description": "Complete the Checkout Session in setup mode to save the payment method. Click on the link below and fill in the \u003cLink\u003etest card information\u003c/Link\u003e with the card number as 4000 0000 0000 0077. Use a valid future date and any three-digit CVC.",
           "review_prompt": "Open the app and confirm the user-facing flow works as described."
         },
         {
           "type": "asyncHandler",
           "key": "wait-for-checkout-completed",
-          "title": "Handle checkout.session.completed",
-          "description": "Listen for the checkout.session.completed event to confirm the setup flow completed.",
-          "review_prompt": "Run `stripe trigger checkout.session.completed` and confirm the handler processes the signed event correctly.",
+          "title": "Verify that the checkout session is complete",
+          "description": "Listen for the \u003cLinkWebhook\u003ewebhook event\u003c/LinkWebhook\u003e to identify if the Checkout Session was completed successfully.",
+          "review_prompt": "Run the relevant Stripe CLI trigger or complete the upstream flow, then confirm the handler receives and verifies the expected event.",
           "review_command": "stripe trigger checkout.session.completed",
           "events": [
             "checkout.session.completed"
@@ -77,26 +77,27 @@
     {
       "key": "charge-payment-method-later-chapter",
       "title": "Charge the payment method later",
-      "description": "Create a PaymentIntent using the saved payment method.",
+      "description": "Retrieve the payment method and charge the payment method later.",
       "required": true,
       "nodes": [
         {
           "type": "apiRequest",
           "key": "retrieve-setup-intent",
           "title": "Retrieve the SetupIntent",
-          "description": "Retrieve the SetupIntent from the completed Checkout Session to find the saved payment method.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Retrieve SetupIntent object to obtain the \u003cCode\u003epayment_method\u003c/Code\u003e ID that can be attached to a customer in next step.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/setup_intents/${node.create-checkout-session-chapter.create-checkout-session:setup_intent}",
-            "method": "get"
+            "method": "get",
+            "params": {}
           }
         },
         {
           "type": "apiRequest",
           "key": "charge-payment-method-later",
           "title": "Charge the payment method later",
-          "description": "Charge the customer using their saved payment method.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Process a charge on the saved payment method when needed, without requiring the customer to re-enter their payment information.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/payment_intents",
             "method": "post",
@@ -113,9 +114,9 @@
         {
           "type": "asyncHandler",
           "key": "wait-for-payment-intent-succeeded",
-          "title": "Handle payment_intent.succeeded",
-          "description": "Listen for the payment_intent.succeeded event to confirm the off-session payment succeeded.",
-          "review_prompt": "Run `stripe trigger payment_intent.succeeded` and confirm the handler processes the signed event correctly.",
+          "title": "Confirm that the payment intent succeeded",
+          "description": "Verify the successful completion of the PaymentIntent to ensure that the transaction was processed.",
+          "review_prompt": "Run the relevant Stripe CLI trigger or complete the upstream flow, then confirm the handler receives and verifies the expected event.",
           "review_command": "stripe trigger payment_intent.succeeded",
           "events": [
             "payment_intent.succeeded"

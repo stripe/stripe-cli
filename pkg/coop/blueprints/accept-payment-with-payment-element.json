@@ -1,0 +1,56 @@
+{
+  "id": "accept-payment-with-payment-element",
+  "title": "Accept a payment with PaymentElement",
+  "description": "Learn how to accept a one-time payment by embedding the PaymentElement into your own UI.",
+  "type": "learning",
+  "products": [
+    "Payments"
+  ],
+  "settings": null,
+  "steps": [
+    {
+      "key": "accept-payment-chapter",
+      "title": "Accept a one-time payment",
+      "description": "Create a PaymentIntent on your server, mount PaymentElement in your client, and confirm the payment.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-payment-intent",
+          "title": "Create a PaymentIntent",
+          "description": "On your server, create a PaymentIntent with the amount and currency. Return the client_secret to your client to initialize the PaymentElement.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/payment_intents",
+            "method": "post",
+            "params": {
+              "amount": 2000,
+              "automatic_payment_methods": {
+                "enabled": true
+              },
+              "currency": "${env:currency}"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "mount-payment-element",
+          "title": "Initialize and mount PaymentElement",
+          "description": "On your client, initialize Stripe.js with the client_secret from the PaymentIntent, mount the PaymentElement, and call stripe.confirmPayment() to complete the payment.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "asyncHandler",
+          "key": "handle-payment-succeeded",
+          "title": "Handle payment_intent.succeeded",
+          "description": "Listen for the payment_intent.succeeded webhook event to confirm the payment was successful and fulfill the order.",
+          "review_prompt": "Run the relevant Stripe CLI trigger or complete the upstream flow, then confirm the handler receives and verifies the expected event.",
+          "review_command": "stripe trigger payment_intent.succeeded",
+          "events": [
+            "payment_intent.succeeded"
+          ]
+        }
+      ]
+    }
+  ]
+}

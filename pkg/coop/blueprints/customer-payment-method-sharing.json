@@ -1,0 +1,139 @@
+{
+  "id": "customer-payment-method-sharing",
+  "title": "Customer and payment method sharing",
+  "description": "Test how customers and payment methods work across accounts in your sandbox organization. Follow the steps below to create a shared customer, save a card, and charge it from a different account.",
+  "type": "learning",
+  "products": [
+    "Payments"
+  ],
+  "settings": null,
+  "steps": [
+    {
+      "key": "enable-sharing",
+      "title": "Enable customer and payment method sharing",
+      "description": "Enable sharing for both accounts in your sandbox organization. This creates a sharing group so customers and card payment methods are available across accounts.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "dashboard",
+          "key": "enable-sharing-settings",
+          "title": "Enable sharing in organization settings",
+          "description": "Navigate to your organization sharing settings and create a sharing group that includes both accounts. This step auto-completes once sharing is verified between the two accounts.",
+          "review_prompt": "Open Dashboard and confirm the required configuration is present before continuing."
+        }
+      ]
+    },
+    {
+      "key": "test-sharing",
+      "title": "Create a customer and save a card",
+      "description": "Create a customer in Account 1 and save a card payment method through checkout. This is the data that will be shared to Account 2.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-customer",
+          "title": "Create a shared customer in Account 1",
+          "description": "Use the org-level API key with the Stripe-Context header to create the customer in Account 1. This customer will be available to Account 2 once sharing is enabled.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/customers",
+            "method": "post",
+            "params": {
+              "email": "jennyrosen@example.com",
+              "name": "Jenny Rosen"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session-account-1",
+          "title": "Save a card in Account 1",
+          "description": "Create a Checkout Session for $10 in Account 1 with the customer attached. The payment method will be saved to the customer for future use.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post",
+            "params": {
+              "customer": "${node.test-sharing.create-customer:id}",
+              "line_items": [
+                {
+                  "price_data": {
+                    "currency": "${env:currency}",
+                    "product_data": {
+                      "name": "Test charge"
+                    },
+                    "unit_amount": 1000
+                  },
+                  "quantity": 1
+                }
+              ],
+              "mode": "payment",
+              "payment_intent_data": {
+                "setup_future_usage": "off_session"
+              },
+              "saved_payment_method_options": {
+                "payment_method_save": "enabled"
+              },
+              "success_url": "https://stripe.com"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout-account-1",
+          "title": "Complete checkout in Account 1",
+          "description": "Complete the Checkout Session. This charges the customer $10 and saves the card as a reusable payment method on the shared customer.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        }
+      ]
+    },
+    {
+      "key": "charge-shared-card",
+      "title": "Charge the shared card from Account 2",
+      "description": "Use the shared customer and saved payment method from Account 1 to complete a payment in Account 2. This confirms sharing works across your accounts.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session-account-2",
+          "title": "Charge the shared card in Account 2",
+          "description": "Create a Checkout Session for $20 in Account 2 using the shared customer. The payment method saved from the first checkout will be reused.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post",
+            "params": {
+              "customer": "${node.test-sharing.create-customer:id}",
+              "line_items": [
+                {
+                  "price_data": {
+                    "currency": "${env:currency}",
+                    "product_data": {
+                      "name": "Test charge"
+                    },
+                    "unit_amount": 2000
+                  },
+                  "quantity": 1
+                }
+              ],
+              "mode": "payment",
+              "payment_intent_data": {
+                "setup_future_usage": "off_session"
+              },
+              "saved_payment_method_options": {
+                "payment_method_save": "enabled"
+              },
+              "success_url": "https://stripe.com"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout-account-2",
+          "title": "Complete checkout in Account 2",
+          "description": "Complete the Checkout Session using the payment method saved to the shared customer from Account 1. The shared card works—you're ready to enable sharing in production.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        }
+      ]
+    }
+  ]
+}

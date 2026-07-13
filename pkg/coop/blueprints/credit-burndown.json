@@ -1,7 +1,7 @@
 {
-  "id": "flat-fee-and-overages",
-  "title": "Set up flat fee and overages pricing",
-  "description": "Charge customers a flat recurring fee with overage charges for usage beyond included limits.",
+  "id": "credit-burndown",
+  "title": "Set up credit burndown pricing",
+  "description": "Charge customers for pre-purchased credits that burn down in real time as they consume usage.",
   "type": "learning",
   "products": [
     "Billing"
@@ -24,9 +24,9 @@
             "path": "/v1/customers",
             "method": "post",
             "params": {
-              "description": "Customer for flat fee and overages billing blueprint",
+              "description": "Customer for credit burndown billing blueprint",
               "email": "customer@example.com",
-              "name": "Flat Fee Customer"
+              "name": "Credit Burndown Customer"
             }
           }
         }
@@ -42,14 +42,14 @@
           "type": "apiRequest",
           "key": "createEmptyPricingPlan",
           "title": "Create a Pricing Plan",
-          "description": "Create a Pricing Plan to serve as the container for your flat fee and overage pricing components.",
+          "description": "Create a Pricing Plan to serve as the container for your credit burndown pricing components.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v2/billing/pricing_plans",
             "method": "post",
             "params": {
               "currency": "usd",
-              "display_name": "Flat Fee and Overages Pricing Plan",
+              "display_name": "Credit Burndown Pricing Plan",
               "tax_behavior": "exclusive"
             }
           }
@@ -68,7 +68,7 @@
                 "formula": "sum"
               },
               "display_name": "API Requests Meter",
-              "event_name": "blueprint_flat_fee_meter+${env:randomName}"
+              "event_name": "blueprint_credit_meter+${env:randomName}"
             }
           }
         }
@@ -76,8 +76,8 @@
     },
     {
       "key": "create-rate-card-chapter",
-      "title": "Add a rate card with graduated pricing",
-      "description": "Configure a rate card with graduated pricing to include a free tier and charge overages beyond the included amount.",
+      "title": "Add a rate card",
+      "description": "Configure and attach a rate card to define per-unit usage pricing that credits will offset.",
       "required": true,
       "nodes": [
         {
@@ -91,7 +91,7 @@
             "method": "post",
             "params": {
               "currency": "usd",
-              "display_name": "Overages Rate Card",
+              "display_name": "Credit Burndown Rate Card",
               "service_interval": "month",
               "service_interval_count": 1,
               "tax_behavior": "exclusive"
@@ -115,26 +115,16 @@
         },
         {
           "type": "apiRequest",
-          "key": "addGraduatedRateToRateCard",
-          "title": "Add graduated rate to rate card",
-          "description": "Add a graduated rate with a free tier of 1000 units and $0.05 per unit for overages.",
+          "key": "addRateToRateCard",
+          "title": "Add rate to rate card",
+          "description": "Add a flat per-unit rate to the rate card.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard:id}/rates",
             "method": "post",
             "params": {
               "metered_item": "${node.create-rate-card-chapter.createMeteredItem:id}",
-              "tiering_mode": "graduated",
-              "tiers": [
-                {
-                  "unit_amount": "0",
-                  "up_to_decimal": "1000"
-                },
-                {
-                  "unit_amount": "5",
-                  "up_to_inf": "inf"
-                }
-              ]
+              "unit_amount": "5"
             }
           }
         },
@@ -159,71 +149,9 @@
       ]
     },
     {
-      "key": "create-licensed-fee-chapter",
-      "title": "Add a license fee",
-      "description": "Add a flat recurring license fee to the Pricing Plan.",
-      "required": true,
-      "nodes": [
-        {
-          "type": "apiRequest",
-          "key": "createLicensedItem",
-          "title": "Create a licensed item",
-          "description": "Create a licensed item to represent the flat fee component.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
-          "request": {
-            "path": "/v2/billing/licensed_items",
-            "method": "post",
-            "params": {
-              "display_name": "Per Seat License",
-              "lookup_key": "seat-license+${env:randomName}"
-            }
-          }
-        },
-        {
-          "type": "apiRequest",
-          "key": "createLicenseFee",
-          "title": "Create a license fee",
-          "description": "Create a license fee for $20.00/month per seat.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
-          "request": {
-            "path": "/v2/billing/license_fees",
-            "method": "post",
-            "params": {
-              "currency": "usd",
-              "display_name": "Per Seat License Fee",
-              "licensed_item": "${node.create-licensed-fee-chapter.createLicensedItem:id}",
-              "service_interval": "month",
-              "service_interval_count": 1,
-              "tax_behavior": "exclusive",
-              "unit_amount": "2000"
-            }
-          }
-        },
-        {
-          "type": "apiRequest",
-          "key": "attachLicenseFeeToPricingPlan",
-          "title": "Attach license fee to Pricing Plan",
-          "description": "Attach the license fee to the Pricing Plan alongside the usage-based component.",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
-          "request": {
-            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
-            "method": "post",
-            "params": {
-              "license_fee": {
-                "id": "${node.create-licensed-fee-chapter.createLicenseFee:id}",
-                "version": "${node.create-licensed-fee-chapter.createLicenseFee:latest_version}"
-              },
-              "lookup_key": "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}",
-              "type": "license_fee"
-            }
-          }
-        }
-      ]
-    },
-    {
       "key": "subscribe-customer-chapter",
       "title": "Subscribe customer to Pricing Plan",
-      "description": "Create a checkout session to subscribe the customer to the flat fee and overages Pricing Plan.",
+      "description": "Create a checkout session to subscribe the customer to the Pricing Plan.",
       "nodes": [
         {
           "type": "apiRequest",
@@ -243,7 +171,7 @@
           "type": "apiRequest",
           "key": "createCheckoutSession",
           "title": "Create checkout session",
-          "description": "Create a checkout session with license fee quantity to activate the subscription.",
+          "description": "Create a checkout session to activate the Pricing Plan subscription.",
           "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/checkout/sessions",
@@ -252,20 +180,12 @@
               "checkout_items": [
                 {
                   "pricing_plan_subscription_item": {
-                    "component_configurations": {
-                      "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}": {
-                        "license_fee_component": {
-                          "quantity": 1
-                        },
-                        "type": "license_fee_component"
-                      }
-                    },
                     "pricing_plan": "${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}"
                   },
                   "type": "pricing_plan_subscription_item"
                 }
               ],
-              "success_url": "https://dashboard.stripe.com/workbench/blueprints/flat-fee-and-overages/subscribe-customer-chapter?confirmation-redirect=createCheckoutSession"
+              "success_url": "https://dashboard.stripe.com/workbench/blueprints/credit-burndown/subscribe-customer-chapter?confirmation-redirect=createCheckoutSession"
             }
           }
         },
@@ -286,6 +206,144 @@
           "events": [
             "v2.billing.pricing_plan_subscription.servicing_activated"
           ]
+        }
+      ]
+    },
+    {
+      "key": "grant-credits-chapter",
+      "title": "Charge for credits and grant them",
+      "description": "Charge the customer for credits via an invoice, then grant credits to their balance.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createPaymentMethod",
+          "title": "Create a payment method",
+          "description": "Create a card payment method to use for charging the credit purchase.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/payment_methods",
+            "method": "post",
+            "params": {
+              "card": {
+                "token": "tok_visa"
+              },
+              "type": "card"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachPaymentMethod",
+          "title": "Attach payment method to customer",
+          "description": "Attach the payment method to the customer so it can be used for invoices.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/payment_methods/${node.grant-credits-chapter.createPaymentMethod:id}/attach",
+            "method": "post",
+            "params": {
+              "customer": "${node.create-customer-chapter.createCustomer:id}"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCreditInvoice",
+          "title": "Create an invoice for credits",
+          "description": "Create an invoice to charge the customer for the credit purchase.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/invoices",
+            "method": "post",
+            "params": {
+              "auto_advance": true,
+              "collection_method": "charge_automatically",
+              "customer": "${node.create-customer-chapter.createCustomer:id}",
+              "default_payment_method": "${node.grant-credits-chapter.createPaymentMethod:id}"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "addCreditInvoiceItem",
+          "title": "Add credit line item to invoice",
+          "description": "Attach a $10.00 line item for the credit purchase to the invoice.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/invoiceitems",
+            "method": "post",
+            "params": {
+              "amount": 1000,
+              "currency": "usd",
+              "customer": "${node.create-customer-chapter.createCustomer:id}",
+              "description": "Credit top-up - $10.00",
+              "invoice": "${node.grant-credits-chapter.createCreditInvoice:id}"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "payInvoice",
+          "title": "Finalize and pay the invoice",
+          "description": "Finalize and charge the invoice using the customer's default payment method.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/invoices/${node.grant-credits-chapter.createCreditInvoice:id}/pay",
+            "method": "post",
+            "params": {}
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "grantCredits",
+          "title": "Grant credits",
+          "description": "Grant $10.00 in credits to the customer after payment is collected.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/billing/credit_grants",
+            "method": "post",
+            "params": {
+              "amount": {
+                "monetary": {
+                  "currency": "usd",
+                  "value": 1000
+                },
+                "type": "monetary"
+              },
+              "applicability_config": {
+                "scope": {
+                  "price_type": "metered"
+                }
+              },
+              "category": "paid",
+              "customer": "${node.create-customer-chapter.createCustomer:id}",
+              "name": "Initial Credit Grant"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCreditBalanceAlert",
+          "title": "Create credit balance alert",
+          "description": "Create an alert to notify when the customer's credit balance reaches zero. Listen for the billing.alert.triggered webhook to restrict access, then repeat the invoice and credit grant steps to top up. When the balance is restored, Stripe fires billing.alert.recovered so you can restore access.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/billing/alerts",
+            "method": "post",
+            "params": {
+              "alert_type": "credit_balance_threshold",
+              "credit_balance_threshold": {
+                "lte": {
+                  "balance_type": "monetary",
+                  "monetary": {
+                    "currency": "usd",
+                    "value": 0
+                  }
+                }
+              },
+              "title": "Credit Balance Low Alert"
+            }
+          }
         }
       ]
     }
