@@ -49,6 +49,11 @@ type Model struct {
 	viewport viewport.Model
 	ready    bool
 
+	// outlineWidthOverride, when > 0, constrains outline rule and wrap widths to a
+	// specific column width instead of the full content width. Used by the split
+	// workspace so dividers and wrapped text fit the narrow left column.
+	outlineWidthOverride int
+
 	spinner        spinner.Model
 	err            error
 	sdkSnippet     string
