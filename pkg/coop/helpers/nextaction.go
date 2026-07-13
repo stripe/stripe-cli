@@ -208,7 +208,9 @@ func filterCompletedSuggestions(suggestions []Suggestion, completed map[string]b
 	if len(completed) == 0 {
 		return suggestions
 	}
-	filtered := suggestions[:0]
+	// Allocate a fresh slice rather than reusing the input's backing array
+	// (suggestions[:0]), which would mutate the caller's slice in place.
+	filtered := make([]Suggestion, 0, len(suggestions))
 	for _, suggestion := range suggestions {
 		if completed[suggestion.ID] {
 			continue

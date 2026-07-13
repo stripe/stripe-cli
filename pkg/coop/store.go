@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -28,6 +30,11 @@ var (
 var (
 	sessionLockTimeout      = 5 * time.Second
 	sessionLockPollInterval = 25 * time.Millisecond
+	// sessionLockStale bounds how long a lock file may sit untouched before it's
+	// treated as abandoned by a crashed writer and reclaimed. Healthy writers hold
+	// the lock only for the duration of a single write (well under a second), so a
+	// much larger threshold reliably distinguishes a crash from an active writer.
+	sessionLockStale = 30 * time.Second
 )
 
 // NewStore creates a Store, ensuring the coop directory exists.
@@ -126,6 +133,9 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 	for {
 		f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err == nil {
+			// Record the owning pid and time so a lock abandoned by a crashed
+			// writer can be recognized and reclaimed below.
+			fmt.Fprintf(f, "%d\n%d\n", os.Getpid(), time.Now().UnixNano())
 			f.Close()
 			return func() { os.Remove(lockPath) }, nil
 		}
@@ -133,10 +143,90 @@ func (s *Store) acquireSessionLock(path string) (func(), error) {
 			return nil, fmt.Errorf("creating lock file: %w", err)
 		}
 
+		// Reclaim a lock only when its owner is gone. O_EXCL on the next iteration
+		// ensures a single contender wins the recreate.
+		if s.lockAbandoned(lockPath) {
+			os.Remove(lockPath)
+			continue
+		}
+
 		if time.Now().After(deadline) {
 			return nil, fmt.Errorf("%w: %s is still present; if no stripe coop command is running, remove this lock file and retry", ErrLockTimeout, lockPath)
 		}
 		time.Sleep(sessionLockPollInterval)
+	}
+}
+
+// lockAbandoned reports whether a lock file can be safely reclaimed. The lock
+// records its owner's PID and creation time:
+//   - If that process is alive the lock is left alone, even if old, so a slow
+//     Store.Update callback can't have its lock deleted out from under it.
+//   - Unless the process started *after* the lock was created: then the original
+//     writer crashed and the PID was reused by an unrelated process, so the lock
+//     is stale and reclaimed.
+//   - A known-dead owner's lock is reclaimed immediately.
+//   - When the owner can't be determined — an unparseable PID, or a platform
+//     where liveness can't be checked (e.g. Windows) — fall back to reclaiming by
+//     age so a crashed writer still can't wedge the session forever.
+func (s *Store) lockAbandoned(lockPath string) bool {
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		return false
+	}
+	if pid, created, ok := readLock(lockPath); ok {
+		if alive, known := processAlive(pid); known {
+			if !alive {
+				return true
+			}
+			// PID reuse guard: if we know when both the lock and the process began
+			// and the process started after the lock, it can't be the writer that
+			// created the lock. Only reclaim when we're certain.
+			if start, ok := processStartTime(pid); ok && !created.IsZero() && start.After(created) {
+				return true
+			}
+			return false
+		}
+	}
+	return time.Since(info.ModTime()) > sessionLockStale
+}
+
+// readLock parses the owning PID and creation time from a lock file. The lock
+// format is two lines: the PID, then the creation time as Unix nanoseconds.
+func readLock(lockPath string) (pid int, created time.Time, ok bool) {
+	data, err := os.ReadFile(lockPath)
+	if err != nil {
+		return 0, time.Time{}, false
+	}
+	lines := strings.SplitN(strings.TrimSpace(string(data)), "\n", 3)
+	pid, err = strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil || pid <= 0 {
+		return 0, time.Time{}, false
+	}
+	if len(lines) >= 2 {
+		if nanos, err := strconv.ParseInt(strings.TrimSpace(lines[1]), 10, 64); err == nil {
+			created = time.Unix(0, nanos)
+		}
+	}
+	return pid, created, true
+}
+
+// processAlive reports whether the process with the given PID is running. The
+// second return value is false when liveness can't be determined (e.g. Windows,
+// where signal 0 is unsupported), so callers can fall back to another heuristic.
+func processAlive(pid int) (alive bool, known bool) {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false, false
+	}
+	switch err := proc.Signal(syscall.Signal(0)); {
+	case err == nil:
+		return true, true // signal accepted → process exists
+	case errors.Is(err, syscall.ESRCH), errors.Is(err, os.ErrProcessDone):
+		return false, true // no such process → dead
+	case errors.Is(err, syscall.EPERM):
+		return true, true // exists but not permitted to signal → alive
+	default:
+		return false, false // indeterminate (e.g. unsupported platform)
 	}
 }
 
@@ -239,13 +329,33 @@ func (s *Store) writeUnlocked(path string, session *Session) error {
 		tmp.Close()
 		return fmt.Errorf("writing temp file: %w", err)
 	}
+	// Flush file contents before the rename so a crash can't leave a renamed but
+	// empty/truncated session file (the atomic rename guarantees name-swap
+	// atomicity, not data durability).
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return fmt.Errorf("syncing temp file: %w", err)
+	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("closing temp file: %w", err)
 	}
 	if err := replaceSessionFile(tmpPath, path); err != nil {
 		return err
 	}
+	syncDir(filepath.Dir(path))
 	return nil
+}
+
+// syncDir best-effort fsyncs a directory so a completed rename survives a crash.
+// Errors are ignored: directory fsync is not supported on all platforms and a
+// failure here shouldn't fail an otherwise-successful write.
+func syncDir(dir string) {
+	d, err := os.Open(dir)
+	if err != nil {
+		return
+	}
+	_ = d.Sync()
+	_ = d.Close()
 }
 
 // ModTime returns the file modification time (for polling).
