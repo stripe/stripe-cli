@@ -41,9 +41,8 @@ type CLIAnalyticsEventMetadata struct {
 	UserAgent              string `url:"user_agent"`                         // the application that is used to create this request
 	CommandPath            string `url:"command_path"`                       // the command or gRPC method that initiated this request
 	CommandFlags           string `url:"command_flags"`                      // Comma-separated list of flags that were passed to the command (only includes flag names, not their values)
-	PluginName             string `url:"plugin_name,omitempty"`              // the plugin being installed, when relevant
-	PluginResolutionSource string `url:"plugin_resolution_source,omitempty"` // temporary source used to resolve plugin metadata
-	Merchant               string `url:"merchant"`                           // the merchant ID: ex. acct_xxxx
+	PluginName string `url:"plugin_name,omitempty"` // the plugin being installed, when relevant
+	Merchant   string `url:"merchant"`              // the merchant ID: ex. acct_xxxx
 	CLIVersion             string `url:"cli_version"`                        // the version of the CLI
 	OS                     string `url:"os"`                                 // the OS of the system
 	GeneratedResource      bool   `url:"generated_resource"`                 // whether or not this was a generated resource
@@ -162,10 +161,6 @@ func (e *CLIAnalyticsEventMetadata) SetPluginName(pluginName string) {
 	e.PluginName = pluginName
 }
 
-// SetPluginResolutionSource sets the source used to resolve plugin metadata on the CLIAnalyticsEventContext object.
-func (e *CLIAnalyticsEventMetadata) SetPluginResolutionSource(pluginResolutionSource string) {
-	e.PluginResolutionSource = pluginResolutionSource
-}
 
 // SendAPIRequestEvent is a special function for API requests
 func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {

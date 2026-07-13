@@ -89,11 +89,6 @@ func TestSetPluginName(t *testing.T) {
 	require.Equal(t, "apps", tel.PluginName)
 }
 
-func TestSetPluginResolutionSource(t *testing.T) {
-	tel := stripe.NewEventMetadata()
-	tel.SetPluginResolutionSource("metadata_endpoint")
-	require.Equal(t, "metadata_endpoint", tel.PluginResolutionSource)
-}
 
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
@@ -113,7 +108,6 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "plugin_name=apps")
-		require.Contains(t, bodyString, "plugin_resolution_source=metadata_endpoint")
 		require.Contains(t, bodyString, "request_id=req_zzz")
 		require.Contains(t, bodyString, "terminal_program=iTerm.app")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
@@ -130,7 +124,6 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		OS:                     "darwin",
 		CommandPath:            "stripe test",
 		PluginName:             "apps",
-		PluginResolutionSource: "metadata_endpoint",
 		Merchant:               "acct_1234",
 		GeneratedResource:      false,
 		InTmux:                 true,
@@ -179,7 +172,6 @@ func TestSendEvent(t *testing.T) {
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "plugin_name=apps")
-		require.Contains(t, bodyString, "plugin_resolution_source=metadata_endpoint")
 		require.Contains(t, bodyString, "terminal_program=iTerm.app")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
@@ -195,7 +187,6 @@ func TestSendEvent(t *testing.T) {
 		OS:                     "darwin",
 		CommandPath:            "stripe test",
 		PluginName:             "apps",
-		PluginResolutionSource: "metadata_endpoint",
 		Merchant:               "acct_1234",
 		GeneratedResource:      false,
 		InTmux:                 true,
