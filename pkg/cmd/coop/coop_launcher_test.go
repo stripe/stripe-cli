@@ -2,6 +2,8 @@ package coopcmd
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"charm.land/huh/v2"
@@ -182,4 +184,29 @@ func TestShellQuoteNeutralizesShellMetacharacters(t *testing.T) {
 			assert.True(t, len(got) >= 2 && got[0] == '\'' && got[len(got)-1] == '\'')
 		})
 	}
+}
+
+// TestAgentPaneCommandShellQuotesLauncherPath guards the launcher path itself
+// (not just the values inside the generated script) against a TMPDIR containing
+// a space or shell syntax, since the pane command is executed via `bash -c`.
+func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
+	tmp := filepath.Join(t.TempDir(), "dir with $(spaces)")
+	require.NoError(t, os.MkdirAll(tmp, 0o755))
+	t.Setenv("TMPDIR", tmp)
+
+	rc := &coopRunCmd{}
+	build := rc.agentPaneCommandBuilder(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, "discovery prompt", false)
+	paneCmd, cleanup, err := build(nil)
+	require.NoError(t, err)
+	require.NotNil(t, cleanup)
+	defer cleanup()
+
+	// The generated launcher is the only .sh under the temp dir.
+	matches, err := filepath.Glob(filepath.Join(tmp, "*.sh"))
+	require.NoError(t, err)
+	require.Len(t, matches, 1)
+
+	// The pane command must be exactly the single-quoted launcher path, so
+	// `bash -c` executes the launcher instead of parsing the path.
+	assert.Equal(t, shellQuote(matches[0]), paneCmd)
 }

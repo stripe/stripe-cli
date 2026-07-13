@@ -175,7 +175,11 @@ func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, discoveryPrompt 
 			os.Remove(promptPath)
 			return "", nil, err
 		}
-		return agentCmd, func() {
+		// The returned command is run via `bash -c`, so the launcher path itself
+		// must be shell-quoted — otherwise a temp dir (TMPDIR) containing a space
+		// or shell syntax would be parsed by bash before the launcher runs. The
+		// cleanup closure keeps the raw path for os.Remove.
+		return shellQuote(agentCmd), func() {
 			os.Remove(promptPath)
 			os.Remove(agentCmd)
 		}, nil
