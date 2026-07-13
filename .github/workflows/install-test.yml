@@ -1,41 +1,57 @@
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
   schedule:
-    - cron: '0 * * * *' # Every hour
-  push:
-    tags:
-    - '*'
-  pull_request:
-    types: [opened, edited]
+    - cron: '*/10 * * * *' # Every 10 minutes
 name: Package manager test
 permissions:
   contents: read
 jobs:
   homebrew:
     runs-on: macos-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh homebrew
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+      - id: install_test
+        run: bash scripts/install-test.sh homebrew
+  homebrew-core:
+    runs-on: macos-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - id: install_test
+        run: bash scripts/install-test.sh homebrew-core
   apt:
     runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh apt
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+      - id: install_test
+        run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
     container: fedora:latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - run: |
           if [ ! -d "/etc/yum.repos.d" ]; then
@@ -52,11 +68,12 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh yum
-        env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+      - id: install_test
+        run: bash scripts/install-test.sh yum
   scoop:
     runs-on: windows-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
     - uses: actions/checkout@v6
       with:
@@ -64,46 +81,106 @@ jobs:
           scripts/install-test.sh
         sparse-checkout-cone-mode: false
     - uses: MinoruSekine/setup-scoop@v4
-    - shell: powershell
+    - id: install_test
+      shell: powershell
       run: bash scripts/install-test.sh scoop
-      env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
   winget:
     runs-on: windows-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: 1.26.0
-      - name: Build snapshot and generate winget manifests
-        uses: goreleaser/goreleaser-action@v7
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release -f .goreleaser/windows.yml --clean --snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Validate winget manifests
-        shell: powershell
-        # --ignore-warnings: GoReleaser generates manifests targeting the latest winget-pkgs
-        # schema version, which may be newer than the winget pre-installed on the GitHub
-        # runner. This causes harmless schema header warnings. The actual PR to
-        # microsoft/winget-pkgs is validated against the latest schema by their CI.
-        run: |
-          $manifestDir = Get-ChildItem -Path dist/winget/manifests -Recurse -Directory | Where-Object { $_.GetFiles("*.yaml").Count -gt 0 } | Select-Object -First 1
-          winget validate --ignore-warnings $manifestDir.FullName
+    - uses: actions/checkout@v6
+      with:
+        sparse-checkout: |
+          scripts/install-test.sh
+        sparse-checkout-cone-mode: false
+    - id: install_test
+      shell: powershell
+      run: bash scripts/install-test.sh winget
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
     steps:
       - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: sh scripts/install-test.sh docker
+      - id: install_test
+        run: sh scripts/install-test.sh docker
+
+  npm:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - id: install_test
+        run: bash scripts/install-test.sh npm
+
+  npm-no-optional:
+    runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - id: install_test
+        run: bash scripts/install-test.sh npm-no-optional
+
+  npx:
+    runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      # npm 10 has a bug where conflicting bin entries across a package and its
+      # optional dependency silently drop the bin link, causing "stripe: not found".
+      - run: npm install -g npm@11
+      - id: install_test
+        run: bash scripts/install-test.sh npx
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [homebrew, homebrew-core, apt, yum, scoop, winget, docker, npm, npm-no-optional, npx]
+    if: always()
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/notify.sh
+          sparse-checkout-cone-mode: false
+      - run: bash scripts/notify.sh
         env:
+          OVERALL_RESULT: ${{ contains(needs.*.outputs.install_test_result, 'failure') && 'failure' || contains(needs.*.result, 'failure') && 'skip' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-install-test
+          PAGERDUTY_SUMMARY: "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+          PAGERDUTY_RESOLVE_SUMMARY: "Stripe CLI installation is passing again"
+          PAGERDUTY_SEVERITY: critical
+          DRYRUN: ${{ inputs.dryrun }}

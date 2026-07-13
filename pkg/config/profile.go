@@ -1,23 +1,31 @@
 package config
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
+
+// Compartment represents a Stripe compartment from the OIDC userinfo response.
+type Compartment struct {
+	CompartmentID string `json:"compartment_id" mapstructure:"compartment_id" toml:"compartment_id"`
+	Livemode      bool   `json:"livemode"        mapstructure:"livemode"        toml:"livemode"`
+}
+
+// UserInfo mirrors the OIDC userinfo endpoint response and is persisted as a
+// nested table in the profile config.
+type UserInfo struct {
+	Compartments []Compartment `json:"https://stripe.com/compartments" mapstructure:"compartments" toml:"compartments"`
+}
 
 // Profile handles all things related to managing the project specific configurations
 type Profile struct {
@@ -31,6 +39,10 @@ type Profile struct {
 	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
+	SandboxClaimURL        string
+	SandboxExpiresAt       string
+	UAT                    string
+	UserInfo               *UserInfo
 }
 
 // config key names
@@ -45,7 +57,12 @@ const (
 	LiveModeAPIKeyName         = "live_mode_api_key"
 	LiveModePubKeyName         = "live_mode_pub_key"
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
+	SandboxClaimURLName        = "sandbox_claim_url"
+	SandboxExpiresAtName       = "sandbox_expires_at"
+	UserInfoName               = "user_info"
 )
+
+const UATKeychainItemKey = "uat"
 
 const (
 	// DateStringFormat is the format for expiredAt date
@@ -58,60 +75,8 @@ const (
 	KeyManagementService = "StripeCLI"
 )
 
-// KeyRing ...
-var KeyRing keyring.Keyring
-
-func isWSLFromVersion(procVersion string) bool {
-	lower := strings.ToLower(procVersion)
-	return strings.Contains(lower, "microsoft") || strings.Contains(lower, "wsl")
-}
-
-func isWSL() bool {
-	data, err := os.ReadFile("/proc/version")
-	if err != nil {
-		return false
-	}
-	return isWSLFromVersion(string(data))
-}
-
-func wslFilePasswordFromPaths(machineIDPath, bootIDPath string) (string, error) {
-	machineID, err := os.ReadFile(machineIDPath)
-	if err != nil {
-		return "", fmt.Errorf("could not read %s: %w", machineIDPath, err)
-	}
-	bootID, err := os.ReadFile(bootIDPath)
-	if err != nil {
-		return "", fmt.Errorf("could not read %s: %w", bootIDPath, err)
-	}
-	const appKey = "stripe-cli-keyring-v1"
-	mac := hmac.New(sha256.New, []byte(appKey))
-	mac.Write([]byte(strings.TrimSpace(string(machineID))))
-	mac.Write([]byte(strings.TrimSpace(string(bootID))))
-	return hex.EncodeToString(mac.Sum(nil)), nil
-}
-
-func wslFilePassword(_ string) (string, error) {
-	return wslFilePasswordFromPaths("/etc/machine-id", "/proc/sys/kernel/random/boot_id")
-}
-
-func getKeyringConfig() keyring.Config {
-	c := keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-	}
-
-	if runtime.GOOS == "linux" {
-		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		c.FilePasswordFunc = wslFilePassword
-		if isWSL() {
-			c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
-		} else {
-			c.AllowedBackends = []keyring.BackendType{keyring.SecretServiceBackend, keyring.FileBackend}
-		}
-	}
-
-	return c
-}
+// KeyRing is the global secure credential store.
+var KeyRing keyring.SecureStore
 
 // authFieldNames are the config fields that are removed on login/logout.
 // Non-auth fields like "color" are preserved.
@@ -127,6 +92,9 @@ var authFieldNames = []string{
 	LiveModePubKeyName,
 	LiveModeKeyExpiresAtName,
 	"profile_name",
+	// sandbox-specific fields from stripe sandbox create
+	SandboxClaimURLName,
+	SandboxExpiresAtName,
 	// legacy field names from older config formats
 	"secret_key",
 	"api_key",
@@ -143,6 +111,15 @@ func (p *Profile) CreateProfile() error {
 
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
+
+	// user_info is top-level; remove it before re-writing so stale data is never kept
+	if v.IsSet(UserInfoName) {
+		var err error
+		v, err = removeKey(v, UserInfoName)
+		if err != nil {
+			return err
+		}
+	}
 
 	writeErr := p.writeProfile(v)
 	if writeErr != nil {
@@ -217,6 +194,49 @@ func (p *Profile) GetAccountID() (string, error) {
 	return "", validators.ErrAccountIDNotConfigured
 }
 
+// HasOverrideAPIKey reports whether an in-memory API key override is active
+// (via STRIPE_API_KEY env var or --api-key flag).
+func (p *Profile) HasOverrideAPIKey() bool {
+	return os.Getenv("STRIPE_API_KEY") != "" || p.APIKey != ""
+}
+
+// isLivemodeKey reports whether a key's prefix indicates live mode.
+func isLivemodeKey(key string) bool {
+	parts := strings.SplitN(key, "_", 3)
+	return len(parts) >= 2 && parts[1] == "live"
+}
+
+// HasAPIKey reports whether an API key is available for the given mode without
+// reading its value. For live mode this checks the keyring key list only,
+// avoiding OS-level auth prompts (e.g. macOS Keychain) that would be required
+// to access the secret data.
+func (p *Profile) HasAPIKey(livemode bool) bool {
+	if key := os.Getenv("STRIPE_API_KEY"); key != "" {
+		return isLivemodeKey(key) == livemode
+	}
+	if p.APIKey != "" {
+		return isLivemodeKey(p.APIKey) == livemode
+	}
+
+	if !livemode {
+		if err := viper.ReadInConfig(); err != nil {
+			return false
+		}
+		if viper.IsSet(p.GetConfigField("secret_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "secret_key")
+		} else if viper.IsSet(p.GetConfigField("api_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "api_key")
+		}
+		return viper.GetString(p.GetConfigField(TestModeAPIKeyName)) != ""
+	}
+
+	if KeyRing == nil {
+		return false
+	}
+	_, err := KeyRing.Get(p.GetConfigField(LiveModeAPIKeyName))
+	return err == nil
+}
+
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	envKey := os.Getenv("STRIPE_API_KEY")
@@ -258,7 +278,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		p.redactAllLivemodeValues()
 		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
-			return "", err
+			return "", errors.New("your live mode API key needs to be re-configured. Run `stripe login` to re-authenticate")
 		}
 	}
 
@@ -360,7 +380,7 @@ func (p *Profile) RegisterAlias(alias, key string) {
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.ReadInConfig()
 	viper.Set(p.GetConfigField(field), value)
-	return viper.WriteConfig()
+	return writeConfig(viper.GetViper())
 }
 
 // DeleteConfigField deletes a configuration field.
@@ -398,7 +418,9 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
 
 		// // store actual key in secure keyring
-		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
+		if err := p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key"); err != nil {
+			return err
+		}
 	}
 
 	if p.LiveModePublishableKey != "" {
@@ -420,6 +442,30 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.AccountID != "" {
 		runtimeViper.Set(p.GetConfigField(AccountIDName), strings.TrimSpace(p.AccountID))
+	}
+
+	if p.SandboxClaimURL != "" {
+		runtimeViper.Set(p.GetConfigField(SandboxClaimURLName), strings.TrimSpace(p.SandboxClaimURL))
+	}
+
+	if p.SandboxExpiresAt != "" {
+		runtimeViper.Set(p.GetConfigField(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
+	}
+
+	if KeyRing != nil {
+		if p.UAT != "" {
+			if err := KeyRing.Set(UATKeychainItemKey, []byte(strings.TrimSpace(p.UAT)), "Stripe CLI user access token"); err != nil {
+				return err
+			}
+		} else {
+			if err := KeyRing.Remove(UATKeychainItemKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+				return err
+			}
+		}
+	}
+
+	if p.UserInfo != nil {
+		runtimeViper.Set(UserInfoName, p.UserInfo)
 	}
 
 	runtimeViper.MergeInConfig()
@@ -511,48 +557,48 @@ func getKeyExpiresAt() string {
 }
 
 // saveLivemodeValue saves livemode value of given key in keyring
-func (p *Profile) saveLivemodeValue(field, value, description string) {
+func (p *Profile) saveLivemodeValue(field, value, description string) error {
 	fieldID := p.GetConfigField(field)
-	_ = KeyRing.Set(keyring.Item{
-		Key:         fieldID,
-		Data:        []byte(value),
-		Description: description,
-		Label:       fieldID,
-	})
+	return KeyRing.Set(fieldID, []byte(value), description)
 }
 
 // retrieveLivemodeValue retrieves livemode value of given key in keyring
 func (p *Profile) retrieveLivemodeValue(key string) (string, error) {
 	fieldID := p.GetConfigField(key)
-	existingKeys, err := KeyRing.Keys()
+	data, err := KeyRing.Get(fieldID)
 	if err != nil {
-		return "", err
+		return "", validators.ErrAPIKeyNotConfigured
 	}
-
-	for _, item := range existingKeys {
-		if item == fieldID {
-			value, _ := KeyRing.Get(fieldID)
-			return string(value.Data), nil
-		}
-	}
-
-	return "", validators.ErrAPIKeyNotConfigured
+	return string(data), nil
 }
 
 // deleteLivemodeValue deletes livemode value of given key in keyring
 func (p *Profile) deleteLivemodeValue(key string) error {
 	fieldID := p.GetConfigField(key)
-	existingKeys, err := KeyRing.Keys()
-	if err != nil {
-		return err
+	err := KeyRing.Remove(fieldID)
+	if errors.Is(err, keyring.ErrKeyNotFound) {
+		return nil
 	}
-	for _, item := range existingKeys {
-		if item == fieldID {
-			KeyRing.Remove(fieldID)
-			return nil
-		}
+	return err
+}
+
+// GetUserInfo reads the stored UserInfo from the profile config.
+// Returns nil, nil when no user_info has been saved yet.
+func (p *Profile) GetUserInfo() (*UserInfo, error) {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
 	}
-	return nil
+
+	if !viper.IsSet(UserInfoName) {
+		return nil, nil
+	}
+
+	var ui UserInfo
+	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
+		return nil, err
+	}
+
+	return &ui, nil
 }
 
 // SessionCredentials are the credentials needed for this session
@@ -565,20 +611,16 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(getKeyringConfig())
+	data, err := KeyRing.Get(key)
 	if err != nil {
-		return nil, err
-	}
-	keyringItem, err := ring.Get(key)
-	if err != nil {
-		if err == keyring.ErrKeyNotFound {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return nil, errors.New("no session")
 		}
 		return nil, err
 	}
 
 	creds := SessionCredentials{}
-	if err := json.Unmarshal(keyringItem.Data, &creds); err != nil {
+	if err := json.Unmarshal(data, &creds); err != nil {
 		return nil, err
 	}
 

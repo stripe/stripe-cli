@@ -2,12 +2,16 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"runtime"
+	"sync"
+	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -68,7 +72,7 @@ func (c *CoreCLIHelperClient) KeychainDeletePassword(key string) (bool, error) {
 }
 
 func (c *CoreCLIHelperClient) KeychainFindCredentials() ([]string, error) {
-	resp, err := c.client.KeychainFindCredentials(context.Background(), &proto.KeychainFindCredentialsRequest{})
+	resp, err := c.client.KeychainFindCredentials(context.Background(), &proto.KeychainFindCredentialsRequest{}) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -129,12 +133,12 @@ func (s *CoreCLIHelperServer) KeychainDeletePassword(ctx context.Context, req *p
 	return &proto.KeychainDeletePasswordResponse{Deleted: deleted}, nil
 }
 
-func (s *CoreCLIHelperServer) KeychainFindCredentials(ctx context.Context, req *proto.KeychainFindCredentialsRequest) (*proto.KeychainFindCredentialsResponse, error) {
+func (s *CoreCLIHelperServer) KeychainFindCredentials(ctx context.Context, req *proto.KeychainFindCredentialsRequest) (*proto.KeychainFindCredentialsResponse, error) { //nolint:staticcheck
 	keys, err := s.Impl.KeychainFindCredentials()
 	if err != nil {
 		return nil, err
 	}
-	return &proto.KeychainFindCredentialsResponse{Keys: keys}, nil
+	return &proto.KeychainFindCredentialsResponse{Keys: keys}, nil //nolint:staticcheck
 }
 
 func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunPeerPluginRequest) (*proto.RunPeerPluginResponse, error) {
@@ -153,6 +157,70 @@ type coreCLIHelper struct {
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
+
+type pendingKeychainValue struct {
+	value     string
+	expiresAt time.Time
+}
+
+var (
+	keychainVisibilityRetryTimeout  = 1500 * time.Millisecond
+	keychainVisibilityRetryEnabled  = runtime.GOOS == "darwin"
+	keychainVisibilityNow           = time.Now
+	keychainVisibilityPendingMu     sync.Mutex
+	keychainVisibilityPendingValues = map[string]pendingKeychainValue{}
+)
+
+func readKeychainPassword(key string) (string, bool, error) {
+	data, err := config.KeyRing.Get(key)
+	if err == nil {
+		return string(data), true, nil
+	}
+	if errors.Is(err, keyring.ErrKeyNotFound) {
+		return "", false, nil
+	}
+	return "", false, err
+}
+
+func rememberPendingKeychainValue(key string, value string) {
+	if !keychainVisibilityRetryEnabled {
+		return
+	}
+
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+
+	keychainVisibilityPendingValues[key] = pendingKeychainValue{
+		value:     value,
+		expiresAt: keychainVisibilityNow().Add(keychainVisibilityRetryTimeout),
+	}
+}
+
+func pendingKeychainValueFor(key string) (string, bool) {
+	if !keychainVisibilityRetryEnabled {
+		return "", false
+	}
+
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+
+	pending, ok := keychainVisibilityPendingValues[key]
+	if !ok {
+		return "", false
+	}
+	if !keychainVisibilityNow().Before(pending.expiresAt) {
+		delete(keychainVisibilityPendingValues, key)
+		return "", false
+	}
+
+	return pending.value, true
+}
+
+func clearPendingKeychainValue(key string) {
+	keychainVisibilityPendingMu.Lock()
+	defer keychainVisibilityPendingMu.Unlock()
+	delete(keychainVisibilityPendingValues, key)
+}
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
@@ -181,45 +249,61 @@ func (h *coreCLIHelper) SendAnalytics(eventName string, eventValue string) error
 
 // KeychainGetPassword retrieves a password from the system keychain.
 func (h *coreCLIHelper) KeychainGetPassword(key string) (string, bool, error) {
-	item, err := config.KeyRing.Get(key)
-	if err == keyring.ErrKeyNotFound {
-		return "", false, nil
-	}
+	value, found, err := readKeychainPassword(key)
 	if err != nil {
 		return "", false, err
 	}
-	return string(item.Data), true, nil
+
+	pendingValue, hasPendingValue := pendingKeychainValueFor(key)
+	switch {
+	case hasPendingValue && found && value == pendingValue:
+		clearPendingKeychainValue(key)
+		return value, true, nil
+	case hasPendingValue:
+		return pendingValue, true, nil
+	default:
+		return value, found, nil
+	}
 }
 
 // KeychainSetPassword stores a password in the system keychain.
 func (h *coreCLIHelper) KeychainSetPassword(key string, value string) error {
-	return config.KeyRing.Set(keyring.Item{
-		Key:   key,
-		Data:  []byte(value),
-		Label: key,
-	})
+	if err := config.KeyRing.Set(key, []byte(value), ""); err != nil {
+		return err
+	}
+
+	rememberPendingKeychainValue(key, value)
+	return nil
 }
 
 // KeychainDeletePassword removes a password from the system keychain.
 func (h *coreCLIHelper) KeychainDeletePassword(key string) (bool, error) {
-	existingKeys, err := config.KeyRing.Keys()
+	clearPendingKeychainValue(key)
+
+	err := config.KeyRing.Remove(key)
+	if errors.Is(err, keyring.ErrKeyNotFound) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
-	for _, k := range existingKeys {
-		if k == key {
-			if err := config.KeyRing.Remove(key); err != nil {
-				return false, err
-			}
-			return true, nil
-		}
-	}
-	return false, nil
+	return true, nil
 }
 
-// KeychainFindCredentials lists all keys stored in the keychain for this service.
+// KeychainFindCredentials returns keychain keys that are present in the credential store.
+// It takes a best-effort approach: probing for the one key plugins are most likely to need
+// (the default profile's live mode API key), covering both the OS keychain and the
+// plain-file fallback via readKeychainPassword.
+//
+// Deprecated: full OS-level keychain enumeration is complex and platform-specific.
 func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
-	return config.KeyRing.Keys()
+	// "default" is hardcoded for best-effort backwards compatibility
+	key := "default." + config.LiveModeAPIKeyName
+	_, exists, err := readKeychainPassword(key)
+	if err != nil || !exists {
+		return []string{}, err
+	}
+	return []string{key}, nil
 }
 
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.

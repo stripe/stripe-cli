@@ -41,14 +41,14 @@ func TestGetPathNoXDG(t *testing.T) {
 	expected += filepath.Join("/", ".config", "stripe")
 
 	require.NoError(t, err)
-	require.Equal(t, actual, expected)
+	require.Equal(t, expected, actual)
 }
 
 func TestGetPathXDG(t *testing.T) {
 	actual := Config.GetConfigFolder("/some/xdg/path")
 	expected := filepath.Join("/", "some", "xdg", "path", "stripe")
 
-	require.Equal(t, actual, expected)
+	require.Equal(t, expected, actual)
 }
 
 func TestHelpFlag(t *testing.T) {
@@ -60,39 +60,46 @@ func TestHelpFlag(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSandboxVisibleInHelp(t *testing.T) {
+	Execute(context.Background())
+
+	output, err := executeCommand(rootCmd, "--help")
+	require.NoError(t, err)
+	require.Contains(t, output, "sandbox")
+}
+
 func TestExampleCommands(t *testing.T) {
 	{
 		_, err := executeCommand(rootCmd, "foo")
-		require.Equal(t, err.Error(), "unknown command \"foo\" for \"stripe\"")
+		require.Equal(t, "unknown command \"foo\" for \"stripe\"", err.Error())
 	}
 	{
 		_, err := executeCommand(rootCmd, "listen", "foo")
-		require.Equal(t, err.Error(), "`stripe listen` does not take any positional arguments. See `stripe listen --help` for supported flags and usage")
+		require.Equal(t, "`stripe listen` does not take any positional arguments. See `stripe listen --help` for supported flags and usage", err.Error())
 	}
 	{
 		_, err := executeCommand(rootCmd, "post")
-		require.Equal(t, err.Error(), "`stripe post` requires exactly 1 positional argument. See `stripe post --help` for supported flags and usage")
+		require.Equal(t, "`stripe post` requires exactly 1 positional argument. See `stripe post --help` for supported flags and usage", err.Error())
 	}
 	{
 		_, err := executeCommand(rootCmd, "samples", "create", "foo", "foo", "foo")
-		require.Equal(t, err.Error(), "`stripe samples create` accepts at maximum 2 positional arguments. See `stripe samples create --help` for supported flags and usage")
+		require.Equal(t, "`stripe samples create` accepts at maximum 2 positional arguments. See `stripe samples create --help` for supported flags and usage", err.Error())
 	}
 }
 
 func TestReadProjectDefault(t *testing.T) {
 	executeCommand(rootCmd, "version")
-	require.Equal(t, Config.Profile.ProfileName, "default")
+	require.Equal(t, "default", Config.Profile.ProfileName)
 }
 
 func TestReadProjectFromEnv(t *testing.T) {
 	// Run this test in a subprocess since side effects from other tests interfere with this
 	if os.Getenv("BE_TestReadProjectFromEnv") == "1" {
-		os.Setenv("STRIPE_PROJECT_NAME", "from-env")
-		defer os.Unsetenv("STRIPE_PROJECT_NAME")
+		t.Setenv("STRIPE_PROJECT_NAME", "from-env")
 
 		executeCommand(rootCmd, "version")
 
-		require.Equal(t, Config.Profile.ProfileName, "from-env")
+		require.Equal(t, "from-env", Config.Profile.ProfileName)
 		return
 	}
 	cmd := exec.Command(os.Args[0], "-test.run=TestReadProjectFromEnv")
@@ -106,16 +113,15 @@ func TestReadProjectFromEnv(t *testing.T) {
 func TestReadProjectFromFlag(t *testing.T) {
 	executeCommand(rootCmd, "version", "--project-name", "from-flag")
 
-	require.Equal(t, Config.Profile.ProfileName, "from-flag")
+	require.Equal(t, "from-flag", Config.Profile.ProfileName)
 }
 
 func TestReadProjectFlagHasPrecedence(t *testing.T) {
-	os.Setenv("STRIPE_PROJECT_NAME", "from-env")
-	defer os.Unsetenv("STRIPE_PROJECT_NAME")
+	t.Setenv("STRIPE_PROJECT_NAME", "from-env")
 
 	executeCommand(rootCmd, "version", "--project-name", "from-flag")
 
-	require.Equal(t, Config.Profile.ProfileName, "from-flag")
+	require.Equal(t, "from-flag", Config.Profile.ProfileName)
 }
 
 func TestV2BillingOverrides(t *testing.T) {

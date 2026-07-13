@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
@@ -338,6 +340,9 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 		if strings.Contains(contentType, "application/pdf") {
 			// Extract a filename from the path (e.g., /v1/quotes/qt_123/pdf -> qt_123.pdf)
 			filename := extractFilenameFromPath(path, "pdf")
+			if err := fsutil.RefuseWriteThroughSymlinkOS(filename, filepath.Dir(filename), filename); err != nil {
+				return []byte{}, err
+			}
 			err := os.WriteFile(filename, body, 0644)
 			if err != nil {
 				return []byte{}, fmt.Errorf("failed to save PDF file: %w", err)

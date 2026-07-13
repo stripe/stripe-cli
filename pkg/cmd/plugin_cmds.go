@@ -31,6 +31,8 @@ type pluginTemplateCmd struct {
 	cmd        *cobra.Command
 	fs         afero.Fs
 	ParsedArgs []string
+
+	runPluginCmdFn func(cmd *cobra.Command, args []string) error
 }
 
 // newPluginTemplateCmd is a generic plugin command template to dynamically use
@@ -39,14 +41,16 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc := &pluginTemplateCmd{}
 	ptc.fs = afero.NewOsFs()
 	ptc.cfg = config
+	ptc.runPluginCmdFn = ptc.runPluginCmd
 
 	ptc.cmd = &cobra.Command{
 		Use:   plugin.Shortname,
 		Short: plugin.Shortdesc,
+		Long:  plugin.Description,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// "stripe [host_flags...] plugin_name [plugin_subcommands...] [plugin_flags...]" => "[plugin_subcommands...] [plugin_flags...]"
 			pluginArgs := subsliceAfter(os.Args, cmd.Name())
-			return ptc.runPluginCmd(cmd, pluginArgs)
+			return ptc.runPluginCmdFn(cmd, pluginArgs)
 		},
 		Annotations: map[string]string{"scope": "plugin"},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -66,7 +70,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 			// "stripe plugin_name [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
 			args = subsliceAfter(s, c.Name())
 		}
-		ptc.runPluginCmd(c, args)
+		ptc.runPluginCmdFn(c, args)
 	})
 
 	// Add subcommand stubs from manifest metadata so they appear in --map and help
@@ -88,7 +92,7 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 			Short: ci.Desc,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				pluginArgs := subsliceAfter(os.Args, ptc.cmd.Name())
-				return ptc.runPluginCmd(ptc.cmd, pluginArgs)
+				return ptc.runPluginCmdFn(cmd, pluginArgs)
 			},
 			Annotations: map[string]string{"scope": "plugin"},
 			FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -102,7 +106,7 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 
 // runPluginCmd hands off to the plugin itself to take over
 func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) error {
-	ctx := withSIGTERMCancel(cmd.Context(), func() {
+	ctx := withSIGTERMCancel(commandContextOrBackground(cmd), func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.pluginCmd.runPluginCmd",
 		}).Debug("Ctrl+C received, cleaning up...")
@@ -123,6 +127,9 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 
 	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "")
 	plugins.CleanupAllClients()
+	if err == nil {
+		plugins.CheckLatestPluginVersion(ptc.cfg, fs, plugin)
+	}
 
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {
@@ -139,6 +146,14 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	}
 
 	return nil
+}
+
+func commandContextOrBackground(cmd *cobra.Command) context.Context {
+	if cmd == nil || cmd.Context() == nil {
+		return context.Background()
+	}
+
+	return cmd.Context()
 }
 
 // Return a copy of sl strictly after the first occurrence of str, or empty slice if not found.

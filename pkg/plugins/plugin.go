@@ -19,6 +19,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -46,26 +47,27 @@ type CommandInfo struct {
 
 // Plugin contains the plugin properties
 type Plugin struct {
-	Shortname        string        `toml:"Shortname"`
-	Shortdesc        string        `toml:"Shortdesc"`
-	Binary           string        `toml:"Binary"`
-	Releases         []Release     `toml:"Release"`
-	MagicCookieValue string        `toml:"MagicCookieValue"`
-	Commands         []CommandInfo `toml:"Command,omitempty"`
+	Shortname        string        `toml:"Shortname" json:"shortname"`
+	Shortdesc        string        `toml:"Shortdesc" json:"shortdesc"`
+	Description      string        `toml:"Description,omitempty" json:"description,omitempty"`
+	Binary           string        `toml:"Binary" json:"binary"`
+	Releases         []Release     `toml:"Release" json:"releases"`
+	MagicCookieValue string        `toml:"MagicCookieValue" json:"magic_cookie_value,omitempty"`
+	Commands         []CommandInfo `toml:"Command,omitempty" json:"commands,omitempty"`
 }
 
 // PluginList contains a list of plugins
 type PluginList struct {
-	Plugins []Plugin `toml:"Plugin"`
+	Plugins []Plugin `toml:"Plugin" json:"plugins"`
 }
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string            `toml:"Arch"`
-	OS      string            `toml:"OS"`
-	Version string            `toml:"Version"`
-	Sum     string            `toml:"Sum"`
-	Runtime map[string]string `toml:"Runtime,omitempty"`
+	Arch    string            `toml:"Arch" json:"arch"`
+	OS      string            `toml:"OS" json:"os"`
+	Version string            `toml:"Version" json:"version"`
+	Sum     string            `toml:"Sum" json:"sum,omitempty"`
+	Runtime map[string]string `toml:"Runtime,omitempty" json:"runtime,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -203,16 +205,65 @@ func (p *Plugin) LookUpLatestVersion() string {
 
 // getReleaseForVersion finds the release object for a specific version on the current platform
 func (p *Plugin) getReleaseForVersion(version string) *Release {
-	opsystem := runtime.GOOS
-	arch := runtime.GOARCH
+	return p.getRelease(version, runtime.GOOS, runtime.GOARCH)
+}
 
+func (p *Plugin) getRelease(version, opsystem, arch string) *Release {
 	for _, release := range p.Releases {
 		if release.Version == version && release.OS == opsystem && release.Arch == arch {
-			return &release
+			releaseCopy := release
+			return &releaseCopy
 		}
 	}
 
 	return nil
+}
+
+func copyRuntime(runtimeRequirements map[string]string) map[string]string {
+	if len(runtimeRequirements) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]string, len(runtimeRequirements))
+	for name, version := range runtimeRequirements {
+		cloned[name] = version
+	}
+
+	return cloned
+}
+
+func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
+	pluginList, err := validatePluginManifest([]byte(pluginManifest))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, candidate := range pluginList.Plugins {
+		if candidate.Shortname != p.Shortname {
+			continue
+		}
+
+		if len(candidate.Commands) == 0 && len(p.Commands) > 0 {
+			candidate.Commands = p.Commands
+		}
+
+		for i := range candidate.Releases {
+			if len(candidate.Releases[i].Runtime) != 0 {
+				continue
+			}
+
+			existingRelease := p.getRelease(candidate.Releases[i].Version, candidate.Releases[i].OS, candidate.Releases[i].Arch)
+			if existingRelease == nil || len(existingRelease.Runtime) == 0 {
+				continue
+			}
+
+			candidate.Releases[i].Runtime = copyRuntime(existingRelease.Runtime)
+		}
+
+		return &candidate, nil
+	}
+
+	return nil, fmt.Errorf("plugin metadata response did not include plugin %s", p.Shortname)
 }
 
 // IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
@@ -242,26 +293,73 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 	return ""
 }
 
-// Install installs the plugin of the given version
-func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
+// Install installs the plugin of the given version.
+func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string) error {
+	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false)
+}
+
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
+	pluginToInstall := p
+	pluginDownloadURL := resolvedBinaryURL
+	downloadURLFromMetadata := resolvedBinaryURL != ""
+	metadataBaseURL := apiBaseURL
+	if apiKey == "" && dashboardBaseURL != "" {
+		metadataBaseURL = dashboardBaseURL
+	}
 
-	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
-
-	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+	if !skipMetadataLookup {
+		metadataEndpoint := "/v1/stripecli/get-plugin-metadata"
+		if apiKey == "" {
+			metadataEndpoint = "/ajax/stripecli/plugins_metadata"
+		}
 
 		log.WithFields(log.Fields{
-			"prefix": "plugins.plugin.Install",
-		}).Debugf("install error: %s", err)
+			"prefix":   "plugins.plugin.Install",
+			"base_url": metadataBaseURL,
+			"endpoint": metadataEndpoint,
+			"plugin":   p.Shortname,
+			"version":  version,
+			"os":       runtime.GOOS,
+			"arch":     runtime.GOARCH,
+		}).Debug("Fetching plugin metadata for install")
 
-		return errors.New("you don't seem to have access to this plugin")
+		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+			}).Debugf("could not fetch plugin metadata, falling back to plugin URL lookup: %s", err)
+		} else {
+			pluginFromMetadata, err := p.pluginFromMetadata(pluginMetadata.PluginManifest)
+			if err != nil {
+				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+				return err
+			}
+
+			pluginToInstall = pluginFromMetadata
+			pluginDownloadURL = pluginMetadata.BinaryURL
+			downloadURLFromMetadata = true
+		}
+	}
+
+	if pluginDownloadURL == "" {
+		var err error
+		pluginDownloadURL, err = getLegacyPluginDownloadURL(ctx, cfg, apiKey, apiBaseURL, version, pluginToInstall)
+		if err != nil {
+			ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+			}).Debugf("install error: %s", err)
+
+			return errors.New("you don't seem to have access to this plugin")
+		}
 	}
 
 	// Check if this plugin requires a runtime and install it if needed
-	release := p.getReleaseForVersion(version)
+	release := pluginToInstall.getReleaseForVersion(version)
 	if release != nil {
 		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
 			ansi.StopSpinner(spinner, "", os.Stdout)
@@ -272,32 +370,41 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		}
 	}
 
-	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)
-
 	// Pull down bin, verify, and save to disk
-	err = p.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
+	var err error
+	err = pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
+	if err != nil && downloadURLFromMetadata {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Install",
+		}).Debugf("could not download plugin from metadata URL, falling back to plugin URL lookup: %s", err)
+
+		fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, apiBaseURL, version, pluginToInstall)
+		if fallbackErr != nil {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+			}).Debugf("could not look up fallback plugin URL after metadata download failed: %s", fallbackErr)
+		} else {
+			err = pluginToInstall.downloadAndSavePlugin(cfg, fallbackURL, fs, version)
+		}
+	}
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
 		return err
 	}
 
-	installedList := cfg.GetInstalledPlugins()
-
-	// check for plugin already in list (ie. in the case of an upgrade)
-	isInstalled := false
-	for _, name := range installedList {
-		if name == p.Shortname {
-			isInstalled = true
+	if err := PersistInstalledPluginState(cfg, fs, *pluginToInstall); err != nil {
+		pluginPath := pluginToInstall.getPluginInstallPath(cfg, version)
+		if cleanupErr := fs.RemoveAll(pluginPath); cleanupErr != nil {
+			log.WithFields(log.Fields{
+				"prefix": "plugins.plugin.Install",
+				"path":   pluginPath,
+			}).Debugf("could not clean up plugin after local metadata write failure: %s", cleanupErr)
 		}
-	}
 
-	if !isInstalled {
-		installedList = append(installedList, p.Shortname)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+		return err
 	}
-
-	// sync list of installed plugins to file
-	cfg.WriteConfigField("installed_plugins", installedList)
 
 	// Once the plugin is successfully downloaded, clean up other versions
 	p.cleanUpPluginPath(cfg, fs, version)
@@ -305,6 +412,15 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	ansi.StopSpinner(spinner, "", os.Stdout)
 
 	return nil
+}
+
+func getLegacyPluginDownloadURL(ctx context.Context, cfg config.IConfig, apiKey, baseURL, version string, plugin *Plugin) (string, error) {
+	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, plugin.Shortname, version, runtime.GOOS, runtime.GOARCH, plugin.Binary), nil
 }
 
 // Uninstall removes a plugin from the disk and from the config's installed plugins list
@@ -318,23 +434,43 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 		}
 	}
 
-	if pluginIdx == -1 {
-		return errors.New("this plugin doesn't seem to be installed, canceling")
-	}
-
 	pluginDir := p.getPluginInstallPath(config, "")
-
-	err := fs.RemoveAll(pluginDir)
-
+	dirExists, err := afero.DirExists(fs, pluginDir)
+	if err != nil {
+		return err
+	}
+	metadataPath := getLocalPluginMetadataPath(config, p.Shortname)
+	metadataExists, err := afero.Exists(fs, metadataPath)
 	if err != nil {
 		return err
 	}
 
-	// remove plugin from installed plugins list in profile
-	installedList := make([]string, 0)
-	installedList = append(installedList, pluginList[:pluginIdx]...)
-	installedList = append(installedList, pluginList[pluginIdx+1:]...)
-	config.WriteConfigField("installed_plugins", installedList)
+	if pluginIdx == -1 && !dirExists && !metadataExists {
+		return errors.New("this plugin doesn't seem to be installed, canceling")
+	}
+
+	previousState, err := snapshotInstalledPluginState(config, fs, p.Shortname)
+	if err != nil {
+		return err
+	}
+
+	if err := removeLocalPluginMetadata(config, fs, p.Shortname); err != nil {
+		return err
+	}
+	if err := RemoveInstalledPlugin(config, p.Shortname); err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, p.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to update uninstall state for plugin %s: %w; rollback failed: %v", p.Shortname, err, rollbackErr)
+		}
+		return err
+	}
+
+	err = fs.RemoveAll(pluginDir)
+	if err != nil {
+		if rollbackErr := rollbackInstalledPluginState(config, fs, p.Shortname, previousState); rollbackErr != nil {
+			return fmt.Errorf("failed to remove plugin files for %s: %w; rollback failed: %v", p.Shortname, err, rollbackErr)
+		}
+		return err
+	}
 
 	return nil
 }
@@ -369,6 +505,10 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 	err := p.verifyChecksum(reader, version)
 	if err != nil {
 		logger.Debug("could not match checksum of plugin")
+		return err
+	}
+
+	if err := fsutil.RefuseWriteThroughSymlink(fs, pluginFilePath, filepath.Dir(getPluginsDir(config)), filepath.Base(pluginFilePath)); err != nil {
 		return err
 	}
 
@@ -459,11 +599,19 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			return err
 		}
 
-		// if plugin is not installed locally, then we should install it first
+		// If the plugin binary is missing locally, resolve the freshest metadata
+		// before reinstalling so stale cached local metadata does not pin us to an
+		// older release.
 		if version == "" {
-			version = p.LookUpLatestVersion()
-			err := p.Install(ctx, config, fs, version, stripe.DefaultAPIBaseURL)
+			dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+			resolvedPlugin, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 			if err != nil {
+				return err
+			}
+
+			p = resolvedPlugin.Plugin
+			version = resolvedPlugin.Version
+			if err := resolvedPlugin.Install(ctx, config, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
 				return err
 			}
 		}

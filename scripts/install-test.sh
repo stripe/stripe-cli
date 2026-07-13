@@ -11,6 +11,12 @@ run_install() {
     case $PACKAGE_MANAGER in
     homebrew)
         brew install stripe/stripe-cli/stripe
+        stripe --version
+    ;;
+
+    homebrew-core)
+        brew install stripe
+        stripe --version
     ;;
 
     apt)
@@ -18,18 +24,49 @@ run_install() {
         echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
         sudo apt update
         sudo apt install stripe
+        stripe --version
     ;;
 
     yum)
         yum -y install stripe
+        stripe --version
     ;;
 
     scoop)
         scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
         scoop install stripe
+        stripe --version
+    ;;
+
+    winget)
+        # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
+        winget source reset --force
+        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        # winget modifies PATH but the current shell process doesn't inherit the change;
+        # explicitly add the WinGet Links directory where the stripe alias was created.
+        PATH="$PATH:$(cygpath -u "$LOCALAPPDATA/Microsoft/WinGet/Links")"
+        export PATH
+        stripe --version
     ;;
 
     docker)
+        # The workflow runs this script inside the stripe/stripe-cli:latest container,
+        # so the stripe binary is already present. No install step needed.
+        stripe --version
+    ;;
+
+    npm)
+        npm install -g @stripe/cli
+        stripe --version
+    ;;
+
+    npm-no-optional)
+        npm install -g @stripe/cli --no-optional
+        stripe --version
+    ;;
+
+    npx)
+        npx --yes @stripe/cli --version
     ;;
 
     *)
@@ -39,17 +76,6 @@ run_install() {
         exit 1
         ;;
     esac
-
-    stripe --version
-}
-
-trigger_pagerduty_alert() {
-    sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
-    pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
-    --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
-    --timestamp "\"$(date)\"" \
-    --source "Stripe CLI GitHub Actions" \
-    --severity critical
 }
 
 if ! run_install
@@ -71,7 +97,6 @@ then
                 run_install
                 if ! run_install
                 then
-                trigger_pagerduty_alert
                 exit 1
                 fi
             fi

@@ -89,6 +89,12 @@ func TestSetPluginName(t *testing.T) {
 	require.Equal(t, "apps", tel.PluginName)
 }
 
+func TestSetPluginResolutionSource(t *testing.T) {
+	tel := stripe.NewEventMetadata()
+	tel.SetPluginResolutionSource("metadata_endpoint")
+	require.Equal(t, "metadata_endpoint", tel.PluginResolutionSource)
+}
+
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -100,12 +106,16 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "command_path=stripe+test")
 		require.Contains(t, bodyString, "event_name=API+Request")
 		require.Contains(t, bodyString, "generated_resource=false")
+		require.Contains(t, bodyString, "in_screen=true")
+		require.Contains(t, bodyString, "in_tmux=true")
 		require.Contains(t, bodyString, "invocation_id=123456")
 		require.Contains(t, bodyString, "livemode=false")
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "plugin_name=apps")
+		require.Contains(t, bodyString, "plugin_resolution_source=metadata_endpoint")
 		require.Contains(t, bodyString, "request_id=req_zzz")
+		require.Contains(t, bodyString, "terminal_program=iTerm.app")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
 		require.NotContains(t, bodyString, "ai_agent")
@@ -114,14 +124,18 @@ func TestSendAPIRequestEvent(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
-		InvocationID:      "123456",
-		UserAgent:         "Unit Test",
-		CLIVersion:        "master",
-		OS:                "darwin",
-		CommandPath:       "stripe test",
-		PluginName:        "apps",
-		Merchant:          "acct_1234",
-		GeneratedResource: false,
+		InvocationID:           "123456",
+		UserAgent:              "Unit Test",
+		CLIVersion:             "master",
+		OS:                     "darwin",
+		CommandPath:            "stripe test",
+		PluginName:             "apps",
+		PluginResolutionSource: "metadata_endpoint",
+		Merchant:               "acct_1234",
+		GeneratedResource:      false,
+		InTmux:                 true,
+		InScreen:               true,
+		TerminalProgram:        "iTerm.app",
 	}
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
@@ -159,10 +173,14 @@ func TestSendEvent(t *testing.T) {
 		require.Contains(t, bodyString, "event_name=foo")
 		require.Contains(t, bodyString, "event_value=bar")
 		require.Contains(t, bodyString, "generated_resource=false")
+		require.Contains(t, bodyString, "in_screen=true")
+		require.Contains(t, bodyString, "in_tmux=true")
 		require.Contains(t, bodyString, "invocation_id=123456")
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "plugin_name=apps")
+		require.Contains(t, bodyString, "plugin_resolution_source=metadata_endpoint")
+		require.Contains(t, bodyString, "terminal_program=iTerm.app")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
 		// ai_agent should not be present when empty (omitempty)
 		require.NotContains(t, bodyString, "ai_agent")
@@ -171,14 +189,18 @@ func TestSendEvent(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
-		InvocationID:      "123456",
-		UserAgent:         "Unit Test",
-		CLIVersion:        "master",
-		OS:                "darwin",
-		CommandPath:       "stripe test",
-		PluginName:        "apps",
-		Merchant:          "acct_1234",
-		GeneratedResource: false,
+		InvocationID:           "123456",
+		UserAgent:              "Unit Test",
+		CLIVersion:             "master",
+		OS:                     "darwin",
+		CommandPath:            "stripe test",
+		PluginName:             "apps",
+		PluginResolutionSource: "metadata_endpoint",
+		Merchant:               "acct_1234",
+		GeneratedResource:      false,
+		InTmux:                 true,
+		InScreen:               true,
+		TerminalProgram:        "iTerm.app",
 	}
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}

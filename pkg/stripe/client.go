@@ -27,7 +27,7 @@ const (
 	V2Request     = "v2"
 )
 
-// Client is the API client used to sent requests to Stripe.
+// Client is the API client used to send requests to Stripe.
 type Client struct {
 	// The base URL (protocol + hostname) used for all requests sent by this
 	// client.

@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
+	cmddocs "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
@@ -52,8 +53,10 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"status":    "stripe",
 		"resources": "resources",
-		AIAgentHelpAnnotationKey: "  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
-			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.",
+		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
+			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
+			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
+			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -147,7 +150,7 @@ func Execute(ctx context.Context) {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
-			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
+			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isLoginRequiredError && projectNameFlag != "default":
 			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
@@ -157,8 +160,11 @@ func Execute(ctx context.Context) {
 
 			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 				fmt.Fprintln(os.Stderr, string(errRunes))
-				fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
-				fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+				fmt.Fprintln(os.Stderr, "  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.")
+				fmt.Fprintln(os.Stderr, "  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).")
+				if useragent.DetectAIAgent(os.Getenv) != "" {
+					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox).")
+				}
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
@@ -184,6 +190,14 @@ func Execute(ctx context.Context) {
 			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
 		}
 	}
+}
+
+func apiKeyExpiredMessage(profileName string) string {
+	if profileName == "default" {
+		return "The API key for the default profile has expired. Run `stripe login` to re-authenticate.\n" +
+			"If you recently ran `stripe login` and still see this error, it may have authenticated a different profile — run `stripe whoami` to confirm."
+	}
+	return fmt.Sprintf("The API key for profile %q has expired. Run `stripe login --project-name=%s` to re-authenticate.", profileName, profileName)
 }
 
 var keysToReBind []string
@@ -228,6 +242,9 @@ func init() {
 	// also, bind flags to the environment variables
 	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
+	rootCmd.AddCommand(newReportingCmd().cmd)
+	rootCmd.AddCommand(newAgentCmd().cmd)
+	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
@@ -249,6 +266,7 @@ func init() {
 	rootCmd.AddCommand(newWhoamiCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
+	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
 	registerHTTPCmds(rootCmd)
@@ -266,23 +284,34 @@ func init() {
 	// config is not initialized by cobra at this point, so we need to temporarily initialize it
 	Config.InitConfig()
 
-	// get a list of installed plugins, validate against the manifest
-	// and finally add each validated plugin as a command
-	nfs := afero.NewOsFs()
-	pluginList := Config.GetInstalledPlugins()
-
-	installedPluginSet := make(map[string]bool)
-	for _, p := range pluginList {
-		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
-		if err == nil {
-			installedPluginSet[p] = true
-			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
-		}
-	}
+	installedPluginSet := registerInstalledPlugins(rootCmd, &Config, afero.NewOsFs())
 
 	// For known plugins not yet installed, add a hint command so users get
 	// a helpful message instead of "unknown command".
 	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
+}
+
+func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	pluginNames, err := plugins.GetInstalledPluginNames(cfg, fs)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.registerInstalledPlugins",
+		}).Debugf("could not list installed plugins: %s", err)
+		pluginNames = cfg.GetInstalledPlugins()
+	}
+
+	installedPluginSet := make(map[string]bool)
+	for _, pluginName := range pluginNames {
+		plugin, err := plugins.LookUpPlugin(context.Background(), cfg, fs, pluginName)
+		if err != nil {
+			continue
+		}
+		installedPluginSet[pluginName] = true
+		root.AddCommand(newPluginTemplateCmd(cfg, &plugin).cmd)
+		root.Annotations[pluginName] = "installed_plugin"
+	}
+
+	return installedPluginSet
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {

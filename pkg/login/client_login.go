@@ -17,6 +17,14 @@ import (
 var openBrowser = open.Browser
 var canOpenBrowser = open.CanOpenBrowser
 
+// SetOpenBrowserForTesting overrides the browser-opening function used by
+// the login flow. It returns a restore function that resets to the default.
+func SetOpenBrowserForTesting(fn func(string) error) (restore func()) {
+	orig := openBrowser
+	openBrowser = fn
+	return func() { openBrowser = orig }
+}
+
 const stripeCLIAuthPath = "/stripecli/auth"
 
 // TODO
@@ -93,6 +101,7 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 			fmt.Printf("> %s\n", message)
 			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+			warnIfInsecureStorage()
 			return nil
 		}
 	}

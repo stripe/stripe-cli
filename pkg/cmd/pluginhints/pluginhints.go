@@ -12,7 +12,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -25,16 +27,39 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "apps", "This plugin lets you build and manage Stripe Apps.").Command,
 		)
+		rootCmd.Annotations["apps"] = "available_plugin"
 	}
 	if !installedPluginSet["generate"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "generate", "This plugin creates skeleton files to get you started.", withPrivatePreview()).Command,
 		)
+		rootCmd.Annotations["generate"] = "available_plugin"
 	}
 	if !installedPluginSet["projects"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
+		rootCmd.Annotations["projects"] = "available_plugin"
+	}
+	if !installedPluginSet["directory"] {
+		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
+		directoryCmd.Aliases = []string{
+			"search",
+			"directry",
+			"directary",
+			"direcotry", //nolint:misspell // Intentional typo alias.
+			"diretory",
+		}
+		rootCmd.AddCommand(
+			directoryCmd,
+		)
+		rootCmd.Annotations["directory"] = "available_plugin"
+	}
+	if !installedPluginSet["tools"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "tools", "Search, inspect, and execute Stripe operations not available in the public API.").Command,
+		)
+		rootCmd.Annotations["tools"] = "available_plugin"
 	}
 }
 
@@ -49,6 +74,7 @@ type pluginHintCmd struct {
 
 	lookupFn      func(ctx context.Context) error
 	installFn     func(ctx context.Context) error
+	loginFn       func(ctx context.Context) error
 	accountIDFn   func() (string, error)
 	openBrowserFn func(url string) error
 	stdin         io.Reader
@@ -65,24 +91,29 @@ func withPrivatePreview() option {
 
 func newPluginHintCmd(cfg *config.Config, name, description string, opts ...option) *pluginHintCmd {
 	fs := afero.NewOsFs()
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+	resolvePlugin := func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
+		// Reuse the main install resolution path so metadata-first lookup and
+		// backward-compatible manifest fallback stay centralized in plugins.
+		return plugins.ResolvePluginForInstall(ctx, cfg, fs, name, "", stripe.DefaultAPIBaseURL, dashboardBaseURL)
+	}
 
 	p := &pluginHintCmd{
 		name:        name,
 		description: description,
 		lookupFn: func(ctx context.Context) error {
-			if err := plugins.RefreshPluginManifest(ctx, cfg, fs, stripe.DefaultAPIBaseURL); err != nil {
-				return err
-			}
-			_, err := plugins.LookUpPlugin(ctx, cfg, fs, name)
+			_, err := resolvePlugin(ctx)
 			return err
 		},
 		installFn: func(ctx context.Context) error {
-			plugin, err := plugins.LookUpPlugin(ctx, cfg, fs, name)
+			resolvedPlugin, err := resolvePlugin(ctx)
 			if err != nil {
 				return err
 			}
-			version := plugin.LookUpLatestVersion()
-			return plugin.Install(ctx, cfg, fs, version, stripe.DefaultAPIBaseURL)
+			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
+		},
+		loginFn: func(ctx context.Context) error {
+			return login.Login(ctx, dashboardBaseURL, cfg)
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
@@ -95,8 +126,8 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 	}
 
 	p.Command = &cobra.Command{
-		Use:    name,
-		Hidden: true,
+		Use:   name,
+		Short: description,
 		// Accept unknown flags/args so they aren't rejected before we can show the hint
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		RunE:               p.run,
@@ -119,6 +150,14 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return p.suggestNotAvailable()
 	}
 
+	// If the user is not logged in, offer to kick off the login flow rather than
+	// a manual install that will also fail unauthenticated.
+	accountID, err := p.accountIDFn()
+	if err != nil || accountID == "" {
+		return p.promptLogin(ctx)
+	}
+
+	fmt.Fprintf(p.stdout, "The \"%s\" plugin is not currently available. Run 'stripe plugin install %s' to try installing it manually.\n", p.name, p.name)
 	return nil
 }
 
@@ -141,8 +180,24 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 
 	color := ansi.Color(p.stdout)
 	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
+	postinstall.PrintTips(p.stdout, p.name)
 
 	return nil
+}
+
+func (p *pluginHintCmd) promptLogin(ctx context.Context) error {
+	fmt.Fprintf(p.stdout, "You must be logged in to access the \"%s\" plugin.\n", p.name)
+	fmt.Fprintf(p.stdout, "\n")
+	fmt.Fprintf(p.stdout, "Press Enter to run 'stripe login', or type anything to cancel")
+
+	var input string
+	fmt.Fscanln(p.stdin, &input)
+
+	if input != "" {
+		return fmt.Errorf("login canceled")
+	}
+
+	return p.loginFn(ctx)
 }
 
 func (p *pluginHintCmd) suggestNotAvailable() error {
