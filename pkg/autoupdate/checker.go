@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v72/github"
-	goversion "github.com/hashicorp/go-version"
+	semver "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -73,11 +73,11 @@ func CheckForUpdate() {
 }
 
 func isMajorVersionChange(current, latest string) bool {
-	cur, err := goversion.NewVersion(current)
+	cur, err := semver.NewVersion(current)
 	if err != nil {
 		return false
 	}
-	lat, err := goversion.NewVersion(latest)
+	lat, err := semver.NewVersion(latest)
 	if err != nil {
 		return false
 	}
