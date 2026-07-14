@@ -33,10 +33,10 @@ func TestIsThinEvent(t *testing.T) {
 
 func TestSplitEventsByType(t *testing.T) {
 	tests := []struct {
-		name              string
-		events            []string
-		wantSnapshot      []string
-		wantThin          []string
+		name         string
+		events       []string
+		wantSnapshot []string
+		wantThin     []string
 	}{
 		{
 			name:         "wildcard splits to both",
