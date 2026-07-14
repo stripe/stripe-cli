@@ -41,7 +41,14 @@ run_install() {
     winget)
         # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
         winget source reset --force
-        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        # The GitHub Actions Windows image includes the Microsoft Store source,
+        # which can block non-interactive installs after a reset by prompting
+        # for terms and region data. Remove it and install from the community
+        # source directly.
+        if winget source list | grep -q 'msstore'; then
+            winget source remove msstore
+        fi
+        winget install --exact --id Stripe.StripeCli --source winget --accept-source-agreements --accept-package-agreements
         # winget modifies PATH but the current shell process doesn't inherit the change;
         # explicitly add the WinGet Links directory where the stripe alias was created.
         PATH="$PATH:$(cygpath -u "$LOCALAPPDATA/Microsoft/WinGet/Links")"
@@ -94,10 +101,9 @@ then
             then
                 echo "Install failed again. Retrying for the last time in 180 seconds..."
                 sleep 180
-                run_install
                 if ! run_install
                 then
-                exit 1
+                    exit 1
                 fi
             fi
         fi
