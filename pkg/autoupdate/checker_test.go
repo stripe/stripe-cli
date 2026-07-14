@@ -22,6 +22,8 @@ func TestIsMajorVersionChange(t *testing.T) {
 		{"1.99.0", "2.0.0", true},
 		{"2.0.0", "1.99.0", true},
 		{"1.0.0", "1.0.0", false},
+		{"1.0.0-beta", "1.0.0", false},
+		{"invalid", "1.0.0", false},
 	}
 
 	for _, tt := range tests {
@@ -29,13 +31,6 @@ func TestIsMajorVersionChange(t *testing.T) {
 			assert.Equal(t, tt.expected, isMajorVersionChange(tt.current, tt.latest))
 		})
 	}
-}
-
-func TestMajorVersion(t *testing.T) {
-	assert.Equal(t, "1", majorVersion("1.23.0"))
-	assert.Equal(t, "2", majorVersion("2.0.0"))
-	assert.Equal(t, "0", majorVersion("0.1.0"))
-	assert.Equal(t, "", majorVersion(""))
 }
 
 func TestMarkerReadWrite(t *testing.T) {

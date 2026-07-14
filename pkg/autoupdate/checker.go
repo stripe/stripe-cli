@@ -15,10 +15,13 @@ import (
 	"time"
 
 	"github.com/google/go-github/v72/github"
+	goversion "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/version"
 )
+
+const httpTimeout = 10 * time.Second
 
 const checkInterval = 24 * time.Hour
 
@@ -70,17 +73,15 @@ func CheckForUpdate() {
 }
 
 func isMajorVersionChange(current, latest string) bool {
-	currentMajor := majorVersion(current)
-	latestMajor := majorVersion(latest)
-	return currentMajor != "" && latestMajor != "" && currentMajor != latestMajor
-}
-
-func majorVersion(v string) string {
-	parts := strings.SplitN(v, ".", 2)
-	if len(parts) == 0 {
-		return ""
+	cur, err := goversion.NewVersion(current)
+	if err != nil {
+		return false
 	}
-	return parts[0]
+	lat, err := goversion.NewVersion(latest)
+	if err != nil {
+		return false
+	}
+	return cur.Segments()[0] != lat.Segments()[0]
 }
 
 func shouldCheck() bool {
@@ -114,8 +115,11 @@ func shouldCheck() bool {
 }
 
 func fetchLatestRelease() (ver string, downloadURL string, checksum string) {
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+	defer cancel()
+
 	client := github.NewClient(nil)
-	release, _, err := client.Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
+	release, _, err := client.Repositories.GetLatestRelease(ctx, "stripe", "stripe-cli")
 	if err != nil {
 		log.Debug("autoupdate: failed to fetch latest release: ", err)
 		return "", "", ""
@@ -149,7 +153,16 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string) {
 }
 
 func fetchChecksumForAsset(checksumURL, assetName string) string {
-	resp, err := http.Get(checksumURL) //nolint:gosec
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, checksumURL, nil)
+	if err != nil {
+		log.Debug("autoupdate: failed to create checksum request: ", err)
+		return ""
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Debug("autoupdate: failed to fetch checksums: ", err)
 		return ""
