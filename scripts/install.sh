@@ -1,8 +1,9 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
 
 INSTALL_DIR="${STRIPE_INSTALL_DIR:-$HOME/.stripe/bin}"
 GITHUB_REPO="stripe/stripe-cli"
+NEEDS_SOURCE=false
 
 main() {
   detect_platform
@@ -48,9 +49,17 @@ detect_platform() {
 http_get() {
   url="$1"
   if command -v curl >/dev/null 2>&1; then
-    curl -sSL "$url"
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" "$url"
+    else
+      curl -sSL "$url"
+    fi
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- "$url"
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      wget -qO- --header="Authorization: Bearer $GITHUB_TOKEN" "$url"
+    else
+      wget -qO- "$url"
+    fi
   else
     echo "Error: curl or wget is required but neither is installed."
     exit 1

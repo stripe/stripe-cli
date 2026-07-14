@@ -293,6 +293,13 @@ func init() {
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+	if err := plugins.BackfillMissingInstalledPluginMetadata(context.Background(), cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.registerInstalledPlugins",
+		}).Debugf("could not backfill installed plugin metadata: %s", err)
+	}
+
 	pluginNames, err := plugins.GetInstalledPluginNames(cfg, fs)
 	if err != nil {
 		log.WithFields(log.Fields{

@@ -18,6 +18,8 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   curl-install-linux:
     runs-on: ubuntu-latest
@@ -26,6 +28,8 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   notify:
     runs-on: ubuntu-latest
@@ -41,4 +45,8 @@ jobs:
         env:
           OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-          DRYRUN: ${{ inputs.dryrun }}
+          PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-curl-install-test
+          PAGERDUTY_SUMMARY: "Failed to install Stripe CLI via curl install script. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/curl-install-test.yml"
+          PAGERDUTY_RESOLVE_SUMMARY: "Stripe CLI curl install script is passing again"
+          PAGERDUTY_SEVERITY: critical
+          DRYRUN: "true" # TODO: switch to ${{ inputs.dryrun }} once confirmed stable
