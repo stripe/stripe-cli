@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 
@@ -126,9 +125,6 @@ func downloadAndReplace(marker *UpdateMarker, exePath string) error {
 }
 
 func extractBinary(archivePath, destPath string) error {
-	if runtime.GOOS == "windows" {
-		return extractFromZip(archivePath, destPath)
-	}
 	return extractFromTarGz(archivePath, destPath)
 }
 
@@ -168,10 +164,6 @@ func extractFromTarGz(archivePath, destPath string) error {
 		}
 	}
 	return fmt.Errorf("stripe binary not found in archive")
-}
-
-func extractFromZip(archivePath, destPath string) error {
-	return extractFromZipImpl(archivePath, destPath)
 }
 
 func reexec(exe string) {
