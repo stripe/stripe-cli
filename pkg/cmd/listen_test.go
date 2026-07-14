@@ -14,13 +14,13 @@ func TestIsThinEvent(t *testing.T) {
 		{"v1.billing.meter.no_meter_found", true},
 		{"v2.core.account.created", true},
 		{"v1.some.event", true},
+		{"v1.", true},
 		{"charge.captured", false},
 		{"customer.created", false},
 		{"payment_intent.succeeded", false},
 		{"*", false},
 		{"", false},
 		{"v1", false},
-		{"v1.", true},
 	}
 
 	for _, tt := range tests {
@@ -172,6 +172,75 @@ func TestMergeAndSplitEvents(t *testing.T) {
 			snapshot, thin := mergeAndSplitEvents(tt.events, tt.thinEvents, tt.eventsExplicit)
 			assert.Equal(t, tt.wantSnapshot, snapshot)
 			assert.Equal(t, tt.wantThin, thin)
+		})
+	}
+}
+
+func TestResolveForwardURLs(t *testing.T) {
+	tests := []struct {
+		name           string
+		eventsFrom     string
+		forwardURL     string
+		forwardConnect string
+		wantDirect     string
+		wantConnect    string
+	}{
+		{
+			name:        "@self routes to direct only",
+			eventsFrom:  "@self",
+			forwardURL:  "http://localhost:3000",
+			wantDirect:  "http://localhost:3000",
+			wantConnect: "",
+		},
+		{
+			name:        "@accounts routes to connect",
+			eventsFrom:  "@accounts",
+			forwardURL:  "http://localhost:3000",
+			wantDirect:  "",
+			wantConnect: "http://localhost:3000",
+		},
+		{
+			name:           "@accounts prefers forward-connect-to if set",
+			eventsFrom:     "@accounts",
+			forwardURL:     "http://localhost:3000",
+			forwardConnect: "http://localhost:4000",
+			wantDirect:     "",
+			wantConnect:    "http://localhost:4000",
+		},
+		{
+			name:        "all routes to both using forward-to",
+			eventsFrom:  "all",
+			forwardURL:  "http://localhost:3000",
+			wantDirect:  "http://localhost:3000",
+			wantConnect: "http://localhost:3000",
+		},
+		{
+			name:           "all uses forward-connect-to for connect if set",
+			eventsFrom:     "all",
+			forwardURL:     "http://localhost:3000",
+			forwardConnect: "http://localhost:4000",
+			wantDirect:     "http://localhost:3000",
+			wantConnect:    "http://localhost:4000",
+		},
+		{
+			name:        "default (empty) behaves like all",
+			eventsFrom:  "",
+			forwardURL:  "http://localhost:3000",
+			wantDirect:  "http://localhost:3000",
+			wantConnect: "http://localhost:3000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lc := &listenCmd{
+				eventsFrom:        tt.eventsFrom,
+				forwardURL:        tt.forwardURL,
+				forwardConnectURL: tt.forwardConnect,
+			}
+			direct, connect := lc.resolveForwardURLs()
+			assert.Equal(t, tt.wantDirect, direct)
+			assert.Equal(t, tt.wantConnect, connect)
 		})
 	}
 }
