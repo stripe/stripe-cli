@@ -53,6 +53,11 @@ type listenCmd struct {
 	noWSS                 bool
 	timeout               int64
 	deviceToken           string
+
+	// Deprecated flags (kept for backward compatibility)
+	thinEvents            []string
+	forwardThinURL        string
+	forwardThinConnectURL string
 }
 
 func newListenCmd() *listenCmd {
@@ -84,7 +89,15 @@ Stripe account.`,
 	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. Supports both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found)")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as normal events)")
+	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
+
+	// Deprecated flags
+	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
+	lc.cmd.Flags().MarkDeprecated("thin-events", "use --events instead, which now accepts both snapshot and thin event types")
+	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
+	lc.cmd.Flags().MarkDeprecated("forward-thin-to", "use --forward-to instead, which now forwards both snapshot and thin events")
+	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
+	lc.cmd.Flags().MarkDeprecated("forward-thin-connect-to", "use --forward-connect-to instead")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -176,17 +189,27 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
+	lc.mergeDeprecatedFlags()
 	snapshotEvents, thinEvents := lc.splitEventsByType()
+
+	forwardThinURL := lc.forwardURL
+	if lc.forwardThinURL != "" {
+		forwardThinURL = lc.forwardThinURL
+	}
+	forwardThinConnectURL := lc.forwardConnectURL
+	if lc.forwardThinConnectURL != "" {
+		forwardThinConnectURL = lc.forwardThinConnectURL
+	}
 
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
 		ForwardURL:            lc.forwardURL,
-		ForwardThinURL:        lc.forwardURL,
+		ForwardThinURL:        forwardThinURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     lc.forwardConnectURL,
-		ForwardThinConnectURL: lc.forwardConnectURL,
+		ForwardThinConnectURL: forwardThinConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
@@ -403,4 +426,12 @@ func (lc *listenCmd) splitEventsByType() (snapshotEvents []string, thinEvents []
 
 func isThinEvent(eventType string) bool {
 	return thinEventPattern.MatchString(eventType)
+}
+
+// mergeDeprecatedFlags folds deprecated --thin-events values into the unified
+// --events list so the rest of the code only needs to look at lc.events.
+func (lc *listenCmd) mergeDeprecatedFlags() {
+	if len(lc.thinEvents) > 0 {
+		lc.events = append(lc.events, lc.thinEvents...)
+	}
 }

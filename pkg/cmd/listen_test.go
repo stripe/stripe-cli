@@ -116,3 +116,42 @@ func TestGetFeatures(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeDeprecatedFlags(t *testing.T) {
+	tests := []struct {
+		name       string
+		events     []string
+		thinEvents []string
+		wantEvents []string
+	}{
+		{
+			name:       "thin-events merged into events",
+			events:     []string{"*"},
+			thinEvents: []string{"v1.billing.meter.no_meter_found"},
+			wantEvents: []string{"*", "v1.billing.meter.no_meter_found"},
+		},
+		{
+			name:       "no thin-events leaves events unchanged",
+			events:     []string{"charge.captured"},
+			thinEvents: []string{},
+			wantEvents: []string{"charge.captured"},
+		},
+		{
+			name:       "only thin-events",
+			events:     []string{"*"},
+			thinEvents: []string{"v1.billing.meter.no_meter_found", "v2.core.account.created"},
+			wantEvents: []string{"*", "v1.billing.meter.no_meter_found", "v2.core.account.created"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lc := &listenCmd{
+				events:     tt.events,
+				thinEvents: tt.thinEvents,
+			}
+			lc.mergeDeprecatedFlags()
+			assert.Equal(t, tt.wantEvents, lc.events)
+		})
+	}
+}
