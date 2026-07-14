@@ -244,6 +244,7 @@ func init() {
 
 	rootCmd.AddCommand(newReportingCmd().cmd)
 	rootCmd.AddCommand(newAgentCmd().cmd)
+	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
