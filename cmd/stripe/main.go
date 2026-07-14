@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/autoupdate"
 	"github.com/stripe/stripe-cli/pkg/cmd"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -35,4 +36,7 @@ func main() {
 		// Wait for all telemetry calls to finish before existing the process
 		telemetryClient.Wait()
 	}
+
+	// Check for updates after command completes (once per day, synchronous)
+	autoupdate.CheckForUpdate()
 }
