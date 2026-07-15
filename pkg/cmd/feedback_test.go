@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -47,6 +48,15 @@ func newTestFeedbackCmd(serverURL string) *feedbackCmd {
 	return fc
 }
 
+// runFeedback invokes the command's RunE with a real (non-nil) context, as
+// would happen when the command runs via the root command's
+// ExecuteContext. Calling RunE directly without this leaves cmd.Context()
+// nil, which downstream code (e.g. telemetry) does not expect.
+func runFeedback(fc *feedbackCmd) error {
+	fc.cmd.SetContext(context.Background())
+	return fc.runFeedbackCmd(fc.cmd, []string{})
+}
+
 func TestFeedbackNonInteractiveRequiresFlags(t *testing.T) {
 	cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
 	defer cleanup()
@@ -59,7 +69,7 @@ func TestFeedbackNonInteractiveRequiresFlags(t *testing.T) {
 	fc.cmd.SetIn(strings.NewReader(""))
 	fc.cmd.SetOut(buf)
 
-	err := fc.runFeedbackCmd(fc.cmd, []string{})
+	err := runFeedback(fc)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--sentiment")
 	assert.Contains(t, err.Error(), "--message")
@@ -75,7 +85,7 @@ func TestFeedbackRequiresAuth(t *testing.T) {
 	fc.message = "this is a test feedback message"
 	fc.actor = "human"
 
-	err := fc.runFeedbackCmd(fc.cmd, []string{})
+	err := runFeedback(fc)
 	require.Error(t, err)
 }
 
@@ -112,7 +122,7 @@ func TestFeedbackSubmitSendsExpectedRequest(t *testing.T) {
 	buf := new(bytes.Buffer)
 	fc.cmd.SetOut(buf)
 
-	err := fc.runFeedbackCmd(fc.cmd, []string{})
+	err := runFeedback(fc)
 	require.NoError(t, err)
 
 	assert.Equal(t, "/v1/_unstable/feedback", receivedPath)
@@ -149,7 +159,7 @@ func TestFeedbackSubmitJSONOutput(t *testing.T) {
 	buf := new(bytes.Buffer)
 	fc.cmd.SetOut(buf)
 
-	err := fc.runFeedbackCmd(fc.cmd, []string{})
+	err := runFeedback(fc)
 	require.NoError(t, err)
 
 	var result feedbackResponse
@@ -181,7 +191,7 @@ func TestFeedbackActorAgentAccepted(t *testing.T) {
 	fc.message = "agent submitted feedback test message"
 	fc.actor = "agent"
 
-	err := fc.runFeedbackCmd(fc.cmd, []string{})
+	err := runFeedback(fc)
 	require.NoError(t, err)
 	assert.Equal(t, "agent", receivedForm.Get("actor"))
 }
@@ -201,7 +211,7 @@ func TestFeedbackServerError(t *testing.T) {
 	fc.message = "this is a test feedback message"
 	fc.actor = "human"
 
-	err := fc.runFeedbackCmd(fc.cmd, []string{})
+	err := runFeedback(fc)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "400")
 }
