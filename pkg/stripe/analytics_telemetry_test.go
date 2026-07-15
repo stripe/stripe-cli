@@ -89,7 +89,6 @@ func TestSetPluginName(t *testing.T) {
 	require.Equal(t, "apps", tel.PluginName)
 }
 
-
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -118,17 +117,17 @@ func TestSendAPIRequestEvent(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
-		InvocationID:           "123456",
-		UserAgent:              "Unit Test",
-		CLIVersion:             "master",
-		OS:                     "darwin",
-		CommandPath:            "stripe test",
-		PluginName:             "apps",
-		Merchant:               "acct_1234",
-		GeneratedResource:      false,
-		InTmux:                 true,
-		InScreen:               true,
-		TerminalProgram:        "iTerm.app",
+		InvocationID:      "123456",
+		UserAgent:         "Unit Test",
+		CLIVersion:        "master",
+		OS:                "darwin",
+		CommandPath:       "stripe test",
+		PluginName:        "apps",
+		Merchant:          "acct_1234",
+		GeneratedResource: false,
+		InTmux:            true,
+		InScreen:          true,
+		TerminalProgram:   "iTerm.app",
 	}
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
@@ -181,17 +180,17 @@ func TestSendEvent(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
-		InvocationID:           "123456",
-		UserAgent:              "Unit Test",
-		CLIVersion:             "master",
-		OS:                     "darwin",
-		CommandPath:            "stripe test",
-		PluginName:             "apps",
-		Merchant:               "acct_1234",
-		GeneratedResource:      false,
-		InTmux:                 true,
-		InScreen:               true,
-		TerminalProgram:        "iTerm.app",
+		InvocationID:      "123456",
+		UserAgent:         "Unit Test",
+		CLIVersion:        "master",
+		OS:                "darwin",
+		CommandPath:       "stripe test",
+		PluginName:        "apps",
+		Merchant:          "acct_1234",
+		GeneratedResource: false,
+		InTmux:            true,
+		InScreen:          true,
+		TerminalProgram:   "iTerm.app",
 	}
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
