@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
@@ -519,16 +520,33 @@ func (asc *agentSetupCmd) checkSkillsScopes(ctx context.Context) (skillsScopes, 
 		return skillsScopes{}, fmt.Errorf("resolving global skills directory: %w", err)
 	}
 
-	local, err := asc.skillsCheck(ctx, localDir)
-	if local == nil {
-		return skillsScopes{}, err
+	type scopeResult struct {
+		status *agentskills.DirStatus
+		err    error
 	}
-	global, err := asc.skillsCheck(ctx, globalDir)
-	if global == nil {
+
+	var localRes, globalRes scopeResult
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		localRes.status, localRes.err = asc.skillsCheck(ctx, localDir)
+		return nil
+	})
+	g.Go(func() error {
+		globalRes.status, globalRes.err = asc.skillsCheck(ctx, globalDir)
+		return nil
+	})
+	if err := g.Wait(); err != nil {
 		return skillsScopes{}, err
 	}
 
-	return skillsScopes{Local: *local, Global: *global}, nil
+	if localRes.status == nil {
+		return skillsScopes{}, localRes.err
+	}
+	if globalRes.status == nil {
+		return skillsScopes{}, globalRes.err
+	}
+
+	return skillsScopes{Local: *localRes.status, Global: *globalRes.status}, nil
 }
 
 func skillsScopeCheckFailed(d agentskills.DirStatus) bool {

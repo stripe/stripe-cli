@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +17,58 @@ import (
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
 	"github.com/stripe/stripe-cli/pkg/agentskills"
 )
+
+func TestCheckSkillsScopesChecksBothScopesConcurrently(t *testing.T) {
+	t.Parallel()
+
+	setup := testAgentSetupCmd()
+	setup.skillsLocalDir = func() (string, error) { return "/tmp/project/.agents/skills", nil }
+	setup.skillsGlobalDir = func() (string, error) { return "/tmp/home/.agents/skills", nil }
+
+	var active int32
+	var peak int32
+	setup.skillsCheck = func(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+		current := atomic.AddInt32(&active, 1)
+		for {
+			peakNow := atomic.LoadInt32(&peak)
+			if current <= peakNow || atomic.CompareAndSwapInt32(&peak, peakNow, current) {
+				break
+			}
+		}
+		time.Sleep(30 * time.Millisecond)
+		atomic.AddInt32(&active, -1)
+		return &agentskills.DirStatus{
+			Dir:            destDir,
+			Status:         agentskills.StatusCurrent,
+			InstalledCount: 1,
+		}, nil
+	}
+
+	scopes, err := setup.checkSkillsScopes(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, agentskills.StatusCurrent, scopes.Local.Status)
+	require.Equal(t, agentskills.StatusCurrent, scopes.Global.Status)
+	require.Equal(t, "/tmp/project/.agents/skills", scopes.Local.Dir)
+	require.Equal(t, "/tmp/home/.agents/skills", scopes.Global.Dir)
+	require.GreaterOrEqual(t, peak, int32(2))
+}
+
+func TestCheckSkillsScopesReturnsLocalErrorWhenLocalCheckFails(t *testing.T) {
+	t.Parallel()
+
+	setup := testAgentSetupCmd()
+	setup.skillsCheck = func(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+		if destDir == "/tmp/project/.agents/skills" {
+			return nil, fmt.Errorf("local skills check failed")
+		}
+		return &agentskills.DirStatus{Dir: destDir, Status: agentskills.StatusCurrent}, nil
+	}
+
+	_, err := setup.checkSkillsScopes(context.Background())
+
+	require.EqualError(t, err, "local skills check failed")
+}
 
 func TestDetectAllPreservesOrderWithConcurrentDetection(t *testing.T) {
 	t.Parallel()
