@@ -5,15 +5,65 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
 	"github.com/stripe/stripe-cli/pkg/agentskills"
 )
+
+func TestDetectAllPreservesOrderWithConcurrentDetection(t *testing.T) {
+	t.Parallel()
+
+	providers := map[string]agentsetup.Provider{
+		agentsetup.ClientClaudeCode: delayedDetectProvider{
+			id:    agentsetup.ClientClaudeCode,
+			delay: 30 * time.Millisecond,
+		},
+		agentsetup.ClientCodex: delayedDetectProvider{
+			id:    agentsetup.ClientCodex,
+			delay: 10 * time.Millisecond,
+		},
+		agentsetup.ClientCursor: delayedDetectProvider{
+			id:    agentsetup.ClientCursor,
+			delay: 20 * time.Millisecond,
+		},
+	}
+
+	statuses := detectAll(providers)
+
+	require.Len(t, statuses, 3)
+	require.Equal(t, []string{
+		agentsetup.ClientClaudeCode,
+		agentsetup.ClientCodex,
+		agentsetup.ClientCursor,
+	}, []string{statuses[0].Client, statuses[1].Client, statuses[2].Client})
+}
+
+type delayedDetectProvider struct {
+	id    string
+	delay time.Duration
+}
+
+func (p delayedDetectProvider) ID() string { return p.id }
+
+func (p delayedDetectProvider) Detect() agentsetup.Status {
+	time.Sleep(p.delay)
+	return agentsetup.Status{Client: p.id}
+}
+
+func (p delayedDetectProvider) Plan(agentsetup.Status, bool) agentsetup.Plan {
+	return agentsetup.Plan{}
+}
+
+func (p delayedDetectProvider) Apply(context.Context, io.Writer, agentsetup.Plan) error {
+	return nil
+}
 
 func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {

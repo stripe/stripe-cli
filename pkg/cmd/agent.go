@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -626,14 +627,21 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 	return nil
 }
 
-// detectAll runs Detect for every provider and returns statuses in canonical
-// display order.
+// detectAll runs Detect for every provider concurrently and returns statuses in
+// canonical display order.
 func detectAll(providers map[string]agentsetup.Provider) []agentsetup.Status {
 	ids := orderedProviderIDs(providers)
-	statuses := make([]agentsetup.Status, 0, len(ids))
-	for _, id := range ids {
-		statuses = append(statuses, providers[id].Detect())
+	statuses := make([]agentsetup.Status, len(ids))
+	var wg sync.WaitGroup
+	wg.Add(len(ids))
+	for i, id := range ids {
+		i, id := i, id
+		go func() {
+			defer wg.Done()
+			statuses[i] = providers[id].Detect()
+		}()
 	}
+	wg.Wait()
 	return statuses
 }
 
