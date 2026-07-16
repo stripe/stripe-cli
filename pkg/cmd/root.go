@@ -243,6 +243,9 @@ func init() {
 	// also, bind flags to the environment variables
 	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
+	rootCmd.AddCommand(newReportingCmd().cmd)
+	rootCmd.AddCommand(newAgentCmd().cmd)
+	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
@@ -291,6 +294,13 @@ func init() {
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+	if err := plugins.BackfillMissingInstalledPluginMetadata(context.Background(), cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.registerInstalledPlugins",
+		}).Debugf("could not backfill installed plugin metadata: %s", err)
+	}
+
 	pluginNames, err := plugins.GetInstalledPluginNames(cfg, fs)
 	if err != nil {
 		log.WithFields(log.Fields{
