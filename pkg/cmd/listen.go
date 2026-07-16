@@ -189,8 +189,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
-	lc.mergeDeprecatedFlags()
-	snapshotEvents, thinEvents := lc.splitEventsByType()
+	snapshotEvents, thinEvents := lc.resolveEvents()
 
 	forwardThinURL := lc.forwardURL
 	if lc.forwardThinURL != "" {
@@ -382,7 +381,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 
 func (lc *listenCmd) getFeatures() []string {
 	needsSnapshot := false
-	needsThin := false
+	needsThin := len(lc.thinEvents) > 0
 
 	for _, e := range lc.events {
 		if e == "*" {
@@ -407,10 +406,34 @@ func (lc *listenCmd) getFeatures() []string {
 	return features
 }
 
-// splitEventsByType separates the unified --events list into snapshot and thin
-// event lists for the proxy, which still uses two separate channels internally.
-func (lc *listenCmd) splitEventsByType() (snapshotEvents []string, thinEvents []string) {
-	for _, e := range lc.events {
+// resolveEvents merges deprecated --thin-events into the unified --events list,
+// then splits into snapshot and thin event lists for the proxy.
+func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
+	eventsExplicit := lc.cmd.Flags().Changed("events")
+	return mergeAndSplitEvents(lc.events, lc.thinEvents, eventsExplicit)
+}
+
+// mergeAndSplitEvents combines the events and deprecated thinEvents lists,
+// then splits into snapshot and thin event lists for the proxy.
+func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit bool) (snapshotEvents []string, thinEventsOut []string) {
+	if len(thinEvents) > 0 && !eventsExplicit {
+		// --thin-events used without explicit --events: subscribe to all snapshot
+		// events (the default behavior) plus only the specified thin events.
+		return []string{"*"}, thinEvents
+	}
+
+	// Merge deprecated thin events into the unified list
+	merged := events
+	if len(thinEvents) > 0 {
+		merged = append(merged, thinEvents...)
+	}
+
+	return splitEventsByType(merged)
+}
+
+// splitEventsByType separates an event list into snapshot and thin event lists.
+func splitEventsByType(events []string) (snapshotEvents []string, thinEvents []string) {
+	for _, e := range events {
 		switch {
 		case e == "*":
 			snapshotEvents = append(snapshotEvents, "*")
@@ -426,12 +449,4 @@ func (lc *listenCmd) splitEventsByType() (snapshotEvents []string, thinEvents []
 
 func isThinEvent(eventType string) bool {
 	return thinEventPattern.MatchString(eventType)
-}
-
-// mergeDeprecatedFlags folds deprecated --thin-events values into the unified
-// --events list so the rest of the code only needs to look at lc.events.
-func (lc *listenCmd) mergeDeprecatedFlags() {
-	if len(lc.thinEvents) > 0 {
-		lc.events = append(lc.events, lc.thinEvents...)
-	}
 }
