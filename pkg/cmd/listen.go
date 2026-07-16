@@ -209,6 +209,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		forwardThinConnectURL = lc.forwardThinConnectURL
 	}
 
+	if err := lc.validateForwardingConfig(snapshotEvents, thinEvents, directURL, forwardThinURL, connectURL, forwardThinConnectURL); err != nil {
+		return err
+	}
+
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
@@ -496,4 +500,31 @@ func (lc *listenCmd) resolveForwardURLs() (directURL, connectURL string) {
 		}
 	}
 	return
+}
+
+// validateForwardingConfig checks that forwarding configuration is valid.
+func (lc *listenCmd) validateForwardingConfig(snapshotEvents, thinEvents []string, directURL, forwardThinURL, connectURL, forwardThinConnectURL string) error {
+	isForwarding := lc.forwardURL != "" || lc.forwardConnectURL != ""
+	if !isForwarding {
+		return nil
+	}
+
+	// Must be explicit about subscriptions when forwarding
+	if !lc.allSnapshot && !lc.allThin && len(lc.events) == 0 && len(lc.thinEvents) == 0 {
+		return fmt.Errorf("must specify events to forward using --events, --all-snapshot, or --all-thin")
+	}
+
+	// Cannot forward both snapshot and thin events to the same destination
+	hasSnapshot := len(snapshotEvents) > 0
+	hasThin := len(thinEvents) > 0
+	if hasSnapshot && hasThin {
+		if directURL != "" && directURL == forwardThinURL {
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination; use --forward-to and --forward-thin-to to separate them, or use --all-snapshot / --all-thin to subscribe to only one type")
+		}
+		if connectURL != "" && connectURL == forwardThinConnectURL {
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination; use --forward-connect-to and --forward-thin-connect-to to separate them, or use --all-snapshot / --all-thin to subscribe to only one type")
+		}
+	}
+
+	return nil
 }

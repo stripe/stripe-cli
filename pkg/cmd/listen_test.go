@@ -297,3 +297,90 @@ func TestResolveForwardURLs(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateForwardingConfig(t *testing.T) {
+	tests := []struct {
+		name        string
+		lc          listenCmd
+		snapshot    []string
+		thin        []string
+		directURL   string
+		thinURL     string
+		connectURL  string
+		thinConnURL string
+		wantErr     string
+	}{
+		{
+			name:    "no forwarding: no error even without events",
+			lc:      listenCmd{},
+			wantErr: "",
+		},
+		{
+			name:    "forwarding without specifying events: error",
+			lc:      listenCmd{forwardURL: "http://localhost:3000"},
+			wantErr: "must specify events to forward",
+		},
+		{
+			name:      "forwarding with --all-snapshot: no error",
+			lc:        listenCmd{forwardURL: "http://localhost:3000", allSnapshot: true},
+			snapshot:  []string{"*"},
+			directURL: "http://localhost:3000",
+			thinURL:   "",
+			wantErr:   "",
+		},
+		{
+			name:      "forwarding with --all-thin: no error",
+			lc:        listenCmd{forwardURL: "http://localhost:3000", allThin: true},
+			thin:      []string{"*"},
+			directURL: "",
+			thinURL:   "http://localhost:3000",
+			wantErr:   "",
+		},
+		{
+			name:      "forwarding with --events: no error",
+			lc:        listenCmd{forwardURL: "http://localhost:3000", events: []string{"charge.captured"}},
+			snapshot:  []string{"charge.captured"},
+			directURL: "http://localhost:3000",
+			thinURL:   "http://localhost:3000",
+			wantErr:   "",
+		},
+		{
+			name:      "snapshot and thin to same destination: error",
+			lc:        listenCmd{forwardURL: "http://localhost:3000", allSnapshot: true, allThin: true},
+			snapshot:  []string{"*"},
+			thin:      []string{"*"},
+			directURL: "http://localhost:3000",
+			thinURL:   "http://localhost:3000",
+			wantErr:   "cannot forward both snapshot and thin events to the same destination",
+		},
+		{
+			name:      "snapshot and thin to different destinations: no error",
+			lc:        listenCmd{forwardURL: "http://localhost:3000", allSnapshot: true, allThin: true},
+			snapshot:  []string{"*"},
+			thin:      []string{"*"},
+			directURL: "http://localhost:3000",
+			thinURL:   "http://localhost:4000",
+			wantErr:   "",
+		},
+		{
+			name:        "connect: snapshot and thin to same destination: error",
+			lc:          listenCmd{forwardConnectURL: "http://localhost:3000", allSnapshot: true, allThin: true},
+			snapshot:    []string{"*"},
+			thin:        []string{"*"},
+			connectURL:  "http://localhost:3000",
+			thinConnURL: "http://localhost:3000",
+			wantErr:     "cannot forward both snapshot and thin events to the same connect destination",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.lc.validateForwardingConfig(tt.snapshot, tt.thin, tt.directURL, tt.thinURL, tt.connectURL, tt.thinConnURL)
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
+}
