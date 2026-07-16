@@ -106,7 +106,7 @@ func Italic(text string) string {
 	return color.Sprintf(color.Italic(text))
 }
 
-// Linkify returns an ANSI escape sequence with an hyperlink, if the writer
+// Linkify returns an ANSI escape sequence with a hyperlink, if the writer
 // supports colors.
 func Linkify(text, url string, w io.Writer) string {
 	if !shouldUseColors(w) {

@@ -318,7 +318,7 @@ func formatOutput(format string, eventPayload string) string {
 		return fmt.Sprintf("Received malformed event: %s", err)
 	}
 	switch strings.ToUpper(format) {
-	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
+	// The distinction between this and PrintJSON is that this output is stripped of all pretty formatting.
 	case outputFormatJSON:
 		outputJSON, _ := json.Marshal(event)
 		return fmt.Sprintln(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
