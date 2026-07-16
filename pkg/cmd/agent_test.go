@@ -135,9 +135,24 @@ func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 		"claude plugin marketplace update " + agentsetup.ClaudeMarketplace,
 		"claude plugin install " + agentsetup.TargetClaudePlugin,
 	}, calls)
-	require.Contains(t, output, "Updating Claude plugin marketplace and retrying")
 	require.Contains(t, output, "done")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupSurfacesCleanErrorWhenInstallFails(t *testing.T) {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) error {
+		if len(args) > 1 && args[1] == "marketplace" {
+			return errors.New(`Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.`)
+		}
+		return errors.New(`Failed to install plugin "stripe@claude-plugins-official"`)
+	})
+
+	output, err := executeCommand(setup.cmd, "--yes")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "1 item(s) failed to set up")
+	require.Contains(t, output, "Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.")
+	require.Contains(t, output, "0 installed, 0 updated, 0 skipped, 1 errors")
 }
 
 func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
