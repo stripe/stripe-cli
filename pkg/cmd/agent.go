@@ -154,27 +154,35 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	ctx := commandContextOrBackground(cmd)
 	out := cmd.OutOrStdout()
 
-	if asc.statusOnly {
+	if asc.jsonOutput || asc.statusOnly {
 		var statuses []agentsetup.Status
-		err := spinner.New().
-			WithLabel("Checking agent setup...").
-			WithOutput(os.Stderr).
-			Run(func() error {
-				statuses = detectAll(providers)
-				for _, s := range statuses {
-					if s.Detected {
-						sendAgentEvent(ctx, "Agent Setup: Client Detected", s.Client)
-					}
+		detectFn := func() error {
+			statuses = detectAll(providers)
+			for _, s := range statuses {
+				if s.Detected {
+					sendAgentEvent(ctx, "Agent Setup: Client Detected", s.Client)
 				}
-				return nil
-			})
-		if err != nil {
+			}
+			return nil
+		}
+		if asc.statusOnly && !asc.jsonOutput {
+			if err := spinner.New().
+				WithLabel("Checking agent setup...").
+				WithOutput(os.Stderr).
+				Run(detectFn); err != nil {
+				return err
+			}
+		} else if err := detectFn(); err != nil {
 			return err
 		}
+
 		detected := detectedStatuses(statuses)
 		view, err := asc.skillsStatusView(ctx, detected)
 		if err != nil {
 			return err
+		}
+		if asc.jsonOutput {
+			return asc.writeJSON(out, providers, statuses, view)
 		}
 		if len(detected) > 0 {
 			printStatusTable(out, detected)
@@ -198,14 +206,6 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	}
 
 	detected := detectedStatuses(statuses)
-
-	if asc.jsonOutput {
-		view, err := asc.skillsStatusView(ctx, detected)
-		if err != nil {
-			return err
-		}
-		return asc.writeJSON(out, providers, statuses, view)
-	}
 
 	var skills skillsScopes
 	if asc.needsInteractiveSkills() {
