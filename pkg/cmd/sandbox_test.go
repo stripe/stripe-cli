@@ -1445,6 +1445,51 @@ func TestSandboxDeleteCmd_Success(t *testing.T) {
 	assert.Contains(t, output, "sbxA")
 }
 
+func TestSandboxDeleteCmd_IgnoresNonTestWorkspace(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
+	require.NoError(t, err)
+
+	var closeRequested bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"standalone_workspaces": []map[string]interface{}{
+					{"id": "wksp_live", "name": "Live", "merchant_id": "acct_live"},
+				},
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"workspaces": []map[string]interface{}{
+					{"id": "wksp_live_child", "name": "notTestmode", "merchant_id": "acct_a", "replica_of": "wksp_live"},
+				},
+			})
+		case r.Method == http.MethodPost:
+			closeRequested = true
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	_, err = executeCommand(
+		rootCmd,
+		"sandbox", "delete",
+		"--api-base="+server.URL,
+		"--stripe-account=acct_a",
+	)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no sandbox found")
+	assert.False(t, closeRequested)
+}
+
 func TestSandboxDeleteCmd_NotFound(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()

@@ -1093,16 +1093,16 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 		return nil
 	}
 
-	// The delete endpoint takes the sandbox's testmode workspace (wksp_). We only have
-	// its account (acct_), so resolve acct_ -> wksp_ by finding the sandbox under the
+	// The delete endpoint takes the sandbox's testmode workspace (wksp_test). We only have
+	// its account (acct_), so resolve acct_ -> wksp_test by finding the sandbox under the
 	// caller's accessible live parents.
 	sandboxWorkspace, sandboxName, err := resolveSandboxWorkspaceByAccount(cmd.Context(), client, authConfigure, stripeAccount)
 	if err != nil {
 		return err
 	}
 	// Guard: only ever close a sandbox (testmode) workspace, never something else.
-	if !strings.HasPrefix(sandboxWorkspace, "wksp_") {
-		return fmt.Errorf("resolved sandbox id %q is not a workspace (wksp_...)", sandboxWorkspace)
+	if !strings.HasPrefix(sandboxWorkspace, "wksp_test") {
+		return fmt.Errorf("resolved sandbox id %q is not a testmode workspace (wksp_test...)", sandboxWorkspace)
 	}
 
 	if sandboxName != "" {
@@ -1171,7 +1171,7 @@ func fetchSandboxesForParent(ctx context.Context, client *stripe.Client, configu
 	return out, nil
 }
 
-// resolveSandboxWorkspaceByAccount finds the sandbox workspace (wksp_) whose account
+// resolveSandboxWorkspaceByAccount finds the sandbox workspace (wksp_test) whose account
 // (merchant_id) matches sandboxAccount. Sandboxes are listed per live parent, so it
 // searches each accessible live workspace's sandboxes. Returns the sandbox workspace id
 // and its name.
@@ -1189,7 +1189,7 @@ func resolveSandboxWorkspaceByAccount(ctx context.Context, client *stripe.Client
 			return "", "", err
 		}
 		for _, s := range sandboxes {
-			if s.MerchantID == sandboxAccount && strings.HasPrefix(s.ID, "wksp_") {
+			if s.MerchantID == sandboxAccount && strings.HasPrefix(s.ID, "wksp_test") {
 				return s.ID, s.Name, nil
 			}
 		}
