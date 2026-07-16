@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -23,6 +24,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
+var thinEventPattern = regexp.MustCompile(`^v\d+\.`)
+
 const (
 	webhooksWebSocketFeature     = "webhooks"
 	destinationsWebSocketFeature = "v2_events"
@@ -34,13 +37,10 @@ type listenCmd struct {
 	cmd *cobra.Command
 
 	forwardURL            string
-	forwardThinURL        string
 	forwardHeaders        []string
 	forwardConnectHeaders []string
 	forwardConnectURL     string
-	forwardThinConnectURL string
 	events                []string
-	thinEvents            []string
 	latestAPIVersion      bool
 	livemode              bool
 	useConfiguredWebhooks bool
@@ -53,6 +53,11 @@ type listenCmd struct {
 	noWSS                 bool
 	timeout               int64
 	deviceToken           string
+
+	// Deprecated flags (kept for backward compatibility)
+	thinEvents            []string
+	forwardThinURL        string
+	forwardThinConnectURL string
 }
 
 func newListenCmd() *listenCmd {
@@ -69,8 +74,8 @@ Stripe account.`,
 		Example: `stripe listen
   stripe listen --events charge.captured,charge.updated \
     --forward-to localhost:3000/events
-  stripe listen --thin-events v1.billing.meter.no_meter_found \
-    --forward-thin-to localhost:3000/thin-events`,
+  stripe listen --events v1.billing.meter.no_meter_found \
+    --forward-to localhost:3000/events`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
@@ -81,13 +86,18 @@ Stripe account.`,
 	}
 
 	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
-	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. Supports both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found)")
+	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
+	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
+
+	// Deprecated flags
 	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
+	lc.cmd.Flags().MarkDeprecated("thin-events", "use --events instead, which now accepts both snapshot and thin event types")
 	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
+	lc.cmd.Flags().MarkDeprecated("forward-thin-to", "use --forward-to instead, which now forwards both snapshot and thin events")
 	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
+	lc.cmd.Flags().MarkDeprecated("forward-thin-connect-to", "use --forward-connect-to instead")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -179,15 +189,26 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
+	snapshotEvents, thinEvents := lc.resolveEvents()
+
+	forwardThinURL := lc.forwardURL
+	if lc.forwardThinURL != "" {
+		forwardThinURL = lc.forwardThinURL
+	}
+	forwardThinConnectURL := lc.forwardConnectURL
+	if lc.forwardThinConnectURL != "" {
+		forwardThinConnectURL = lc.forwardThinConnectURL
+	}
+
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
 		ForwardURL:            lc.forwardURL,
-		ForwardThinURL:        lc.forwardThinURL,
+		ForwardThinURL:        forwardThinURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     lc.forwardConnectURL,
-		ForwardThinConnectURL: lc.forwardThinConnectURL,
+		ForwardThinConnectURL: forwardThinConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
@@ -197,8 +218,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Log:                   logger,
 		NoWSS:                 lc.noWSS,
 		Timeout:               lc.timeout,
-		Events:                lc.events,
-		ThinEvents:            lc.thinEvents,
+		Events:                snapshotEvents,
+		ThinEvents:            thinEvents,
 		OutCh:                 proxyOutCh,
 		LoggedInAccountID:     accountID,
 	})
@@ -359,15 +380,73 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 }
 
 func (lc *listenCmd) getFeatures() []string {
-	features := []string{}
+	needsSnapshot := false
+	needsThin := len(lc.thinEvents) > 0
 
-	if len(lc.events) > 0 {
+	for _, e := range lc.events {
+		if e == "*" {
+			needsSnapshot = true
+			needsThin = true
+			break
+		}
+		if isThinEvent(e) {
+			needsThin = true
+		} else {
+			needsSnapshot = true
+		}
+	}
+
+	features := []string{}
+	if needsSnapshot {
 		features = append(features, webhooksWebSocketFeature)
 	}
-
-	if len(lc.thinEvents) > 0 {
+	if needsThin {
 		features = append(features, destinationsWebSocketFeature)
 	}
-
 	return features
+}
+
+// resolveEvents merges deprecated --thin-events into the unified --events list,
+// then splits into snapshot and thin event lists for the proxy.
+func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
+	eventsExplicit := lc.cmd.Flags().Changed("events")
+	return mergeAndSplitEvents(lc.events, lc.thinEvents, eventsExplicit)
+}
+
+// mergeAndSplitEvents combines the events and deprecated thinEvents lists,
+// then splits into snapshot and thin event lists for the proxy.
+func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit bool) (snapshotEvents []string, thinEventsOut []string) {
+	if len(thinEvents) > 0 && !eventsExplicit {
+		// --thin-events used without explicit --events: subscribe to all snapshot
+		// events (the default behavior) plus only the specified thin events.
+		return []string{"*"}, thinEvents
+	}
+
+	// Merge deprecated thin events into the unified list
+	merged := events
+	if len(thinEvents) > 0 {
+		merged = append(merged, thinEvents...)
+	}
+
+	return splitEventsByType(merged)
+}
+
+// splitEventsByType separates an event list into snapshot and thin event lists.
+func splitEventsByType(events []string) (snapshotEvents []string, thinEvents []string) {
+	for _, e := range events {
+		switch {
+		case e == "*":
+			snapshotEvents = append(snapshotEvents, "*")
+			thinEvents = append(thinEvents, "*")
+		case isThinEvent(e):
+			thinEvents = append(thinEvents, e)
+		default:
+			snapshotEvents = append(snapshotEvents, e)
+		}
+	}
+	return
+}
+
+func isThinEvent(eventType string) bool {
+	return thinEventPattern.MatchString(eventType)
 }
