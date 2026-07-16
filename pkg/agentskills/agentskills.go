@@ -26,7 +26,7 @@ import (
 var IndexURL = "https://docs.stripe.com/.well-known/skills/index.json"
 
 const (
-	requestTimeout         = 10 * time.Second
+	requestTimeout         = 5 * time.Second
 	skillCheckConcurrency  = 8
 	remoteFetchConcurrency = 8
 )
