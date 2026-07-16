@@ -53,11 +53,6 @@ type listenCmd struct {
 	noWSS                 bool
 	timeout               int64
 	deviceToken           string
-
-	// Deprecated flags (kept for backward compatibility)
-	thinEvents            []string
-	forwardThinURL        string
-	forwardThinConnectURL string
 }
 
 func newListenCmd() *listenCmd {
@@ -91,13 +86,6 @@ Stripe account.`,
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
 
-	// Deprecated flags
-	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
-	lc.cmd.Flags().MarkDeprecated("thin-events", "use --events instead, which now accepts both snapshot and thin event types")
-	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
-	lc.cmd.Flags().MarkDeprecated("forward-thin-to", "use --forward-to instead, which now forwards both snapshot and thin events")
-	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
-	lc.cmd.Flags().MarkDeprecated("forward-thin-connect-to", "use --forward-connect-to instead")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -189,26 +177,17 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
-	snapshotEvents, thinEvents := lc.resolveEvents()
-
-	forwardThinURL := lc.forwardURL
-	if lc.forwardThinURL != "" {
-		forwardThinURL = lc.forwardThinURL
-	}
-	forwardThinConnectURL := lc.forwardConnectURL
-	if lc.forwardThinConnectURL != "" {
-		forwardThinConnectURL = lc.forwardThinConnectURL
-	}
+	snapshotEvents, thinEvents := splitEventsByType(lc.events)
 
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
 		ForwardURL:            lc.forwardURL,
-		ForwardThinURL:        forwardThinURL,
+		ForwardThinURL:        lc.forwardURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     lc.forwardConnectURL,
-		ForwardThinConnectURL: forwardThinConnectURL,
+		ForwardThinConnectURL: lc.forwardConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
@@ -381,7 +360,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 
 func (lc *listenCmd) getFeatures() []string {
 	needsSnapshot := false
-	needsThin := len(lc.thinEvents) > 0
+	needsThin := false
 
 	for _, e := range lc.events {
 		if e == "*" {
@@ -404,31 +383,6 @@ func (lc *listenCmd) getFeatures() []string {
 		features = append(features, destinationsWebSocketFeature)
 	}
 	return features
-}
-
-// resolveEvents merges deprecated --thin-events into the unified --events list,
-// then splits into snapshot and thin event lists for the proxy.
-func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
-	eventsExplicit := lc.cmd.Flags().Changed("events")
-	return mergeAndSplitEvents(lc.events, lc.thinEvents, eventsExplicit)
-}
-
-// mergeAndSplitEvents combines the events and deprecated thinEvents lists,
-// then splits into snapshot and thin event lists for the proxy.
-func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit bool) (snapshotEvents []string, thinEventsOut []string) {
-	if len(thinEvents) > 0 && !eventsExplicit {
-		// --thin-events used without explicit --events: subscribe to all snapshot
-		// events (the default behavior) plus only the specified thin events.
-		return []string{"*"}, thinEvents
-	}
-
-	// Merge deprecated thin events into the unified list
-	merged := events
-	if len(thinEvents) > 0 {
-		merged = append(merged, thinEvents...)
-	}
-
-	return splitEventsByType(merged)
 }
 
 // splitEventsByType separates an event list into snapshot and thin event lists.
