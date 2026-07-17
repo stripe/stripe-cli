@@ -40,6 +40,7 @@ type listenCmd struct {
 	forwardHeaders        []string
 	forwardConnectHeaders []string
 	forwardConnectURL     string
+	eventsFrom            string
 	events                []string
 	latestAPIVersion      bool
 	livemode              bool
@@ -75,7 +76,9 @@ Stripe account.`,
   stripe listen --events charge.captured,charge.updated \
     --forward-to localhost:3000/events
   stripe listen --events v1.billing.meter.no_meter_found \
-    --forward-to localhost:3000/events`,
+    --forward-to localhost:3000/events
+  stripe listen --events v2.core.account.created \
+    --events-from @accounts --forward-to localhost:3000/events`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
@@ -87,6 +90,7 @@ Stripe account.`,
 
 	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. Supports both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found)")
+	lc.cmd.Flags().StringVar(&lc.eventsFrom, "events-from", "all", "Event source filter: '@self' (your account only), '@accounts' (connected accounts only), or 'all' (default)")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
@@ -190,12 +194,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyOutCh := make(chan websocket.IElement)
 
 	snapshotEvents, thinEvents := lc.resolveEvents()
+	directURL, connectURL := lc.resolveForwardURLs()
 
-	forwardThinURL := lc.forwardURL
+	forwardThinURL := directURL
 	if lc.forwardThinURL != "" {
 		forwardThinURL = lc.forwardThinURL
 	}
-	forwardThinConnectURL := lc.forwardConnectURL
+	forwardThinConnectURL := connectURL
 	if lc.forwardThinConnectURL != "" {
 		forwardThinConnectURL = lc.forwardThinConnectURL
 	}
@@ -204,10 +209,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Client:                client,
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
-		ForwardURL:            lc.forwardURL,
+		ForwardURL:            directURL,
 		ForwardThinURL:        forwardThinURL,
 		ForwardHeaders:        lc.forwardHeaders,
-		ForwardConnectURL:     lc.forwardConnectURL,
+		ForwardConnectURL:     connectURL,
 		ForwardThinConnectURL: forwardThinConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
@@ -449,4 +454,27 @@ func splitEventsByType(events []string) (snapshotEvents []string, thinEvents []s
 
 func isThinEvent(eventType string) bool {
 	return thinEventPattern.MatchString(eventType)
+}
+
+// resolveForwardURLs determines the direct and connect forwarding URLs based on
+// the --events-from flag and the --forward-to / --forward-connect-to flags.
+func (lc *listenCmd) resolveForwardURLs() (directURL, connectURL string) {
+	switch lc.eventsFrom {
+	case "@self":
+		directURL = lc.forwardURL
+		connectURL = ""
+	case "@accounts":
+		directURL = ""
+		connectURL = lc.forwardURL
+		if lc.forwardConnectURL != "" {
+			connectURL = lc.forwardConnectURL
+		}
+	default: // "all"
+		directURL = lc.forwardURL
+		connectURL = lc.forwardConnectURL
+		if connectURL == "" {
+			connectURL = lc.forwardURL
+		}
+	}
+	return
 }
