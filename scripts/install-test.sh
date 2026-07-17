@@ -39,6 +39,8 @@ run_install() {
     ;;
 
     winget)
+        # Re-register the WinGet source AppX package to fix 0x8a15000f "data required is missing".
+        powershell.exe -Command 'Add-AppxPackage -DisableDevelopmentMode -Register $(Resolve-Path "C:\Program Files\WindowsApps\Microsoft.Winget.Source_*\AppXManifest.xml") -Verbose'
         # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
         winget source reset --force
         # The GitHub Actions Windows image includes the Microsoft Store source,
