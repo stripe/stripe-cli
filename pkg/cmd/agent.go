@@ -204,6 +204,11 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	for _, s := range statuses {
 		if s.Detected {
 			sendAgentEvent(ctx, "Agent Setup: Client Detected", s.Client)
+			if s.Plugin.Installed {
+				sendAgentEvent(ctx, "Agent Setup: Plugin Detected", s.Client+":installed")
+			} else {
+				sendAgentEvent(ctx, "Agent Setup: Plugin Detected", s.Client+":not_installed")
+			}
 		}
 	}
 
