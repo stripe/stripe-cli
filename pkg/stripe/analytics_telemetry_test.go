@@ -251,23 +251,23 @@ func TestTelemetryOptedOut(t *testing.T) {
 
 // AI Agent Detection Tests
 func TestDetectAIAgent_WithClaudeCode(t *testing.T) {
-	// Mock env getter that returns CLAUDECODE
-	getEnv := func(key string) string {
-		if key == "CLAUDECODE" {
-			return "1"
-		}
-		return ""
-	}
-	result := useragent.DetectAIAgent(getEnv)
-	require.Equal(t, "claude_code", result)
+	t.Setenv("AI_AGENT", "")
+	t.Setenv("CLAUDECODE", "1")
+	result := useragent.DetectAIAgent()
+	require.Equal(t, "claude", result)
 }
 
 func TestDetectAIAgent_NoAgentDetected(t *testing.T) {
-	// Mock env getter that returns empty strings
-	getEnv := func(key string) string {
-		return ""
+	for _, key := range []string{
+		"AI_AGENT",
+		"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLAUDE_CODE", "CLINE_ACTIVE",
+		"CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI",
+		"CURSOR_TRACE_ID", "CURSOR_AGENT", "GEMINI_CLI", "OPENCODE", "OPENCODE_CLIENT",
+		"OPENCLAW_SHELL",
+	} {
+		t.Setenv(key, "")
 	}
-	result := useragent.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent()
 	require.Equal(t, "", result)
 }
 
@@ -278,37 +278,30 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 		expected string
 	}{
 		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "antigravity"},
-		{"Claude Code", "CLAUDECODE", "claude_code"},
+		{"Claude Code", "CLAUDECODE", "claude"},
 		{"Cline", "CLINE_ACTIVE", "cline"},
-		{"Codex CLI", "CODEX_SANDBOX", "codex_cli"},
-		{"Cursor", "CURSOR_AGENT", "cursor"},
-		{"Gemini CLI", "GEMINI_CLI", "gemini_cli"},
-		{"Open Code", "OPENCODE", "open_code"},
+		{"Codex CLI", "CODEX_SANDBOX", "codex"},
+		{"Cursor", "CURSOR_TRACE_ID", "cursor"},
+		{"Cursor CLI", "CURSOR_AGENT", "cursor-cli"},
+		{"Gemini CLI", "GEMINI_CLI", "gemini"},
+		{"Open Code", "OPENCODE", "opencode"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Mock env getter that returns only the specific env var being tested
-			getEnv := func(key string) string {
-				if key == tt.envVar {
-					return "true"
-				}
-				return ""
-			}
-			result := useragent.DetectAIAgent(getEnv)
+			t.Setenv("AI_AGENT", "")
+			t.Setenv(tt.envVar, "true")
+			result := useragent.DetectAIAgent()
 			require.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 func TestAIAgentDetection_Priority(t *testing.T) {
-	// Test that the first matching env var wins (antigravity comes before cursor)
-	getEnv := func(key string) string {
-		if key == "ANTIGRAVITY_CLI_ALIAS" || key == "CURSOR_AGENT" {
-			return "1"
-		}
-		return ""
-	}
-	result := useragent.DetectAIAgent(getEnv)
-	require.Equal(t, "antigravity", result)
+	// cursor is evaluated before antigravity in detect-agent's spec order
+	t.Setenv("AI_AGENT", "")
+	t.Setenv("CURSOR_TRACE_ID", "1")
+	t.Setenv("ANTIGRAVITY_CLI_ALIAS", "1")
+	result := useragent.DetectAIAgent()
+	require.Equal(t, "cursor", result)
 }

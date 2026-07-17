@@ -269,7 +269,7 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 //
 
 func isAIAgent() bool {
-	return useragent.DetectAIAgent(os.Getenv) != ""
+	return useragent.DetectAIAgent() != ""
 }
 
 // AIAgentHelpAnnotationKey is the Cobra annotation key used to store

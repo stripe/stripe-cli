@@ -15,11 +15,12 @@ const claudeCodePluginHint = `<claude-code-hint v="1" type="plugin" value="strip
 // the user to install the Stripe plugin. See
 // https://code.claude.com/docs/en/plugin-hints for the protocol.
 func emitClaudeCodePluginHint() {
-	writeClaudeCodePluginHint(os.Getenv, os.Stderr)
+	writeClaudeCodePluginHint(os.Stderr)
 }
 
-func writeClaudeCodePluginHint(getEnv func(string) string, w io.Writer) {
-	if useragent.DetectAIAgent(getEnv) != "claude_code" {
+func writeClaudeCodePluginHint(w io.Writer) {
+	a := useragent.DetectAIAgent()
+	if a != "claude" && a != "cowork" {
 		return
 	}
 	fmt.Fprintln(w, claudeCodePluginHint)

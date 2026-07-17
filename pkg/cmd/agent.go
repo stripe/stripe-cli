@@ -26,11 +26,13 @@ import (
 
 // agentClientID maps the AI agent identifiers returned by
 // useragent.DetectAIAgent to this command's provider ids. Agents not backed by
-// a provider (e.g. gemini_cli) map to "".
+// a provider (e.g. "gemini") map to "".
 var agentClientID = map[string]string{
-	"claude_code": agentsetup.ClientClaudeCode,
-	"codex_cli":   agentsetup.ClientCodex,
-	"cursor":      agentsetup.ClientCursor,
+	"claude":     agentsetup.ClientClaudeCode,
+	"cowork":     agentsetup.ClientClaudeCode,
+	"codex":      agentsetup.ClientCodex,
+	"cursor":     agentsetup.ClientCursor,
+	"cursor-cli": agentsetup.ClientCursor,
 }
 
 // providerOrder is the canonical display order for known clients. Providers not
@@ -65,7 +67,7 @@ type agentSetupCmd struct {
 	skillsDirsExist func(localDir, globalDir string) bool
 
 	// callingAgent returns the AI agent invoking this command (e.g.
-	// "claude_code"), or "" for a human shell. Injectable for tests.
+	// "claude"), or "" for a human shell. Injectable for tests.
 	callingAgent func() string
 	// isInteractive reports whether an interactive picker can be shown.
 	// Injectable for tests.
@@ -114,7 +116,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 		skillsLocalDir:  func() (string, error) { return skillsDirUnder(os.Getwd) },
 		skillsGlobalDir: func() (string, error) { return skillsDirUnder(os.UserHomeDir) },
 		skillsDirsExist: skillsDirsExist,
-		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
+		callingAgent:    func() string { return useragent.DetectAIAgent() },
 		isInteractive:   isInteractiveTerminal,
 	}
 

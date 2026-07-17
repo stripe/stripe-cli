@@ -93,7 +93,7 @@ Read API Reference pages by their identifier:
 		SilenceUsage:      true,
 	}
 
-	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
+	agentDetected := useragent.DetectAIAgent() != ""
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
 	r.cmd.PersistentFlags().BoolVar(&r.nonInteractive, "non-interactive", agentDetected, "Write output directly without the interactive browser")
 
@@ -158,7 +158,7 @@ func (r *RootCommand) initRenderer() {
 	case "on":
 		// Use default styled rendering (auto-detect dark/light).
 	default:
-		if useragent.DetectAIAgent(os.Getenv) != "" {
+		if useragent.DetectAIAgent() != "" {
 			opts = append(opts, markdown.WithStyle("notty"))
 		}
 	}
@@ -186,7 +186,7 @@ func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
 	if r.logger != nil {
-		if a := useragent.DetectAIAgent(os.Getenv); a != "" {
+		if a := useragent.DetectAIAgent(); a != "" {
 			r.logger.WithField("name", a).Debug("agent detected")
 		}
 	}
@@ -229,7 +229,7 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
-	if r.nonInteractive || r.noPager || useragent.DetectAIAgent(os.Getenv) != "" {
+	if r.nonInteractive || r.noPager || useragent.DetectAIAgent() != "" {
 		return false
 	}
 	f, ok := cmd.OutOrStdout().(*os.File)

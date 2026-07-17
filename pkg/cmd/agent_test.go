@@ -378,7 +378,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
 	// Simulate being invoked by Codex CLI — only its plugin should install,
 	// even though Claude is also detected, and with no --client flag.
-	setup.callingAgent = func() string { return "codex_cli" }
+	setup.callingAgent = func() string { return "codex" }
 	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd)
@@ -401,7 +401,7 @@ func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
-	setup.callingAgent = func() string { return "codex_cli" }
+	setup.callingAgent = func() string { return "codex" }
 	setup.skillsCheck = func(context.Context, string) (*agentskills.DirStatus, error) {
 		t.Fatal("calling-agent plugin setup should not check skills")
 		return nil, nil
@@ -448,7 +448,7 @@ func TestAgentSetupUnsupportedAgentInstallsSkillsToLocal(t *testing.T) {
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
-	setup.callingAgent = func() string { return "gemini_cli" }
+	setup.callingAgent = func() string { return "gemini" }
 	localDir := filepath.Join(t.TempDir(), ".agents", "skills")
 	setup.skillsInstall = func(_ context.Context, destDir string) ([]string, error) {
 		gotDir = destDir
@@ -536,7 +536,7 @@ func TestAgentSetupAgentScopingWinsOverYes(t *testing.T) {
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
-	setup.callingAgent = func() string { return "codex_cli" }
+	setup.callingAgent = func() string { return "codex" }
 	setup.cmd.SetContext(context.Background())
 
 	output, err := executeCommand(setup.cmd, "--yes")
@@ -580,7 +580,7 @@ func TestAgentSetupAgentNeverUsesInteractivePicker(t *testing.T) {
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
-	setup.callingAgent = func() string { return "gemini_cli" }
+	setup.callingAgent = func() string { return "gemini" }
 	setup.isInteractive = func() bool { return true } // simulate a PTY
 	setup.skillsInstall = func(context.Context, string) ([]string, error) {
 		skillsCalled = true
@@ -770,7 +770,7 @@ func TestAgentSetupSkillsSkipWhenCurrent(t *testing.T) {
 	var installCalled bool
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{}
-	setup.callingAgent = func() string { return "gemini_cli" }
+	setup.callingAgent = func() string { return "gemini" }
 	setup.skillsCheck = mockSkillsCheckCurrent
 	setup.skillsInstall = func(context.Context, string) ([]string, error) {
 		installCalled = true
@@ -791,7 +791,7 @@ func TestAgentSetupSkillsUpdateWhenOutOfDate(t *testing.T) {
 	var installCalled bool
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{}
-	setup.callingAgent = func() string { return "gemini_cli" }
+	setup.callingAgent = func() string { return "gemini" }
 	setup.skillsCheck = mockSkillsCheckOutOfDate
 	setup.skillsInstall = func(_ context.Context, _ string) ([]string, error) {
 		installCalled = true

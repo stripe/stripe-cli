@@ -80,7 +80,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewString(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
-		AIAgent:      useragent.DetectAIAgent(os.Getenv),
+		AIAgent:      useragent.DetectAIAgent(),
 		InstallMethod: useragent.DetectInstallMethod(
 			os.Getenv,
 			os.Executable,

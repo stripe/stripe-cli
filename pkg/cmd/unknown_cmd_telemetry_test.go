@@ -33,7 +33,10 @@ func (m *mockUnknownCmdTelemetryClient) SendEvent(_ context.Context, eventName s
 }
 
 func TestRecordUnknownCommand_NotInAgentEnv(t *testing.T) {
+	t.Setenv("AI_AGENT", "")
 	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE", "")
+	t.Setenv("CURSOR_TRACE_ID", "")
 	t.Setenv("CURSOR_AGENT", "")
 	t.Setenv("CODEX_SANDBOX", "")
 	t.Setenv("CODEX_THREAD_ID", "")
@@ -42,6 +45,7 @@ func TestRecordUnknownCommand_NotInAgentEnv(t *testing.T) {
 	t.Setenv("CLINE_ACTIVE", "")
 	t.Setenv("GEMINI_CLI", "")
 	t.Setenv("OPENCODE", "")
+	t.Setenv("OPENCODE_CLIENT", "")
 	t.Setenv("OPENCLAW_SHELL", "")
 	t.Setenv("ANTIGRAVITY_CLI_ALIAS", "")
 
@@ -60,6 +64,7 @@ func TestRecordUnknownCommand_NotInAgentEnv(t *testing.T) {
 }
 
 func TestRecordUnknownCommand_InAgentEnv_BatchesCommands(t *testing.T) {
+	t.Setenv("AI_AGENT", "")
 	t.Setenv("CLAUDECODE", "1")
 
 	tmpDir := t.TempDir()
@@ -81,12 +86,13 @@ func TestRecordUnknownCommand_InAgentEnv_BatchesCommands(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &entries))
 	assert.Len(t, entries, 9)
 	assert.Equal(t, "stripe foobar", entries[0].Command)
-	assert.Equal(t, "claude_code", entries[0].Agent)
+	assert.Equal(t, "claude", entries[0].Agent)
 
 	assert.Len(t, mock.events, 0)
 }
 
 func TestRecordUnknownCommand_InAgentEnv_SendsAtBatchSize(t *testing.T) {
+	t.Setenv("AI_AGENT", "")
 	t.Setenv("CLAUDECODE", "1")
 
 	tmpDir := t.TempDir()
@@ -111,7 +117,7 @@ func TestRecordUnknownCommand_InAgentEnv_SendsAtBatchSize(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(mock.events[0].value), &entries))
 	assert.Len(t, entries, 10)
 	assert.Equal(t, "stripe bazqux", entries[0].Command)
-	assert.Equal(t, "claude_code", entries[0].Agent)
+	assert.Equal(t, "claude", entries[0].Agent)
 }
 
 func TestRecordUnknownCommand_NoTelemetryClient(t *testing.T) {
