@@ -98,9 +98,9 @@ func (p ClaudeProvider) Plan(status Status, force bool) Plan {
 	}
 }
 
-// Apply installs the Stripe Claude Code plugin, refreshing the official plugin
-// marketplace and retrying once if the first attempt fails.
-func (p ClaudeProvider) Apply(ctx context.Context, out io.Writer, plan Plan) error {
+// Apply installs the Stripe Claude Code plugin. On failure it silently refreshes
+// the official marketplace and retries once.
+func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
 	if plan.Action == ActionNone {
 		return nil
 	}
@@ -114,15 +114,10 @@ func (p ClaudeProvider) Apply(ctx context.Context, out io.Writer, plan Plan) err
 	}
 
 	updateName, updateArgs := ClaudeMarketplaceUpdateCommand()
-	updateCommand := append([]string{updateName}, updateArgs...)
-	fmt.Fprintf(out, "First install failed. Updating Claude plugin marketplace and retrying: %s\n", strings.Join(updateCommand, " "))
 	if updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
-		return fmt.Errorf("running %q after install failed: %w", strings.Join(updateCommand, " "), updateErr)
+		return updateErr
 	}
-	if retryErr := p.RunCommand(ctx, name, installArgs...); retryErr != nil {
-		return fmt.Errorf("running %q after marketplace update: %w", strings.Join(plan.Command, " "), retryErr)
-	}
-	return nil
+	return p.RunCommand(ctx, name, installArgs...)
 }
 
 // stripePluginStatus runs `claude plugin list --json` and reports whether the
