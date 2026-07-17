@@ -33,8 +33,12 @@ func TestLogin(t *testing.T) {
 		didOpenBrowser = true
 		return nil
 	}
+	canOpenBrowser = func() bool { return true }
 
-	defer func() { openBrowser = open.Browser }()
+	defer func() {
+		openBrowser = open.Browser
+		canOpenBrowser = open.CanOpenBrowser
+	}()
 
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	viper.SetConfigFile(profilesFile)
@@ -106,8 +110,12 @@ func TestLoginNoInput(t *testing.T) {
 		didOpenBrowser = true
 		return nil
 	}
+	canOpenBrowser = func() bool { return true }
 
-	defer func() { openBrowser = open.Browser }()
+	defer func() {
+		openBrowser = open.Browser
+		canOpenBrowser = open.CanOpenBrowser
+	}()
 
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	viper.SetConfigFile(profilesFile)
