@@ -174,6 +174,24 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.Nil(t, result.Skills)
 }
 
+func TestAgentSetupStatusJSONPrefersJSONOutput(t *testing.T) {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+		t.Fatal("installer should not run in --status --json mode")
+		return nil
+	})
+
+	output, err := executeCommand(setup.cmd, "--status", "--json")
+
+	require.NoError(t, err)
+	require.NotContains(t, output, "Stripe agent tooling:")
+	require.NotContains(t, output, "Stripe skills:")
+
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Len(t, result.Clients, 1)
+	require.True(t, result.Clients[0].Detected)
+}
+
 func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
 	setup := testAgentSetupCmd()
 	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
