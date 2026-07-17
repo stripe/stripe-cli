@@ -4,10 +4,11 @@ package useragent
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	detectagent "github.com/vercel/detect-agent"
 
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -95,34 +96,14 @@ func DetectTerminalProgram(getEnv func(string) string) string {
 	return ""
 }
 
-// DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
-// It accepts an environment getter function to allow testing without modifying the actual environment.
-func DetectAIAgent(getEnv func(string) string) string {
-	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
-		return "antigravity"
+// DetectAIAgent detects if the CLI was invoked by a coding agent.
+// Returns the agent's canonical name (e.g. "claude", "cursor") or "" if none detected.
+func DetectAIAgent() string {
+	agent, err := detectagent.Detect()
+	if err != nil {
+		return ""
 	}
-	if getEnv("CLAUDECODE") != "" {
-		return "claude_code"
-	}
-	if getEnv("CLINE_ACTIVE") != "" {
-		return "cline"
-	}
-	if getEnv("CODEX_SANDBOX") != "" || getEnv("CODEX_THREAD_ID") != "" || getEnv("CODEX_SANDBOX_NETWORK_DISABLED") != "" || getEnv("CODEX_CI") != "" {
-		return "codex_cli"
-	}
-	if getEnv("CURSOR_AGENT") != "" {
-		return "cursor"
-	}
-	if getEnv("GEMINI_CLI") != "" {
-		return "gemini_cli"
-	}
-	if getEnv("OPENCODE") != "" {
-		return "open_code"
-	}
-	if getEnv("OPENCLAW_SHELL") != "" {
-		return "openclaw"
-	}
-	return ""
+	return agent.Name
 }
 
 //
@@ -157,7 +138,7 @@ func init() {
 
 func initUserAgent() {
 	encodedUserAgent = "Stripe/v1 stripe-cli/" + version.Version
-	if agent := DetectAIAgent(os.Getenv); agent != "" {
+	if agent := DetectAIAgent(); agent != "" {
 		encodedUserAgent += fmt.Sprintf(" AIAgent/%s", agent)
 	}
 

@@ -54,7 +54,7 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	styles := ui.DefaultStyles()
 
 	checkmark := styles.SuccessText.Render("✓")
-	disabled := useragent.DetectAIAgent(os.Getenv) != "" || !isStdoutTTY(cmd)
+	disabled := useragent.DetectAIAgent() != "" || !isStdoutTTY(cmd)
 
 	var response *pkgdocs.SearchResponse
 	err := spinner.New().

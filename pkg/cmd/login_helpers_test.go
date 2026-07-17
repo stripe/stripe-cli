@@ -7,16 +7,24 @@ import (
 )
 
 func TestShouldAutoLogin(t *testing.T) {
-	noAgent := func(string) string { return "" }
-	claudeAgent := func(k string) string {
-		if k == "CLAUDECODE" {
-			return "1"
-		}
-		return ""
-	}
-
-	require.True(t, shouldAutoLogin(noAgent, true))       // interactive terminal, no agent → auto-login
-	require.False(t, shouldAutoLogin(noAgent, false))     // non-TTY stdin (CI, /dev/null) → fast-fail
-	require.False(t, shouldAutoLogin(claudeAgent, true))  // agent with real TTY → fast-fail
-	require.False(t, shouldAutoLogin(claudeAgent, false)) // agent, no TTY → fast-fail
+	t.Run("no agent, interactive terminal", func(t *testing.T) {
+		t.Setenv("AI_AGENT", "")
+		t.Setenv("CLAUDECODE", "")
+		require.True(t, shouldAutoLogin(true))
+	})
+	t.Run("no agent, non-TTY stdin", func(t *testing.T) {
+		t.Setenv("AI_AGENT", "")
+		t.Setenv("CLAUDECODE", "")
+		require.False(t, shouldAutoLogin(false))
+	})
+	t.Run("agent with real TTY", func(t *testing.T) {
+		t.Setenv("AI_AGENT", "")
+		t.Setenv("CLAUDECODE", "1")
+		require.False(t, shouldAutoLogin(true))
+	})
+	t.Run("agent, no TTY", func(t *testing.T) {
+		t.Setenv("AI_AGENT", "")
+		t.Setenv("CLAUDECODE", "1")
+		require.False(t, shouldAutoLogin(false))
+	})
 }

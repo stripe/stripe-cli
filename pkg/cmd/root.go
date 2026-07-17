@@ -158,11 +158,11 @@ func Execute(ctx context.Context) {
 			errRunes := []rune(errString)
 			errRunes[0] = unicode.ToUpper(errRunes[0])
 
-			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+			if !shouldAutoLogin(term.IsTerminal(int(os.Stdin.Fd()))) {
 				fmt.Fprintln(os.Stderr, string(errRunes))
 				fmt.Fprintln(os.Stderr, "  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.")
 				fmt.Fprintln(os.Stderr, "  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).")
-				if useragent.DetectAIAgent(os.Getenv) != "" {
+				if useragent.DetectAIAgent() != "" {
 					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox).")
 				}
 			} else {

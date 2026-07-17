@@ -28,7 +28,7 @@ type unknownCommandEntry struct {
 // recordUnknownCommand records an unknown command attempt in agent environments.
 // It batches entries locally and sends telemetry every unknownCmdBatchSize occurrences.
 func recordUnknownCommand(ctx context.Context, command string) {
-	agent := useragent.DetectAIAgent(os.Getenv)
+	agent := useragent.DetectAIAgent()
 	if agent == "" {
 		return
 	}

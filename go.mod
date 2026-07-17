@@ -94,6 +94,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/skeema/knownhosts v1.3.2 // indirect
+	github.com/vercel/detect-agent v1.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/goldmark-emoji v1.0.5 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect

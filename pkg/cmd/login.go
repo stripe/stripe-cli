@@ -129,8 +129,8 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
 	}
 
-	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
-		if useragent.DetectAIAgent(os.Getenv) != "" {
+	if lc.nonInteractive || !shouldAutoLogin(term.IsTerminal(int(os.Stdin.Fd()))) {
+		if useragent.DetectAIAgent() != "" {
 			fmt.Fprintln(os.Stderr, "If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).")
 		}
 		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
