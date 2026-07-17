@@ -41,6 +41,7 @@ run_install() {
     winget)
         # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
         winget source reset --force
+        winget source update winget
         # The GitHub Actions Windows image includes the Microsoft Store source,
         # which can block non-interactive installs after a reset by prompting
         # for terms and region data. Remove it and install from the community
