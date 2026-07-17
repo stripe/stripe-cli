@@ -40,7 +40,8 @@ run_install() {
 
     winget)
         # Re-register the WinGet source AppX package to fix 0x8a15000f "data required is missing".
-        # shellcheck disable=SC2016 -- $m is a PowerShell variable, not a shell variable; single quotes are intentional.
+        # $m is a PowerShell variable; single quotes intentionally prevent shell expansion.
+        # shellcheck disable=SC2016
         powershell.exe -Command '$m = Get-ChildItem -Path "C:\Program Files\WindowsApps\Microsoft.Winget.Source_*\AppXManifest.xml" -ErrorAction SilentlyContinue | Select-Object -First 1; if ($m) { Add-AppxPackage -DisableDevelopmentMode -Register $m.FullName -Verbose }'
         # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
         winget source reset --force
