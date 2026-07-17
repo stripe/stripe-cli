@@ -18,7 +18,7 @@ const (
 	ClaudeMarketplace  = "claude-plugins-official"
 	ClaudeDisplayName  = "Claude Code"
 
-	claudeListTimeout = 10 * time.Second
+	claudeListTimeout = 5 * time.Second
 )
 
 // ClaudeProvider detects and configures the Stripe plugin for Claude Code.
