@@ -177,6 +177,7 @@ func Execute(ctx context.Context) {
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
+			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
 
 		default:
 			fmt.Fprintln(os.Stderr, err)
