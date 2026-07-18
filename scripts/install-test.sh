@@ -39,6 +39,9 @@ run_install() {
     ;;
 
     winget)
+        # Re-register the WinGet source package to avoid 0x8a15000f "data required is missing".
+        # See: https://github.com/microsoft/winget-cli/issues/3068#issuecomment-1934922201
+        powershell.exe -Command "Add-AppPackage -path 'https://cdn.winget.microsoft.com/cache/source.msix'"
         # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
         winget source reset --force
         winget source update winget
