@@ -175,7 +175,6 @@ func (e *CLIAnalyticsEventMetadata) SetMachineUUID(machineUUID string) {
 	e.MachineUUID = machineUUID
 }
 
-
 // SendAPIRequestEvent is a special function for API requests
 func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
 	a.wg.Add(1)
