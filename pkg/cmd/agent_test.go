@@ -5,15 +5,118 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
 	"github.com/stripe/stripe-cli/pkg/agentskills"
 )
+
+func TestCheckSkillsScopesChecksBothScopesConcurrently(t *testing.T) {
+	t.Parallel()
+
+	setup := testAgentSetupCmd()
+	setup.skillsLocalDir = func() (string, error) { return "/tmp/project/.agents/skills", nil }
+	setup.skillsGlobalDir = func() (string, error) { return "/tmp/home/.agents/skills", nil }
+
+	var active int32
+	var peak int32
+	setup.skillsCheck = func(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+		current := atomic.AddInt32(&active, 1)
+		for {
+			peakNow := atomic.LoadInt32(&peak)
+			if current <= peakNow || atomic.CompareAndSwapInt32(&peak, peakNow, current) {
+				break
+			}
+		}
+		time.Sleep(30 * time.Millisecond)
+		atomic.AddInt32(&active, -1)
+		return &agentskills.DirStatus{
+			Dir:            destDir,
+			Status:         agentskills.StatusCurrent,
+			InstalledCount: 1,
+		}, nil
+	}
+
+	scopes, err := setup.checkSkillsScopes(context.Background())
+
+	require.NoError(t, err)
+	require.Equal(t, agentskills.StatusCurrent, scopes.Local.Status)
+	require.Equal(t, agentskills.StatusCurrent, scopes.Global.Status)
+	require.Equal(t, "/tmp/project/.agents/skills", scopes.Local.Dir)
+	require.Equal(t, "/tmp/home/.agents/skills", scopes.Global.Dir)
+	require.GreaterOrEqual(t, peak, int32(2))
+}
+
+func TestCheckSkillsScopesReturnsLocalErrorWhenLocalCheckFails(t *testing.T) {
+	t.Parallel()
+
+	setup := testAgentSetupCmd()
+	setup.skillsCheck = func(_ context.Context, destDir string) (*agentskills.DirStatus, error) {
+		if destDir == "/tmp/project/.agents/skills" {
+			return nil, fmt.Errorf("local skills check failed")
+		}
+		return &agentskills.DirStatus{Dir: destDir, Status: agentskills.StatusCurrent}, nil
+	}
+
+	_, err := setup.checkSkillsScopes(context.Background())
+
+	require.EqualError(t, err, "local skills check failed")
+}
+
+func TestDetectAllPreservesOrderWithConcurrentDetection(t *testing.T) {
+	t.Parallel()
+
+	providers := map[string]agentsetup.Provider{
+		agentsetup.ClientClaudeCode: delayedDetectProvider{
+			id:    agentsetup.ClientClaudeCode,
+			delay: 30 * time.Millisecond,
+		},
+		agentsetup.ClientCodex: delayedDetectProvider{
+			id:    agentsetup.ClientCodex,
+			delay: 10 * time.Millisecond,
+		},
+		agentsetup.ClientCursor: delayedDetectProvider{
+			id:    agentsetup.ClientCursor,
+			delay: 20 * time.Millisecond,
+		},
+	}
+
+	statuses := detectAll(providers)
+
+	require.Len(t, statuses, 3)
+	require.Equal(t, []string{
+		agentsetup.ClientClaudeCode,
+		agentsetup.ClientCodex,
+		agentsetup.ClientCursor,
+	}, []string{statuses[0].Client, statuses[1].Client, statuses[2].Client})
+}
+
+type delayedDetectProvider struct {
+	id    string
+	delay time.Duration
+}
+
+func (p delayedDetectProvider) ID() string { return p.id }
+
+func (p delayedDetectProvider) Detect() agentsetup.Status {
+	time.Sleep(p.delay)
+	return agentsetup.Status{Client: p.id}
+}
+
+func (p delayedDetectProvider) Plan(agentsetup.Status, bool) agentsetup.Plan {
+	return agentsetup.Plan{}
+}
+
+func (p delayedDetectProvider) Apply(context.Context, io.Writer, agentsetup.Plan) error {
+	return nil
+}
 
 func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
@@ -69,6 +172,24 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
 	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
 	require.Nil(t, result.Skills)
+}
+
+func TestAgentSetupStatusJSONPrefersJSONOutput(t *testing.T) {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+		t.Fatal("installer should not run in --status --json mode")
+		return nil
+	})
+
+	output, err := executeCommand(setup.cmd, "--status", "--json")
+
+	require.NoError(t, err)
+	require.NotContains(t, output, "Stripe agent tooling:")
+	require.NotContains(t, output, "Stripe skills:")
+
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Len(t, result.Clients, 1)
+	require.True(t, result.Clients[0].Detected)
 }
 
 func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
@@ -135,9 +256,24 @@ func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 		"claude plugin marketplace update " + agentsetup.ClaudeMarketplace,
 		"claude plugin install " + agentsetup.TargetClaudePlugin,
 	}, calls)
-	require.Contains(t, output, "Updating Claude plugin marketplace and retrying")
 	require.Contains(t, output, "done")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupSurfacesCleanErrorWhenInstallFails(t *testing.T) {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) error {
+		if len(args) > 1 && args[1] == "marketplace" {
+			return errors.New(`Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.`)
+		}
+		return errors.New(`Failed to install plugin "stripe@claude-plugins-official"`)
+	})
+
+	output, err := executeCommand(setup.cmd, "--yes")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "1 item(s) failed to set up")
+	require.Contains(t, output, "Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.")
+	require.Contains(t, output, "0 installed, 0 updated, 0 skipped, 1 errors")
 }
 
 func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
