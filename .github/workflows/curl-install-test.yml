@@ -11,29 +11,193 @@ name: Curl install test
 permissions:
   contents: read
 jobs:
-  curl-install-macos:
+  upgrade-macos:
     runs-on: macos-latest
+    outputs:
+      failed_step: ${{ steps.result.outputs.failed_step }}
     steps:
-      - run: |
-          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
-          export PATH="$HOME/.stripe/bin:$PATH"
-          stripe --version
+      - name: Get previous release version
+        id: prev-release
+        run: |
+          PREV_VERSION=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/stripe/stripe-cli/releases?per_page=2" | \
+            sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | sed -n '2p')
+          if [ -z "$PREV_VERSION" ]; then
+            echo "Error: could not determine previous release version"
+            exit 1
+          fi
+          echo "version=$PREV_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Previous version: $PREV_VERSION"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  curl-install-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
-          export PATH="$HOME/.stripe/bin:$PATH"
-          stripe --version
+      - name: Get latest release version
+        id: latest-release
+        run: |
+          LATEST_VERSION=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/stripe/stripe-cli/releases/latest" | \
+            sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Error: could not determine latest release version"
+            exit 1
+          fi
+          echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest version: $LATEST_VERSION"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install older version via curl
+        id: install
+        run: |
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
+          export PATH="$HOME/.stripe/bin:$PATH"
+          INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$INSTALLED" != "${{ steps.prev-release.outputs.version }}" ]; then
+            echo "Error: expected version ${{ steps.prev-release.outputs.version }}, got $INSTALLED"
+            exit 1
+          fi
+          echo "Successfully installed v$INSTALLED"
+        env:
+          VERSION: ${{ steps.prev-release.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger update check
+        id: update-check
+        run: |
+          export PATH="$HOME/.stripe/bin:$PATH"
+          export STRIPE_INSTALL_METHOD=curl
+          stripe --version
+          MARKER="$HOME/.stripe/state/update-available"
+          if [ ! -f "$MARKER" ]; then
+            echo "Error: update marker was not written after running stripe"
+            exit 1
+          fi
+          echo "Update marker found:"
+          cat "$MARKER"
+
+      - name: Verify auto-upgrade
+        id: upgrade
+        run: |
+          export PATH="$HOME/.stripe/bin:$PATH"
+          export STRIPE_INSTALL_METHOD=curl
+          OUTPUT=$(stripe --version 2>&1)
+          echo "$OUTPUT"
+          UPGRADED=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          if [ "$UPGRADED" != "${{ steps.latest-release.outputs.version }}" ]; then
+            echo "Error: expected upgrade to v${{ steps.latest-release.outputs.version }}, got v$UPGRADED"
+            exit 1
+          fi
+          echo "Successfully upgraded to v$UPGRADED"
+
+      - name: Record failed step
+        id: result
+        if: failure()
+        run: |
+          if [ "${{ steps.install.outcome }}" = "failure" ]; then
+            echo "failed_step=install" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.update-check.outcome }}" = "failure" ]; then
+            echo "failed_step=update-check" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.upgrade.outcome }}" = "failure" ]; then
+            echo "failed_step=auto-upgrade" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed_step=setup" >> "$GITHUB_OUTPUT"
+          fi
+
+  upgrade-linux:
+    runs-on: ubuntu-latest
+    outputs:
+      failed_step: ${{ steps.result.outputs.failed_step }}
+    steps:
+      - name: Get previous release version
+        id: prev-release
+        run: |
+          PREV_VERSION=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/stripe/stripe-cli/releases?per_page=2" | \
+            sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | sed -n '2p')
+          if [ -z "$PREV_VERSION" ]; then
+            echo "Error: could not determine previous release version"
+            exit 1
+          fi
+          echo "version=$PREV_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Previous version: $PREV_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest release version
+        id: latest-release
+        run: |
+          LATEST_VERSION=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/stripe/stripe-cli/releases/latest" | \
+            sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "Error: could not determine latest release version"
+            exit 1
+          fi
+          echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest version: $LATEST_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install older version via curl
+        id: install
+        run: |
+          curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh
+          export PATH="$HOME/.stripe/bin:$PATH"
+          INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$INSTALLED" != "${{ steps.prev-release.outputs.version }}" ]; then
+            echo "Error: expected version ${{ steps.prev-release.outputs.version }}, got $INSTALLED"
+            exit 1
+          fi
+          echo "Successfully installed v$INSTALLED"
+        env:
+          VERSION: ${{ steps.prev-release.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger update check
+        id: update-check
+        run: |
+          export PATH="$HOME/.stripe/bin:$PATH"
+          export STRIPE_INSTALL_METHOD=curl
+          stripe --version
+          MARKER="$HOME/.stripe/state/update-available"
+          if [ ! -f "$MARKER" ]; then
+            echo "Error: update marker was not written after running stripe"
+            exit 1
+          fi
+          echo "Update marker found:"
+          cat "$MARKER"
+
+      - name: Verify auto-upgrade
+        id: upgrade
+        run: |
+          export PATH="$HOME/.stripe/bin:$PATH"
+          export STRIPE_INSTALL_METHOD=curl
+          OUTPUT=$(stripe --version 2>&1)
+          echo "$OUTPUT"
+          UPGRADED=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          if [ "$UPGRADED" != "${{ steps.latest-release.outputs.version }}" ]; then
+            echo "Error: expected upgrade to v${{ steps.latest-release.outputs.version }}, got v$UPGRADED"
+            exit 1
+          fi
+          echo "Successfully upgraded to v$UPGRADED"
+
+      - name: Record failed step
+        id: result
+        if: failure()
+        run: |
+          if [ "${{ steps.install.outcome }}" = "failure" ]; then
+            echo "failed_step=install" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.update-check.outcome }}" = "failure" ]; then
+            echo "failed_step=update-check" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.upgrade.outcome }}" = "failure" ]; then
+            echo "failed_step=auto-upgrade" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed_step=setup" >> "$GITHUB_OUTPUT"
+          fi
 
   notify:
     runs-on: ubuntu-latest
-    needs: [curl-install-macos, curl-install-linux]
+    needs: [upgrade-macos, upgrade-linux]
     if: always()
     steps:
       - uses: actions/checkout@v6
@@ -41,12 +205,36 @@ jobs:
           sparse-checkout: |
             scripts/notify.sh
           sparse-checkout-cone-mode: false
+      - name: Build failure summary
+        id: summary
+        if: contains(needs.*.result, 'failure')
+        run: |
+          MACOS_STEP="${{ needs.upgrade-macos.outputs.failed_step }}"
+          LINUX_STEP="${{ needs.upgrade-linux.outputs.failed_step }}"
+
+          MSG=""
+          if [ -n "$MACOS_STEP" ] && [ -n "$LINUX_STEP" ]; then
+            if [ "$MACOS_STEP" = "$LINUX_STEP" ]; then
+              MSG="Step '${MACOS_STEP}' failed on macOS and Linux"
+            else
+              MSG="Step '${MACOS_STEP}' failed on macOS, step '${LINUX_STEP}' failed on Linux"
+            fi
+          elif [ -n "$MACOS_STEP" ]; then
+            MSG="Step '${MACOS_STEP}' failed on macOS"
+          elif [ -n "$LINUX_STEP" ]; then
+            MSG="Step '${LINUX_STEP}' failed on Linux"
+          else
+            MSG="Unknown failure"
+          fi
+
+          echo "msg=$MSG" >> "$GITHUB_OUTPUT"
+
       - run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
           PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-curl-install-test
-          PAGERDUTY_SUMMARY: "Failed to install Stripe CLI via curl install script. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/curl-install-test.yml"
-          PAGERDUTY_RESOLVE_SUMMARY: "Stripe CLI curl install script is passing again"
+          PAGERDUTY_SUMMARY: "Curl install test failed: ${{ steps.summary.outputs.msg }}. Investigate: https://github.com/stripe/stripe-cli/actions/workflows/curl-install-test.yml"
+          PAGERDUTY_RESOLVE_SUMMARY: "Curl install test is passing again"
           PAGERDUTY_SEVERITY: critical
-          DRYRUN: "true" # TODO: switch to ${{ inputs.dryrun }} once confirmed stable
+          DRYRUN: ${{ inputs.dryrun || 'true' }}
