@@ -207,11 +207,6 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	path := args[0]
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + strings.Join(args, "/")
-	}
-
 	if r.client == nil {
 		return fmt.Errorf("docs client not initialized")
 	}
@@ -219,13 +214,30 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("markdown renderer not initialized")
 	}
 
-	ref := &url.URL{Path: path}
+	ref := parseDocsRef(args)
 	page, err := r.client.FetchPage(cmd.Context(), ref)
 	if err != nil {
 		return fmt.Errorf("fetching page: %w", err)
 	}
 
 	return r.show(cmd, &page)
+}
+
+// parseDocsRef converts command-line arguments into a URL reference for FetchPage.
+//
+// If the first argument is a full docs.stripe.com URL, its path and query
+// string are extracted. Otherwise the arguments are joined as a path fragment,
+// prefixing a leading "/" if absent.
+func parseDocsRef(args []string) *url.URL {
+	first := args[0]
+	if u, err := url.Parse(first); err == nil && u.Host == "docs.stripe.com" {
+		return &url.URL{Path: u.Path, RawQuery: u.RawQuery, Fragment: u.Fragment}
+	}
+	path := first
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + strings.Join(args, "/")
+	}
+	return &url.URL{Path: path}
 }
 
 func (r *RootCommand) useTUI(cmd *cobra.Command) bool {
