@@ -41,12 +41,22 @@ func IsCurlInstall() bool {
 		return false
 	}
 
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return false
+	}
+
 	home, err := homedir.Dir()
 	if err != nil {
 		return false
 	}
 
 	stripeBinDir := filepath.Join(home, ".stripe", "bin")
+	stripeBinDir, err = filepath.EvalSymlinks(stripeBinDir)
+	if err != nil {
+		return false
+	}
+
 	exeLower := strings.ToLower(filepath.ToSlash(exe))
 	expectedLower := strings.ToLower(filepath.ToSlash(stripeBinDir))
 
