@@ -39,6 +39,7 @@ type Profile struct {
 	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
+	UserID                 string
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
 	UAT                    string
@@ -48,6 +49,7 @@ type Profile struct {
 // config key names
 const (
 	AccountIDName              = "account_id"
+	UserIDName                 = "user_id"
 	DeviceNameName             = "device_name"
 	DisplayNameName            = "display_name"
 	IsTermsAcceptanceValidName = "is_terms_acceptance_valid"
@@ -84,6 +86,7 @@ var authFieldNames = []string{
 	DeviceNameName,
 	DisplayNameName,
 	AccountIDName,
+	UserIDName,
 	IsTermsAcceptanceValidName,
 	TestModeAPIKeyName,
 	TestModePubKeyName,
@@ -192,6 +195,19 @@ func (p *Profile) GetAccountID() (string, error) {
 	}
 
 	return "", validators.ErrAccountIDNotConfigured
+}
+
+// GetUserID returns the user ID for the given profile.
+func (p *Profile) GetUserID() (string, error) {
+	if p.UserID != "" {
+		return p.UserID, nil
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		return viper.GetString(p.GetConfigField(UserIDName)), nil
+	}
+
+	return "", nil
 }
 
 // HasOverrideAPIKey reports whether an in-memory API key override is active
@@ -442,6 +458,10 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.AccountID != "" {
 		runtimeViper.Set(p.GetConfigField(AccountIDName), strings.TrimSpace(p.AccountID))
+	}
+
+	if p.UserID != "" {
+		runtimeViper.Set(p.GetConfigField(UserIDName), strings.TrimSpace(p.UserID))
 	}
 
 	if p.SandboxClaimURL != "" {
