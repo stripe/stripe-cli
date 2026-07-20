@@ -28,6 +28,7 @@ import (
 
 func setupSandboxTestConfig(t *testing.T) func() {
 	t.Helper()
+	resetSandboxNewFlagsForTest(t)
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 
 	origProfilesFile := Config.ProfilesFile
@@ -64,6 +65,29 @@ func setupSandboxTestConfig(t *testing.T) func() {
 		restoreLoginBrowser()
 		sandbox.GitConfigFunc = origGit
 		viper.Reset()
+	}
+}
+
+func resetSandboxNewFlagsForTest(t *testing.T) {
+	t.Helper()
+	cmd, _, err := rootCmd.Find([]string{"sandbox", "new"})
+	require.NoError(t, err)
+
+	for _, name := range []string{
+		"name",
+		"copy-live-account",
+		"create-blank",
+		"business-location",
+		"stripe-account",
+		"activate",
+		"batch",
+		"stripe-version",
+		"api-base",
+	} {
+		flag := cmd.Flags().Lookup(name)
+		require.NotNil(t, flag)
+		require.NoError(t, flag.Value.Set(flag.DefValue))
+		flag.Changed = false
 	}
 }
 
@@ -703,7 +727,7 @@ func TestSandboxNewCmd_BlankPath(t *testing.T) {
 			assert.Equal(t, "US", body["business_location"])
 			_, hasReplica := body["replica_of"]
 			assert.False(t, hasReplica)
-			assert.Equal(t, true, body["activate_sandbox"])
+			assert.Equal(t, false, body["activate_sandbox"])
 			json.NewEncoder(w).Encode(map[string]interface{}{"id": "wksp_test_blank", "object": "sandbox"})
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
@@ -718,9 +742,8 @@ func TestSandboxNewCmd_BlankPath(t *testing.T) {
 		"--api-base="+server.URL,
 		"--create-blank=true",
 		"--copy-live-account=false",
-		"--stripe-account=", // clear any value leaked from a prior test's flag state
+		"--stripe-account=",
 		"--business-location=US",
-		"--activate=true", // clear any --activate=false leaked from a prior test
 		"--name=blanktest",
 	)
 	require.NoError(t, err)
@@ -755,8 +778,8 @@ func TestSandboxNewCmd_RequiresMode(t *testing.T) {
 	_, err = executeCommand(
 		rootCmd,
 		"sandbox", "new",
-		"--copy-live-account=false", // clear leaked flag state so neither mode is set
-		"--create-blank=false",      // clear leaked flag state so neither mode is set
+		"--copy-live-account=false",
+		"--create-blank=false",
 		"--name=mytest",
 	)
 	require.Error(t, err)
@@ -977,8 +1000,6 @@ func TestSandboxNewCmd_NoUAT(t *testing.T) {
 	assert.Contains(t, err.Error(), "stripe login")
 }
 
-// Placed last: sets --batch, which leaks onto the singleton rootCmd flag; keeping
-// it after the other tests avoids that value bleeding into their default (1).
 func TestSandboxNewCmd_BatchNotYetSupported(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
@@ -1084,6 +1105,7 @@ func TestSandboxNewCmd_StripeAccountBlankMode(t *testing.T) {
 			assert.Equal(t, "US", body["business_location"])
 			_, hasReplica := body["replica_of"]
 			assert.False(t, hasReplica)
+			assert.Equal(t, false, body["activate_sandbox"])
 			json.NewEncoder(w).Encode(map[string]interface{}{"id": "sbx_blankacct", "object": "sandbox"})
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)

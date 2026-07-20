@@ -516,7 +516,7 @@ that you have previously logged in with your Stripe account credentials.`,
 	snc.cmd.Flags().BoolVar(&snc.createBlank, "create-blank", false, "Create a fresh blank sandbox (requires --business-location)")
 	snc.cmd.Flags().StringVar(&snc.businessLocation, "business-location", "", "Country for a --create-blank sandbox (e.g. US)")
 	snc.cmd.Flags().StringVar(&snc.stripeAccount, "stripe-account", "", "Live account (acct_...) the sandbox belongs to; defaults to your logged-in account")
-	snc.cmd.Flags().BoolVar(&snc.activate, "activate", true, "Request capabilities and activate the sandbox after creation")
+	snc.cmd.Flags().BoolVar(&snc.activate, "activate", false, "Request capabilities and activate the sandbox after creation")
 	snc.cmd.Flags().IntVar(&snc.batch, "batch", 1, "Number of sandboxes to create (currently only 1 is supported)")
 
 	snc.cmd.Flags().StringVar(&snc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
@@ -609,11 +609,16 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("resolved a non-playground context %q for %s", stripeContext, liveWorkspace)
 	}
 
+	activateSandbox := snc.activate
+	if snc.copyLiveAccount && !cmd.Flags().Changed("activate") {
+		activateSandbox = true
+	}
+
 	// Mirror the dashboard's create-sandbox request body, including the
 	// idempotency_token derived from the create inputs (see newIdempotencyToken).
 	reqBody := map[string]interface{}{
 		"name":              snc.name,
-		"activate_sandbox":  snc.activate,
+		"activate_sandbox":  activateSandbox,
 		"idempotency_token": newIdempotencyToken(snc.name, businessLocation, liveWorkspace),
 	}
 	if snc.createBlank {
