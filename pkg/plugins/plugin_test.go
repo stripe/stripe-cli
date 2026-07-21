@@ -115,8 +115,6 @@ func TestInstallUsesPluginMetadataEndpointWhenAPIKeyAvailable(t *testing.T) {
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install should not fall back to /v1/stripecli/get-plugin-url when plugin metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -159,8 +157,6 @@ func TestInstallUsesAnonymousPluginMetadataEndpointWhenAPIKeyUnavailable(t *test
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install should not fall back to /v1/stripecli/get-plugin-url when anonymous plugin metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -182,26 +178,16 @@ func TestInstallUsesAnonymousPluginMetadataEndpointWhenAPIKeyUnavailable(t *test
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
 }
 
-func TestInstallFallsBackIfPluginMetadataEndpointFails(t *testing.T) {
+func TestInstallFailsIfPluginMetadataEndpointFails(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
 	config.InitConfig()
-	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent, nil)
-	defer testServers.CloseAll()
 
 	fallbackServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/v1/stripecli/get-plugin-metadata":
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte(`{"error":{"message":"boom"}}`))
-		case "/v1/stripecli/get-plugin-url":
-			body, err := json.Marshal(requests.PluginData{
-				PluginBaseURL:       testServers.ArtifactoryServer.URL,
-				AdditionalManifests: nil,
-			})
-			require.NoError(t, err)
-			res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -210,23 +196,20 @@ func TestInstallFallsBackIfPluginMetadataEndpointFails(t *testing.T) {
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", fallbackServer.URL, fallbackServer.URL)
-	require.NoError(t, err)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not resolve download URL for plugin")
 }
 
-func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
+func TestInstallFailsIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 
-	var pluginURLLookups int
-
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case fmt.Sprintf("/appA/2.0.1/%s/%s/binary", runtime.GOOS, runtime.GOARCH):
 			res.WriteHeader(http.StatusNotFound)
-		case fmt.Sprintf("/appA/2.0.1/%s/%s/stripe-cli-app-a", runtime.GOOS, runtime.GOARCH):
-			res.Write([]byte("hello, I am appA_2.0.1"))
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -242,14 +225,6 @@ func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			pluginURLLookups++
-			body, err := json.Marshal(requests.PluginData{
-				PluginBaseURL:       artifactoryServer.URL,
-				AdditionalManifests: nil,
-			})
-			require.NoError(t, err)
-			res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -258,30 +233,20 @@ func TestInstallFallsBackIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL, stripeServer.URL)
-	require.NoError(t, err)
-	require.Equal(t, 1, pluginURLLookups)
-
-	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
-	fileExists, err := afero.Exists(fs, file)
-	require.NoError(t, err)
-	require.True(t, fileExists)
+	require.Error(t, err)
 }
 
-func TestInstallFallsBackIfMetadataBinaryURLVerificationFails(t *testing.T) {
+func TestInstallFailsIfMetadataBinaryDownloadFails(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-
-	var pluginURLLookups int
 
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case fmt.Sprintf("/appA/2.0.1/%s/%s/binary", runtime.GOOS, runtime.GOARCH):
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte("html error page"))
-		case fmt.Sprintf("/appA/2.0.1/%s/%s/stripe-cli-app-a", runtime.GOOS, runtime.GOARCH):
-			res.Write([]byte("hello, I am appA_2.0.1"))
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -297,14 +262,6 @@ func TestInstallFallsBackIfMetadataBinaryURLVerificationFails(t *testing.T) {
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			pluginURLLookups++
-			body, err := json.Marshal(requests.PluginData{
-				PluginBaseURL:       artifactoryServer.URL,
-				AdditionalManifests: nil,
-			})
-			require.NoError(t, err)
-			res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -313,13 +270,7 @@ func TestInstallFallsBackIfMetadataBinaryURLVerificationFails(t *testing.T) {
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", stripeServer.URL, stripeServer.URL)
-	require.NoError(t, err)
-	require.Equal(t, 1, pluginURLLookups)
-
-	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
-	fileExists, err := afero.Exists(fs, file)
-	require.NoError(t, err)
-	require.True(t, fileExists)
+	require.Error(t, err)
 }
 
 func TestInstallPersistsLocalMetadataWithoutManifest(t *testing.T) {
@@ -347,8 +298,6 @@ func TestInstallPersistsLocalMetadataWithoutManifest(t *testing.T) {
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install should not fall back to /v1/stripecli/get-plugin-url when plugin metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -390,8 +339,6 @@ func TestResolvePluginForInstallUsesMetadataWithoutCachedManifest(t *testing.T) 
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -430,8 +377,6 @@ func TestResolvePluginForInstallResolvesLatestVersionFromMetadata(t *testing.T) 
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when metadata can resolve latest")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -458,8 +403,6 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenMetadataFails(
 		case "/v1/stripecli/get-plugin-metadata":
 			res.WriteHeader(http.StatusInternalServerError)
 			_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when cached metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -503,8 +446,6 @@ func TestResolvedPluginInstallUsesResolvedMetadataWithoutSecondLookup(t *testing
 			})
 			require.NoError(t, err)
 			res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("resolved install should not fall back to /v1/stripecli/get-plugin-url when metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -543,7 +484,6 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 `, runtime.GOARCH, runtime.GOOS, binarySum)
 
 	var metadataLookups int
-	var pluginURLLookups int
 
 	nodeBinaryPath := GetNodeBinaryPath(config, "20")
 	require.NoError(t, fs.MkdirAll(filepath.Dir(nodeBinaryPath), 0755))
@@ -589,14 +529,6 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 			})
 			require.NoError(t, err)
 			_, _ = res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			pluginURLLookups++
-			body, err := json.Marshal(requests.PluginData{
-				PluginBaseURL:       artifactoryServer.URL,
-				AdditionalManifests: nil,
-			})
-			require.NoError(t, err)
-			_, _ = res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -606,12 +538,10 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "generate", "1.0.0", stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 1, metadataLookups)
-	require.Equal(t, 0, pluginURLLookups)
 
 	err = resolvedPlugin.Install(context.Background(), config, fs, stripeServer.URL, stripeServer.URL)
 	require.NoError(t, err)
 	require.Equal(t, 2, metadataLookups)
-	require.Equal(t, 0, pluginURLLookups)
 
 	cachedPlugin, err := readLocalPluginMetadata(config, fs, "generate")
 	require.NoError(t, err)
@@ -731,29 +661,32 @@ func TestPluginFromMetadataPreservesRuntimeRequirements(t *testing.T) {
 	require.Equal(t, "20", release.Runtime["node"])
 }
 
-func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
+func TestInstallFailsIfNoAPIKeyAndMetadataReturnsNoBinaryURL(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
 	config.InitConfig()
 	config.Profile.APIKey = ""
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent, nil)
 
-	originalPluginBaseURL := requests.DefaultPluginData.PluginBaseURL
-	requests.DefaultPluginData.PluginBaseURL = testServers.ArtifactoryServer.URL
-	defer func() {
-		requests.DefaultPluginData.PluginBaseURL = originalPluginBaseURL
-	}()
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/ajax/stripecli/plugins_metadata":
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer dashboardServer.Close()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
-	require.Nil(t, err)
-	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
-	fileExists, err := afero.Exists(fs, file)
-	require.Nil(t, err)
-	require.True(t, fileExists)
-
-	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", dashboardServer.URL, dashboardServer.URL)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not resolve download URL for plugin")
 }
 
 func TestInstallFailsIfChecksumCouldNotBeFound(t *testing.T) {
