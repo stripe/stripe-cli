@@ -78,6 +78,7 @@ var rootCmd = &cobra.Command{
 				telemetryMetadata.SetCommandPath(resolvePluginTelemetryCommandPath(cmd, os.Args))
 			}
 			telemetryMetadata.SetMerchant(merchant)
+			telemetryMetadata.SetMachineUUID(Config.GetMachineUUID())
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
 			flags := []string{}
@@ -206,6 +207,12 @@ var keysToReBind []string
 // ReBindKeys applies the value found in viper config to the cobra flag when viper has a value (possibly from env)
 func ReBindKeys() {
 	for _, k := range keysToReBind {
+		// If the flag was explicitly set on the command line, don't override it.
+		// viper.Reset() (called when writing config) clears the pflag binding, which
+		// would otherwise prevent viper from respecting flag > env precedence.
+		if f := rootCmd.PersistentFlags().Lookup(k); f != nil && f.Changed {
+			continue
+		}
 		if viper.IsSet(k) {
 			rootCmd.Flags().Set(k, viper.GetString(k))
 		}

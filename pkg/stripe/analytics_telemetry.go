@@ -42,9 +42,12 @@ type CLIAnalyticsEventMetadata struct {
 	CommandPath       string `url:"command_path"`               // the command or gRPC method that initiated this request
 	CommandFlags      string `url:"command_flags"`              // Comma-separated list of flags that were passed to the command (only includes flag names, not their values)
 	PluginName        string `url:"plugin_name,omitempty"`      // the plugin being installed, when relevant
+	PluginVersion     string `url:"plugin_version,omitempty"`   // the version of the plugin being installed/uninstalled/upgraded
 	Merchant          string `url:"merchant"`                   // the merchant ID: ex. acct_xxxx
 	CLIVersion        string `url:"cli_version"`                // the version of the CLI
 	OS                string `url:"os"`                         // the OS of the system
+	Arch              string `url:"arch"`                       // the CPU architecture of the system
+	MachineUUID       string `url:"machine_uuid,omitempty"`     // the persistent machine UUID
 	GeneratedResource bool   `url:"generated_resource"`         // whether or not this was a generated resource
 	AIAgent           string `url:"ai_agent,omitempty"`         // the AI coding agent that invoked the CLI, if any
 	InstallMethod     string `url:"install_method,omitempty"`   // how the CLI was installed
@@ -80,6 +83,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewString(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
+		Arch:         runtime.GOARCH,
 		AIAgent:      useragent.DetectAIAgent(os.Getenv),
 		InstallMethod: useragent.DetectInstallMethod(
 			os.Getenv,
@@ -159,6 +163,16 @@ func (e *CLIAnalyticsEventMetadata) SetCommandFlags(commandFlags string) {
 // SetPluginName sets the plugin name on the CLIAnalyticsEventContext object
 func (e *CLIAnalyticsEventMetadata) SetPluginName(pluginName string) {
 	e.PluginName = pluginName
+}
+
+// SetPluginVersion sets the plugin version on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetPluginVersion(pluginVersion string) {
+	e.PluginVersion = pluginVersion
+}
+
+// SetMachineUUID sets the persistent machine UUID on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetMachineUUID(machineUUID string) {
+	e.MachineUUID = machineUUID
 }
 
 // SendAPIRequestEvent is a special function for API requests
