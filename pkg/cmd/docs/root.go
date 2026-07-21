@@ -189,6 +189,9 @@ func (r *RootCommand) initLogger() {
 func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
+	if r.client != nil {
+		r.client.WithOptions(pkgdocs.WithPrefs(r.loadDocsPrefMap()))
+	}
 	if r.logger != nil {
 		if a := useragent.DetectAIAgent(os.Getenv); a != "" {
 			r.logger.WithField("name", a).Debug("agent detected")
@@ -240,6 +243,9 @@ func parseDocsRef(args []string) *url.URL {
 	path := first
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + strings.Join(args, "/")
+	}
+	if u, err := url.Parse(path); err == nil {
+		return &url.URL{Path: u.Path, RawQuery: u.RawQuery, Fragment: u.Fragment}
 	}
 	return &url.URL{Path: path}
 }
