@@ -80,16 +80,22 @@ http_download() {
 }
 
 get_latest_version() {
-  VERSION=$(http_get "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | \
+  LATEST_VERSION=$(http_get "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | \
     sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
 
-  if [ -z "$VERSION" ]; then
+  if [ -z "$LATEST_VERSION" ]; then
     echo "Error: could not determine latest version."
     echo "Check your internet connection or try again later."
     exit 1
   fi
 
-  echo "Latest version: v$VERSION"
+  if [ -n "${VERSION:-}" ]; then
+    VERSION=$(echo "$VERSION" | sed 's/^v//')
+    echo "Installing requested version: v$VERSION (latest is v$LATEST_VERSION)"
+  else
+    VERSION="$LATEST_VERSION"
+    echo "Latest version: v$VERSION"
+  fi
 }
 
 download_and_verify() {
@@ -183,10 +189,23 @@ setup_path() {
   NEEDS_SOURCE=true
 }
 
+version_lt() {
+  # Returns 0 (true) if $1 < $2 using sort -V for version comparison
+  [ "$1" != "$2" ] && [ "$(printf '%s\n%s' "$1" "$2" | sort -V | head -n1)" = "$1" ]
+}
+
 print_success() {
   echo ""
   echo "stripe v${VERSION} installed to $INSTALL_DIR/stripe"
   echo ""
+  if [ "$VERSION" != "$LATEST_VERSION" ] && version_lt "$VERSION" "$LATEST_VERSION"; then
+    echo "Note: You installed v${VERSION}, but the latest is v${LATEST_VERSION}."
+    echo "Auto-update will upgrade you to the latest on next run."
+    echo "To stay on this version, set STRIPE_NO_AUTO_UPDATE=1 or add to ~/.config/stripe/config.toml:"
+    echo "  [settings]"
+    echo "  auto_update = false"
+    echo ""
+  fi
   if [ "$NEEDS_SOURCE" = "true" ]; then
     echo "Run 'source $PROFILE' or open a new terminal, then:"
   fi

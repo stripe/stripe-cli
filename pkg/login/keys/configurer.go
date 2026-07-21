@@ -71,6 +71,7 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		c.cfg.Profile.DisplayName = response.AccountID
 	}
 	c.cfg.Profile.AccountID = response.AccountID
+	c.cfg.Profile.UserID = response.UserID
 
 	profileErr := c.cfg.Profile.CreateProfile()
 	if profileErr != nil {
