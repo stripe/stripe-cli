@@ -17,8 +17,8 @@ import (
 func (r *RootCommand) newPrefsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "prefs",
-		Short: "Manage docs.stripe.com preferences",
-		Long:  `Manage docs.stripe.com preferences.`,
+		Short: "Manage preferences to customize rendered documentation",
+		Long:  `Manage preferences to customize rendered documentation, such as code snippet languages.`,
 	}
 
 	cmd.AddCommand(r.newPrefsListCmd())
@@ -29,8 +29,8 @@ func (r *RootCommand) newPrefsCmd() *cobra.Command {
 func (r *RootCommand) newPrefsListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List available docs.stripe.com preferences",
-		Long: `List available docs.stripe.com preferences and their allowed values.
+		Short: "List available preferences for customizing rendered documentation",
+		Long: `List available preferences for customizing rendered documentation and their allowed values.
 
   stripe docs prefs list`,
 		Args: cobra.NoArgs,
