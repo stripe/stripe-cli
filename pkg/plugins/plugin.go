@@ -321,6 +321,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 	pluginToInstall := p
 	pluginDownloadURL := resolvedBinaryURL
+	var metadataLookupErr error
 	metadataBaseURL := apiBaseURL
 	if apiKey == "" && dashboardBaseURL != "" {
 		metadataBaseURL = dashboardBaseURL
@@ -344,6 +345,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
 		if err != nil {
+			metadataLookupErr = err
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",
 			}).Debugf("could not fetch plugin metadata: %s", err)
@@ -361,6 +363,9 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 	if pluginDownloadURL == "" {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+		if metadataLookupErr != nil {
+			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
+		}
 		return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
 	}
 

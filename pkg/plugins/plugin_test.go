@@ -198,6 +198,8 @@ func TestInstallFailsIfPluginMetadataEndpointFails(t *testing.T) {
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", fallbackServer.URL, fallbackServer.URL)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not resolve download URL for plugin")
+	require.Contains(t, err.Error(), "failed to fetch plugin metadata")
+	require.Contains(t, err.Error(), "boom")
 }
 
 func TestInstallFailsIfMetadataBinaryURLReturnsNotFound(t *testing.T) {
