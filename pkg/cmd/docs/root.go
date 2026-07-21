@@ -237,6 +237,9 @@ func parseDocsRef(args []string) *url.URL {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + strings.Join(args, "/")
 	}
+	if u, err := url.Parse(path); err == nil {
+		return &url.URL{Path: u.Path, RawQuery: u.RawQuery, Fragment: u.Fragment}
+	}
 	return &url.URL{Path: path}
 }
 

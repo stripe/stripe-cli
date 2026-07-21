@@ -28,9 +28,10 @@ func TestNew(t *testing.T) {
 
 func TestRootParsesDocsURL(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		wantPath string
+		name      string
+		args      []string
+		wantPath  string
+		wantQuery string
 	}{
 		{
 			name:     "full docs.stripe.com URL",
@@ -38,14 +39,27 @@ func TestRootParsesDocsURL(t *testing.T) {
 			wantPath: "/connect/accounts",
 		},
 		{
-			name:     "full docs.stripe.com URL with query",
-			args:     []string{"https://docs.stripe.com/api/customers?api_version=2024-06-30"},
-			wantPath: "/api/customers",
+			name:      "full docs.stripe.com URL with query",
+			args:      []string{"https://docs.stripe.com/api/customers?api_version=2024-06-30"},
+			wantPath:  "/api/customers",
+			wantQuery: "api_version=2024-06-30",
 		},
 		{
 			name:     "plain path unchanged",
 			args:     []string{"/payments"},
 			wantPath: "/payments",
+		},
+		{
+			name:      "plain path with query params",
+			args:      []string{"payments?test=foo"},
+			wantPath:  "/payments",
+			wantQuery: "test=foo",
+		},
+		{
+			name:      "absolute path with query params",
+			args:      []string{"/payments?test=foo"},
+			wantPath:  "/payments",
+			wantQuery: "test=foo",
 		},
 		{
 			name:     "multi-segment args joined",
@@ -56,9 +70,10 @@ func TestRootParsesDocsURL(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotPath string
+			var gotPath, gotQuery string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
+				gotQuery = r.URL.RawQuery
 				fmt.Fprint(w, "# Test\n\nContent.")
 			}))
 			defer server.Close()
@@ -78,6 +93,7 @@ func TestRootParsesDocsURL(t *testing.T) {
 			err = root.ExecuteContext(context.Background())
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantPath, gotPath)
+			assert.Equal(t, tc.wantQuery, gotQuery)
 		})
 	}
 }
