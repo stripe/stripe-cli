@@ -73,6 +73,10 @@ Tests that verify basic CLI functionality without network access:
 | `TestOfflineListenHelp` | `stripe listen --help` | Listen command available |
 | `TestOfflineLogsTailHelp` | `stripe logs tail --help` | Logs tail command available |
 | `TestOfflineLoginHelp` | `stripe login --help` | Login command available |
+| `TestOfflineDataMetricsRunHelp` | `stripe data metrics run --help` | Hidden preview command help renders |
+| `TestOfflineReportingHelp` | `stripe reporting --help` | Reporting command lists `query-runs` |
+| `TestOfflineReportingQueryRunsHelp` | `stripe reporting query-runs --help` | `create`/`retrieve` subcommands listed |
+| `TestOfflineReportingQueryRunsRetrieveHelp` | `stripe reporting query-runs retrieve --help` | Retrieve command help renders |
 
 ### API Tests (`TestAPI*`)
 
@@ -100,6 +104,13 @@ Tests that require a valid Stripe test API key:
 | `TestAPIV2RawGet` | `stripe get /v2/core/events` | Raw GET to v2 path |
 | `TestAPIV2RawPost` | `stripe post /v2/billing/meter_event_session` | Raw POST to v2 path (JSON content-type) |
 | `TestAPIV2TriggerMeterNoMeterFound` | `stripe trigger v1.billing.meter.no_meter_found` | V2 trigger fixtures execute |
+| `TestAPIDataMetricsRunDryRun` | `stripe data metrics run --dry-run` | Metric query request built correctly (no network call) |
+| `TestAPIReportingQueryRunsCreateDryRun` | `stripe reporting query-runs create --dry-run` | Query run request built correctly (no network call) |
+| `TestAPIDataMetricsRunLive` | `stripe data metrics run` | Metric query endpoint (Private Preview) |
+| `TestAPIReportingQueryRunsCreateLive` | `stripe reporting query-runs create` | Query run creation (Public Preview) |
+| `TestAPIReportingQueryRunsRetrieveLive` | `stripe reporting query-runs retrieve` | Query run create → retrieve round trip |
+
+> **Note:** The `Live` tests above call preview APIs and require the test account/runner to be enabled for them (`metric_query` is Private Preview; `query_runs` is Public Preview). Without access they fail with a preview error rather than skip. The `DryRun` tests need a key but make no network call.
 
 ## Environment Variables
 
@@ -165,6 +176,8 @@ Canary tests do not run on PRs. Unit tests provide coverage for PR validation.
    - `logs_test.go` - Log streaming tests
    - `config_test.go` - Configuration tests
    - `login_test.go` - Authentication tests
+   - `v2_api_test.go` - V2 resource/raw API tests
+   - `data_reporting_test.go` - Data & reporting (analytics) command tests
 2. Use `TestOffline` prefix for tests without API requirements
 3. Use `TestAPI` prefix and call `requireAPIKey(t)` for API tests
 4. Use isolated config directories via `testutil.CreateTempConfigDir()`

@@ -17,14 +17,16 @@ import (
 //   - stripe reporting query-runs create   -> POST /v2/data/reporting/query_runs
 //   - stripe reporting query-runs retrieve -> GET  /v2/data/reporting/query_runs/{id}
 //
-// The underlying endpoints are Private Preview. Coverage is layered:
+// These are preview APIs: metric_query (data metrics) is Private Preview and
+// its command is hidden; query_runs (reporting) is Public Preview. Coverage is
+// layered:
 //   - Offline tests verify command registration and help output (no key).
 //   - Dry-run tests exercise the full request-building path without a network
 //     call (needs a key): auth resolution, URL/method, v2 JSON body, and the
 //     preview Stripe-Version header.
 //   - Live tests actually invoke the preview endpoints (needs a key on an
 //     account with preview access). These require the test account/runner to be
-//     enabled for the v2 data/analytics APIs; otherwise they will fail with a
+//     enabled for the relevant preview APIs; otherwise they will fail with a
 //     preview access error rather than skip.
 // =============================================================================
 
