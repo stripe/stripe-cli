@@ -21,10 +21,11 @@ type coopAgentRunCmd struct {
 	params        []string
 	parentSession string
 	parentStep    string
+	ensureSkill   func() error
 }
 
 func newCoopAgentRunCmd() *coopAgentRunCmd {
-	rc := &coopAgentRunCmd{}
+	rc := &coopAgentRunCmd{ensureSkill: ensureRepoStripeBestPracticesSkill}
 	rc.cmd = &cobra.Command{
 		Use:   "run <blueprint-id>",
 		Short: "Create a co-op session from a blueprint (agent-facing)",
@@ -69,6 +70,9 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
 	}
+	if err := rc.ensureStripeSkill(); err != nil {
+		warnRepoStripeBestPracticesSkill(cmd, err)
+	}
 
 	if err := store.Write(session); err != nil {
 		return fmt.Errorf("writing session: %w", err)
@@ -77,6 +81,13 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	resp := newCoopAgentRunResponse(bp, session)
 
 	return outputJSON(resp)
+}
+
+func (rc *coopAgentRunCmd) ensureStripeSkill() error {
+	if rc.ensureSkill != nil {
+		return rc.ensureSkill()
+	}
+	return ensureRepoStripeBestPracticesSkill()
 }
 
 func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgentRunResponse {
@@ -186,6 +197,8 @@ func guidedActionAgentInstructions(action *coop.GuidedAction, session *coop.Sess
 func sessionLifecycleInstructions(preamble string, session *coop.Session) string {
 	return fmt.Sprintf(`%s
 
+%s
+
 BEFORE YOU START â€” ensure you have API access:
 1. Run "stripe whoami" to check if you're authenticated.
 2. If not authenticated OR if the output shows "Test mode key: not available",
@@ -199,6 +212,8 @@ Each node has a description that tells you what to do. Follow the description â€
 - "uiComponent": Build frontend code or configure something user-facing. Verify it works.
 - "cliCommand": Run a CLI command (e.g. stripe projects init, stripe projects deploy). Report the output.
 - "testHelper": Verify something works end-to-end. Run the flow and confirm the expected outcome.
+
+%s
 
 If a node includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
 
@@ -227,7 +242,7 @@ Important:
 - If a node doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
 - Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
   Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
-  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
+  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, coopAgentCoordinationInstructions(), stripeAgentGuidanceInstructions(), session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
 }
 
 func outputJSON(v interface{}) error {

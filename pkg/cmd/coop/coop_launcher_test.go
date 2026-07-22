@@ -1,9 +1,11 @@
 package coopcmd
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"charm.land/huh/v2"
@@ -53,6 +55,8 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 
 	prompt, err := rc.buildAgentPromptForSession(session)
 	require.NoError(t, err)
+	assert.Contains(t, prompt, "We will handle coordination and orchestration with you")
+	assert.Contains(t, prompt, "cheaper subagents wherever possible, using your best judgment")
 
 	assert.Contains(t, prompt, session.ID)
 	assert.Contains(t, prompt, `"agent_instructions"`)
@@ -60,6 +64,30 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	assert.Contains(t, prompt, `"next": "stripe coop agent start-work --session=`+session.ID+` --step=1`)
 	assert.Contains(t, prompt, "Understand the project")
 	assert.Contains(t, prompt, "Start by running the \"next\" command exactly as written")
+	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceStart))
+	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceEnd))
+	assert.Contains(t, prompt, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
+	assert.Contains(t, prompt, "optional, supplemental implementation guidance")
+	assert.Contains(t, prompt, "stripe docs search")
+	assert.Contains(t, prompt, "Documentation lookup is optional, not a mandatory preflight or ceremony")
+	assert.NotContains(t, prompt, "Open at least one relevant result")
+	assert.Contains(t, prompt, `stripe docs \u003cresult-path\u003e --non-interactive --no-pager`)
+	assert.Contains(t, prompt, `stripe docs api \u003cresource-or-event\u003e --non-interactive --no-pager`)
+	assert.Contains(t, prompt, `stripe docs api \u003cHTTP-method\u003e \u003cendpoint\u003e --non-interactive --no-pager`)
+}
+
+func TestDiscoveryPromptKeepsCoopAsIntegrationAuthority(t *testing.T) {
+	prompt := (&coopRunCmd{language: "go"}).buildAgentPrompt("")
+	assert.Contains(t, prompt, "We will handle coordination and orchestration with you")
+	assert.Contains(t, prompt, "cheaper subagents wherever possible, using your best judgment")
+
+	assert.Contains(t, prompt, "Your first job is to understand what they're building and what they need from Stripe")
+	assert.Contains(t, prompt, `run "stripe coop recommend --query=<description of what they need>"`)
+	assert.Contains(t, prompt, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
+	assert.Contains(t, prompt, "Do not use documentation or the repo-scoped Stripe skill to choose or switch integrations or API families")
+	assert.Contains(t, prompt, "Documentation lookup is optional, not a mandatory preflight or ceremony")
+	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceStart))
+	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceEnd))
 }
 
 func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
@@ -76,6 +104,97 @@ func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
 
 	require.ErrorIs(t, err, promptErr)
 	assert.False(t, autoApprove)
+}
+
+func TestPromptAutoApproveLabelsBypassModeAccurately(t *testing.T) {
+	tests := []struct {
+		agent     string
+		title     string
+		bypassKey string
+	}{
+		{agent: "claude", title: "Permission mode for Claude Code:", bypassKey: "Bypass permissions — skip safety checks (isolated environments only)"},
+		{agent: "codex", title: "Permission mode for Codex:", bypassKey: "Bypass approvals and sandbox — skip safety checks (isolated environments only)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.agent, func(t *testing.T) {
+			originalSelectString := selectString
+			selectString = func(title string, options []huh.Option[string], value *string) error {
+				assert.Equal(t, tt.title, title)
+				require.Len(t, options, 2)
+				assert.Equal(t, tt.bypassKey, options[1].Key)
+				assert.Equal(t, "bypass", options[1].Value)
+				*value = "bypass"
+				return nil
+			}
+			t.Cleanup(func() { selectString = originalSelectString })
+
+			bypass, err := (&coopRunCmd{}).promptAutoApprove(&agentInfo{name: tt.agent})
+
+			require.NoError(t, err)
+			assert.True(t, bypass)
+		})
+	}
+}
+
+func TestClaudeLauncherConfiguresCostEffectiveWorkerAndInteractivePrompt(t *testing.T) {
+	require.True(t, json.Valid([]byte(claudeCoopAgents)))
+	var agents map[string]struct {
+		Prompt string `json:"prompt"`
+		Model  string `json:"model"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(claudeCoopAgents), &agents))
+	worker, ok := agents["coop-cost-effective-worker"]
+	require.True(t, ok)
+	assert.Equal(t, "haiku", worker.Model)
+	assert.Contains(t, worker.Prompt, "honor applicable repository guidance, including AGENTS.md and CLAUDE.md")
+
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+	rc := &coopRunCmd{}
+
+	launcherPath, err := rc.buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, true)
+	require.NoError(t, err)
+	launcher, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+	script := string(launcher)
+
+	assert.Contains(t, script, "--agents '")
+	assert.Contains(t, script, `"model":"haiku"`)
+	assert.Contains(t, script, "Use proactively for well-bounded, self-contained")
+	assert.Contains(t, script, "--dangerously-skip-permissions")
+	assert.Contains(t, script, `"$prompt"`)
+	assert.NotContains(t, script, " -p ")
+	assert.NotContains(t, script, " --model ")
+}
+
+func TestClaudeLauncherNormalModeDoesNotBypassPermissions(t *testing.T) {
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, false)
+	require.NoError(t, err)
+	launcher, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+	script := string(launcher)
+
+	assert.Contains(t, script, "--agents '")
+	assert.NotContains(t, script, "--dangerously-skip-permissions")
+}
+
+func TestCodexLauncherDoesNotReceiveClaudeAgents(t *testing.T) {
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "codex", path: "/usr/local/bin/codex"}, promptPath, true)
+	require.NoError(t, err)
+	launcher, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+	script := string(launcher)
+
+	assert.Contains(t, script, "--dangerously-bypass-approvals-and-sandbox")
+	assert.NotContains(t, script, "--agents")
+	assert.NotContains(t, script, "haiku")
 }
 
 func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
