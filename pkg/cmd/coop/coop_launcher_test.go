@@ -67,7 +67,6 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceStart))
 	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceEnd))
 	assert.Contains(t, prompt, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
-	assert.Contains(t, prompt, "optional, supplemental implementation guidance")
 	assert.Contains(t, prompt, "stripe docs search")
 	assert.Contains(t, prompt, "Documentation lookup is optional, not a mandatory preflight or ceremony")
 	assert.NotContains(t, prompt, "Open at least one relevant result")

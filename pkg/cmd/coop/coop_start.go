@@ -11,19 +11,21 @@ import (
 )
 
 type coopRunCmd struct {
-	cmd                *cobra.Command
-	language           string
-	settings           []string
-	agent              string
-	debugAgent         bool
-	ensureSkill        func() error
-	ensureClaudeSkills func() error
+	cmd                   *cobra.Command
+	language              string
+	settings              []string
+	agent                 string
+	debugAgent            bool
+	ensureSkill           func() error
+	prepareSkillDiscovery func() error
 }
 
 func newCoopRunCmd() *coopRunCmd {
 	rc := &coopRunCmd{
-		ensureSkill:        ensureRepoStripeBestPracticesSkill,
-		ensureClaudeSkills: ensureRepoClaudeSkillsDiscoveryRoot,
+		ensureSkill: ensureRepoStripeBestPracticesSkill,
+		prepareSkillDiscovery: func() error {
+			return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
+		},
 	}
 	rc.cmd = &cobra.Command{
 		Use:   "start [blueprint-id]",
@@ -94,7 +96,7 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 			warnRepoStripeBestPracticesSkill(cmd, err)
 		}
 	} else if agent.name == "claude" {
-		if err := rc.ensureClaudeSkillDiscovery(); err != nil {
+		if err := rc.prepareAgentSkillDiscovery(); err != nil {
 			warnRepoClaudeSkillsDiscovery(cmd, err)
 		}
 	}
@@ -118,11 +120,11 @@ func (rc *coopRunCmd) ensureStripeSkill() error {
 	return ensureRepoStripeBestPracticesSkill()
 }
 
-func (rc *coopRunCmd) ensureClaudeSkillDiscovery() error {
-	if rc.ensureClaudeSkills != nil {
-		return rc.ensureClaudeSkills()
+func (rc *coopRunCmd) prepareAgentSkillDiscovery() error {
+	if rc.prepareSkillDiscovery != nil {
+		return rc.prepareSkillDiscovery()
 	}
-	return ensureRepoClaudeSkillsDiscoveryRoot()
+	return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
 }
 
 func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {

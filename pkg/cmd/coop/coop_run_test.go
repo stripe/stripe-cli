@@ -111,13 +111,7 @@ func TestAgentInstructionsIncludeOptionalStripeDocsGuidanceExactlyOnce(t *testin
 			assert.Equal(t, 1, strings.Count(tt.instructions, stripeAgentGuidanceEnd))
 			assert.Contains(t, tt.instructions, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
 			assert.Contains(t, tt.instructions, "Do not use documentation or the repo-scoped Stripe skill to choose or switch integrations or API families")
-			assert.Contains(t, tt.instructions, ".agents/skills/stripe-best-practices for Codex")
-			assert.Contains(t, tt.instructions, ".claude/skills/stripe-best-practices for Claude Code")
-			assert.Contains(t, tt.instructions, "Codex detects newly installed repo skills automatically")
-			assert.Contains(t, tt.instructions, "Co-op prepares Claude Code's empty repo skill root before discovery")
-			assert.Contains(t, tt.instructions, "Do not invoke this skill before Co-op selects the blueprint")
-			assert.Contains(t, tt.instructions, "optional, supplemental implementation guidance")
-			assert.Contains(t, tt.instructions, "neither skill nor documentation lookup is mandatory")
+			assert.NotContains(t, tt.instructions, "After Co-op selects a blueprint, it attempts to make")
 			assert.Contains(t, tt.instructions, "ambiguous or need clarification, proactively consult current official Stripe documentation")
 			assert.Contains(t, tt.instructions, "Documentation lookup is optional, not a mandatory preflight or ceremony")
 			assert.Contains(t, tt.instructions, "STRONGLY PREFER CURRENT OFFICIAL STRIPE CLI DOCUMENTATION OVER MODEL MEMORY")
@@ -155,7 +149,7 @@ func TestCoopAgentRunContinuesWhenOptionalRepoSkillInstallFails(t *testing.T) {
 	})
 
 	require.NoError(t, runErr)
-	assert.Contains(t, stderr, "unable to install the optional repo-scoped Stripe skill; continuing without it")
+	assert.Contains(t, stderr, "unable to install the optional project-scoped Stripe skill; continuing without it")
 	assert.Contains(t, stderr, ensureErr.Error())
 	store, storeErr := coop.NewStore(coopConfigFolder())
 	require.NoError(t, storeErr)
@@ -237,7 +231,7 @@ func TestCoopStartPreparesOnlyTheNeededAgentSkillState(t *testing.T) {
 				skillCalled = true
 				return nil
 			}
-			rc.ensureClaudeSkills = func() error {
+			rc.prepareSkillDiscovery = func() error {
 				claudeRootCalled = true
 				return nil
 			}

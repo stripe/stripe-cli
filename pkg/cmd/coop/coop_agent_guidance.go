@@ -1,12 +1,8 @@
 package coopcmd
 
 const (
-	stripeBestPracticesSkillCommit     = "c29cd23cfd27830bf10961d58646a9fd127fa6df"
-	stripeBestPracticesSkillSource     = "https://github.com/stripe/ai/tree/" + stripeBestPracticesSkillCommit + "/skills/stripe-best-practices"
-	stripeBestPracticesSkillTreeURL    = "https://api.github.com/repos/stripe/ai/git/trees/" + stripeBestPracticesSkillCommit + "?recursive=1"
-	stripeBestPracticesSkillRawBaseURL = "https://raw.githubusercontent.com/stripe/ai/" + stripeBestPracticesSkillCommit + "/skills/stripe-best-practices"
-	stripeAgentGuidanceStart           = "=== STRIPE IMPLEMENTATION GUIDANCE ==="
-	stripeAgentGuidanceEnd             = "=== END STRIPE IMPLEMENTATION GUIDANCE ==="
+	stripeAgentGuidanceStart = "=== STRIPE IMPLEMENTATION GUIDANCE ==="
+	stripeAgentGuidanceEnd   = "=== END STRIPE IMPLEMENTATION GUIDANCE ==="
 )
 
 func coopAgentCoordinationInstructions() string {
@@ -17,8 +13,6 @@ We will handle coordination and orchestration with you. Prefer delegating well-b
 func stripeAgentGuidanceInstructions() string {
 	return stripeAgentGuidanceStart + `
 Co-op is responsible for selecting the integration and API family through its recommender and blueprint. Once selected, node descriptions and review requirements are the task contract. Do not use documentation or the repo-scoped Stripe skill to choose or switch integrations or API families.
-
-After Co-op selects a blueprint, it attempts to make the pinned stripe-best-practices skill available in both native local-repository locations: .agents/skills/stripe-best-practices for Codex and .claude/skills/stripe-best-practices for Claude Code. Codex detects newly installed repo skills automatically, and Co-op prepares Claude Code's empty repo skill root before discovery so Claude can detect the later addition. If a local skill already exists at either destination, Co-op leaves that destination untouched. Do not invoke this skill before Co-op selects the blueprint; afterward it is optional, supplemental implementation guidance within Co-op's selection. It does not override the Co-op task contract, and neither skill nor documentation lookup is mandatory.
 
 If Stripe behavior, parameters, fields, events, or implementation details are ambiguous or need clarification, proactively consult current official Stripe documentation through the CLI instead of guessing.
 

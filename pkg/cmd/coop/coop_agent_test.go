@@ -152,7 +152,7 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(output), &resp))
 	require.True(t, resp.OK)
 	assert.Equal(t, 1, ensureCalls)
-	assert.Contains(t, stderr.String(), "unable to install the optional repo-scoped Stripe skill; continuing without it")
+	assert.Contains(t, stderr.String(), "unable to install the optional project-scoped Stripe skill; continuing without it")
 	assert.Contains(t, resp.Message, "Deploy your changes")
 	assert.Contains(t, resp.Next, "stripe coop agent start-work")
 	assert.Contains(t, resp.AgentInstructions, "guided co-op follow-up")

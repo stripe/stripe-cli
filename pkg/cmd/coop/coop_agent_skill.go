@@ -1,7 +1,6 @@
 package coopcmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,22 +19,20 @@ import (
 )
 
 const (
-	stripeBestPracticesSkillName     = "stripe-best-practices"
-	stripeBestPracticesSkillTreeRoot = "skills/stripe-best-practices"
-	stripeSkillDownloadTimeout       = 15 * time.Second
-	stripeCoopSkillDescription       = `description: >-
-  Supplemental Stripe implementation guidance for an active Stripe Co-op
-  session after Co-op has selected a blueprint, integration, and API family.
-  Do not use this skill to recommend, choose, or switch the integration or API
-  family. Use it only to implement or review the selected integration.`
+	stripeBestPracticesSkillName       = "stripe-best-practices"
+	stripeBestPracticesSkillTreeRoot   = "skills/stripe-best-practices"
+	stripeBestPracticesSkillGitRef     = "main"
+	stripeBestPracticesSkillTreeURL    = "https://api.github.com/repos/stripe/ai/git/trees/" + stripeBestPracticesSkillGitRef + "?recursive=1"
+	stripeBestPracticesSkillRawBaseURL = "https://raw.githubusercontent.com/stripe/ai/" + stripeBestPracticesSkillGitRef + "/" + stripeBestPracticesSkillTreeRoot
+	stripeSkillDownloadTimeout         = 15 * time.Second
+	codexProjectDirectory              = ".agents"
+	claudeProjectDirectory             = ".claude"
 )
 
 var (
-	stripeBestPracticesCodexSkillTarget  = filepath.Join(".agents", "skills", stripeBestPracticesSkillName)
-	stripeBestPracticesClaudeSkillTarget = filepath.Join(".claude", "skills", stripeBestPracticesSkillName)
-	stripeBestPracticesSkillTargets      = []string{
-		stripeBestPracticesCodexSkillTarget,
-		stripeBestPracticesClaudeSkillTarget,
+	stripeBestPracticesSkillTargets = []string{
+		projectSkillPath(codexProjectDirectory, stripeBestPracticesSkillName),
+		projectSkillPath(claudeProjectDirectory, stripeBestPracticesSkillName),
 	}
 	stripeBestPracticesGitHubSource = stripeSkillGitHubSource{
 		client:     &http.Client{Timeout: stripeSkillDownloadTimeout},
@@ -58,49 +55,42 @@ type stripeSkillGitTree struct {
 	} `json:"tree"`
 }
 
-// ensureRepoStripeBestPracticesSkill makes the pinned skill available to the
-// active agent after Co-op selects an integration. It never replaces a skill
-// path that the repository already owns.
+// ensureRepoStripeBestPracticesSkill makes the latest skill available in the
+// current project after Co-op selects an integration. It never replaces a
+// skill path that the project already owns.
 func ensureRepoStripeBestPracticesSkill() error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("resolving current directory: %w", err)
 	}
-	repoRoot, err := stripeSkillRepoRoot(cwd)
-	if err != nil {
-		return err
-	}
-	if isUserGlobalSkillScope(repoRoot) {
-		return nil
-	}
-	_, err = installPinnedStripeBestPracticesSkill(repoRoot)
+	_, err = installStripeBestPracticesSkill(cwd)
 	return err
 }
 
-// ensureRepoClaudeSkillsDiscoveryRoot lets an already-running Claude Code
-// discovery session notice the skill after Co-op selects a blueprint. Creating
-// the empty root does not expose any Stripe routing guidance before selection.
-func ensureRepoClaudeSkillsDiscoveryRoot() error {
+// ensureProjectSkillsDiscoveryRoot creates an agent's project-local skills
+// root in the current directory so the agent can watch it for later additions.
+func ensureProjectSkillsDiscoveryRoot(projectDirectory string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("resolving current directory: %w", err)
 	}
-	repoRoot, err := stripeSkillRepoRoot(cwd)
+	project, err := os.OpenRoot(cwd)
 	if err != nil {
-		return err
+		return fmt.Errorf("opening project directory: %w", err)
 	}
-	if isUserGlobalSkillScope(repoRoot) {
-		return nil
-	}
-	repo, err := os.OpenRoot(repoRoot)
-	if err != nil {
-		return fmt.Errorf("opening repository root: %w", err)
-	}
-	defer func() { _ = repo.Close() }()
-	if err := repo.MkdirAll(filepath.Join(".claude", "skills"), 0o755); err != nil {
-		return fmt.Errorf("creating Claude Code repository skills directory: %w", err)
+	defer func() { _ = project.Close() }()
+	if err := project.MkdirAll(projectSkillsPath(projectDirectory), 0o755); err != nil {
+		return fmt.Errorf("creating project skills directory: %w", err)
 	}
 	return nil
+}
+
+func projectSkillsPath(projectDirectory string) string {
+	return filepath.Join(projectDirectory, "skills")
+}
+
+func projectSkillPath(projectDirectory, skillName string) string {
+	return filepath.Join(projectSkillsPath(projectDirectory), skillName)
 }
 
 func warnRepoStripeBestPracticesSkill(cmd *cobra.Command, err error) {
@@ -108,7 +98,7 @@ func warnRepoStripeBestPracticesSkill(cmd *cobra.Command, err error) {
 	if cmd != nil {
 		out = cmd.ErrOrStderr()
 	}
-	fmt.Fprintf(out, "Warning: unable to install the optional repo-scoped Stripe skill; continuing without it: %v\n", err)
+	fmt.Fprintf(out, "Warning: unable to install the optional project-scoped Stripe skill; continuing without it: %v\n", err)
 }
 
 func warnRepoClaudeSkillsDiscovery(cmd *cobra.Command, err error) {
@@ -116,67 +106,27 @@ func warnRepoClaudeSkillsDiscovery(cmd *cobra.Command, err error) {
 	if cmd != nil {
 		out = cmd.ErrOrStderr()
 	}
-	fmt.Fprintf(out, "Warning: unable to prepare optional repo-scoped Claude skill discovery; continuing without hot-loading: %v\n", err)
+	fmt.Fprintf(out, "Warning: unable to prepare optional project-scoped Claude skill discovery; continuing without hot-loading: %v\n", err)
 }
 
-// stripeSkillRepoRoot returns the nearest ancestor with a .git marker. Co-op
-// also supports new, not-yet-versioned projects, where the current directory
-// is the repository scope.
-func stripeSkillRepoRoot(start string) (string, error) {
-	start, err := filepath.Abs(start)
-	if err != nil {
-		return "", fmt.Errorf("resolving repository root: %w", err)
-	}
-
-	for current := start; ; current = filepath.Dir(current) {
-		if _, err := os.Lstat(filepath.Join(current, ".git")); err == nil {
-			return current, nil
-		} else if !os.IsNotExist(err) {
-			return "", fmt.Errorf("checking repository root: %w", err)
-		}
-
-		if parent := filepath.Dir(current); parent == current {
-			return start, nil
-		}
-	}
-}
-
-// isUserGlobalSkillScope prevents the no-Git fallback from turning a Co-op
-// launch in $HOME (or a filesystem root) into a user-global skill install.
-func isUserGlobalSkillScope(repoRoot string) bool {
-	if filepath.Dir(repoRoot) == repoRoot {
-		return true
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return false
-	}
-	repoInfo, repoErr := os.Stat(repoRoot)
-	homeInfo, homeErr := os.Stat(home)
-	if repoErr == nil && homeErr == nil {
-		return os.SameFile(repoInfo, homeInfo)
-	}
-	return filepath.Clean(repoRoot) == filepath.Clean(home)
-}
-
-// installPinnedStripeBestPracticesSkill installs the complete skill directly
-// from its pinned stripe/ai GitHub commit. Existing targets are left untouched.
-func installPinnedStripeBestPracticesSkill(repoRoot string) (bool, error) {
-	return installPinnedStripeBestPracticesSkillFrom(
+// installStripeBestPracticesSkill installs the complete skill directly from
+// stripe/ai's main branch. Existing targets are left untouched.
+func installStripeBestPracticesSkill(projectDirectory string) (bool, error) {
+	return installStripeBestPracticesSkillFrom(
 		context.Background(),
-		repoRoot,
+		projectDirectory,
 		stripeBestPracticesGitHubSource,
 	)
 }
 
-func installPinnedStripeBestPracticesSkillFrom(ctx context.Context, repoRoot string, source stripeSkillGitHubSource) (bool, error) {
-	repo, err := os.OpenRoot(repoRoot)
+func installStripeBestPracticesSkillFrom(ctx context.Context, projectDirectory string, source stripeSkillGitHubSource) (bool, error) {
+	project, err := os.OpenRoot(projectDirectory)
 	if err != nil {
-		return false, fmt.Errorf("opening repository root: %w", err)
+		return false, fmt.Errorf("opening project directory: %w", err)
 	}
-	defer func() { _ = repo.Close() }()
+	defer func() { _ = project.Close() }()
 
-	missingTargets, err := missingStripeSkillTargets(repo)
+	missingTargets, err := missingStripeSkillTargets(project)
 	if err != nil {
 		return false, err
 	}
@@ -191,7 +141,7 @@ func installPinnedStripeBestPracticesSkillFrom(ctx context.Context, repoRoot str
 
 	installed := false
 	for _, target := range missingTargets {
-		targetInstalled, targetErr := installStripeSkillTarget(repo, target, files)
+		targetInstalled, targetErr := installStripeSkillTarget(project, target, files)
 		installed = installed || targetInstalled
 		if targetErr != nil {
 			err = errors.Join(err, fmt.Errorf("installing Stripe skill at %s: %w", target, targetErr))
@@ -200,10 +150,10 @@ func installPinnedStripeBestPracticesSkillFrom(ctx context.Context, repoRoot str
 	return installed, err
 }
 
-func missingStripeSkillTargets(repo *os.Root) ([]string, error) {
+func missingStripeSkillTargets(project *os.Root) ([]string, error) {
 	missing := make([]string, 0, len(stripeBestPracticesSkillTargets))
 	for _, target := range stripeBestPracticesSkillTargets {
-		if _, err := repo.Lstat(target); err == nil {
+		if _, err := project.Lstat(target); err == nil {
 			continue
 		} else if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("checking existing Stripe skill at %s: %w", target, err)
@@ -221,14 +171,14 @@ func fetchStripeBestPracticesSkill(ctx context.Context, source stripeSkillGitHub
 
 	treeBody, err := fetchStripeSkillURL(ctx, client, source.treeURL)
 	if err != nil {
-		return nil, fmt.Errorf("fetching pinned Stripe skill tree: %w", err)
+		return nil, fmt.Errorf("fetching Stripe skill tree: %w", err)
 	}
 	var tree stripeSkillGitTree
 	if err := json.Unmarshal(treeBody, &tree); err != nil {
-		return nil, fmt.Errorf("parsing pinned Stripe skill tree: %w", err)
+		return nil, fmt.Errorf("parsing Stripe skill tree: %w", err)
 	}
 	if tree.Truncated {
-		return nil, errors.New("pinned Stripe skill tree response was truncated")
+		return nil, errors.New("Stripe skill tree response was truncated")
 	}
 
 	prefix := stripeBestPracticesSkillTreeRoot + "/"
@@ -239,28 +189,24 @@ func fetchStripeBestPracticesSkill(ctx context.Context, source stripeSkillGitHub
 		}
 		relativePath := strings.TrimPrefix(entry.Path, prefix)
 		if !safeStripeSkillRelativePath(relativePath) {
-			return nil, fmt.Errorf("pinned Stripe skill contains unsafe path %q", relativePath)
+			return nil, fmt.Errorf("Stripe skill contains unsafe path %q", relativePath)
 		}
 		relativePaths = append(relativePaths, relativePath)
 	}
 	sort.Strings(relativePaths)
 	if !containsString(relativePaths, "SKILL.md") {
-		return nil, errors.New("pinned Stripe skill does not contain SKILL.md")
+		return nil, errors.New("Stripe skill does not contain SKILL.md")
 	}
 
 	files := make(map[string][]byte, len(relativePaths))
 	for _, relativePath := range relativePaths {
 		rawURL, err := url.JoinPath(source.rawBaseURL, relativePath)
 		if err != nil {
-			return nil, fmt.Errorf("building pinned Stripe skill URL for %s: %w", relativePath, err)
+			return nil, fmt.Errorf("building Stripe skill URL for %s: %w", relativePath, err)
 		}
 		contents, err := fetchStripeSkillURL(ctx, client, rawURL)
 		if err != nil {
-			return nil, fmt.Errorf("fetching pinned Stripe skill file %s: %w", relativePath, err)
-		}
-		contents, err = stripeBestPracticesInstallContents(relativePath, contents)
-		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fetching Stripe skill file %s: %w", relativePath, err)
 		}
 		files[relativePath] = contents
 	}
@@ -291,65 +237,42 @@ func safeStripeSkillRelativePath(relativePath string) bool {
 	return clean != "." && clean == relativePath && !path.IsAbs(clean) && !strings.HasPrefix(clean, "../")
 }
 
-func installStripeSkillTarget(repo *os.Root, target string, files map[string][]byte) (bool, error) {
-	if _, err := repo.Lstat(target); err == nil {
+func installStripeSkillTarget(project *os.Root, target string, files map[string][]byte) (bool, error) {
+	if _, err := project.Lstat(target); err == nil {
 		return false, nil
 	} else if !os.IsNotExist(err) {
 		return false, fmt.Errorf("checking existing Stripe skill: %w", err)
 	}
 
-	if err := repo.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return false, fmt.Errorf("creating repository skills directory: %w", err)
+	if err := project.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return false, fmt.Errorf("creating project skills directory: %w", err)
 	}
-	if err := repo.Mkdir(target, 0o755); err != nil {
+	if err := project.Mkdir(target, 0o755); err != nil {
 		if os.IsExist(err) {
 			return false, nil
 		}
 		return false, fmt.Errorf("creating Stripe skill directory: %w", err)
 	}
 
-	for _, relativePath := range orderedStripeSkillPaths(files) {
+	for _, relativePath := range sortedStripeSkillPaths(files) {
 		destination := filepath.Join(target, filepath.FromSlash(relativePath))
-		if err := repo.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		if err := project.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 			return false, fmt.Errorf("creating Stripe skill subdirectory for %s: %w", relativePath, err)
 		}
-		if err := repo.WriteFile(destination, files[relativePath], 0o600); err != nil {
+		if err := project.WriteFile(destination, files[relativePath], 0o600); err != nil {
 			return false, fmt.Errorf("writing Stripe skill file %s: %w", relativePath, err)
 		}
 	}
 	return true, nil
 }
 
-func orderedStripeSkillPaths(files map[string][]byte) []string {
+func sortedStripeSkillPaths(files map[string][]byte) []string {
 	paths := make([]string, 0, len(files))
 	for relativePath := range files {
-		if relativePath != "SKILL.md" {
-			paths = append(paths, relativePath)
-		}
+		paths = append(paths, relativePath)
 	}
 	sort.Strings(paths)
-	return append(paths, "SKILL.md")
-}
-
-func stripeBestPracticesInstallContents(relativePath string, contents []byte) ([]byte, error) {
-	if relativePath != "SKILL.md" {
-		return contents, nil
-	}
-	descriptionStart := bytes.Index(contents, []byte("description: >-\n"))
-	if descriptionStart < 0 {
-		return nil, errors.New("scoping pinned Stripe skill: description frontmatter not found")
-	}
-	descriptionEndOffset := bytes.Index(contents[descriptionStart:], []byte("\n\n---\n"))
-	if descriptionEndOffset < 0 {
-		return nil, errors.New("scoping pinned Stripe skill: frontmatter terminator not found")
-	}
-	descriptionEnd := descriptionStart + descriptionEndOffset
-
-	scoped := make([]byte, 0, len(contents)+len(stripeCoopSkillDescription))
-	scoped = append(scoped, contents[:descriptionStart]...)
-	scoped = append(scoped, stripeCoopSkillDescription...)
-	scoped = append(scoped, contents[descriptionEnd:]...)
-	return scoped, nil
+	return paths
 }
 
 func containsString(values []string, want string) bool {
