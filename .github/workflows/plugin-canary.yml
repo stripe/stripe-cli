@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: Install Stripe CLI
-        uses: stripe/stripe-cli-ts-plugin-bootstrap/.github/actions/install-stripe-cli@v0.5.4
+        uses: ./.github/actions/install-stripe-cli
 
       - name: Verify CLI installed
         run: stripe version
