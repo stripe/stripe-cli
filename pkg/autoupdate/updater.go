@@ -61,12 +61,14 @@ func ApplyIfPending() {
 
 	if err := downloadAndReplace(marker, exe); err != nil {
 		fmt.Fprintf(os.Stderr, "Auto-update failed: %v. Continuing with current version.\n", err)
+		sendTelemetryEvent("Auto-Update Failed", fmt.Sprintf("from=%s to=%s error=%s", current, target, err.Error()))
 		ClearMarker()
 		return
 	}
 
 	ClearMarker()
 	fmt.Fprintf(os.Stderr, "Updated successfully ✓\n")
+	sendTelemetryEvent("Auto-Update Succeeded", fmt.Sprintf("from=%s to=%s", current, target))
 
 	reexec(exe)
 }
