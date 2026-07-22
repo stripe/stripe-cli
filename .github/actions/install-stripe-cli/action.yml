@@ -1,0 +1,29 @@
+name: Install Stripe CLI
+description: Install the Stripe CLI for the current OS
+
+runs:
+  using: composite
+  steps:
+    - name: Install Stripe CLI on Linux
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg > /dev/null
+        echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee /etc/apt/sources.list.d/stripe.list
+        sudo apt-get update
+        sudo apt-get install -y stripe
+
+    - name: Install Stripe CLI on macOS
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install stripe
+
+    - name: Install Stripe CLI on Windows
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        winget install Stripe.StripeCli -e --source winget --accept-package-agreements --accept-source-agreements
+        $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
+        $stripeDir = Split-Path (Get-Command stripe).Source
+        echo $stripeDir >> $env:GITHUB_PATH
