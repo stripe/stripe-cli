@@ -30,6 +30,8 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - uses: actions/checkout@v6
+
       - name: Install Stripe CLI
         uses: ./.github/actions/install-stripe-cli
 
