@@ -68,7 +68,10 @@ func TestInstallPinnedStripeBestPracticesSkillWritesCompleteExactSnapshot(t *tes
 
 			info, statErr := os.Stat(filepath.Join(target, filepath.FromSlash(relativePath)))
 			require.NoError(t, statErr)
-			assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), relativeTarget+"/"+relativePath)
+			assert.True(t, info.Mode().IsRegular(), relativeTarget+"/"+relativePath)
+			if runtime.GOOS != "windows" {
+				assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), relativeTarget+"/"+relativePath)
+			}
 		}
 	}
 
