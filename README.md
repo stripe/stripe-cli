@@ -210,6 +210,7 @@ scoop update stripe
 ```sh
 docker pull stripe/stripe-cli:latest
 ```
+Because Docker containers are ephemeral, the `stripe login` command isn't supported. Use the [`--api-key` flag](https://docs.stripe.com/cli/api_keys) instead.
 
 ### Without package managers
 
