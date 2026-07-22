@@ -128,16 +128,6 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 	// The checksums in the test toml files are the same for each OS variation of the release for unit testing purposes
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/get-plugin-url":
-			pd := requests.PluginData{
-				PluginBaseURL:       artifactoryServer.URL,
-				AdditionalManifests: additionalManifestNames,
-			}
-			body, err := json.Marshal(pd)
-			if err != nil {
-				t.Error(err)
-			}
-			res.Write(body)
 		case "/v1/stripecli/get-plugin-metadata", "/ajax/stripecli/plugins_metadata":
 			pluginName := req.URL.Query().Get("plugin")
 			version := req.URL.Query().Get("version")
