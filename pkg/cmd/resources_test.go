@@ -21,10 +21,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
-const (
-	pluginManifestURL = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
-)
-
 func newResourcesTestRoot(t *testing.T) *cobra.Command {
 	t.Helper()
 
@@ -55,6 +51,20 @@ func TestResourcesHidesDatabases(t *testing.T) {
 	require.NotContains(t, output, "databases")
 }
 
+func TestResourcesHelpAlias(t *testing.T) {
+	helpOutput, err := executeCommand(newResourcesTestRoot(t), "resources", "--help")
+	require.NoError(t, err)
+
+	aliasOutput, err := executeCommand(newResourcesTestRoot(t), "resources", "help")
+	require.NoError(t, err)
+	require.Equal(t, helpOutput, aliasOutput)
+}
+
+func TestResourcesRejectsUnexpectedPositionalArgs(t *testing.T) {
+	_, err := executeCommand(newResourcesTestRoot(t), "resources", "foo")
+	require.EqualError(t, err, "`stripe resources` does not take any positional arguments. See `stripe resources --help` for supported flags and usage")
+}
+
 func TestResourcesListAliasedName(t *testing.T) {
 	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 	require.NoError(t, err)
@@ -72,7 +82,7 @@ func TestResourcesListAliasedName(t *testing.T) {
 
 func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.URL.Path, "/v1/invoices/in_123/lines")
+		assert.Equal(t, "/v1/invoices/in_123/lines", r.URL.Path)
 	}))
 	defer ts.Close()
 
@@ -87,9 +97,23 @@ func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 }
 
 func TestConflictWithPluginCommand(t *testing.T) {
-	// directly downloading the manifest can only be done within this unit test
-	// plugins.GetPluginList should be used under normal circumstances
-	resp, err := http.Get(pluginManifestURL)
+	// Serve a static plugin manifest to avoid a real network call.
+	const staticManifest = `
+[[Plugin]]
+Shortname = "projects"
+Shortdesc = "Manage Stripe projects"
+
+[[Plugin]]
+Shortname = "directory"
+Shortdesc = "Explore the Stripe API directory"
+`
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/toml")
+		w.Write([]byte(staticManifest))
+	}))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 

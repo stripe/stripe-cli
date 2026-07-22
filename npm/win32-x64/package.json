@@ -20,9 +20,6 @@
   "cpu": [
     "x64"
   ],
-  "bin": {
-    "stripe": "bin/stripe.exe"
-  },
   "files": [
     "bin/stripe.exe"
   ]

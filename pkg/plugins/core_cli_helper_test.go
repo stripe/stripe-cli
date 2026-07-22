@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -31,7 +31,7 @@ func TestSendAnalytics(t *testing.T) {
 }
 
 type fakeKeyringGetResult struct {
-	item keyring.Item
+	data []byte
 	err  error
 }
 
@@ -40,17 +40,18 @@ type fakeKeyring struct {
 	getCalls    int
 	setErr      error
 	setCalls    int
-	lastSetItem keyring.Item
+	lastSetKey  string
+	lastSetData []byte
 	keys        []string
 	removeErr   error
 	removeCalls int
 	removedKey  string
 }
 
-func (f *fakeKeyring) Get(key string) (keyring.Item, error) {
+func (f *fakeKeyring) Get(key string) ([]byte, error) {
 	f.getCalls++
 	if len(f.getResults) == 0 {
-		return keyring.Item{}, keyring.ErrKeyNotFound
+		return nil, keyring.ErrKeyNotFound
 	}
 
 	index := f.getCalls - 1
@@ -59,16 +60,13 @@ func (f *fakeKeyring) Get(key string) (keyring.Item, error) {
 	}
 
 	result := f.getResults[index]
-	return result.item, result.err
+	return result.data, result.err
 }
 
-func (f *fakeKeyring) GetMetadata(key string) (keyring.Metadata, error) {
-	return keyring.Metadata{}, nil
-}
-
-func (f *fakeKeyring) Set(item keyring.Item) error {
+func (f *fakeKeyring) Set(key string, data []byte, description string) error {
 	f.setCalls++
-	f.lastSetItem = item
+	f.lastSetKey = key
+	f.lastSetData = data
 	return f.setErr
 }
 
@@ -123,7 +121,7 @@ func TestKeychainGetPasswordReturnsNotFoundWithoutRetry(t *testing.T) {
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
 			{err: keyring.ErrKeyNotFound},
-			{item: keyring.Item{Data: []byte("sk_test_123")}},
+			{data: []byte("sk_test_123")},
 		},
 	}
 
@@ -216,7 +214,7 @@ func TestKeychainGetPasswordPrefersRecentWriteOverStaleVisibleValue(t *testing.T
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{item: keyring.Item{Data: []byte("sk_test_old")}},
+			{data: []byte("sk_test_old")},
 		},
 	}
 
@@ -248,7 +246,7 @@ func TestKeychainGetPasswordClearsRecentWriteOnceKeychainMatches(t *testing.T) {
 	originalTimeout := keychainVisibilityRetryTimeout
 	ring := &fakeKeyring{
 		getResults: []fakeKeyringGetResult{
-			{item: keyring.Item{Data: []byte("sk_test_123")}},
+			{data: []byte("sk_test_123")},
 			{err: keyring.ErrKeyNotFound},
 		},
 	}
@@ -412,6 +410,55 @@ func TestKeychainDeletePasswordClearsRecentWrite(t *testing.T) {
 	require.False(t, found)
 	require.Empty(t, value)
 	require.Equal(t, 1, ring.getCalls)
+}
+
+func TestKeychainFindCredentialsReturnsKeyWhenPresent(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{data: []byte("sk_live_123")},
+		},
+	}
+	config.KeyRing = ring
+	t.Cleanup(func() { config.KeyRing = originalKeyRing })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	keys, err := coreCLIHelper.KeychainFindCredentials()
+	require.NoError(t, err)
+	require.Equal(t, []string{"default." + config.LiveModeAPIKeyName}, keys)
+}
+
+func TestKeychainFindCredentialsReturnsEmptyWhenNotFound(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{err: keyring.ErrKeyNotFound},
+		},
+	}
+	config.KeyRing = ring
+	t.Cleanup(func() { config.KeyRing = originalKeyRing })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	keys, err := coreCLIHelper.KeychainFindCredentials()
+	require.NoError(t, err)
+	require.Empty(t, keys)
+}
+
+func TestKeychainFindCredentialsReturnsErrorOnFailure(t *testing.T) {
+	originalKeyRing := config.KeyRing
+	expectedErr := errors.New("boom")
+	ring := &fakeKeyring{
+		getResults: []fakeKeyringGetResult{
+			{err: expectedErr},
+		},
+	}
+	config.KeyRing = ring
+	t.Cleanup(func() { config.KeyRing = originalKeyRing })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	keys, err := coreCLIHelper.KeychainFindCredentials()
+	require.ErrorIs(t, err, expectedErr)
+	require.Empty(t, keys)
 }
 
 func TestSendAnalyticsWithTelemetryClient(t *testing.T) {

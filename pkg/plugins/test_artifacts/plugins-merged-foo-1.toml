@@ -107,6 +107,7 @@
 [[Plugin]]
   Shortname = "appC"
   Shortdesc = "A plugin with subcommands"
+  Description = "A plugin with subcommands that demonstrates multi-line description support. Use stripe appC --help to see the available subcommands."
   Binary = "stripe-cli-app-c"
   MagicCookieValue = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
 
