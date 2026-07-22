@@ -9,9 +9,20 @@ import (
 
 type Option func(*Model)
 
+// ReviewDecisionNotifier wakes an agent after a human review decision. The
+// notifier must be one-shot and non-blocking from the TUI's perspective; it is
+// run as a Bubble Tea command after the session update is durable.
+type ReviewDecisionNotifier func(sessionID string) error
+
 func WithSandboxClaimURL(claimURL string) Option {
 	return func(m *Model) {
 		m.sandboxClaimURL = claimURL
+	}
+}
+
+func WithReviewDecisionNotifier(notify ReviewDecisionNotifier) Option {
+	return func(m *Model) {
+		m.reviewDecisionNotifier = notify
 	}
 }
 
