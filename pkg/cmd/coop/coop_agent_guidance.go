@@ -1,20 +1,13 @@
 package coopcmd
 
-import "embed"
-
 const (
-	stripeBestPracticesSkillCommit = "c29cd23cfd27830bf10961d58646a9fd127fa6df"
-	stripeBestPracticesSkillSource = "https://raw.githubusercontent.com/stripe/ai/c29cd23cfd27830bf10961d58646a9fd127fa6df/skills/stripe-best-practices/SKILL.md"
-	stripeAgentGuidanceStart       = "=== STRIPE IMPLEMENTATION GUIDANCE ==="
-	stripeAgentGuidanceEnd         = "=== END STRIPE IMPLEMENTATION GUIDANCE ==="
+	stripeBestPracticesSkillCommit     = "c29cd23cfd27830bf10961d58646a9fd127fa6df"
+	stripeBestPracticesSkillSource     = "https://github.com/stripe/ai/tree/" + stripeBestPracticesSkillCommit + "/skills/stripe-best-practices"
+	stripeBestPracticesSkillTreeURL    = "https://api.github.com/repos/stripe/ai/git/trees/" + stripeBestPracticesSkillCommit + "?recursive=1"
+	stripeBestPracticesSkillRawBaseURL = "https://raw.githubusercontent.com/stripe/ai/" + stripeBestPracticesSkillCommit + "/skills/stripe-best-practices"
+	stripeAgentGuidanceStart           = "=== STRIPE IMPLEMENTATION GUIDANCE ==="
+	stripeAgentGuidanceEnd             = "=== END STRIPE IMPLEMENTATION GUIDANCE ==="
 )
-
-// stripeBestPracticesSkillFS contains the complete skill folder from the
-// pinned source commit. Co-op installs it without a runtime fetch and narrows
-// only the activation description to post-selection Co-op implementation.
-//
-//go:embed guidance/stripe-best-practices
-var stripeBestPracticesSkillFS embed.FS
 
 func coopAgentCoordinationInstructions() string {
 	return `COORDINATION AND DELEGATION:
