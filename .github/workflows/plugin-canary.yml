@@ -1,0 +1,127 @@
+name: Plugin Canary Tests
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  RECENT_VERSIONS_TO_TEST: 10
+
+jobs:
+  plugin-canary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Install Stripe CLI
+        uses: stripe/stripe-cli-ts-plugin-bootstrap/.github/actions/install-stripe-cli@v0.5.4
+
+      - name: Verify CLI installed
+        run: stripe version
+        shell: bash
+
+      - name: Checkout notify script
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/notify.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Install and test recent projects plugin versions
+        shell: bash
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          GH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DRYRUN: ${{ inputs.dryrun }}
+        run: |
+          set -euo pipefail
+
+          # Map the GitHub runner to the Go platform identifiers expected by
+          # the list-plugins endpoint.
+          case "${RUNNER_OS}" in
+            Linux) GOOS="linux" ;;
+            macOS) GOOS="darwin" ;;
+            Windows) GOOS="windows" ;;
+            *)
+              echo "Unsupported runner OS: ${RUNNER_OS}" >&2
+              exit 1
+              ;;
+          esac
+
+          case "${RUNNER_ARCH}" in
+            X64) GOARCH="amd64" ;;
+            ARM64) GOARCH="arm64" ;;
+            *)
+              echo "Unsupported runner arch: ${RUNNER_ARCH}" >&2
+              exit 1
+              ;;
+          esac
+
+          # Fetch the platform-specific plugin list from the Stripe API and
+          # extract the most recent projects plugin versions.
+          VERSIONS=$(curl -fsSL -G "https://api.stripe.com/v1/stripecli/list-plugins" \
+            -H "Authorization: Bearer ${STRIPE_API_KEY}" \
+            -H "Stripe-Version: 2019-03-14" \
+            --data-urlencode "os=${GOOS}" \
+            --data-urlencode "arch=${GOARCH}" \
+            | python -c $'import json\nimport os\nimport sys\n\nplugin_list = json.load(sys.stdin)\nversions = {\n    release[\"version\"]\n    for plugin in plugin_list.get(\"plugins\", [])\n    if plugin.get(\"shortname\") == \"projects\"\n    for release in plugin.get(\"releases\", [])\n    if release.get(\"version\")\n}\n\nif not versions:\n    raise SystemExit(\"No versions found for the projects plugin\")\n\ndef version_key(version):\n    key = []\n    for part in version.split(\".\"):\n        if part.isdigit():\n            key.append((0, int(part)))\n        else:\n            key.append((1, part))\n    return key\n\nrecent_versions = sorted(versions, key=version_key)[-int(os.environ[\"RECENT_VERSIONS_TO_TEST\"]):]\nfor version in recent_versions:\n    print(version)\n')
+
+          echo "Testing versions:"
+          echo "$VERSIONS"
+          echo ""
+
+          FAILURES=0
+
+          while IFS= read -r VERSION; do
+            echo "=== Testing projects@${VERSION} ==="
+
+            if stripe plugin install "projects@${VERSION}" && \
+               stripe projects --help && \
+               stripe projects catalog; then
+              echo "=== projects@${VERSION} PASSED ==="
+
+              PAGERDUTY_DEDUP_KEY="plugin-canary-projects-${VERSION}" \
+              PAGERDUTY_SUMMARY="Plugin canary: projects@${VERSION} failed. Investigate: ${GH_RUN_URL}" \
+              PAGERDUTY_RESOLVE_SUMMARY="Plugin canary: projects@${VERSION} is passing again" \
+              PAGERDUTY_SEVERITY="warning" \
+              DRYRUN="${DRYRUN}" \
+              OVERALL_RESULT="success" \
+              bash scripts/notify.sh
+            else
+              echo "=== projects@${VERSION} FAILED ==="
+              FAILURES=$((FAILURES + 1))
+
+              PAGERDUTY_DEDUP_KEY="plugin-canary-projects-${VERSION}" \
+              PAGERDUTY_SUMMARY="Plugin canary: projects@${VERSION} failed. Investigate: ${GH_RUN_URL}" \
+              PAGERDUTY_RESOLVE_SUMMARY="Plugin canary: projects@${VERSION} is passing again" \
+              PAGERDUTY_SEVERITY="warning" \
+              DRYRUN="${DRYRUN}" \
+              OVERALL_RESULT="failure" \
+              bash scripts/notify.sh
+            fi
+
+            echo ""
+          done <<< "$VERSIONS"
+
+          if [ "$FAILURES" -gt 0 ]; then
+            echo "$FAILURES version(s) failed"
+            exit 1
+          fi

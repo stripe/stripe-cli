@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
@@ -26,26 +27,39 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "apps", "This plugin lets you build and manage Stripe Apps.").Command,
 		)
+		rootCmd.Annotations["apps"] = "available_plugin"
 	}
 	if !installedPluginSet["generate"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "generate", "This plugin creates skeleton files to get you started.", withPrivatePreview()).Command,
 		)
+		rootCmd.Annotations["generate"] = "available_plugin"
 	}
 	if !installedPluginSet["projects"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
+		rootCmd.Annotations["projects"] = "available_plugin"
 	}
-	if !installedPluginSet["docs"] {
+	if !installedPluginSet["directory"] {
+		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
+		directoryCmd.Aliases = []string{
+			"search",
+			"directry",
+			"directary",
+			"direcotry", //nolint:misspell // Intentional typo alias.
+			"diretory",
+		}
 		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "docs", "Browse Stripe documentation and API reference.").Command,
+			directoryCmd,
 		)
+		rootCmd.Annotations["directory"] = "available_plugin"
 	}
 	if !installedPluginSet["tools"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "tools", "Search, inspect, and execute Stripe operations not available in the public API.").Command,
 		)
+		rootCmd.Annotations["tools"] = "available_plugin"
 	}
 }
 
@@ -166,6 +180,7 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 
 	color := ansi.Color(p.stdout)
 	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
+	postinstall.PrintTips(p.stdout, p.name)
 
 	return nil
 }

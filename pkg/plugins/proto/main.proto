@@ -38,7 +38,10 @@ service CoreCLIHelper {
   rpc KeychainGetPassword(KeychainGetPasswordRequest) returns (KeychainGetPasswordResponse);
   rpc KeychainSetPassword(KeychainSetPasswordRequest) returns (KeychainSetPasswordResponse);
   rpc KeychainDeletePassword(KeychainDeletePasswordRequest) returns (KeychainDeletePasswordResponse);
-  rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse);
+  // Deprecated: KeychainFindCredentials always returns an empty list. Use KeychainGetPassword to retrieve an individual password instead.
+  rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse) {
+    option deprecated = true;
+  };
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
 
   // Centralized UI Rendering
@@ -87,10 +90,14 @@ message KeychainDeletePasswordResponse {
   bool deleted = 1;
 }
 
+// Deprecated: KeychainFindCredentials always returns an empty list. Use KeychainGetPassword to retrieve an individual password instead.
 message KeychainFindCredentialsRequest {
+  option deprecated = true;
 }
 
+// Deprecated: KeychainFindCredentials always returns an empty list. Use KeychainGetPassword to retrieve an individual password instead.
 message KeychainFindCredentialsResponse {
+  option deprecated = true;
   repeated string keys = 1;
 }
 
