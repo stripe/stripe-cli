@@ -282,11 +282,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.focused = false
 		return m, nil
 	}
-	if m.rejecting {
-		return m.updateRejectionInput(msg)
-	}
+	return m.updateRejectionInputIfActive(msg)
+}
 
-	return m, nil
+func (m Model) updateRejectionInputIfActive(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if !m.rejecting {
+		return m, nil
+	}
+	return m.updateRejectionInput(msg)
 }
 
 func (m Model) View() tea.View {
