@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"image/color"
 	"strings"
 	"testing"
@@ -134,6 +135,94 @@ func TestUpdateKeyConfirm(t *testing.T) {
 
 	node, _ := updated.session.NodeByNumber(1)
 	assert.Equal(t, coop.NodeDone, node.State)
+}
+
+func TestReviewDecisionNotifierRunsAfterConfirmedStateIsDurable(t *testing.T) {
+	store, err := coop.NewStoreAt(t.TempDir())
+	require.NoError(t, err)
+	m := readyModel()
+	m.store = store
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectionCursor = 0
+	require.NoError(t, store.Write(m.session))
+
+	var notifiedSession string
+	m.reviewDecisionNotifier = func(sessionID string) error {
+		notifiedSession = sessionID
+		loaded, err := store.Read(sessionID)
+		if err != nil {
+			return err
+		}
+		node, err := loaded.NodeByNumber(1)
+		if err != nil {
+			return err
+		}
+		if node.State != coop.NodeDone {
+			return errors.New("review decision was not durable before notification")
+		}
+		return nil
+	}
+
+	result, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
+	updated := result.(Model)
+	require.NotNil(t, cmd)
+	msg := cmd()
+	notified, ok := msg.(statusMsg)
+	require.True(t, ok)
+	assert.Contains(t, notified.message, "Waiting for agent")
+	assert.Equal(t, updated.session.ID, notifiedSession)
+}
+
+func TestReviewDecisionNotifierRunsAfterRequestedChanges(t *testing.T) {
+	store, err := coop.NewStoreAt(t.TempDir())
+	require.NoError(t, err)
+	m := readyModel()
+	m.store = store
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectionCursor = 0
+	require.NoError(t, store.Write(m.session))
+	target, ok := m.selectedReviewTarget()
+	require.True(t, ok)
+	m.rejectTarget = target
+
+	var notified bool
+	m.reviewDecisionNotifier = func(sessionID string) error {
+		notified = true
+		loaded, err := store.Read(sessionID)
+		if err != nil {
+			return err
+		}
+		node, err := loaded.NodeByNumber(1)
+		if err != nil {
+			return err
+		}
+		if node.State != coop.NodeActive {
+			return errors.New("requested changes were not durable before notification")
+		}
+		return nil
+	}
+
+	cmd := m.handleReject("Reuse the saved price")
+	require.NotNil(t, cmd)
+	msg := cmd()
+	notifiedMsg, ok := msg.(statusMsg)
+	require.True(t, ok)
+	assert.Contains(t, notifiedMsg.message, "Waiting for agent")
+	assert.True(t, notified)
+}
+
+func TestReviewDecisionNotificationFailureShowsExactManualResume(t *testing.T) {
+	m := readyModel()
+	m.session.ID = "coop_123"
+	m.reviewDecisionNotifier = func(string) error { return errors.New("tmux pane exited") }
+
+	cmd := m.notifyReviewDecision()
+	require.NotNil(t, cmd)
+	msg, ok := cmd().(statusMsg)
+	require.True(t, ok)
+	assert.Contains(t, msg.message, "stripe coop agent resume --session=coop_123")
 }
 
 func TestUpdateKeyConfirmIgnoresRepeat(t *testing.T) {
