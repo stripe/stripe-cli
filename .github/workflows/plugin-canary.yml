@@ -39,13 +39,6 @@ jobs:
         run: stripe version
         shell: bash
 
-      - name: Checkout notify script
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            scripts/notify.sh
-          sparse-checkout-cone-mode: false
-
       - name: Install and test recent projects plugin versions
         shell: bash
         env:
