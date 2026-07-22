@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 func TestRemoveKey(t *testing.T) {
@@ -25,8 +26,7 @@ func TestRemoveKey(t *testing.T) {
 
 func setupTestConfig(t *testing.T) (*Config, string, func()) {
 	t.Helper()
-	profilesFile := filepath.Join(os.TempDir(), "stripe-test", "config.toml")
-	os.MkdirAll(filepath.Dir(profilesFile), 0755)
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 
 	c := &Config{
 		Color:        "auto",
@@ -36,11 +36,11 @@ func setupTestConfig(t *testing.T) (*Config, string, func()) {
 			ProfileName: "default",
 		},
 	}
+	KeyRing = keyring.NewMemoryStore(nil)
 	c.InitConfig()
-	KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
 
 	cleanup := func() {
-		os.Remove(profilesFile)
+		KeyRing = nil
 		viper.Reset()
 	}
 

@@ -2,7 +2,6 @@ package git
 
 import (
 	"os"
-	"os/exec"
 	"runtime"
 	"testing"
 
@@ -46,10 +45,7 @@ func TestGetOpenEditorCommand(t *testing.T) {
 	})
 
 	t.Run("with custom set editor", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultGitEditor()
-		defer setEditorTo(prevGitEditor)
-
-		setEditorTo("command with multiple --options")
+		setEditorTo(t, "command with multiple --options")
 
 		editor, err := NewTemporaryFileEditor("", nil)
 		assert.NotNil(t, editor)
@@ -57,42 +53,31 @@ func TestGetOpenEditorCommand(t *testing.T) {
 
 		command, _ := editor.getOpenEditorCommand()
 
-		assert.Equal(t, len(command.Args), 5)
+		assert.Equal(t, 5, len(command.Args))
 		assert.Contains(t, command.Args[len(command.Args)-1], editor.File)
 	})
 }
 
 func TestGetDefaultGitEditor(t *testing.T) {
 	t.Run("common default editors", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultGitEditor()
-		defer setEditorTo(prevGitEditor)
-
 		for _, e := range [4]string{"subl -n -w", "vi", "code --wait", "mate -w"} {
-			setEditorTo(e)
+			setEditorTo(t, e)
 
 			defaultIDE, _ := getDefaultGitEditor()
-			assert.Equal(t, defaultIDE, e)
+			assert.Equal(t, e, defaultIDE)
 		}
 	})
 
 	t.Run("expands env var", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultGitEditor()
-		defer setEditorTo(prevGitEditor)
-
-		os.Setenv("STRIPE_CLI_TEST_GIT_EDITOR", "value")
-		defer os.Unsetenv("STRIPE_CLI_TEST_GIT_EDITOR")
-
-		setEditorTo("$STRIPE_CLI_TEST_GIT_EDITOR")
+		t.Setenv("STRIPE_CLI_TEST_GIT_EDITOR", "value")
+		setEditorTo(t, "$STRIPE_CLI_TEST_GIT_EDITOR")
 
 		defaultIDE, _ := getDefaultGitEditor()
-		assert.Equal(t, defaultIDE, "value")
+		assert.Equal(t, "value", defaultIDE)
 	})
 
 	t.Run("no GIT_EDITOR falls back to EDITOR or OS fallback", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultGitEditor()
-		defer setEditorTo(prevGitEditor)
-
-		setEditorTo("")
+		setEditorTo(t, "")
 
 		newEditor, _ := getDefaultGitEditor()
 		if runtime.GOOS == "windows" {
@@ -118,6 +103,10 @@ func TestGetFirstLine(t *testing.T) {
 	assert.Equal(t, "abc", getFirstLine("abc\n\n123\n\n\n"))
 }
 
-func setEditorTo(newTemporaryFileEditor string) {
-	exec.Command("git", "config", "--global", "core.editor", newTemporaryFileEditor).Run()
+// setEditorTo sets GIT_EDITOR for the duration of the test via t.Setenv,
+// which is automatically restored when the test ends. This avoids modifying
+// the real ~/.gitconfig.
+func setEditorTo(t *testing.T, editor string) {
+	t.Helper()
+	t.Setenv("GIT_EDITOR", editor)
 }
