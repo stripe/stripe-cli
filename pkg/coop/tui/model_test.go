@@ -342,7 +342,7 @@ func TestUpdateKeyReject(t *testing.T) {
 
 	result, _ = updated.Update(tea.KeyPressMsg{Code: 'N', Text: "Needs tests"})
 	updated = result.(Model)
-	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
 	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
@@ -365,7 +365,7 @@ func TestUpdateKeyRejectRequiresNote(t *testing.T) {
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	updated := result.(Model)
-	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
 	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)
@@ -490,7 +490,7 @@ func TestUpdateKeyRejectStepReview(t *testing.T) {
 	updated := result.(Model)
 	result, _ = updated.Update(tea.KeyPressMsg{Code: 'R', Text: "Rework both steps"})
 	updated = result.(Model)
-	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
 	updated = result.(Model)
 
 	node1, _ := updated.session.NodeByNumber(1)
@@ -544,7 +544,7 @@ func TestRejectSubmissionCancelsWhenTargetChanges(t *testing.T) {
 	updated.session.Steps[0].Nodes[0].State = coop.NodeDone
 	result, _ = updated.Update(tea.KeyPressMsg{Code: 'N', Text: "Needs tests"})
 	updated = result.(Model)
-	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	result, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl})
 	updated = result.(Model)
 
 	node, _ := updated.session.NodeByNumber(1)

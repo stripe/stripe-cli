@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -84,11 +85,12 @@ func newThemedRejectionInput(t Theme) textarea.Model {
 	ti.Placeholder = "Describe what to change..."
 	ti.ShowLineNumbers = false
 	ti.EndOfBufferCharacter = 0
-	ti.CharLimit = 500
 	ti.DynamicHeight = true
 	ti.MinHeight = 1
 	ti.MaxHeight = 3
-	ti.MaxContentHeight = 6
+	// Bubbles treats MaxHeight as an input limit unless MaxContentHeight is set.
+	// Keep the viewport compact without truncating longer feedback.
+	ti.MaxContentHeight = math.MaxInt
 	ti.SetVirtualCursor(false)
 	ti.SetWidth(60)
 	styles := ti.Styles()
@@ -279,6 +281,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.BlurMsg:
 		m.focused = false
 		return m, nil
+	}
+	if m.rejecting {
+		return m.updateRejectionInput(msg)
 	}
 
 	return m, nil
@@ -900,10 +905,14 @@ func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
-	case key.Matches(msg, m.keys.Enter):
+	case key.Matches(msg, m.keys.Submit):
 		m.handleReject(strings.TrimSpace(m.rejectionInput.Value()))
 		return m, nil
 	}
+	return m.updateRejectionInput(msg)
+}
+
+func (m Model) updateRejectionInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.rejectionInput, cmd = m.rejectionInput.Update(msg)
 	m.rejectionError = ""
@@ -932,7 +941,9 @@ func (m *Model) handleReject(note string) {
 	target := m.rejectTarget
 	session, err := workflow.NewService(m.store).RequestChanges(m.session.ID, target.nodeNumbers, note)
 	if err != nil {
-		m.err = fmt.Errorf("failed to request changes: %w", err)
+		m.rejectionError = fmt.Sprintf("failed to request changes: %v", err)
+		m.resizeViewport()
+		m.syncViewport()
 		return
 	}
 	m.session = session
