@@ -75,7 +75,7 @@ jobs:
             arm64|aarch64) ARCH_NAME="arm64" ;;
             *) ARCH_NAME="$ARCH" ;;
           esac
-          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_darwin_${ARCH_NAME}.tar.gz"
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_mac-os_${ARCH_NAME}.tar.gz"
 
           mkdir -p "$HOME/.stripe/state"
           printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
