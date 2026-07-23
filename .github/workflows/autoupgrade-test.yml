@@ -50,6 +50,8 @@ jobs:
 
       - name: Build binary with fake old version
         id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
         run: |
           go generate ./...
           CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
@@ -121,6 +123,8 @@ jobs:
 
       - name: Build binary with fake old version
         id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
         run: |
           go generate ./...
           CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
