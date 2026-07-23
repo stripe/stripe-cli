@@ -1176,10 +1176,18 @@ func TestRefreshPluginManifestSucceedsIfNoAPIKey(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	config.Profile.APIKey = ""
-	testServers := setUpServers(t, nil, nil)
-	defer func() { testServers.CloseAll() }()
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+	testServers := setUpServers(t, manifestContent, nil)
+	t.Cleanup(testServers.CloseAll)
 
-	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	originalPluginData := requests.DefaultPluginData
+	requests.DefaultPluginData = requests.PluginData{
+		PluginBaseURL: testServers.ArtifactoryServer.URL,
+	}
+	t.Cleanup(func() { requests.DefaultPluginData = originalPluginData })
+
+	err = RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
 	require.Nil(t, err)
 }
 
