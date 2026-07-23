@@ -65,17 +65,14 @@ func sanitizeText(s string) string {
 	}, trimmed)
 }
 
-// feedbackLength is the shared length validator for the feedback and
-// context fields, wired up as an ArgValidator so it can be reused directly
-// by validateFeedbackText below and by the interactive prompts in
-// promptForFeedback.
-var feedbackLength = validators.Length(feedbackMinLen, feedbackMaxLen)
-
-// validateFeedbackText enforces feedbackLength on a required free-text
-// field after sanitizing it. field names the field in the error message
-// (eg. "feedback must be at least 10 characters").
+// validateFeedbackText enforces feedbackMinLen/feedbackMaxLen on a required
+// free-text field after sanitizing it. field names the field in the error
+// message (eg. "feedback must be at least 10 characters"). It's shared by
+// validateFeedbackMessage/validateFeedbackContext below, which are in turn
+// used both for non-interactive flag validation and as promptui.Validate
+// callbacks in promptForFeedback.
 func validateFeedbackText(field, s string) error {
-	if err := feedbackLength(sanitizeText(s)); err != nil {
+	if err := validators.Length(feedbackMinLen, feedbackMaxLen)(sanitizeText(s)); err != nil {
 		return fmt.Errorf("%s %w", field, err)
 	}
 
@@ -106,29 +103,19 @@ type feedbackCmd struct {
 	isInteractive bool
 }
 
-// feedbackRequiredField pairs a flag name with its current value so
-// presence can be checked uniformly, both when deciding whether to fall
-// back to interactive prompts and when validating flags supplied
-// non-interactively.
-type feedbackRequiredField struct {
-	flag  string
-	value string
-}
-
-func (feedback *feedbackCmd) requiredFields() []feedbackRequiredField {
-	return []feedbackRequiredField{
+// missingRequiredFields returns the flag names of any required fields that
+// are still empty. It's used both to decide whether to fall back to
+// interactive prompts and to validate flags supplied non-interactively.
+func (feedback *feedbackCmd) missingRequiredFields() []string {
+	requiredFields := []struct{ flag, value string }{
 		{"--sentiment", feedback.sentiment},
 		{"--message", feedback.message},
 		{"--context", feedback.context},
 		{"--actor", feedback.actor},
 	}
-}
 
-// missingRequiredFields returns the flag names of any required fields that
-// are still empty.
-func (feedback *feedbackCmd) missingRequiredFields() []string {
 	var missing []string
-	for _, field := range feedback.requiredFields() {
+	for _, field := range requiredFields {
 		if field.value == "" {
 			missing = append(missing, field.flag)
 		}
@@ -243,14 +230,17 @@ func (feedback *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	feedback.message = sanitizeText(message)
+	feedback.message = message
 
 	context, err := textPrompt("What were you trying to do?", validateFeedbackContext)
 	if err != nil {
 		return err
 	}
-	feedback.context = sanitizeText(context)
+	feedback.context = context
 
+	// message/context are sanitized once, in submitFeedback, since that's
+	// the single point both this interactive path and the non-interactive
+	// (flag-driven) path converge on.
 	return nil
 }
 
@@ -262,6 +252,9 @@ func selectFeedbackEnum(label string, options []string) (string, error) {
 		Label: label,
 		Items: options,
 		Templates: &promptui.SelectTemplates{
+			// label is substituted via Sprintf, so it must not itself
+			// contain '%' (the promptui template syntax below, "{{ }}",
+			// is untouched by Sprintf and safe).
 			Selected: ansi.Faint(fmt.Sprintf("✔ %s: {{ . | bold }} ", label)),
 		},
 		Searcher: func(input string, index int) bool {
@@ -280,7 +273,7 @@ func selectFeedbackEnum(label string, options []string) (string, error) {
 }
 
 // textPrompt prompts the user for a single line of free text, re-prompting
-// until validator passes (or forever if validator is nil).
+// until validator (which must be non-nil) passes.
 func textPrompt(label string, validator promptui.ValidateFunc) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    label,
