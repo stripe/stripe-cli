@@ -190,7 +190,7 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v6
-        if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
+        if: needs.resolve-versions.result == 'success'
         with:
           sparse-checkout: |
             scripts/notify.sh
