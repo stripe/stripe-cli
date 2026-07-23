@@ -172,38 +172,21 @@ Use `stripe coop join --resume` to pick from recent sessions.
 | Agent appears idle | Rejoin the session; the TUI shows heartbeat/idle state |
 | Need a specific older session | Run `stripe coop join --resume` |
 
-## Blueprint Format
+## Blueprint loading
 
-Blueprints are embedded JSON in `pkg/coop/blueprints/`. Each has:
-- `id` — unique identifier (also the filename without .json)
-- `title`, `description` — human-readable
-- `steps` — ordered groups of nodes
+Workbench blueprint definitions are loaded at runtime from the unstable
+Workbench list and retrieve API endpoints using the configured test-mode key and
+preview API version. `coop recommend` lists learning blueprints by default.
+`coop run` and `coop start` retrieve and compile the selected definition.
+Recommend results report `step_count`; the former `node_count` field remains as
+`null` for migration compatibility because the list endpoint does not expose
+node definitions.
 
-Each node has:
-- `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `dashboard`, `setUpWebhooks`, `testHelper`
-- `auto_confirm` — skip human review for this node
-- `description` — what the agent should do (source of truth)
-- `review_prompt` — what the human should check before confirming
-- `review_command` — optional command the TUI can show/copy for developer verification
-- `request` — API request details (for `apiRequest` nodes with SDK snippet support)
-- `request.hidden_params` — request fields that should not be shown directly in the TUI
-- `requests` — API-backed test helper requests for `testHelper` nodes
-- `events` — webhook events (for `asyncHandler` nodes)
-
-`testHelper` request metadata tells the agent which Stripe-backed test helpers can advance test state. Agents should use those helpers while verifying work, but should not encode helper-only request parameters into the user's application.
-
-### Syncing Blueprints
-
-Workbench blueprint definitions are the source of truth. Do not supplement or modify `pkg/coop/blueprints/` by hand to add CLI-only product work. Update the upstream blueprint source, then sync the CLI-friendly JSON:
-
-```bash
-BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/src/blueprintDefinitions make sync-blueprints
-```
-
-If pay-server has already exported `dist/blueprints/*.json`, `BLUEPRINT_SOURCE`
-can point at that directory instead.
-
-After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix matching works: short prefixes resolve to full IDs if unambiguous.
+The compiled steps, nodes, requests, events, and UI options are copied into the
+session. The session also pins blueprint, step, and template versions plus a
+normalized source digest, so an active session is unaffected by later upstream
+changes. Representative API responses used by tests live in
+`pkg/coop/testdata/`; they are not a runtime catalog.
 
 ## Troubleshooting
 
@@ -230,10 +213,11 @@ pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
   store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
-  blueprint.go      — Blueprint type, embed loader, prefix matching
+  blueprint.go      — API blueprint compiler, normalization, prefix matching
+  blueprint_api.go  — Authenticated Workbench blueprint client
   guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)
-  blueprints/       — Embedded JSON blueprints
+  testdata/         — Representative API responses for tests only
   colors/           — Sail Design System palette helpers
   followups/        — Built-in guided follow-up definitions
 
