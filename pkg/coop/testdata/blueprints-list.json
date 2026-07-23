@@ -1,0 +1,55 @@
+{
+  "object": "list",
+  "url": "/v1/_unstable/workbench/blueprints",
+  "has_more": false,
+  "data": [
+    {
+      "id": "blpt_sample",
+      "object": "workbench.blueprint",
+      "blueprint_scope": "universal",
+      "blueprint_type": "learning",
+      "blueprint_version": 7,
+      "description": {
+        "default_message": "Build and verify a representative payment flow."
+      },
+      "key": "sample-payment",
+      "metadata": {
+        "products": [
+          "Payments"
+        ]
+      },
+      "step_refs": [
+        {
+          "config": {},
+          "step_key": "sample-payment--setup",
+          "step_version": 3
+        }
+      ],
+      "template_version": 4,
+      "title": {
+        "default_message": "Sample payment"
+      }
+    },
+    {
+      "id": "blpt_testing",
+      "object": "workbench.blueprint",
+      "blueprint_scope": "universal",
+      "blueprint_type": "testing",
+      "blueprint_version": 2,
+      "description": {
+        "default_message": "Trigger a testing-only flow."
+      },
+      "key": "sample-testing",
+      "metadata": {
+        "products": [
+          "Payments"
+        ]
+      },
+      "step_refs": [],
+      "template_version": 1,
+      "title": {
+        "default_message": "Sample testing flow"
+      }
+    }
+  ]
+}

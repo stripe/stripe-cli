@@ -1,6 +1,7 @@
 package coopcmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -58,11 +59,26 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	inTmux := os.Getenv("TMUX") != ""
 
 	var blueprintID string
+	var blueprint *coop.Blueprint
 	if len(args) > 0 {
 		blueprintID = args[0]
-		if _, err := coop.LoadBlueprint(blueprintID); err != nil {
+		selectedSettings := make(map[string]string)
+		if rc.language != "" {
+			selectedSettings["language"] = rc.language
+		}
+		if err := mergeKeyValues(selectedSettings, "--setting", rc.settings); err != nil {
+			return err
+		}
+		ctx := context.Background()
+		if cmd != nil {
+			ctx = cmd.Context()
+		}
+		var err error
+		blueprint, err = coop.LoadBlueprint(ctx, coopBlueprintRepository(), blueprintID, selectedSettings)
+		if err != nil {
 			return fmt.Errorf("%w. Run 'stripe coop recommend' to see available blueprints", err)
 		}
+		blueprintID = blueprint.ID
 	}
 	if rc.debugAgent && blueprintID == "" {
 		return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
@@ -74,11 +90,11 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 		}
 		buildDebugPane := rc.debugAgentPaneCommandBuilder(stripeBin)
 		if inTmux {
-			return rc.runInTmuxSplitWithCommand(stripeBin, blueprintID, buildDebugPane)
+			return rc.runInTmuxSplitWithCommand(stripeBin, blueprint, buildDebugPane)
 		} else if hasTmux {
-			return rc.runInNewTmuxWithCommand(stripeBin, blueprintID, buildDebugPane)
+			return rc.runInNewTmuxWithCommand(stripeBin, blueprint, buildDebugPane)
 		}
-		return rc.runFallbackWithCommand(stripeBin, blueprintID, buildDebugPane)
+		return rc.runFallbackWithCommand(stripeBin, blueprint, buildDebugPane)
 	}
 
 	agent, err := rc.detectAgent()
@@ -104,12 +120,12 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	agentPrompt := rc.buildAgentPrompt(blueprintID)
 
 	if inTmux {
-		return rc.runInTmuxSplit(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
+		return rc.runInTmuxSplit(stripeBin, agent, agentPrompt, autoApprove, blueprint)
 	} else if hasTmux {
-		return rc.runInNewTmux(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
+		return rc.runInNewTmux(stripeBin, agent, agentPrompt, autoApprove, blueprint)
 	}
 
-	return rc.runFallback(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
+	return rc.runFallback(stripeBin, agent, agentPrompt, autoApprove, blueprint)
 }
 
 func (rc *coopRunCmd) ensureStripeSkill() error {
@@ -167,10 +183,11 @@ Important: Run "stripe whoami" first to check auth. If not logged in OR if it sh
 }
 
 func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string, error) {
-	bp, err := coop.LoadBlueprint(session.Blueprint)
-	if err != nil {
-		return "", err
+	title := session.Blueprint
+	if session.BlueprintPin != nil && session.BlueprintPin.Title != "" {
+		title = session.BlueprintPin.Title
 	}
+	bp := &coop.Blueprint{ID: session.Blueprint, Title: title}
 	resp := newCoopAgentRunResponse(bp, session)
 
 	return fmt.Sprintf(`You are running a Stripe co-op integration session. A developer is watching your progress in a live terminal UI.
@@ -184,10 +201,9 @@ The session is already created. After the authentication check above, begin by r
 Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
 }
 
-func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (*coop.Session, error) {
-	bp, err := coop.LoadBlueprint(blueprintID)
-	if err != nil {
-		return nil, err
+func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.Blueprint) (*coop.Session, error) {
+	if blueprint == nil {
+		return nil, fmt.Errorf("cannot start a session without a compiled blueprint")
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())
@@ -196,7 +212,7 @@ func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (*coop.Session, er
 	}
 
 	sessionID := "coop_" + generateShortID()
-	session, err := newCoopSession(bp, sessionID, rc.language, rc.settings, nil, "", "")
+	session, err := newCoopSession(blueprint, sessionID, rc.language, rc.settings, nil, "", "")
 	if err != nil {
 		return nil, err
 	}

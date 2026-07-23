@@ -968,6 +968,7 @@ func TestHandleKeyOpenBrowser(t *testing.T) {
 func TestHandleKeyCopyReviewCommand(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.session.Steps[1].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 2
 
 	result, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})

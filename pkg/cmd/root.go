@@ -26,6 +26,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
+	cooppkg "github.com/stripe/stripe-cli/pkg/coop"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/reporting"
@@ -295,6 +296,7 @@ func init() {
 			return viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
 		},
 		AIAgentHelpAnnotationKey: AIAgentHelpAnnotationKey,
+		BlueprintRepository:      cooppkg.NewWorkbenchClient(&Config.Profile, stripe.DefaultAPIBaseURL, nil),
 	}))
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
