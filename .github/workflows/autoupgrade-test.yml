@@ -65,6 +65,8 @@ jobs:
 
       - name: Trigger update check
         id: update-check
+        env:
+          STRIPE_INSTALL_METHOD: curl
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
@@ -78,6 +80,8 @@ jobs:
 
       - name: Verify auto-upgrade
         id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           OUTPUT=$(stripe --version 2>&1)
@@ -132,6 +136,8 @@ jobs:
 
       - name: Trigger update check
         id: update-check
+        env:
+          STRIPE_INSTALL_METHOD: curl
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           stripe --version
@@ -145,6 +151,8 @@ jobs:
 
       - name: Verify auto-upgrade
         id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           OUTPUT=$(stripe --version 2>&1)
