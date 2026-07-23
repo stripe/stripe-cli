@@ -33,16 +33,27 @@ const (
 )
 
 var feedbackFeatureAreas = []string{
-	"billing",
-	"connect",
 	"payments",
+	"connect",
+	"subscriptions",
+	"payouts",
+	"reporting",
+	"invoicing",
+	"checkout",
+	"tax",
 	"radar",
 	"issuing",
 	"terminal",
-	"webhooks",
+	"treasury",
+	"capital",
 	"docs",
+	"webhooks",
 	"cli",
 	"dashboard",
+	"crypto",
+	"stablecoins",
+	"managed-payments",
+	"identity",
 	"other",
 }
 
