@@ -2,10 +2,13 @@ package validators
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
+	"fmt"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"unicode/utf8"
 )
 
 // ArgValidator is an argument validator. It accepts a string and returns an
@@ -58,7 +61,7 @@ func authError(message string) error {
 // within [minLength, maxLength].
 func Length(minLength, maxLength int) ArgValidator {
 	return func(value string) error {
-		length := len([]rune(value))
+		length := utf8.RuneCountInString(value)
 		if length < minLength {
 			return fmt.Errorf("must be at least %d characters", minLength)
 		}
@@ -74,10 +77,8 @@ func Length(minLength, maxLength int) ArgValidator {
 // allowed.
 func OneOf(allowed ...string) ArgValidator {
 	return func(value string) error {
-		for _, candidate := range allowed {
-			if value == candidate {
-				return nil
-			}
+		if slices.Contains(allowed, value) {
+			return nil
 		}
 
 		return fmt.Errorf("%q is not one of the allowed values (%s)", value, strings.Join(allowed, ", "))
