@@ -109,6 +109,10 @@ Read API Reference pages by their identifier:
 	apiCmd.GroupID = docsGroup.ID
 	r.cmd.AddCommand(apiCmd)
 
+	prefsCmd := r.newPrefsCmd()
+	prefsCmd.GroupID = docsGroup.ID
+	r.cmd.AddCommand(prefsCmd)
+
 	return r
 }
 

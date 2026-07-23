@@ -388,8 +388,6 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 			})
 			require.NoError(t, err)
 			_, _ = res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install resolution should not fall back to /v1/stripecli/get-plugin-url when anonymous metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -430,8 +428,6 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(
 		case "/v1/stripecli/get-plugin-metadata":
 			res.WriteHeader(http.StatusInternalServerError)
 			_, _ = res.Write([]byte(`{"error":{"message":"boom"}}`))
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("install resolution should not hit /v1/stripecli/get-plugin-url when cached metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -561,8 +557,6 @@ func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) 
 			})
 			require.NoError(t, err)
 			_, _ = res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("upgrade resolution should not fall back to /v1/stripecli/get-plugin-url when plugin metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -635,8 +629,6 @@ func TestResolvePluginForUpgradeUsesAnonymousMetadataEndpointWhenAPIKeyUnavailab
 			})
 			require.NoError(t, err)
 			_, _ = res.Write(body)
-		case "/v1/stripecli/get-plugin-url":
-			t.Fatalf("upgrade resolution should not fall back to /v1/stripecli/get-plugin-url when anonymous plugin metadata is available")
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
