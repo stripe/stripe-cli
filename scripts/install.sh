@@ -4,6 +4,8 @@ set -eu
 INSTALL_DIR="${STRIPE_INSTALL_DIR:-$HOME/.stripe/bin}"
 GITHUB_REPO="stripe/stripe-cli"
 NEEDS_SOURCE=false
+TELEMETRY_URL="${STRIPE_TELEMETRY_URL:-https://r.stripe.com/0}"
+INSTALL_SUCCESS=false
 
 main() {
   detect_platform
@@ -11,6 +13,8 @@ main() {
   download_and_verify
   install_binary
   setup_path
+  INSTALL_SUCCESS=true
+  send_telemetry "Install Succeeded" "version=$VERSION"
   print_success
 }
 
@@ -103,7 +107,7 @@ download_and_verify() {
   BASE_URL="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}"
 
   TMP_DIR=$(mktemp -d)
-  trap 'rm -rf "$TMP_DIR"' EXIT
+  trap 'rm -rf "$TMP_DIR"; if [ "$INSTALL_SUCCESS" = "false" ]; then send_telemetry "Install Failed" "version=${VERSION:-unknown}"; fi' EXIT
 
   echo "Downloading stripe v${VERSION}..."
   http_download "$BASE_URL/$ARCHIVE" "$TMP_DIR/$ARCHIVE"
@@ -192,6 +196,23 @@ setup_path() {
 version_lt() {
   # Returns 0 (true) if $1 < $2 using sort -V for version comparison
   [ "$1" != "$2" ] && [ "$(printf '%s\n%s' "$1" "$2" | sort -V | head -n1)" = "$1" ]
+}
+
+send_telemetry() {
+  event_name="$1"
+  event_value="$2"
+
+  case "${STRIPE_CLI_TELEMETRY_OPTOUT:-}${DO_NOT_TRACK:-}" in
+    *1*|*true*|*TRUE*) return ;;
+  esac
+
+  telemetry_data="client_id=stripe-cli&event_name=${event_name}&event_value=${event_value}&os=${OS:-unknown}&arch=${ARCH_LABEL:-unknown}&cli_version=${VERSION:-unknown}&install_method=curl"
+
+  if command -v curl >/dev/null 2>&1; then
+    curl -sS --max-time 3 -X POST -H "origin: stripe-cli" -H "Content-Type: application/x-www-form-urlencoded" -d "$telemetry_data" "$TELEMETRY_URL" >/dev/null 2>&1 || true
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q --timeout=3 -O /dev/null --post-data="$telemetry_data" --header="origin: stripe-cli" --header="Content-Type: application/x-www-form-urlencoded" "$TELEMETRY_URL" 2>/dev/null || true
+  fi
 }
 
 print_success() {

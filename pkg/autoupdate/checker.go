@@ -70,6 +70,7 @@ func CheckForUpdate() {
 		DownloadURL: url,
 		Checksum:    checksum,
 	})
+	sendTelemetryEvent("Auto-Update Available", fmt.Sprintf("from=%s to=%s", current, latestClean))
 }
 
 func isMajorVersionChange(current, latest string) bool {
