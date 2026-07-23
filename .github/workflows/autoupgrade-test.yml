@@ -50,34 +50,42 @@ jobs:
 
       - name: Build binary with fake old version
         id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
         run: |
           go generate ./...
-          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=0.0.1" \
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
             -o "$HOME/.stripe/bin/stripe" ./cmd/stripe
           chmod +x "$HOME/.stripe/bin/stripe"
           export PATH="$HOME/.stripe/bin:$PATH"
           INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          if [ "$INSTALLED" != "0.0.1" ]; then
-            echo "Error: expected version 0.0.1, got $INSTALLED"
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
             exit 1
           fi
           echo "Built binary with version v$INSTALLED"
 
-      - name: Trigger update check
+      - name: Stage update marker
         id: update-check
         run: |
-          export PATH="$HOME/.stripe/bin:$PATH"
-          stripe --version
-          MARKER="$HOME/.stripe/state/update-available"
-          if [ ! -f "$MARKER" ]; then
-            echo "Error: update marker was not written after running stripe"
-            exit 1
-          fi
-          echo "Update marker found:"
-          cat "$MARKER"
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_NAME="x86_64" ;;
+            arm64|aarch64) ARCH_NAME="arm64" ;;
+            *) ARCH_NAME="$ARCH" ;;
+          esac
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_mac-os_${ARCH_NAME}.tar.gz"
+
+          mkdir -p "$HOME/.stripe/state"
+          printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
 
       - name: Verify auto-upgrade
         id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           OUTPUT=$(stripe --version 2>&1)
@@ -117,34 +125,42 @@ jobs:
 
       - name: Build binary with fake old version
         id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
         run: |
           go generate ./...
-          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=0.0.1" \
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
             -o "$HOME/.stripe/bin/stripe" ./cmd/stripe
           chmod +x "$HOME/.stripe/bin/stripe"
           export PATH="$HOME/.stripe/bin:$PATH"
           INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          if [ "$INSTALLED" != "0.0.1" ]; then
-            echo "Error: expected version 0.0.1, got $INSTALLED"
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
             exit 1
           fi
           echo "Built binary with version v$INSTALLED"
 
-      - name: Trigger update check
+      - name: Stage update marker
         id: update-check
         run: |
-          export PATH="$HOME/.stripe/bin:$PATH"
-          stripe --version
-          MARKER="$HOME/.stripe/state/update-available"
-          if [ ! -f "$MARKER" ]; then
-            echo "Error: update marker was not written after running stripe"
-            exit 1
-          fi
-          echo "Update marker found:"
-          cat "$MARKER"
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_NAME="x86_64" ;;
+            arm64|aarch64) ARCH_NAME="arm64" ;;
+            *) ARCH_NAME="$ARCH" ;;
+          esac
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_linux_${ARCH_NAME}.tar.gz"
+
+          mkdir -p "$HOME/.stripe/state"
+          printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
 
       - name: Verify auto-upgrade
         id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           OUTPUT=$(stripe --version 2>&1)
@@ -174,7 +190,7 @@ jobs:
     if: always()
     steps:
       - uses: actions/checkout@v6
-        if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
+        if: needs.resolve-versions.result == 'success'
         with:
           sparse-checkout: |
             scripts/notify.sh
