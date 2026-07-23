@@ -83,6 +83,33 @@ func TestCoopRecommendCanIncludeTestingBlueprints(t *testing.T) {
 	assert.Contains(t, output, `"id": "testing-only"`)
 }
 
+func TestCoopRecommendReturnsAllLearningBlueprintsForAQuery(t *testing.T) {
+	useRecordingBlueprintRepository(t)
+	command := newCoopRecommendCmd().cmd
+	command.SilenceErrors = true
+	command.SilenceUsage = true
+	command.SetArgs([]string{"--query", "a store"})
+
+	output := captureStdout(t, func() {
+		require.NoError(t, command.Execute())
+	})
+
+	var response struct {
+		Query      string `json:"query"`
+		Blueprints []struct {
+			ID string `json:"id"`
+		} `json:"blueprints"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(output), &response))
+	assert.Equal(t, "a store", response.Query)
+	var ids []string
+	for _, blueprint := range response.Blueprints {
+		ids = append(ids, blueprint.ID)
+	}
+	assert.ElementsMatch(t, []string{"one-time-payment", "flat-fee", "flat-subscription"}, ids)
+	assert.NotContains(t, output, `"score"`)
+}
+
 func TestCoopRunRetrievesSelectedBlueprintAndPinsSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	repository := useRecordingBlueprintRepository(t)
