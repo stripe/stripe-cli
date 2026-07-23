@@ -52,13 +52,13 @@ jobs:
         id: build
         run: |
           go generate ./...
-          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=0.0.1" \
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
             -o "$HOME/.stripe/bin/stripe" ./cmd/stripe
           chmod +x "$HOME/.stripe/bin/stripe"
           export PATH="$HOME/.stripe/bin:$PATH"
           INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          if [ "$INSTALLED" != "0.0.1" ]; then
-            echo "Error: expected version 0.0.1, got $INSTALLED"
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
             exit 1
           fi
           echo "Built binary with version v$INSTALLED"
@@ -67,24 +67,12 @@ jobs:
         id: update-check
         env:
           STRIPE_INSTALL_METHOD: curl
-          STRIPE_LOG_LEVEL: debug
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
-          echo "=== Debug info ==="
-          echo "Binary location: $(which stripe)"
-          echo "Binary resolved: $(readlink -f $(which stripe) 2>/dev/null || realpath $(which stripe))"
-          echo "HOME: $HOME"
-          echo "STRIPE_INSTALL_METHOD: $STRIPE_INSTALL_METHOD"
-          ls -la "$HOME/.stripe/bin/" || true
-          echo "=== Running stripe ==="
-          stripe --version 2>&1 || true
-          echo "=== Checking state dir ==="
-          ls -la "$HOME/.stripe/state/" 2>&1 || echo "State dir does not exist"
+          stripe --version
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
             echo "Error: update marker was not written after running stripe"
-            echo "=== Checking last_update_check ==="
-            cat "$HOME/.stripe/state/last_update_check" 2>&1 || echo "No last_update_check file"
             exit 1
           fi
           echo "Update marker found:"
@@ -135,13 +123,13 @@ jobs:
         id: build
         run: |
           go generate ./...
-          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=0.0.1" \
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
             -o "$HOME/.stripe/bin/stripe" ./cmd/stripe
           chmod +x "$HOME/.stripe/bin/stripe"
           export PATH="$HOME/.stripe/bin:$PATH"
           INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          if [ "$INSTALLED" != "0.0.1" ]; then
-            echo "Error: expected version 0.0.1, got $INSTALLED"
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
             exit 1
           fi
           echo "Built binary with version v$INSTALLED"
@@ -150,24 +138,12 @@ jobs:
         id: update-check
         env:
           STRIPE_INSTALL_METHOD: curl
-          STRIPE_LOG_LEVEL: debug
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
-          echo "=== Debug info ==="
-          echo "Binary location: $(which stripe)"
-          echo "Binary resolved: $(readlink -f $(which stripe))"
-          echo "HOME: $HOME"
-          echo "STRIPE_INSTALL_METHOD: $STRIPE_INSTALL_METHOD"
-          ls -la "$HOME/.stripe/bin/" || true
-          echo "=== Running stripe ==="
-          stripe --version 2>&1 || true
-          echo "=== Checking state dir ==="
-          ls -la "$HOME/.stripe/state/" 2>&1 || echo "State dir does not exist"
+          stripe --version
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
             echo "Error: update marker was not written after running stripe"
-            echo "=== Checking last_update_check ==="
-            cat "$HOME/.stripe/state/last_update_check" 2>&1 || echo "No last_update_check file"
             exit 1
           fi
           echo "Update marker found:"
