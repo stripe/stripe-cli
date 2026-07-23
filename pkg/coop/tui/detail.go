@@ -269,7 +269,7 @@ func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionSte
 	wrote := false
 	for _, node := range ch.Nodes {
 		if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-			md.WriteString("- `" + node.Events[0] + "` webhook trigger for " + node.Title + "\n")
+			md.WriteString("- `" + node.Events[0].EventType + "` webhook trigger for " + node.Title + "\n")
 			wrote = true
 		}
 		if node.Type == coop.NodeAPIRequest && node.Request != nil {
@@ -344,7 +344,7 @@ func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.Sess
 	}
 	md.WriteString("**How to verify:**\n\n")
 	md.WriteString("1. `stripe listen --forward-to localhost:<port>/webhook`\n")
-	md.WriteString("2. `stripe trigger " + node.Events[0] + "`\n")
+	md.WriteString("2. Perform an API or Dashboard action that emits `" + node.Events[0].EventType + "`\n")
 	md.WriteString("3. Confirm your handler processes the event\n\n")
 }
 
@@ -352,8 +352,8 @@ func (m Model) writeAsyncHandlerReferenceDetail(md *strings.Builder, node *coop.
 	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
 		return
 	}
-	md.WriteString("**Webhook trigger:**\n\n")
-	md.WriteString("`stripe trigger " + node.Events[0] + "`\n\n")
+	md.WriteString("**Webhook event:**\n\n")
+	md.WriteString("`" + node.Events[0].EventType + "`\n\n")
 }
 
 func (m Model) writeReviewCommandDetail(md *strings.Builder, node *coop.SessionNode) {

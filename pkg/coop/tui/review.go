@@ -353,13 +353,7 @@ func (m Model) reviewCommandLabel(nodeNumbers []int) string {
 }
 
 func reviewCommandForNode(node *coop.SessionNode) string {
-	if node.ReviewCommand != "" {
-		return node.ReviewCommand
-	}
-	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-		return "stripe trigger " + node.Events[0]
-	}
-	return ""
+	return node.ReviewCommand
 }
 
 func (m Model) actionableReviewCount() int {

@@ -51,7 +51,15 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	blueprintID := args[0]
 
-	bp, err := coop.LoadBlueprint(blueprintID)
+	selectedSettings := make(map[string]string)
+	if rc.language != "" {
+		selectedSettings["language"] = rc.language
+	}
+	if err := mergeKeyValues(selectedSettings, "--setting", rc.settings); err != nil {
+		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
+	}
+
+	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID, selectedSettings)
 	if err != nil {
 		// Surface the specific error (e.g. an ambiguous prefix and its candidate
 		// list) rather than a generic "not found".

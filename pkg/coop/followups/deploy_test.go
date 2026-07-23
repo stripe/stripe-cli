@@ -41,12 +41,11 @@ func TestGuidedActionByIDRejectsUnknownAction(t *testing.T) {
 }
 
 func TestDeployFollowupsAreNotBlueprints(t *testing.T) {
-	ids, err := coop.ListBlueprints()
-	require.NoError(t, err)
-
-	assert.NotContains(t, ids, Deploy)
-	assert.NotContains(t, ids, DeployUpdate)
-
-	_, err = coop.LoadBlueprint(Deploy)
-	assert.Error(t, err)
+	available := []coop.WorkbenchBlueprintSummary{{Key: "one-time-payment"}}
+	_, err := coop.ResolveBlueprintKey(available, Deploy)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+	_, err = coop.ResolveBlueprintKey(available, DeployUpdate)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
 }
