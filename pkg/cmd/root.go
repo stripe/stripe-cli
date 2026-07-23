@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/reporting"
+
 	cmddocs "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
@@ -122,6 +124,8 @@ func showSuggestion() {
 func Execute(ctx context.Context) {
 	emitClaudeCodePluginHint()
 
+	reporting.SetAccountIDProvider(Config.Profile.GetAccountID)
+
 	telemetryMetadata := stripe.NewEventMetadata()
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
 
@@ -181,9 +185,11 @@ func Execute(ctx context.Context) {
 			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
 
 		default:
+			reporting.CaptureException(err)
 			fmt.Fprintln(os.Stderr, err)
 		}
 
+		reporting.Flush()
 		os.Exit(1)
 	} else {
 		userInput := os.Args[1:]
