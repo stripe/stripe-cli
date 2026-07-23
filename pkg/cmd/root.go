@@ -71,6 +71,8 @@ var rootCmd = &cobra.Command{
 			fullHelpMode = true
 		}
 
+		reporting.SetCommandPath(cmd.CommandPath())
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())

@@ -15,6 +15,15 @@ func SetAccountIDProvider(fn func() (string, error)) {
 	accountIDProvider = fn
 }
 
+var commandPath string
+
+// SetCommandPath records the cobra command path (e.g. "stripe webhooks create")
+// to be attached as a tag on every captured exception. Only the command name is
+// recorded — never args or flag values, which may contain sensitive data.
+func SetCommandPath(path string) {
+	commandPath = path
+}
+
 // Init initializes the error reporter with the given DSN and release version.
 func Init(dsn, release string) error {
 	return sentry.Init(sentry.ClientOptions{
@@ -27,13 +36,16 @@ func Init(dsn, release string) error {
 
 // CaptureException reports err to the error reporting backend.
 func CaptureException(err error) {
-	if accountIDProvider != nil {
-		if accountID, _ := accountIDProvider(); accountID != "" {
-			sentry.ConfigureScope(func(scope *sentry.Scope) {
+	sentry.ConfigureScope(func(scope *sentry.Scope) {
+		if accountIDProvider != nil {
+			if accountID, _ := accountIDProvider(); accountID != "" {
 				scope.SetTag("account_id", accountID)
-			})
+			}
 		}
-	}
+		if commandPath != "" {
+			scope.SetTag("command", commandPath)
+		}
+	})
 	sentry.CaptureException(err)
 }
 
