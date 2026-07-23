@@ -109,13 +109,6 @@ func newPluginRegistryServers(t *testing.T, manifest []byte) *pluginRegistryServ
 
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/get-plugin-url":
-			body, err := json.Marshal(requests.PluginData{
-				PluginBaseURL:       artifactoryServer.URL,
-				AdditionalManifests: nil,
-			})
-			require.NoError(t, err)
-			_, _ = res.Write(body)
 		case "/v1/stripecli/get-plugin-metadata":
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      artifactoryServer.URL + "/appA/2.0.1/" + runtime.GOOS + "/" + runtime.GOARCH + "/stripe-cli-app-a",

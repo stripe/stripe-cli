@@ -30,19 +30,14 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - uses: actions/checkout@v6
+
       - name: Install Stripe CLI
-        uses: stripe/stripe-cli-ts-plugin-bootstrap/.github/actions/install-stripe-cli@v0.5.4
+        uses: ./.github/actions/install-stripe-cli
 
       - name: Verify CLI installed
         run: stripe version
         shell: bash
-
-      - name: Checkout notify script
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            scripts/notify.sh
-          sparse-checkout-cone-mode: false
 
       - name: Install and test recent projects plugin versions
         shell: bash

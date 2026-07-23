@@ -321,7 +321,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 	pluginToInstall := p
 	pluginDownloadURL := resolvedBinaryURL
-	downloadURLFromMetadata := resolvedBinaryURL != ""
+	var metadataLookupErr error
 	metadataBaseURL := apiBaseURL
 	if apiKey == "" && dashboardBaseURL != "" {
 		metadataBaseURL = dashboardBaseURL
@@ -345,9 +345,10 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
 		if err != nil {
+			metadataLookupErr = err
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",
-			}).Debugf("could not fetch plugin metadata, falling back to plugin URL lookup: %s", err)
+			}).Debugf("could not fetch plugin metadata: %s", err)
 		} else {
 			pluginFromMetadata, err := p.pluginFromMetadata(pluginMetadata.PluginManifest)
 			if err != nil {
@@ -357,22 +358,15 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 			pluginToInstall = pluginFromMetadata
 			pluginDownloadURL = pluginMetadata.BinaryURL
-			downloadURLFromMetadata = true
 		}
 	}
 
 	if pluginDownloadURL == "" {
-		var err error
-		pluginDownloadURL, err = getLegacyPluginDownloadURL(ctx, cfg, apiKey, apiBaseURL, version, pluginToInstall)
-		if err != nil {
-			ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
-
-			log.WithFields(log.Fields{
-				"prefix": "plugins.plugin.Install",
-			}).Debugf("install error: %s", err)
-
-			return errors.New("you don't seem to have access to this plugin")
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+		if metadataLookupErr != nil {
+			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
 		}
+		return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
 	}
 
 	// Check if this plugin requires a runtime and install it if needed
@@ -388,24 +382,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Pull down bin, verify, and save to disk
-	var err error
-	err = pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
-	if err != nil && downloadURLFromMetadata {
-		log.WithFields(log.Fields{
-			"prefix": "plugins.plugin.Install",
-		}).Debugf("could not download plugin from metadata URL, falling back to plugin URL lookup: %s", err)
-
-		fallbackURL, fallbackErr := getLegacyPluginDownloadURL(ctx, cfg, apiKey, apiBaseURL, version, pluginToInstall)
-		if fallbackErr != nil {
-			log.WithFields(log.Fields{
-				"prefix": "plugins.plugin.Install",
-			}).Debugf("could not look up fallback plugin URL after metadata download failed: %s", fallbackErr)
-		} else {
-			err = pluginToInstall.downloadAndSavePlugin(cfg, fallbackURL, fs, version)
-		}
-	}
-
-	if err != nil {
+	if err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version); err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
 		return err
 	}
@@ -433,15 +410,6 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	ansi.StopSpinner(spinner, "", os.Stdout)
 
 	return nil
-}
-
-func getLegacyPluginDownloadURL(ctx context.Context, cfg config.IConfig, apiKey, baseURL, version string, plugin *Plugin) (string, error) {
-	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, plugin.Shortname, version, runtime.GOOS, runtime.GOARCH, plugin.Binary), nil
 }
 
 // Uninstall removes a plugin from the disk and from the config's installed plugins list
