@@ -30,19 +30,14 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - uses: actions/checkout@v6
+
       - name: Install Stripe CLI
-        uses: stripe/stripe-cli-ts-plugin-bootstrap/.github/actions/install-stripe-cli@v0.5.4
+        uses: ./.github/actions/install-stripe-cli
 
       - name: Verify CLI installed
         run: stripe version
         shell: bash
-
-      - name: Checkout notify script
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: |
-            scripts/notify.sh
-          sparse-checkout-cone-mode: false
 
       - name: Install and test recent projects plugin versions
         shell: bash
@@ -52,16 +47,37 @@ jobs:
           GH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           DRYRUN: ${{ inputs.dryrun }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
 
-          # Fetch the plugin manifest and extract recent versions
-          VERSIONS=$(curl -fsSL "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml" \
-            | awk '/Shortname = "projects"/,/^\[\[Plugin\]\]/' \
-            | grep 'Version = ' \
-            | sed 's/.*Version = "\(.*\)"/\1/' \
-            | sort -t. -k1,1n -k2,2n -k3,3n \
-            | uniq \
-            | tail -n "$RECENT_VERSIONS_TO_TEST")
+          # Map the GitHub runner to the Go platform identifiers expected by
+          # the list-plugins endpoint.
+          case "${RUNNER_OS}" in
+            Linux) GOOS="linux" ;;
+            macOS) GOOS="darwin" ;;
+            Windows) GOOS="windows" ;;
+            *)
+              echo "Unsupported runner OS: ${RUNNER_OS}" >&2
+              exit 1
+              ;;
+          esac
+
+          case "${RUNNER_ARCH}" in
+            X64) GOARCH="amd64" ;;
+            ARM64) GOARCH="arm64" ;;
+            *)
+              echo "Unsupported runner arch: ${RUNNER_ARCH}" >&2
+              exit 1
+              ;;
+          esac
+
+          # Fetch the platform-specific plugin list from the Stripe API and
+          # extract the most recent projects plugin versions.
+          VERSIONS=$(curl -fsSL -G "https://api.stripe.com/v1/stripecli/list-plugins" \
+            -H "Authorization: Bearer ${STRIPE_API_KEY}" \
+            -H "Stripe-Version: 2019-03-14" \
+            --data-urlencode "os=${GOOS}" \
+            --data-urlencode "arch=${GOARCH}" \
+            | python -c $'import json\nimport os\nimport sys\n\nplugin_list = json.load(sys.stdin)\nversions = {\n    release[\"version\"]\n    for plugin in plugin_list.get(\"plugins\", [])\n    if plugin.get(\"shortname\") == \"projects\"\n    for release in plugin.get(\"releases\", [])\n    if release.get(\"version\")\n}\n\nif not versions:\n    raise SystemExit(\"No versions found for the projects plugin\")\n\ndef version_key(version):\n    key = []\n    for part in version.split(\".\"):\n        if part.isdigit():\n            key.append((0, int(part)))\n        else:\n            key.append((1, part))\n    return key\n\nrecent_versions = sorted(versions, key=version_key)[-int(os.environ[\"RECENT_VERSIONS_TO_TEST\"]):]\nfor version in recent_versions:\n    print(version)\n')
 
           echo "Testing versions:"
           echo "$VERSIONS"

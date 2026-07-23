@@ -1,0 +1,69 @@
+name: Data & Analytics Canary Tests
+
+# Scheduled canary tests for the CLI data/analytics commands
+# (stripe data metrics run, stripe reporting query-runs). These hit preview
+# APIs, so they run on a schedule and alert on failure via PagerDuty rather than
+# gating PRs or releases. The tests are gated behind the "data_analytics_canary"
+# Go build tag (see canary/data_reporting_test.go).
+
+on:
+  schedule:
+    # Run once a day at 09:00 UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  data-analytics-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+
+      - name: Build binary (production-like)
+        run: |
+          go generate ./...
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o stripe ./cmd/stripe
+        shell: bash
+
+      - name: Run data/analytics canary tests
+        id: canary
+        continue-on-error: true
+        run: |
+          go test -tags data_analytics_canary -v -timeout 15m ./canary/... \
+            -run "TestOfflineDataMetricsRunHelp|TestOfflineReporting|TestAPIDataMetricsRun|TestAPIReportingQueryRuns"
+        shell: bash
+        env:
+          STRIPE_CLI_BINARY: ${{ github.workspace }}/stripe
+          STRIPE_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+          STRIPE_CLI_TELEMETRY_OPTOUT: "1"
+
+      - name: Notify on result
+        if: always()
+        run: bash scripts/notify.sh
+        env:
+          OVERALL_RESULT: ${{ steps.canary.outcome == 'success' && 'success' || 'failure' }}
+          DRYRUN: ${{ inputs.dryrun }}
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_DATA_ANALYTICS_KEY }}
+          PAGERDUTY_DEDUP_KEY: data-analytics-canary
+          PAGERDUTY_SEVERITY: warning
+          PAGERDUTY_SUMMARY: "Data & Analytics canary failed. Investigate: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          PAGERDUTY_RESOLVE_SUMMARY: "Data & Analytics canary is passing again"
+
+      - name: Fail job if canary failed
+        if: steps.canary.outcome == 'failure'
+        run: exit 1

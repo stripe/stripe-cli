@@ -39,16 +39,10 @@ run_install() {
     ;;
 
     winget)
-        # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
-        winget source reset --force
-        # The GitHub Actions Windows image includes the Microsoft Store source,
-        # which can block non-interactive installs after a reset by prompting
-        # for terms and region data. Remove it and install from the community
-        # source directly.
-        if winget source list | grep -q 'msstore'; then
-            winget source remove msstore
-        fi
-        winget install --exact --id Stripe.StripeCli --source winget --accept-source-agreements --accept-package-agreements
+        # Re-register the WinGet source package to avoid 0x8a15000f "data required is missing".
+        # See: https://github.com/microsoft/winget-cli/issues/3068#issuecomment-1934922201
+        powershell.exe -Command "Add-AppPackage -path 'https://cdn.winget.microsoft.com/cache/source.msix'"
+        winget install --exact --id Stripe.StripeCli --source winget
         # winget modifies PATH but the current shell process doesn't inherit the change;
         # explicitly add the WinGet Links directory where the stripe alias was created.
         PATH="$PATH:$(cygpath -u "$LOCALAPPDATA/Microsoft/WinGet/Links")"
