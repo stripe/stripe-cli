@@ -257,7 +257,7 @@ func init() {
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
-	rootCmd.AddCommand(newFeedbackdCmd().cmd)
+	rootCmd.AddCommand(newFeedbackCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)

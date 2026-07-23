@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // ArgValidator is an argument validator. It accepts a string and returns an
@@ -48,6 +50,34 @@ func CallNonEmpty(validator ArgValidator, value string) error {
 	}
 
 	return validator(value)
+}
+
+// Length returns an ArgValidator requiring the value's rune length to fall
+// within [minLength, maxLength].
+func Length(minLength, maxLength int) ArgValidator {
+	return func(value string) error {
+		length := utf8.RuneCountInString(value)
+		if length < minLength {
+			return fmt.Errorf("must be at least %d characters", minLength)
+		}
+		if length > maxLength {
+			return fmt.Errorf("must be at most %d characters", maxLength)
+		}
+
+		return nil
+	}
+}
+
+// OneOf returns an ArgValidator requiring the value to exactly match one of
+// allowed.
+func OneOf(allowed ...string) ArgValidator {
+	return func(value string) error {
+		if slices.Contains(allowed, value) {
+			return nil
+		}
+
+		return fmt.Errorf("%q is not one of the allowed values (%s)", value, strings.Join(allowed, ", "))
+	}
 }
 
 // APIKey validates that a string looks like an API key.
