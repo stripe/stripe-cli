@@ -178,7 +178,7 @@ func fetchStripeBestPracticesSkill(ctx context.Context, source stripeSkillGitHub
 		return nil, fmt.Errorf("parsing Stripe skill tree: %w", err)
 	}
 	if tree.Truncated {
-		return nil, errors.New("Stripe skill tree response was truncated")
+		return nil, errors.New("stripe skill tree response was truncated")
 	}
 
 	prefix := stripeBestPracticesSkillTreeRoot + "/"
@@ -189,13 +189,13 @@ func fetchStripeBestPracticesSkill(ctx context.Context, source stripeSkillGitHub
 		}
 		relativePath := strings.TrimPrefix(entry.Path, prefix)
 		if !safeStripeSkillRelativePath(relativePath) {
-			return nil, fmt.Errorf("Stripe skill contains unsafe path %q", relativePath)
+			return nil, fmt.Errorf("stripe skill contains unsafe path %q", relativePath)
 		}
 		relativePaths = append(relativePaths, relativePath)
 	}
 	sort.Strings(relativePaths)
 	if !containsString(relativePaths, "SKILL.md") {
-		return nil, errors.New("Stripe skill does not contain SKILL.md")
+		return nil, errors.New("stripe skill does not contain SKILL.md")
 	}
 
 	files := make(map[string][]byte, len(relativePaths))
