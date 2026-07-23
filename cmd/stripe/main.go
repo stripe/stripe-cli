@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,9 +24,7 @@ func main() {
 		return
 	}
 
-	if err := reporting.Init(sentryDSN, version.Version); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: error reporter failed to initialize: %s\n", err)
-	}
+	reporting.Init(sentryDSN, version.Version) //nolint:errcheck
 	defer reporting.Flush()
 	defer func() {
 		if r := recover(); r != nil {
