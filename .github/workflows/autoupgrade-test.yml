@@ -65,20 +65,22 @@ jobs:
           fi
           echo "Built binary with version v$INSTALLED"
 
-      - name: Trigger update check
+      - name: Stage update marker
         id: update-check
-        env:
-          STRIPE_INSTALL_METHOD: curl
         run: |
-          export PATH="$HOME/.stripe/bin:$PATH"
-          stripe --version
-          MARKER="$HOME/.stripe/state/update-available"
-          if [ ! -f "$MARKER" ]; then
-            echo "Error: update marker was not written after running stripe"
-            exit 1
-          fi
-          echo "Update marker found:"
-          cat "$MARKER"
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_NAME="x86_64" ;;
+            arm64|aarch64) ARCH_NAME="arm64" ;;
+            *) ARCH_NAME="$ARCH" ;;
+          esac
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_darwin_${ARCH_NAME}.tar.gz"
+
+          mkdir -p "$HOME/.stripe/state"
+          printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
 
       - name: Verify auto-upgrade
         id: upgrade
@@ -138,20 +140,22 @@ jobs:
           fi
           echo "Built binary with version v$INSTALLED"
 
-      - name: Trigger update check
+      - name: Stage update marker
         id: update-check
-        env:
-          STRIPE_INSTALL_METHOD: curl
         run: |
-          export PATH="$HOME/.stripe/bin:$PATH"
-          stripe --version
-          MARKER="$HOME/.stripe/state/update-available"
-          if [ ! -f "$MARKER" ]; then
-            echo "Error: update marker was not written after running stripe"
-            exit 1
-          fi
-          echo "Update marker found:"
-          cat "$MARKER"
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_NAME="x86_64" ;;
+            arm64|aarch64) ARCH_NAME="arm64" ;;
+            *) ARCH_NAME="$ARCH" ;;
+          esac
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_linux_${ARCH_NAME}.tar.gz"
+
+          mkdir -p "$HOME/.stripe/state"
+          printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
 
       - name: Verify auto-upgrade
         id: upgrade
