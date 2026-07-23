@@ -1,14 +1,11 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -20,13 +17,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
-// setupFeedbackTestConfig configures the package-level Config for a test and
-// returns a cleanup function to restore the previous state.
 func setupFeedbackTestConfig(t *testing.T, apiKey string) func() {
 	t.Helper()
 
-	origAPIKey := Config.Profile.APIKey
-	origDeviceName := Config.Profile.DeviceName
+	originalAPIKey := Config.Profile.APIKey
+	originalDeviceName := Config.Profile.DeviceName
 
 	viper.Reset()
 	Config.Profile = config.Profile{
@@ -36,191 +31,311 @@ func setupFeedbackTestConfig(t *testing.T, apiKey string) func() {
 	}
 
 	return func() {
-		Config.Profile.APIKey = origAPIKey
-		Config.Profile.DeviceName = origDeviceName
+		Config.Profile.APIKey = originalAPIKey
+		Config.Profile.DeviceName = originalDeviceName
 		viper.Reset()
 	}
 }
 
 func newTestFeedbackCmd(serverURL string) *feedbackCmd {
-	fc := newFeedbackCmd()
-	fc.apiBaseURL = serverURL
-	return fc
+	feedbackCommand := newFeedbackCmd()
+	feedbackCommand.apiBaseURL = serverURL
+	return feedbackCommand
 }
 
-// runFeedback invokes the command's RunE with a real (non-nil) context, as
-// would happen when the command runs via the root command's
-// ExecuteContext. Calling RunE directly without this leaves cmd.Context()
-// nil, which downstream code (e.g. telemetry) does not expect.
-func runFeedback(fc *feedbackCmd) error {
-	fc.cmd.SetContext(context.Background())
-	return fc.runFeedbackCmd(fc.cmd, []string{})
+func runFeedback(feedbackCommand *feedbackCmd) error {
+	// Downstream code expects a non-nil context.
+	feedbackCommand.cmd.SetContext(context.Background())
+	return feedbackCommand.runFeedbackCmd(feedbackCommand.cmd, []string{})
 }
 
-func TestFeedbackNonInteractiveRequiresFlags(t *testing.T) {
-	cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
-	defer cleanup()
-
-	fc := newTestFeedbackCmd("http://example.invalid")
-
-	// No sentiment, message, or actor supplied, and stdin is not a TTY in
-	// tests, so this should be treated as non-interactive and fail fast.
-	buf := new(bytes.Buffer)
-	fc.cmd.SetIn(strings.NewReader(""))
-	fc.cmd.SetOut(buf)
-
-	err := runFeedback(fc)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--sentiment")
-	assert.Contains(t, err.Error(), "--message")
-	assert.Contains(t, err.Error(), "--actor")
+type feedbackCase struct {
+	apiKey     string
+	sentiment  string
+	message    string
+	context    string
+	feature    string
+	actor      string
+	jsonOutput bool
 }
 
-func TestFeedbackRequiresAuth(t *testing.T) {
-	cleanup := setupFeedbackTestConfig(t, "")
-	defer cleanup()
-
-	fc := newTestFeedbackCmd("http://example.invalid")
-	fc.sentiment = "positive"
-	fc.message = "this is a test feedback message"
-	fc.actor = "human"
-
-	err := runFeedback(fc)
-	require.Error(t, err)
+func validFeedbackCase() feedbackCase {
+	return feedbackCase{
+		apiKey:    "sk_test_123456789012",
+		sentiment: "positive",
+		message:   "this is a test feedback message",
+		context:   "this is a test context message",
+		actor:     "human",
+	}
 }
 
-func TestFeedbackSubmitSendsExpectedRequest(t *testing.T) {
-	var receivedForm url.Values
-	var receivedVersionHeader string
-	var receivedPath string
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		receivedPath = r.URL.Path
-		receivedVersionHeader = r.Header.Get("Stripe-Version")
-
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		receivedForm, err = url.ParseQuery(string(body))
-		require.NoError(t, err)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"id":"pfbk_test123","success":true}`))
-	}))
-	defer ts.Close()
-
-	cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
-	defer cleanup()
-
-	fc := newTestFeedbackCmd(ts.URL)
-	fc.sentiment = "positive"
-	fc.message = "this is a test feedback message"
-	fc.actor = "human"
-	fc.feature = "cli"
-	fc.context = "testing the feedback command"
-
-	buf := new(bytes.Buffer)
-	fc.cmd.SetOut(buf)
-
-	err := runFeedback(fc)
-	require.NoError(t, err)
-
-	assert.Equal(t, "/v1/_unstable/feedback", receivedPath)
-	assert.Equal(t, requests.StripePreviewVersionHeaderValue, receivedVersionHeader)
-	assert.Equal(t, "positive", receivedForm.Get("sentiment"))
-	assert.Equal(t, "this is a test feedback message", receivedForm.Get("message"))
-	assert.Equal(t, "cli", receivedForm.Get("channel"))
-	assert.Equal(t, "human", receivedForm.Get("actor"))
-	assert.Equal(t, "cli", receivedForm.Get("feature_area"))
-	assert.Equal(t, "testing the feedback command", receivedForm.Get("context"))
-	assert.Equal(t, "test-device", receivedForm.Get("device_name"))
-	assert.NotEmpty(t, receivedForm.Get("os"))
-
-	assert.Contains(t, buf.String(), "pfbk_test123")
+func (feedbackInput feedbackCase) applyTo(feedbackCommand *feedbackCmd) {
+	feedbackCommand.sentiment = feedbackInput.sentiment
+	feedbackCommand.message = feedbackInput.message
+	feedbackCommand.context = feedbackInput.context
+	feedbackCommand.feature = feedbackInput.feature
+	feedbackCommand.actor = feedbackInput.actor
+	feedbackCommand.jsonOutput = feedbackInput.jsonOutput
 }
 
-func TestFeedbackSubmitJSONOutput(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"id":"pfbk_test456","success":true}`))
-	}))
-	defer ts.Close()
+func TestFeedbackNonInteractiveValidation(t *testing.T) {
+	tests := []struct {
+		name              string
+		setup             func() feedbackCase
+		wantErrSubstrings []string
+	}{
+		{
+			name: "missing required flags",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.sentiment, feedbackInput.message, feedbackInput.context, feedbackInput.actor = "", "", "", ""
+				return feedbackInput
+			},
+			wantErrSubstrings: []string{"--sentiment", "--message", "--context", "--actor"},
+		},
+		{
+			name: "missing api key",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.apiKey = ""
+				return feedbackInput
+			},
+		},
+		{
+			name: "message too short",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.message = "too short"
+				return feedbackInput
+			},
+			wantErrSubstrings: []string{"at least 10 characters"},
+		},
+		{
+			name: "message too long",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.message = strings.Repeat("a", feedbackMaxLen+1)
+				return feedbackInput
+			},
+			wantErrSubstrings: []string{"at most 2000 characters"},
+		},
+		{
+			name: "context too short",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.context = "short"
+				return feedbackInput
+			},
+			wantErrSubstrings: []string{"context must be at least 10 characters"},
+		},
+		{
+			name: "invalid sentiment",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.sentiment = "ecstatic"
+				return feedbackInput
+			},
+			wantErrSubstrings: []string{"--sentiment", "not one of the allowed values"},
+		},
+		{
+			name: "invalid feature",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.feature = "not-a-real-area"
+				return feedbackInput
+			},
+			wantErrSubstrings: []string{"--feature", "not one of the allowed values"},
+		},
+	}
 
-	cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
-	defer cleanup()
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			feedbackInput := testCase.setup()
 
-	fc := newTestFeedbackCmd(ts.URL)
-	fc.sentiment = "neutral"
-	fc.message = "testing json output format here"
-	fc.actor = "human"
-	fc.jsonOutput = true
+			cleanup := setupFeedbackTestConfig(t, feedbackInput.apiKey)
+			defer cleanup()
 
-	buf := new(bytes.Buffer)
-	fc.cmd.SetOut(buf)
+			// ".invalid" never resolves (RFC 2606), so a bug that skipped
+			// validation and actually dialed out would fail on a DNS error
+			// here rather than silently passing.
+			feedbackCommand := newTestFeedbackCmd("http://example.invalid")
+			feedbackInput.applyTo(feedbackCommand)
 
-	err := runFeedback(fc)
-	require.NoError(t, err)
-
-	var result feedbackResponse
-	require.NoError(t, json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &result))
-	assert.True(t, result.Success)
-	assert.Equal(t, "pfbk_test456", result.ID)
+			err := runFeedback(feedbackCommand)
+			require.Error(t, err)
+			for _, wantSubstring := range testCase.wantErrSubstrings {
+				assert.Contains(t, err.Error(), wantSubstring)
+			}
+		})
+	}
 }
 
-func TestFeedbackActorAgentAccepted(t *testing.T) {
-	var receivedForm url.Values
+func TestFeedbackSubmit(t *testing.T) {
+	tests := []struct {
+		name              string
+		setup             func() feedbackCase
+		handler           http.HandlerFunc
+		wantErrSubstrings []string
+		wantCheck         func(t *testing.T, output string)
+	}{
+		{
+			name: "sends expected request",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.feature = "cli"
+				feedbackInput.context = "testing the feedback command"
+				return feedbackInput
+			},
+			handler: func(responseWriter http.ResponseWriter, request *http.Request) {
+				assert.NoError(t, request.ParseForm())
+				assert.Equal(t, "positive", request.FormValue("sentiment"))
+				assert.Equal(t, "this is a test feedback message", request.FormValue("message"))
+				assert.Equal(t, "cli", request.FormValue("channel"))
+				assert.Equal(t, "human", request.FormValue("actor"))
+				assert.Equal(t, "cli", request.FormValue("feature_area"))
+				assert.Equal(t, "testing the feedback command", request.FormValue("context"))
+				assert.Equal(t, "test-device", request.FormValue("device_name"))
+				assert.NotEmpty(t, request.FormValue("os"))
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		receivedForm, err = url.ParseQuery(string(body))
-		require.NoError(t, err)
+				responseWriter.Header().Set("Content-Type", "application/json")
+				responseWriter.WriteHeader(http.StatusOK)
+				fmt.Fprint(responseWriter, `{"id":"pfbk_test123","success":true}`)
+			},
+			wantCheck: func(t *testing.T, output string) {
+				assert.Contains(t, output, "pfbk_test123")
+			},
+		},
+		{
+			name: "json output",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.sentiment = "neutral"
+				feedbackInput.message = "testing json output format here"
+				feedbackInput.jsonOutput = true
+				return feedbackInput
+			},
+			handler: func(responseWriter http.ResponseWriter, request *http.Request) {
+				responseWriter.Header().Set("Content-Type", "application/json")
+				responseWriter.WriteHeader(http.StatusOK)
+				fmt.Fprint(responseWriter, `{"id":"pfbk_test456","success":true}`)
+			},
+			wantCheck: func(t *testing.T, output string) {
+				assert.Contains(t, output, `"id":"pfbk_test456"`)
+				assert.Contains(t, output, `"success":true`)
+			},
+		},
+		{
+			name: "agent actor accepted",
+			setup: func() feedbackCase {
+				feedbackInput := validFeedbackCase()
+				feedbackInput.message = "agent submitted feedback test message"
+				feedbackInput.actor = "agent"
+				return feedbackInput
+			},
+			handler: func(responseWriter http.ResponseWriter, request *http.Request) {
+				assert.NoError(t, request.ParseForm())
+				assert.Equal(t, "agent", request.FormValue("actor"))
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"id":"pfbk_test789","success":true}`))
-	}))
-	defer ts.Close()
+				responseWriter.Header().Set("Content-Type", "application/json")
+				responseWriter.WriteHeader(http.StatusOK)
+				fmt.Fprint(responseWriter, `{"id":"pfbk_test789","success":true}`)
+			},
+		},
+		{
+			name: "server error surfaces status and body",
+			setup: func() feedbackCase {
+				return validFeedbackCase()
+			},
+			handler: func(responseWriter http.ResponseWriter, request *http.Request) {
+				responseWriter.WriteHeader(http.StatusBadRequest)
+				fmt.Fprint(responseWriter, `{"error":"invalid sentiment"}`)
+			},
+			wantErrSubstrings: []string{"400"},
+		},
+	}
 
-	cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
-	defer cleanup()
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			// A real localhost listener, not a mock swapped in for
+			// stripe.Client, so this catches request/response bugs a mock
+			// would miss. Handlers use assert, not require: they run on
+			// httptest's own goroutine, where require's FailNow is unsafe.
+			server := httptest.NewServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+				assert.Equal(t, "/v1/_unstable/feedback", request.URL.Path)
+				assert.Equal(t, requests.StripePreviewVersionHeaderValue, request.Header.Get("Stripe-Version"))
+				testCase.handler(responseWriter, request)
+			}))
+			defer server.Close()
 
-	fc := newTestFeedbackCmd(ts.URL)
-	fc.sentiment = "positive"
-	fc.message = "agent submitted feedback test message"
-	fc.actor = "agent"
+			cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
+			defer cleanup()
 
-	err := runFeedback(fc)
-	require.NoError(t, err)
-	assert.Equal(t, "agent", receivedForm.Get("actor"))
+			feedbackCommand := newTestFeedbackCmd(server.URL)
+			testCase.setup().applyTo(feedbackCommand)
+
+			outputBuffer := new(bytes.Buffer)
+			feedbackCommand.cmd.SetOut(outputBuffer)
+
+			err := runFeedback(feedbackCommand)
+
+			if len(testCase.wantErrSubstrings) > 0 {
+				require.Error(t, err)
+				for _, wantSubstring := range testCase.wantErrSubstrings {
+					assert.Contains(t, err.Error(), wantSubstring)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			if testCase.wantCheck != nil {
+				testCase.wantCheck(t, outputBuffer.String())
+			}
+		})
+	}
 }
 
-func TestFeedbackServerError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":"invalid sentiment"}`))
-	}))
-	defer ts.Close()
+func TestSanitizeText(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"trims surrounding whitespace", "  hello world  ", "hello world"},
+		{"preserves internal newlines", "line one\nline two", "line one\nline two"},
+		{"strips control characters", "hello\x00\x07world", "helloworld"},
+		{"trims trailing newline after trimspace", "hello\n\n", "hello"},
+	}
 
-	cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
-	defer cleanup()
-
-	fc := newTestFeedbackCmd(ts.URL)
-	fc.sentiment = "positive"
-	fc.message = "this is a test feedback message"
-	fc.actor = "human"
-
-	err := runFeedback(fc)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "400")
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			assert.Equal(t, testCase.want, sanitizeText(testCase.input))
+		})
+	}
 }
 
-func TestPromptLineTrimsInput(t *testing.T) {
-	buf := new(bytes.Buffer)
-	reader := bufio.NewReader(strings.NewReader("  hello world  \n"))
+func TestValidateFeedbackMessage(t *testing.T) {
+	require.Error(t, validateFeedbackMessage(""))
+	require.Error(t, validateFeedbackMessage("too short"))
+	require.Error(t, validateFeedbackMessage(strings.Repeat("a", feedbackMaxLen+1)))
+	require.NoError(t, validateFeedbackMessage("this message is long enough"))
+}
 
-	line, err := promptLine(buf, reader, "prompt")
-	require.NoError(t, err)
-	assert.Equal(t, "hello world", line)
+func TestValidateFeedbackContext(t *testing.T) {
+	require.Error(t, validateFeedbackContext(""))
+	require.Error(t, validateFeedbackContext("   "))
+	require.Error(t, validateFeedbackContext("short"))
+	require.Error(t, validateFeedbackContext(strings.Repeat("a", feedbackMaxLen+1)))
+	require.NoError(t, validateFeedbackContext("this context is long enough"))
+}
+
+func TestFeedbackMissingRequiredFields(t *testing.T) {
+	feedbackCommand := &feedbackCmd{}
+	validFeedbackCase().applyTo(feedbackCommand)
+	assert.Empty(t, feedbackCommand.missingRequiredFields())
+
+	feedbackCommand.context = ""
+	assert.Equal(t, []string{"--context"}, feedbackCommand.missingRequiredFields())
+
+	feedbackCommand.sentiment = ""
+	assert.Equal(t, []string{"--sentiment", "--context"}, feedbackCommand.missingRequiredFields())
 }
