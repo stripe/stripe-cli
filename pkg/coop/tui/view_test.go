@@ -78,7 +78,7 @@ func testModel() Model {
 								Key:    "n3",
 								Title:  "Handle event",
 								Type:   coop.NodeAsyncHandler,
-								Events: []string{"checkout.session.completed"},
+								Events: []coop.AsyncEvent{{EventType: "checkout.session.completed"}},
 							},
 							State: coop.NodePending,
 						},
@@ -281,13 +281,16 @@ func TestRenderDetailWebhook(t *testing.T) {
 	m.selectionCursor = 2 // asyncHandler node
 	m.expanded = true
 	m.detailTab = 2
+	m.width = 120
 	detail := m.renderDetail()
 
 	assertContainsPlain(t, detail, "Checks")
-	assertContainsPlain(t, detail, "Review command")
+	assertNotContainsPlain(t, detail, "Review command")
 	assertContainsPlain(t, detail, "How to verify")
 	assertContainsPlain(t, detail, "stripe listen")
-	assertContainsPlain(t, detail, "stripe trigger checkout.session.completed")
+	assertContainsPlain(t, detail, "checkout.session.completed")
+	assertContainsPlain(t, detail, "Perform an API or Dashboard action")
+	assertNotContainsPlain(t, detail, "stripe trigger checkout.session.completed")
 }
 
 func TestRenderDetailWithSDKSnippet(t *testing.T) {
@@ -438,6 +441,7 @@ func TestRenderReviewCardFallbackCheck(t *testing.T) {
 func TestRenderFooterReviewCommand(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.session.Steps[1].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 2
 	footer := m.renderFooter()
 

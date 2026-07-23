@@ -204,15 +204,15 @@ func shellCommandWithCoopEnv(cmd string) string {
 	return cmd
 }
 
-func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
-	return rc.runInTmuxSplitWithCommand(stripeBin, blueprintID, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
+	return rc.runInTmuxSplitWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
 }
 
-func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID string, buildPaneCmd coopPaneCommandBuilder) error {
+func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	var session *coop.Session
-	if blueprintID != "" {
+	if blueprint != nil {
 		var err error
-		session, err = rc.startSessionQuietly(blueprintID)
+		session, err = rc.startSessionQuietly(blueprint)
 		if err != nil {
 			return err
 		}
@@ -242,18 +242,18 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 		return fmt.Errorf("tmux split failed: %w", err)
 	}
 
-	if blueprintID != "" {
+	if blueprint != nil {
 		return tui.Run(store, session.ID, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
 	}
 
 	return runCoopTUIWait(store)
 }
 
-func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
-	return rc.runInNewTmuxWithCommand(stripeBin, blueprintID, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
+	return rc.runInNewTmuxWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
 }
 
-func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID string, buildPaneCmd coopPaneCommandBuilder) error {
+func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	sessionName := "stripe-coop"
 
 	// Check for existing session
@@ -280,16 +280,16 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	}
 
 	var session *coop.Session
-	if blueprintID != "" {
+	if blueprint != nil {
 		var err error
-		session, err = rc.startSessionQuietly(blueprintID)
+		session, err = rc.startSessionQuietly(blueprint)
 		if err != nil {
 			return err
 		}
 	}
 
 	tuiCmd := fmt.Sprintf("%s coop join", shellQuote(stripeBin))
-	if blueprintID == "" {
+	if blueprint == nil {
 		tuiCmd += " --wait"
 	} else {
 		tuiCmd += " " + session.ID
@@ -348,17 +348,17 @@ func normalizeCoopTmuxSessionDimensions(width, height int, err error) (int, int)
 	return width, height
 }
 
-func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprintID string) error {
-	return rc.runFallbackWithCommand(stripeBin, blueprintID, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
+	return rc.runFallbackWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
 }
 
-func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprintID string, buildPaneCmd coopPaneCommandBuilder) error {
+func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	fmt.Println("tmux not found — running agent in this terminal.")
 
 	var session *coop.Session
-	if blueprintID != "" {
+	if blueprint != nil {
 		var err error
-		session, err = rc.startSessionQuietly(blueprintID)
+		session, err = rc.startSessionQuietly(blueprint)
 		if err != nil {
 			return err
 		}

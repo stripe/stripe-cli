@@ -7,12 +7,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
 type Options struct {
 	ConfigFolder             func() string
 	SandboxClaimURL          func() string
 	AIAgentHelpAnnotationKey string
+	BlueprintRepository      coop.BlueprintRepository
 }
 
 const defaultAIAgentHelpAnnotationKey = "ai_agent_help"
@@ -79,6 +81,10 @@ func coopSandboxClaimURL() string {
 		return ""
 	}
 	return options.SandboxClaimURL()
+}
+
+func coopBlueprintRepository() coop.BlueprintRepository {
+	return options.BlueprintRepository
 }
 
 func mustMarkFlagRequired(cmd *cobra.Command, name string) {

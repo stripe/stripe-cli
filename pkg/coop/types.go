@@ -8,7 +8,7 @@ import "time"
 type NodeState string
 
 const (
-	CurrentSessionSchemaVersion = 2
+	CurrentSessionSchemaVersion = 3
 )
 
 const (
@@ -57,11 +57,20 @@ type Verification struct {
 
 // APIRequest describes the expected API call for a node.
 type APIRequest struct {
-	Path         string            `json:"path"`
-	Method       string            `json:"method"`
-	Headers      map[string]string `json:"headers,omitempty"`
-	Params       interface{}       `json:"params,omitempty"`
-	HiddenParams interface{}       `json:"hidden_params,omitempty"`
+	Key               string                `json:"key,omitempty"`
+	Path              string                `json:"path"`
+	Method            string                `json:"method"`
+	Headers           map[string]string     `json:"headers,omitempty"`
+	Params            interface{}           `json:"params,omitempty"`
+	HiddenParams      interface{}           `json:"hidden_params,omitempty"`
+	ExpectedErrorType string                `json:"expected_error_type,omitempty"`
+	ProcessingDetails *APIProcessingDetails `json:"processing_details,omitempty"`
+	RegenerateEnv     bool                  `json:"regenerate_env,omitempty"`
+}
+
+type APIProcessingDetails struct {
+	OutputField      string `json:"output_field,omitempty"`
+	OutputFieldLabel string `json:"output_field_label,omitempty"`
 }
 
 // TestHelperRequest describes an API-backed request used to advance test state.
@@ -81,13 +90,71 @@ type NodeDefinition struct {
 	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
 	Request       *APIRequest         `json:"request,omitempty"`
 	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
-	Events        []string            `json:"events,omitempty"`
+	Events        []AsyncEvent        `json:"events,omitempty"`
+	UIComponent   *UIComponentDetails `json:"ui_component,omitempty"`
+}
+
+type AsyncEvent struct {
+	ConnectedAccountID string                 `json:"connected_account_id,omitempty"`
+	EventCount         int                    `json:"event_count,omitempty"`
+	EventData          map[string]interface{} `json:"event_data,omitempty"`
+	EventPayloadType   string                 `json:"event_payload_type,omitempty"`
+	EventType          string                 `json:"event_type"`
+	ObjectID           string                 `json:"object_id,omitempty"`
+	OnNodeComplete     *NodeReference         `json:"on_node_complete,omitempty"`
+}
+
+type NodeReference struct {
+	NodeKey string `json:"node_key"`
+	StepKey string `json:"step_key"`
+}
+
+type UIComponentReference struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}
+
+type UIComponentDetails struct {
+	Display             string                 `json:"display,omitempty"`
+	DisplayComponentRef *UIComponentReference  `json:"display_component_ref,omitempty"`
+	StripeElementRef    map[string]interface{} `json:"stripe_element_ref,omitempty"`
+	Options             []UIComponentOption    `json:"options,omitempty"`
+}
+
+type UIComponentOption struct {
+	Type     string       `json:"type"`
+	Title    string       `json:"title"`
+	Link     string       `json:"link,omitempty"`
+	Requests []APIRequest `json:"requests,omitempty"`
+}
+
+type BlueprintPin struct {
+	ID               string             `json:"id"`
+	Key              string             `json:"key"`
+	Title            string             `json:"title,omitempty"`
+	BlueprintVersion int                `json:"blueprint_version"`
+	TemplateVersion  int                `json:"template_version"`
+	Steps            []BlueprintStepPin `json:"steps"`
+	Digest           string             `json:"digest"`
+}
+
+type BlueprintStepPin struct {
+	Key             string `json:"key"`
+	StepVersion     int    `json:"step_version"`
+	TemplateVersion int    `json:"template_version"`
 }
 
 // StepDefinition is the source-derived static definition for a step.
 type StepDefinition struct {
-	Key   string `json:"key"`
-	Title string `json:"title"`
+	Key     string            `json:"key"`
+	Title   string            `json:"title"`
+	Outputs []BlueprintOutput `json:"outputs,omitempty"`
+}
+
+type BlueprintOutput struct {
+	Name   string                 `json:"name"`
+	Source string                 `json:"source"`
+	Schema map[string]interface{} `json:"schema,omitempty"`
 }
 
 // SessionNode is a single action within a session step.
@@ -113,6 +180,7 @@ type Session struct {
 	SchemaVersion   int               `json:"schema_version"`
 	ID              string            `json:"id"`
 	Blueprint       string            `json:"blueprint"`
+	BlueprintPin    *BlueprintPin     `json:"blueprint_pin,omitempty"`
 	Status          SessionStatus     `json:"status"`
 	Settings        map[string]string `json:"settings,omitempty"`
 	Params          map[string]string `json:"params,omitempty"`

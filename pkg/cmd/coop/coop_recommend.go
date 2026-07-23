@@ -11,8 +11,9 @@ import (
 )
 
 type coopRecommendCmd struct {
-	cmd   *cobra.Command
-	query string
+	cmd            *cobra.Command
+	query          string
+	includeTesting bool
 }
 
 func newCoopRecommendCmd() *coopRecommendCmd {
@@ -29,12 +30,17 @@ blueprint to use for a given integration scenario.`,
 	}
 
 	rc.cmd.Flags().StringVar(&rc.query, "query", "", "Search query to match against blueprints")
+	rc.cmd.Flags().BoolVar(&rc.includeTesting, "include-testing", false, "Include testing blueprints in addition to learning blueprints")
 
 	return rc
 }
 
 func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) error {
-	blueprints, err := coop.ListBlueprintsWithMetadata()
+	repository := coopBlueprintRepository()
+	if repository == nil {
+		return fmt.Errorf("loading blueprints: no blueprint repository configured")
+	}
+	blueprints, err := repository.List(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("loading blueprints: %w", err)
 	}
@@ -44,27 +50,36 @@ func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) e
 		Title       string   `json:"title"`
 		Description string   `json:"description"`
 		Products    []string `json:"products,omitempty"`
-		NodeCount   int      `json:"node_count"`
-		Command     string   `json:"command"`
-		Score       int      `json:"score,omitempty"`
+		// NodeCount is retained as a nullable compatibility field because the
+		// Workbench list endpoint does not expose nodes.
+		NodeCount *int   `json:"node_count"`
+		StepCount int    `json:"step_count"`
+		Command   string `json:"command"`
+		Score     int    `json:"score,omitempty"`
 	}
 
 	var catalog []bpEntry
 	for _, bp := range blueprints {
-		nodes := 0
-		for _, step := range bp.Steps {
-			nodes += len(step.Nodes)
+		if !rc.includeTesting && bp.BlueprintType != "learning" {
+			continue
+		}
+		metadata := coop.Blueprint{
+			ID:          bp.Key,
+			Title:       bp.Title.DefaultMessage,
+			Description: bp.Description.DefaultMessage,
+			Type:        bp.BlueprintType,
+			Products:    bp.Metadata.Products,
 		}
 		entry := bpEntry{
-			ID:          bp.ID,
-			Title:       bp.Title,
-			Description: bp.Description,
-			Products:    bp.Products,
-			NodeCount:   nodes,
-			Command:     fmt.Sprintf("stripe coop run %s", bp.ID),
+			ID:          bp.Key,
+			Title:       bp.Title.DefaultMessage,
+			Description: bp.Description.DefaultMessage,
+			Products:    bp.Metadata.Products,
+			StepCount:   len(bp.StepRefs),
+			Command:     fmt.Sprintf("stripe coop run %s", bp.Key),
 		}
 		if rc.query != "" {
-			entry.Score = blueprintMatchScore(bp, rc.query)
+			entry.Score = blueprintMatchScore(metadata, rc.query)
 			if entry.Score == 0 {
 				continue
 			}
