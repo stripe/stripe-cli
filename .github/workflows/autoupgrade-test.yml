@@ -6,6 +6,9 @@ name: Auto-upgrade canary test
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   notice:
     runs-on: ubuntu-latest
