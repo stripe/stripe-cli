@@ -168,23 +168,28 @@ func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) e
 		return err
 	}
 
-	feedback.isInteractive = term.IsTerminal(int(os.Stdin.Fd()))
+	// --json signals a scripted invocation, so it always skips the prompt
+	// flow, even when attached to a TTY.
+	feedback.isInteractive = !feedback.jsonOutput && term.IsTerminal(int(os.Stdin.Fd()))
+
+	// Whatever was already supplied via flags is validated up front,
+	// regardless of interactivity, so an invalid --feature/--sentiment/
+	// --message/--context fails fast instead of silently falling through
+	// to a prompt that would ask the user for it again.
+	if err := feedback.validateSuppliedFields(); err != nil {
+		return err
+	}
 
 	// Fall back to interactive prompts whenever any required field is
 	// still missing, not just when every field is — a user who supplied
-	// some flags from a terminal should be prompted for the rest rather
-	// than hit a hard validation error.
+	// some flags from a terminal should be prompted only for the rest,
+	// rather than hit a hard validation error.
 	if feedback.isInteractive && len(feedback.missingRequiredFields()) > 0 {
 		if err := feedback.promptForFeedback(cmd); err != nil {
 			return err
 		}
-		// A human is physically present to answer the prompts, so we know
-		// who is submitting the feedback without having to ask.
-		feedback.actor = "human"
-	} else {
-		if err := feedback.validateNonInteractive(); err != nil {
-			return err
-		}
+	} else if missing := feedback.missingRequiredFields(); len(missing) > 0 {
+		return fmt.Errorf("%s required when running non-interactively", strings.Join(missing, ", "))
 	}
 
 	resp, err := feedback.submitFeedback(cmd, apiKey)
@@ -197,18 +202,18 @@ func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) e
 	return nil
 }
 
-func (feedback *feedbackCmd) validateNonInteractive() error {
-	if missing := feedback.missingRequiredFields(); len(missing) > 0 {
-		return fmt.Errorf("%s required when running non-interactively", strings.Join(missing, ", "))
-	}
-
-	if err := validateFeedbackMessage(feedback.message); err != nil {
+// validateSuppliedFields validates the content of any fields already
+// supplied via flags (message/context length, sentiment/feature
+// membership), independent of whether all required fields are present —
+// that's checked separately by missingRequiredFields.
+func (feedback *feedbackCmd) validateSuppliedFields() error {
+	if err := validators.CallNonEmpty(validateFeedbackMessage, feedback.message); err != nil {
 		return err
 	}
-	if err := validateFeedbackContext(feedback.context); err != nil {
+	if err := validators.CallNonEmpty(validateFeedbackContext, feedback.context); err != nil {
 		return err
 	}
-	if err := validators.OneOf(feedbackSentiments...)(feedback.sentiment); err != nil {
+	if err := validators.CallNonEmpty(validators.OneOf(feedbackSentiments...), feedback.sentiment); err != nil {
 		return fmt.Errorf("--sentiment %w", err)
 	}
 	if err := validators.CallNonEmpty(validators.OneOf(feedbackFeatureAreas...), feedback.feature); err != nil {
@@ -218,6 +223,9 @@ func (feedback *feedbackCmd) validateNonInteractive() error {
 	return nil
 }
 
+// promptForFeedback interactively prompts for any required field that
+// wasn't already supplied (and validated) via flags, leaving
+// already-supplied fields untouched.
 func (feedback *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 
@@ -225,29 +233,44 @@ func (feedback *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
 	fmt.Fprintln(out, "For help with your account or integration, use: https://support.stripe.com")
 	fmt.Fprintln(out)
 
-	feature, err := selectFeedbackEnum("Which area is this about? (type to filter)", feedbackFeatureAreas)
-	if err != nil {
-		return err
+	if feedback.feature == "" {
+		feature, err := selectFeedbackEnum("Which area is this about? (type to filter)", feedbackFeatureAreas)
+		if err != nil {
+			return err
+		}
+		feedback.feature = feature
 	}
-	feedback.feature = feature
 
-	sentiment, err := selectFeedbackEnum("How are you feeling about it?", feedbackSentiments)
-	if err != nil {
-		return err
+	if feedback.sentiment == "" {
+		sentiment, err := selectFeedbackEnum("How are you feeling about it?", feedbackSentiments)
+		if err != nil {
+			return err
+		}
+		feedback.sentiment = sentiment
 	}
-	feedback.sentiment = sentiment
 
-	message, err := textPrompt("What would you like to share?", validateFeedbackMessage)
-	if err != nil {
-		return err
+	if feedback.message == "" {
+		message, err := textPrompt("What would you like to share?", validateFeedbackMessage)
+		if err != nil {
+			return err
+		}
+		feedback.message = message
 	}
-	feedback.message = message
 
-	context, err := textPrompt("What were you trying to do?", validateFeedbackContext)
-	if err != nil {
-		return err
+	if feedback.context == "" {
+		context, err := textPrompt("What were you trying to do?", validateFeedbackContext)
+		if err != nil {
+			return err
+		}
+		feedback.context = context
 	}
-	feedback.context = context
+
+	if feedback.actor == "" {
+		// A human is physically present to answer the prompts, so we know
+		// who is submitting the feedback without having to ask, unless
+		// --actor was already supplied.
+		feedback.actor = "human"
+	}
 
 	// message/context are sanitized once, in submitFeedback, since that's
 	// the single point both this interactive path and the non-interactive

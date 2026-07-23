@@ -242,10 +242,8 @@ func TestFeedbackSubmit(t *testing.T) {
 			},
 		},
 		{
-			name: "server error surfaces status and body",
-			setup: func() feedbackCase {
-				return validFeedbackCase()
-			},
+			name:  "server error surfaces status and body",
+			setup: validFeedbackCase,
 			handler: func(responseWriter http.ResponseWriter, request *http.Request) {
 				responseWriter.WriteHeader(http.StatusBadRequest)
 				fmt.Fprint(responseWriter, `{"error":"invalid sentiment"}`)
@@ -326,6 +324,31 @@ func TestValidateFeedbackContext(t *testing.T) {
 	require.Error(t, validateFeedbackContext("short"))
 	require.Error(t, validateFeedbackContext(strings.Repeat("a", feedbackMaxLen+1)))
 	require.NoError(t, validateFeedbackContext("this context is long enough"))
+}
+
+func TestFeedbackValidateSuppliedFields(t *testing.T) {
+	feedbackCommand := &feedbackCmd{}
+
+	// Nothing supplied yet: nothing to validate, so no error. Presence is
+	// checked separately by missingRequiredFields.
+	assert.NoError(t, feedbackCommand.validateSuppliedFields())
+
+	feedbackCommand.feature = "not-a-real-area"
+	err := feedbackCommand.validateSuppliedFields()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--feature")
+	feedbackCommand.feature = ""
+
+	feedbackCommand.sentiment = "ecstatic"
+	err = feedbackCommand.validateSuppliedFields()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--sentiment")
+	feedbackCommand.sentiment = ""
+
+	feedbackCommand.message = "too short"
+	err = feedbackCommand.validateSuppliedFields()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "at least 10 characters")
 }
 
 func TestFeedbackMissingRequiredFields(t *testing.T) {
