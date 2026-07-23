@@ -50,6 +50,36 @@ func CallNonEmpty(validator ArgValidator, value string) error {
 	return validator(value)
 }
 
+// Length returns an ArgValidator requiring the value's rune length to fall
+// within [minLength, maxLength].
+func Length(minLength, maxLength int) ArgValidator {
+	return func(value string) error {
+		length := len([]rune(value))
+		if length < minLength {
+			return fmt.Errorf("must be at least %d characters", minLength)
+		}
+		if length > maxLength {
+			return fmt.Errorf("must be at most %d characters", maxLength)
+		}
+
+		return nil
+	}
+}
+
+// OneOf returns an ArgValidator requiring the value to exactly match one of
+// allowed.
+func OneOf(allowed ...string) ArgValidator {
+	return func(value string) error {
+		for _, candidate := range allowed {
+			if value == candidate {
+				return nil
+			}
+		}
+
+		return fmt.Errorf("%q is not one of the allowed values (%s)", value, strings.Join(allowed, ", "))
+	}
+}
+
 // APIKey validates that a string looks like an API key.
 func APIKey(input string) error {
 	if len(input) == 0 {

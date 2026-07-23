@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,7 +9,9 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"unicode"
 
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -23,6 +24,13 @@ import (
 )
 
 const feedbackEndpoint = "/v1/_unstable/feedback"
+
+// feedbackMinLen and feedbackMaxLen bound the length of the free-text
+// message and context fields, after sanitization.
+const (
+	feedbackMinLen = 10
+	feedbackMaxLen = 2000
+)
 
 var feedbackFeatureAreas = []string{
 	"billing",
@@ -46,6 +54,42 @@ type feedbackResponse struct {
 	Success bool   `json:"success"`
 }
 
+func sanitizeText(s string) string {
+	trimmed := strings.TrimSpace(s)
+
+	return strings.Map(func(character rune) rune {
+		if character == '\n' || unicode.IsPrint(character) {
+			return character
+		}
+		return -1
+	}, trimmed)
+}
+
+// feedbackLength is the shared length validator for the feedback and
+// context fields, wired up as an ArgValidator so it can be reused directly
+// by validateFeedbackText below and by the interactive prompts in
+// promptForFeedback.
+var feedbackLength = validators.Length(feedbackMinLen, feedbackMaxLen)
+
+// validateFeedbackText enforces feedbackLength on a required free-text
+// field after sanitizing it. field names the field in the error message
+// (eg. "feedback must be at least 10 characters").
+func validateFeedbackText(field, s string) error {
+	if err := feedbackLength(sanitizeText(s)); err != nil {
+		return fmt.Errorf("%s %w", field, err)
+	}
+
+	return nil
+}
+
+func validateFeedbackMessage(s string) error {
+	return validateFeedbackText("feedback", s)
+}
+
+func validateFeedbackContext(s string) error {
+	return validateFeedbackText("context", s)
+}
+
 type feedbackCmd struct {
 	cmd *cobra.Command
 
@@ -62,10 +106,41 @@ type feedbackCmd struct {
 	isInteractive bool
 }
 
-func newFeedbackCmd() *feedbackCmd {
-	fc := &feedbackCmd{}
+// feedbackRequiredField pairs a flag name with its current value so
+// presence can be checked uniformly, both when deciding whether to fall
+// back to interactive prompts and when validating flags supplied
+// non-interactively.
+type feedbackRequiredField struct {
+	flag  string
+	value string
+}
 
-	fc.cmd = &cobra.Command{
+func (feedback *feedbackCmd) requiredFields() []feedbackRequiredField {
+	return []feedbackRequiredField{
+		{"--sentiment", feedback.sentiment},
+		{"--message", feedback.message},
+		{"--context", feedback.context},
+		{"--actor", feedback.actor},
+	}
+}
+
+// missingRequiredFields returns the flag names of any required fields that
+// are still empty.
+func (feedback *feedbackCmd) missingRequiredFields() []string {
+	var missing []string
+	for _, field := range feedback.requiredFields() {
+		if field.value == "" {
+			missing = append(missing, field.flag)
+		}
+	}
+
+	return missing
+}
+
+func newFeedbackCmd() *feedbackCmd {
+	feedback := &feedbackCmd{}
+
+	feedback.cmd = &cobra.Command{
 		Use:   "feedback",
 		Args:  validators.NoArgs,
 		Short: "Share feedback on any part of Stripe",
@@ -73,121 +148,155 @@ func newFeedbackCmd() *feedbackCmd {
 
 This is not a support channel and Stripe cannot respond to feedback submitted here.
 For help with your account or integration, use https://support.stripe.com`,
-		RunE: fc.runFeedbackCmd,
+		RunE: feedback.runFeedbackCmd,
 	}
 
-	fc.cmd.Flags().StringVar(&fc.feature, "feature", "", fmt.Sprintf("Product area this feedback is about (%s)", strings.Join(feedbackFeatureAreas, ", ")))
-	fc.cmd.Flags().StringVar(&fc.sentiment, "sentiment", "", fmt.Sprintf("Sentiment of the feedback (%s)", strings.Join(feedbackSentiments, ", ")))
-	fc.cmd.Flags().StringVar(&fc.message, "message", "", "Your feedback message")
-	fc.cmd.Flags().StringVar(&fc.context, "context", "", "What were you trying to do?")
-	fc.cmd.Flags().StringVar(&fc.actor, "actor", "", "Who is submitting this feedback: human or agent")
-	fc.cmd.Flags().BoolVar(&fc.jsonOutput, "json", false, "Output the result as JSON")
+	feedback.cmd.Flags().StringVar(&feedback.feature, "feature", "", fmt.Sprintf("Product area this feedback is about (%s)", strings.Join(feedbackFeatureAreas, ", ")))
+	feedback.cmd.Flags().StringVar(&feedback.sentiment, "sentiment", "", fmt.Sprintf("Sentiment of the feedback (%s)", strings.Join(feedbackSentiments, ", ")))
+	feedback.cmd.Flags().StringVar(&feedback.message, "message", "", "Your feedback message")
+	feedback.cmd.Flags().StringVar(&feedback.context, "context", "", "What were you trying to do?")
+	feedback.cmd.Flags().StringVar(&feedback.actor, "actor", "", "Who is submitting this feedback: human or agent")
+	feedback.cmd.Flags().BoolVar(&feedback.jsonOutput, "json", false, "Output the result as JSON")
 
-	fc.cmd.Flags().StringVar(&fc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
-	fc.cmd.Flags().MarkHidden("api-base") // #nosec G104
+	feedback.cmd.Flags().StringVar(&feedback.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	feedback.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
-	return fc
+	return feedback
 }
 
-func (fc *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) error {
+func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) error {
 	apiKey, err := Config.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
 	}
 
-	fc.isInteractive = term.IsTerminal(int(os.Stdin.Fd()))
+	feedback.isInteractive = term.IsTerminal(int(os.Stdin.Fd()))
 
-	if fc.isInteractive && fc.sentiment == "" && fc.message == "" {
-		if err := fc.promptForFeedback(cmd); err != nil {
+	// Fall back to interactive prompts whenever any required field is
+	// still missing, not just when every field is — a user who supplied
+	// some flags from a terminal should be prompted for the rest rather
+	// than hit a hard validation error.
+	if feedback.isInteractive && len(feedback.missingRequiredFields()) > 0 {
+		if err := feedback.promptForFeedback(cmd); err != nil {
 			return err
 		}
 		// A human is physically present to answer the prompts, so we know
 		// who is submitting the feedback without having to ask.
-		fc.actor = "human"
+		feedback.actor = "human"
 	} else {
-		if err := fc.validateNonInteractive(); err != nil {
+		if err := feedback.validateNonInteractive(); err != nil {
 			return err
 		}
 	}
 
-	resp, err := fc.submitFeedback(cmd, apiKey)
+	resp, err := feedback.submitFeedback(cmd, apiKey)
 	if err != nil {
 		return err
 	}
 
-	fc.printResult(cmd, resp)
+	feedback.printResult(cmd, resp)
 
 	return nil
 }
 
-func (fc *feedbackCmd) validateNonInteractive() error {
-	var missing []string
-	if fc.sentiment == "" {
-		missing = append(missing, "--sentiment")
-	}
-	if fc.message == "" {
-		missing = append(missing, "--message")
-	}
-	if fc.actor == "" {
-		missing = append(missing, "--actor")
-	}
-	if len(missing) > 0 {
+func (feedback *feedbackCmd) validateNonInteractive() error {
+	if missing := feedback.missingRequiredFields(); len(missing) > 0 {
 		return fmt.Errorf("%s required when running non-interactively", strings.Join(missing, ", "))
 	}
 
+	if err := validateFeedbackMessage(feedback.message); err != nil {
+		return err
+	}
+	if err := validateFeedbackContext(feedback.context); err != nil {
+		return err
+	}
+	if err := validators.OneOf(feedbackSentiments...)(feedback.sentiment); err != nil {
+		return fmt.Errorf("--sentiment %w", err)
+	}
+	if err := validators.CallNonEmpty(validators.OneOf(feedbackFeatureAreas...), feedback.feature); err != nil {
+		return fmt.Errorf("--feature %w", err)
+	}
+
 	return nil
 }
 
-func (fc *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
+func (feedback *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
-	reader := bufio.NewReader(cmd.InOrStdin())
 
 	fmt.Fprintln(out, ansi.Color(out).Yellow("This is not a support channel. Stripe cannot respond to feedback submitted here."))
 	fmt.Fprintln(out, "For help with your account or integration, use: https://support.stripe.com")
 	fmt.Fprintln(out)
 
-	feature, err := promptLine(out, reader, fmt.Sprintf("What is this feedback about? [%s]", strings.Join(feedbackFeatureAreas, ", ")))
+	feature, err := selectFeedbackEnum("Which area is this about? (type to filter)", feedbackFeatureAreas)
 	if err != nil {
 		return err
 	}
-	fc.feature = feature
+	feedback.feature = feature
 
-	sentiment, err := promptLine(out, reader, fmt.Sprintf("Sentiment: [%s]", strings.Join(feedbackSentiments, ", ")))
+	sentiment, err := selectFeedbackEnum("How are you feeling about it?", feedbackSentiments)
 	if err != nil {
 		return err
 	}
-	fc.sentiment = sentiment
+	feedback.sentiment = sentiment
 
-	message, err := promptLine(out, reader, "Your feedback:")
+	message, err := textPrompt("What would you like to share?", validateFeedbackMessage)
 	if err != nil {
 		return err
 	}
-	fc.message = message
+	feedback.message = sanitizeText(message)
 
-	context, err := promptLine(out, reader, "What were you trying to do? (optional, press Enter to skip)")
+	context, err := textPrompt("What were you trying to do?", validateFeedbackContext)
 	if err != nil {
 		return err
 	}
-	fc.context = context
+	feedback.context = sanitizeText(context)
 
 	return nil
 }
 
-func promptLine(out io.Writer, reader *bufio.Reader, prompt string) (string, error) {
-	fmt.Fprintln(out, prompt)
-	fmt.Fprint(out, "> ")
+// selectFeedbackEnum prompts the user to choose one of options, supporting
+// arrow-key navigation and typeahead filtering (case-insensitive substring
+// match on the option text).
+func selectFeedbackEnum(label string, options []string) (string, error) {
+	prompt := promptui.Select{
+		Label: label,
+		Items: options,
+		Templates: &promptui.SelectTemplates{
+			Selected: ansi.Faint(fmt.Sprintf("✔ %s: {{ . | bold }} ", label)),
+		},
+		Searcher: func(input string, index int) bool {
+			return strings.Contains(strings.ToLower(options[index]), strings.ToLower(input))
+		},
+		StartInSearchMode: len(options) > 5,
+		Size:              7,
+	}
 
-	line, err := reader.ReadString('\n')
-	if err != nil && err != io.EOF {
+	_, result, err := prompt.Run()
+	if err != nil {
 		return "", err
 	}
-	fmt.Fprintln(out)
 
-	return strings.TrimSpace(line), nil
+	return result, nil
 }
 
-func (fc *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (*feedbackResponse, error) {
-	baseURL, err := url.Parse(fc.apiBaseURL)
+// textPrompt prompts the user for a single line of free text, re-prompting
+// until validator passes (or forever if validator is nil).
+func textPrompt(label string, validator promptui.ValidateFunc) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    label,
+		Validate: validator,
+	}
+
+	result, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
+
+func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (*feedbackResponse, error) {
+	baseURL, err := url.Parse(feedback.apiBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -197,18 +306,19 @@ func (fc *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (*feedb
 		APIKey:  apiKey,
 	}
 
-	form := url.Values{}
-	form.Set("sentiment", fc.sentiment)
-	form.Set("message", fc.message)
-	form.Set("channel", "cli")
-	form.Set("actor", fc.actor)
+	message := sanitizeText(feedback.message)
+	context := sanitizeText(feedback.context)
 
-	if fc.feature != "" {
-		form.Set("feature_area", fc.feature)
+	form := url.Values{}
+	form.Set("sentiment", feedback.sentiment)
+	form.Set("message", message)
+	form.Set("channel", "cli")
+	form.Set("actor", feedback.actor)
+
+	if feedback.feature != "" {
+		form.Set("feature_area", feedback.feature)
 	}
-	if fc.context != "" {
-		form.Set("context", fc.context)
-	}
+	form.Set("context", context)
 
 	// Explicitly supply metadata as form params; the server does not infer
 	// this information from headers.
@@ -256,8 +366,8 @@ func (fc *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (*feedb
 	return &result, nil
 }
 
-func (fc *feedbackCmd) printResult(cmd *cobra.Command, resp *feedbackResponse) {
-	if fc.jsonOutput {
+func (feedback *feedbackCmd) printResult(cmd *cobra.Command, resp *feedbackResponse) {
+	if feedback.jsonOutput {
 		out, err := json.Marshal(resp)
 		if err != nil {
 			fmt.Fprintln(cmd.ErrOrStderr(), err)
