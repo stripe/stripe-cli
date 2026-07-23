@@ -1,3 +1,12 @@
+//go:build data_analytics_canary
+
+// These data/analytics canary tests are gated behind the "data_analytics_canary"
+// build tag so they don't run as part of the normal push/PR/release canary suite
+// (canary-test.yml). They hit preview APIs and are intended to run only on a
+// schedule via .github/workflows/data-analytics-canary.yml, which builds with
+// -tags data_analytics_canary and alerts on failure instead of blocking merges
+// or releases.
+
 package canary
 
 import (
