@@ -151,8 +151,8 @@ For help with your account or integration, use https://support.stripe.com`,
 
 	feedback.cmd.Flags().StringVar(&feedback.feature, "feature", "", fmt.Sprintf("Product area this feedback is about (%s)", strings.Join(feedbackFeatureAreas, ", ")))
 	feedback.cmd.Flags().StringVar(&feedback.sentiment, "sentiment", "", fmt.Sprintf("Sentiment of the feedback (%s)", strings.Join(feedbackSentiments, ", ")))
-	feedback.cmd.Flags().StringVar(&feedback.message, "message", "", "Your feedback message")
-	feedback.cmd.Flags().StringVar(&feedback.context, "context", "", "What were you trying to do?")
+	feedback.cmd.Flags().StringVar(&feedback.message, "message", "", "Your feedback message (at least 10 characters)")
+	feedback.cmd.Flags().StringVar(&feedback.context, "context", "", "What were you trying to do? (at least 10 characters)")
 	feedback.cmd.Flags().StringVar(&feedback.actor, "actor", "", "Who is submitting this feedback: human or agent")
 	feedback.cmd.Flags().BoolVar(&feedback.jsonOutput, "json", false, "Output the result as JSON")
 
