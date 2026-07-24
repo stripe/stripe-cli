@@ -7,12 +7,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
 type Options struct {
 	ConfigFolder             func() string
 	SandboxClaimURL          func() string
 	AIAgentHelpAnnotationKey string
+	BlueprintRepository      coop.BlueprintRepository
 }
 
 const defaultAIAgentHelpAnnotationKey = "ai_agent_help"
@@ -50,7 +52,7 @@ The developer confirms each step before the agent moves on.`,
   3. stripe coop agent report-check --session=<id> --step=<n> --check="..." --passed — add verification
   4. stripe coop agent report-work --session=<id> --step=<n> --file=... --note="..." — report work complete
   All commands output JSON with a "next" field suggesting the next command.
-  Run "stripe coop recommend --query=..." to discover available blueprints.`,
+  Run "stripe coop recommend --all" to discover available blueprints.`,
 		},
 	}
 
@@ -79,6 +81,10 @@ func coopSandboxClaimURL() string {
 		return ""
 	}
 	return options.SandboxClaimURL()
+}
+
+func coopBlueprintRepository() coop.BlueprintRepository {
+	return options.BlueprintRepository
 }
 
 func mustMarkFlagRequired(cmd *cobra.Command, name string) {

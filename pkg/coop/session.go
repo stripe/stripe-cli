@@ -64,7 +64,7 @@ func (s *Session) StepReadyForReview(stepIndex int) bool {
 	}
 	hasReviewable := false
 	for _, n := range s.Steps[stepIndex].Nodes {
-		if n.AutoConfirm {
+		if n.IsInformationalNode {
 			continue
 		}
 		hasReviewable = true

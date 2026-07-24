@@ -2,6 +2,8 @@ package coopcmd
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -9,7 +11,110 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/coop"
 )
+
+type commandTestBlueprintRepository struct{}
+
+func (commandTestBlueprintRepository) List(context.Context) ([]coop.WorkbenchBlueprintSummary, error) {
+	return []coop.WorkbenchBlueprintSummary{
+		{
+			ID:               "blpt_one_time",
+			Key:              "one-time-payment",
+			BlueprintType:    "learning",
+			BlueprintVersion: 6,
+			TemplateVersion:  1,
+			Title:            coop.MessageDescriptor{DefaultMessage: "Accept a one-time payment"},
+			Description:      coop.MessageDescriptor{DefaultMessage: "Create and verify a one-time payment."},
+			StepRefs:         []coop.WorkbenchStepRef{{StepKey: "one-time-payment--setup", StepVersion: 2}},
+			Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
+		},
+		{ID: "blpt_flat_fee", Key: "flat-fee", BlueprintType: "learning"},
+		{ID: "blpt_flat_subscription", Key: "flat-subscription", BlueprintType: "learning"},
+		{
+			ID:               "blpt_testing",
+			Key:              "testing-only",
+			BlueprintType:    "testing",
+			BlueprintVersion: 1,
+			Title:            coop.MessageDescriptor{DefaultMessage: "Testing only"},
+		},
+	}, nil
+}
+
+func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*coop.WorkbenchBlueprint, error) {
+	if key != "one-time-payment" {
+		return nil, fmt.Errorf("blueprint %q not found", key)
+	}
+	return &coop.WorkbenchBlueprint{
+		WorkbenchBlueprintDefinition: coop.WorkbenchBlueprintDefinition{
+			WorkbenchBlueprintSummary: coop.WorkbenchBlueprintSummary{
+				ID:               "blpt_one_time",
+				Key:              key,
+				BlueprintType:    "learning",
+				BlueprintVersion: 6,
+				TemplateVersion:  1,
+				Title:            coop.MessageDescriptor{DefaultMessage: "Accept a one-time payment"},
+				Description:      coop.MessageDescriptor{DefaultMessage: "Create and verify a one-time payment."},
+				Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
+			},
+		},
+		Steps: []coop.WorkbenchStep{{
+			WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+				Key:             key + "--setup",
+				StepVersion:     2,
+				TemplateVersion: 1,
+				Title:           coop.MessageDescriptor{DefaultMessage: "Set up payment"},
+				Required:        true,
+			},
+			Nodes: []coop.WorkbenchBlueprintNode{{
+				NodeType:    coop.NodeAPIRequest,
+				Key:         "create-payment",
+				Title:       coop.MessageDescriptor{DefaultMessage: "Create payment"},
+				Description: coop.MessageDescriptor{DefaultMessage: "Create a PaymentIntent and save its identifier."},
+				APIRequestDetails: &coop.WorkbenchAPIRequestDetails{
+					Fixture: coop.WorkbenchRequestFixture{
+						Method: "POST",
+						Path:   "/v1/payment_intents",
+						Params: map[string]any{"amount": float64(2000), "currency": "usd"},
+					},
+				},
+			}},
+		}},
+	}, nil
+}
+
+func init() {
+	options.BlueprintRepository = commandTestBlueprintRepository{}
+}
+
+func commandTestBlueprint(t *testing.T) *coop.WorkbenchBlueprint {
+	t.Helper()
+	blueprint, err := (commandTestBlueprintRepository{}).Retrieve(t.Context(), "one-time-payment")
+	require.NoError(t, err)
+	return blueprint
+}
+
+func commandSessionNode(nodeType coop.NodeType, key, title string, state coop.NodeState) coop.SessionNode {
+	return coop.SessionNode{
+		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+			NodeType: nodeType,
+			Key:      key,
+			Title:    coop.MessageDescriptor{DefaultMessage: title},
+		},
+		State: state,
+	}
+}
+
+func commandSessionStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
+	return coop.SessionStep{
+		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+			Key:   key,
+			Title: coop.MessageDescriptor{DefaultMessage: title},
+		},
+		Nodes: nodes,
+	}
+}
 
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()

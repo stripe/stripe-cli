@@ -1,310 +1,497 @@
 package coop
 
 import (
-	"bytes"
-	"embed"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
+	"strconv"
 	"strings"
 	"time"
 )
 
-//go:embed blueprints/*.json
-var blueprintFS embed.FS
-
-const (
-	blueprintNodeCandidatePrefix = "${node"
-	blueprintNodeRefPrefix       = "${node."
-)
-
-// BlueprintStep is a step definition within a blueprint.
-type BlueprintStep struct {
-	StepDefinition
-	Description string             `json:"description,omitempty"`
-	Required    bool               `json:"required,omitempty"`
-	Settings    []BlueprintSetting `json:"settings,omitempty"`
-	Params      []BlueprintParam   `json:"params,omitempty"`
-	Nodes       []NodeDefinition   `json:"nodes"`
-}
-
-// Blueprint is the CLI-friendly representation of a Workbench Blueprint.
-type Blueprint struct {
-	ID          string             `json:"id"`
-	Title       string             `json:"title"`
-	Description string             `json:"description,omitempty"`
-	Type        string             `json:"type"`
-	Products    []string           `json:"products,omitempty"`
-	Settings    []BlueprintSetting `json:"settings"`
-	Params      []BlueprintParam   `json:"params,omitempty"`
-	Steps       []BlueprintStep    `json:"steps"`
-}
-
-// BlueprintSetting defines a configurable setting for a blueprint.
-type BlueprintSetting struct {
-	Key         string   `json:"key"`
-	Title       string   `json:"title"`
-	Description string   `json:"description,omitempty"`
-	Type        string   `json:"type"`
-	Default     string   `json:"default,omitempty"`
-	Options     []string `json:"options,omitempty"`
-}
-
-// BlueprintParam defines a variable value used while implementing a blueprint.
-type BlueprintParam struct {
-	Key         string   `json:"key"`
-	Title       string   `json:"title"`
-	Description string   `json:"description,omitempty"`
-	Type        string   `json:"type"`
-	Default     string   `json:"default,omitempty"`
-	Options     []string `json:"options,omitempty"`
-}
-
-// LoadBlueprint loads a blueprint by ID from the embedded filesystem.
-// If no exact match is found, it tries prefix matching (e.g. "one-time" -> "one-time-payment").
-func LoadBlueprint(id string) (*Blueprint, error) {
-	filename := fmt.Sprintf("blueprints/%s.json", id)
-	data, err := blueprintFS.ReadFile(filename)
+// LoadBlueprint retrieves a Workbench blueprint by its exact key.
+func LoadBlueprint(ctx context.Context, repository BlueprintRepository, key string) (*WorkbenchBlueprint, error) {
+	if repository == nil {
+		return nil, fmt.Errorf("loading blueprints: no blueprint repository configured")
+	}
+	blueprint, err := repository.Retrieve(ctx, key)
 	if err != nil {
-		// Try prefix match
-		match, matchErr := prefixMatchBlueprint(id)
-		if matchErr != nil {
-			return nil, matchErr
-		}
-		data, err = blueprintFS.ReadFile(fmt.Sprintf("blueprints/%s.json", match))
-		if err != nil {
-			return nil, fmt.Errorf("blueprint %q not found", id)
-		}
+		return nil, fmt.Errorf("retrieving blueprint %q: %w", key, err)
 	}
-
-	var bp Blueprint
-	if err := json.Unmarshal(data, &bp); err != nil {
-		return nil, fmt.Errorf("parsing blueprint %q: %w", id, err)
+	if blueprint == nil {
+		return nil, fmt.Errorf("retrieving blueprint %q: empty response", key)
 	}
-	if err := validateBlueprintReferences(&bp); err != nil {
-		return nil, fmt.Errorf("validating blueprint %q: %w", id, err)
-	}
-
-	return &bp, nil
+	return blueprint, nil
 }
 
-func validateBlueprintReferences(bp *Blueprint) error {
-	validRefs := map[string]bool{}
-	for _, step := range bp.Steps {
-		for _, node := range step.Nodes {
-			validRefs[step.Key+"."+node.Key] = true
-			for _, request := range node.TestRequests {
-				if request.Key != "" {
-					validRefs[step.Key+"."+node.Key+"."+request.Key] = true
-				}
+// resolveBlueprint applies the selected Workbench configuration to a detached
+// copy. The result retains the Workbench shape used by the session.
+func resolveBlueprint(source *WorkbenchBlueprint, selectedSettings, selectedParams map[string]string) (*WorkbenchBlueprint, map[string]string, map[string]string, error) {
+	if source == nil {
+		return nil, nil, nil, fmt.Errorf("cannot resolve a nil blueprint")
+	}
+	data, err := json.Marshal(source)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
+	}
+	var resolved WorkbenchBlueprint
+	if err := json.Unmarshal(data, &resolved); err != nil {
+		return nil, nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
+	}
+	resolved.raw = append(resolved.raw[:0], source.raw...)
+
+	settings := resolveBlueprintSettings(&resolved, selectedSettings)
+	params := resolveBlueprintParams(&resolved, selectedParams)
+	values := copyStringMap(settings)
+	for key, value := range params {
+		values[key] = value
+	}
+
+	steps := resolved.Steps[:0]
+	for stepIndex := range resolved.Steps {
+		step := &resolved.Steps[stepIndex]
+		included, err := evaluateInclusion(step.IsIncluded, values)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("resolving blueprint %q step %q inclusion: %w", source.Key, step.Key, err)
+		}
+		if !included {
+			continue
+		}
+
+		nodes := step.Nodes[:0]
+		for nodeIndex := range step.Nodes {
+			node := &step.Nodes[nodeIndex]
+			included, err := evaluateInclusion(node.IsIncluded, values)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("resolving blueprint %q node %q inclusion: %w", source.Key, node.Key, err)
+			}
+			if !included {
+				continue
+			}
+			if err := resolveNode(node, settings); err != nil {
+				return nil, nil, nil, fmt.Errorf("resolving blueprint %q node %q: %w", source.Key, node.Key, err)
+			}
+			nodes = append(nodes, *node)
+		}
+		step.Nodes = nodes
+		steps = append(steps, *step)
+	}
+	resolved.Steps = steps
+	return &resolved, settings, params, nil
+}
+
+func resolveNode(node *WorkbenchBlueprintNode, settings map[string]string) error {
+	switch node.NodeType {
+	case NodeAPIRequest:
+		if node.APIRequestDetails == nil {
+			return fmt.Errorf("apiRequest node is missing api_request_details")
+		}
+		resolveRequest(&node.APIRequestDetails.Fixture, settings)
+	case NodeAsyncHandler:
+		if node.AsyncHandlerDetails == nil {
+			return fmt.Errorf("asyncHandler node is missing async_handler_details")
+		}
+	case NodeTestHelper:
+		if node.TestHelperDetails == nil {
+			return fmt.Errorf("testHelper node is missing test_helper_details")
+		}
+		for index := range node.TestHelperDetails.Requests {
+			request := &node.TestHelperDetails.Requests[index]
+			resolveRequest(request, settings)
+			if request.Key == "" {
+				request.Key = strconv.Itoa(index)
 			}
 		}
+	case NodeUIComponent:
+		if node.UIComponentDetails == nil {
+			return fmt.Errorf("uiComponent node is missing ui_component_details")
+		}
+		resolveUIComponent(node.UIComponentDetails, settings)
+	default:
+		return fmt.Errorf("unsupported node type %q", node.NodeType)
 	}
+	return nil
+}
 
-	data, err := json.Marshal(bp)
-	if err != nil {
-		return err
+func resolveRequest(request *WorkbenchRequestFixture, settings map[string]string) {
+	if request.Params == nil {
+		request.Params = make(map[string]any)
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	for {
-		token, err := decoder.Token()
-		if err == io.EOF {
-			return nil
+	if request.HiddenParams == nil {
+		request.HiddenParams = make(map[string]any)
+	}
+	if request.Headers == nil {
+		request.Headers = make(map[string]string)
+	}
+	matches := matchingRequestDetails(request.ConfiguredDetails, settings)
+	for _, configured := range matches {
+		mergeMap(request.Params, configured.Params)
+		mergeMap(request.HiddenParams, configured.HiddenParams)
+		for key, value := range configured.Headers {
+			request.Headers[key] = value
 		}
-		if err != nil {
-			return err
+		if configured.ExpectedErrorType != "" {
+			request.ExpectedErrorType = configured.ExpectedErrorType
 		}
-		value, ok := token.(string)
-		if !ok {
-			continue
+	}
+	request.ConfiguredDetails = nil
+}
+
+func matchingRequestDetails(details []WorkbenchConfiguredDetails, settings map[string]string) []WorkbenchConfiguredDetails {
+	var matches []WorkbenchConfiguredDetails
+	for _, configured := range details {
+		if configurationMatches(configured.ConfigValue, settings) {
+			matches = append(matches, configured)
 		}
-		if err := validateBlueprintReferenceString(value, validRefs); err != nil {
-			return err
+	}
+	if len(matches) == 0 && len(details) == 1 && hasOnlyStaticSelectors(details[0].ConfigValue) {
+		return details
+	}
+	return matches
+}
+
+func resolveUIComponent(component *WorkbenchUIComponentDetails, settings map[string]string) {
+	if component.StripeElementRef == nil {
+		component.StripeElementRef = make(map[string]any)
+	}
+	matches := matchingUIComponentDetails(component.ConfiguredDetails, settings)
+	for _, configured := range matches {
+		if configured.Display != "" {
+			component.Display = configured.Display
+		}
+		if configured.DisplayComponentRef != nil {
+			component.DisplayComponentRef = configured.DisplayComponentRef
+		}
+		mergeMap(component.StripeElementRef, configured.StripeElementRef)
+		if configured.Options != nil {
+			component.Options = configured.Options
+		}
+	}
+	component.ConfiguredDetails = nil
+	for optionIndex := range component.Options {
+		for requestIndex := range component.Options[optionIndex].Requests {
+			resolveRequest(&component.Options[optionIndex].Requests[requestIndex], settings)
 		}
 	}
 }
 
-func validateBlueprintReferenceString(value string, validRefs map[string]bool) error {
-	for {
-		start := findBlueprintNodeCandidate(value)
-		if start == -1 {
-			return nil
+func matchingUIComponentDetails(details []WorkbenchUIConfiguredDetails, settings map[string]string) []WorkbenchUIConfiguredDetails {
+	var matches []WorkbenchUIConfiguredDetails
+	for _, configured := range details {
+		if configurationMatches(configured.ConfigValue, settings) {
+			matches = append(matches, configured)
 		}
-		value = value[start:]
-
-		end := strings.IndexByte(value, '}')
-		next := findBlueprintNodeCandidate(value[len(blueprintNodeCandidatePrefix):])
-		if next != -1 {
-			next += len(blueprintNodeCandidatePrefix)
-		}
-		if end == -1 || (next != -1 && next < end) {
-			candidate := value
-			if next != -1 {
-				candidate = value[:next]
-			}
-			return fmt.Errorf("malformed node reference %q: missing closing brace", candidate)
-		}
-
-		placeholder := value[:end+1]
-		if !strings.HasPrefix(placeholder, blueprintNodeRefPrefix) {
-			return fmt.Errorf("malformed node reference %q: expected ${node.<ref>:<field>}", placeholder)
-		}
-		body := placeholder[len(blueprintNodeRefPrefix) : len(placeholder)-1]
-		ref, field, ok := strings.Cut(body, ":")
-		if !ok || ref == "" || field == "" {
-			return fmt.Errorf("malformed node reference %q: expected ${node.<ref>:<field>}", placeholder)
-		}
-
-		if validRefs[ref] {
-			value = value[end+1:]
-			continue
-		}
-		parts := strings.Split(ref, ".")
-		if len(parts) == 3 && validRefs[parts[0]+"."+parts[1]] && isIntegerRefSegment(parts[2]) {
-			value = value[end+1:]
-			continue
-		}
-		return fmt.Errorf("unknown node reference %q", ref)
 	}
+	if len(matches) == 0 && len(details) == 1 && hasOnlyStaticSelectors(details[0].ConfigValue) {
+		return details
+	}
+	return matches
 }
 
-func findBlueprintNodeCandidate(value string) int {
-	offset := 0
-	for {
-		start := strings.Index(value[offset:], blueprintNodeCandidatePrefix)
-		if start == -1 {
-			return -1
+func hasOnlyStaticSelectors(selectors map[string]string) bool {
+	for selector := range selectors {
+		if strings.HasPrefix(selector, "${settings:") {
+			return false
 		}
-		start += offset
-		after := start + len(blueprintNodeCandidatePrefix)
-		if after == len(value) || value[after] == '.' || value[after] == ':' || value[after] == '}' {
-			return start
-		}
-		offset = after
 	}
+	return len(selectors) > 0
 }
 
-func isIntegerRefSegment(value string) bool {
-	if value == "" {
-		return false
-	}
-	for _, r := range value {
-		if r < '0' || r > '9' {
+func configurationMatches(selectors map[string]string, settings map[string]string) bool {
+	for selector, expected := range selectors {
+		name := selector
+		if strings.HasPrefix(selector, "${settings:") && strings.HasSuffix(selector, "}") {
+			name = strings.TrimSuffix(strings.TrimPrefix(selector, "${settings:"), "}")
+		}
+		if settings[name] != expected {
 			return false
 		}
 	}
 	return true
 }
 
-func prefixMatchBlueprint(prefix string) (string, error) {
-	ids, err := ListBlueprints()
-	if err != nil {
-		return "", fmt.Errorf("loading blueprints: %w", err)
-	}
-
-	var matches []string
-	for _, id := range ids {
-		if strings.HasPrefix(id, prefix) {
-			matches = append(matches, id)
+func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
+	defaults, resolved := settingDefaults(source.BlueprintSettings)
+	for _, step := range source.Steps {
+		for _, group := range step.SettingsSchema {
+			addFieldDefaults(resolved, group.Settings)
+		}
+		for target, sourceRef := range step.Settings {
+			if value, exists := resolveMappedValue(target, sourceRef, "blueprint_settings.", selected, defaults, resolved); exists {
+				resolved[target] = value
+			}
 		}
 	}
-
-	switch len(matches) {
-	case 0:
-		return "", fmt.Errorf("blueprint %q not found", prefix)
-	case 1:
-		return matches[0], nil
-	default:
-		return "", fmt.Errorf("ambiguous blueprint prefix %q matches: %s", prefix, strings.Join(matches, ", "))
+	for key, value := range selected {
+		resolved[key] = value
 	}
+	return resolved
 }
 
-// ListBlueprints returns all available blueprint IDs.
-func ListBlueprints() ([]string, error) {
-	entries, err := blueprintFS.ReadDir("blueprints")
-	if err != nil {
-		return nil, err
+func resolveBlueprintParams(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
+	defaults, resolved := paramDefaults(source.BlueprintParams)
+	for _, step := range source.Steps {
+		for _, group := range step.ParamsSchema {
+			addFieldDefaults(resolved, group.Params)
+		}
+		for target, sourceRef := range step.Params {
+			if sourceRef == "${env:livemode}" {
+				resolved[target] = "false"
+				continue
+			}
+			if value, exists := resolveMappedValue(target, sourceRef, "blueprint_params.", selected, defaults, resolved); exists {
+				resolved[target] = value
+			}
+		}
 	}
+	for key, value := range selected {
+		resolved[key] = value
+	}
+	return resolved
+}
 
-	var ids []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+func settingDefaults(groups []WorkbenchSettingGroup) (map[string]string, map[string]string) {
+	defaults := make(map[string]string)
+	resolved := make(map[string]string)
+	for _, group := range groups {
+		for _, field := range group.Settings {
+			if field.Schema.DefaultValue == nil {
+				continue
+			}
+			value := stringifyDefault(field.Schema.DefaultValue)
+			defaults[group.Key+":"+field.Name] = value
+			if _, exists := resolved[field.Name]; !exists {
+				resolved[field.Name] = value
+			}
+		}
+	}
+	return defaults, resolved
+}
+
+func paramDefaults(groups []WorkbenchParamGroup) (map[string]string, map[string]string) {
+	defaults := make(map[string]string)
+	resolved := make(map[string]string)
+	for _, group := range groups {
+		for _, field := range group.Params {
+			if field.Schema.DefaultValue == nil {
+				continue
+			}
+			value := stringifyDefault(field.Schema.DefaultValue)
+			defaults[group.Key+":"+field.Name] = value
+			if _, exists := resolved[field.Name]; !exists {
+				resolved[field.Name] = value
+			}
+		}
+	}
+	return defaults, resolved
+}
+
+func addFieldDefaults(resolved map[string]string, fields []WorkbenchField) {
+	for _, field := range fields {
+		if field.Schema.DefaultValue == nil {
 			continue
 		}
-		ids = append(ids, strings.TrimSuffix(e.Name(), ".json"))
+		if _, exists := resolved[field.Name]; !exists {
+			resolved[field.Name] = stringifyDefault(field.Schema.DefaultValue)
+		}
 	}
-	return ids, nil
 }
 
-// ListBlueprintsWithMetadata returns all blueprints with their metadata.
-func ListBlueprintsWithMetadata() ([]Blueprint, error) {
-	ids, err := ListBlueprints()
+func resolveMappedValue(target, sourceRef, prefix string, selected, defaults, resolved map[string]string) (string, bool) {
+	if value, exists := selected[target]; exists {
+		return value, true
+	}
+	group, name, ok := parseGroupedReference(sourceRef, prefix)
+	if !ok {
+		return "", false
+	}
+	if value, exists := selected[name]; exists {
+		return value, true
+	}
+	if value, exists := defaults[group+":"+name]; exists {
+		return value, true
+	}
+	value, exists := resolved[name]
+	return value, exists
+}
+
+func parseGroupedReference(value, referenceType string) (string, string, bool) {
+	prefix := "${" + referenceType
+	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, "}") {
+		return "", "", false
+	}
+	group, name, ok := strings.Cut(strings.TrimSuffix(strings.TrimPrefix(value, prefix), "}"), ":")
+	return group, name, ok && group != "" && name != ""
+}
+
+// evaluateInclusion handles the equality expression currently returned by
+// Workbench. Unknown shapes fail instead of silently changing the workflow.
+func evaluateInclusion(condition any, values map[string]string) (bool, error) {
+	switch condition := condition.(type) {
+	case nil:
+		return true, nil
+	case bool:
+		return condition, nil
+	case map[string]any:
+		if len(condition) != 1 {
+			return false, fmt.Errorf("expected one inclusion operator, got %d", len(condition))
+		}
+		rawOperands, ok := condition["=="]
+		if !ok {
+			for operator := range condition {
+				return false, fmt.Errorf("unsupported inclusion operator %q", operator)
+			}
+		}
+		operands, ok := rawOperands.([]any)
+		if !ok || len(operands) != 2 {
+			return false, fmt.Errorf("== requires two operands")
+		}
+		left, err := resolveInclusionOperand(operands[0], values)
+		if err != nil {
+			return false, err
+		}
+		right, err := resolveInclusionOperand(operands[1], values)
+		if err != nil {
+			return false, err
+		}
+		return stringifyDefault(left) == stringifyDefault(right), nil
+	default:
+		return false, fmt.Errorf("unsupported inclusion value %T", condition)
+	}
+}
+
+func resolveInclusionOperand(value any, values map[string]string) (any, error) {
+	text, ok := value.(string)
+	if !ok {
+		return value, nil
+	}
+	for _, prefix := range []string{"${params:", "${settings:"} {
+		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, "}") {
+			key := strings.TrimSuffix(strings.TrimPrefix(text, prefix), "}")
+			resolved, exists := values[key]
+			if !exists {
+				return nil, fmt.Errorf("inclusion references unknown value %q", key)
+			}
+			return resolved, nil
+		}
+	}
+	return text, nil
+}
+
+func stringifyDefault(value any) string {
+	switch value := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return value
+	case bool:
+		return strconv.FormatBool(value)
+	case float64:
+		return strconv.FormatFloat(value, 'f', -1, 64)
+	default:
+		encoded, _ := json.Marshal(value)
+		return string(encoded)
+	}
+}
+
+func mergeMap(destination, source map[string]any) {
+	for key, value := range source {
+		sourceMap, sourceIsMap := value.(map[string]any)
+		destinationMap, destinationIsMap := destination[key].(map[string]any)
+		if sourceIsMap && destinationIsMap {
+			mergeMap(destinationMap, sourceMap)
+			continue
+		}
+		destination[key] = value
+	}
+}
+
+func blueprintDigest(source *WorkbenchBlueprint) string {
+	raw := source.raw
+	if len(raw) == 0 {
+		raw, _ = json.Marshal(source)
+	}
+	sum := sha256.Sum256(raw)
+	return "sha256:" + hex.EncodeToString(sum[:])
+}
+
+func blueprintPin(source *WorkbenchBlueprint) BlueprintPin {
+	pin := BlueprintPin{
+		ID:               source.ID,
+		Key:              source.Key,
+		Title:            source.Title.DefaultMessage,
+		BlueprintVersion: source.BlueprintVersion,
+		TemplateVersion:  source.TemplateVersion,
+		Digest:           blueprintDigest(source),
+	}
+	for _, step := range source.Steps {
+		pin.Steps = append(pin.Steps, BlueprintStepPin{
+			Key:             step.Key,
+			StepVersion:     step.StepVersion,
+			TemplateVersion: step.TemplateVersion,
+		})
+	}
+	return pin
+}
+
+// NewSessionFromBlueprint pins an effective Workbench definition with co-op progress.
+func NewSessionFromBlueprint(source *WorkbenchBlueprint, sessionID string, settings, params map[string]string) (*Session, error) {
+	blueprint, resolvedSettings, resolvedParams, err := resolveBlueprint(source, settings, params)
 	if err != nil {
 		return nil, err
 	}
-
-	var blueprints []Blueprint
-	for _, id := range ids {
-		bp, err := LoadBlueprint(id)
-		if err != nil {
-			return nil, fmt.Errorf("loading blueprint metadata for %q: %w", id, err)
-		}
-		blueprints = append(blueprints, *bp)
-	}
-	return blueprints, nil
-}
-
-// NewSessionFromBlueprint creates a new Session from a Blueprint definition.
-// A context-gathering step is prepended so the agent scans the project first.
-func NewSessionFromBlueprint(bp *Blueprint, sessionID string, settings, params map[string]string) *Session {
 	now := time.Now().UTC()
-
-	// Prepend a context-gathering step (auto-confirmed, no human sign-off needed)
 	contextStep := SessionStep{
-		StepDefinition: StepDefinition{
+		WorkbenchStepDefinition: WorkbenchStepDefinition{
 			Key:   "context-step",
-			Title: "Project context",
+			Title: MessageDescriptor{DefaultMessage: "Project context"},
 		},
-		Nodes: []SessionNode{
-			{
-				NodeDefinition: NodeDefinition{
-					Key:         "scan-project",
-					Type:        NodeTestHelper,
-					Title:       "Understand the project",
-					Description: "Scan the codebase to identify language, framework, dependencies, and existing Stripe code. Report what you find.",
-					AutoConfirm: true,
-				},
-				State: NodePending,
+		Nodes: []SessionNode{{
+			WorkbenchBlueprintNode: WorkbenchBlueprintNode{
+				NodeType:            NodeTestHelper,
+				Key:                 "scan-project",
+				Title:               MessageDescriptor{DefaultMessage: "Understand the project"},
+				Description:         MessageDescriptor{DefaultMessage: "Scan the codebase to identify language, framework, dependencies, and existing Stripe code. Report what you find."},
+				IsInformationalNode: true,
+				TestHelperDetails:   &WorkbenchTestHelperDetails{},
 			},
-		},
+			State: NodePending,
+		}},
 	}
 
-	steps := make([]SessionStep, 0, len(bp.Steps)+1)
+	steps := make([]SessionStep, 0, len(blueprint.Steps)+1)
 	steps = append(steps, contextStep)
-
-	for _, ch := range bp.Steps {
-		nodes := make([]SessionNode, len(ch.Nodes))
-		for j, n := range ch.Nodes {
-			nodes[j] = SessionNode{
-				NodeDefinition: n,
-				State:          NodePending,
+	for _, step := range blueprint.Steps {
+		nodes := make([]SessionNode, len(step.Nodes))
+		for index, node := range step.Nodes {
+			nodes[index] = SessionNode{
+				WorkbenchBlueprintNode: node,
+				ReviewPrompt:           deriveReviewPrompt(node),
+				ReviewCommand:          deriveReviewCommand(node),
+				State:                  NodePending,
 			}
 		}
 		steps = append(steps, SessionStep{
-			StepDefinition: ch.StepDefinition,
-			Nodes:          nodes,
+			WorkbenchStepDefinition: step.WorkbenchStepDefinition,
+			Nodes:                   nodes,
 		})
 	}
 
+	definition := blueprint.WorkbenchBlueprintDefinition
+	pin := blueprintPin(source)
 	return &Session{
-		SchemaVersion: CurrentSessionSchemaVersion,
-		ID:            sessionID,
-		Blueprint:     bp.ID,
-		Status:        SessionActive,
-		Settings:      settings,
-		Params:        params,
-		Steps:         steps,
-		CreatedAt:     now,
-		UpdatedAt:     now,
-	}
+		SchemaVersion:       CurrentSessionSchemaVersion,
+		ID:                  sessionID,
+		Blueprint:           blueprint.Key,
+		BlueprintDefinition: &definition,
+		BlueprintPin:        &pin,
+		Status:              SessionActive,
+		Settings:            resolvedSettings,
+		Params:              resolvedParams,
+		Steps:               steps,
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}, nil
 }

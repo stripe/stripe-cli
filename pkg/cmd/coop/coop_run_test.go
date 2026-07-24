@@ -16,7 +16,7 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 	t.Cleanup(func() { options = previousOptions })
 
 	session, err := newCoopSession(
-		&coop.Blueprint{ID: "one-time-payment"},
+		commandTestBlueprint(t),
 		"coop_123",
 		"go",
 		[]string{"framework=gin", "framework=chi"},
@@ -37,7 +37,7 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 }
 
 func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
-	bp := &coop.Blueprint{ID: "one-time-payment"}
+	bp := commandTestBlueprint(t)
 
 	tests := []struct {
 		name     string
@@ -114,25 +114,6 @@ func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	assert.Empty(t, ids)
 }
 
-func TestCoopRunPreservesBlueprintLoadError(t *testing.T) {
-	cmd := newCoopAgentRunCmd().cmd
-	cmd.SilenceErrors = true
-	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"flat"})
-
-	stderr := captureStderr(t, func() {
-		err := cmd.Execute()
-		require.Error(t, err)
-	})
-
-	var resp coop.CommandResponse
-	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
-	assert.False(t, resp.OK)
-	assert.Contains(t, resp.Error, "ambiguous blueprint prefix")
-	assert.NotContains(t, resp.Error, "not found")
-	assert.Equal(t, "stripe coop recommend", resp.Hint)
-}
-
 func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	cmd := newCoopAgentRunCmd().cmd
 	cmd.SilenceErrors = true
@@ -147,16 +128,7 @@ func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	var resp coop.CommandResponse
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.Contains(t, resp.Error, "not found")
-	assert.Equal(t, "stripe coop recommend", resp.Hint)
-}
-
-func TestCoopStartPreservesBlueprintLoadError(t *testing.T) {
-	err := newCoopRunCmd().runCmd(nil, []string{"flat"})
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ambiguous blueprint prefix")
-	assert.NotContains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend")
+	assert.Equal(t, "stripe coop recommend --all", resp.Hint)
 }
 
 func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
@@ -164,5 +136,5 @@ func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend")
+	assert.Contains(t, err.Error(), "stripe coop recommend --all")
 }

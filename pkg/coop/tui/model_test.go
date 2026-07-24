@@ -582,15 +582,7 @@ func TestUpdateSessionUpdated(t *testing.T) {
 		Version: 2,
 		Status:  coop.SessionActive,
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{Key: "ch1", Title: "Ch"},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "n1", Title: "Step"},
-						State:          coop.NodeActive,
-					},
-				},
-			},
+			tuiStep("ch1", "Ch", tuiNode("", "n1", "Step", coop.NodeActive)),
 		},
 	}
 
@@ -968,6 +960,7 @@ func TestHandleKeyOpenBrowser(t *testing.T) {
 func TestHandleKeyCopyReviewCommand(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.session.Steps[1].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 2
 
 	result, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
@@ -1009,23 +1002,13 @@ func TestCompletionTransitionResetsCursor(t *testing.T) {
 		Version: 5,
 		Status:  coop.SessionActive,
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{Key: "ch1", Title: "Ch"},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "n1", Title: "Step 1"},
-						State:          coop.NodeDone,
-					},
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "n2", Title: "Step 2"},
-						State:          coop.NodeDone,
-					},
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "n3", Title: "Step 3"},
-						State:          coop.NodeDone,
-					},
-				},
-			},
+			tuiStep(
+				"ch1",
+				"Ch",
+				tuiNode("", "n1", "Step 1", coop.NodeDone),
+				tuiNode("", "n2", "Step 2", coop.NodeDone),
+				tuiNode("", "n3", "Step 3", coop.NodeDone),
+			),
 		},
 	}
 

@@ -1,7 +1,10 @@
 package coop
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -9,522 +12,284 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoadBlueprint(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
-	require.NoError(t, err)
-	assert.Equal(t, "one-time-payment", bp.ID)
-	assert.Equal(t, "Accept a one-time payment with Checkout", bp.Title)
-	assert.Contains(t, bp.Products, "Payments")
-	assert.Len(t, bp.Steps, 3)
-	assert.Equal(t, "setup-chapter", bp.Steps[0].Key)
-	assert.Equal(t, NodeAPIRequest, bp.Steps[0].Nodes[0].Type)
+type memoryBlueprintRepository struct {
+	blueprints   map[string]*WorkbenchBlueprint
+	retrieveErr  error
+	retrievedKey string
 }
 
-func TestAllEmbeddedBlueprintsHaveQualityMetadata(t *testing.T) {
-	ids, err := ListBlueprints()
-	require.NoError(t, err)
-	require.NotEmpty(t, ids)
-
-	weakPhrases := []string{
-		"do the thing",
-		"verify it works",
-		"todo",
-		"tbd",
-		"placeholder",
-		"lorem ipsum",
-	}
-
-	for _, id := range ids {
-		t.Run(id, func(t *testing.T) {
-			bp, err := LoadBlueprint(id)
-			require.NoError(t, err)
-
-			assertQualityText(t, "blueprint title", bp.Title, 4, weakPhrases)
-			if bp.Description != "" {
-				assertQualityText(t, "blueprint description", bp.Description, 20, weakPhrases)
-			}
-			assert.True(t, bp.Description != "" || len(bp.Products) > 0, "blueprint should include description or product metadata")
-
-			for _, ch := range bp.Steps {
-				assertQualityText(t, "step title "+ch.Key, ch.Title, 4, weakPhrases)
-				for _, n := range ch.Nodes {
-					assertQualityText(t, "node title "+n.Key, n.Title, 4, weakPhrases)
-					assert.NotEqual(t, "api request", strings.ToLower(strings.TrimSpace(n.Title)), "node %q should have a product-specific title", n.Key)
-					if n.Description != "" {
-						assertQualityText(t, "node description "+n.Key, n.Description, 20, weakPhrases)
-					}
-					if !n.AutoConfirm {
-						assertQualityText(t, "node review prompt "+n.Key, n.ReviewPrompt, 20, weakPhrases)
-						assertObservableGuidance(t, n.Key, n.ReviewPrompt)
-					}
-
-					switch n.Type {
-					case NodeAPIRequest:
-						require.NotNil(t, n.Request, "apiRequest node %q should have request metadata", n.Key)
-					case NodeAsyncHandler:
-						assert.NotEmpty(t, n.Events, "asyncHandler node %q should name webhook events to verify", n.Key)
-					case NodeCLICommand, NodeTestHelper, NodeSetUpWebhooks:
-						if n.Description != "" {
-							assertObservableGuidance(t, n.Key, n.Description)
-						}
-					}
-				}
-			}
-		})
-	}
+func (r *memoryBlueprintRepository) List(context.Context) ([]WorkbenchBlueprintSummary, error) {
+	return nil, nil
 }
 
-func assertQualityText(t *testing.T, label, value string, minLen int, weakPhrases []string) {
+func (r *memoryBlueprintRepository) Retrieve(_ context.Context, key string) (*WorkbenchBlueprint, error) {
+	r.retrievedKey = key
+	if r.retrieveErr != nil {
+		return nil, r.retrieveErr
+	}
+	blueprint, ok := r.blueprints[key]
+	if !ok {
+		return nil, errors.New("missing fixture")
+	}
+	return blueprint, nil
+}
+
+func loadTestBlueprint(t *testing.T) *WorkbenchBlueprint {
 	t.Helper()
-	trimmed := strings.TrimSpace(value)
-	require.NotEmpty(t, trimmed, "%s should not be empty", label)
-	assert.GreaterOrEqual(t, len(trimmed), minLen, "%s should be specific enough", label)
-
-	lower := strings.ToLower(trimmed)
-	for _, phrase := range weakPhrases {
-		assert.NotContains(t, lower, phrase, "%s contains weak placeholder text", label)
-	}
-}
-
-func assertObservableGuidance(t *testing.T, key, description string) {
-	t.Helper()
-	lower := strings.ToLower(description)
-	observableTerms := []string{"verify", "confirm", "report", "check", "run", "summarize", "ask", "open"}
-	for _, term := range observableTerms {
-		if strings.Contains(lower, term) {
-			return
-		}
-	}
-	assert.Failf(t, "weak verification guidance", "node %q should name an observable check or reported outcome", key)
-}
-
-func TestLoadBlueprintNotFound(t *testing.T) {
-	_, err := LoadBlueprint("nonexistent-blueprint")
-	assert.Error(t, err)
-}
-
-func TestValidateBlueprintReferences(t *testing.T) {
-	newBlueprint := func(reference string) *Blueprint {
-		return &Blueprint{
-			ID: "test",
-			Steps: []BlueprintStep{{
-				StepDefinition: StepDefinition{Key: "setup", Title: "Setup"},
-				Nodes: []NodeDefinition{
-					{Key: "create-product", Request: &APIRequest{Path: "/v1/products", Method: "post"}},
-					{Key: "create-clock", TestRequests: []TestHelperRequest{{
-						Key: "create-clock-request",
-						APIRequest: APIRequest{
-							Path:   "/v1/test_helpers/test_clocks",
-							Method: "post",
-						},
-					}}},
-					{Key: "wait-for-invoice"},
-					{Key: "use-reference", Request: &APIRequest{Path: reference, Method: "get"}},
-				},
-			}},
-		}
-	}
-
-	tests := []struct {
-		name      string
-		reference string
-		wantError string
-	}{
-		{name: "direct node", reference: "${node.setup.create-product:default_price}"},
-		{name: "named request", reference: "${node.setup.create-clock.create-clock-request:id}"},
-		{name: "numeric result", reference: "${node.setup.wait-for-invoice.0:id}"},
-		{name: "nested field path", reference: "${node.setup.create-product:data[0].price.id}"},
-		{name: "non-node interpolation", reference: "${env:randomName}"},
-		{name: "different placeholder with node prefix", reference: "${nodeVersion}"},
-		{name: "missing field delimiter", reference: "${node.setup.create-product}", wantError: "malformed node reference"},
-		{name: "missing closing brace", reference: "${node.setup.create-product:id", wantError: "malformed node reference"},
-		{name: "missing namespace dot", reference: "${node:setup.create-product:id}", wantError: "malformed node reference"},
-		{name: "empty reference", reference: "${node.:id}", wantError: "malformed node reference"},
-		{name: "empty field", reference: "${node.setup.create-product:}", wantError: "malformed node reference"},
-		{name: "unclosed reference before another", reference: "${node.setup.create-product:id/${node.setup.create-product:id}", wantError: "malformed node reference"},
-		{name: "unknown node", reference: "${node.old.create-product:id}", wantError: "unknown node reference"},
-		{name: "unknown named request", reference: "${node.setup.create-clock.old-request:id}", wantError: "unknown node reference"},
-		{name: "unknown second reference", reference: "${node.setup.create-product:id}/${node.old.create-product:id}", wantError: "unknown node reference"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateBlueprintReferences(newBlueprint(tt.reference))
-			if tt.wantError == "" {
-				require.NoError(t, err)
-				return
-			}
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantError)
-		})
-	}
-}
-
-func TestLoadBlueprintPrefixMatch(t *testing.T) {
-	bp, err := LoadBlueprint("setup-future")
+	raw, err := os.ReadFile("testdata/blueprint-retrieve.json")
 	require.NoError(t, err)
-	assert.Equal(t, "setup-future-payments", bp.ID)
+	var blueprint WorkbenchBlueprint
+	require.NoError(t, json.Unmarshal(raw, &blueprint))
+	blueprint.raw = raw
+	return &blueprint
 }
 
-func TestLoadBlueprintPrefixMatchUnique(t *testing.T) {
-	bp, err := LoadBlueprint("one-time")
-	require.NoError(t, err)
-	assert.Equal(t, "one-time-payment", bp.ID)
-}
-
-func TestLoadBlueprintPrefixMatchAmbiguous(t *testing.T) {
-	// "flat" matches both "flat-fee-and-overages" and "flat-subscription-with-entitlements"
-	_, err := LoadBlueprint("flat")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ambiguous")
-}
-
-func TestListBlueprints(t *testing.T) {
-	ids, err := ListBlueprints()
-	require.NoError(t, err)
-	assert.Contains(t, ids, "one-time-payment")
-	assert.Contains(t, ids, "setup-future-payments")
-}
-
-func TestNewSessionFromBlueprint(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
+func TestResolveBlueprintKeepsWorkbenchShape(t *testing.T) {
+	blueprint, settings, params, err := resolveBlueprint(loadTestBlueprint(t), map[string]string{"country": "GB"}, nil)
 	require.NoError(t, err)
 
-	session := NewSessionFromBlueprint(
-		bp,
-		"coop_test123",
-		map[string]string{"language": "node"},
-		map[string]string{"account_name": "Jenny Rosen"},
-	)
+	assert.Equal(t, "sample-payment", blueprint.Key)
+	assert.Equal(t, "Sample payment", blueprint.Title.DefaultMessage)
+	assert.Equal(t, "Build and verify a representative payment flow.", blueprint.Description.DefaultMessage)
+	assert.Equal(t, []string{"Payments"}, blueprint.Metadata.Products)
+	assert.Equal(t, "GB", settings["country"])
+	assert.Equal(t, "2000", params["amount"])
+	require.Len(t, blueprint.Steps, 1)
+	assert.Equal(t, "sample-payment--setup", blueprint.Steps[0].Key)
+	assert.Equal(t, "${blueprint_settings.payment:simulation}", blueprint.Steps[0].Settings["simulation"])
+	assert.Equal(t, "${blueprint_params.payment:amount}", blueprint.Steps[0].Params["amount"])
+	require.Len(t, blueprint.Steps[0].SettingsSchema, 1)
+	require.Len(t, blueprint.Steps[0].ParamsSchema, 1)
+	require.Len(t, blueprint.Steps[0].Outputs, 1)
+	assert.Equal(t, "${node.create-payment:id}", blueprint.Steps[0].Outputs[0].Source)
+	require.Len(t, blueprint.Steps[0].Nodes, 4)
 
-	assert.Equal(t, "coop_test123", session.ID)
-	assert.Equal(t, "one-time-payment", session.Blueprint)
-	assert.Equal(t, SessionActive, session.Status)
-	assert.Equal(t, "node", session.Settings["language"])
-	assert.Equal(t, "Jenny Rosen", session.Params["account_name"])
-	// 3 blueprint steps + 1 prepended context step
-	assert.Len(t, session.Steps, 4)
+	apiNode := blueprint.Steps[0].Nodes[0]
+	require.NotNil(t, apiNode.APIRequestDetails)
+	request := apiNode.APIRequestDetails.Fixture
+	assert.Equal(t, "POST", request.Method)
+	assert.Equal(t, "ctx_test", request.Headers["Stripe-Context"])
+	assert.Empty(t, request.ConfiguredDetails)
+	assert.Equal(t, "client_secret", request.ProcessingDetails.OutputField)
+	assert.Equal(t, map[string]any{
+		"amount":         float64(2000),
+		"currency":       "usd",
+		"payment_method": "pm_card_visa",
+		"account":        map[string]any{"country": "GB", "controller": "application"},
+		"metadata":       map[string]any{"source": "base", "baseline": "yes"},
+	}, request.Params)
 
-	// First step is always the context-gathering step
-	assert.Equal(t, "context-step", session.Steps[0].Key)
-	assert.Equal(t, "Understand the project", session.Steps[0].Nodes[0].Title)
+	asyncNode := blueprint.Steps[0].Nodes[1]
+	require.NotNil(t, asyncNode.AsyncHandlerDetails)
+	require.Len(t, asyncNode.AsyncHandlerDetails.Events, 1)
+	assert.Equal(t, "payment_intent.succeeded", asyncNode.AsyncHandlerDetails.Events[0].EventType)
+	assert.Equal(t, "${node.create-payment:id}", asyncNode.AsyncHandlerDetails.Events[0].ObjectID)
 
-	// All nodes should be pending
-	for _, ch := range session.Steps {
-		for _, n := range ch.Nodes {
-			assert.Equal(t, NodePending, n.State)
-		}
-	}
+	testNode := blueprint.Steps[0].Nodes[2]
+	require.NotNil(t, testNode.TestHelperDetails)
+	require.Len(t, testNode.TestHelperDetails.Requests, 1)
+	assert.Equal(t, "0", testNode.TestHelperDetails.Requests[0].Key)
+	assert.Equal(t, "acct_test", testNode.TestHelperDetails.Requests[0].Headers["Stripe-Account"])
+	assert.Equal(t, "GB", testNode.TestHelperDetails.Requests[0].Params["expected_country"])
 
-	// Total nodes = blueprint nodes (4) + context node (1)
-	assert.Equal(t, 5, session.TotalNodes())
-
-	assert.NotEmpty(t, session.Steps[1].Nodes[0].ReviewPrompt)
-	assert.Equal(t, "stripe trigger checkout.session.completed", session.Steps[3].Nodes[0].ReviewCommand)
+	uiNode := blueprint.Steps[0].Nodes[3]
+	require.NotNil(t, uiNode.UIComponentDetails)
+	assert.Equal(t, "inline", uiNode.UIComponentDetails.Display)
+	assert.Equal(t, "ui_component.payment", uiNode.UIComponentDetails.DisplayComponentRef.ID)
+	require.Len(t, uiNode.UIComponentDetails.Options, 2)
+	assert.Equal(t, "Open the hosted payment", uiNode.UIComponentDetails.Options[0].Title.DefaultMessage)
+	assert.Contains(t, uiNode.UIComponentDetails.Options[0].Link, "${node.create-payment:id}")
+	require.Len(t, uiNode.UIComponentDetails.Options[1].Requests, 2)
 }
 
-func TestListBlueprintsWithMetadata(t *testing.T) {
-	bps, err := ListBlueprintsWithMetadata()
+func TestResolveBlueprintMergesEveryMatchingVariantWithoutMutatingSource(t *testing.T) {
+	source := loadTestBlueprint(t)
+	defaults, _, _, err := resolveBlueprint(source, nil, nil)
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, len(bps), 2)
+	defaultRequest := defaults.Steps[0].Nodes[0].APIRequestDetails.Fixture
+	assert.Equal(t, "pm_card_visa", defaultRequest.Params["payment_method"])
+	assert.Equal(t, map[string]any{"country": "US", "controller": "application"}, defaultRequest.Params["account"])
+	assert.Empty(t, defaultRequest.ExpectedErrorType)
 
-	found := false
-	for _, bp := range bps {
-		if bp.ID == "setup-future-payments" {
-			found = true
-			assert.Equal(t, "Set up future payments", bp.Title)
-		}
-	}
-	assert.True(t, found, "expected to find setup-future-payments")
-}
-
-func TestLoadBlueprintStepStructure(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
+	selected, _, _, err := resolveBlueprint(source, map[string]string{
+		"simulation": "declined",
+		"country":    "GB",
+	}, nil)
 	require.NoError(t, err)
+	selectedRequest := selected.Steps[0].Nodes[0].APIRequestDetails.Fixture
+	assert.Equal(t, "pm_card_chargeDeclined", selectedRequest.Params["payment_method"])
+	assert.Equal(t, map[string]any{"country": "GB", "controller": "application"}, selectedRequest.Params["account"])
+	assert.Equal(t, "card_error", selectedRequest.ExpectedErrorType)
+	selectedUI := selected.Steps[0].Nodes[3].UIComponentDetails
+	assert.Equal(t, "modal", selectedUI.Display)
+	require.Len(t, selectedUI.Options, 1)
+	assert.Equal(t, "Review the declined payment", selectedUI.Options[0].Title.DefaultMessage)
 
-	// Verify step keys are unique
-	keys := make(map[string]bool)
-	for _, ch := range bp.Steps {
-		assert.False(t, keys[ch.Key], "duplicate step key: %s", ch.Key)
-		keys[ch.Key] = true
-		assert.NotEmpty(t, ch.Title)
-		assert.NotEmpty(t, ch.Nodes)
-
-		// Verify node keys are unique within step
-		nodeKeys := make(map[string]bool)
-		for _, n := range ch.Nodes {
-			assert.False(t, nodeKeys[n.Key], "duplicate node key: %s", n.Key)
-			nodeKeys[n.Key] = true
-			assert.NotEmpty(t, n.Title)
-			assert.NotEmpty(t, n.Type)
-		}
-	}
+	assert.NotEmpty(t, source.Steps[0].Nodes[0].APIRequestDetails.Fixture.ConfiguredDetails)
+	assert.NotContains(t, source.Steps[0].Nodes[0].APIRequestDetails.Fixture.Params, "payment_method")
 }
 
-func TestLoadBlueprintNodeTypes(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
+func TestResolveBlueprintAppliesSingleStaticConfiguredDetail(t *testing.T) {
+	source := loadTestBlueprint(t)
+	request := &source.Steps[0].Nodes[0].APIRequestDetails.Fixture
+	request.ConfiguredDetails = []WorkbenchConfiguredDetails{{
+		ConfigValue: map[string]string{"us": "US"},
+		Params:      map[string]any{"country": "US"},
+	}}
+
+	resolved, _, _, err := resolveBlueprint(source, nil, nil)
 	require.NoError(t, err)
-
-	typesSeen := make(map[NodeType]bool)
-	for _, ch := range bp.Steps {
-		for _, n := range ch.Nodes {
-			typesSeen[n.Type] = true
-		}
-	}
-
-	assert.True(t, typesSeen[NodeAPIRequest], "expected apiRequest nodes")
-	assert.True(t, typesSeen[NodeUIComponent], "expected uiComponent nodes")
-	assert.True(t, typesSeen[NodeAsyncHandler], "expected asyncHandler nodes")
+	assert.Equal(t, "US", resolved.Steps[0].Nodes[0].APIRequestDetails.Fixture.Params["country"])
 }
 
-func TestLoadBlueprintAPIRequestHasRequest(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
+func TestResolveBlueprintSettingsUsesExplicitStepMappingAndTestMode(t *testing.T) {
+	source := loadTestBlueprint(t)
+	source.Steps[0].Settings = map[string]string{
+		"merchant_country": "${blueprint_settings.payment:country}",
+	}
+
+	defaults := resolveBlueprintSettings(source, nil)
+	assert.Equal(t, "US", defaults["merchant_country"])
+
+	selected := resolveBlueprintSettings(source, map[string]string{"country": "GB"})
+	assert.Equal(t, "GB", selected["merchant_country"])
+
+	selected = resolveBlueprintSettings(source, map[string]string{"merchant_country": "CA"})
+	assert.Equal(t, "CA", selected["merchant_country"])
+}
+
+func TestResolveBlueprintParamsUsesDefaultsSelectionsAndTestMode(t *testing.T) {
+	source := loadTestBlueprint(t)
+	source.Steps[0].Params["env_livemode"] = "${env:livemode}"
+
+	defaults := resolveBlueprintParams(source, nil)
+	assert.Equal(t, "2000", defaults["amount"])
+	assert.Equal(t, "false", defaults["env_livemode"])
+
+	selected := resolveBlueprintParams(source, map[string]string{"amount": "3500"})
+	assert.Equal(t, "3500", selected["amount"])
+}
+
+func TestResolveBlueprintAppliesKnownInclusionConditions(t *testing.T) {
+	source := loadTestBlueprint(t)
+	source.Steps[0].Params["env_livemode"] = "${env:livemode}"
+	source.Steps[0].Nodes[0].IsIncluded = map[string]any{
+		"==": []any{"${params:env_livemode}", "false"},
+	}
+	source.Steps[0].Nodes[1].IsIncluded = map[string]any{
+		"==": []any{"${params:env_livemode}", "true"},
+	}
+
+	resolved, _, _, err := resolveBlueprint(source, nil, nil)
 	require.NoError(t, err)
-
-	for _, ch := range bp.Steps {
-		for _, n := range ch.Nodes {
-			if n.Type == NodeAPIRequest {
-				assert.NotNil(t, n.Request, "apiRequest node %q should have request field", n.Key)
-				assert.NotEmpty(t, n.Request.Path)
-				assert.NotEmpty(t, n.Request.Method)
-			}
-		}
-	}
+	require.Len(t, resolved.Steps, 1)
+	require.Len(t, resolved.Steps[0].Nodes, 3)
+	assert.Equal(t, "create-payment", resolved.Steps[0].Nodes[0].Key)
+	assert.NotContains(t, []string{
+		resolved.Steps[0].Nodes[0].Key,
+		resolved.Steps[0].Nodes[1].Key,
+		resolved.Steps[0].Nodes[2].Key,
+	}, "handle-payment")
 }
 
-func TestLoadBlueprintAsyncHandlerHasEvents(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
-	require.NoError(t, err)
-
-	for _, ch := range bp.Steps {
-		for _, n := range ch.Nodes {
-			if n.Type == NodeAsyncHandler {
-				assert.NotEmpty(t, n.Events, "asyncHandler node %q should have events", n.Key)
-			}
-		}
-	}
-}
-
-func TestNewSessionFromBlueprintPreservesRequest(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
-	require.NoError(t, err)
-
-	session := NewSessionFromBlueprint(bp, "test_123", nil, nil)
-
-	// First blueprint node (after context step) is apiRequest — should preserve the request
-	firstBlueprintNode := session.Steps[1].Nodes[0]
-	assert.Equal(t, NodeAPIRequest, firstBlueprintNode.Type)
-	assert.NotNil(t, firstBlueprintNode.Request)
-	assert.Equal(t, "/v1/products", firstBlueprintNode.Request.Path)
-	assert.Equal(t, "post", firstBlueprintNode.Request.Method)
-}
-
-func TestNewSessionFromBlueprintPreservesEvents(t *testing.T) {
-	bp, err := LoadBlueprint("one-time-payment")
-	require.NoError(t, err)
-
-	session := NewSessionFromBlueprint(bp, "test_123", nil, nil)
-
-	// Find the asyncHandler node
-	for _, ch := range session.Steps {
-		for _, n := range ch.Nodes {
-			if n.Type == NodeAsyncHandler {
-				assert.Contains(t, n.Events, "checkout.session.completed")
-				return
-			}
-		}
-	}
-	t.Fatal("expected to find asyncHandler node")
-}
-
-func TestEmbeddedBlueprintsUseCanonicalJSON(t *testing.T) {
-	ids, err := ListBlueprints()
-	require.NoError(t, err)
-	require.NotEmpty(t, ids)
-
-	for _, id := range ids {
-		t.Run(id, func(t *testing.T) {
-			raw, err := blueprintFS.ReadFile("blueprints/" + id + ".json")
-			require.NoError(t, err)
-
-			var bp Blueprint
-			require.NoError(t, json.Unmarshal(raw, &bp))
-
-			normalized, err := json.MarshalIndent(bp, "", "  ")
-			require.NoError(t, err)
-			normalized = append(normalized, '\n')
-
-			assert.Equal(t, string(normalized), string(raw), "blueprint JSON should be normalized through the Blueprint schema")
-		})
-	}
-}
-
-func TestEmbeddedBlueprintsDoNotCarryAPIRequestKeys(t *testing.T) {
-	ids, err := ListBlueprints()
-	require.NoError(t, err)
-	require.NotEmpty(t, ids)
-
-	for _, id := range ids {
-		t.Run(id, func(t *testing.T) {
-			raw, err := blueprintFS.ReadFile("blueprints/" + id + ".json")
-			require.NoError(t, err)
-
-			var document any
-			require.NoError(t, json.Unmarshal(raw, &document))
-			assertNoRequestKey(t, document)
-
-			bp, err := LoadBlueprint(id)
-			require.NoError(t, err)
-			assertNoAPIRequestNodeKeyInterpolation(t, bp, string(raw))
-		})
-	}
-}
-
-func assertNoRequestKey(t *testing.T, value any) {
-	t.Helper()
-
-	switch v := value.(type) {
-	case map[string]any:
-		if request, ok := v["request"].(map[string]any); ok {
-			assert.NotContains(t, request, "key", "apiRequest nodes only carry one request, so request.key is redundant")
-		}
-		for _, child := range v {
-			assertNoRequestKey(t, child)
-		}
-	case []any:
-		for _, child := range v {
-			assertNoRequestKey(t, child)
-		}
-	}
-}
-
-func assertNoAPIRequestNodeKeyInterpolation(t *testing.T, bp *Blueprint, raw string) {
-	t.Helper()
-
-	for _, step := range bp.Steps {
-		for _, node := range step.Nodes {
-			if node.Type != NodeAPIRequest {
-				continue
-			}
-			assert.NotContains(
-				t,
-				raw,
-				"${node."+step.Key+"."+node.Key+".",
-				"apiRequest node interpolation should not include request keys",
-			)
-		}
-	}
-}
-
-func TestEmbeddedBlueprintTopologyMatchesSourceDefinitions(t *testing.T) {
-	// These topologies are copied from pay-server Workbench blueprint definitions.
-	// Do not add CLI-only steps or nodes here; update the source blueprint and then
-	// refresh this subset from pay-server.
-	expected := map[string][][]string{
-		"flat-fee-and-overages": {
-			{"create-customer-chapter", "createCustomer"},
-			{"create-pricing-plan-chapter", "createEmptyPricingPlan", "createMeter"},
-			{"create-rate-card-chapter", "createRateCard", "createMeteredItem", "addGraduatedRateToRateCard", "attachRateCardToPricingPlan"},
-			{"create-licensed-fee-chapter", "createLicensedItem", "createLicenseFee", "attachLicenseFeeToPricingPlan"},
-			{"subscribe-customer-chapter", "setLiveVersion", "createCheckoutSession", "completeCheckout", "waitForServicingActivated"},
-		},
-		"flat-subscription-with-entitlements": {
-			{"create-products-chapter", "create-basic-product", "create-basic-feature", "attach-feature-to-product"},
-			{"setup-chapter", "create-test-clock", "create-customer"},
-			{"subscribe-chapter", "create-checkout-session", "complete-checkout", "track-subscription-creation", "check-entitlements"},
-			{"next-billing-cycle-chapter", "advance-time", "wait-for-invoice-created", "view-invoice"},
-			{"cleanup-chapter", "test-clock-advanced", "delete-test-clock"},
-		},
-		"one-time-payment": {
-			{"setup-chapter", "create-product"},
-			{"checkout-chapter", "create-checkout-session", "complete-checkout"},
-			{"webhook-chapter", "handle-checkout-completed"},
-		},
-		"setup-future-payments": {
-			{"create-new-customer-chapter", "create-new-customer"},
-			{"create-checkout-session-chapter", "create-checkout-session", "complete-checkout", "wait-for-checkout-completed"},
-			{"charge-payment-method-later-chapter", "retrieve-setup-intent", "charge-payment-method-later", "wait-for-payment-intent-succeeded"},
+func TestDeriveReviewMetadataUsesSingleEventType(t *testing.T) {
+	node := WorkbenchBlueprintNode{
+		NodeType: NodeAsyncHandler,
+		AsyncHandlerDetails: &WorkbenchAsyncHandlerDetails{
+			Events: []AsyncEvent{{EventType: "checkout.session.completed"}},
 		},
 	}
+	assert.Equal(t, "stripe trigger checkout.session.completed", deriveReviewCommand(node))
+	assert.Contains(t, deriveReviewPrompt(node), "stripe trigger checkout.session.completed")
 
-	for id, expectedSteps := range expected {
-		t.Run(id, func(t *testing.T) {
-			bp, err := LoadBlueprint(id)
-			require.NoError(t, err)
-			require.Len(t, bp.Steps, len(expectedSteps))
-
-			for i, expectedStep := range expectedSteps {
-				require.NotEmpty(t, expectedStep)
-				assert.Equal(t, expectedStep[0], bp.Steps[i].Key)
-				require.Len(t, bp.Steps[i].Nodes, len(expectedStep)-1)
-				for j, expectedNode := range expectedStep[1:] {
-					assert.Equal(t, expectedNode, bp.Steps[i].Nodes[j].Key)
-				}
-			}
-		})
-	}
+	node.AsyncHandlerDetails.Events = append(node.AsyncHandlerDetails.Events, AsyncEvent{EventType: "second.event"})
+	assert.Empty(t, deriveReviewCommand(node))
+	node.AsyncHandlerDetails.Events = []AsyncEvent{{EventType: "event; echo unsafe"}}
+	assert.Empty(t, deriveReviewCommand(node))
+	assert.Empty(t, deriveReviewCommand(WorkbenchBlueprintNode{NodeType: NodeAPIRequest}))
 }
 
-func TestAllEmbeddedBlueprintsAreStructurallyValid(t *testing.T) {
-	ids, err := ListBlueprints()
+func TestBlueprintDigestPinsRetrievedSnapshot(t *testing.T) {
+	source := loadTestBlueprint(t)
+	first := blueprintDigest(source)
+	second := loadTestBlueprint(t)
+
+	assert.Equal(t, first, blueprintDigest(second))
+	second.raw = append(second.raw, '\n')
+	assert.NotEqual(t, first, blueprintDigest(second))
+}
+
+func TestLoadBlueprintRetrievesExactKey(t *testing.T) {
+	source := loadTestBlueprint(t)
+	repository := &memoryBlueprintRepository{
+		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": source},
+	}
+
+	loaded, err := LoadBlueprint(context.Background(), repository, "sample-payment")
 	require.NoError(t, err)
-	require.NotEmpty(t, ids)
+	assert.Same(t, source, loaded)
+	assert.Equal(t, "sample-payment", repository.retrievedKey)
+}
 
-	allowedTypes := map[NodeType]bool{
-		NodeAPIRequest:    true,
-		NodeAsyncHandler:  true,
-		NodeUIComponent:   true,
-		NodeTestHelper:    true,
-		NodeCLICommand:    true,
-		NodeDashboard:     true,
-		NodeSetUpWebhooks: true,
+func TestLoadBlueprintDoesNotResolvePrefixes(t *testing.T) {
+	repository := &memoryBlueprintRepository{
+		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": loadTestBlueprint(t)},
 	}
 
-	for _, id := range ids {
-		t.Run(id, func(t *testing.T) {
-			bp, err := LoadBlueprint(id)
-			require.NoError(t, err)
-			assert.Equal(t, id, bp.ID)
-			assert.NotEmpty(t, bp.Title)
-			require.NotEmpty(t, bp.Steps)
+	_, err := LoadBlueprint(context.Background(), repository, "sample-pay")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `retrieving blueprint "sample-pay"`)
+	assert.Equal(t, "sample-pay", repository.retrievedKey)
+}
 
-			stepKeys := make(map[string]bool)
-			for _, ch := range bp.Steps {
-				assert.NotEmpty(t, ch.Key)
-				assert.False(t, stepKeys[ch.Key], "duplicate step key: %s", ch.Key)
-				stepKeys[ch.Key] = true
-				assert.NotEmpty(t, ch.Title)
-				require.NotEmpty(t, ch.Nodes)
+func TestLoadBlueprintWrapsRepositoryErrors(t *testing.T) {
+	repository := &memoryBlueprintRepository{retrieveErr: errors.New("permission denied")}
+	_, err := LoadBlueprint(context.Background(), repository, "sample-payment")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "retrieving blueprint")
+}
 
-				nodeKeys := make(map[string]bool)
-				for _, n := range ch.Nodes {
-					assert.NotEmpty(t, n.Key)
-					assert.False(t, nodeKeys[n.Key], "duplicate node key: %s", n.Key)
-					nodeKeys[n.Key] = true
-					assert.NotEmpty(t, n.Title)
-					assert.True(t, allowedTypes[n.Type], "unsupported node type: %s", n.Type)
-
-					if n.Type == NodeAPIRequest {
-						require.NotNil(t, n.Request, "apiRequest node %q should have request field", n.Key)
-						assert.NotEmpty(t, n.Request.Path)
-						assert.NotEmpty(t, n.Request.Method)
-					}
-					if n.Type == NodeTestHelper && len(n.TestRequests) > 0 {
-						for _, req := range n.TestRequests {
-							assert.NotEmpty(t, req.Key, "testHelper node %q request should have key", n.Key)
-							assert.NotEmpty(t, req.Path, "testHelper node %q request %q should have path", n.Key, req.Key)
-							assert.NotEmpty(t, req.Method, "testHelper node %q request %q should have method", n.Key, req.Key)
-						}
-					}
-				}
-			}
-
-			session := NewSessionFromBlueprint(bp, "test_"+id, map[string]string{"language": "node"}, nil)
-			assert.Equal(t, id, session.Blueprint)
-			require.NotEmpty(t, session.Steps)
-			require.NotEmpty(t, session.Steps[0].Nodes)
-			assert.Equal(t, "Understand the project", session.Steps[0].Nodes[0].Title)
-			assert.Equal(t, len(bp.Steps)+1, len(session.Steps))
-		})
+func TestLoadBlueprintRejectsEmptyResponse(t *testing.T) {
+	repository := &memoryBlueprintRepository{
+		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": nil},
 	}
+	_, err := LoadBlueprint(context.Background(), repository, "sample-payment")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty response")
+}
+
+func TestNewSessionPinsEffectiveWorkbenchDefinition(t *testing.T) {
+	source := loadTestBlueprint(t)
+	session, err := NewSessionFromBlueprint(source, "coop_pin", map[string]string{"language": "go"}, nil)
+	require.NoError(t, err)
+
+	source.BlueprintVersion = 99
+	source.TemplateVersion = 88
+	source.Steps[0].StepVersion = 77
+	source.Steps[0].Nodes[0].APIRequestDetails.Fixture.Path = "/v1/changed_upstream"
+	source.raw = nil
+	changed, err := NewSessionFromBlueprint(source, "coop_changed", nil, nil)
+	require.NoError(t, err)
+
+	require.NotNil(t, session.BlueprintDefinition)
+	assert.Equal(t, "Sample payment", session.BlueprintDefinition.Title.DefaultMessage)
+	require.NotNil(t, session.BlueprintPin)
+	assert.Equal(t, 7, session.BlueprintPin.BlueprintVersion)
+	assert.Equal(t, 4, session.BlueprintPin.TemplateVersion)
+	assert.Equal(t, 3, session.BlueprintPin.Steps[0].StepVersion)
+	assert.NotEqual(t, changed.BlueprintPin.Digest, session.BlueprintPin.Digest)
+	assert.Equal(t, "/v1/payment_intents", session.Steps[1].Nodes[0].Request().Path)
+	assert.Equal(t, "${node.create-payment:id}", session.Steps[1].Outputs[0].Source)
+	assert.Equal(t, "success", session.Settings["simulation"])
+	assert.Equal(t, "US", session.Settings["country"])
+	assert.Equal(t, "go", session.Settings["language"])
+	assert.Equal(t, "2000", session.Params["amount"])
+
+	encoded, err := json.Marshal(session)
+	require.NoError(t, err)
+	assert.Contains(t, string(encoded), `"blueprint_definition"`)
+	assert.Contains(t, string(encoded), `"api_request_details"`)
+	assert.NotContains(t, string(encoded), `"configured_details"`)
+	assert.Contains(t, string(encoded), `"blueprint_version":7`)
+	assert.True(t, strings.Contains(string(encoded), `"digest":"sha256:`))
 }

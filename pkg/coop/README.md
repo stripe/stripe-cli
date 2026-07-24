@@ -60,7 +60,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop join [session-id]` | Open the TUI for an existing session |
 | `stripe coop status` | Show session summary |
 | `stripe coop stop` | End the session |
-| `stripe coop recommend` | List available blueprints |
+| `stripe coop recommend --all` | List available blueprint summaries for agent selection |
 
 ### Agent-facing (AI agent runs these)
 | Command | Purpose |
@@ -137,7 +137,7 @@ Discovery mode is different:
 $ stripe coop start
 
 # The agent explores the codebase, asks what the developer wants to build,
-# runs `stripe coop recommend`, and only then runs:
+# runs `stripe coop recommend --all`, picks the best summary, and only then runs:
 #   stripe coop run <blueprint-id> --language=<lang>
 ```
 
@@ -145,11 +145,11 @@ Post-completion choices are written into the session file for the agent. Deploy 
 
 ## Auto-Confirm
 
-Nodes with `"auto_confirm": true` skip human review:
+Workbench nodes with `"is_informational_node": true` skip human review:
 - `agent report-work` transitions directly to `done` (not `review`)
 - `agent await-review` returns immediately if the node is auto-confirmed
 - The prepended "Project context" step contains an auto-confirmed "Understand the project" node
-- Blueprint nodes can set `"auto_confirm": true` for mechanical steps
+- Informational blueprint nodes are auto-confirmed after the agent reports work
 
 ## Heartbeat
 
@@ -172,38 +172,22 @@ Use `stripe coop join --resume` to pick from recent sessions.
 | Agent appears idle | Rejoin the session; the TUI shows heartbeat/idle state |
 | Need a specific older session | Run `stripe coop join --resume` |
 
-## Blueprint Format
+## Blueprint loading
 
-Blueprints are embedded JSON in `pkg/coop/blueprints/`. Each has:
-- `id` — unique identifier (also the filename without .json)
-- `title`, `description` — human-readable
-- `steps` — ordered groups of nodes
+Workbench blueprint definitions are loaded at runtime from the unstable
+Workbench list and retrieve API endpoints using the configured test-mode key and
+preview API version. `coop recommend --all` lists learning blueprints by default.
+`coop run` and `coop start` retrieve the selected definition and apply its
+selected/default configuration.
+Recommend results report `step_count`; the former `node_count` field remains as
+`null` for migration compatibility because the list endpoint does not expose
+node definitions.
 
-Each node has:
-- `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `dashboard`, `setUpWebhooks`, `testHelper`
-- `auto_confirm` — skip human review for this node
-- `description` — what the agent should do (source of truth)
-- `review_prompt` — what the human should check before confirming
-- `review_command` — optional command the TUI can show/copy for developer verification
-- `request` — API request details (for `apiRequest` nodes with SDK snippet support)
-- `request.hidden_params` — request fields that should not be shown directly in the TUI
-- `requests` — API-backed test helper requests for `testHelper` nodes
-- `events` — webhook events (for `asyncHandler` nodes)
-
-`testHelper` request metadata tells the agent which Stripe-backed test helpers can advance test state. Agents should use those helpers while verifying work, but should not encode helper-only request parameters into the user's application.
-
-### Syncing Blueprints
-
-Workbench blueprint definitions are the source of truth. Do not supplement or modify `pkg/coop/blueprints/` by hand to add CLI-only product work. Update the upstream blueprint source, then sync the CLI-friendly JSON:
-
-```bash
-BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/src/blueprintDefinitions make sync-blueprints
-```
-
-If pay-server has already exported `dist/blueprints/*.json`, `BLUEPRINT_SOURCE`
-can point at that directory instead.
-
-After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix matching works: short prefixes resolve to full IDs if unambiguous.
+The effective Workbench definition is stored directly in the session alongside
+co-op progress. The session also pins blueprint, step, and template versions
+plus the retrieved source digest, so an active session is unaffected by later
+upstream changes. Representative API responses used by tests live in
+`pkg/coop/testdata/`; they are not a runtime catalog.
 
 ## Troubleshooting
 
@@ -217,7 +201,7 @@ After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix m
 | Steps not updating in TUI | Agent created a duplicate session | Check `stripe coop status` for the correct session ID |
 | Agent ignores "next" hint | LLM didn't follow instructions | Copy the `next` value and run it manually, or restart |
 | Double footer / layout broken | Terminal resize not detected | Resize the terminal window (triggers recalculation) |
-| "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend` to see available IDs |
+| "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend --all` to see available IDs |
 
 ## Locking
 
@@ -230,10 +214,11 @@ pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
   store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
-  blueprint.go      — Blueprint type, embed loader, prefix matching
+  blueprint.go      — Workbench configuration resolution and session creation
+  blueprint_api.go  — Authenticated Workbench blueprint client
   guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)
-  blueprints/       — Embedded JSON blueprints
+  testdata/         — Representative API responses for tests only
   colors/           — Sail Design System palette helpers
   followups/        — Built-in guided follow-up definitions
 
