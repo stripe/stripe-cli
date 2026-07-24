@@ -415,6 +415,49 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 
+// Blueprint prompts are shared across every node of a type and say what to
+// confirm, not where. The card derives the venue from the node type instead.
+func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		typ   coop.NodeType
+		venue string
+	}{
+		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Where: the changed files below"},
+		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Where: the changed files below"},
+		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Where: your running app"},
+		{name: "dashboard", typ: coop.NodeDashboard, venue: "Where: the Stripe Dashboard"},
+		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Where: your terminal"},
+		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Where: your webhook handler, after triggering the event"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.session.Steps[0].Nodes[0].State = coop.NodeReview
+			m.session.Steps[0].Nodes[1].State = coop.NodeDone
+			m.session.Steps[0].Nodes[0].Type = tc.typ
+			m.selectionCursor = 0
+
+			assertContainsPlain(t, m.renderReviewCard(), tc.venue)
+		})
+	}
+}
+
+// A review command already says where to go, so it replaces the venue line
+// rather than stacking with it.
+func TestRenderReviewCardPrefersReviewCommandOverVenue(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.session.Steps[0].Nodes[0].Type = coop.NodeAsyncHandler
+	m.session.Steps[0].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
+	m.selectionCursor = 0
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Run: stripe trigger checkout.session.completed")
+	assertNotContainsPlain(t, card, "Where:")
+}
+
 func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview

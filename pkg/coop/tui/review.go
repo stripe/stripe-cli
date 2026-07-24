@@ -101,9 +101,16 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 			lines = append(lines, cardLine{text: prompt})
 		}
 	}
+	// Say where to go. A review command already answers that, so only fall back
+	// to the node type when there isn't one.
 	if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
 		lines = append(lines, cardLine{
 			text:   m.theme.MutedStyle.Render("Run: ") + command,
+			indent: "  ",
+		})
+	} else if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
+		lines = append(lines, cardLine{
+			text:   m.theme.MutedStyle.Render("Where: ") + venue,
 			indent: "  ",
 		})
 	}
@@ -375,6 +382,47 @@ func pluralChecks(n int) string {
 		return "1 check"
 	}
 	return fmt.Sprintf("%d checks", n)
+}
+
+// reviewVenueLabel says where the reviewer goes to check the work. Node type is
+// the reliable signal: blueprint review prompts are shared across every node of
+// a given type and mostly describe what to confirm, not where to confirm it.
+func (m Model) reviewVenueLabel(nodeNumbers []int) string {
+	var venues []string
+	seen := map[string]bool{}
+	for _, nodeNumber := range nodeNumbers {
+		node, err := m.session.NodeByNumber(nodeNumber)
+		if err != nil {
+			continue
+		}
+		venue := reviewVenueForNode(node)
+		if venue == "" || seen[venue] {
+			continue
+		}
+		seen[venue] = true
+		venues = append(venues, venue)
+	}
+	const limit = 2
+	if len(venues) > limit {
+		venues = venues[:limit]
+	}
+	return strings.Join(venues, "; ")
+}
+
+func reviewVenueForNode(node *coop.SessionNode) string {
+	switch node.Type {
+	case coop.NodeAPIRequest, coop.NodeTestHelper:
+		return "the changed files below"
+	case coop.NodeUIComponent:
+		return "your running app"
+	case coop.NodeDashboard:
+		return "the Stripe Dashboard"
+	case coop.NodeCLICommand:
+		return "your terminal"
+	case coop.NodeAsyncHandler, coop.NodeSetUpWebhooks:
+		return "your webhook handler, after triggering the event"
+	}
+	return ""
 }
 
 func (m Model) reviewBlueprintConfirmationPrompts(nodeNumbers []int) []string {
