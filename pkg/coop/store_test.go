@@ -124,6 +124,106 @@ func TestStoreDefaultsSchemaOnReadWriteAndUpdate(t *testing.T) {
 	assert.Equal(t, CurrentSessionSchemaVersion, written.SchemaVersion)
 }
 
+func TestStoreReadsAndRewritesLegacySessionNodes(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	rawPath := filepath.Join(dir, "legacy.json")
+	require.NoError(t, os.WriteFile(rawPath, []byte(`{
+		"schema_version": 3,
+		"id": "legacy",
+		"blueprint": "one-time-payment",
+		"status": "active",
+		"version": 7,
+		"steps": [{
+			"key": "setup",
+			"title": "Set up",
+			"outputs": [{"name":"payment","source":"${node.create.output}","schema":{"type":"object"}}],
+			"nodes": [
+				{
+					"type": "apiRequest",
+					"key": "create",
+					"title": "Create payment",
+					"description": "Create it",
+					"auto_confirm": true,
+					"request": {
+						"method": "POST",
+						"path": "/v1/payment_intents",
+						"headers": {"Idempotency-Key": "fixed"},
+						"params": {"amount": 2000}
+					},
+					"state": "active"
+				},
+				{
+					"type": "testHelper",
+					"key": "advance",
+					"title": "Advance test",
+					"requests": [{"key":"confirm","method":"POST","path":"/v1/test_helpers/payment_intents/pi_123/confirm"}],
+					"state": "pending"
+				},
+				{
+					"type": "uiComponent",
+					"key": "checkout",
+					"title": "Add Checkout",
+					"ui_component": {
+						"display": "hosted",
+						"options": [{
+							"type": "link",
+							"title": "Open Checkout",
+							"link": "https://example.test/checkout",
+							"requests": [{"method":"POST","path":"/v1/checkout/sessions"}]
+						}]
+					},
+					"state": "pending"
+				},
+				{
+					"type": "asyncHandler",
+					"key": "webhook",
+					"title": "Handle webhook",
+					"events": [{
+						"event_type": "payment_intent.succeeded",
+						"on_node_complete": {"step_key":"setup","node_key":"create"}
+					}],
+					"state": "pending"
+				}
+			]
+		}]
+	}`), 0600))
+
+	session, err := store.Read("legacy")
+	require.NoError(t, err)
+	assert.Equal(t, CurrentSessionSchemaVersion, session.SchemaVersion)
+	require.Len(t, session.Steps, 1)
+	assert.Equal(t, "Set up", session.Steps[0].TitleText())
+	require.Len(t, session.Steps[0].Outputs, 1)
+
+	apiNode := session.Steps[0].Nodes[0]
+	assert.Equal(t, NodeAPIRequest, apiNode.NodeType)
+	assert.Equal(t, "Create payment", apiNode.TitleText())
+	assert.Equal(t, "Create it", apiNode.DescriptionText())
+	assert.True(t, apiNode.IsInformationalNode)
+	require.NotNil(t, apiNode.Request())
+	assert.Equal(t, "fixed", apiNode.Request().Headers["Idempotency-Key"])
+	assert.Equal(t, float64(2000), apiNode.Request().Params["amount"])
+
+	require.NotNil(t, session.Steps[0].Nodes[1].TestHelperDetails)
+	require.Len(t, session.Steps[0].Nodes[1].TestHelperDetails.Requests, 1)
+	assert.Equal(t, "confirm", session.Steps[0].Nodes[1].TestHelperDetails.Requests[0].Key)
+	require.NotNil(t, session.Steps[0].Nodes[2].UIComponentDetails)
+	assert.Equal(t, "Open Checkout", session.Steps[0].Nodes[2].UIComponentDetails.Options[0].Title.DefaultMessage)
+	assert.Equal(t, "https://example.test/checkout", session.Steps[0].Nodes[2].UIComponentDetails.Options[0].Link)
+	require.Len(t, session.Steps[0].Nodes[3].Events(), 1)
+	assert.Equal(t, "create", session.Steps[0].Nodes[3].Events()[0].OnNodeComplete.NodeKey)
+
+	require.NoError(t, store.Write(session))
+	rewritten, err := os.ReadFile(rawPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(rewritten), `"node_type": "apiRequest"`)
+	assert.Contains(t, string(rewritten), `"api_request_details"`)
+	assert.NotContains(t, string(rewritten), `"auto_confirm"`)
+}
+
 func TestStoreUpdateInvalidSessionID(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStoreAt(dir)
