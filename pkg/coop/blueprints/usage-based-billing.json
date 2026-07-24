@@ -1,0 +1,336 @@
+{
+  "id": "usage-based-billing",
+  "title": "Model hybrid pricing with pricing plans",
+  "description": "Charge your customers based on usage, recurring, or one-time fees.",
+  "type": "learning",
+  "products": [
+    "Billing"
+  ],
+  "settings": null,
+  "steps": [
+    {
+      "key": "create-customer-chapter",
+      "title": "Set up customer",
+      "description": "Create a customer that you will subscribe to your pricing plan.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createCustomer",
+          "title": "Create a customer",
+          "description": "Create a customer to subscribe to the pricing plan.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/customers",
+            "method": "post",
+            "params": {
+              "description": "Customer for usage-based billing blueprint",
+              "email": "customer@example.com",
+              "name": "Usage-Based Billing Customer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-pricing-plan-chapter",
+      "title": "Create Pricing Plan",
+      "description": "Create an empty Pricing Plan to serve as the container for your pricing model components.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createEmptyPricingPlan",
+          "title": "Create an empty Pricing Plan",
+          "description": "Create an empty Pricing Plan. We will later separately configure and attach billing components.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/pricing_plans",
+            "method": "post",
+            "params": {
+              "currency": "usd",
+              "display_name": "Pro Pricing Plan",
+              "tax_behavior": "exclusive"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createMeter",
+          "title": "Create a meter",
+          "description": "Create a meter to track usage events reported to Stripe.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/billing/meters",
+            "method": "post",
+            "params": {
+              "default_aggregation": {
+                "formula": "sum"
+              },
+              "display_name": "API Requests Meter",
+              "event_name": "blueprint_pricing_plan_meter+${env:randomName}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-rate-card-chapter",
+      "title": "Add a rate card",
+      "description": "Configure and attach a rate card component to the Pricing Plan to support usage-based billing.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createRateCard",
+          "title": "Create a rate card",
+          "description": "Create a rate card to manage usage-based billing with monthly service intervals.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/rate_cards",
+            "method": "post",
+            "params": {
+              "currency": "usd",
+              "display_name": "Pro Rate Card",
+              "service_interval": "month",
+              "service_interval_count": 1,
+              "tax_behavior": "exclusive"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createMeteredItem",
+          "title": "Create a metered item",
+          "description": "Create a metered item to link the meter to a billable item.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/metered_items",
+            "method": "post",
+            "params": {
+              "display_name": "API Usage Metered Item",
+              "meter": "${node.create-pricing-plan-chapter.createMeter:id}"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "addRateToRateCard",
+          "title": "Add rate to rate card",
+          "description": "Add rates to the rate card to define your usage-based prices.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/rate_cards/${node.create-rate-card-chapter.createRateCard:id}/rates",
+            "method": "post",
+            "params": {
+              "metered_item": "${node.create-rate-card-chapter.createMeteredItem:id}",
+              "unit_amount": "100"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachRateCardToPricingPlan",
+          "title": "Attach rate card to Pricing Plan",
+          "description": "Attach the rate card to your Pricing Plan to complete the billing structure.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
+            "method": "post",
+            "params": {
+              "rate_card": {
+                "id": "${node.create-rate-card-chapter.createRateCard:id}",
+                "version": "${node.create-rate-card-chapter.createRateCard:latest_version}"
+              },
+              "type": "rate_card"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-licensed-fee-chapter",
+      "title": "Add a license fee",
+      "description": "Configure and attach a license fee component to add a fixed recurring fee to the Pricing Plan.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createLicensedItem",
+          "title": "Create a licensed item",
+          "description": "Create a licensed item to represent the fixed component that will be billed.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/licensed_items",
+            "method": "post",
+            "params": {
+              "display_name": "Pricing Plan Licensed Item\"",
+              "lookup_key": "cursor-license+${env:randomName}"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createLicenseFee",
+          "title": "Create a license fee",
+          "description": "Create a license fee component to add a fixed monthly fee to the Pricing Plan.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/license_fees",
+            "method": "post",
+            "params": {
+              "currency": "usd",
+              "display_name": "E2E License",
+              "licensed_item": "${node.create-licensed-fee-chapter.createLicensedItem:id}",
+              "service_interval": "month",
+              "service_interval_count": 1,
+              "tax_behavior": "exclusive",
+              "unit_amount": "5000.0"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachLicenseFeeToPricingPlan",
+          "title": "Attach license fee to Pricing Plan",
+          "description": "Attach the license fee to your Pricing Plan alongside the usage-based component.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
+            "method": "post",
+            "params": {
+              "license_fee": {
+                "id": "${node.create-licensed-fee-chapter.createLicenseFee:id}",
+                "version": "${node.create-licensed-fee-chapter.createLicenseFee:latest_version}"
+              },
+              "lookup_key": "${node.create-licensed-fee-chapter.createLicensedItem:lookup_key}",
+              "type": "license_fee"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "create-recurring-credits-chapter",
+      "title": "Grant recurring credits through service actions",
+      "description": "Create a recurring credit grant service action to offer credits that can offset charges for specific billable items.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "createServiceAction",
+          "title": "Create recurring credit grant service action",
+          "description": "Create a service action that defines a recurring credit grant, specifying the amount, billing frequency, and applicable billable items.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/service_actions",
+            "method": "post",
+            "params": {
+              "credit_grant": {
+                "amount": {
+                  "monetary": {
+                    "currency": "usd",
+                    "value": 1000
+                  },
+                  "type": "monetary"
+                },
+                "applicability_config": {
+                  "scope": {
+                    "billable_items": [
+                      "${node.create-rate-card-chapter.createMeteredItem:id}"
+                    ]
+                  }
+                },
+                "expiry_config": {
+                  "type": "end_of_service_period"
+                },
+                "name": "Monthly API Credits"
+              },
+              "lookup_key": "credit-grant+${env:randomName}",
+              "service_interval": "month",
+              "service_interval_count": 1,
+              "type": "credit_grant"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "attachServiceActionToPricingPlan",
+          "title": "Attach service action to Pricing Plan",
+          "description": "Add the service action as a component to your Pricing Plan to link the recurring credit grant to the plan.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}/components",
+            "method": "post",
+            "params": {
+              "service_action": {
+                "id": "${node.create-recurring-credits-chapter.createServiceAction:id}",
+                "version": "${node.create-recurring-credits-chapter.createServiceAction:version}"
+              },
+              "type": "service_action"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "subscribe-customer-chapter",
+      "title": "Subscribe customer to Pricing Plan",
+      "description": "Create a checkout session to subscribe the customer to the Pricing Plan.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "setLiveVersion",
+          "title": "Set live version to latest",
+          "description": "Update the live version to \"latest\" so new subscriptions use the updated Pricing Plan.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v2/billing/pricing_plans/${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}",
+            "method": "post",
+            "params": {
+              "live_version": "latest"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "createCheckoutSession",
+          "title": "Create checkout session",
+          "description": "Create a checkout session to activate the Pricing Plan subscription.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post",
+            "params": {
+              "checkout_items": [
+                {
+                  "pricing_plan_subscription_item": {
+                    "pricing_plan": "${node.create-pricing-plan-chapter.createEmptyPricingPlan:id}"
+                  },
+                  "type": "pricing_plan_subscription_item"
+                }
+              ],
+              "success_url": "https://dashboard.stripe.com/workbench/blueprints/usage-based-billing/subscribe-customer-chapter?confirmation-redirect=createCheckoutSession"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "completeCheckout",
+          "title": "Complete the checkout",
+          "description": "Complete the hosted checkout page to complete the subscription flow.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "asyncHandler",
+          "key": "waitForServicingActivated",
+          "title": "Wait for servicing activated event",
+          "description": "Wait for the pricing plan subscription to be activated for servicing.",
+          "review_prompt": "Run the relevant Stripe CLI trigger or complete the upstream flow, then confirm the handler receives and verifies the expected event.",
+          "review_command": "stripe trigger v2.billing.pricing_plan_subscription.servicing_activated",
+          "events": [
+            "v2.billing.pricing_plan_subscription.servicing_activated"
+          ]
+        }
+      ]
+    }
+  ]
+}

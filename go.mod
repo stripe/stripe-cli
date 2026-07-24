@@ -50,6 +50,7 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/harmonica v0.2.0
 	github.com/charmbracelet/x/ansi v0.11.7
+	github.com/getsentry/sentry-go v0.48.0
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/google/go-github/v72 v72.0.0
 	github.com/hashicorp/go-hclog v1.6.3
@@ -110,7 +111,7 @@ require (
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -122,9 +123,9 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/oklog/run v1.2.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
