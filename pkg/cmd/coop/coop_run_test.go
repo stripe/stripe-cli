@@ -98,8 +98,8 @@ func TestAgentInstructionsIncludeOptionalStripeDocsGuidanceExactlyOnce(t *testin
 		name         string
 		instructions string
 	}{
-		{name: "normal blueprint", instructions: newCoopAgentRunResponse(bp, normalSession).AgentInstructions},
-		{name: "guided follow-up", instructions: newCoopAgentGuidedActionResponse(guidedAction, guidedSession).AgentInstructions},
+		{name: "normal blueprint", instructions: newCoopAgentRunResponse(bp, normalSession).AgentPrompt},
+		{name: "guided follow-up", instructions: newCoopAgentGuidedActionResponse(guidedAction, guidedSession).AgentPrompt},
 	}
 
 	for _, tt := range tests {
@@ -126,8 +126,9 @@ func TestAgentInstructionsIncludeOptionalStripeDocsGuidanceExactlyOnce(t *testin
 			assert.NotContains(t, tt.instructions, "Search again when moving into a materially different Stripe domain")
 			assert.NotContains(t, tt.instructions, "Latest Stripe API version: **2026-06-24.dahlia**")
 			assert.Contains(t, tt.instructions, "BEFORE YOU START — ensure you have API access")
-			assert.Contains(t, tt.instructions, "Agent lifecycle commands")
-			assert.Contains(t, tt.instructions, `The "await" command is critical at step boundaries`)
+			assert.Contains(t, tt.instructions, "Work through one node at a time")
+			assert.Contains(t, tt.instructions, "Only await human review when the next command says to")
+			assert.NotContains(t, tt.instructions, "Agent lifecycle commands (use this session id")
 		})
 	}
 }
@@ -287,6 +288,31 @@ func TestCoopRunReturnsStructuredErrorForMalformedSetting(t *testing.T) {
 	assert.Empty(t, ids)
 }
 
+func TestCoopRunReturnsCompactBootstrapWithoutBlueprintNodes(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	rc := newCoopAgentRunCmd()
+	rc.ensureSkill = func() error { return nil }
+	cmd := rc.cmd
+	cmd.SetArgs([]string{"one-time-payment", "--language", "node"})
+
+	output := captureStdout(t, func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(output), &fields))
+	require.True(t, resp.OK)
+	assert.Contains(t, resp.AgentPrompt, "one node at a time")
+	assert.Contains(t, resp.AgentPrompt, "Replace any <...> placeholders with real values")
+	assert.Contains(t, resp.Next, "stripe coop agent start-work")
+	assert.NotContains(t, fields, "agent_instructions")
+	assert.NotContains(t, fields, "nodes")
+	assert.NotContains(t, output, "Create a Stripe Product with inline default_price_data")
+	assert.Less(t, len(output), 10000)
+}
+
 func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	cmd := newCoopAgentRunCmd().cmd
@@ -367,9 +393,8 @@ func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
 
 func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 	bp := &coop.Blueprint{Title: "Metered subscription"}
-	session := &coop.Session{ID: "coop_123"}
 
-	instructions := agentInstructions(bp, session)
+	instructions := agentInstructions(bp)
 
 	assert.Contains(t, instructions, "The blueprint describes the Stripe flow the developer wants in their app")
 	assert.Contains(t, instructions, "Stripe CLI commands are useful for setup and verification, but they are not the implementation")
@@ -383,7 +408,7 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 	assert.Contains(t, instructions, "Never pass full card numbers to Stripe APIs or CLI commands")
 }
 
-func TestCoopAgentRunResponsePreservesNodesWireKey(t *testing.T) {
+func TestCoopAgentRunResponseOmitsBlueprintNodes(t *testing.T) {
 	bp, err := coop.LoadBlueprint("one-time-payment")
 	require.NoError(t, err)
 	session := coop.NewSessionFromBlueprint(bp, "coop_123", nil, nil)
@@ -393,6 +418,9 @@ func TestCoopAgentRunResponsePreservesNodesWireKey(t *testing.T) {
 
 	var payload map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(data, &payload))
-	assert.Contains(t, payload, "nodes")
+	assert.Contains(t, payload, "agent_prompt")
+	assert.Contains(t, payload, "next")
+	assert.NotContains(t, payload, "agent_instructions")
+	assert.NotContains(t, payload, "nodes")
 	assert.NotContains(t, payload, "steps")
 }
