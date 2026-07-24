@@ -124,6 +124,46 @@ type SessionNode struct {
 	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
 }
 
+// UnmarshalJSON accepts the pre-Workbench session shape so in-progress sessions
+// remain usable after the session model adopts Workbench node fields.
+func (n *SessionNode) UnmarshalJSON(data []byte) error {
+	type sessionNode SessionNode
+	var decoded sessionNode
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	var legacy struct {
+		Type        NodeType                     `json:"type"`
+		AutoConfirm bool                         `json:"auto_confirm"`
+		Request     *WorkbenchRequestFixture     `json:"request"`
+		Requests    []WorkbenchRequestFixture    `json:"requests"`
+		Events      []AsyncEvent                 `json:"events"`
+		UIComponent *WorkbenchUIComponentDetails `json:"ui_component"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+	if decoded.NodeType == "" {
+		decoded.NodeType = legacy.Type
+	}
+	decoded.IsInformationalNode = decoded.IsInformationalNode || legacy.AutoConfirm
+	if decoded.APIRequestDetails == nil && legacy.Request != nil {
+		decoded.APIRequestDetails = &WorkbenchAPIRequestDetails{Fixture: *legacy.Request}
+	}
+	if decoded.TestHelperDetails == nil && legacy.Requests != nil {
+		decoded.TestHelperDetails = &WorkbenchTestHelperDetails{Requests: legacy.Requests}
+	}
+	if decoded.AsyncHandlerDetails == nil && legacy.Events != nil {
+		decoded.AsyncHandlerDetails = &WorkbenchAsyncHandlerDetails{Events: legacy.Events}
+	}
+	if decoded.UIComponentDetails == nil {
+		decoded.UIComponentDetails = legacy.UIComponent
+	}
+	*n = SessionNode(decoded)
+	return nil
+}
+
 func (n *SessionNode) TitleText() string {
 	return n.Title.DefaultMessage
 }
