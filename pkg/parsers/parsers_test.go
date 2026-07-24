@@ -219,6 +219,24 @@ func TestParseInterfaceToJSONDeeplyNested(t *testing.T) {
 	require.Equal(t, "First Name", gjson.Get(json, "custom_fields.0.label.custom").String())
 }
 
+func TestParseInterfaceToJSONEmptyString(t *testing.T) {
+	// An empty-string value used to panic here because the array/object
+	// sniffing indexed parsed[0:1] and parsed[len(parsed)-1:] on a
+	// zero-length string. It should just come through as "".
+	data := map[string]interface{}{
+		"description": "",
+		"name":        "Bender Bending Rodriguez",
+	}
+
+	output, err := ParseToApplicationJSON(data, make(map[string]gjson.Result))
+	require.NoError(t, err)
+
+	jsonParams, _ := json.Marshal(output)
+	json := string(jsonParams)
+	require.Equal(t, "", gjson.Get(json, "description").String())
+	require.Equal(t, "Bender Bending Rodriguez", gjson.Get(json, "name").String())
+}
+
 func TestParseInterface(t *testing.T) {
 	address := make(map[string]interface{})
 	address["line1"] = "1 Planet Express St"

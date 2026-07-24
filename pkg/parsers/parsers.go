@@ -451,11 +451,11 @@ func parseMapForApplicationJSON(params map[string]interface{}, responses map[str
 			}
 
 			switch {
-			case parsed[0:1] == "[" && parsed[len(parsed)-1:] == "]":
+			case strings.HasPrefix(parsed, "[") && strings.HasSuffix(parsed, "]"):
 				paramArray := make([]interface{}, 0)
 				json.Unmarshal([]byte(parsed), &paramArray)
 				result[key] = paramArray
-			case parsed[0:1] == "{" && parsed[len(parsed)-1:] == "}":
+			case strings.HasPrefix(parsed, "{") && strings.HasSuffix(parsed, "}"):
 				paramMap := make(map[string]interface{})
 				json.Unmarshal([]byte(parsed), &paramMap)
 				result[key] = paramMap
