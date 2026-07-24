@@ -62,16 +62,7 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 
 func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	blueprintID := args[0]
-
-	selectedSettings := make(map[string]string)
-	if rc.language != "" {
-		selectedSettings["language"] = rc.language
-	}
-	if err := mergeKeyValues(selectedSettings, "--setting", rc.settings); err != nil {
-		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
-	}
-
-	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID, selectedSettings)
+	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID)
 	if err != nil {
 		// Surface the specific error (e.g. an ambiguous prefix and its candidate
 		// list) rather than a generic "not found".
@@ -117,8 +108,8 @@ func (rc *coopAgentRunCmd) ensureStripeSkill() error {
 	return ensureRepoStripeBestPracticesSkill()
 }
 
-func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coop.CommandResponse {
-	return newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp))
+func newCoopAgentRunResponse(bp *coop.WorkbenchBlueprint, session *coop.Session) coop.CommandResponse {
+	return newCoopAgentSessionResponse(bp.Title.DefaultMessage, session, agentInstructions(bp))
 }
 
 func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coop.CommandResponse {
@@ -132,12 +123,12 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 		Node:         1,
 		State:        "created",
 		Message:      fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
-		Continuation: coop.Continue(coop.StartWorkCommand(session.ID, 1, "Beginning: "+session.Steps[0].Nodes[0].Title)),
+		Continuation: coop.Continue(coop.StartWorkCommand(session.ID, 1, "Beginning: "+session.Steps[0].Nodes[0].TitleText())),
 		AgentPrompt:  instructions,
 	}
 }
 
-func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
+func newCoopSession(bp *coop.WorkbenchBlueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
 	settings := make(map[string]string)
 	if language != "" {
 		settings["language"] = language
@@ -151,7 +142,10 @@ func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings,
 		return nil, err
 	}
 
-	session := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	session, err := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	if err != nil {
+		return nil, err
+	}
 	session.CreatedAt = time.Now().UTC()
 	session.ParentSessionID = parentSession
 	session.ParentStepID = parentStep
@@ -174,8 +168,8 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 	return nil
 }
 
-func agentInstructions(bp *coop.Blueprint) string {
-	preamble := fmt.Sprintf("You are building a production-grade Stripe integration: %q", bp.Title)
+func agentInstructions(bp *coop.WorkbenchBlueprint) string {
+	preamble := fmt.Sprintf("You are building a production-grade Stripe integration: %q", bp.Title.DefaultMessage)
 	return sessionLifecycleInstructions(preamble)
 }
 

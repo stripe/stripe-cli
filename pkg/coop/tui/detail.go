@@ -164,19 +164,20 @@ func (m Model) detailLanguage() string {
 }
 
 func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
-	if node.Description != "" {
-		md.WriteString(node.Description + "\n\n")
+	description := node.DescriptionText()
+	if description != "" {
+		md.WriteString(description + "\n\n")
 	}
 	if node.ReviewPrompt != "" {
 		md.WriteString("**Confirmation steps:** " + node.ReviewPrompt + "\n\n")
 	}
-	if node.Description == "" && node.ReviewPrompt == "" {
+	if description == "" && node.ReviewPrompt == "" {
 		md.WriteString("*No summary available for this step.*\n\n")
 	}
 }
 
 func (m Model) writeStepSDKSnippetDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
-	if node.Type != coop.NodeAPIRequest || node.Request == nil {
+	if node.NodeType != coop.NodeAPIRequest || node.Request() == nil {
 		return
 	}
 	if currentSnippet {
@@ -198,7 +199,7 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	}
 	md.WriteString("Steps\n")
 	for _, node := range ch.Nodes {
-		md.WriteString("  " + stepNodeStatusLabel(node) + " " + node.Title + "\n")
+		md.WriteString("  " + stepNodeStatusLabel(node) + " " + node.TitleText() + "\n")
 	}
 	md.WriteString("\n")
 	if changed := stepChangedFiles(ch); changed != "" {
@@ -228,7 +229,7 @@ func (m Model) writeStepFilesDetail(md *strings.Builder, ch *coop.SessionStep) {
 		if node.Implementation == nil || node.Implementation.File == "" {
 			continue
 		}
-		md.WriteString("- `" + implementationFileLabel(node.Implementation) + "` — " + node.Title + "\n")
+		md.WriteString("- `" + implementationFileLabel(node.Implementation) + "` — " + node.TitleText() + "\n")
 		wrote = true
 	}
 	if wrote {
@@ -242,7 +243,7 @@ func (m Model) writeStepChecksDetail(md *strings.Builder, ch *coop.SessionStep) 
 	wrote := false
 	for _, node := range ch.Nodes {
 		if node.ReviewPrompt != "" {
-			md.WriteString("- " + node.Title + ": " + node.ReviewPrompt + "\n")
+			md.WriteString("- " + node.TitleText() + ": " + node.ReviewPrompt + "\n")
 			wrote = true
 		}
 		for _, verification := range node.Verifications {
@@ -250,7 +251,7 @@ func (m Model) writeStepChecksDetail(md *strings.Builder, ch *coop.SessionStep) 
 			if verification.Passed {
 				prefix = "✓"
 			}
-			md.WriteString("- " + prefix + " " + node.Title + ": " + verification.Check + "\n")
+			md.WriteString("- " + prefix + " " + node.TitleText() + ": " + verification.Check + "\n")
 			wrote = true
 		}
 		if command := reviewCommandForNode(&node); command != "" {
@@ -268,12 +269,13 @@ func (m Model) writeStepChecksDetail(md *strings.Builder, ch *coop.SessionStep) 
 func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionStep) {
 	wrote := false
 	for _, node := range ch.Nodes {
-		if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-			md.WriteString("- `" + node.Events[0].EventType + "` webhook trigger for " + node.Title + "\n")
+		events := node.Events()
+		if node.NodeType == coop.NodeAsyncHandler && len(events) > 0 {
+			md.WriteString("- `" + events[0].EventType + "` webhook trigger for " + node.TitleText() + "\n")
 			wrote = true
 		}
-		if node.Type == coop.NodeAPIRequest && node.Request != nil {
-			md.WriteString("- `" + strings.ToUpper(node.Request.Method) + " " + node.Request.Path + "` for " + node.Title + "\n")
+		if request := node.Request(); node.NodeType == coop.NodeAPIRequest && request != nil {
+			md.WriteString("- `" + strings.ToUpper(request.Method) + " " + request.Path + "` for " + node.TitleText() + "\n")
 			wrote = true
 		}
 	}
@@ -319,8 +321,8 @@ func stepConfirmationNodes(ch *coop.SessionStep) string {
 				continue
 			}
 			seenAgentCheck[check] = true
-			if node.Title != "" {
-				check = node.Title + ": " + check
+			if title := node.TitleText(); title != "" {
+				check = title + ": " + check
 			}
 			agentChecks = append(agentChecks, check)
 		}
@@ -332,28 +334,30 @@ func stepConfirmationNodes(ch *coop.SessionStep) string {
 	var checks []string
 	for _, node := range ch.Nodes {
 		if node.ReviewPrompt != "" {
-			checks = append(checks, node.Title+": "+node.ReviewPrompt)
+			checks = append(checks, node.TitleText()+": "+node.ReviewPrompt)
 		}
 	}
 	return strings.Join(checks, " ")
 }
 
 func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.SessionNode) {
-	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
+	events := node.Events()
+	if node.NodeType != coop.NodeAsyncHandler || len(events) == 0 {
 		return
 	}
 	md.WriteString("**How to verify:**\n\n")
 	md.WriteString("1. `stripe listen --forward-to localhost:<port>/webhook`\n")
-	md.WriteString("2. Perform an API or Dashboard action that emits `" + node.Events[0].EventType + "`\n")
+	md.WriteString("2. Perform an API or Dashboard action that emits `" + events[0].EventType + "`\n")
 	md.WriteString("3. Confirm your handler processes the event\n\n")
 }
 
 func (m Model) writeAsyncHandlerReferenceDetail(md *strings.Builder, node *coop.SessionNode) {
-	if node.Type != coop.NodeAsyncHandler || len(node.Events) == 0 {
+	events := node.Events()
+	if node.NodeType != coop.NodeAsyncHandler || len(events) == 0 {
 		return
 	}
 	md.WriteString("**Webhook event:**\n\n")
-	md.WriteString("`" + node.Events[0].EventType + "`\n\n")
+	md.WriteString("`" + events[0].EventType + "`\n\n")
 }
 
 func (m Model) writeReviewCommandDetail(md *strings.Builder, node *coop.SessionNode) {
@@ -366,7 +370,7 @@ func (m Model) writeReviewCommandDetail(md *strings.Builder, node *coop.SessionN
 }
 
 func (m Model) writeSDKReferenceDetail(md *strings.Builder, node *coop.SessionNode, currentSnippet bool) {
-	if node.Type != coop.NodeAPIRequest {
+	if node.NodeType != coop.NodeAPIRequest {
 		return
 	}
 	if currentSnippet {

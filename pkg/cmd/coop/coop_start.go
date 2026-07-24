@@ -59,26 +59,19 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	inTmux := os.Getenv("TMUX") != ""
 
 	var blueprintID string
-	var blueprint *coop.Blueprint
+	var blueprint *coop.WorkbenchBlueprint
 	if len(args) > 0 {
 		blueprintID = args[0]
-		selectedSettings := make(map[string]string)
-		if rc.language != "" {
-			selectedSettings["language"] = rc.language
-		}
-		if err := mergeKeyValues(selectedSettings, "--setting", rc.settings); err != nil {
-			return err
-		}
 		ctx := context.Background()
 		if cmd != nil {
 			ctx = cmd.Context()
 		}
 		var err error
-		blueprint, err = coop.LoadBlueprint(ctx, coopBlueprintRepository(), blueprintID, selectedSettings)
+		blueprint, err = coop.LoadBlueprint(ctx, coopBlueprintRepository(), blueprintID)
 		if err != nil {
 			return fmt.Errorf("%w. Run 'stripe coop recommend --all' to see available blueprints", err)
 		}
-		blueprintID = blueprint.ID
+		blueprintID = blueprint.Key
 	}
 	if rc.debugAgent && blueprintID == "" {
 		return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
@@ -187,8 +180,11 @@ func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string,
 	if session.BlueprintPin != nil && session.BlueprintPin.Title != "" {
 		title = session.BlueprintPin.Title
 	}
-	bp := &coop.Blueprint{ID: session.Blueprint, Title: title}
-	resp := newCoopAgentRunResponse(bp, session)
+	resp := newCoopAgentSessionResponse(
+		title,
+		session,
+		sessionLifecycleInstructions(fmt.Sprintf("You are building a production-grade Stripe integration: %q", title)),
+	)
 
 	return fmt.Sprintf(`You are running a Stripe co-op integration session. A developer is watching your progress in a live terminal UI.
 
@@ -201,9 +197,9 @@ The session is already created. After the authentication check above, begin by r
 Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
 }
 
-func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.Blueprint) (*coop.Session, error) {
+func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.WorkbenchBlueprint) (*coop.Session, error) {
 	if blueprint == nil {
-		return nil, fmt.Errorf("cannot start a session without a compiled blueprint")
+		return nil, fmt.Errorf("cannot start a session without a blueprint")
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())

@@ -24,7 +24,7 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 	t.Cleanup(func() { options = previousOptions })
 
 	session, err := newCoopSession(
-		&coop.Blueprint{ID: "one-time-payment"},
+		commandTestBlueprint(t),
 		"coop_123",
 		"go",
 		[]string{"framework=gin", "framework=chi"},
@@ -53,7 +53,7 @@ func TestAgentInstructionsAdvertiseAwaitTimeoutWithHarnessHeadroom(t *testing.T)
 }
 
 func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
-	bp := &coop.Blueprint{ID: "one-time-payment"}
+	bp := commandTestBlueprint(t)
 
 	tests := []struct {
 		name     string
@@ -81,24 +81,17 @@ func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
 }
 
 func TestAgentInstructionsIncludeOptionalStripeDocsGuidanceExactlyOnce(t *testing.T) {
-	bp, err := coop.LoadBlueprint("one-time-payment")
+	bp := commandTestBlueprint(t)
+	normalSession, err := coop.NewSessionFromBlueprint(bp, "coop_normal", nil, nil)
 	require.NoError(t, err)
-	normalSession := coop.NewSessionFromBlueprint(bp, "coop_normal", nil, nil)
 
 	guidedAction := &coop.GuidedAction{
 		ID:           "guided-action",
 		Title:        "Guided action",
 		AgentContext: "Use the existing project.",
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{Key: "guided-step", Title: "Guided step"},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "guided-node", Title: "Guided node"},
-						State:          coop.NodePending,
-					},
-				},
-			},
+			commandSessionStep("guided-step", "Guided step",
+				commandSessionNode(coop.NodeTestHelper, "guided-node", "Guided node", coop.NodePending)),
 		},
 	}
 	guidedSession := coop.NewSessionFromGuidedAction(guidedAction, "coop_guided", coop.GuidedActionSessionOptions{})
@@ -396,7 +389,8 @@ func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
 }
 
 func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
-	bp := &coop.Blueprint{Title: "Metered subscription"}
+	bp := commandTestBlueprint(t)
+	bp.Title = coop.MessageDescriptor{DefaultMessage: "Metered subscription"}
 
 	instructions := agentInstructions(bp)
 
@@ -413,9 +407,9 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 }
 
 func TestCoopAgentRunResponseOmitsBlueprintNodes(t *testing.T) {
-	bp, err := coop.LoadBlueprint("one-time-payment")
+	bp := commandTestBlueprint(t)
+	session, err := coop.NewSessionFromBlueprint(bp, "coop_123", nil, nil)
 	require.NoError(t, err)
-	session := coop.NewSessionFromBlueprint(bp, "coop_123", nil, nil)
 
 	data, err := json.Marshal(newCoopAgentRunResponse(bp, session))
 	require.NoError(t, err)

@@ -101,7 +101,9 @@ func TestCoopRecommendRequiresAll(t *testing.T) {
 func TestCoopRunRetrievesSelectedBlueprintAndPinsSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	repository := useRecordingBlueprintRepository(t)
-	command := newCoopAgentRunCmd().cmd
+	runCommand := newCoopAgentRunCmd()
+	runCommand.ensureSkill = func() error { return nil }
+	command := runCommand.cmd
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 	command.SetArgs([]string{"one-time-payment", "--setting", "simulation=success"})
@@ -121,13 +123,13 @@ func TestCoopRunRetrievesSelectedBlueprintAndPinsSession(t *testing.T) {
 	assert.Equal(t, "one-time-payment", session.BlueprintPin.Key)
 	assert.Equal(t, 6, session.BlueprintPin.BlueprintVersion)
 	assert.Regexp(t, `^sha256:[0-9a-f]{64}$`, session.BlueprintPin.Digest)
-	assert.Equal(t, "/v1/payment_intents", session.Steps[1].Nodes[0].Request.Path)
+	assert.Equal(t, "/v1/payment_intents", session.Steps[1].Nodes[0].Request().Path)
 }
 
-func TestStartSessionReusesCompiledBlueprint(t *testing.T) {
+func TestStartSessionReusesLoadedBlueprint(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	repository := useRecordingBlueprintRepository(t)
-	blueprint, err := coop.LoadBlueprint(t.Context(), repository, "one-time-payment", nil)
+	blueprint, err := coop.LoadBlueprint(t.Context(), repository, "one-time-payment")
 	require.NoError(t, err)
 
 	session, err := (&coopRunCmd{}).startSessionQuietly(blueprint)

@@ -20,26 +20,34 @@ func NewSessionFromGuidedAction(action *GuidedAction, sessionID string, opts Gui
 	now := time.Now().UTC()
 	settings := copyStringMap(opts.Settings)
 	settings["guided_action"] = action.ID
+	definition := WorkbenchBlueprintDefinition{
+		WorkbenchBlueprintSummary: WorkbenchBlueprintSummary{
+			Key:           action.Title,
+			BlueprintType: "guided_action",
+			Title:         MessageDescriptor{DefaultMessage: action.Title},
+		},
+	}
 
 	return &Session{
-		SchemaVersion:   CurrentSessionSchemaVersion,
-		ID:              sessionID,
-		Blueprint:       action.Title,
-		Status:          SessionActive,
-		Settings:        settings,
-		Steps:           cloneGuidedActionSteps(action.Steps),
-		UsedSandbox:     opts.UsedSandbox,
-		ParentSessionID: opts.ParentSessionID,
-		ParentStepID:    opts.ParentStepID,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		SchemaVersion:       CurrentSessionSchemaVersion,
+		ID:                  sessionID,
+		Blueprint:           action.Title,
+		BlueprintDefinition: &definition,
+		Status:              SessionActive,
+		Settings:            settings,
+		Steps:               cloneGuidedActionSteps(action.Steps),
+		UsedSandbox:         opts.UsedSandbox,
+		ParentSessionID:     opts.ParentSessionID,
+		ParentStepID:        opts.ParentStepID,
+		CreatedAt:           now,
+		UpdatedAt:           now,
 	}
 }
 
 func cloneGuidedActionSteps(steps []SessionStep) []SessionStep {
 	cloned := make([]SessionStep, len(steps))
 	for i, step := range steps {
-		cloned[i].StepDefinition = step.StepDefinition
+		cloned[i].WorkbenchStepDefinition = step.WorkbenchStepDefinition
 		cloned[i].Nodes = make([]SessionNode, len(step.Nodes))
 		copy(cloned[i].Nodes, step.Nodes)
 	}
