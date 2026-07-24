@@ -8,7 +8,7 @@ import (
 
 type coopRecommendCmd struct {
 	cmd            *cobra.Command
-	query          string
+	all            bool
 	includeTesting bool
 }
 
@@ -19,19 +19,20 @@ func newCoopRecommendCmd() *coopRecommendCmd {
 		Short: "List blueprints for an agent to recommend",
 		Long: `List available blueprint summaries so an agent can choose the best match
 for the developer's requested integration.`,
-		Example: `  stripe coop recommend --query="accept payments"
-  stripe coop recommend --query="subscriptions"
-  stripe coop recommend --query="save card future"`,
-		RunE: rc.runRecommendCmd,
+		Example: `  stripe coop recommend --all`,
+		RunE:    rc.runRecommendCmd,
 	}
 
-	rc.cmd.Flags().StringVar(&rc.query, "query", "", "Describe what the developer wants to build")
+	rc.cmd.Flags().BoolVar(&rc.all, "all", false, "Return all learning blueprint summaries for agent selection")
 	rc.cmd.Flags().BoolVar(&rc.includeTesting, "include-testing", false, "Include testing blueprints in addition to learning blueprints")
 
 	return rc
 }
 
 func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) error {
+	if !rc.all {
+		return fmt.Errorf("recommend requires --all to list blueprint summaries")
+	}
 	repository := coopBlueprintRepository()
 	if repository == nil {
 		return fmt.Errorf("loading blueprints: no blueprint repository configured")
@@ -74,14 +75,9 @@ func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) e
 	response := map[string]interface{}{
 		"blueprints": catalog,
 		"agent_instructions": `Review every blueprint summary and pick the best match for the developer's request.
-Use the "query" field as context when it is present.
 Consider: what they're building, whether it's one-time or recurring, if it involves platforms/marketplaces.
 If multiple could fit, ask the developer to clarify between the top 2-3 options.
 Once decided, run the "command" field for that blueprint.`,
-	}
-
-	if rc.query != "" {
-		response["query"] = rc.query
 	}
 
 	return outputJSON(response)

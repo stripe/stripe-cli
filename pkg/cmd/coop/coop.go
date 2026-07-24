@@ -52,7 +52,7 @@ The developer confirms each step before the agent moves on.`,
   3. stripe coop agent report-check --session=<id> --step=<n> --check="..." --passed — add verification
   4. stripe coop agent report-work --session=<id> --step=<n> --file=... --note="..." — report work complete
   All commands output JSON with a "next" field suggesting the next command.
-  Run "stripe coop recommend --query=..." to discover available blueprints.`,
+  Run "stripe coop recommend --all" to discover available blueprints.`,
 		},
 	}
 

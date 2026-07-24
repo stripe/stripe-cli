@@ -70,7 +70,7 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 		var err error
 		blueprint, err = coop.LoadBlueprint(ctx, coopBlueprintRepository(), blueprintID, selectedSettings)
 		if err != nil {
-			return fmt.Errorf("%w. Run 'stripe coop recommend' to see available blueprints", err)
+			return fmt.Errorf("%w. Run 'stripe coop recommend --all' to see available blueprints", err)
 		}
 		blueprintID = blueprint.ID
 	}
@@ -135,7 +135,7 @@ Steps:
    IF no code exists (empty project): Ask "What are you looking to build?"
    WAIT for their response. Do NOT proceed until they answer.
    Do NOT assume what they need. Let them tell you in their own words.
-3. Based on their answer, run "stripe coop recommend --query=<description of what they need>"
+3. Based on their answer, run "stripe coop recommend --all" and pick the best blueprint from the returned summaries.
 4. Explain what you found in simple terms: "I'll set up X which lets you do Y" and confirm.
 5. Only after confirmation, run "stripe coop run <blueprint-id> --language=<lang>".
 6. Follow the instructions in the JSON response and work through each step.
