@@ -45,7 +45,7 @@ func loadTestBlueprint(t *testing.T) *WorkbenchBlueprint {
 }
 
 func TestResolveBlueprintKeepsWorkbenchShape(t *testing.T) {
-	blueprint, settings, err := resolveBlueprint(loadTestBlueprint(t), map[string]string{"country": "GB"})
+	blueprint, settings, params, err := resolveBlueprint(loadTestBlueprint(t), map[string]string{"country": "GB"}, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "sample-payment", blueprint.Key)
@@ -53,8 +53,13 @@ func TestResolveBlueprintKeepsWorkbenchShape(t *testing.T) {
 	assert.Equal(t, "Build and verify a representative payment flow.", blueprint.Description.DefaultMessage)
 	assert.Equal(t, []string{"Payments"}, blueprint.Metadata.Products)
 	assert.Equal(t, "GB", settings["country"])
+	assert.Equal(t, "2000", params["amount"])
 	require.Len(t, blueprint.Steps, 1)
 	assert.Equal(t, "sample-payment--setup", blueprint.Steps[0].Key)
+	assert.Equal(t, "${blueprint_settings.payment:simulation}", blueprint.Steps[0].Settings["simulation"])
+	assert.Equal(t, "${blueprint_params.payment:amount}", blueprint.Steps[0].Params["amount"])
+	require.Len(t, blueprint.Steps[0].SettingsSchema, 1)
+	require.Len(t, blueprint.Steps[0].ParamsSchema, 1)
 	require.Len(t, blueprint.Steps[0].Outputs, 1)
 	assert.Equal(t, "${node.create-payment:id}", blueprint.Steps[0].Outputs[0].Source)
 	require.Len(t, blueprint.Steps[0].Nodes, 4)
@@ -99,17 +104,17 @@ func TestResolveBlueprintKeepsWorkbenchShape(t *testing.T) {
 
 func TestResolveBlueprintMergesEveryMatchingVariantWithoutMutatingSource(t *testing.T) {
 	source := loadTestBlueprint(t)
-	defaults, _, err := resolveBlueprint(source, nil)
+	defaults, _, _, err := resolveBlueprint(source, nil, nil)
 	require.NoError(t, err)
 	defaultRequest := defaults.Steps[0].Nodes[0].APIRequestDetails.Fixture
 	assert.Equal(t, "pm_card_visa", defaultRequest.Params["payment_method"])
 	assert.Equal(t, map[string]any{"country": "US", "controller": "application"}, defaultRequest.Params["account"])
 	assert.Empty(t, defaultRequest.ExpectedErrorType)
 
-	selected, _, err := resolveBlueprint(source, map[string]string{
+	selected, _, _, err := resolveBlueprint(source, map[string]string{
 		"simulation": "declined",
 		"country":    "GB",
-	})
+	}, nil)
 	require.NoError(t, err)
 	selectedRequest := selected.Steps[0].Nodes[0].APIRequestDetails.Fixture
 	assert.Equal(t, "pm_card_chargeDeclined", selectedRequest.Params["payment_method"])
@@ -124,24 +129,67 @@ func TestResolveBlueprintMergesEveryMatchingVariantWithoutMutatingSource(t *test
 	assert.NotContains(t, source.Steps[0].Nodes[0].APIRequestDetails.Fixture.Params, "payment_method")
 }
 
+func TestResolveBlueprintAppliesSingleStaticConfiguredDetail(t *testing.T) {
+	source := loadTestBlueprint(t)
+	request := &source.Steps[0].Nodes[0].APIRequestDetails.Fixture
+	request.ConfiguredDetails = []WorkbenchConfiguredDetails{{
+		ConfigValue: map[string]string{"us": "US"},
+		Params:      map[string]any{"country": "US"},
+	}}
+
+	resolved, _, _, err := resolveBlueprint(source, nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "US", resolved.Steps[0].Nodes[0].APIRequestDetails.Fixture.Params["country"])
+}
+
 func TestResolveBlueprintSettingsUsesExplicitStepMappingAndTestMode(t *testing.T) {
 	source := loadTestBlueprint(t)
-	source.Steps[0].Config.Settings = map[string]string{
+	source.Steps[0].Settings = map[string]string{
 		"merchant_country": "${blueprint_settings.payment:country}",
-	}
-	source.Steps[0].Config.Params = map[string]string{
-		"env_livemode": "${env:livemode}",
 	}
 
 	defaults := resolveBlueprintSettings(source, nil)
 	assert.Equal(t, "US", defaults["merchant_country"])
-	assert.Equal(t, "false", defaults["env_livemode"])
 
 	selected := resolveBlueprintSettings(source, map[string]string{"country": "GB"})
 	assert.Equal(t, "GB", selected["merchant_country"])
 
 	selected = resolveBlueprintSettings(source, map[string]string{"merchant_country": "CA"})
 	assert.Equal(t, "CA", selected["merchant_country"])
+}
+
+func TestResolveBlueprintParamsUsesDefaultsSelectionsAndTestMode(t *testing.T) {
+	source := loadTestBlueprint(t)
+	source.Steps[0].Params["env_livemode"] = "${env:livemode}"
+
+	defaults := resolveBlueprintParams(source, nil)
+	assert.Equal(t, "2000", defaults["amount"])
+	assert.Equal(t, "false", defaults["env_livemode"])
+
+	selected := resolveBlueprintParams(source, map[string]string{"amount": "3500"})
+	assert.Equal(t, "3500", selected["amount"])
+}
+
+func TestResolveBlueprintAppliesKnownInclusionConditions(t *testing.T) {
+	source := loadTestBlueprint(t)
+	source.Steps[0].Params["env_livemode"] = "${env:livemode}"
+	source.Steps[0].Nodes[0].IsIncluded = map[string]any{
+		"==": []any{"${params:env_livemode}", "false"},
+	}
+	source.Steps[0].Nodes[1].IsIncluded = map[string]any{
+		"==": []any{"${params:env_livemode}", "true"},
+	}
+
+	resolved, _, _, err := resolveBlueprint(source, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, resolved.Steps, 1)
+	require.Len(t, resolved.Steps[0].Nodes, 3)
+	assert.Equal(t, "create-payment", resolved.Steps[0].Nodes[0].Key)
+	assert.NotContains(t, []string{
+		resolved.Steps[0].Nodes[0].Key,
+		resolved.Steps[0].Nodes[1].Key,
+		resolved.Steps[0].Nodes[2].Key,
+	}, "handle-payment")
 }
 
 func TestDeriveReviewMetadataUsesSingleEventType(t *testing.T) {
@@ -235,6 +283,7 @@ func TestNewSessionPinsEffectiveWorkbenchDefinition(t *testing.T) {
 	assert.Equal(t, "success", session.Settings["simulation"])
 	assert.Equal(t, "US", session.Settings["country"])
 	assert.Equal(t, "go", session.Settings["language"])
+	assert.Equal(t, "2000", session.Params["amount"])
 
 	encoded, err := json.Marshal(session)
 	require.NoError(t, err)

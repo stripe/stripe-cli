@@ -14,12 +14,13 @@
   },
   "step_refs": [
     {
-      "config": {
-        "settings": {
-          "country": "${blueprint_settings.payment:country}",
-          "controller": "${blueprint_settings.payment:controller}",
-          "simulation": "${blueprint_settings.payment:simulation}"
-        }
+      "settings": {
+        "country": "${blueprint_settings.payment:country}",
+        "controller": "${blueprint_settings.payment:controller}",
+        "simulation": "${blueprint_settings.payment:simulation}"
+      },
+      "params": {
+        "amount": "${blueprint_params.payment:amount}"
       },
       "step_key": "sample-payment--setup",
       "step_version": 3
@@ -121,7 +122,8 @@
         "default_message": "Create a payment and verify its result."
       },
       "required": true,
-      "settings": [
+      "is_included": null,
+      "settings_schema": [
         {
           "key": "step-settings",
           "settings": [
@@ -152,13 +154,28 @@
           ]
         }
       ],
-      "params": [],
-      "config": {
-        "settings": {
-          "country": "${blueprint_settings.payment:country}",
-          "controller": "${blueprint_settings.payment:controller}",
-          "simulation": "${blueprint_settings.payment:simulation}"
+      "settings": {
+        "country": "${blueprint_settings.payment:country}",
+        "controller": "${blueprint_settings.payment:controller}",
+        "simulation": "${blueprint_settings.payment:simulation}"
+      },
+      "params_schema": [
+        {
+          "key": "step-params",
+          "params": [
+            {
+              "name": "amount",
+              "schema": {
+                "default_value": 2000,
+                "field_type": "number",
+                "required": true
+              }
+            }
+          ]
         }
+      ],
+      "params": {
+        "amount": "${blueprint_params.payment:amount}"
       },
       "outputs": [
         {
