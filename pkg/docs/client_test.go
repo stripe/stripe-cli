@@ -101,6 +101,20 @@ func TestWithOptions(t *testing.T) {
 				assert.Equal(t, "https://second.com", c.baseURL.String())
 			},
 		},
+		{
+			name: "set API key",
+			opts: []ClientOption{WithAPIKey("sk_test_abc123")},
+			wantCheck: func(t *testing.T, c *Client) {
+				assert.Equal(t, "sk_test_abc123", c.apiKey)
+			},
+		},
+		{
+			name: "set cache key prefix",
+			opts: []ClientOption{WithCacheKeyPrefix("acct_123")},
+			wantCheck: func(t *testing.T, c *Client) {
+				assert.Equal(t, "acct_123", c.cacheKeyPrefix)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -503,6 +517,80 @@ func TestFetchPrefs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchPage_CacheKeyPrefix_ScopesByAccount(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprintf(w, "response %d", calls)
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	ref := &url.URL{Path: "/payments"}
+
+	acct1 := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix("acct_111"))
+	acct2 := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix("acct_222"))
+
+	got1, err := acct1.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("response 1"), got1.Content)
+
+	// same URL, different prefix — must not hit acct1's cache entry
+	got2, err := acct2.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("response 2"), got2.Content)
+
+	assert.Equal(t, 2, calls)
+	assert.Equal(t, 0, cache.hits)
+}
+
+func TestFetchPage_CacheKeyPrefix_HitsWithinSameAccount(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	ref := &url.URL{Path: "/payments"}
+
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix("acct_111"))
+
+	_, err := client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	_, err = client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, calls)
+	assert.Equal(t, 1, cache.hits)
+}
+
+func TestFetchPage_EmptyCacheKeyPrefix_UsesRawURL(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	ref := &url.URL{Path: "/payments"}
+
+	// WithCacheKeyPrefix("") is a no-op — behaves identically to not setting a prefix
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix(""))
+
+	_, err := client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	_, err = client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, calls)
+	assert.Equal(t, 1, cache.hits)
 }
 
 // evictingMockCache always returns a miss, simulating TTL expiry.
