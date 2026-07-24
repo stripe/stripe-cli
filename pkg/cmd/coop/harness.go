@@ -37,6 +37,25 @@ type harness struct {
 	// autoApproveEnv is a KEY=value pair exported before exec, for harnesses
 	// that control approvals through the environment instead of a flag.
 	autoApproveEnv string
+	// noPermissionGate marks a harness that never prompts before acting. Co-op
+	// warns instead of simply omitting the permission-mode question, so the
+	// missing prompt is not read as "the safe default applied".
+	noPermissionGate bool
+}
+
+// permissionNotice returns a warning to print before launching, or "" when the
+// harness gates tool use normally.
+//
+// This covers only harnesses known to have no gate. A custom --agent binary
+// also has no autoApproveFlag, but that reflects co-op not knowing its
+// permission model rather than knowing it has none.
+func (h harness) permissionNotice() string {
+	if !h.noPermissionGate {
+		return ""
+	}
+	return fmt.Sprintf("%s has no permission prompts: it reads, writes, and runs commands "+
+		"without asking. Co-op cannot gate it, so there is no permission mode to choose.",
+		h.displayName)
 }
 
 // offersAutoApprove reports whether co-op can skip this harness's permission
@@ -106,7 +125,7 @@ var supportedHarnesses = []harness{
 		// Pi ships no permission system and no sandbox: it runs with the
 		// privileges of the launching process and never prompts, so there is
 		// nothing for co-op's auto-approve choice to skip.
-		autoApproveFlag: "",
+		noPermissionGate: true,
 	},
 }
 

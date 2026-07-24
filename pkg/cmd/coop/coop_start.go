@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
@@ -82,6 +83,10 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	agent, err := rc.detectAgent()
 	if err != nil {
 		return err
+	}
+
+	if notice := agent.harness.permissionNotice(); notice != "" {
+		fmt.Println(ansi.Bold("Warning: ") + notice)
 	}
 
 	autoApprove, err := rc.promptAutoApprove(agent)

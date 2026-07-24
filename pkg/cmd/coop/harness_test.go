@@ -355,6 +355,32 @@ func TestHarnessesWithoutApprovalControlSkipThePrompt(t *testing.T) {
 	assert.True(t, mustHarness(t, "claude").offersAutoApprove())
 }
 
+// TestPermissionNoticeWarnsWhenNoGateExists guards against the missing
+// permission-mode prompt reading as "the safe default applied". Every harness
+// that offers no permission choice must either say why, or be a custom binary
+// whose permission model co-op cannot know.
+func TestPermissionNoticeWarnsWhenNoGateExists(t *testing.T) {
+	for _, h := range supportedHarnesses {
+		t.Run(h.id, func(t *testing.T) {
+			if h.offersAutoApprove() {
+				assert.Empty(t, h.permissionNotice(), "harness with a permission gate must not warn")
+				return
+			}
+			assert.NotEmpty(t, h.permissionNotice(),
+				"harness %q shows no permission prompt and no warning, so users cannot tell it is ungated", h.id)
+		})
+	}
+}
+
+// TestCustomHarnessDoesNotClaimToBeUngated separates "known to have no gate"
+// from "co-op does not know", which must not produce the same warning.
+func TestCustomHarnessDoesNotClaimToBeUngated(t *testing.T) {
+	custom := customHarness("mycoder")
+
+	assert.False(t, custom.offersAutoApprove())
+	assert.Empty(t, custom.permissionNotice())
+}
+
 // TestBuildAgentCmdQuotesAgentPath keeps the shell-injection guard in place for
 // the registry-driven argv construction.
 func TestBuildAgentCmdQuotesAgentPath(t *testing.T) {
