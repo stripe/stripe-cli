@@ -908,6 +908,10 @@ func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
+	case key.Matches(msg, m.keys.Newline):
+		// Terminals that cannot report the bound chords send a bare enter, so
+		// the textarea only ever sees a plain newline press.
+		return m.updateRejectionInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	case key.Matches(msg, m.keys.Submit):
 		m.handleReject(strings.TrimSpace(m.rejectionInput.Value()))
 		return m, nil
