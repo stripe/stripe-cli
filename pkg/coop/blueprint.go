@@ -28,30 +28,58 @@ func LoadBlueprint(ctx context.Context, repository BlueprintRepository, key stri
 
 // resolveBlueprint applies the selected Workbench configuration to a detached
 // copy. The result retains the Workbench shape used by the session.
-func resolveBlueprint(source *WorkbenchBlueprint, selectedSettings map[string]string) (*WorkbenchBlueprint, map[string]string, error) {
+func resolveBlueprint(source *WorkbenchBlueprint, selectedSettings, selectedParams map[string]string) (*WorkbenchBlueprint, map[string]string, map[string]string, error) {
 	if source == nil {
-		return nil, nil, fmt.Errorf("cannot resolve a nil blueprint")
+		return nil, nil, nil, fmt.Errorf("cannot resolve a nil blueprint")
 	}
 	data, err := json.Marshal(source)
 	if err != nil {
-		return nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
+		return nil, nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
 	}
 	var resolved WorkbenchBlueprint
 	if err := json.Unmarshal(data, &resolved); err != nil {
-		return nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
+		return nil, nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
 	}
 	resolved.raw = append(resolved.raw[:0], source.raw...)
 
 	settings := resolveBlueprintSettings(&resolved, selectedSettings)
-	for stepIndex := range resolved.Steps {
-		for nodeIndex := range resolved.Steps[stepIndex].Nodes {
-			node := &resolved.Steps[stepIndex].Nodes[nodeIndex]
-			if err := resolveNode(node, settings); err != nil {
-				return nil, nil, fmt.Errorf("resolving blueprint %q node %q: %w", source.Key, node.Key, err)
-			}
-		}
+	params := resolveBlueprintParams(&resolved, selectedParams)
+	values := copyStringMap(settings)
+	for key, value := range params {
+		values[key] = value
 	}
-	return &resolved, settings, nil
+
+	steps := resolved.Steps[:0]
+	for stepIndex := range resolved.Steps {
+		step := &resolved.Steps[stepIndex]
+		included, err := evaluateInclusion(step.IsIncluded, values)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("resolving blueprint %q step %q inclusion: %w", source.Key, step.Key, err)
+		}
+		if !included {
+			continue
+		}
+
+		nodes := step.Nodes[:0]
+		for nodeIndex := range step.Nodes {
+			node := &step.Nodes[nodeIndex]
+			included, err := evaluateInclusion(node.IsIncluded, values)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("resolving blueprint %q node %q inclusion: %w", source.Key, node.Key, err)
+			}
+			if !included {
+				continue
+			}
+			if err := resolveNode(node, settings); err != nil {
+				return nil, nil, nil, fmt.Errorf("resolving blueprint %q node %q: %w", source.Key, node.Key, err)
+			}
+			nodes = append(nodes, *node)
+		}
+		step.Nodes = nodes
+		steps = append(steps, *step)
+	}
+	resolved.Steps = steps
+	return &resolved, settings, params, nil
 }
 
 func resolveNode(node *WorkbenchBlueprintNode, settings map[string]string) error {
@@ -97,10 +125,8 @@ func resolveRequest(request *WorkbenchRequestFixture, settings map[string]string
 	if request.Headers == nil {
 		request.Headers = make(map[string]string)
 	}
-	for _, configured := range request.ConfiguredDetails {
-		if !configurationMatches(configured.ConfigValue, settings) {
-			continue
-		}
+	matches := matchingRequestDetails(request.ConfiguredDetails, settings)
+	for _, configured := range matches {
 		mergeMap(request.Params, configured.Params)
 		mergeMap(request.HiddenParams, configured.HiddenParams)
 		for key, value := range configured.Headers {
@@ -113,14 +139,25 @@ func resolveRequest(request *WorkbenchRequestFixture, settings map[string]string
 	request.ConfiguredDetails = nil
 }
 
+func matchingRequestDetails(details []WorkbenchConfiguredDetails, settings map[string]string) []WorkbenchConfiguredDetails {
+	var matches []WorkbenchConfiguredDetails
+	for _, configured := range details {
+		if configurationMatches(configured.ConfigValue, settings) {
+			matches = append(matches, configured)
+		}
+	}
+	if len(matches) == 0 && len(details) == 1 && hasOnlyStaticSelectors(details[0].ConfigValue) {
+		return details
+	}
+	return matches
+}
+
 func resolveUIComponent(component *WorkbenchUIComponentDetails, settings map[string]string) {
 	if component.StripeElementRef == nil {
 		component.StripeElementRef = make(map[string]any)
 	}
-	for _, configured := range component.ConfiguredDetails {
-		if !configurationMatches(configured.ConfigValue, settings) {
-			continue
-		}
+	matches := matchingUIComponentDetails(component.ConfiguredDetails, settings)
+	for _, configured := range matches {
 		if configured.Display != "" {
 			component.Display = configured.Display
 		}
@@ -140,6 +177,28 @@ func resolveUIComponent(component *WorkbenchUIComponentDetails, settings map[str
 	}
 }
 
+func matchingUIComponentDetails(details []WorkbenchUIConfiguredDetails, settings map[string]string) []WorkbenchUIConfiguredDetails {
+	var matches []WorkbenchUIConfiguredDetails
+	for _, configured := range details {
+		if configurationMatches(configured.ConfigValue, settings) {
+			matches = append(matches, configured)
+		}
+	}
+	if len(matches) == 0 && len(details) == 1 && hasOnlyStaticSelectors(details[0].ConfigValue) {
+		return details
+	}
+	return matches
+}
+
+func hasOnlyStaticSelectors(selectors map[string]string) bool {
+	for selector := range selectors {
+		if strings.HasPrefix(selector, "${settings:") {
+			return false
+		}
+	}
+	return len(selectors) > 0
+}
+
 func configurationMatches(selectors map[string]string, settings map[string]string) bool {
 	for selector, expected := range selectors {
 		name := selector
@@ -154,41 +213,13 @@ func configurationMatches(selectors map[string]string, settings map[string]strin
 }
 
 func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
-	defaults := make(map[string]string)
-	resolved := make(map[string]string)
-	for _, group := range source.BlueprintSettings {
-		for _, field := range group.Settings {
-			value := stringifyDefault(field.Schema.DefaultValue)
-			defaults[group.Key+":"+field.Name] = value
-			if _, exists := resolved[field.Name]; !exists {
-				resolved[field.Name] = value
-			}
-		}
-	}
+	defaults, resolved := settingDefaults(source.BlueprintSettings)
 	for _, step := range source.Steps {
-		for _, group := range step.Settings {
-			for _, field := range group.Settings {
-				if _, exists := resolved[field.Name]; !exists {
-					resolved[field.Name] = stringifyDefault(field.Schema.DefaultValue)
-				}
-			}
+		for _, group := range step.SettingsSchema {
+			addFieldDefaults(resolved, group.Settings)
 		}
-		for target, sourceRef := range step.Config.Settings {
-			group, name, ok := parseBlueprintSettingReference(sourceRef)
-			if !ok {
-				continue
-			}
-			value, exists := selected[target]
-			if !exists {
-				value, exists = selected[name]
-			}
-			if !exists {
-				value, exists = defaults[group+":"+name]
-			}
-			if !exists {
-				value, exists = resolved[name]
-			}
-			if exists {
+		for target, sourceRef := range step.Settings {
+			if value, exists := resolveMappedValue(target, sourceRef, "blueprint_settings.", selected, defaults, resolved); exists {
 				resolved[target] = value
 			}
 		}
@@ -196,23 +227,157 @@ func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]st
 	for key, value := range selected {
 		resolved[key] = value
 	}
+	return resolved
+}
+
+func resolveBlueprintParams(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
+	defaults, resolved := paramDefaults(source.BlueprintParams)
 	for _, step := range source.Steps {
-		for target, sourceRef := range step.Config.Params {
+		for _, group := range step.ParamsSchema {
+			addFieldDefaults(resolved, group.Params)
+		}
+		for target, sourceRef := range step.Params {
 			if sourceRef == "${env:livemode}" {
 				resolved[target] = "false"
+				continue
+			}
+			if value, exists := resolveMappedValue(target, sourceRef, "blueprint_params.", selected, defaults, resolved); exists {
+				resolved[target] = value
 			}
 		}
+	}
+	for key, value := range selected {
+		resolved[key] = value
 	}
 	return resolved
 }
 
-func parseBlueprintSettingReference(value string) (string, string, bool) {
-	const prefix = "${blueprint_settings."
+func settingDefaults(groups []WorkbenchSettingGroup) (map[string]string, map[string]string) {
+	defaults := make(map[string]string)
+	resolved := make(map[string]string)
+	for _, group := range groups {
+		for _, field := range group.Settings {
+			if field.Schema.DefaultValue == nil {
+				continue
+			}
+			value := stringifyDefault(field.Schema.DefaultValue)
+			defaults[group.Key+":"+field.Name] = value
+			if _, exists := resolved[field.Name]; !exists {
+				resolved[field.Name] = value
+			}
+		}
+	}
+	return defaults, resolved
+}
+
+func paramDefaults(groups []WorkbenchParamGroup) (map[string]string, map[string]string) {
+	defaults := make(map[string]string)
+	resolved := make(map[string]string)
+	for _, group := range groups {
+		for _, field := range group.Params {
+			if field.Schema.DefaultValue == nil {
+				continue
+			}
+			value := stringifyDefault(field.Schema.DefaultValue)
+			defaults[group.Key+":"+field.Name] = value
+			if _, exists := resolved[field.Name]; !exists {
+				resolved[field.Name] = value
+			}
+		}
+	}
+	return defaults, resolved
+}
+
+func addFieldDefaults(resolved map[string]string, fields []WorkbenchField) {
+	for _, field := range fields {
+		if field.Schema.DefaultValue == nil {
+			continue
+		}
+		if _, exists := resolved[field.Name]; !exists {
+			resolved[field.Name] = stringifyDefault(field.Schema.DefaultValue)
+		}
+	}
+}
+
+func resolveMappedValue(target, sourceRef, prefix string, selected, defaults, resolved map[string]string) (string, bool) {
+	if value, exists := selected[target]; exists {
+		return value, true
+	}
+	group, name, ok := parseGroupedReference(sourceRef, prefix)
+	if !ok {
+		return "", false
+	}
+	if value, exists := selected[name]; exists {
+		return value, true
+	}
+	if value, exists := defaults[group+":"+name]; exists {
+		return value, true
+	}
+	value, exists := resolved[name]
+	return value, exists
+}
+
+func parseGroupedReference(value, referenceType string) (string, string, bool) {
+	prefix := "${" + referenceType
 	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, "}") {
 		return "", "", false
 	}
 	group, name, ok := strings.Cut(strings.TrimSuffix(strings.TrimPrefix(value, prefix), "}"), ":")
 	return group, name, ok && group != "" && name != ""
+}
+
+// evaluateInclusion handles the equality expression currently returned by
+// Workbench. Unknown shapes fail instead of silently changing the workflow.
+func evaluateInclusion(condition any, values map[string]string) (bool, error) {
+	switch condition := condition.(type) {
+	case nil:
+		return true, nil
+	case bool:
+		return condition, nil
+	case map[string]any:
+		if len(condition) != 1 {
+			return false, fmt.Errorf("expected one inclusion operator, got %d", len(condition))
+		}
+		rawOperands, ok := condition["=="]
+		if !ok {
+			for operator := range condition {
+				return false, fmt.Errorf("unsupported inclusion operator %q", operator)
+			}
+		}
+		operands, ok := rawOperands.([]any)
+		if !ok || len(operands) != 2 {
+			return false, fmt.Errorf("== requires two operands")
+		}
+		left, err := resolveInclusionOperand(operands[0], values)
+		if err != nil {
+			return false, err
+		}
+		right, err := resolveInclusionOperand(operands[1], values)
+		if err != nil {
+			return false, err
+		}
+		return stringifyDefault(left) == stringifyDefault(right), nil
+	default:
+		return false, fmt.Errorf("unsupported inclusion value %T", condition)
+	}
+}
+
+func resolveInclusionOperand(value any, values map[string]string) (any, error) {
+	text, ok := value.(string)
+	if !ok {
+		return value, nil
+	}
+	for _, prefix := range []string{"${params:", "${settings:"} {
+		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, "}") {
+			key := strings.TrimSuffix(strings.TrimPrefix(text, prefix), "}")
+			resolved, exists := values[key]
+			if !exists {
+				return nil, fmt.Errorf("inclusion references unknown value %q", key)
+			}
+			return resolved, nil
+		}
+	}
+	return text, nil
 }
 
 func stringifyDefault(value any) string {
@@ -273,7 +438,7 @@ func blueprintPin(source *WorkbenchBlueprint) BlueprintPin {
 
 // NewSessionFromBlueprint pins an effective Workbench definition with co-op progress.
 func NewSessionFromBlueprint(source *WorkbenchBlueprint, sessionID string, settings, params map[string]string) (*Session, error) {
-	blueprint, resolvedSettings, err := resolveBlueprint(source, settings)
+	blueprint, resolvedSettings, resolvedParams, err := resolveBlueprint(source, settings, params)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +489,7 @@ func NewSessionFromBlueprint(source *WorkbenchBlueprint, sessionID string, setti
 		BlueprintPin:        &pin,
 		Status:              SessionActive,
 		Settings:            resolvedSettings,
-		Params:              params,
+		Params:              resolvedParams,
 		Steps:               steps,
 		CreatedAt:           now,
 		UpdatedAt:           now,
