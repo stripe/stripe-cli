@@ -3,6 +3,7 @@ package coopcmd
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -42,6 +43,9 @@ func (commandTestBlueprintRepository) List(context.Context) ([]coop.WorkbenchBlu
 }
 
 func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*coop.WorkbenchBlueprint, error) {
+	if key != "one-time-payment" {
+		return nil, fmt.Errorf("blueprint %q not found", key)
+	}
 	return &coop.WorkbenchBlueprint{
 		WorkbenchBlueprintSummary: coop.WorkbenchBlueprintSummary{
 			ID:               "blpt_one_time",

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -39,44 +38,14 @@ type Blueprint struct {
 	ResolvedSettings map[string]string `json:"-"`
 }
 
-// ResolveBlueprintKey resolves exact and unique-prefix keys from a list response.
-func ResolveBlueprintKey(blueprints []WorkbenchBlueprintSummary, key string) (string, error) {
-	var matches []string
-	for _, blueprint := range blueprints {
-		if blueprint.Key == key {
-			return key, nil
-		}
-		if strings.HasPrefix(blueprint.Key, key) {
-			matches = append(matches, blueprint.Key)
-		}
-	}
-	sort.Strings(matches)
-	switch len(matches) {
-	case 0:
-		return "", fmt.Errorf("blueprint %q not found", key)
-	case 1:
-		return matches[0], nil
-	default:
-		return "", fmt.Errorf("ambiguous blueprint prefix %q matches: %s", key, strings.Join(matches, ", "))
-	}
-}
-
-// LoadBlueprint resolves, retrieves, and compiles a Workbench blueprint.
+// LoadBlueprint retrieves and compiles a Workbench blueprint by its exact key.
 func LoadBlueprint(ctx context.Context, repository BlueprintRepository, key string, settings map[string]string) (*Blueprint, error) {
 	if repository == nil {
 		return nil, fmt.Errorf("loading blueprints: no blueprint repository configured")
 	}
-	available, err := repository.List(ctx)
+	source, err := repository.Retrieve(ctx, key)
 	if err != nil {
-		return nil, fmt.Errorf("listing blueprints: %w", err)
-	}
-	resolved, err := ResolveBlueprintKey(available, key)
-	if err != nil {
-		return nil, err
-	}
-	source, err := repository.Retrieve(ctx, resolved)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving blueprint %q: %w", resolved, err)
+		return nil, fmt.Errorf("retrieving blueprint %q: %w", key, err)
 	}
 	return CompileBlueprint(source, settings)
 }
