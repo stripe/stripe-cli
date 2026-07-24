@@ -1,6 +1,6 @@
 # Co-op Debug Agent
 
-The debug agent is a deterministic fake agent for local TUI debugging. It runs the normal Co-op TUI flow, but the right-hand pane is driven by scripted session updates instead of a real Claude/Codex agent.
+The debug agent is a deterministic fake agent for local TUI debugging. It runs the normal Co-op TUI flow, but the right-hand pane is driven by scripted session updates instead of a real coding agent.
 
 ## Manual TUI debugging
 
