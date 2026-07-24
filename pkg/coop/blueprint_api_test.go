@@ -103,7 +103,7 @@ func TestWorkbenchClientPropagatesAuthenticationAndDecodeErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "decoding Workbench blueprint response")
 }
 
-func TestWorkbenchHTTPRepositoryCompilesVariantsAndPinsSessions(t *testing.T) {
+func TestWorkbenchHTTPRepositoryResolvesVariantsAndPinsSessions(t *testing.T) {
 	retrieveFixture, err := os.ReadFile("testdata/blueprint-retrieve.json")
 	require.NoError(t, err)
 
@@ -126,21 +126,24 @@ func TestWorkbenchHTTPRepositoryCompilesVariantsAndPinsSessions(t *testing.T) {
 	defer server.Close()
 
 	client := NewWorkbenchClient(&recordingKeyProvider{key: "sk_test_end_to_end"}, server.URL, server.Client())
-	compiled, err := LoadBlueprint(context.Background(), client, "sample-payment", map[string]string{"country": "GB"})
+	blueprint, err := LoadBlueprint(context.Background(), client, "sample-payment")
 	require.NoError(t, err)
-	params := compiled.Steps[0].Nodes[0].Request.Params.(map[string]any)
+	session, err := NewSessionFromBlueprint(blueprint, "coop_http_pin", map[string]string{"country": "GB"}, nil)
+	require.NoError(t, err)
+	params := session.Steps[1].Nodes[0].Request().Params
 	assert.Equal(t, map[string]any{"country": "GB", "controller": "application"}, params["account"])
 	assert.Equal(t, "pm_card_visa", params["payment_method"])
-	assert.Regexp(t, `^sha256:[0-9a-f]{64}$`, compiled.Pin.Digest)
+	assert.Regexp(t, `^sha256:[0-9a-f]{64}$`, session.BlueprintPin.Digest)
 
-	session := NewSessionFromBlueprint(compiled, "coop_http_pin", nil, nil)
-	updated, err := LoadBlueprint(context.Background(), client, "sample-payment", nil)
+	updated, err := LoadBlueprint(context.Background(), client, "sample-payment")
 	require.NoError(t, err)
-	assert.Equal(t, 8, updated.Pin.BlueprintVersion)
-	assert.Equal(t, "/v1/upstream_changed", updated.Steps[0].Nodes[0].Request.Path)
+	updatedSession, err := NewSessionFromBlueprint(updated, "coop_http_updated", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, 8, updatedSession.BlueprintPin.BlueprintVersion)
+	assert.Equal(t, "/v1/upstream_changed", updatedSession.Steps[1].Nodes[0].Request().Path)
 
 	require.NotNil(t, session.BlueprintPin)
 	assert.Equal(t, 7, session.BlueprintPin.BlueprintVersion)
-	assert.Equal(t, compiled.Pin.Digest, session.BlueprintPin.Digest)
-	assert.Equal(t, "/v1/payment_intents", session.Steps[1].Nodes[0].Request.Path)
+	assert.NotEqual(t, updatedSession.BlueprintPin.Digest, session.BlueprintPin.Digest)
+	assert.Equal(t, "/v1/payment_intents", session.Steps[1].Nodes[0].Request().Path)
 }

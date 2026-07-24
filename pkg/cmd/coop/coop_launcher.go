@@ -204,11 +204,11 @@ func shellCommandWithCoopEnv(cmd string) string {
 	return cmd
 }
 
-func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
+func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.WorkbenchBlueprint) error {
 	return rc.runInTmuxSplitWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
 }
 
-func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
+func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coop.WorkbenchBlueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	var session *coop.Session
 	if blueprint != nil {
 		var err error
@@ -249,11 +249,11 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 	return runCoopTUIWait(store)
 }
 
-func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
+func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.WorkbenchBlueprint) error {
 	return rc.runInNewTmuxWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
 }
 
-func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
+func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.WorkbenchBlueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	sessionName := "stripe-coop"
 
 	// Check for existing session
@@ -348,11 +348,11 @@ func normalizeCoopTmuxSessionDimensions(width, height int, err error) (int, int)
 	return width, height
 }
 
-func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
+func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.WorkbenchBlueprint) error {
 	return rc.runFallbackWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
 }
 
-func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
+func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.WorkbenchBlueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	fmt.Println("tmux not found — running agent in this terminal.")
 
 	var session *coop.Session

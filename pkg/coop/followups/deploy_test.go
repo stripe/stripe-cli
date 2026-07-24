@@ -14,8 +14,8 @@ func TestGuidedActionByIDDeployCreatesStepFlow(t *testing.T) {
 	assert.Equal(t, Deploy, action.ID)
 	assert.Equal(t, "Deploy with Stripe Projects", action.Title)
 	require.Len(t, action.Steps, 4)
-	assert.Equal(t, "Detect deploy path", action.Steps[0].Title)
-	assert.Equal(t, "Check Stripe Projects plugin", action.Steps[0].Nodes[0].Title)
+	assert.Equal(t, "Detect deploy path", action.Steps[0].TitleText())
+	assert.Equal(t, "Check Stripe Projects plugin", action.Steps[0].Nodes[0].TitleText())
 	assert.Contains(t, action.AgentContext, "Stripe Projects CLI plugin")
 }
 
@@ -27,7 +27,7 @@ func TestGuidedActionByIDDeployUpdateUsesTarget(t *testing.T) {
 	assert.Equal(t, "Deploy your changes", action.Title)
 	require.Len(t, action.Steps, 3)
 	assert.Contains(t, action.AgentContext, "existing Vercel deployment configuration")
-	assert.Contains(t, action.Steps[0].Nodes[0].Description, "through Vercel")
+	assert.Contains(t, action.Steps[0].Nodes[0].DescriptionText(), "through Vercel")
 	assert.Contains(t, action.Steps[1].Nodes[0].ReviewPrompt, "to Vercel")
 }
 

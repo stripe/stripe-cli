@@ -9,6 +9,26 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
+func workflowNode(key, title string, state coop.NodeState) coop.SessionNode {
+	return coop.SessionNode{
+		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+			Key:   key,
+			Title: coop.MessageDescriptor{DefaultMessage: title},
+		},
+		State: state,
+	}
+}
+
+func workflowStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
+	return coop.SessionStep{
+		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+			Key:   key,
+			Title: coop.MessageDescriptor{DefaultMessage: title},
+		},
+		Nodes: nodes,
+	}
+}
+
 func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
 	store, session := workflowTestStore(t)
 	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
@@ -228,15 +248,9 @@ func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
 		ParentSessionID: "parent_session",
 		ParentStepID:    "add-integration",
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{Key: "add-integration", Title: "Add integration"},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "add-integration", Title: "Add integration"},
-						State:          coop.NodeActive,
-					},
-				},
-			},
+			workflowStep("add-integration", "Add integration",
+				workflowNode("add-integration", "Add integration", coop.NodeActive),
+			),
 		},
 	}
 	require.NoError(t, store.Write(child))
@@ -259,22 +273,10 @@ func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {
 		Blueprint:     "test",
 		Status:        coop.SessionActive,
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{
-					Key:   "step",
-					Title: "Step",
-				},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "one", Title: "One"},
-						State:          coop.NodePending,
-					},
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "two", Title: "Two"},
-						State:          coop.NodePending,
-					},
-				},
-			},
+			workflowStep("step", "Step",
+				workflowNode("one", "One", coop.NodePending),
+				workflowNode("two", "Two", coop.NodePending),
+			),
 		},
 	}
 	require.NoError(t, store.Write(session))

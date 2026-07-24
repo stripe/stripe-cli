@@ -145,11 +145,11 @@ Post-completion choices are written into the session file for the agent. Deploy 
 
 ## Auto-Confirm
 
-Nodes with `"auto_confirm": true` skip human review:
+Workbench nodes with `"is_informational_node": true` skip human review:
 - `agent report-work` transitions directly to `done` (not `review`)
 - `agent await-review` returns immediately if the node is auto-confirmed
 - The prepended "Project context" step contains an auto-confirmed "Understand the project" node
-- Blueprint nodes can set `"auto_confirm": true` for mechanical steps
+- Informational blueprint nodes are auto-confirmed after the agent reports work
 
 ## Heartbeat
 
@@ -177,15 +177,16 @@ Use `stripe coop join --resume` to pick from recent sessions.
 Workbench blueprint definitions are loaded at runtime from the unstable
 Workbench list and retrieve API endpoints using the configured test-mode key and
 preview API version. `coop recommend --all` lists learning blueprints by default.
-`coop run` and `coop start` retrieve and compile the selected definition.
+`coop run` and `coop start` retrieve the selected definition and apply its
+selected/default configuration.
 Recommend results report `step_count`; the former `node_count` field remains as
 `null` for migration compatibility because the list endpoint does not expose
 node definitions.
 
-The compiled steps, nodes, requests, events, and UI options are copied into the
-session. The session also pins blueprint, step, and template versions plus a
-normalized source digest, so an active session is unaffected by later upstream
-changes. Representative API responses used by tests live in
+The effective Workbench definition is stored directly in the session alongside
+co-op progress. The session also pins blueprint, step, and template versions
+plus the retrieved source digest, so an active session is unaffected by later
+upstream changes. Representative API responses used by tests live in
 `pkg/coop/testdata/`; they are not a runtime catalog.
 
 ## Troubleshooting
@@ -213,7 +214,7 @@ pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
   store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
-  blueprint.go      — API blueprint compiler and normalization
+  blueprint.go      — Workbench configuration resolution and session creation
   blueprint_api.go  — Authenticated Workbench blueprint client
   guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)

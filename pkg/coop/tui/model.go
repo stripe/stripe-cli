@@ -977,7 +977,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 		if len(nodeNumbers) == 0 {
 			return reviewTarget{}, false
 		}
-		return reviewTarget{title: ch.Title, kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
+		return reviewTarget{title: ch.TitleText(), kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
 	}
 	nodeIndex, ok := m.selectedNodeIndex()
 	if !ok {
@@ -1005,7 +1005,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if len(nodeNumbers) == 0 {
 		return reviewTarget{}, false
 	}
-	return reviewTarget{title: step.Title, kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
+	return reviewTarget{title: step.TitleText(), kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
 }
 
 func (m Model) reviewIsActionable(nodeNumber int) bool {

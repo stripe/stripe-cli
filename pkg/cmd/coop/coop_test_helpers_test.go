@@ -47,22 +47,26 @@ func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*
 		return nil, fmt.Errorf("blueprint %q not found", key)
 	}
 	return &coop.WorkbenchBlueprint{
-		WorkbenchBlueprintSummary: coop.WorkbenchBlueprintSummary{
-			ID:               "blpt_one_time",
-			Key:              key,
-			BlueprintType:    "learning",
-			BlueprintVersion: 6,
-			TemplateVersion:  1,
-			Title:            coop.MessageDescriptor{DefaultMessage: "Accept a one-time payment"},
-			Description:      coop.MessageDescriptor{DefaultMessage: "Create and verify a one-time payment."},
-			Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
+		WorkbenchBlueprintDefinition: coop.WorkbenchBlueprintDefinition{
+			WorkbenchBlueprintSummary: coop.WorkbenchBlueprintSummary{
+				ID:               "blpt_one_time",
+				Key:              key,
+				BlueprintType:    "learning",
+				BlueprintVersion: 6,
+				TemplateVersion:  1,
+				Title:            coop.MessageDescriptor{DefaultMessage: "Accept a one-time payment"},
+				Description:      coop.MessageDescriptor{DefaultMessage: "Create and verify a one-time payment."},
+				Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
+			},
 		},
 		Steps: []coop.WorkbenchStep{{
-			Key:             key + "--setup",
-			StepVersion:     2,
-			TemplateVersion: 1,
-			Title:           coop.MessageDescriptor{DefaultMessage: "Set up payment"},
-			Required:        true,
+			WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+				Key:             key + "--setup",
+				StepVersion:     2,
+				TemplateVersion: 1,
+				Title:           coop.MessageDescriptor{DefaultMessage: "Set up payment"},
+				Required:        true,
+			},
 			Nodes: []coop.WorkbenchBlueprintNode{{
 				NodeType:    coop.NodeAPIRequest,
 				Key:         "create-payment",
@@ -84,13 +88,32 @@ func init() {
 	options.BlueprintRepository = commandTestBlueprintRepository{}
 }
 
-func commandTestCompiledBlueprint(t *testing.T) *coop.Blueprint {
+func commandTestBlueprint(t *testing.T) *coop.WorkbenchBlueprint {
 	t.Helper()
-	source, err := (commandTestBlueprintRepository{}).Retrieve(t.Context(), "one-time-payment")
-	require.NoError(t, err)
-	blueprint, err := coop.CompileBlueprint(source, nil)
+	blueprint, err := (commandTestBlueprintRepository{}).Retrieve(t.Context(), "one-time-payment")
 	require.NoError(t, err)
 	return blueprint
+}
+
+func commandSessionNode(nodeType coop.NodeType, key, title string, state coop.NodeState) coop.SessionNode {
+	return coop.SessionNode{
+		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+			NodeType: nodeType,
+			Key:      key,
+			Title:    coop.MessageDescriptor{DefaultMessage: title},
+		},
+		State: state,
+	}
+}
+
+func commandSessionStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
+	return coop.SessionStep{
+		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+			Key:   key,
+			Title: coop.MessageDescriptor{DefaultMessage: title},
+		},
+		Nodes: nodes,
+	}
 }
 
 func captureStdout(t *testing.T, fn func()) string {

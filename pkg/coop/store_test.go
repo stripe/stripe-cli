@@ -24,12 +24,7 @@ func TestStoreWriteRead(t *testing.T) {
 		Blueprint: "one-time-payment",
 		Status:    SessionActive,
 		Steps: []SessionStep{
-			{
-				StepDefinition: StepDefinition{Key: "ch-1", Title: "Step 1"},
-				Nodes: []SessionNode{
-					testSessionNode("n-1", "Step 1", NodePending),
-				},
-			},
+			testSessionStep("ch-1", "Step 1", testSessionNode("n-1", "Step 1", NodePending)),
 		},
 		CreatedAt: time.Now().UTC(),
 	}
@@ -84,10 +79,7 @@ func TestStoreUpdateMutatesAndVersionsSession(t *testing.T) {
 		ID:     "update_test",
 		Status: SessionActive,
 		Steps: []SessionStep{
-			{
-				StepDefinition: StepDefinition{Key: "step"},
-				Nodes:          []SessionNode{testSessionNode("step", "Step", NodePending)},
-			},
+			testSessionStep("step", "", testSessionNode("step", "Step", NodePending)),
 		},
 	}
 	require.NoError(t, store.Write(session))

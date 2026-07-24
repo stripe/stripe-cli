@@ -170,24 +170,31 @@ type WorkbenchStepRef struct {
 }
 
 type WorkbenchBlueprint struct {
+	WorkbenchBlueprintDefinition
+	Steps []WorkbenchStep `json:"steps"`
+	raw   json.RawMessage
+}
+
+type WorkbenchBlueprintDefinition struct {
 	WorkbenchBlueprintSummary
 	BlueprintSettings []WorkbenchSettingGroup `json:"blueprint_settings"`
-	Steps             []WorkbenchStep         `json:"steps"`
-	raw               json.RawMessage
 }
 
 type WorkbenchStep struct {
-	Key             string                   `json:"key"`
-	StepVersion     int                      `json:"step_version"`
-	TemplateVersion int                      `json:"template_version"`
-	Title           MessageDescriptor        `json:"title"`
-	Description     MessageDescriptor        `json:"description"`
-	Required        bool                     `json:"required"`
-	IsIncluded      any                      `json:"is_included"`
-	Settings        []WorkbenchSettingGroup  `json:"settings"`
-	Config          WorkbenchStepConfig      `json:"config"`
-	Outputs         []WorkbenchStepOutput    `json:"outputs"`
-	Nodes           []WorkbenchBlueprintNode `json:"nodes"`
+	WorkbenchStepDefinition
+	Nodes []WorkbenchBlueprintNode `json:"nodes"`
+}
+
+type WorkbenchStepDefinition struct {
+	Key             string                  `json:"key"`
+	StepVersion     int                     `json:"step_version"`
+	TemplateVersion int                     `json:"template_version"`
+	Title           MessageDescriptor       `json:"title"`
+	Description     MessageDescriptor       `json:"description"`
+	Required        bool                    `json:"required"`
+	Settings        []WorkbenchSettingGroup `json:"settings"`
+	Config          WorkbenchStepConfig     `json:"config"`
+	Outputs         []WorkbenchStepOutput   `json:"outputs"`
 }
 
 type WorkbenchStepOutput struct {
@@ -220,7 +227,6 @@ type WorkbenchBlueprintNode struct {
 	Key                 string                        `json:"key"`
 	Title               MessageDescriptor             `json:"title"`
 	Description         MessageDescriptor             `json:"description"`
-	IsIncluded          any                           `json:"is_included"`
 	IsInformationalNode bool                          `json:"is_informational_node"`
 	APIRequestDetails   *WorkbenchAPIRequestDetails   `json:"api_request_details"`
 	AsyncHandlerDetails *WorkbenchAsyncHandlerDetails `json:"async_handler_details"`
@@ -241,7 +247,7 @@ type WorkbenchTestHelperDetails struct {
 }
 
 type WorkbenchUIComponentDetails struct {
-	ConfiguredDetails   []WorkbenchUIConfiguredDetails `json:"configured_details"`
+	ConfiguredDetails   []WorkbenchUIConfiguredDetails `json:"configured_details,omitempty"`
 	Display             string                         `json:"display"`
 	DisplayComponentRef *UIComponentReference          `json:"display_component_ref"`
 	StripeElementRef    map[string]any                 `json:"stripe_element_ref"`
@@ -270,7 +276,8 @@ type WorkbenchRequestFixture struct {
 	Headers           map[string]string            `json:"headers"`
 	Params            map[string]any               `json:"params"`
 	HiddenParams      map[string]any               `json:"hidden_params"`
-	ConfiguredDetails []WorkbenchConfiguredDetails `json:"configured_details"`
+	ConfiguredDetails []WorkbenchConfiguredDetails `json:"configured_details,omitempty"`
+	ExpectedErrorType string                       `json:"expected_error_type,omitempty"`
 	ProcessingDetails *APIProcessingDetails        `json:"processing_details"`
 	RegenerateEnv     bool                         `json:"regenerate_env"`
 }

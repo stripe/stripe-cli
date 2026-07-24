@@ -22,22 +22,11 @@ func setupAgentCommandTest(t *testing.T) (*coop.Store, *coop.Session) {
 		Status:        coop.SessionActive,
 		Settings:      map[string]string{"language": "node"},
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{
-					Key:   "step-1",
-					Title: "Step 1",
-				},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{
-							Key:   "node-1",
-							Title: "Node 1",
-							Type:  coop.NodeTestHelper,
-						},
-						State: coop.NodePending,
-					},
-				},
-			},
+			commandSessionStep(
+				"step-1",
+				"Step 1",
+				commandSessionNode(coop.NodeTestHelper, "node-1", "Node 1", coop.NodePending),
+			),
 		},
 	}
 	require.NoError(t, store.Write(session))

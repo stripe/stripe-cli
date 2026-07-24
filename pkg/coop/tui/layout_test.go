@@ -152,7 +152,7 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	m.selectionCursor = 0
 	m.session.Steps[0].Nodes[0].State = coop.NodeDone
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
-	m.session.Steps[0].Nodes[1].Title = "Review Checkout Session creation, saved IDs, redirect behavior, and webhook assumptions"
+	m.session.Steps[0].Nodes[1].Title.DefaultMessage = "Review Checkout Session creation, saved IDs, redirect behavior, and webhook assumptions"
 	m.session.Steps[0].Nodes[1].ReviewPrompt = "Open the local app, start Checkout, inspect the server logs, confirm the saved price ID is reused instead of creating a new Price, confirm the redirect URL is correct, confirm errors are handled without exposing secrets, and confirm the success page reflects the completed payment."
 	m.session.Steps[0].Nodes[1].Implementation = &coop.Implementation{
 		File:  "server/src/payments/checkout/session/create_checkout_session_handler_with_long_name.ts",
