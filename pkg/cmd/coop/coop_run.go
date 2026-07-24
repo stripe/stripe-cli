@@ -63,7 +63,7 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// Surface the specific error (e.g. an ambiguous prefix and its candidate
 		// list) rather than a generic "not found".
-		return outputCoopError(err.Error(), "stripe coop recommend")
+		return outputCoopError(err.Error(), "stripe coop recommend --all")
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())

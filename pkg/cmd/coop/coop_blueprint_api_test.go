@@ -43,6 +43,7 @@ func TestCoopRecommendUsesListAndFiltersLearning(t *testing.T) {
 	command := newCoopRecommendCmd().cmd
 	command.SilenceErrors = true
 	command.SilenceUsage = true
+	command.SetArgs([]string{"--all"})
 
 	output := captureStdout(t, func() {
 		require.NoError(t, command.Execute())
@@ -62,12 +63,14 @@ func TestCoopRecommendUsesListAndFiltersLearning(t *testing.T) {
 	for _, blueprint := range response.Blueprints {
 		ids = append(ids, blueprint.ID)
 	}
-	assert.Contains(t, ids, "one-time-payment")
+	assert.ElementsMatch(t, []string{"one-time-payment", "flat-fee", "flat-subscription"}, ids)
 	assert.NotContains(t, ids, "testing-only")
 	require.NotEmpty(t, response.Blueprints)
 	assert.Nil(t, response.Blueprints[0].NodeCount)
 	assert.Equal(t, 1, response.Blueprints[0].StepCount)
 	assert.Contains(t, output, `"node_count": null`)
+	assert.NotContains(t, output, `"query"`)
+	assert.NotContains(t, output, `"score"`)
 }
 
 func TestCoopRecommendCanIncludeTestingBlueprints(t *testing.T) {
@@ -75,7 +78,7 @@ func TestCoopRecommendCanIncludeTestingBlueprints(t *testing.T) {
 	command := newCoopRecommendCmd().cmd
 	command.SilenceErrors = true
 	command.SilenceUsage = true
-	command.SetArgs([]string{"--include-testing"})
+	command.SetArgs([]string{"--all", "--include-testing"})
 
 	output := captureStdout(t, func() {
 		require.NoError(t, command.Execute())
@@ -83,31 +86,16 @@ func TestCoopRecommendCanIncludeTestingBlueprints(t *testing.T) {
 	assert.Contains(t, output, `"id": "testing-only"`)
 }
 
-func TestCoopRecommendReturnsAllLearningBlueprintsForAQuery(t *testing.T) {
-	useRecordingBlueprintRepository(t)
+func TestCoopRecommendRequiresAll(t *testing.T) {
+	repository := useRecordingBlueprintRepository(t)
 	command := newCoopRecommendCmd().cmd
 	command.SilenceErrors = true
 	command.SilenceUsage = true
-	command.SetArgs([]string{"--query", "a store"})
 
-	output := captureStdout(t, func() {
-		require.NoError(t, command.Execute())
-	})
-
-	var response struct {
-		Query      string `json:"query"`
-		Blueprints []struct {
-			ID string `json:"id"`
-		} `json:"blueprints"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(output), &response))
-	assert.Equal(t, "a store", response.Query)
-	var ids []string
-	for _, blueprint := range response.Blueprints {
-		ids = append(ids, blueprint.ID)
-	}
-	assert.ElementsMatch(t, []string{"one-time-payment", "flat-fee", "flat-subscription"}, ids)
-	assert.NotContains(t, output, `"score"`)
+	err := command.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires --all")
+	assert.Zero(t, repository.listCalls)
 }
 
 func TestCoopRunRetrievesSelectedBlueprintAndPinsSession(t *testing.T) {

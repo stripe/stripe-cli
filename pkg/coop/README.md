@@ -60,7 +60,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop join [session-id]` | Open the TUI for an existing session |
 | `stripe coop status` | Show session summary |
 | `stripe coop stop` | End the session |
-| `stripe coop recommend` | List available blueprints |
+| `stripe coop recommend --all` | List available blueprint summaries for agent selection |
 
 ### Agent-facing (AI agent runs these)
 | Command | Purpose |
@@ -137,7 +137,7 @@ Discovery mode is different:
 $ stripe coop start
 
 # The agent explores the codebase, asks what the developer wants to build,
-# runs `stripe coop recommend`, and only then runs:
+# runs `stripe coop recommend --all`, picks the best summary, and only then runs:
 #   stripe coop run <blueprint-id> --language=<lang>
 ```
 
@@ -176,7 +176,7 @@ Use `stripe coop join --resume` to pick from recent sessions.
 
 Workbench blueprint definitions are loaded at runtime from the unstable
 Workbench list and retrieve API endpoints using the configured test-mode key and
-preview API version. `coop recommend` lists learning blueprints by default.
+preview API version. `coop recommend --all` lists learning blueprints by default.
 `coop run` and `coop start` retrieve and compile the selected definition.
 Recommend results report `step_count`; the former `node_count` field remains as
 `null` for migration compatibility because the list endpoint does not expose
@@ -200,7 +200,7 @@ changes. Representative API responses used by tests live in
 | Steps not updating in TUI | Agent created a duplicate session | Check `stripe coop status` for the correct session ID |
 | Agent ignores "next" hint | LLM didn't follow instructions | Copy the `next` value and run it manually, or restart |
 | Double footer / layout broken | Terminal resize not detected | Resize the terminal window (triggers recalculation) |
-| "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend` to see available IDs |
+| "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend --all` to see available IDs |
 
 ## Locking
 
