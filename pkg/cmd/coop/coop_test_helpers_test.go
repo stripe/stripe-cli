@@ -54,7 +54,6 @@ func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*
 			Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
 		},
 		Steps: []coop.WorkbenchStep{{
-			ID:              "step_setup",
 			Key:             key + "--setup",
 			StepVersion:     2,
 			TemplateVersion: 1,

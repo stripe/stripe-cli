@@ -82,8 +82,8 @@ func TestCompileBlueprintNormalizesAPIDetails(t *testing.T) {
 	assert.Equal(t, map[string]any{"country": "GB", "controller": "application"}, params["account"])
 	assert.Equal(t, map[string]any{"source": "base", "baseline": "yes"}, params["metadata"])
 	assert.Equal(t, "client_secret", apiNode.Request.ProcessingDetails.OutputField)
-	assert.Contains(t, apiNode.ReviewPrompt, "POST /v1/payment_intents")
-	assert.Equal(t, "stripe post '/v1/payment_intents' --stripe-context 'ctx_test' -d 'account[controller]=application' -d 'account[country]=GB' -d 'amount=2000' -d 'currency=usd' -d 'internal=true' -d 'metadata[baseline]=yes' -d 'metadata[source]=base' -d 'payment_method=pm_card_visa'", apiNode.ReviewCommand)
+	assert.Equal(t, "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.", apiNode.ReviewPrompt)
+	assert.Empty(t, apiNode.ReviewCommand)
 
 	asyncNode := blueprint.Steps[0].Nodes[1]
 	require.Len(t, asyncNode.Events, 1)
@@ -91,7 +91,7 @@ func TestCompileBlueprintNormalizesAPIDetails(t *testing.T) {
 	assert.Equal(t, "${node.create-payment:id}", asyncNode.Events[0].ObjectID)
 	assert.Equal(t, "succeeded", asyncNode.Events[0].EventData["additional_properties"].(map[string]any)["status"])
 	assert.Equal(t, "create-payment", asyncNode.Events[0].OnNodeComplete.NodeKey)
-	assert.Empty(t, asyncNode.ReviewCommand)
+	assert.Equal(t, "stripe trigger payment_intent.succeeded", asyncNode.ReviewCommand)
 
 	testNode := blueprint.Steps[0].Nodes[2]
 	require.Len(t, testNode.TestRequests, 1)
@@ -187,33 +187,20 @@ func TestCompileBlueprintEvaluatesLivemodeAsTestMode(t *testing.T) {
 	assert.Equal(t, "false", compiled.ResolvedSettings["env_livemode"])
 }
 
-func TestStripeRequestCommandRequiresACompleteRepresentableRequest(t *testing.T) {
-	assert.Equal(t,
-		"stripe post '/v1/products' --stripe-account 'acct_123' --stripe-version '2026-01-01' -d 'metadata[source]=coop' -d 'name=Starter'",
-		stripeRequestCommand(APIRequest{
-			Method:  "POST",
-			Path:    "/v1/products",
-			Headers: map[string]string{"Stripe-Version": "2026-01-01", "Stripe-Account": "acct_123"},
-			Params:  map[string]any{"name": "Starter", "metadata": map[string]any{"source": "coop"}},
-		}),
-	)
-	assert.Equal(t,
-		`stripe post '/v2/example' -d '{"enabled":true,"name":"Starter"}'`,
-		stripeRequestCommand(APIRequest{
-			Method: "POST",
-			Path:   "/v2/example",
-			Params: map[string]any{"name": "Starter", "enabled": true},
-		}),
-	)
-	assert.Empty(t, stripeRequestCommand(APIRequest{
-		Method: "GET",
-		Path:   "/v1/payment_intents/${node.create-payment:id}",
+func TestDeriveReviewCommandUsesSingleEventType(t *testing.T) {
+	assert.Equal(t, "stripe trigger checkout.session.completed", deriveReviewCommand(NodeDefinition{
+		Type:   NodeAsyncHandler,
+		Events: []AsyncEvent{{EventType: "checkout.session.completed"}},
 	}))
-	assert.Empty(t, stripeRequestCommand(APIRequest{
-		Method:  "POST",
-		Path:    "/v1/products",
-		Headers: map[string]string{"Authorization": "Bearer secret"},
+	assert.Empty(t, deriveReviewCommand(NodeDefinition{
+		Type:   NodeAsyncHandler,
+		Events: []AsyncEvent{{EventType: "first.event"}, {EventType: "second.event"}},
 	}))
+	assert.Empty(t, deriveReviewCommand(NodeDefinition{
+		Type:   NodeAsyncHandler,
+		Events: []AsyncEvent{{EventType: "event; echo unsafe"}},
+	}))
+	assert.Empty(t, deriveReviewCommand(NodeDefinition{Type: NodeAPIRequest}))
 }
 
 func TestCompileBlueprintMergesAllMatchingConfigurationVariants(t *testing.T) {
@@ -240,19 +227,31 @@ func TestCompileBlueprintMergesAllMatchingConfigurationVariants(t *testing.T) {
 	assert.Equal(t, "Review the declined payment", selectedUI.Options[0].Title)
 }
 
-func TestBlueprintDigestUsesNormalizedSnapshot(t *testing.T) {
+func TestResolveBlueprintSettingsUsesExplicitStepMapping(t *testing.T) {
+	source := loadTestBlueprint(t)
+	source.Steps[0].Config.Settings = map[string]string{
+		"merchant_country": "${blueprint_settings.payment:country}",
+	}
+
+	defaults := resolveBlueprintSettings(source, nil)
+	assert.Equal(t, "US", defaults["merchant_country"])
+
+	selected := resolveBlueprintSettings(source, map[string]string{"country": "GB"})
+	assert.Equal(t, "GB", selected["merchant_country"])
+
+	selected = resolveBlueprintSettings(source, map[string]string{"merchant_country": "CA"})
+	assert.Equal(t, "CA", selected["merchant_country"])
+}
+
+func TestBlueprintDigestPinsRetrievedSnapshot(t *testing.T) {
 	source := loadTestBlueprint(t)
 	first := blueprintDigest(source)
+	second := loadTestBlueprint(t)
 
-	var document any
-	require.NoError(t, json.Unmarshal(source.raw, &document))
-	normalized, err := json.Marshal(document)
-	require.NoError(t, err)
-	var secondSource WorkbenchBlueprint
-	require.NoError(t, json.Unmarshal(normalized, &secondSource))
-	secondSource.raw = append([]byte("\n\t"), normalized...)
+	assert.Equal(t, first, blueprintDigest(second))
 
-	assert.Equal(t, first, blueprintDigest(&secondSource))
+	second.raw = append(second.raw, '\n')
+	assert.NotEqual(t, first, blueprintDigest(second))
 }
 
 func TestResolveBlueprintKey(t *testing.T) {
