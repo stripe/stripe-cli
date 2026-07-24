@@ -115,6 +115,41 @@ func TestRequestChangesEditorInsertsNewlineOnTerminalDeliverableKeys(t *testing.
 	}
 }
 
+// The advertised newline chord follows what the terminal reported, so the help
+// never names a key the terminal cannot deliver.
+func TestRequestChangesEditorNewlineHintFollowsTerminalCapability(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		flags  int
+		hint   string
+		absent string
+	}{
+		{name: "without disambiguation", flags: 0, hint: "ctrl+j newline", absent: "ctrl+enter newline"},
+		{name: "with disambiguation", flags: 1, hint: "ctrl+enter newline", absent: "ctrl+j newline"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := reviewStepLongPromptLayoutModel()
+			m = attachTestStore(t, m)
+			m = prepareInteractiveModel(m, 69, 50)
+
+			updated, _ := m.Update(tea.KeyboardEnhancementsMsg{Flags: tc.flags})
+			m = updated.(Model)
+			m = updateWithRunes(t, m, "r")
+
+			footer := m.renderFooter()
+			assertContainsPlain(t, footer, "enter send")
+			assertContainsPlain(t, footer, tc.hint)
+			assertNotContainsPlain(t, footer, tc.absent)
+
+			// Both chords stay bound regardless of what the help advertises.
+			m = updateWithRunes(t, m, "First line")
+			m = updateWithModifiedKey(t, m, 'j', tea.ModCtrl)
+			m = updateWithRunes(t, m, "Second line")
+			assert.Equal(t, "First line\nSecond line", m.rejectionInput.Value())
+		})
+	}
+}
+
 // A bare enter submits, so feedback reaches the agent in every terminal.
 func TestRequestChangesEditorEnterSubmits(t *testing.T) {
 	m := reviewStepLongPromptLayoutModel()
