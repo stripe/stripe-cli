@@ -91,6 +91,18 @@ func TestBuildResponseForDeployStartsGuidedFollowup(t *testing.T) {
 	assert.NotContains(t, resp.Next, "stripe coop run")
 }
 
+func TestBuildResponseForSummarizeReturnsExecutableNext(t *testing.T) {
+	session := &coop.Session{
+		ID:        "sess_123",
+		Blueprint: "one-time-payment",
+	}
+
+	resp := BuildResponse(session, nil, "summarize")
+
+	assert.Equal(t, "stripe coop agent next-action --session=sess_123 --completed=summarize", resp.Next)
+	assert.NotContains(t, resp.Next, "Write STRIPE.md")
+}
+
 func TestBuildResponseForDeployUpdateStartsGuidedFollowupWithDetectedTarget(t *testing.T) {
 	session := &coop.Session{
 		ID:        "sess_123",

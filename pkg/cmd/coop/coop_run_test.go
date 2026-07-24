@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
 func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
@@ -34,6 +35,14 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 	assert.Equal(t, "deploy", session.ParentStepID)
 	assert.True(t, session.UsedSandbox)
 	assert.False(t, session.CreatedAt.IsZero())
+}
+
+func TestAgentInstructionsAdvertiseAwaitTimeoutWithHarnessHeadroom(t *testing.T) {
+	instructions := sessionLifecycleInstructions("Build an integration.", &coop.Session{ID: "coop_123"})
+
+	assert.Contains(t, instructions, workflow.AwaitTimeout.String())
+	assert.Contains(t, instructions, workflow.AwaitHarnessTimeout.String())
+	assert.NotContains(t, instructions, "Set a 5-minute timeout")
 }
 
 func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
@@ -80,13 +89,33 @@ func TestCoopRunReturnsStructuredErrorForMalformedSetting(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.False(t, resp.OK)
 	assert.Contains(t, resp.Error, "--setting must be in key=value format")
-	assert.Equal(t, "Use --setting key=value and --param key=value.", resp.Hint)
+	require.NotNil(t, resp.Recovery)
+	assert.Contains(t, resp.Recovery.Hint, "malformed setting or parameter")
+	assert.Equal(t, `stripe coop run "one-time-payment"`, resp.Recovery.Next)
 
 	store, err := coop.NewStore(coopConfigFolder())
 	require.NoError(t, err)
 	ids, err := store.List()
 	require.NoError(t, err)
 	assert.Empty(t, ids)
+}
+
+func TestCoopRunMissingBlueprintReturnsStructuredRecovery(t *testing.T) {
+	cmd := newCoopAgentRunCmd().cmd
+	cmd.SetArgs(nil)
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
+	require.NoError(t, resp.Validate())
 }
 
 func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
@@ -105,7 +134,9 @@ func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.False(t, resp.OK)
 	assert.Contains(t, resp.Error, "--param key cannot be empty")
-	assert.Equal(t, "Use --setting key=value and --param key=value.", resp.Hint)
+	require.NotNil(t, resp.Recovery)
+	assert.Contains(t, resp.Recovery.Hint, "malformed setting or parameter")
+	assert.Equal(t, `stripe coop run "one-time-payment"`, resp.Recovery.Next)
 
 	store, err := coop.NewStore(coopConfigFolder())
 	require.NoError(t, err)
@@ -130,7 +161,8 @@ func TestCoopRunPreservesBlueprintLoadError(t *testing.T) {
 	assert.False(t, resp.OK)
 	assert.Contains(t, resp.Error, "ambiguous blueprint prefix")
 	assert.NotContains(t, resp.Error, "not found")
-	assert.Equal(t, "stripe coop recommend", resp.Hint)
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
 }
 
 func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
@@ -147,7 +179,8 @@ func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	var resp coop.CommandResponse
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.Contains(t, resp.Error, "not found")
-	assert.Equal(t, "stripe coop recommend", resp.Hint)
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
 }
 
 func TestCoopStartPreservesBlueprintLoadError(t *testing.T) {

@@ -2,7 +2,14 @@
 // AI agent + human developer Stripe integration building.
 package coop
 
-import "time"
+import (
+	"fmt"
+	"regexp"
+	"strings"
+	"time"
+)
+
+var commandTemplatePlaceholder = regexp.MustCompile(`<[^>]+>`)
 
 // NodeState represents the lifecycle state of a single blueprint node.
 type NodeState string
@@ -141,17 +148,118 @@ type NextStepSuggestion struct {
 	Reason      string `json:"reason,omitempty"`
 }
 
+// CommandInput describes a value an agent must provide before executing a
+// command template.
+type CommandInput struct {
+	Name        string `json:"name"`
+	Flag        string `json:"flag,omitempty"`
+	Description string `json:"description"`
+}
+
+// Continuation tells an agent either what to run next or what inputs are
+// needed to complete a command template.
+type Continuation struct {
+	Next               string         `json:"next,omitempty"`
+	NextTemplate       string         `json:"next_template,omitempty"`
+	RequiredInputs     []CommandInput `json:"required_inputs,omitempty"`
+	WaitTimeoutSeconds int            `json:"wait_timeout_seconds,omitempty"`
+}
+
+// Continue returns a continuation for an immediately executable command.
+func Continue(next string) Continuation {
+	return Continuation{Next: next}
+}
+
+// WithWaitTimeout returns a continuation with its advertised shell timeout.
+func (c Continuation) WithWaitTimeout(seconds int) Continuation {
+	c.WaitTimeoutSeconds = seconds
+	return c
+}
+
+// Recovery turns a continuation into the common agent failure contract.
+func (c Continuation) Recovery(hint string) *Recovery {
+	return &Recovery{Hint: hint, Continuation: c}
+}
+
+// Recovery is the single recovery contract for all agent-facing failures.
+type Recovery struct {
+	Hint string `json:"hint"`
+	Continuation
+}
+
 // CommandResponse is the JSON output format for agent-facing commands.
 type CommandResponse struct {
-	OK          bool        `json:"ok"`
-	SessionID   string      `json:"session_id,omitempty"`
-	Node        int         `json:"node,omitempty"`
-	State       string      `json:"state,omitempty"`
-	Message     string      `json:"message,omitempty"`
-	Next        string      `json:"next,omitempty"`
+	OK        bool   `json:"ok"`
+	SessionID string `json:"session_id,omitempty"`
+	Node      int    `json:"node,omitempty"`
+	State     string `json:"state,omitempty"`
+	Message   string `json:"message,omitempty"`
+	Continuation
 	AgentPrompt string      `json:"agent_prompt,omitempty"`
 	APIRequest  *APIRequest `json:"api_request,omitempty"`
 	SDKExample  string      `json:"sdk_example,omitempty"`
 	Error       string      `json:"error,omitempty"`
-	Hint        string      `json:"hint,omitempty"`
+	Recovery    *Recovery   `json:"recovery,omitempty"`
+}
+
+// Validate checks the invariants agents rely on when interpreting a response.
+func (r CommandResponse) Validate() error {
+	if r.OK {
+		if r.Error != "" || r.Recovery != nil {
+			return fmt.Errorf("successful response cannot contain error recovery")
+		}
+		return r.validate(true)
+	}
+	if strings.TrimSpace(r.Error) == "" {
+		return fmt.Errorf("failed response must contain error")
+	}
+	if r.Next != "" || r.NextTemplate != "" || len(r.RequiredInputs) > 0 || r.WaitTimeoutSeconds != 0 {
+		return fmt.Errorf("failed response must put continuation data inside recovery")
+	}
+	if r.Recovery == nil {
+		return fmt.Errorf("failed response must contain recovery")
+	}
+	if strings.TrimSpace(r.Recovery.Hint) == "" {
+		return fmt.Errorf("recovery must contain hint")
+	}
+	return r.Recovery.validate(false)
+}
+
+func (c Continuation) validate(allowEmpty bool) error {
+	if c.WaitTimeoutSeconds < 0 {
+		return fmt.Errorf("wait_timeout_seconds cannot be negative")
+	}
+	if c.Next != "" && c.NextTemplate != "" {
+		return fmt.Errorf("response cannot contain both next and next_template")
+	}
+	if c.Next == "" && c.NextTemplate == "" {
+		if c.WaitTimeoutSeconds != 0 {
+			return fmt.Errorf("wait_timeout_seconds requires a continuation")
+		}
+		if allowEmpty {
+			return nil
+		}
+		return fmt.Errorf("recovery must contain next or next_template")
+	}
+	if c.Next != "" {
+		if len(c.RequiredInputs) > 0 {
+			return fmt.Errorf("exact next command cannot require inputs")
+		}
+		if commandTemplatePlaceholder.MatchString(c.Next) {
+			return fmt.Errorf("exact next command contains a template placeholder")
+		}
+		return nil
+	}
+	if len(c.RequiredInputs) == 0 {
+		return fmt.Errorf("next_template must describe required_inputs")
+	}
+	if !commandTemplatePlaceholder.MatchString(c.NextTemplate) {
+		return fmt.Errorf("next_template must contain a placeholder")
+	}
+	for _, input := range c.RequiredInputs {
+		if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Description) == "" {
+			return fmt.Errorf("required_inputs must contain name and description")
+		}
+	}
+	return nil
 }
