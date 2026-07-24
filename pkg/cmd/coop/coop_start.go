@@ -23,14 +23,20 @@ func newCoopRunCmd() *coopRunCmd {
 	rc.cmd = &cobra.Command{
 		Use:   "start [blueprint-id]",
 		Short: "Launch a co-op session with an AI agent in split-screen",
-		Long: `Starts a co-op session and launches an AI agent (Claude Code) in a
-split terminal view. The TUI shows on one side, the agent works on the other.
+		Long: fmt.Sprintf(`Starts a co-op session and launches an AI agent in a split
+terminal view. The TUI shows on one side, the agent works on the other.
+
+Supported agents, auto-detected on PATH:
+  %s
+
+When more than one is installed, co-op asks which to use. Use --agent to
+force a specific one, or to run an agent co-op does not know about.
 
 If no blueprint is provided, the agent will explore your codebase,
 understand your needs, and pick the right integration via the recommender.
 
 Requires tmux (detected automatically). If already in a tmux session,
-splits the current window. Otherwise creates a new tmux session.`,
+splits the current window. Otherwise creates a new tmux session.`, supportedHarnessList()),
 		Example: `  stripe coop start
   stripe coop start one-time-payment --language=node
   stripe coop start --language=python`,
@@ -40,7 +46,7 @@ splits the current window. Otherwise creates a new tmux session.`,
 
 	rc.cmd.Flags().StringVar(&rc.language, "language", "", "Programming language for the integration")
 	rc.cmd.Flags().StringArrayVar(&rc.settings, "setting", nil, "Blueprint settings as key=value pairs")
-	rc.cmd.Flags().StringVar(&rc.agent, "agent", "", "Agent to use (default: auto-detect claude/codex)")
+	rc.cmd.Flags().StringVar(&rc.agent, "agent", "", fmt.Sprintf("Agent to use: %s, or a custom command (default: auto-detect)", supportedHarnessList()))
 	rc.cmd.Flags().BoolVar(&rc.debugAgent, "debug-agent", false, "Use a deterministic fake agent for local TUI debugging")
 	mustMarkFlagHidden(rc.cmd, "debug-agent")
 

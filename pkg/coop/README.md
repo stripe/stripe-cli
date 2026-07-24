@@ -9,7 +9,8 @@ Co-op mode enables an AI agent and a human developer to build Stripe integration
 │ tmux session                                                │
 │                                                             │
 │  ┌──────────────────────┐   ┌────────────────────────────┐ │
-│  │  TUI (coop join)     │   │  Agent (Claude/Codex)      │ │
+│  │  TUI (coop join)     │   │  Agent (see Supported      │ │
+│  │                      │   │  Agents below)             │ │
 │  │                      │   │                            │ │
 │  │  Reads session.json  │   │  Writes session.json via   │ │
 │  │  every 500ms         │   │  stripe coop agent commands│ │
@@ -25,6 +26,59 @@ Co-op mode enables an AI agent and a human developer to build Stripe integration
 ```
 
 No server, no HTTP, no WebSocket. Communication is through a shared JSON session file with atomic writes (write to .tmp, rename).
+
+## Supported Agents
+
+`stripe coop start` detects installed agents on PATH and, when more than one is
+present, asks which to use. `--agent=<id-or-command>` forces a specific one.
+The registry lives in `pkg/cmd/coop/harness.go`.
+
+| Agent | `--agent` | Binary | Invocation | Auto-approve |
+|-------|-----------|--------|------------|--------------|
+| Claude Code | `claude` | `claude` | positional prompt | `--dangerously-skip-permissions` |
+| Codex | `codex` | `codex` | positional prompt | `--dangerously-bypass-approvals-and-sandbox` |
+| Cursor CLI | `cursor` | `cursor-agent` | positional prompt | `--force` |
+| Gemini CLI | `gemini` | `gemini` | `-i <prompt>` | `--approval-mode=yolo` |
+| Goose | `goose` | `goose` | `run -s -t <prompt>` | `GOOSE_MODE=auto` (env) |
+| opencode | `opencode` | `opencode` | `--prompt <prompt>` | `--auto` |
+| Pi | `pi` | `pi` | positional prompt | none — see below |
+
+### Adding an agent
+
+The launcher generates one script per session — `exec <path> [args] [auto-approve] [prompt-flag] "$prompt"` —
+so a new agent must **accept an initial prompt that leaves an interactive session
+running**. This is the binding constraint, and it disqualifies more agents than
+it admits.
+
+Watch for two traps when reading a candidate's docs:
+
+- **The obvious prompt flag is usually the wrong one.** On Gemini, Qwen, Copilot
+  and others, `-p`/`--prompt` means "run headless and exit"; a *different* flag
+  (`-i`, `--prompt-interactive`) is what seeds an interactive session. opencode
+  inverts this — its `--prompt` is the interactive one. Only the interactive
+  spelling belongs in `promptFlag`.
+- **A headless one-shot agent cannot drive co-op's review loop.** Co-op depends
+  on the agent process surviving `stripe coop agent await-review`, which blocks
+  until the developer confirms in the TUI, and on discovery mode the agent must
+  be able to ask the developer questions directly.
+
+Known-incompatible as of 2026-07: **Crush** (`crush run` is non-interactive;
+seeding the TUI is [charmbracelet/crush#1791](https://github.com/charmbracelet/crush/issues/1791),
+still open), **Hermes** (`-q`/`-z` are both non-interactive; no positional prompt),
+**GitHub Copilot CLI** (`-p` forces one-shot), **Aider** (`--message` forces
+one-shot), and **Amp** (seeds only via stdin, which would break the pane's TUI).
+
+`Qwen Code` and `Factory Droid` are compatible but not yet registered — Qwen is a
+gemini-cli fork (`-i`, `--yolo`) and Droid takes a positional prompt with
+`--skip-permissions-unsafe`.
+
+### A note on Pi
+
+Pi ships **no permission system and no sandbox**: it runs with the privileges of
+the process that launched it and never prompts before acting. Co-op therefore
+skips the permission-mode question for Pi, because there is nothing to skip —
+not because it is running in a safe mode. Every co-op session with Pi behaves as
+if auto-approve were on.
 
 ## Node State Machine
 
@@ -115,7 +169,7 @@ $ stripe coop start one-time-payment --language=node
 
 # What happens behind the scenes:
 # 1. CLI creates the session and gives the agent the exact session protocol
-# 2. Agent (Claude/Codex) is launched in right pane
+# 2. The detected agent is launched in right pane
 # 3. TUI appears in left pane showing step progress
 # 4. Agent starts from the provided next command:
 #      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Beginning: Understand the project"
@@ -266,6 +320,7 @@ pkg/coop/helpers/
 pkg/cmd/coop/
   coop.go           — Parent command, subcommand registration, command-package options
   coop_start.go     — User-facing orchestrator (tmux launcher)
+  harness.go        — Supported agent registry and --agent resolution
   coop_launcher.go  — Agent detection and tmux/process management
   coop_run.go       — Agent-facing session creator
   coop_agent.go     — Typed agent lifecycle commands

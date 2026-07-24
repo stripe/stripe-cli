@@ -72,7 +72,7 @@ func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
 		selectString = originalSelectString
 	})
 
-	autoApprove, err := (&coopRunCmd{}).promptAutoApprove(&agentInfo{name: "claude"})
+	autoApprove, err := (&coopRunCmd{}).promptAutoApprove(&agentInfo{harness: mustHarness(t, "claude")})
 
 	require.ErrorIs(t, err, promptErr)
 	assert.False(t, autoApprove)
@@ -246,7 +246,7 @@ func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
 	t.Setenv("TEMP", tmp)
 
 	rc := &coopRunCmd{}
-	build := rc.agentPaneCommandBuilder(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, "discovery prompt", false)
+	build := rc.agentPaneCommandBuilder(&agentInfo{harness: mustHarness(t, "claude"), path: "/usr/local/bin/claude"}, "discovery prompt", false)
 	paneCmd, cleanup, err := build(nil)
 	require.NoError(t, err)
 	require.NotNil(t, cleanup)
