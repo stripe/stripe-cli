@@ -1,7 +1,6 @@
 package coopcmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -105,9 +104,11 @@ func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {
 		langHint = fmt.Sprintf("\nThe developer is working in %s.", rc.language)
 	}
 
-	return fmt.Sprintf(`You are helping a developer add Stripe to their project.
+	return fmt.Sprintf(`You are helping a developer build a production-grade Stripe integration.
 
 A developer is watching your progress in a live terminal UI (the other pane).%s
+
+Use context from the current app or codebase, if one exists, to inform your recommendations and decisions. Inspect its architecture, language, framework, conventions, dependencies, and existing Stripe code so the integration fits the project naturally.
 
 Your first job is to understand what they're building and what they need from Stripe. Do NOT assume they know Stripe product names.
 
@@ -135,22 +136,16 @@ func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string,
 		return "", err
 	}
 	resp := newCoopAgentRunResponse(bp, session)
-	data, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		return "", err
-	}
 
-	return fmt.Sprintf(`You are running a Stripe co-op integration session.
-
-A developer is watching your progress in a live terminal UI (the other pane).
-
-The session is already created. Use this structured start response as the protocol source of truth:
+	return fmt.Sprintf(`You are running a Stripe co-op integration session. A developer is watching your progress in a live terminal UI.
 
 %s
 
-Start by running the "next" command exactly as written. Then follow agent_instructions and continue using the JSON responses from the typed co-op agent commands.
+The session is already created. After the authentication check above, begin by running this command exactly:
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, string(data)), nil
+%s
+
+Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
 }
 
 func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (*coop.Session, error) {

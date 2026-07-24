@@ -44,7 +44,7 @@ func TestNormalizeCoopTmuxSessionDimensionsFallsBack(t *testing.T) {
 	}
 }
 
-func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
+func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	rc := &coopRunCmd{language: "node"}
@@ -55,11 +55,22 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, prompt, session.ID)
-	assert.Contains(t, prompt, `"agent_instructions"`)
-	assert.Contains(t, prompt, `"nodes"`)
-	assert.Contains(t, prompt, `"next": "stripe coop agent start-work --session=`+session.ID+` --step=1`)
-	assert.Contains(t, prompt, "Understand the project")
-	assert.Contains(t, prompt, "Start by running the \"next\" command exactly as written")
+	assert.Contains(t, prompt, "stripe coop agent start-work --session="+session.ID+" --step=1")
+	assert.Contains(t, prompt, "agent_prompt and next fields")
+	assert.Contains(t, prompt, "production-grade Stripe integration")
+	assert.Contains(t, prompt, "context from the current app or codebase")
+	assert.NotContains(t, prompt, `"ok": true`)
+	assert.NotContains(t, prompt, "Create a Stripe Product with inline default_price_data")
+	assert.Less(t, len(prompt), 3000)
+}
+
+func TestDiscoveryPromptSetsProductionQualityAndProjectContextGoals(t *testing.T) {
+	prompt := (&coopRunCmd{language: "go"}).buildAgentPrompt("")
+
+	assert.Contains(t, prompt, "production-grade Stripe integration")
+	assert.Contains(t, prompt, "context from the current app or codebase")
+	assert.Contains(t, prompt, "architecture, language, framework, conventions, dependencies, and existing Stripe code")
+	assert.Contains(t, prompt, "The developer is working in go")
 }
 
 func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
