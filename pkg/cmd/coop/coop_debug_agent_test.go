@@ -31,10 +31,10 @@ func TestCoopStartDebugAgentRequiresBlueprint(t *testing.T) {
 func TestDebugAgentPaneCommandUsesStripeBinaryAndSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/tmp/xdg config")
 	rc := &coopRunCmd{}
-	cmd, cleanup, err := rc.debugAgentPaneCommandBuilder("/tmp/stripe bin")(&coop.Session{ID: "coop_123"})
+	pane, cleanup, err := rc.debugAgentPaneCommandBuilder("/tmp/stripe bin")(&coop.Session{ID: "coop_123"})
 	require.NoError(t, err)
 	assert.Nil(t, cleanup)
-	assert.Equal(t, "XDG_CONFIG_HOME='/tmp/xdg config' '/tmp/stripe bin' coop debug-agent --session 'coop_123'", cmd)
+	assert.Equal(t, "XDG_CONFIG_HOME='/tmp/xdg config' '/tmp/stripe bin' coop debug-agent --session 'coop_123'", pane.cmd)
 }
 
 func TestCoopDebugAgentRerunsRequestedChanges(t *testing.T) {
