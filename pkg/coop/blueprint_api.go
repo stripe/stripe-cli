@@ -150,8 +150,6 @@ type MessageDescriptor struct {
 
 type WorkbenchBlueprintSummary struct {
 	ID               string             `json:"id"`
-	Object           string             `json:"object"`
-	BlueprintScope   string             `json:"blueprint_scope"`
 	BlueprintType    string             `json:"blueprint_type"`
 	BlueprintVersion int                `json:"blueprint_version"`
 	Description      MessageDescriptor  `json:"description"`
@@ -167,21 +165,18 @@ type BlueprintMetadata struct {
 }
 
 type WorkbenchStepRef struct {
-	StepKey     string              `json:"step_key"`
-	StepVersion int                 `json:"step_version"`
-	Config      WorkbenchStepConfig `json:"config"`
+	StepKey     string `json:"step_key"`
+	StepVersion int    `json:"step_version"`
 }
 
 type WorkbenchBlueprint struct {
 	WorkbenchBlueprintSummary
-	BlueprintParams   []WorkbenchParamGroup   `json:"blueprint_params"`
 	BlueprintSettings []WorkbenchSettingGroup `json:"blueprint_settings"`
 	Steps             []WorkbenchStep         `json:"steps"`
 	raw               json.RawMessage
 }
 
 type WorkbenchStep struct {
-	ID              string                   `json:"id"`
 	Key             string                   `json:"key"`
 	StepVersion     int                      `json:"step_version"`
 	TemplateVersion int                      `json:"template_version"`
@@ -190,7 +185,6 @@ type WorkbenchStep struct {
 	Required        bool                     `json:"required"`
 	IsIncluded      any                      `json:"is_included"`
 	Settings        []WorkbenchSettingGroup  `json:"settings"`
-	Params          []WorkbenchParamGroup    `json:"params"`
 	Config          WorkbenchStepConfig      `json:"config"`
 	Outputs         []WorkbenchStepOutput    `json:"outputs"`
 	Nodes           []WorkbenchBlueprintNode `json:"nodes"`
@@ -212,31 +206,13 @@ type WorkbenchSettingGroup struct {
 	Settings []WorkbenchField `json:"settings"`
 }
 
-type WorkbenchParamGroup struct {
-	Key    string           `json:"key"`
-	Params []WorkbenchField `json:"params"`
-}
-
 type WorkbenchField struct {
-	Name        string               `json:"name"`
-	DisplayName MessageDescriptor    `json:"display_name"`
-	Description MessageDescriptor    `json:"description"`
-	Schema      WorkbenchFieldSchema `json:"schema"`
+	Name   string               `json:"name"`
+	Schema WorkbenchFieldSchema `json:"schema"`
 }
 
 type WorkbenchFieldSchema struct {
-	DefaultValue any                   `json:"default_value"`
-	DisplayType  string                `json:"display_type"`
-	EnumOptions  []WorkbenchEnumOption `json:"enum_options"`
-	EnumValues   []string              `json:"enum_values"`
-	FieldType    string                `json:"field_type"`
-	Required     bool                  `json:"required"`
-}
-
-type WorkbenchEnumOption struct {
-	Key         string            `json:"key"`
-	DisplayName MessageDescriptor `json:"display_name"`
-	Description MessageDescriptor `json:"description"`
+	DefaultValue any `json:"default_value"`
 }
 
 type WorkbenchBlueprintNode struct {

@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 )
 
 const (
@@ -302,35 +301,47 @@ func configurationMatches(selectors map[string]string, settings map[string]strin
 }
 
 func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
+	defaults := make(map[string]string)
 	resolved := make(map[string]string)
 	for _, group := range source.BlueprintSettings {
 		for _, field := range group.Settings {
 			value := stringifyDefault(field.Schema.DefaultValue)
-			setSettingAliases(resolved, group.Key, field.Name, value)
+			defaults[group.Key+":"+field.Name] = value
+			if _, exists := resolved[field.Name]; !exists {
+				resolved[field.Name] = value
+			}
 		}
 	}
 	for _, step := range source.Steps {
 		for _, group := range step.Settings {
 			for _, field := range group.Settings {
-				if _, ok := resolved[field.Name]; !ok {
+				if _, exists := resolved[field.Name]; !exists {
 					resolved[field.Name] = stringifyDefault(field.Schema.DefaultValue)
 				}
 			}
 		}
 		for target, sourceRef := range step.Config.Settings {
-			group, name := parseBlueprintSettingReference(sourceRef)
-			value := firstSelectedSetting(selected, target, name, toSnakeCase(name), group+"."+name, group+":"+name)
-			if value == "" {
-				value = firstSetting(resolved, target, name, toSnakeCase(name), group+"."+name, group+":"+name)
+			group, name, ok := parseBlueprintSettingReference(sourceRef)
+			if !ok {
+				continue
 			}
-			if value != "" {
+			value, exists := selected[target]
+			if !exists {
+				value, exists = selected[name]
+			}
+			if !exists {
+				value, exists = defaults[group+":"+name]
+			}
+			if !exists {
+				value, exists = resolved[name]
+			}
+			if exists {
 				resolved[target] = value
 			}
 		}
 	}
 	for key, value := range selected {
 		resolved[key] = value
-		resolved[toSnakeCase(key)] = value
 	}
 	// Workbench blueprints can branch on the mode of the API credential through
 	// a step param. Co-op deliberately loads blueprints with the configured
@@ -345,35 +356,13 @@ func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]st
 	return resolved
 }
 
-func setSettingAliases(settings map[string]string, group, name, value string) {
-	settings[name] = value
-	settings[toSnakeCase(name)] = value
-	settings[group+"."+name] = value
-	settings[group+":"+name] = value
-}
-
-func parseBlueprintSettingReference(value string) (string, string) {
-	value = strings.TrimSuffix(strings.TrimPrefix(value, "${blueprint_settings."), "}")
-	group, name, _ := strings.Cut(value, ":")
-	return group, name
-}
-
-func firstSelectedSetting(selected map[string]string, keys ...string) string {
-	for _, key := range keys {
-		if value, ok := selected[key]; ok {
-			return value
-		}
+func parseBlueprintSettingReference(value string) (string, string, bool) {
+	const prefix = "${blueprint_settings."
+	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, "}") {
+		return "", "", false
 	}
-	return ""
-}
-
-func firstSetting(settings map[string]string, keys ...string) string {
-	for _, key := range keys {
-		if value := settings[key]; value != "" {
-			return value
-		}
-	}
-	return ""
+	group, name, ok := strings.Cut(strings.TrimSuffix(strings.TrimPrefix(value, prefix), "}"), ":")
+	return group, name, ok && group != "" && name != ""
 }
 
 func stringifyDefault(value any) string {
@@ -390,21 +379,6 @@ func stringifyDefault(value any) string {
 		encoded, _ := json.Marshal(value)
 		return string(encoded)
 	}
-}
-
-func toSnakeCase(value string) string {
-	var result strings.Builder
-	for i, r := range value {
-		if unicode.IsUpper(r) {
-			if i > 0 {
-				result.WriteByte('_')
-			}
-			result.WriteRune(unicode.ToLower(r))
-			continue
-		}
-		result.WriteRune(r)
-	}
-	return result.String()
 }
 
 func cloneMap(source map[string]any) map[string]any {
@@ -457,10 +431,6 @@ func blueprintDigest(source *WorkbenchBlueprint) string {
 	raw := source.raw
 	if len(raw) == 0 {
 		raw, _ = json.Marshal(source)
-	}
-	var normalized any
-	if err := json.Unmarshal(raw, &normalized); err == nil {
-		raw, _ = json.Marshal(normalized)
 	}
 	sum := sha256.Sum256(raw)
 	return "sha256:" + hex.EncodeToString(sum[:])
