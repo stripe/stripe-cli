@@ -16,7 +16,7 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 	t.Cleanup(func() { options = previousOptions })
 
 	session, err := newCoopSession(
-		&coop.Blueprint{ID: "one-time-payment"},
+		commandTestBlueprint(t),
 		"coop_123",
 		"go",
 		[]string{"framework=gin", "framework=chi"},
@@ -37,7 +37,7 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 }
 
 func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
-	bp := &coop.Blueprint{ID: "one-time-payment"}
+	bp := commandTestBlueprint(t)
 
 	tests := []struct {
 		name     string

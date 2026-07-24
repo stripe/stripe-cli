@@ -9,8 +9,21 @@ import (
 
 func testSessionNode(key, title string, state NodeState) SessionNode {
 	return SessionNode{
-		NodeDefinition: NodeDefinition{Key: key, Title: title},
-		State:          state,
+		WorkbenchBlueprintNode: WorkbenchBlueprintNode{
+			Key:   key,
+			Title: MessageDescriptor{DefaultMessage: title},
+		},
+		State: state,
+	}
+}
+
+func testSessionStep(key, title string, nodes ...SessionNode) SessionStep {
+	return SessionStep{
+		WorkbenchStepDefinition: WorkbenchStepDefinition{
+			Key:   key,
+			Title: MessageDescriptor{DefaultMessage: title},
+		},
+		Nodes: nodes,
 	}
 }
 
@@ -20,19 +33,13 @@ func newTestSession() *Session {
 		Blueprint: "one-time-payment",
 		Status:    SessionActive,
 		Steps: []SessionStep{
-			{
-				StepDefinition: StepDefinition{Key: "step-1", Title: "Step 1"},
-				Nodes: []SessionNode{
-					testSessionNode("node-1", "Step 1", NodePending),
-					testSessionNode("node-2", "Step 2", NodePending),
-				},
-			},
-			{
-				StepDefinition: StepDefinition{Key: "step-2", Title: "Step 2"},
-				Nodes: []SessionNode{
-					testSessionNode("node-3", "Step 3", NodePending),
-				},
-			},
+			testSessionStep("step-1", "Step 1",
+				testSessionNode("node-1", "Step 1", NodePending),
+				testSessionNode("node-2", "Step 2", NodePending),
+			),
+			testSessionStep("step-2", "Step 2",
+				testSessionNode("node-3", "Step 3", NodePending),
+			),
 		},
 	}
 }
@@ -243,9 +250,9 @@ func TestIsCompleteWithSkipped(t *testing.T) {
 func TestNodeByNumberAcrossSteps(t *testing.T) {
 	s := &Session{
 		Steps: []SessionStep{
-			{StepDefinition: StepDefinition{Key: "ch1"}, Nodes: []SessionNode{testSessionNode("a", "", ""), testSessionNode("b", "", "")}},
-			{StepDefinition: StepDefinition{Key: "ch2"}, Nodes: []SessionNode{testSessionNode("c", "", "")}},
-			{StepDefinition: StepDefinition{Key: "ch3"}, Nodes: []SessionNode{testSessionNode("d", "", ""), testSessionNode("e", "", ""), testSessionNode("f", "", "")}},
+			testSessionStep("ch1", "", testSessionNode("a", "", ""), testSessionNode("b", "", "")),
+			testSessionStep("ch2", "", testSessionNode("c", "", "")),
+			testSessionStep("ch3", "", testSessionNode("d", "", ""), testSessionNode("e", "", ""), testSessionNode("f", "", "")),
 		},
 	}
 
@@ -302,14 +309,14 @@ func TestStepReadyForReviewIgnoresAutoConfirmNodes(t *testing.T) {
 			{Nodes: []SessionNode{
 				testSessionNode("a", "", NodeReview),
 				{
-					NodeDefinition: NodeDefinition{Key: "auto", AutoConfirm: true},
-					State:          NodePending,
+					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "auto", IsInformationalNode: true},
+					State:                  NodePending,
 				},
 			}},
 			{Nodes: []SessionNode{
 				{
-					NodeDefinition: NodeDefinition{Key: "only-auto", AutoConfirm: true},
-					State:          NodePending,
+					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "only-auto", IsInformationalNode: true},
+					State:                  NodePending,
 				},
 			}},
 		},

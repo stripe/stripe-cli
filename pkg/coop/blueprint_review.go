@@ -2,8 +2,8 @@ package coop
 
 import "fmt"
 
-func deriveReviewPrompt(node NodeDefinition) string {
-	switch node.Type {
+func deriveReviewPrompt(node WorkbenchBlueprintNode) string {
+	switch node.NodeType {
 	case NodeAPIRequest:
 		return "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
 	case NodeAsyncHandler:
@@ -20,11 +20,11 @@ func deriveReviewPrompt(node NodeDefinition) string {
 	}
 }
 
-func deriveReviewCommand(node NodeDefinition) string {
-	if node.Type != NodeAsyncHandler || len(node.Events) != 1 {
+func deriveReviewCommand(node WorkbenchBlueprintNode) string {
+	if node.NodeType != NodeAsyncHandler || node.AsyncHandlerDetails == nil || len(node.AsyncHandlerDetails.Events) != 1 {
 		return ""
 	}
-	eventType := node.Events[0].EventType
+	eventType := node.AsyncHandlerDetails.Events[0].EventType
 	if !isEventType(eventType) {
 		return ""
 	}

@@ -48,7 +48,7 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	rc := &coopRunCmd{language: "node"}
-	session, err := rc.startSessionQuietly(commandTestCompiledBlueprint(t))
+	session, err := rc.startSessionQuietly(commandTestBlueprint(t))
 	require.NoError(t, err)
 
 	prompt, err := rc.buildAgentPromptForSession(session)
@@ -84,7 +84,7 @@ func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 	rc := &coopRunCmd{language: "node"}
 	buildErr := errors.New("pane build failed")
 
-	err := rc.runFallbackWithCommand("/stripe", commandTestCompiledBlueprint(t), func(session *coop.Session) (string, func(), error) {
+	err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
 		require.NotNil(t, session)
 		return "", nil, buildErr
 	})
@@ -108,7 +108,7 @@ func TestFallbackJoinInstructionsIncludeCoopEnv(t *testing.T) {
 
 	rc := &coopRunCmd{language: "node"}
 	output := captureStdout(t, func() {
-		err := rc.runFallbackWithCommand("/stripe", commandTestCompiledBlueprint(t), func(session *coop.Session) (string, func(), error) {
+		err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
 			require.NotNil(t, session)
 			return "true", nil, nil
 		})
@@ -158,7 +158,7 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 
 	cleanupCalled := false
 	rc := &coopRunCmd{language: "node"}
-	err := rc.runInNewTmuxWithCommand("/stripe", commandTestCompiledBlueprint(t), func(session *coop.Session) (string, func(), error) {
+	err := rc.runInNewTmuxWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
 		require.NotNil(t, session)
 		return "agent", func() { cleanupCalled = true }, nil
 	})

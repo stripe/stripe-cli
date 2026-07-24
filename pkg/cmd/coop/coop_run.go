@@ -50,16 +50,7 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 
 func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	blueprintID := args[0]
-
-	selectedSettings := make(map[string]string)
-	if rc.language != "" {
-		selectedSettings["language"] = rc.language
-	}
-	if err := mergeKeyValues(selectedSettings, "--setting", rc.settings); err != nil {
-		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
-	}
-
-	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID, selectedSettings)
+	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID)
 	if err != nil {
 		return outputCoopError(err.Error(), "stripe coop recommend --all")
 	}
@@ -85,8 +76,8 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	return outputJSON(resp)
 }
 
-func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgentRunResponse {
-	return newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp, session))
+func newCoopAgentRunResponse(bp *coop.WorkbenchBlueprint, session *coop.Session) coopAgentRunResponse {
+	return newCoopAgentSessionResponse(bp.Title.DefaultMessage, session, agentInstructions(bp, session))
 }
 
 func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coopAgentRunResponse {
@@ -101,12 +92,12 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 			nodeNumber++
 			nodes = append(nodes, nodeBrief{
 				Number:        nodeNumber,
-				Title:         n.Title,
-				Type:          string(n.Type),
-				Description:   n.Description,
+				Title:         n.TitleText(),
+				Type:          string(n.NodeType),
+				Description:   n.DescriptionText(),
 				ReviewPrompt:  n.ReviewPrompt,
 				ReviewCommand: n.ReviewCommand,
-				AutoConfirm:   n.AutoConfirm,
+				AutoConfirm:   n.IsInformationalNode,
 			})
 		}
 	}
@@ -118,7 +109,7 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 			Node:      1,
 			State:     "created",
 			Message:   fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
-			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
+			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].TitleText())),
 		},
 		AgentInstructions: instructions,
 		Nodes:             nodes,
@@ -126,7 +117,7 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 	return resp
 }
 
-func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
+func newCoopSession(bp *coop.WorkbenchBlueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
 	settings := make(map[string]string)
 	if language != "" {
 		settings["language"] = language
@@ -140,7 +131,10 @@ func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings,
 		return nil, err
 	}
 
-	session := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	session, err := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	if err != nil {
+		return nil, err
+	}
 	session.CreatedAt = time.Now().UTC()
 	session.ParentSessionID = parentSession
 	session.ParentStepID = parentStep
@@ -179,8 +173,8 @@ type nodeBrief struct {
 	AutoConfirm   bool   `json:"auto_confirm,omitempty"`
 }
 
-func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
-	preamble := fmt.Sprintf("You are building a working Stripe integration: %q", bp.Title)
+func agentInstructions(bp *coop.WorkbenchBlueprint, session *coop.Session) string {
+	preamble := fmt.Sprintf("You are building a working Stripe integration: %q", bp.Title.DefaultMessage)
 	return sessionLifecycleInstructions(preamble, session)
 }
 
