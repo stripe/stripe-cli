@@ -17,8 +17,8 @@ import (
 )
 
 type agentInfo struct {
-	name string // "claude" or "codex"
-	path string
+	harness harness
+	path    string
 }
 
 // shellQuote wraps s in POSIX single quotes so it is safe to interpolate into a
@@ -44,66 +44,72 @@ const (
 	defaultCoopTmuxSessionHeight = 50
 )
 
+// lookPath is indirected so tests can control which harnesses appear installed.
+var lookPath = exec.LookPath
+
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	if rc.agent != "" {
-		path, err := exec.LookPath(rc.agent)
+		path, err := lookPath(rc.agent)
 		if err != nil {
 			return nil, fmt.Errorf("agent %q not found in PATH", rc.agent)
 		}
-		name := rc.agent
-		if strings.Contains(path, "claude") {
-			name = "claude"
-		} else if strings.Contains(path, "codex") {
-			name = "codex"
+		h, ok := harnessFor(rc.agent, path)
+		if !ok {
+			h = customHarness(rc.agent)
 		}
-		return &agentInfo{name: name, path: path}, nil
+		return &agentInfo{harness: h, path: path}, nil
 	}
 
-	claudePath, claudeErr := exec.LookPath("claude")
-	codexPath, codexErr := exec.LookPath("codex")
+	installed := installedHarnesses()
 
-	hasClaude := claudeErr == nil
-	hasCodex := codexErr == nil
+	switch len(installed) {
+	case 0:
+		return nil, noAgentFoundError()
+	case 1:
+		return &installed[0], nil
+	}
 
-	switch {
-	case hasClaude && hasCodex:
-		var choice string
-		err := selectString("Multiple agents detected. Which would you like to use?",
-			[]huh.Option[string]{
-				huh.NewOption("Claude Code", "claude"),
-				huh.NewOption("Codex", "codex"),
-			},
-			&choice,
-		)
+	options := make([]huh.Option[string], 0, len(installed))
+	for _, agent := range installed {
+		options = append(options, huh.NewOption(agent.harness.displayName, agent.harness.id))
+	}
+
+	var choice string
+	if err := selectString("Multiple agents detected. Which would you like to use?", options, &choice); err != nil {
+		return nil, err
+	}
+	for _, agent := range installed {
+		if agent.harness.id == choice {
+			return &agent, nil
+		}
+	}
+	// The picker only offers ids drawn from installed, so this is unreachable
+	// unless the prompt is stubbed out; fall back to the first detected agent
+	// rather than returning a nil agent to the caller.
+	return &installed[0], nil
+}
+
+// installedHarnesses returns the registry entries whose binary is on PATH, in
+// registry order.
+func installedHarnesses() []agentInfo {
+	var found []agentInfo
+	for _, h := range supportedHarnesses {
+		path, err := lookPath(h.binary)
 		if err != nil {
-			return nil, err
+			continue
 		}
-		if choice == "codex" {
-			return &agentInfo{name: "codex", path: codexPath}, nil
-		}
-		return &agentInfo{name: "claude", path: claudePath}, nil
-
-	case hasClaude:
-		return &agentInfo{name: "claude", path: claudePath}, nil
-	case hasCodex:
-		return &agentInfo{name: "codex", path: codexPath}, nil
-	default:
-		return nil, fmt.Errorf("no AI agent found in PATH.\n  Install Claude Code: https://docs.anthropic.com/en/docs/claude-code\n  Or specify a custom agent: --agent=<command>")
+		found = append(found, agentInfo{harness: h, path: path})
 	}
+	return found
 }
 
 func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
-	var choice string
-
-	var title string
-	switch agent.name {
-	case "claude":
-		title = "Permission mode for Claude Code:"
-	case "codex":
-		title = "Permission mode for Codex:"
-	default:
+	if !agent.harness.offersAutoApprove() {
 		return false, nil
 	}
+
+	var choice string
+	title := fmt.Sprintf("Permission mode for %s:", agent.harness.displayName)
 
 	err := selectString(title,
 		[]huh.Option[string]{
@@ -120,29 +126,26 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 
 func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
 	launcherPath := promptPath + ".sh"
-	var script string
 
-	switch agent.name {
-	case "claude":
-		flags := ""
-		if autoApprove {
-			flags = " --dangerously-skip-permissions"
-		}
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
-
-	case "codex":
-		flags := ""
-		if autoApprove {
-			flags = " --dangerously-bypass-approvals-and-sandbox"
-		}
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
-
-	default:
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path))
+	// The agent path is user-controlled and must be quoted. Everything else is a
+	// compile-time constant from the registry, so it is interpolated as-is.
+	argv := []string{shellQuote(agent.path)}
+	argv = append(argv, agent.harness.args...)
+	if autoApprove && agent.harness.autoApproveFlag != "" {
+		argv = append(argv, agent.harness.autoApproveFlag)
 	}
+	if agent.harness.promptFlag != "" {
+		argv = append(argv, agent.harness.promptFlag)
+	}
+	argv = append(argv, `"$prompt"`)
+
+	env := ""
+	if autoApprove && agent.harness.autoApproveEnv != "" {
+		env = fmt.Sprintf("export %s\n", agent.harness.autoApproveEnv)
+	}
+
+	script := fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\n%sexec %s\n",
+		shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), env, strings.Join(argv, " "))
 
 	if err := os.WriteFile(launcherPath, []byte(script), 0700); err != nil {
 		return "", fmt.Errorf("creating agent launcher: %w", err)
