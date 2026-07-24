@@ -30,7 +30,21 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-type coopPaneCommandBuilder func(session *coop.Session) (string, func(), error)
+// paneHint is one "here's what you can do next" line shown in the agent pane
+// after the agent process exits.
+type paneHint struct {
+	label   string
+	command string
+}
+
+// coopPaneCommand describes what runs in the agent pane, plus the hints shown
+// once that command exits.
+type coopPaneCommand struct {
+	cmd   string
+	hints []paneHint
+}
+
+type coopPaneCommandBuilder func(session *coop.Session) (coopPaneCommand, func(), error)
 
 var (
 	selectString = helpers.Select[string]
@@ -156,45 +170,135 @@ func (rc *coopRunCmd) hasTmux() bool {
 }
 
 func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, discoveryPrompt string, autoApprove bool) coopPaneCommandBuilder {
-	return func(session *coop.Session) (string, func(), error) {
+	return func(session *coop.Session) (coopPaneCommand, func(), error) {
 		prompt := discoveryPrompt
 		if session != nil {
 			var err error
 			prompt, err = rc.buildAgentPromptForSession(session)
 			if err != nil {
-				return "", nil, err
+				return coopPaneCommand{}, nil, err
 			}
 		}
 		promptPath, err := writePromptFile(prompt)
 		if err != nil {
-			return "", nil, err
+			return coopPaneCommand{}, nil, err
 		}
 
 		agentCmd, err := rc.buildAgentCmd(agent, promptPath, autoApprove)
 		if err != nil {
 			os.Remove(promptPath)
-			return "", nil, err
+			return coopPaneCommand{}, nil, err
 		}
 		// The returned command is run via `bash -c`, so the launcher path itself
 		// must be shell-quoted — otherwise a temp dir (TMPDIR) containing a space
 		// or shell syntax would be parsed by bash before the launcher runs. The
 		// cleanup closure keeps the raw path for os.Remove.
-		return shellQuote(agentCmd), func() {
+		pane := coopPaneCommand{
+			cmd:   shellQuote(agentCmd),
+			hints: agentRestartHints(agent, autoApprove),
+		}
+		return pane, func() {
 			os.Remove(promptPath)
 			os.Remove(agentCmd)
 		}, nil
 	}
 }
 
+// agentRestartHints lists the commands that bring the agent back after it
+// exits. The generated launcher deletes itself on start, so restarting means
+// invoking the agent directly — with the same permission mode the developer
+// picked when the session was launched.
+func agentRestartHints(agent *agentInfo, autoApprove bool) []paneHint {
+	invocation := agent.name
+	if autoApprove {
+		switch agent.name {
+		case "claude":
+			invocation += " --dangerously-skip-permissions"
+		case "codex":
+			invocation += " --dangerously-bypass-approvals-and-sandbox"
+		}
+	}
+
+	if agent.name == "claude" {
+		return []paneHint{
+			{label: "Resume where the agent left off", command: invocation + " --continue"},
+			{label: "Start the agent fresh", command: invocation},
+		}
+	}
+	return []paneHint{{label: "Start the agent again", command: invocation}}
+}
+
 func (rc *coopRunCmd) debugAgentPaneCommandBuilder(stripeBin string) coopPaneCommandBuilder {
-	return func(session *coop.Session) (string, func(), error) {
+	return func(session *coop.Session) (coopPaneCommand, func(), error) {
 		sessionID := ""
 		if session != nil {
 			sessionID = session.ID
 		}
 		cmd := fmt.Sprintf("%s coop debug-agent --session %s", shellQuote(stripeBin), shellQuote(sessionID))
-		return shellCommandWithCoopEnv(cmd), nil, nil
+		pane := coopPaneCommand{
+			cmd:   shellCommandWithCoopEnv(cmd),
+			hints: []paneHint{{label: "Run the debug agent again", command: cmd}},
+		}
+		return pane, nil, nil
 	}
+}
+
+// holdOpenPaneScript wraps the agent pane command so the tmux pane outlives it.
+// tmux destroys a pane the moment its command exits, so quitting the agent used
+// to make the right half of the split vanish — which reads as a crash rather
+// than "your agent stopped". Instead the pane explains what happened and hands
+// itself to an interactive shell the developer can restart the agent from.
+//
+// The co-op env is exported (rather than prefixed onto the command) so that the
+// shell left behind, and anything started from it, still points at the same
+// co-op session state.
+func holdOpenPaneScript(pane coopPaneCommand) string {
+	var script strings.Builder
+	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
+		fmt.Fprintf(&script, "export XDG_CONFIG_HOME=%s\n", shellQuote(xdgConfigHome))
+	}
+	// ctrl-c reaches the whole foreground process group, so without this the
+	// wrapper dies alongside the agent and tmux closes the pane anyway. A no-op
+	// handler (rather than ignoring the signal) is reset to the default in the
+	// agent process, so the agent's own ctrl-c handling is untouched. SIGHUP is
+	// deliberately left alone so `tmux kill-pane` still works.
+	script.WriteString("trap ':' INT TERM\n")
+	// The agent command runs in a subshell so that an `exit` inside it ends the
+	// subshell rather than this script — the notice below must always run.
+	script.WriteString("(\n" + pane.cmd + "\n)\n")
+	script.WriteString(agentExitNoticeScript(pane.hints))
+	// A login shell would re-run profile scripts that may cd elsewhere; a plain
+	// interactive shell keeps the pane in the project directory.
+	script.WriteString("exec \"${SHELL:-/bin/bash}\"\n")
+	return script.String()
+}
+
+// agentExitNoticeScript renders the message shown in the agent pane once the
+// agent exits. Every line goes through printf so the notice survives whatever
+// the agent left on screen.
+func agentExitNoticeScript(hints []paneHint) string {
+	const rule = `printf '\033[90m──────────────────────────────────────────────────────\033[0m\n'`
+
+	lines := []string{
+		`__coop_agent_status=$?`,
+		`printf '\n'`,
+		rule,
+		`printf '\033[1mThe agent exited\033[0m (status %s).\n' "$__coop_agent_status"`,
+		`printf 'This pane stayed open on purpose — your co-op session is still\n'`,
+		`printf 'running in the left pane.\n'`,
+		`printf '\n'`,
+	}
+	for _, hint := range hints {
+		lines = append(lines, fmt.Sprintf(`printf '  %%s\n    \033[1m%%s\033[0m\n' %s %s`,
+			shellQuote(hint.label), shellQuote(hint.command)))
+	}
+	lines = append(lines,
+		`printf '  Jump back to the co-op TUI\n    \033[1mctrl-b then left arrow\033[0m\n'`,
+		`printf '  Close this pane\n    \033[1mexit\033[0m\n'`,
+		rule,
+		`printf '\n'`,
+	)
+	return strings.Join(lines, "\n") + "\n"
 }
 
 func shellCommandWithCoopEnv(cmd string) string {
@@ -227,12 +331,12 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 		return err
 	}
 
-	paneCmd, cleanup, err := buildPaneCmd(session)
+	pane, cleanup, err := buildPaneCmd(session)
 	if err != nil {
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
-	paneCmd = shellCommandWithCoopEnv(paneCmd)
+	paneCmd := holdOpenPaneScript(pane)
 
 	if err := runTmux("split-window", "-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
@@ -296,12 +400,12 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 	}
 	tuiCmd = shellCommandWithCoopEnv(tuiCmd)
 
-	paneCmd, cleanup, err := buildPaneCmd(session)
+	pane, cleanup, err := buildPaneCmd(session)
 	if err != nil {
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
-	paneCmd = shellCommandWithCoopEnv(paneCmd)
+	paneCmd := holdOpenPaneScript(pane)
 
 	width, height := coopTmuxSessionDimensions()
 	if err := runTmux("new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
@@ -369,7 +473,7 @@ func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprintID strin
 	}
 	fmt.Println()
 
-	paneCmd, cleanup, err := buildPaneCmd(session)
+	pane, cleanup, err := buildPaneCmd(session)
 	if err != nil {
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
@@ -377,7 +481,9 @@ func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprintID strin
 	if cleanup != nil {
 		defer cleanup()
 	}
-	agentExec := exec.Command("bash", "-c", paneCmd)
+	// No hold-open wrapper here: this runs in the developer's own terminal, so
+	// exiting the agent returns them to their existing shell.
+	agentExec := exec.Command("bash", "-c", pane.cmd)
 	agentExec.Stdin = os.Stdin
 	agentExec.Stdout = os.Stdout
 	agentExec.Stderr = os.Stderr
