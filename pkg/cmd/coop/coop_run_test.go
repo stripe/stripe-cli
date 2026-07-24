@@ -89,6 +89,29 @@ func TestCoopRunReturnsStructuredErrorForMalformedSetting(t *testing.T) {
 	assert.Empty(t, ids)
 }
 
+func TestCoopRunReturnsCompactBootstrapWithoutBlueprintNodes(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cmd := newCoopAgentRunCmd().cmd
+	cmd.SetArgs([]string{"one-time-payment", "--language", "node"})
+
+	output := captureStdout(t, func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(output), &fields))
+	require.True(t, resp.OK)
+	assert.Contains(t, resp.AgentPrompt, "one node at a time")
+	assert.Contains(t, resp.AgentPrompt, "Replace any <...> placeholders with real values")
+	assert.Contains(t, resp.Next, "stripe coop agent start-work")
+	assert.NotContains(t, fields, "agent_instructions")
+	assert.NotContains(t, fields, "nodes")
+	assert.NotContains(t, output, "Create a Stripe Product with inline default_price_data")
+	assert.Less(t, len(output), 2500)
+}
+
 func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	cmd := newCoopAgentRunCmd().cmd

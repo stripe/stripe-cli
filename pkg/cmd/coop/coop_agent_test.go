@@ -139,15 +139,17 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 		require.NoError(t, cmd.Execute())
 	})
 
-	var resp coopAgentRunResponse
+	var resp coop.CommandResponse
 	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(output), &fields))
 	require.True(t, resp.OK)
 	assert.Contains(t, resp.Message, "Deploy your changes")
 	assert.Contains(t, resp.Next, "stripe coop agent start-work")
-	assert.Contains(t, resp.AgentInstructions, "guided co-op follow-up")
-	assert.Contains(t, resp.AgentInstructions, "Vercel")
-	require.Len(t, resp.Nodes, 3)
-	assert.Equal(t, "Inspect existing deploy config", resp.Nodes[0].Title)
+	assert.Contains(t, resp.AgentPrompt, "guided co-op follow-up")
+	assert.Contains(t, resp.AgentPrompt, "Vercel")
+	assert.NotContains(t, fields, "nodes")
+	assert.NotContains(t, fields, "agent_instructions")
 
 	ids, err := store.List()
 	require.NoError(t, err)
