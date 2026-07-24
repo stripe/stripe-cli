@@ -243,3 +243,26 @@ func TestPrefsUnsetCommand(t *testing.T) {
 	assert.Contains(t, stripANSI(out.String()), "Preference lang unset")
 	assert.Equal(t, "", viper.GetString("default.docs_prefs.lang"))
 }
+
+func TestPrefsUnsetCommand_NoOps(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "unknown pref", args: []string{"prefs", "unset", "unknown_pref"}},
+		{name: "not set", args: []string{"prefs", "unset", "lang"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, cleanup := setupPrefsTestConfig(t)
+			defer cleanup()
+
+			client := docs.NewClient("test").WithOptions(docs.WithBaseURL("http://unused"))
+			root := cmd.New().WithOptions(cmd.WithClient(client), cmd.WithConfig(cfg)).Root()
+			root.SetOut(new(bytes.Buffer))
+			root.SetArgs(tt.args)
+
+			require.NoError(t, root.ExecuteContext(context.Background()))
+		})
+	}
+}
