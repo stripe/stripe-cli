@@ -87,7 +87,7 @@ func (jc *coopJoinCmd) runJoinCmd(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 	}
 
-	return tui.Run(store, session.ID, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
+	return tui.Run(store, session.ID, coopTUIOptions()...)
 }
 
 type sessionChoice struct {

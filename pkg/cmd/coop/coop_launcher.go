@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"charm.land/huh/v2"
 	"github.com/google/uuid"
@@ -37,12 +39,94 @@ var (
 	runTmux      = func(args ...string) error {
 		return exec.Command("tmux", args...).Run()
 	}
+	runTmuxOutput = func(args ...string) (string, error) {
+		out, err := exec.Command("tmux", args...).CombinedOutput()
+		return string(out), err
+	}
 )
 
 const (
 	defaultCoopTmuxSessionWidth  = 200
 	defaultCoopTmuxSessionHeight = 50
+	coopAgentPaneOption          = "@stripe_coop_agent"
 )
+
+type tmuxAgentResumer struct {
+	tuiPane  string
+	keyDelay time.Duration
+	mu       sync.Mutex
+}
+
+func newTmuxAgentResumer(tuiPane string) *tmuxAgentResumer {
+	return &tmuxAgentResumer{tuiPane: tuiPane, keyDelay: 100 * time.Millisecond}
+}
+
+func (r *tmuxAgentResumer) Notify(sessionID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	pane, err := r.findAgentPane()
+	if err != nil {
+		return err
+	}
+	prompt := fmt.Sprintf("Human input updated Stripe Co-op session %s. Resume neutrally: run exactly `stripe coop agent resume --session=%s`. If its JSON has a non-empty `next`, run that command exactly; otherwise continue your current work.", sessionID, sessionID)
+	if err := runTmux("send-keys", "-t", pane, "-l", prompt); err != nil {
+		return fmt.Errorf("sending co-op resume prompt: %w", err)
+	}
+	// Codex and Claude both coalesce rapid input as paste. Give the TUI one
+	// bounded beat to commit the literal text before submitting it as a turn.
+	if r.keyDelay > 0 {
+		time.Sleep(r.keyDelay)
+	}
+	if err := runTmux("send-keys", "-t", pane, "Enter"); err != nil {
+		return fmt.Errorf("submitting co-op resume prompt: %w", err)
+	}
+	return nil
+}
+
+func (r *tmuxAgentResumer) findAgentPane() (string, error) {
+	out, err := runTmuxOutput("list-panes", "-t", r.tuiPane, "-F", "#{pane_id}\t#{@stripe_coop_agent}")
+	if err != nil {
+		return "", fmt.Errorf("listing co-op tmux panes: %w", err)
+	}
+	var panes []string
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		pane, tag, ok := strings.Cut(line, "\t")
+		if ok && strings.TrimSpace(tag) == "1" {
+			panes = append(panes, strings.TrimSpace(pane))
+		}
+	}
+	if len(panes) != 1 {
+		return "", fmt.Errorf("expected one co-op agent pane, found %d", len(panes))
+	}
+	return panes[0], nil
+}
+
+func coopTUIOptions() []tui.Option {
+	opts := []tui.Option{tui.WithSandboxClaimURL(coopSandboxClaimURL())}
+	if tuiPane := os.Getenv("TMUX_PANE"); tuiPane != "" {
+		resumer := newTmuxAgentResumer(tuiPane)
+		opts = append(opts, tui.WithReviewDecisionNotifier(resumer.Notify))
+	}
+	return opts
+}
+
+func splitCoopAgentPane(args ...string) (string, error) {
+	args = append([]string{"split-window", "-P", "-F", "#{pane_id}"}, args...)
+	out, err := runTmuxOutput(args...)
+	if err != nil {
+		return "", err
+	}
+	pane := strings.TrimSpace(out)
+	if pane == "" {
+		return "", fmt.Errorf("tmux split-window returned an empty pane id")
+	}
+	if err := runTmux("set-option", "-p", "-t", pane, coopAgentPaneOption, "1"); err != nil {
+		_ = runTmux("kill-pane", "-t", pane)
+		return "", fmt.Errorf("tagging co-op agent pane: %w", err)
+	}
+	return pane, nil
+}
 
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
 	if rc.agent != "" {
@@ -234,7 +318,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 	}
 	paneCmd = shellCommandWithCoopEnv(paneCmd)
 
-	if err := runTmux("split-window", "-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
+	if _, err := splitCoopAgentPane("-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -243,7 +327,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprintID st
 	}
 
 	if blueprintID != "" {
-		return tui.Run(store, session.ID, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
+		return tui.Run(store, session.ID, coopTUIOptions()...)
 	}
 
 	return runCoopTUIWait(store)
@@ -313,8 +397,8 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
-	if err := runTmux("split-window", "-h", "-t", sessionName, "-p", "60",
-		"bash", "-c", paneCmd); err != nil {
+	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd)
+	if err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -323,7 +407,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprintID stri
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	runTmux("select-pane", "-t", sessionName+":0.1")
+	runTmux("select-pane", "-t", agentPane)
 
 	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
 	attach.Stdin = os.Stdin
@@ -410,5 +494,5 @@ func runCoopTUIWait(store *coop.Store) error {
 			existingIDs[id] = true
 		}
 	}
-	return tui.RunWaiting(store, existingIDs, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
+	return tui.RunWaiting(store, existingIDs, coopTUIOptions()...)
 }

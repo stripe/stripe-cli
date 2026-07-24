@@ -213,10 +213,11 @@ Agent lifecycle commands (use this session id: %s):
 6. Only run stripe coop agent await-review --session=%s --step=<n> when the response says the step is ready for review. Await blocks until the human confirms the step or requests changes.
 7. If confirmed: move to next node. If rejected: redo the affected node (check the message for feedback).
 8. When the final node is confirmed: IMMEDIATELY run the JSON response's next command. Do not stop or ask. It will return to the parent session for follow-up work or show the developer their options in the TUI.
+9. If Co-op wakes or asks you to resume after later human input, run the exact stripe coop agent resume command it provides. Run a non-empty next command exactly; an empty next means this turn already advanced the session.
 
 Steps are the default human-review unit. Build and verify each node one at a time, but do not interrupt the developer for every node. At the end of each step, before running await, help the developer verify the step: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop agent report-check --session=%s --step=<n> --check="..." --passed so the review card has useful evidence.
 
-The "await" command is critical at step boundaries — it blocks until the developer acts. Do NOT proceed to the next step without running await when the node response tells you the step is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected node.
+The "await" command is critical at step boundaries — it blocks until the developer acts, with an intentional 10-minute Co-op timeout. Do NOT proceed to the next step without running await when the node response tells you the step is ready. Keep the shell/tool wait bounded to 5 minutes. A shell-tool timeout or a completed agent turn is separate from Co-op's timeout and may happen first. Do not spin, poll forever, or invent a replacement command: finish the turn and let Co-op deliver a neutral resume prompt after the human acts. If changes are requested, use the feedback already returned by Co-op when redoing the affected node.
 
 Some nodes are marked auto_confirm — these do not require human review. Continue following the next command returned by the CLI.
 

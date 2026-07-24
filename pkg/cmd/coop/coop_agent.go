@@ -45,6 +45,7 @@ func newCoopAgentCmd() *coopAgentCmd {
 	ac.cmd.AddCommand(newCoopAgentReportCheckCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentSkipCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentAwaitReviewCmd().cmd)
+	ac.cmd.AddCommand(newCoopAgentResumeCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentNextActionCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentStartFollowupCmd().cmd)
 	return ac
@@ -150,6 +151,25 @@ func newCoopAgentAwaitReviewCmd() *coopAgentActionCmd {
 		},
 	}
 	c.addSessionStepFlags()
+	return c
+}
+
+func newCoopAgentResumeCmd() *coopAgentActionCmd {
+	c := &coopAgentActionCmd{}
+	c.cmd = &cobra.Command{
+		Use:   "resume",
+		Short: "Return the exact command for the current co-op lifecycle state",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			service, err := newWorkflowService()
+			if err != nil {
+				return outputAgentError(err)
+			}
+			resp, err := service.Resume(c.session)
+			return outputAgentResponse(resp, err)
+		},
+	}
+	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
+	mustMarkFlagRequired(c.cmd, "session")
 	return c
 }
 

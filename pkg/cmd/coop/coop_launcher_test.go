@@ -4,6 +4,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"charm.land/huh/v2"
@@ -60,6 +62,9 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	assert.Contains(t, prompt, `"next": "stripe coop agent start-work --session=`+session.ID+` --step=1`)
 	assert.Contains(t, prompt, "Understand the project")
 	assert.Contains(t, prompt, "Start by running the \"next\" command exactly as written")
+	assert.Contains(t, prompt, "intentional 10-minute Co-op timeout")
+	assert.Contains(t, prompt, "stripe coop agent resume")
+	assert.Contains(t, prompt, "Do not spin, poll forever")
 }
 
 func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
@@ -141,19 +146,26 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	splitErr := errors.New("split failed")
 	var tmuxCalls [][]string
 	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
 	runTmux = func(args ...string) error {
 		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
 		switch args[0] {
 		case "has-session":
 			return errors.New("session not found")
-		case "split-window":
-			return splitErr
 		default:
 			return nil
 		}
 	}
+	runTmuxOutput = func(args ...string) (string, error) {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		if args[0] == "split-window" {
+			return "", splitErr
+		}
+		return "", nil
+	}
 	t.Cleanup(func() {
 		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
 	})
 
 	cleanupCalled := false
@@ -181,6 +193,79 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	node, err := session.NodeByNumber(1)
 	require.NoError(t, err)
 	assert.Contains(t, node.Activity, "tmux split-window failed")
+}
+
+func TestSplitCoopAgentPaneTagsReturnedPane(t *testing.T) {
+	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
+	var calls [][]string
+	runTmuxOutput = func(args ...string) (string, error) {
+		calls = append(calls, append([]string(nil), args...))
+		return "%7\n", nil
+	}
+	runTmux = func(args ...string) error {
+		calls = append(calls, append([]string(nil), args...))
+		return nil
+	}
+	t.Cleanup(func() {
+		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
+	})
+
+	pane, err := splitCoopAgentPane("-h", "bash", "-c", "agent")
+
+	require.NoError(t, err)
+	assert.Equal(t, "%7", pane)
+	require.Len(t, calls, 2)
+	assert.Equal(t, []string{"split-window", "-P", "-F", "#{pane_id}", "-h", "bash", "-c", "agent"}, calls[0])
+	assert.Equal(t, []string{"set-option", "-p", "-t", "%7", coopAgentPaneOption, "1"}, calls[1])
+}
+
+func TestTmuxAgentResumerSerializesConcurrentWakeUps(t *testing.T) {
+	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
+	var callsMu sync.Mutex
+	var calls [][]string
+	runTmuxOutput = func(args ...string) (string, error) {
+		return "%1\t\n%2\t1\n", nil
+	}
+	runTmux = func(args ...string) error {
+		callsMu.Lock()
+		defer callsMu.Unlock()
+		calls = append(calls, append([]string(nil), args...))
+		return nil
+	}
+	t.Cleanup(func() {
+		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
+	})
+
+	resumer := newTmuxAgentResumer("%1")
+	resumer.keyDelay = 0
+	var wg sync.WaitGroup
+	errs := make(chan error, 3)
+	for _, sessionID := range []string{"session_one", "session_two", "session_three"} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- resumer.Notify(sessionID)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+
+	callsMu.Lock()
+	defer callsMu.Unlock()
+	require.Len(t, calls, 6)
+	for i := 0; i < len(calls); i += 2 {
+		require.Len(t, calls[i], 5)
+		assert.Equal(t, []string{"send-keys", "-t", "%2", "-l"}, calls[i][:4])
+		assert.True(t, strings.Contains(calls[i][4], "stripe coop agent resume --session=session_"))
+		assert.Equal(t, []string{"send-keys", "-t", "%2", "Enter"}, calls[i+1])
+	}
 }
 
 func hasTmuxCall(calls [][]string, want ...string) bool {

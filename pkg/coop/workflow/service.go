@@ -78,10 +78,19 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 		if err := requireActiveSession(session); err != nil {
 			return err
 		}
-		if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
+		node, err := session.NodeByNumber(nodeNumber)
+		if err != nil {
 			return err
 		}
-		node, _ := session.NodeByNumber(nodeNumber)
+		// A review handoff can be delivered twice: once as the result of the
+		// original waiter and once by a neutral tmux resume prompt. Treat the
+		// exact retry command as idempotent once this node is already active.
+		if node.State != coop.NodeActive {
+			if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
+				return err
+			}
+			node, _ = session.NodeByNumber(nodeNumber)
+		}
 		node.Activity = note
 		return nil
 	})
@@ -298,6 +307,76 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 	return alreadyMovedResponse(session, nodeNumber, node.State), nil
 }
 
+// Resume returns the exact non-blocking lifecycle command for the session's
+// current state. It is deliberately read-only: a late human decision may wake
+// an agent whose original await result is still arriving, so duplicate resume
+// prompts must be safe.
+func (s *Service) Resume(sessionID string) (coop.CommandResponse, error) {
+	session, err := s.store.Read(sessionID)
+	if err != nil {
+		return errorResponse(err, "stripe coop status"), nil
+	}
+	if session.Status == coop.SessionAborted {
+		return errorResponse(fmt.Errorf("session %s is %s and cannot be resumed", session.ID, session.Status), "stripe coop status"), nil
+	}
+
+	if session.Status == coop.SessionCompleted || session.IsComplete() {
+		return coop.CommandResponse{
+			OK:        true,
+			SessionID: session.ID,
+			Node:      session.TotalNodes(),
+			State:     string(coop.SessionCompleted),
+			Message:   "Session work is complete. Continue with the exact next-action command.",
+			Next:      nextAfterNode(session, session.TotalNodes()),
+		}, nil
+	}
+
+	if activeNode, nodeNumber := session.ActiveNode(); activeNode != nil {
+		if activeNode.RejectionNote != "" && activeNode.Activity == "" {
+			return rejectedResponse(session, nodeNumber, activeNode), nil
+		}
+		return coop.CommandResponse{
+			OK:        true,
+			SessionID: session.ID,
+			Node:      nodeNumber,
+			State:     string(coop.NodeActive),
+			Message:   fmt.Sprintf("Node %d is already active. Continue the current work; no resume command is needed.", nodeNumber),
+		}, nil
+	}
+
+	nodeNumber := 0
+	for stepIndex := range session.Steps {
+		step := &session.Steps[stepIndex]
+		if session.StepReadyForReview(stepIndex) && session.StepHasReview(stepIndex) {
+			reviewNode := session.FirstReviewNodeInStep(stepIndex)
+			return coop.CommandResponse{
+				OK:        true,
+				SessionID: session.ID,
+				Node:      reviewNode,
+				State:     string(coop.NodeReview),
+				Message:   fmt.Sprintf("Step %q is waiting for human review.", step.Title),
+				Next:      fmt.Sprintf("stripe coop agent await-review --session=%s --step=%d", session.ID, reviewNode),
+			}, nil
+		}
+		for nodeIndex := range step.Nodes {
+			nodeNumber++
+			node := &step.Nodes[nodeIndex]
+			if node.State == coop.NodePending {
+				return coop.CommandResponse{
+					OK:        true,
+					SessionID: session.ID,
+					Node:      nodeNumber,
+					State:     string(coop.NodePending),
+					Message:   fmt.Sprintf("Resume with the next pending node: %s", node.Title),
+					Next:      startWorkCommand(session.ID, nodeNumber, "Beginning: "+node.Title),
+				}, nil
+			}
+		}
+	}
+
+	return errorResponse(fmt.Errorf("session %s has no resumable lifecycle state", session.ID), "stripe coop status"), nil
+}
+
 func (s *Service) autoConfirm(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
 	session, err := s.ConfirmReview(sessionID, []int{nodeNumber})
 	if err != nil {
@@ -337,19 +416,7 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 		}
 		if activeNodeNumber := session.FirstActiveNodeInStep(stepIndex); activeNodeNumber > 0 {
 			activeNode, _ := session.NodeByNumber(activeNodeNumber)
-			msg := fmt.Sprintf("Step %q requested changes.", stepTitle)
-			if activeNode != nil && activeNode.RejectionNote != "" {
-				msg += fmt.Sprintf("\nFeedback: %s", activeNode.RejectionNote)
-			}
-			msg += "\nRedo the step from the first affected node."
-			return coop.CommandResponse{
-				OK:        true,
-				SessionID: session.ID,
-				Node:      activeNodeNumber,
-				State:     "rejected",
-				Message:   msg,
-				Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, activeNodeNumber, quoteArg("Redoing: "+activeNode.Title)),
-			}, nil
+			return rejectedStepResponse(session, stepTitle, activeNodeNumber, activeNode), nil
 		}
 		if session.StepHasReview(stepIndex) {
 			continue
@@ -409,7 +476,7 @@ func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNo
 func nextAfterNode(session *coop.Session, nodeNumber int) string {
 	if nextNodeNumber := session.NextPendingNode(nodeNumber); nextNodeNumber > 0 {
 		nextNode, _ := session.NodeByNumber(nextNodeNumber)
-		return fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, nextNodeNumber, quoteArg("Beginning: "+nextNode.Title))
+		return startWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.Title)
 	}
 	if session.IsComplete() {
 		if session.ParentSessionID != "" && session.ParentStepID != "" {
@@ -423,7 +490,7 @@ func nextAfterNode(session *coop.Session, nodeNumber int) string {
 func nextInStepOrStatus(session *coop.Session, stepIndex, afterNode int) string {
 	if nextNodeNumber := helpers.NextPendingNodeInStep(session, stepIndex+1, afterNode); nextNodeNumber > 0 {
 		nextNode, _ := session.NodeByNumber(nextNodeNumber)
-		return fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", session.ID, nextNodeNumber, quoteArg("Beginning: "+nextNode.Title))
+		return startWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.Title)
 	}
 	return fmt.Sprintf("stripe coop status --session=%s", session.ID)
 }
@@ -463,6 +530,39 @@ func timeoutResponse(sessionID string, nodeNumber int) coop.CommandResponse {
 		Message:   "Timed out waiting for developer confirmation. Re-run await-review to wait again.",
 		Next:      fmt.Sprintf("stripe coop agent await-review --session=%s --step=%d", sessionID, nodeNumber),
 	}
+}
+
+func rejectedStepResponse(session *coop.Session, stepTitle string, nodeNumber int, node *coop.SessionNode) coop.CommandResponse {
+	resp := rejectedResponse(session, nodeNumber, node)
+	resp.Message = fmt.Sprintf("Step %q requested changes.", stepTitle)
+	if node != nil && node.RejectionNote != "" {
+		resp.Message += fmt.Sprintf("\nFeedback: %s", node.RejectionNote)
+	}
+	resp.Message += "\nRedo the step from the first affected node."
+	return resp
+}
+
+func rejectedResponse(session *coop.Session, nodeNumber int, node *coop.SessionNode) coop.CommandResponse {
+	title := "affected node"
+	if node != nil && node.Title != "" {
+		title = node.Title
+	}
+	message := fmt.Sprintf("Node %d has requested changes. Redo the affected work.", nodeNumber)
+	if node != nil && node.RejectionNote != "" {
+		message += fmt.Sprintf("\nFeedback: %s", node.RejectionNote)
+	}
+	return coop.CommandResponse{
+		OK:        true,
+		SessionID: session.ID,
+		Node:      nodeNumber,
+		State:     "rejected",
+		Message:   message,
+		Next:      startWorkCommand(session.ID, nodeNumber, "Redoing: "+title),
+	}
+}
+
+func startWorkCommand(sessionID string, nodeNumber int, note string) string {
+	return fmt.Sprintf("stripe coop agent start-work --session=%s --step=%d --note=%s", sessionID, nodeNumber, quoteArg(note))
 }
 
 func errorResponse(err error, hint string) coop.CommandResponse {

@@ -65,6 +65,28 @@ func TestCoopAgentStartWorkCommand(t *testing.T) {
 	assert.Equal(t, coop.NodeActive, node.State)
 }
 
+func TestCoopAgentResumeCommandReturnsExactCurrentCommandWithoutMutation(t *testing.T) {
+	store, session := setupAgentCommandTest(t)
+	cmd := newCoopAgentResumeCmd().cmd
+	cmd.SetArgs([]string{"--session", session.ID})
+
+	output := captureStdout(t, func() {
+		require.NoError(t, cmd.Execute())
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	require.True(t, resp.OK)
+	assert.Equal(t, "pending", resp.State)
+	assert.Equal(t, `stripe coop agent start-work --session=agent_test_session --step=1 --note="Beginning: Node 1"`, resp.Next)
+
+	loaded, err := store.Read(session.ID)
+	require.NoError(t, err)
+	node, err := loaded.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Equal(t, coop.NodePending, node.State)
+}
+
 func TestCoopAgentReportCheckCommand(t *testing.T) {
 	store, session := setupAgentCommandTest(t)
 	_, err := store.Update(session.ID, func(session *coop.Session) error {
