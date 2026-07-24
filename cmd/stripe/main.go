@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	goversion "github.com/hashicorp/go-version"
+
 	"github.com/stripe/stripe-cli/pkg/cmd"
 	"github.com/stripe/stripe-cli/pkg/reporting"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -20,6 +22,11 @@ func main() {
 
 	if stripe.TelemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) || stripe.TelemetryOptedOut(os.Getenv("DO_NOT_TRACK")) {
 		// Proceed without telemetry or error reporting if the user opted out.
+		cmd.Execute(ctx)
+		return
+	}
+
+	if _, err := goversion.NewSemver(version.Version); err != nil {
 		cmd.Execute(ctx)
 		return
 	}
