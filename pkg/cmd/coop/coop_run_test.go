@@ -386,7 +386,7 @@ func TestCoopRunPreservesBlueprintLoadError(t *testing.T) {
 	assert.Contains(t, resp.Error, "ambiguous blueprint prefix")
 	assert.NotContains(t, resp.Error, "not found")
 	require.NotNil(t, resp.Recovery)
-	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
+	assert.Equal(t, "stripe coop recommend --all", resp.Recovery.Next)
 }
 
 func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
@@ -404,7 +404,7 @@ func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.Contains(t, resp.Error, "not found")
 	require.NotNil(t, resp.Recovery)
-	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
+	assert.Equal(t, "stripe coop recommend --all", resp.Recovery.Next)
 }
 
 func TestCoopStartPreservesBlueprintLoadError(t *testing.T) {
@@ -413,7 +413,7 @@ func TestCoopStartPreservesBlueprintLoadError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "ambiguous blueprint prefix")
 	assert.NotContains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend")
+	assert.Contains(t, err.Error(), "stripe coop recommend --all")
 }
 
 func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
@@ -421,7 +421,7 @@ func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend")
+	assert.Contains(t, err.Error(), "stripe coop recommend --all")
 }
 
 func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {

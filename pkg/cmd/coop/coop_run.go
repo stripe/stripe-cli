@@ -78,7 +78,7 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 		return outputCoopError(
 			err.Error(),
 			"Choose an available blueprint ID.",
-			coop.Continue("stripe coop recommend"),
+			coop.Continue("stripe coop recommend --all"),
 		)
 	}
 
