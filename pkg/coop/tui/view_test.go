@@ -942,3 +942,38 @@ func TestContentWidthDefault(t *testing.T) {
 	m.width = 120
 	assert.Equal(t, 120, m.contentWidth())
 }
+
+// Agents paste CLI output into their verification notes, splicing it into the
+// middle of their own sentence, so the finding lands at the end. Keeping the
+// head returns the chatter and drops the result.
+func TestSummarizeCheckKeepsTheFindingNotTheTranscript(t *testing.T) {
+	transcript := strings.Join([]string{
+		"Ran the required Checking for new versions...",
+		"",
+		"A newer version of the Stripe CLI is available, please update to: v1.44.0",
+		"Setting up fixture for: product",
+		"Running fixture for: product",
+		"Setting up fixture for: checkout_session",
+		"Running fixture for: checkout_session",
+		"Trigger succeeded! Check dashboard for event details. successfully. " +
+			"Exercised the app route with POST http://localhost:3000/api/stripe/webhook; " +
+			"it returned HTTP 400 because STRIPE_WEBHOOK_SECRET is not configured.",
+	}, "\n")
+
+	summary := summarizeCheck(transcript, failedCheckBudget)
+
+	assert.Contains(t, summary, "STRIPE_WEBHOOK_SECRET is not configured")
+	assert.NotContains(t, summary, "Setting up fixture for")
+	assert.NotContains(t, summary, "A newer version of the Stripe CLI")
+	assert.LessOrEqual(t, lipgloss.Width(summary), failedCheckBudget+1)
+}
+
+func TestSummarizeCheckLeavesShortNotesIntact(t *testing.T) {
+	note := "pnpm --filter web lint reports 2 errors."
+
+	assert.Equal(t, note, summarizeCheck(note, failedCheckBudget))
+}
+
+func TestSummarizeCheckFlattensNewlines(t *testing.T) {
+	assert.Equal(t, "first second", summarizeCheck("first\n\n  second  ", failedCheckBudget))
+}

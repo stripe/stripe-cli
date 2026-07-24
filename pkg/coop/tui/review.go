@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -326,6 +327,10 @@ func (m Model) reviewPromptLabels(nodeNumbers []int) []string {
 }
 
 // reviewFailedCheckLabels names the checks the agent could not get passing.
+// failedCheckBudget keeps a named failure to roughly two wrapped lines in the
+// card. The full text remains available in the detail view.
+const failedCheckBudget = 160
+
 func (m Model) reviewFailedCheckLabels(nodeNumbers []int) []string {
 	var checks []string
 	seen := map[string]bool{}
@@ -336,7 +341,7 @@ func (m Model) reviewFailedCheckLabels(nodeNumbers []int) []string {
 			continue
 		}
 		for _, verification := range node.Verifications {
-			check := firstSentence(strings.TrimSpace(verification.Check))
+			check := summarizeCheck(verification.Check, failedCheckBudget)
 			if verification.Passed || check == "" || seen[check] {
 				continue
 			}
@@ -369,12 +374,55 @@ func (m Model) reviewPassedCheckCount(nodeNumbers []int) int {
 	return passed
 }
 
-// firstSentence keeps agent-authored prose to a single scannable line.
-func firstSentence(s string) string {
-	if idx := strings.Index(s, ". "); idx >= 0 {
-		return s[:idx+1]
+// checkNoisePrefixes are lines agents paste in from CLI output they ran. They
+// describe the run, not the result, so they are dropped before summarizing.
+var checkNoisePrefixes = []string{
+	"Setting up fixture for:",
+	"Running fixture for:",
+	"Checking for new versions",
+	"A newer version of the Stripe CLI is available",
+	"We recommend updating regularly",
+	"Trigger succeeded!",
+	"Ran fixture",
+}
+
+// summarizeCheck condenses an agent-authored verification note to one scannable
+// line.
+//
+// These notes are frequently pasted CLI transcripts rather than prose. Agents
+// splice command output into the middle of their own sentence, so the note
+// opens with a fragment, carries dozens of progress lines, and states the
+// actual finding last. Keeping the head — whether by sentence split or plain
+// truncation — therefore returns the chatter and discards the result. Drop the
+// pure progress lines, then keep the tail. The untouched text stays in the
+// detail view.
+func summarizeCheck(s string, budget int) string {
+	var kept []string
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || isProgressLine(line) {
+			continue
+		}
+		kept = append(kept, line)
 	}
-	return s
+	summary := strings.Join(strings.Fields(strings.Join(kept, " ")), " ")
+	if budget <= 0 || lipgloss.Width(summary) <= budget {
+		return summary
+	}
+	return "…" + ansi.TruncateLeft(summary, lipgloss.Width(summary)-budget, "")
+}
+
+// isProgressLine reports whether a line is only CLI progress output. A line that
+// carries meaningful text alongside a known marker is kept, because agents
+// append their finding to the last line of pasted output.
+func isProgressLine(line string) bool {
+	for _, prefix := range checkNoisePrefixes {
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		return lipgloss.Width(strings.TrimSpace(strings.TrimPrefix(line, prefix))) <= 60
+	}
+	return false
 }
 
 func pluralChecks(n int) string {
