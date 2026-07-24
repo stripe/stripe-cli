@@ -145,6 +145,12 @@ func (r *RootCommand) initClient() {
 		if cache, err := pkgdocs.NewFSCache(filepath.Join(configDir, "docs", "cache")); err == nil {
 			clientOpts = append(clientOpts, pkgdocs.WithCache(cache))
 		}
+		if accountID, err := r.cfg.Profile.GetAccountID(); err == nil {
+			clientOpts = append(clientOpts, pkgdocs.WithCacheKeyPrefix(accountID))
+		}
+		if apiKey, err := r.cfg.Profile.GetAPIKey(false); err == nil {
+			clientOpts = append(clientOpts, pkgdocs.WithAPIKey(apiKey))
+		}
 	}
 	if len(clientOpts) > 0 {
 		r.client.WithOptions(clientOpts...)
