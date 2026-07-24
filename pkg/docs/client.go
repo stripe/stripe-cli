@@ -45,6 +45,7 @@ type Client struct {
 	userAgent string
 	cache     Cache
 	logger    *log.Entry
+	prefs     map[string]string
 }
 
 // ClientOption configures a Client.
@@ -63,6 +64,12 @@ func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = ca
 
 // WithLogger sets a custom logger.
 func WithLogger(logger *log.Entry) ClientOption { return func(c *Client) { c.logger = logger } }
+
+// WithPrefs sets documentation preferences to include as query parameters on page fetches.
+// A preference is only applied when the fetched URL does not already carry that parameter.
+func WithPrefs(prefs map[string]string) ClientOption {
+	return func(c *Client) { c.prefs = prefs }
+}
 
 // NewClient creates a Client configured to talk to docs.stripe.com.
 func NewClient(_ string) *Client {
@@ -90,9 +97,15 @@ func (c *Client) WithOptions(opts ...ClientOption) *Client {
 //	page, err := c.FetchPage(ctx, &url.URL{Path: "/payments/accept-a-payment", RawQuery: "api_version=2024-06-30"})
 func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	resolvedURL := c.baseURL.ResolveReference(ref)
-	// url.Values.Encode() already sorts params, but we normalize here to ensure
-	// a consistent cache key regardless of how callers construct RawQuery.
-	resolvedURL.RawQuery = resolvedURL.Query().Encode()
+	// Merge stored prefs as query params, skipping any key already present in the ref.
+	// url.Values.Encode() sorts params, giving a consistent cache key.
+	q := resolvedURL.Query()
+	for k, v := range c.prefs {
+		if !q.Has(k) {
+			q.Set(k, v)
+		}
+	}
+	resolvedURL.RawQuery = q.Encode()
 	rawURL := resolvedURL.String()
 
 	if c.cache != nil {

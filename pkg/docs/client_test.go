@@ -505,6 +505,64 @@ func TestFetchPrefs(t *testing.T) {
 	}
 }
 
+func TestFetchPageWithPrefs(t *testing.T) {
+	tests := []struct {
+		name        string
+		prefs       map[string]string
+		ref         *url.URL
+		wantParams  map[string]string
+		wantAbsent  []string
+	}{
+		{
+			name:       "prefs are added as query params",
+			prefs:      map[string]string{"lang": "go", "theme": "dark"},
+			ref:        &url.URL{Path: "/payments"},
+			wantParams: map[string]string{"lang": "go", "theme": "dark"},
+		},
+		{
+			name:       "existing param is not overridden",
+			prefs:      map[string]string{"lang": "go"},
+			ref:        &url.URL{Path: "/payments", RawQuery: "lang=ruby"},
+			wantParams: map[string]string{"lang": "ruby"},
+		},
+		{
+			name:       "prefs fill missing params but preserve existing ones",
+			prefs:      map[string]string{"lang": "go", "theme": "dark"},
+			ref:        &url.URL{Path: "/payments", RawQuery: "lang=ruby"},
+			wantParams: map[string]string{"lang": "ruby", "theme": "dark"},
+		},
+		{
+			name:       "no prefs adds no params",
+			prefs:      nil,
+			ref:        &url.URL{Path: "/payments"},
+			wantAbsent: []string{"lang", "theme"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotQuery url.Values
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotQuery = r.URL.Query()
+				w.Header().Set("Content-Type", "text/plain")
+				fmt.Fprint(w, "content")
+			}))
+			defer server.Close()
+
+			client := NewClient("test").WithOptions(WithBaseURL(server.URL), WithPrefs(tt.prefs))
+			_, err := client.FetchPage(context.Background(), tt.ref)
+			require.NoError(t, err)
+
+			for k, v := range tt.wantParams {
+				assert.Equal(t, v, gotQuery.Get(k))
+			}
+			for _, k := range tt.wantAbsent {
+				assert.Empty(t, gotQuery.Get(k))
+			}
+		})
+	}
+}
+
 // evictingMockCache always returns a miss, simulating TTL expiry.
 type evictingMockCache struct{}
 
