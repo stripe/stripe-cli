@@ -174,8 +174,10 @@ type BlueprintMetadata struct {
 }
 
 type WorkbenchStepRef struct {
-	StepKey     string `json:"step_key"`
-	StepVersion int    `json:"step_version"`
+	StepKey     string            `json:"step_key"`
+	StepVersion int               `json:"step_version"`
+	Settings    map[string]string `json:"settings"`
+	Params      map[string]string `json:"params"`
 }
 
 type WorkbenchBlueprint struct {
@@ -187,6 +189,7 @@ type WorkbenchBlueprint struct {
 type WorkbenchBlueprintDefinition struct {
 	WorkbenchBlueprintSummary
 	BlueprintSettings []WorkbenchSettingGroup `json:"blueprint_settings"`
+	BlueprintParams   []WorkbenchParamGroup   `json:"blueprint_params"`
 }
 
 type WorkbenchStep struct {
@@ -201,8 +204,11 @@ type WorkbenchStepDefinition struct {
 	Title           MessageDescriptor       `json:"title"`
 	Description     MessageDescriptor       `json:"description"`
 	Required        bool                    `json:"required"`
-	Settings        []WorkbenchSettingGroup `json:"settings"`
-	Config          WorkbenchStepConfig     `json:"config"`
+	IsIncluded      any                     `json:"is_included"`
+	Settings        map[string]string       `json:"settings"`
+	SettingsSchema  []WorkbenchSettingGroup `json:"settings_schema"`
+	Params          map[string]string       `json:"params"`
+	ParamsSchema    []WorkbenchParamGroup   `json:"params_schema"`
 	Outputs         []WorkbenchStepOutput   `json:"outputs"`
 }
 
@@ -212,14 +218,14 @@ type WorkbenchStepOutput struct {
 	Schema map[string]any `json:"schema"`
 }
 
-type WorkbenchStepConfig struct {
-	Settings map[string]string `json:"settings"`
-	Params   map[string]string `json:"params"`
-}
-
 type WorkbenchSettingGroup struct {
 	Key      string           `json:"key"`
 	Settings []WorkbenchField `json:"settings"`
+}
+
+type WorkbenchParamGroup struct {
+	Key    string           `json:"key"`
+	Params []WorkbenchField `json:"params"`
 }
 
 type WorkbenchField struct {
@@ -236,6 +242,7 @@ type WorkbenchBlueprintNode struct {
 	Key                 string                        `json:"key"`
 	Title               MessageDescriptor             `json:"title"`
 	Description         MessageDescriptor             `json:"description"`
+	IsIncluded          any                           `json:"is_included"`
 	IsInformationalNode bool                          `json:"is_informational_node"`
 	APIRequestDetails   *WorkbenchAPIRequestDetails   `json:"api_request_details"`
 	AsyncHandlerDetails *WorkbenchAsyncHandlerDetails `json:"async_handler_details"`
