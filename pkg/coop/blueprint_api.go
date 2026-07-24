@@ -148,6 +148,15 @@ type MessageDescriptor struct {
 	DefaultMessage string `json:"default_message"`
 }
 
+// UnmarshalJSON also accepts titles stored by earlier co-op sessions.
+func (m *MessageDescriptor) UnmarshalJSON(data []byte) error {
+	if len(data) > 0 && data[0] == '"' {
+		return json.Unmarshal(data, &m.DefaultMessage)
+	}
+	type descriptor MessageDescriptor
+	return json.Unmarshal(data, (*descriptor)(m))
+}
+
 type WorkbenchBlueprintSummary struct {
 	ID               string             `json:"id"`
 	BlueprintType    string             `json:"blueprint_type"`

@@ -254,7 +254,7 @@ func (s *Store) Read(id string) (*Session, error) {
 }
 
 func ensureSessionSchemaVersion(session *Session) {
-	if session.SchemaVersion == 0 {
+	if session.SchemaVersion < CurrentSessionSchemaVersion {
 		session.SchemaVersion = CurrentSessionSchemaVersion
 	}
 }
