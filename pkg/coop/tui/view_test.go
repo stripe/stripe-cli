@@ -365,8 +365,8 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	assertContainsPlain(t, footer, "confirm")
 	assertContainsPlain(t, footer, "changes")
 	assertContainsPlain(t, footer, "Review")
-	assertContainsPlain(t, footer, "Agent changed")
-	assertContainsPlain(t, footer, "Confirmation steps")
+	assertContainsPlain(t, footer, "Changed")
+	assertContainsPlain(t, footer, "Do this")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -384,16 +384,22 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review")
 	assertNotContainsPlain(t, card, "Review: Create product")
-	assertContainsPlain(t, card, "Agent changed:")
+	assertContainsPlain(t, card, "Changed: ")
 	assertContainsPlain(t, card, "server.js:5-20")
-	assertContainsPlain(t, card, "Agent verified:")
-	assertContainsPlain(t, card, "1/2 check(s) passed")
-	assertContainsPlain(t, card, "Confirmation steps")
-	assertContainsPlain(t, card, "Visit http://localhost:3000/checkout")
-	assertNotContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
-	assertNotContainsPlain(t, card, "declined cards")
+
+	// The reviewer's instruction leads, not the agent's narration of what it
+	// already did.
+	assertContainsPlain(t, card, "Do this")
+	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
+	assertNotContainsPlain(t, card, "Visit http://localhost:3000/checkout")
+
+	// The failed check is named; passes collapse to a count.
+	assertContainsPlain(t, card, "declined cards")
+	assertContainsPlain(t, card, "1 check passed")
+
 	plain := ansi.Strip(card)
-	assert.Less(t, strings.Index(plain, "Confirmation steps"), strings.Index(plain, "Agent changed:"))
+	assert.Less(t, strings.Index(plain, "Do this"), strings.Index(plain, "declined cards"))
+	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed: "))
 }
 
 func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
@@ -405,7 +411,7 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Confirmation steps")
+	assertContainsPlain(t, card, "Do this")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 
@@ -756,7 +762,7 @@ func TestReviewCardShowsDetailsHintWhenClipped(t *testing.T) {
 
 	assert.LessOrEqual(t, lipgloss.Height(footer), m.footerHeightBudget())
 	assertLinesWithinWidth(t, footer, m.width)
-	assertContainsPlain(t, footer, "more checks available")
+	assertContainsPlain(t, footer, "enter for details")
 }
 
 func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {

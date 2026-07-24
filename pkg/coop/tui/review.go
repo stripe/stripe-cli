@@ -80,34 +80,70 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 	w, _ := m.reviewCardWidths()
 
-	var lines []string
+	var lines []cardLine
 	prefix := "Review"
 	if target.kind == "step" {
 		prefix = "Review step"
 	}
-	lines = append(lines, m.theme.ReviewStyle.Render(prefix))
-	check := m.reviewPromptLabel(target.nodeNumbers)
-	if check != "" {
-		lines = append(lines, m.theme.ConfirmationHeaderStyle.Render("Confirmation steps"))
-		lines = append(lines, check)
+	lines = append(lines, cardLine{text: m.theme.ReviewStyle.Render(prefix)})
+
+	// What the reviewer should do comes first: the blueprint's own review
+	// prompt is written for a human, unlike the agent's verification notes.
+	prompts := m.reviewPromptLabels(target.nodeNumbers)
+	if len(prompts) > 0 {
+		lines = append(lines, cardLine{})
+		lines = append(lines, cardLine{text: m.theme.ConfirmationHeaderStyle.Render("Do this")})
+		for _, prompt := range prompts {
+			if len(prompts) > 1 {
+				lines = append(lines, cardLine{text: "• " + prompt, indent: "  "})
+				continue
+			}
+			lines = append(lines, cardLine{text: prompt})
+		}
 	}
+	if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
+		lines = append(lines, cardLine{
+			text:   m.theme.MutedStyle.Render("Run: ") + command,
+			indent: "  ",
+		})
+	}
+
+	// Failures are named; passes collapse to a count. A reviewer needs to know
+	// which check failed far more than which ones succeeded.
+	failed := m.reviewFailedCheckLabels(target.nodeNumbers)
+	passed := m.reviewPassedCheckCount(target.nodeNumbers)
+	if len(failed) > 0 || passed > 0 {
+		lines = append(lines, cardLine{})
+	}
+	for _, label := range failed {
+		lines = append(lines, cardLine{
+			text:   m.theme.ErrorStyle.Render("✗ ") + label,
+			indent: "  ",
+		})
+	}
+	if passed > 0 {
+		lines = append(lines, cardLine{
+			text: m.theme.MutedStyle.Render(fmt.Sprintf("✓ %s passed", pluralChecks(passed))),
+		})
+	}
+
 	metadataStart := len(lines)
 	if target.kind == "step" {
 		if included := m.reviewNodeTitleLabel(target.nodeNumbers); included != "" {
-			lines = append(lines, m.theme.MutedStyle.Render("Includes: ")+included)
+			lines = append(lines, cardLine{
+				text:   m.theme.MutedStyle.Render("Includes: ") + included,
+				indent: "  ",
+			})
 		}
 	}
 	if changed := m.reviewChangedLabel(target.nodeNumbers); changed != "" {
-		lines = append(lines, m.theme.MutedStyle.Render("Agent changed: ")+changed)
+		lines = append(lines, cardLine{
+			text:   m.theme.MutedStyle.Render("Changed: ") + changed,
+			indent: "  ",
+		})
 	}
-	if verified := m.reviewVerificationLabel(target.nodeNumbers); verified != "" {
-		lines = append(lines, m.theme.MutedStyle.Render("Agent verified: ")+verified)
-	}
-	if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
-		lines = append(lines, m.theme.MutedStyle.Render("Run: ")+command)
-	}
-	if len(lines) > metadataStart && check != "" {
-		lines = append(lines[:metadataStart], append([]string{""}, lines[metadataStart:]...)...)
+	if len(lines) > metadataStart {
+		lines = append(lines[:metadataStart], append([]cardLine{{}}, lines[metadataStart:]...)...)
 	}
 	if m.rejecting {
 		m.rejectionInput.SetWidth(m.requestChangesInputWidth())
@@ -115,30 +151,52 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		if m.rejectionInput.Value() == "" {
 			inputView = m.theme.DimmedStyle.Render(m.rejectionInput.Placeholder)
 		}
-		lines = append(lines, m.theme.ErrorStyle.Render("Request changes: ")+inputView)
+		lines = append(lines, cardLine{text: m.theme.ErrorStyle.Render("Request changes: ") + inputView})
 		if m.rejectionError != "" {
-			lines = append(lines, m.theme.ErrorStyle.Render(m.rejectionError))
+			lines = append(lines, cardLine{text: m.theme.ErrorStyle.Render(m.rejectionError)})
 		}
 	}
 
 	var wrapped []string
 	for _, line := range lines {
-		for _, segment := range strings.Split(line, "\n") {
-			wrapped = append(wrapped, strings.Split(wordWrap(segment, w-4), "\n")...)
-		}
+		wrapped = append(wrapped, line.wrap(w-4)...)
 	}
 	if maxHeight > 0 {
 		maxContentLines := maxHeight - 2
 		if len(wrapped) > maxContentLines {
 			if maxContentLines <= 1 {
-				wrapped = []string{m.theme.DimmedStyle.Render("Review: more checks available")}
+				wrapped = []string{m.theme.DimmedStyle.Render("Review: enter for details")}
 			} else {
-				more := m.theme.DimmedStyle.Render("Confirmation steps: enter/e for more")
+				// Keep naming the action even when the card collapses, so a
+				// narrow terminal still says there is something to do.
+				more := m.theme.DimmedStyle.Render("Do this: enter/e for details")
 				wrapped = append(wrapped[:maxContentLines-1], more)
 			}
 		}
 	}
 	return m.renderReviewCardLines(w, maxHeight, wrapped)
+}
+
+// cardLine is one logical line of the review card. indent is applied to
+// continuation lines so wrapped text stays visually attached to its label
+// instead of reading as a new item.
+type cardLine struct {
+	text   string
+	indent string
+}
+
+func (l cardLine) wrap(width int) []string {
+	var out []string
+	available := width - lipgloss.Width(l.indent)
+	for _, segment := range strings.Split(l.text, "\n") {
+		for i, piece := range strings.Split(wordWrap(segment, available), "\n") {
+			if i > 0 {
+				piece = l.indent + piece
+			}
+			out = append(out, piece)
+		}
+	}
+	return out
 }
 
 func footerLinesFit(lines []string, budget int) bool {
@@ -168,7 +226,7 @@ func (m Model) requestChangesInputWidth() int {
 }
 
 func (m Model) renderReviewCardLines(width, maxHeight int, lines []string) string {
-	more := m.theme.DimmedStyle.Render("Review: more checks available")
+	more := m.theme.DimmedStyle.Render("Review: enter for details")
 	style := m.theme.ReviewCardStyle.Width(width).MaxWidth(width + 4)
 	for {
 		rendered := style.Render(strings.Join(lines, "\n"))
@@ -228,30 +286,6 @@ func (m Model) reviewChangedLabel(nodeNumbers []int) string {
 	return strings.Join(labels, ", ")
 }
 
-func (m Model) reviewVerificationLabel(nodeNumbers []int) string {
-	passed := 0
-	total := 0
-	for _, nodeNumber := range nodeNumbers {
-		node, err := m.session.NodeByNumber(nodeNumber)
-		if err != nil {
-			continue
-		}
-		for _, v := range node.Verifications {
-			total++
-			if v.Passed {
-				passed++
-			}
-		}
-	}
-	if total == 0 {
-		return ""
-	}
-	if passed == total {
-		return fmt.Sprintf("%d check(s) passed", passed)
-	}
-	return fmt.Sprintf("%d/%d check(s) passed", passed, total)
-}
-
 func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 	if m.session == nil {
 		return ""
@@ -273,17 +307,19 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 	return strings.Join(titles, ", ")
 }
 
-func (m Model) reviewPromptLabel(nodeNumbers []int) string {
-	if agentChecks := m.reviewAgentConfirmationLabel(nodeNumbers); agentChecks != "" {
-		return agentChecks
+// reviewPromptLabel returns the instruction for the reviewer. Blueprint review
+// prompts are authored for a human and say what to go and check; the agent's
+// verification notes are free-form prose describing what it already did, so
+// they belong in the detail view rather than in the card.
+func (m Model) reviewPromptLabels(nodeNumbers []int) []string {
+	if prompts := m.reviewBlueprintConfirmationPrompts(nodeNumbers); len(prompts) > 0 {
+		return prompts
 	}
-	if blueprintChecks := m.reviewBlueprintConfirmationLabel(nodeNumbers); blueprintChecks != "" {
-		return blueprintChecks
-	}
-	return "Confirm the completed work matches this step and its verification evidence."
+	return []string{"Confirm the completed work matches this step and its verification evidence."}
 }
 
-func (m Model) reviewAgentConfirmationLabel(nodeNumbers []int) string {
+// reviewFailedCheckLabels names the checks the agent could not get passing.
+func (m Model) reviewFailedCheckLabels(nodeNumbers []int) []string {
 	var checks []string
 	seen := map[string]bool{}
 	showStepTitle := len(nodeNumbers) > 1
@@ -293,8 +329,8 @@ func (m Model) reviewAgentConfirmationLabel(nodeNumbers []int) string {
 			continue
 		}
 		for _, verification := range node.Verifications {
-			check := strings.TrimSpace(verification.Check)
-			if !verification.Passed || check == "" || seen[check] {
+			check := firstSentence(strings.TrimSpace(verification.Check))
+			if verification.Passed || check == "" || seen[check] {
 				continue
 			}
 			seen[check] = true
@@ -304,10 +340,44 @@ func (m Model) reviewAgentConfirmationLabel(nodeNumbers []int) string {
 			checks = append(checks, check)
 		}
 	}
-	return reviewConfirmationSummary(checks, 3)
+	if len(checks) > 3 {
+		return append(checks[:3], fmt.Sprintf("+%d more failed", len(checks)-3))
+	}
+	return checks
 }
 
-func (m Model) reviewBlueprintConfirmationLabel(nodeNumbers []int) string {
+func (m Model) reviewPassedCheckCount(nodeNumbers []int) int {
+	passed := 0
+	for _, nodeNumber := range nodeNumbers {
+		node, err := m.session.NodeByNumber(nodeNumber)
+		if err != nil {
+			continue
+		}
+		for _, verification := range node.Verifications {
+			if verification.Passed {
+				passed++
+			}
+		}
+	}
+	return passed
+}
+
+// firstSentence keeps agent-authored prose to a single scannable line.
+func firstSentence(s string) string {
+	if idx := strings.Index(s, ". "); idx >= 0 {
+		return s[:idx+1]
+	}
+	return s
+}
+
+func pluralChecks(n int) string {
+	if n == 1 {
+		return "1 check"
+	}
+	return fmt.Sprintf("%d checks", n)
+}
+
+func (m Model) reviewBlueprintConfirmationPrompts(nodeNumbers []int) []string {
 	var prompts []string
 	seen := map[string]bool{}
 	for _, nodeNumber := range nodeNumbers {
@@ -318,17 +388,11 @@ func (m Model) reviewBlueprintConfirmationLabel(nodeNumbers []int) string {
 		seen[node.ReviewPrompt] = true
 		prompts = append(prompts, node.ReviewPrompt)
 	}
-	return reviewConfirmationSummary(prompts, 2)
-}
-
-func reviewConfirmationSummary(checks []string, limit int) string {
-	if len(checks) == 0 {
-		return ""
+	const limit = 2
+	if len(prompts) > limit {
+		return append(prompts[:limit], fmt.Sprintf("Open details for %d more check(s).", len(prompts)-limit))
 	}
-	if len(checks) > limit {
-		return strings.Join(checks[:limit], "\n") + fmt.Sprintf("\nOpen details for %d more check(s).", len(checks)-limit)
-	}
-	return strings.Join(checks, "\n")
+	return prompts
 }
 
 func (m Model) reviewCommandLabel(nodeNumbers []int) string {
