@@ -3,8 +3,8 @@ package coopcmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
 type coopAgentRunCmd struct {
@@ -35,7 +36,16 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 		Example: `  stripe coop run one-time-payment
   stripe coop run one-time-payment --language=node
   stripe coop run setup-future-payments --setting=framework=express --param=customer_type=existing`,
-		Args: cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				return nil
+			}
+			return outputCoopError(
+				"coop run requires exactly one blueprint ID",
+				"Choose a blueprint before starting a session.",
+				coop.Continue("stripe coop recommend"),
+			)
+		},
 		RunE: rc.runCmd,
 	}
 
@@ -44,6 +54,7 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 	rc.cmd.Flags().StringArrayVar(&rc.params, "param", nil, "Blueprint params as key=value pairs")
 	rc.cmd.Flags().StringVar(&rc.parentSession, "parent-session", "", "Parent co-op session ID for follow-up work")
 	rc.cmd.Flags().StringVar(&rc.parentStep, "parent-step", "", "Parent next-step ID this session fulfills")
+	configureAgentCommand(rc.cmd)
 
 	return rc
 }
@@ -55,23 +66,31 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		// Surface the specific error (e.g. an ambiguous prefix and its candidate
 		// list) rather than a generic "not found".
-		return outputCoopError(err.Error(), "stripe coop recommend")
+		return outputCoopError(
+			err.Error(),
+			"Choose an available blueprint ID.",
+			coop.Continue("stripe coop recommend"),
+		)
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
-		return fmt.Errorf("creating store: %w", err)
+		return outputAgentError(fmt.Errorf("creating store: %w", err))
 	}
 
 	sessionID := "coop_" + uuid.New().String()[:8]
 
 	session, err := newCoopSession(bp, sessionID, rc.language, rc.settings, rc.params, rc.parentSession, rc.parentStep)
 	if err != nil {
-		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
+		return outputCoopError(
+			err.Error(),
+			"Retry without the malformed setting or parameter; optional values use key=value syntax.",
+			coop.Continue(coop.RunCommand(blueprintID)),
+		)
 	}
 
 	if err := store.Write(session); err != nil {
-		return fmt.Errorf("writing session: %w", err)
+		return outputAgentError(fmt.Errorf("writing session: %w", err))
 	}
 
 	resp := newCoopAgentRunResponse(bp, session)
@@ -107,12 +126,12 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 
 	resp := coopAgentRunResponse{
 		CommandResponse: coop.CommandResponse{
-			OK:        true,
-			SessionID: session.ID,
-			Node:      1,
-			State:     "created",
-			Message:   fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
-			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
+			OK:           true,
+			SessionID:    session.ID,
+			Node:         1,
+			State:        "created",
+			Message:      fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
+			Continuation: coop.Continue(coop.StartWorkCommand(session.ID, 1, "Beginning: "+session.Steps[0].Nodes[0].Title)),
 		},
 		AgentInstructions: instructions,
 		Nodes:             nodes,
@@ -232,7 +251,7 @@ Agent lifecycle commands (use this session id: %s):
 
 Steps are the default human-review unit. Build and verify each node one at a time, but do not interrupt the developer for every node. At the end of each step, before running await, help the developer verify the step: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop agent report-check --session=%s --step=<n> --check="..." --passed so the review card has useful evidence.
 
-The "await" command is critical at step boundaries — it blocks until the developer acts. Do NOT proceed to the next step without running await when the node response tells you the step is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected node.
+The "await" command is critical at step boundaries — it blocks until the developer acts. Do NOT proceed to the next step without running await when the node response tells you the step is ready. Co-op returns from await-review after %s; allow the shell command at least %s so the structured timeout response arrives. Re-run it if Co-op reports a timeout. If changes are requested, ask the developer what they'd like you to change before redoing the affected node.
 
 Some nodes are marked auto_confirm — these do not require human review. Continue following the next command returned by the CLI.
 
@@ -244,31 +263,28 @@ Important:
 - If a node doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
 - Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
   Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
-  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
+  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, workflow.AwaitTimeout, workflow.AwaitHarnessTimeout)
 }
 
 func outputJSON(v interface{}) error {
+	return outputJSONTo(os.Stdout, v)
+}
+
+func outputJSONTo(w io.Writer, v interface{}) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(data))
+	fmt.Fprintln(w, string(data))
 	return nil
 }
 
-func quoteArg(value string) string {
-	return strconv.Quote(value)
-}
-
-func outputCoopError(msg, hint string) error {
-	resp := coop.CommandResponse{
-		OK:    false,
-		Error: msg,
-		Hint:  hint,
-	}
-	data, _ := json.MarshalIndent(resp, "", "  ")
-	fmt.Fprintln(os.Stderr, string(data))
-	return RenderedError{}
+func outputCoopError(message, hint string, continuation coop.Continuation) error {
+	return outputAgentResponse(coop.CommandResponse{
+		OK:       false,
+		Error:    message,
+		Recovery: continuation.Recovery(hint),
+	}, nil)
 }
 
 type RenderedError struct{}

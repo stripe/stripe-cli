@@ -74,7 +74,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 
-All agent commands output JSON with an `ok` field and a `next` field suggesting the next command. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
 
 ## TUI Keybindings
 
@@ -157,7 +157,7 @@ When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` f
 - **Fresh heartbeat (< 5s old):** Agent is actively waiting for confirmation
 - **No heartbeat + no session update in 2min:** Show idle warning
 
-The heartbeat file is cleaned up when `await` exits.
+The heartbeat file is cleaned up when `await` exits. The command advertises its five-minute wait as `wait_timeout_seconds`; agent harnesses should allow at least six minutes so the structured timeout response can arrive.
 
 ## Resuming
 
@@ -215,7 +215,7 @@ After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix m
 | "timed out waiting for session lock" | A previous writer left a `.lock` file behind | If no `stripe coop` command is running, remove the named lock file and retry |
 | TUI shows wrong session | Multiple sessions exist | Use `stripe coop join <session-id>` with the correct ID |
 | Steps not updating in TUI | Agent created a duplicate session | Check `stripe coop status` for the correct session ID |
-| Agent ignores "next" hint | LLM didn't follow instructions | Copy the `next` value and run it manually, or restart |
+| Agent ignores its continuation | LLM didn't follow instructions | Run `next` exactly, or fill every `required_inputs` value in `next_template` |
 | Double footer / layout broken | Terminal resize not detected | Resize the terminal window (triggers recalculation) |
 | "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend` to see available IDs |
 
