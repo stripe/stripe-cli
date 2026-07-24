@@ -166,3 +166,35 @@ func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 	assert.Contains(t, err.Error(), "stripe coop recommend")
 }
+
+func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
+	bp := &coop.Blueprint{Title: "Metered subscription"}
+	session := &coop.Session{ID: "coop_123"}
+
+	instructions := agentInstructions(bp, session)
+
+	assert.Contains(t, instructions, "The blueprint describes the Stripe flow the developer wants in their app")
+	assert.Contains(t, instructions, "Stripe CLI commands are useful for setup and verification, but they are not the implementation")
+	assert.Contains(t, instructions, `"apiRequest": Implement app code that calls this Stripe API`)
+	assert.Contains(t, instructions, `"asyncHandler": Implement the app's webhook or async event handler for every event listed on the node`)
+	assert.Contains(t, instructions, "when that event has a supported trigger")
+	assert.Contains(t, instructions, "Do not hardcode port 4242 unless the app is actually listening there")
+	assert.Contains(t, instructions, "Verification exercises the app code, not only a direct Stripe CLI/API call")
+	assert.Contains(t, instructions, "add --passed only after observing the expected result")
+	assert.Contains(t, instructions, "report-work points to the relevant app file/function/route you implemented, changed, or verified")
+	assert.Contains(t, instructions, "Never pass full card numbers to Stripe APIs or CLI commands")
+}
+
+func TestCoopAgentRunResponsePreservesNodesWireKey(t *testing.T) {
+	bp, err := coop.LoadBlueprint("one-time-payment")
+	require.NoError(t, err)
+	session := coop.NewSessionFromBlueprint(bp, "coop_123", nil, nil)
+
+	data, err := json.Marshal(newCoopAgentRunResponse(bp, session))
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(data, &payload))
+	assert.Contains(t, payload, "nodes")
+	assert.NotContains(t, payload, "steps")
+}
