@@ -5,8 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
 func TestGuidedActionByIDDeployCreatesStepFlow(t *testing.T) {
@@ -38,14 +36,4 @@ func TestGuidedActionByIDRejectsUnknownAction(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `guided action "unknown" not found`)
-}
-
-func TestDeployFollowupsAreNotBlueprints(t *testing.T) {
-	available := []coop.WorkbenchBlueprintSummary{{Key: "one-time-payment"}}
-	_, err := coop.ResolveBlueprintKey(available, Deploy)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
-	_, err = coop.ResolveBlueprintKey(available, DeployUpdate)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
 }

@@ -61,8 +61,6 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 
 	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID, selectedSettings)
 	if err != nil {
-		// Surface the specific error (e.g. an ambiguous prefix and its candidate
-		// list) rather than a generic "not found".
 		return outputCoopError(err.Error(), "stripe coop recommend --all")
 	}
 

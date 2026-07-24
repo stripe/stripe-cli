@@ -104,16 +104,12 @@ func TestWorkbenchClientPropagatesAuthenticationAndDecodeErrors(t *testing.T) {
 }
 
 func TestWorkbenchHTTPRepositoryCompilesVariantsAndPinsSessions(t *testing.T) {
-	listFixture, err := os.ReadFile("testdata/blueprints-list.json")
-	require.NoError(t, err)
 	retrieveFixture, err := os.ReadFile("testdata/blueprint-retrieve.json")
 	require.NoError(t, err)
 
 	retrieveCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case workbenchBlueprintsPath:
-			_, _ = w.Write(listFixture)
 		case workbenchBlueprintsPath + "/sample-payment":
 			retrieveCount++
 			if retrieveCount == 1 {
@@ -130,7 +126,7 @@ func TestWorkbenchHTTPRepositoryCompilesVariantsAndPinsSessions(t *testing.T) {
 	defer server.Close()
 
 	client := NewWorkbenchClient(&recordingKeyProvider{key: "sk_test_end_to_end"}, server.URL, server.Client())
-	compiled, err := LoadBlueprint(context.Background(), client, "sample-pay", map[string]string{"country": "GB"})
+	compiled, err := LoadBlueprint(context.Background(), client, "sample-payment", map[string]string{"country": "GB"})
 	require.NoError(t, err)
 	params := compiled.Steps[0].Nodes[0].Request.Params.(map[string]any)
 	assert.Equal(t, map[string]any{"country": "GB", "controller": "application"}, params["account"])

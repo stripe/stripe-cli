@@ -13,15 +13,13 @@ import (
 )
 
 type memoryBlueprintRepository struct {
-	list         []WorkbenchBlueprintSummary
 	blueprints   map[string]*WorkbenchBlueprint
-	listErr      error
 	retrieveErr  error
 	retrievedKey string
 }
 
 func (r *memoryBlueprintRepository) List(context.Context) ([]WorkbenchBlueprintSummary, error) {
-	return r.list, r.listErr
+	return nil, nil
 }
 
 func (r *memoryBlueprintRepository) Retrieve(_ context.Context, key string) (*WorkbenchBlueprint, error) {
@@ -44,17 +42,6 @@ func loadTestBlueprint(t *testing.T) *WorkbenchBlueprint {
 	require.NoError(t, json.Unmarshal(raw, &blueprint))
 	blueprint.raw = raw
 	return &blueprint
-}
-
-func loadTestSummaries(t *testing.T) []WorkbenchBlueprintSummary {
-	t.Helper()
-	raw, err := os.ReadFile("testdata/blueprints-list.json")
-	require.NoError(t, err)
-	var response struct {
-		Data []WorkbenchBlueprintSummary `json:"data"`
-	}
-	require.NoError(t, json.Unmarshal(raw, &response))
-	return response.Data
 }
 
 func TestCompileBlueprintNormalizesAPIDetails(t *testing.T) {
@@ -254,55 +241,34 @@ func TestBlueprintDigestPinsRetrievedSnapshot(t *testing.T) {
 	assert.NotEqual(t, first, blueprintDigest(second))
 }
 
-func TestResolveBlueprintKey(t *testing.T) {
-	available := []WorkbenchBlueprintSummary{
-		{Key: "flat-subscription"},
-		{Key: "flat-fee"},
-		{Key: "one-time-payment"},
-	}
-
-	exact, err := ResolveBlueprintKey(available, "flat-fee")
-	require.NoError(t, err)
-	assert.Equal(t, "flat-fee", exact)
-
-	prefix, err := ResolveBlueprintKey(available, "one-time")
-	require.NoError(t, err)
-	assert.Equal(t, "one-time-payment", prefix)
-
-	_, err = ResolveBlueprintKey(available, "flat")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ambiguous")
-	assert.Contains(t, err.Error(), "flat-fee, flat-subscription")
-
-	_, err = ResolveBlueprintKey(available, "missing")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
-}
-
-func TestLoadBlueprintUsesCanonicalPrefixMatch(t *testing.T) {
+func TestLoadBlueprintRetrievesExactKey(t *testing.T) {
 	source := loadTestBlueprint(t)
 	repository := &memoryBlueprintRepository{
-		list:       loadTestSummaries(t),
 		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": source},
 	}
 
-	compiled, err := LoadBlueprint(context.Background(), repository, "sample-pay", nil)
+	compiled, err := LoadBlueprint(context.Background(), repository, "sample-payment", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "sample-payment", compiled.ID)
 	assert.Equal(t, "sample-payment", repository.retrievedKey)
 }
 
-func TestLoadBlueprintWrapsRepositoryErrors(t *testing.T) {
-	repository := &memoryBlueprintRepository{listErr: errors.New("network unavailable")}
-	_, err := LoadBlueprint(context.Background(), repository, "sample", nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "listing blueprints")
+func TestLoadBlueprintDoesNotResolvePrefixes(t *testing.T) {
+	repository := &memoryBlueprintRepository{
+		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": loadTestBlueprint(t)},
+	}
 
-	repository = &memoryBlueprintRepository{
-		list:        loadTestSummaries(t),
+	_, err := LoadBlueprint(context.Background(), repository, "sample-pay", nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `retrieving blueprint "sample-pay"`)
+	assert.Equal(t, "sample-pay", repository.retrievedKey)
+}
+
+func TestLoadBlueprintWrapsRepositoryErrors(t *testing.T) {
+	repository := &memoryBlueprintRepository{
 		retrieveErr: errors.New("permission denied"),
 	}
-	_, err = LoadBlueprint(context.Background(), repository, "sample-payment", nil)
+	_, err := LoadBlueprint(context.Background(), repository, "sample-payment", nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "retrieving blueprint")
 }

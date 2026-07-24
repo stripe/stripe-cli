@@ -213,7 +213,7 @@ pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
   store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
-  blueprint.go      — API blueprint compiler, normalization, prefix matching
+  blueprint.go      — API blueprint compiler and normalization
   blueprint_api.go  — Authenticated Workbench blueprint client
   guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)

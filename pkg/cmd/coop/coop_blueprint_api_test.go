@@ -104,13 +104,13 @@ func TestCoopRunRetrievesSelectedBlueprintAndPinsSession(t *testing.T) {
 	command := newCoopAgentRunCmd().cmd
 	command.SilenceErrors = true
 	command.SilenceUsage = true
-	command.SetArgs([]string{"one-time", "--setting", "simulation=success"})
+	command.SetArgs([]string{"one-time-payment", "--setting", "simulation=success"})
 
 	captureStdout(t, func() {
 		require.NoError(t, command.Execute())
 	})
 
-	assert.Equal(t, 1, repository.listCalls)
+	assert.Zero(t, repository.listCalls)
 	assert.Equal(t, 1, repository.retrieveCalls)
 	assert.Equal(t, "one-time-payment", repository.retrievedKey)
 	store, err := coop.NewStore(coopConfigFolder())
@@ -127,12 +127,12 @@ func TestCoopRunRetrievesSelectedBlueprintAndPinsSession(t *testing.T) {
 func TestStartSessionReusesCompiledBlueprint(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	repository := useRecordingBlueprintRepository(t)
-	blueprint, err := coop.LoadBlueprint(t.Context(), repository, "one-time", nil)
+	blueprint, err := coop.LoadBlueprint(t.Context(), repository, "one-time-payment", nil)
 	require.NoError(t, err)
 
 	session, err := (&coopRunCmd{}).startSessionQuietly(blueprint)
 	require.NoError(t, err)
 	assert.Equal(t, "one-time-payment", session.Blueprint)
-	assert.Equal(t, 1, repository.listCalls)
+	assert.Zero(t, repository.listCalls)
 	assert.Equal(t, 1, repository.retrieveCalls)
 }
