@@ -10,6 +10,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
@@ -122,6 +123,38 @@ func TestReadProjectFlagHasPrecedence(t *testing.T) {
 	executeCommand(rootCmd, "version", "--project-name", "from-flag")
 
 	require.Equal(t, "from-flag", Config.Profile.ProfileName)
+}
+
+func TestReBindKeysSkipsChangedFlags(t *testing.T) {
+	// Reproduce the CI failure: viper.Reset() (called from GetMachineUUID → WriteConfigField)
+	// clears the pflag binding. Without it, viper falls back to the env var value and
+	// ReBindKeys overwrites an explicitly-passed --project-name flag.
+	t.Setenv("STRIPE_PROJECT_NAME", "from-env")
+
+	// Simulate viper.Reset() having been called — clears the pflag binding so
+	// viper.GetString("project-name") returns the env var value, not the flag value.
+	viper.Reset()
+	viper.BindEnv("project-name", "STRIPE_PROJECT_NAME")
+	t.Cleanup(func() {
+		// Restore bindings so subsequent tests still work.
+		viper.BindPFlag("project-name", rootCmd.PersistentFlags().Lookup("project-name"))
+		viper.BindEnv("project-name", "STRIPE_PROJECT_NAME")
+	})
+
+	flag := rootCmd.PersistentFlags().Lookup("project-name")
+	origValue := flag.Value.String()
+	origChanged := flag.Changed
+	defer func() {
+		flag.Value.Set(origValue)
+		flag.Changed = origChanged
+	}()
+
+	flag.Value.Set("from-flag")
+	flag.Changed = true
+
+	ReBindKeys()
+
+	require.Equal(t, "from-flag", flag.Value.String())
 }
 
 func TestV2BillingOverrides(t *testing.T) {

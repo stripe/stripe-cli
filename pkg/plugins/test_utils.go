@@ -63,12 +63,23 @@ func (c *TestConfig) InitConfig() {
 
 // setUpFS Sets up a memMap that contains the manifest
 func setUpFS() afero.Fs {
-	// test plugin manifest
-	// Note that only some of entries have actual checksums that match with what the test server returns.
+	// Populate local plugin metadata from the test manifest.
+	// Note that only some entries have actual checksums that match what the test server returns.
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 	fs := afero.NewMemMapFs()
-	// fs.Mkdir("test_config_folder", os.ModePerm)
-	afero.WriteFile(fs, "/plugins.toml", manifestContent, os.ModePerm)
+
+	pluginList, err := validatePluginManifest(manifestContent)
+	if err != nil {
+		panic(err)
+	}
+
+	config := &TestConfig{}
+	for _, plugin := range pluginList.Plugins {
+		if err := writeLocalPluginMetadata(config, fs, plugin); err != nil {
+			panic(err)
+		}
+	}
+
 	return fs
 }
 
@@ -117,16 +128,6 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 	// The checksums in the test toml files are the same for each OS variation of the release for unit testing purposes
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
-		case "/v1/stripecli/get-plugin-url":
-			pd := requests.PluginData{
-				PluginBaseURL:       artifactoryServer.URL,
-				AdditionalManifests: additionalManifestNames,
-			}
-			body, err := json.Marshal(pd)
-			if err != nil {
-				t.Error(err)
-			}
-			res.Write(body)
 		case "/v1/stripecli/get-plugin-metadata", "/ajax/stripecli/plugins_metadata":
 			pluginName := req.URL.Query().Get("plugin")
 			version := req.URL.Query().Get("version")

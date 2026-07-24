@@ -3,26 +3,27 @@
   "title": "Invoice payment with hosted page",
   "description": "Learn how to create and collect payment on an invoice using a hosted payment page.",
   "type": "learning",
-  "settings": [],
+  "products": [
+    "Billing"
+  ],
+  "settings": null,
   "steps": [
     {
-      "key": "main",
-      "title": "Invoice payment with hosted page",
+      "key": "set-up-chapter",
+      "title": "Set up test environment",
+      "required": true,
       "nodes": [
         {
           "type": "testHelper",
           "key": "create-test-clock",
           "title": "Create a test clock",
-          "review_prompt": "Run these test-helper requests to advance Stripe test state; do not implement them in the application. Confirm the expected result is observable.",
+          "description": "Run this test helper to create a test clock to control time in your test environment.",
+          "review_prompt": "Run the helper flow and confirm it advances test state without adding helper-only parameters to application code.",
           "requests": [
             {
               "key": "create-test-clock-request",
               "path": "/v1/test_helpers/test_clocks",
-              "method": "post",
-              "params": {
-                "frozen_time": "${env:currentTime}",
-                "name": "Example Invoice with Hosted Payment Page"
-              }
+              "method": "post"
             }
           ]
         },
@@ -30,7 +31,8 @@
           "type": "apiRequest",
           "key": "create-product",
           "title": "Create a product with a price",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Create a product with a default price that will be used for the invoice.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/products",
             "method": "post",
@@ -47,28 +49,36 @@
           "type": "apiRequest",
           "key": "create-customer",
           "title": "Create a customer",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Create a customer who will receive the invoice. For testing purposes, the customer's email will be your email.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/customers",
             "method": "post",
             "params": {
               "description": "Customer to Invoice",
               "email": "${env:userEmail}",
-              "test_clock": "${node.main.create-test-clock.create-test-clock-request:id}"
+              "test_clock": "${node.set-up-chapter.create-test-clock.create-test-clock-request:id}"
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "key": "create-invoice-chapter",
+      "title": "Create and send the invoice",
+      "nodes": [
         {
           "type": "apiRequest",
           "key": "create-invoice",
           "title": "Create an invoice",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Create an invoice for the customer with a 30-day payment term.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/invoices",
             "method": "post",
             "params": {
               "collection_method": "send_invoice",
-              "customer": "${node.main.create-customer:id}",
+              "customer": "${node.set-up-chapter.create-customer:id}",
               "days_until_due": 30
             }
           }
@@ -77,15 +87,16 @@
           "type": "apiRequest",
           "key": "add-invoice-item",
           "title": "Add an invoice item",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Add a line item to the invoice using the product price created earlier.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
             "path": "/v1/invoiceitems",
             "method": "post",
             "params": {
-              "customer": "${node.main.create-customer:id}",
-              "invoice": "${node.main.create-invoice:id}",
+              "customer": "${node.set-up-chapter.create-customer:id}",
+              "invoice": "${node.create-invoice-chapter.create-invoice:id}",
               "pricing": {
-                "price": "${node.main.create-product:default_price}"
+                "price": "${node.set-up-chapter.create-product:default_price}"
               }
             }
           }
@@ -94,24 +105,34 @@
           "type": "apiRequest",
           "key": "send-invoice",
           "title": "Send the invoice",
-          "review_prompt": "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps.",
+          "description": "Send the invoice to the customer via email.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
           "request": {
-            "path": "/v1/invoices/${node.main.create-invoice:id}/send",
+            "path": "/v1/invoices/${node.create-invoice-chapter.create-invoice:id}/send",
             "method": "post",
             "params": {}
           }
-        },
+        }
+      ]
+    },
+    {
+      "key": "payment-chapter",
+      "title": "Process invoice payment",
+      "nodes": [
         {
           "type": "uiComponent",
           "key": "view-invoice",
           "title": "View and pay the invoice",
+          "description": "Preview the hosted invoice page where customers can view and pay their invoice online. Optionally fill out the form with the card number as 4242 4242 4242 4242. Use a valid future date, such as 12/34, and any three-digit CVC.",
           "review_prompt": "Open the app and confirm the user-facing flow works as described."
         },
         {
           "type": "asyncHandler",
           "key": "wait-for-invoice-paid",
           "title": "Handle invoice payment events",
-          "review_prompt": "Run stripe trigger invoice.paid and confirm the handler processes the signed event correctly.",
+          "description": "Listen for the invoice.paid event that indicates successful payment.",
+          "review_prompt": "Run the relevant Stripe CLI trigger or complete the upstream flow, then confirm the handler receives and verifies the expected event.",
+          "review_command": "stripe trigger invoice.paid",
           "events": [
             "invoice.paid"
           ]
