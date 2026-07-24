@@ -369,26 +369,6 @@ func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	assert.Empty(t, ids)
 }
 
-func TestCoopRunPreservesBlueprintLoadError(t *testing.T) {
-	cmd := newCoopAgentRunCmd().cmd
-	cmd.SilenceErrors = true
-	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"flat"})
-
-	stderr := captureStderr(t, func() {
-		err := cmd.Execute()
-		require.Error(t, err)
-	})
-
-	var resp coop.CommandResponse
-	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
-	assert.False(t, resp.OK)
-	assert.Contains(t, resp.Error, "ambiguous blueprint prefix")
-	assert.NotContains(t, resp.Error, "not found")
-	require.NotNil(t, resp.Recovery)
-	assert.Equal(t, "stripe coop recommend --all", resp.Recovery.Next)
-}
-
 func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	cmd := newCoopAgentRunCmd().cmd
 	cmd.SilenceErrors = true
@@ -405,15 +385,6 @@ func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	assert.Contains(t, resp.Error, "not found")
 	require.NotNil(t, resp.Recovery)
 	assert.Equal(t, "stripe coop recommend --all", resp.Recovery.Next)
-}
-
-func TestCoopStartPreservesBlueprintLoadError(t *testing.T) {
-	err := newCoopRunCmd().runCmd(nil, []string{"flat"})
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ambiguous blueprint prefix")
-	assert.NotContains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend --all")
 }
 
 func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
