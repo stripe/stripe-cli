@@ -103,6 +103,38 @@ func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFallbackJoinInstructionsIncludeCoopEnv(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	rc := &coopRunCmd{language: "node"}
+	output := captureStdout(t, func() {
+		err := rc.runFallbackWithCommand("/stripe", "one-time-payment", func(session *coop.Session) (string, func(), error) {
+			require.NotNil(t, session)
+			return "true", nil, nil
+		})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "Open another terminal and run: XDG_CONFIG_HOME=")
+	assert.Contains(t, output, " stripe coop join coop_")
+}
+
+func TestFallbackWaitInstructionsIncludeCoopEnv(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	rc := &coopRunCmd{language: "node"}
+	output := captureStdout(t, func() {
+		err := rc.runFallbackWithCommand("/stripe", "", func(session *coop.Session) (string, func(), error) {
+			require.Nil(t, session)
+			return "true", nil, nil
+		})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "Open another terminal and run: XDG_CONFIG_HOME=")
+	assert.Contains(t, output, " stripe coop join --wait")
+}
+
 func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -133,6 +165,13 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	require.ErrorIs(t, err, splitErr)
 	assert.True(t, cleanupCalled)
 	assert.True(t, hasTmuxCall(tmuxCalls, "kill-session", "-t", "stripe-coop"))
+	newSessionCall := findTmuxCall(tmuxCalls, "new-session")
+	require.NotNil(t, newSessionCall)
+	assert.Contains(t, newSessionCall[len(newSessionCall)-1], "XDG_CONFIG_HOME=")
+	assert.Contains(t, newSessionCall[len(newSessionCall)-1], " coop join ")
+	splitCall := findTmuxCall(tmuxCalls, "split-window")
+	require.NotNil(t, splitCall)
+	assert.Contains(t, splitCall[len(splitCall)-1], "XDG_CONFIG_HOME=")
 
 	store, err := coop.NewStore(coopConfigFolder())
 	require.NoError(t, err)
@@ -161,6 +200,15 @@ func hasTmuxCall(calls [][]string, want ...string) bool {
 		}
 	}
 	return false
+}
+
+func findTmuxCall(calls [][]string, command string) []string {
+	for _, call := range calls {
+		if len(call) > 0 && call[0] == command {
+			return call
+		}
+	}
+	return nil
 }
 
 func TestShellQuoteNeutralizesShellMetacharacters(t *testing.T) {

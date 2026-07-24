@@ -28,6 +28,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/reporting"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -70,6 +71,8 @@ var rootCmd = &cobra.Command{
 			fullHelpMode = true
 		}
 
+		reporting.SetCommandPath(cmd.CommandPath())
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
@@ -79,6 +82,7 @@ var rootCmd = &cobra.Command{
 				telemetryMetadata.SetCommandPath(resolvePluginTelemetryCommandPath(cmd, os.Args))
 			}
 			telemetryMetadata.SetMerchant(merchant)
+			telemetryMetadata.SetMachineUUID(Config.GetMachineUUID())
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
 			flags := []string{}
@@ -121,6 +125,8 @@ func showSuggestion() {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
 	emitClaudeCodePluginHint()
+
+	reporting.SetAccountIDProvider(Config.Profile.GetAccountID)
 
 	telemetryMetadata := stripe.NewEventMetadata()
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
@@ -181,11 +187,14 @@ func Execute(ctx context.Context) {
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
+			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
 
 		default:
+			reporting.CaptureException(err)
 			fmt.Fprintln(os.Stderr, err)
 		}
 
+		reporting.Flush()
 		os.Exit(1)
 	} else {
 		userInput := os.Args[1:]
@@ -209,6 +218,12 @@ var keysToReBind []string
 // ReBindKeys applies the value found in viper config to the cobra flag when viper has a value (possibly from env)
 func ReBindKeys() {
 	for _, k := range keysToReBind {
+		// If the flag was explicitly set on the command line, don't override it.
+		// viper.Reset() (called when writing config) clears the pflag binding, which
+		// would otherwise prevent viper from respecting flag > env precedence.
+		if f := rootCmd.PersistentFlags().Lookup(k); f != nil && f.Changed {
+			continue
+		}
 		if viper.IsSet(k) {
 			rootCmd.Flags().Set(k, viper.GetString(k))
 		}
@@ -248,6 +263,7 @@ func init() {
 
 	rootCmd.AddCommand(newReportingCmd().cmd)
 	rootCmd.AddCommand(newAgentCmd().cmd)
+	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
@@ -305,6 +321,13 @@ func init() {
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
+	if err := plugins.BackfillMissingInstalledPluginMetadata(context.Background(), cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.registerInstalledPlugins",
+		}).Debugf("could not backfill installed plugin metadata: %s", err)
+	}
+
 	pluginNames, err := plugins.GetInstalledPluginNames(cfg, fs)
 	if err != nil {
 		log.WithFields(log.Fields{

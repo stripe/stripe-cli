@@ -69,6 +69,26 @@ assert_agent_visible() {
   fi
 }
 
+# A correctly rendered outline never places two divider rules on adjacent lines.
+# The wide split-workspace bug sized rules to the full terminal width and wrapped
+# them into consecutive divider fragments inside the narrow left column.
+assert_no_wrapped_dividers() {
+  local label="$1" prev="" bad=0 line
+  while IFS= read -r line; do
+    if printf '%s\n' "$line" | rg -q '^[[:space:]]*─+[[:space:]]*$'; then
+      [ "$prev" = "divider" ] && bad=1
+      prev="divider"
+    else
+      prev=""
+    fi
+  done < <(capture_tui)
+  if [ "$bad" -eq 0 ]; then
+    record_pass "$label"
+  else
+    record_fail "$label (adjacent divider lines indicate a wrapped rule)"
+  fi
+}
+
 echo "[debug-agent-tmux] building test stripe binary"
 mkdir -p "$tmp_dir"
 (cd "$repo_root" && go build -o "$stripe_bin" cmd/stripe/main.go)
@@ -115,6 +135,7 @@ run_smoke() {
     else
       record_fail "$name split workspace prompt visible"
     fi
+    assert_no_wrapped_dividers "$name split workspace dividers not wrapped"
   fi
 
   if wait_for_tui "Review" 10; then

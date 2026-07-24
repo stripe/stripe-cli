@@ -39,9 +39,10 @@ run_install() {
     ;;
 
     winget)
-        # Reset the source index to avoid 0x8a15000f "data required is missing" on fresh runners.
-        winget source reset --force
-        winget install --id Stripe.StripeCli --accept-source-agreements --accept-package-agreements
+        # Re-register the WinGet source package to avoid 0x8a15000f "data required is missing".
+        # See: https://github.com/microsoft/winget-cli/issues/3068#issuecomment-1934922201
+        powershell.exe -Command "Add-AppPackage -path 'https://cdn.winget.microsoft.com/cache/source.msix'"
+        winget install --exact --id Stripe.StripeCli --source winget
         # winget modifies PATH but the current shell process doesn't inherit the change;
         # explicitly add the WinGet Links directory where the stripe alias was created.
         PATH="$PATH:$(cygpath -u "$LOCALAPPDATA/Microsoft/WinGet/Links")"
@@ -94,10 +95,9 @@ then
             then
                 echo "Install failed again. Retrying for the last time in 180 seconds..."
                 sleep 180
-                run_install
                 if ! run_install
                 then
-                exit 1
+                    exit 1
                 fi
             fi
         fi

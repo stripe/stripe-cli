@@ -1,0 +1,19 @@
+# Stub: registers this workflow on the default branch so it can be dispatched
+# to v2 via `gh workflow run autoupgrade-test.yml --ref v2`.
+# The real implementation lives on the v2 branch.
+name: Auto-upgrade canary test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notice:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "This workflow should be dispatched with --ref v2."
+          echo "The real implementation lives on the v2 branch."
+          exit 1

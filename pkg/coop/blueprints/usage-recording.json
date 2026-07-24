@@ -1,0 +1,85 @@
+{
+  "id": "usage-recording",
+  "title": "Record usage events for billing",
+  "description": "Record usage events to track customer consumption for usage-based billing.",
+  "type": "learning",
+  "products": [
+    "Billing"
+  ],
+  "settings": null,
+  "steps": [
+    {
+      "key": "setup-chapter",
+      "title": "Set up meter and customer",
+      "description": "Create a meter to track usage and a customer to track usage for.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-meter",
+          "title": "Create a meter",
+          "description": "Create a meter to define what usage events to track.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/billing/meters",
+            "method": "post",
+            "params": {
+              "customer_mapping": {
+                "event_payload_key": "stripe_customer_id",
+                "type": "by_id"
+              },
+              "default_aggregation": {
+                "formula": "sum"
+              },
+              "display_name": "API requests",
+              "event_name": "api_request-${env:randomName}",
+              "value_settings": {
+                "event_payload_key": "value"
+              }
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-customer",
+          "title": "Create customer",
+          "description": "Create a new customer to associate with the payment or subscription.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/customers",
+            "method": "post",
+            "params": {
+              "email": "customer@example.com",
+              "name": "Example Customer"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "key": "record-usage-chapter",
+      "title": "Record usage event",
+      "description": "Record a usage event for the customer.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "record-usage",
+          "title": "Record usage event",
+          "description": "Send a meter event to record usage for this customer. This will be included in their next invoice.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/billing/meter_events",
+            "method": "post",
+            "params": {
+              "event_name": "${node.setup-chapter.create-meter:event_name}",
+              "payload": {
+                "stripe_customer_id": "${node.setup-chapter.create-customer:id}",
+                "value": "1"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
