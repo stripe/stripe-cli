@@ -276,7 +276,7 @@ func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 
 	assertContainsPlain(t, detail, "✓ Create product")
 	assertContainsPlain(t, detail, "Create checkout")
-	assertContainsPlain(t, detail, "Do this")
+	assertContainsPlain(t, detail, "To confirm")
 	assertNotContainsPlain(t, detail, "SDK example")
 }
 
@@ -287,6 +287,7 @@ func TestRenderDetailWebhook(t *testing.T) {
 	m.detailTab = 2
 	detail := m.renderDetail()
 
+	// The per-task view keeps its own Checks tab, named plainly.
 	assertContainsPlain(t, detail, "Checks")
 	assertContainsPlain(t, detail, "Review command")
 	assertContainsPlain(t, detail, "How to verify")
@@ -370,7 +371,7 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	assertContainsPlain(t, footer, "changes")
 	assertContainsPlain(t, footer, "Review")
 	assertContainsPlain(t, footer, "Changed")
-	assertContainsPlain(t, footer, "Do this")
+	assertContainsPlain(t, footer, "To confirm")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -393,7 +394,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	// The reviewer's instruction leads, not the agent's narration of what it
 	// already did.
-	assertContainsPlain(t, card, "Do this")
+	assertContainsPlain(t, card, "To confirm")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 	assertNotContainsPlain(t, card, "Visit http://localhost:3000/checkout")
 
@@ -402,7 +403,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	assertContainsPlain(t, card, "1 check passed")
 
 	plain := ansi.Strip(card)
-	assert.Less(t, strings.Index(plain, "Do this"), strings.Index(plain, "declined cards"))
+	assert.Less(t, strings.Index(plain, "To confirm"), strings.Index(plain, "declined cards"))
 	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed "))
 }
 
@@ -415,7 +416,7 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Do this")
+	assertContainsPlain(t, card, "To confirm")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 
@@ -1032,7 +1033,7 @@ func TestRenderReviewCardShowsStepGoal(t *testing.T) {
 
 	assertContainsPlain(t, card, "Goal Create a product with recurring pricing.")
 	plain := ansi.Strip(card)
-	assert.Less(t, strings.Index(plain, "Goal:"), strings.Index(plain, "Do this"))
+	assert.Less(t, strings.Index(plain, "Goal:"), strings.Index(plain, "To confirm"))
 }
 
 // Rejection notes were stored and never rendered, so by the time the agent came
@@ -1056,7 +1057,7 @@ func TestRenderReviewCardShowsRequestedChange(t *testing.T) {
 func TestSectionHeadingsAreDistinctAndColored(t *testing.T) {
 	theme := NewTheme(true)
 
-	action := actionLabel(theme, "Do this")
+	action := actionLabel(theme, "To confirm")
 	evidence := evidenceLabel(theme, "Checks")
 	feedback := feedbackLabel(theme, "Requested change")
 
@@ -1140,6 +1141,6 @@ func TestChecksHeadingColorsByOutcome(t *testing.T) {
 	theme := NewTheme(true)
 
 	assert.NotEqual(t, checksLabel(theme, true), checksLabel(theme, false))
-	assert.Equal(t, "Checks", ansi.Strip(checksLabel(theme, true)))
-	assert.Equal(t, "Checks", ansi.Strip(checksLabel(theme, false)))
+	assert.Equal(t, "Agent checks", ansi.Strip(checksLabel(theme, true)))
+	assert.Equal(t, "Agent checks", ansi.Strip(checksLabel(theme, false)))
 }

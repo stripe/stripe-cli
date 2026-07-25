@@ -72,7 +72,7 @@ func TestUILayoutCopyAudit(t *testing.T) {
 				assert.NotContains(t, lower, strings.ToLower(phrase))
 			}
 			if strings.Contains(rendered, "Review") {
-				assert.Contains(t, rendered, "Do this")
+				assert.Contains(t, rendered, "To confirm")
 			}
 		})
 	}

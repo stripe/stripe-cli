@@ -87,7 +87,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		if maxHeight < 1 {
 			return ""
 		}
-		return m.theme.DimmedStyle.Render("  Do this: enter for details")
+		return m.theme.MutedStyle.Render("  To confirm: enter for details")
 	}
 	w, _ := m.reviewCardWidths()
 
@@ -118,7 +118,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	prompts := m.reviewPromptLabels(target.nodeNumbers)
 	if len(prompts) > 0 {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: actionLabel(m.theme, "Do this")})
+		lines = append(lines, cardLine{text: actionLabel(m.theme, "To confirm")})
 		for _, prompt := range prompts {
 			if len(prompts) > 1 {
 				lines = append(lines, cardLine{text: m.theme.BrandStyle.Render("• ") + prompt})
@@ -212,7 +212,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 			default:
 				// Keep naming the action even when the card collapses, so a
 				// narrow terminal still says there is something to do.
-				more := m.theme.DimmedStyle.Render("Do this: enter for details")
+				more := m.theme.MutedStyle.Render("To confirm: enter for details")
 				wrapped = append(trimDanglingSection(wrapped[:maxContentLines-1]), more)
 			}
 		}
@@ -269,7 +269,7 @@ func (m Model) requestChangesInputWidth() int {
 }
 
 func (m Model) renderReviewCardLines(width, maxHeight int, lines []string) string {
-	more := m.theme.DimmedStyle.Render("Do this: enter for details")
+	more := m.theme.MutedStyle.Render("To confirm: enter for details")
 	style := m.theme.ReviewCardStyle.Width(width).MaxWidth(width + 4)
 	for {
 		rendered := style.Render(strings.Join(lines, "\n"))
@@ -339,8 +339,9 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 // sectionNames are the box's headings, used to avoid truncating a card so that
 // a heading is left with nothing under it.
 var sectionNames = map[string]bool{
-	"Do this":          true,
-	"Checks":           true,
+	"To confirm":   true,
+	"Agent checks": true,
+
 	"Requested change": true,
 }
 
@@ -368,7 +369,7 @@ func trimDanglingSection(lines []string) []string {
 //
 // All three stay bold, so the structure survives a terminal without color.
 func actionLabel(t Theme, text string) string {
-	return t.AttentionStyle.Render(text)
+	return t.ActionHeadingStyle.Render(text)
 }
 
 // evidenceLabel colors the Checks heading by its own outcome, so the heading
@@ -378,11 +379,13 @@ func evidenceLabel(t Theme, text string) string {
 	return t.ReviewStyle.Bold(true).Render(text)
 }
 
+// checksLabel names whose checks these are — the agent's, not the reader's
+// task — and colors the heading by its own outcome.
 func checksLabel(t Theme, failed bool) string {
 	if failed {
-		return t.ErrorStyle.Bold(true).Render("Checks")
+		return t.ErrorStyle.Bold(true).Render("Agent checks")
 	}
-	return t.SuccessStyle.Bold(true).Render("Checks")
+	return t.SuccessStyle.Bold(true).Render("Agent checks")
 }
 
 func feedbackLabel(t Theme, text string) string {

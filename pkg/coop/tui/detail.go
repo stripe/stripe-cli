@@ -121,7 +121,9 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	content := strings.TrimSpace(md.String())
 	suffix := ""
 	if _, ok := m.selectedReviewTarget(); ok {
-		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm step · r changes", innerW)
+		suffix = "\n" + m.theme.AttentionStyle.Render("Waiting for you") +
+			m.theme.MutedStyle.Render("   ") + m.keyHint("c", "confirm step") +
+			m.theme.MutedStyle.Render(" · ") + m.keyHint("r", "request changes")
 	}
 	if content == "" && suffix == "" {
 		return ""
@@ -268,7 +270,7 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		md.WriteString("\n")
 	}
 
-	md.WriteString(m.theme.ReviewStyle.Bold(true).Render("Tasks") + "\n")
+	md.WriteString(m.theme.TaskHeadingStyle.Render("Tasks") + "\n")
 	for _, node := range ch.Nodes {
 		label, style := m.nodeStatusLabel(node)
 		line := m.nodeIcon(node) + " " + node.Title
@@ -281,13 +283,13 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 				truncatePath(implementationFileLabel(node.Implementation), wrapWidth)), wrapWidth)
 		}
 		if note := taskEvidence(node); note != "" {
-			writeWrapped(md, m.theme.DimmedStyle.Render(note), wrapWidth)
+			writeWrapped(md, m.theme.EvidenceStyle.Render(note), wrapWidth)
 		}
 	}
 	md.WriteString("\n")
 
 	if prompts := stepReviewPrompts(ch); len(prompts) > 0 {
-		md.WriteString(actionLabel(m.theme, "Do this") + "\n")
+		md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
 		for _, prompt := range prompts {
 			writeWrapped(md, prompt, wrapWidth)
 		}
@@ -478,13 +480,8 @@ func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNo
 	md.WriteString("\n")
 }
 
-func (m Model) attentionWrapped(text string, width int) string {
-	if width < 1 {
-		width = 1
-	}
-	lines := strings.Split(wordWrap(text, width), "\n")
-	for i, line := range lines {
-		lines[i] = m.theme.AttentionStyle.Render(line)
-	}
-	return strings.Join(lines, "\n")
+// keyHint renders a binding the way the footer's help component does, so a key
+// looks like a key wherever it appears.
+func (m Model) keyHint(key, description string) string {
+	return m.theme.KeyStyle.Render(key) + " " + m.theme.KeyDescriptionStyle.Render(description)
 }

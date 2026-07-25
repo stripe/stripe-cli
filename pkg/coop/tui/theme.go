@@ -36,8 +36,15 @@ type Theme struct {
 	DetailBoxStyle          lipgloss.Style
 	ReviewCardStyle         lipgloss.Style
 	ConfirmationHeaderStyle lipgloss.Style
-	FooterStyle             lipgloss.Style
-	FileAnnotationStyle     lipgloss.Style
+
+	// Section headings inside the review box and the detail pane.
+	ActionHeadingStyle  lipgloss.Style
+	TaskHeadingStyle    lipgloss.Style
+	EvidenceStyle       lipgloss.Style
+	KeyStyle            lipgloss.Style
+	KeyDescriptionStyle lipgloss.Style
+	FooterStyle         lipgloss.Style
+	FileAnnotationStyle lipgloss.Style
 }
 
 func NewTheme(isDark bool) Theme {
@@ -78,6 +85,19 @@ func NewTheme(isDark bool) Theme {
 		Background(t.Selection).
 		Bold(true).
 		Padding(0, 1)
+	// The instruction is the one thing the reader must act on, so it is the
+	// brightest text rather than a fourth hue competing with the others.
+	t.ActionHeadingStyle = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
+	// Blue for structure: purple already marks the cursor and review state, and
+	// orange is reserved for "you are blocking progress".
+	t.TaskHeadingStyle = lipgloss.NewStyle().Foreground(t.Blue400).Bold(true)
+	// Agent notes were Gray500 and italic — the dimmest value in the palette,
+	// with a face that reduces legibility further. One step brighter, upright.
+	t.EvidenceStyle = lipgloss.NewStyle().Foreground(t.Gray400)
+	// Matches the footer's help component, so a key looks like a key anywhere.
+	t.KeyStyle = lipgloss.NewStyle().Foreground(t.Purple400).Bold(true)
+	t.KeyDescriptionStyle = lipgloss.NewStyle().Foreground(t.Gray300)
+
 	t.FooterStyle = lipgloss.NewStyle().
 		Foreground(t.Gray300)
 	t.FileAnnotationStyle = lipgloss.NewStyle().

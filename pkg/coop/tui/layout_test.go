@@ -173,7 +173,7 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	assertHeaderIsPinned(t, rendered)
 	assertFooterIsPinned(t, rendered, "enter")
 	assert.Contains(t, rendered, "Review")
-	assert.Contains(t, rendered, "Do this")
+	assert.Contains(t, rendered, "To confirm")
 }
 
 func TestFooterActionRowStaysPinnedAcrossFooterModes(t *testing.T) {
@@ -245,7 +245,7 @@ func assertReviewAffordanceVisible(t *testing.T, m Model, rendered string) {
 		assert.Contains(t, ansi.Strip(rendered), "Request changes", "feedback editor should stay visible")
 		return
 	}
-	assert.Contains(t, ansi.Strip(rendered), "Do this", "review instruction should stay visible, in full or collapsed")
+	assert.Contains(t, ansi.Strip(rendered), "To confirm", "review instruction should stay visible, in full or collapsed")
 }
 
 func assertHeaderIsPinned(t *testing.T, rendered string) {
