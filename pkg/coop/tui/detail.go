@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -57,7 +59,7 @@ func (m Model) renderDetail() string {
 	}
 
 	var parts []string
-	if header := m.renderDetailHeader(section); header != "" {
+	if header := m.renderDetailHeader(section, innerW); header != "" {
 		parts = append(parts, header)
 	}
 	if content != "" {
@@ -98,7 +100,7 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	}
 
 	var parts []string
-	if header := m.renderDetailHeader(section); header != "" {
+	if header := m.renderDetailHeader(section, innerW); header != "" {
 		parts = append(parts, header)
 	}
 	if content != "" {
@@ -116,14 +118,39 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	return indentBlock(box, detailIndent)
 }
 
-func (m Model) renderDetailHeader(section string) string {
-	if section == "Summary" {
-		return ""
+// renderDetailHeader draws the tab strip.
+//
+// The detail box has always had four sections cycled with tab, but nothing on
+// screen said so: the section you land on rendered no header at all, and the
+// others printed a bare word with no hint that it was one of several or that
+// tab moved between them. Listing all four, with the active one marked, makes
+// the control visible from the tab you start on.
+func (m Model) renderDetailHeader(section string, width int) string {
+	active := lipgloss.NewStyle().Foreground(m.theme.Purple400).Bold(true)
+	separator := m.theme.DimmedStyle.Render(" · ")
+
+	var parts []string
+	for _, name := range detailSections {
+		if name == section {
+			parts = append(parts, active.Render(name))
+			continue
+		}
+		parts = append(parts, m.theme.DimmedStyle.Render(name))
 	}
-	return lipgloss.NewStyle().
-		Foreground(m.theme.Purple400).
-		Bold(true).
-		Render(section)
+	strip := strings.Join(parts, separator)
+
+	// Too narrow for the full strip — say where you are and that tab moves.
+	if width > 0 && lipgloss.Width(ansi.Strip(strip)) > width {
+		position := 1
+		for i, name := range detailSections {
+			if name == section {
+				position = i + 1
+			}
+		}
+		return active.Render(section) + m.theme.DimmedStyle.Render(
+			fmt.Sprintf(" %d/%d · tab", position, len(detailSections)))
+	}
+	return strip
 }
 
 func (m Model) detailWidths() (int, int) {

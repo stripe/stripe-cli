@@ -245,8 +245,7 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	detail := m.renderDetail()
 
 	assertNotContainsPlain(t, detail, "Details:")
-	assert.NotContains(t, ansi.Strip(detail), "Summary")
-	assertNotContainsPlain(t, detail, "Files  Checks  Reference")
+	assertContainsPlain(t, detail, "Summary · Files · Checks · Reference")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
 	assertContainsPlain(t, detail, "To confirm")
 	assertNotContainsPlain(t, detail, "POST /v1/products")
@@ -1098,4 +1097,38 @@ func TestProgressBarSignalsWhenReviewIsWaiting(t *testing.T) {
 
 	require.Positive(t, m.actionableReviewCount())
 	assert.Equal(t, tea.ProgressBarWarning, m.progressBar().State)
+}
+
+// The detail box always had four tab-cycled sections, but the section you land
+// on rendered no header, so nothing on screen said the others existed.
+func TestDetailTabStripIsAlwaysVisible(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectStep(0)
+	m.expanded = true
+
+	for tab, name := range detailSections {
+		m.detailTab = tab
+		detail := m.renderDetail()
+
+		for _, section := range detailSections {
+			assertContainsPlain(t, detail, section)
+		}
+		assert.Contains(t, detail, lipgloss.NewStyle().
+			Foreground(m.theme.Purple400).Bold(true).Render(name),
+			"the active tab should be marked")
+	}
+}
+
+// Narrow boxes cannot fit four names, so they say where you are instead of
+// dropping the affordance entirely.
+func TestDetailTabStripDegradesWhenNarrow(t *testing.T) {
+	m := testModel()
+
+	header := m.renderDetailHeader("Checks", 12)
+
+	assertContainsPlain(t, header, "Checks")
+	assertContainsPlain(t, header, "3/4")
+	assertContainsPlain(t, header, "tab")
 }
