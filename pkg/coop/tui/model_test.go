@@ -1299,3 +1299,42 @@ func TestAgentHeartbeatMissingIgnoresUnstartedSession(t *testing.T) {
 
 	assert.False(t, m.agentHeartbeatMissing)
 }
+
+// A manual toggle should not outlive the state it was made in: a step opened
+// while pending must not keep its own review box collapsed later.
+func TestCollapseOverrideExpiresWhenStepStateChanges(t *testing.T) {
+	m := readyModel()
+	m.collapseStep(1)
+	require.True(t, m.stepCollapsed(1))
+
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+
+	assert.False(t, m.stepCollapsed(1), "override should not survive the step becoming reviewable")
+}
+
+// Only the step in play spends rows on its tasks.
+func TestStepsCollapseUnlessInPlay(t *testing.T) {
+	m := readyModel()
+
+	assert.False(t, m.stepCollapsed(0), "step with an active task is in play")
+	assert.True(t, m.stepCollapsed(1), "step that has not started stays collapsed")
+
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	assert.False(t, m.stepCollapsed(1), "step awaiting review is in play")
+}
+
+// A review appearing is when the user is most likely to be away, and userMoved
+// otherwise latches until they press f.
+func TestReviewAppearingResumesFollowing(t *testing.T) {
+	m := readyModel()
+	m.userMoved = true
+
+	next := *m.session
+	next.Steps = append([]coop.SessionStep(nil), m.session.Steps...)
+	next.Steps[1].Nodes = []coop.SessionNode{m.session.Steps[1].Nodes[0]}
+	next.Steps[1].Nodes[0].State = coop.NodeReview
+
+	result, _ := m.Update(sessionUpdatedMsg{session: &next})
+
+	assert.False(t, result.(Model).userMoved)
+}

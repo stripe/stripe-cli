@@ -30,11 +30,14 @@ type Model struct {
 	selectionCursor int // node index in work view, completion option index in completion view
 	selected        navigationItem
 	collapsedSteps  map[int]bool
-	expanded        bool
-	detailTab       int
-	width           int
-	height          int
-	userMoved       bool
+	// stepStateSignatures records what a step looked like when the user last
+	// toggled it, so the override expires when the step changes.
+	stepStateSignatures map[int]string
+	expanded            bool
+	detailTab           int
+	width               int
+	height              int
+	userMoved           bool
 
 	rejecting       bool // true while the request-changes input is active
 	rejectTarget    reviewTarget
@@ -215,6 +218,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sessionUpdatedMsg:
 		wasComplete := m.session != nil && m.session.IsComplete()
+		m.resumeFollowingIfReviewAppeared(msg.session)
 		m.session = msg.session
 		m.lastVersion = msg.session.Version
 		m.lastUpdateTime = time.Now()
@@ -372,6 +376,21 @@ func (m Model) progressBar() *tea.ProgressBar {
 		state = tea.ProgressBarWarning
 	}
 	return tea.NewProgressBar(state, value)
+}
+
+// resumeFollowingIfReviewAppeared clears the manual-navigation latch when a
+// step first becomes actionable. userMoved is set by any navigation key and
+// otherwise clears only with `f`, so without this a review could appear
+// off-screen with nothing bringing the user back to it — which is exactly the
+// moment they are most likely to have stepped away.
+func (m *Model) resumeFollowingIfReviewAppeared(next *coop.Session) {
+	if m.session == nil || next == nil || m.actionableReviewCount() > 0 {
+		return
+	}
+	after := Model{session: next}
+	if after.actionableReviewCount() > 0 {
+		m.userMoved = false
+	}
 }
 
 func (m Model) rejectionCursor(content string) *tea.Cursor {

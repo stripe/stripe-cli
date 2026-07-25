@@ -109,15 +109,20 @@ func TestRenderHeaderWithClaimURL(t *testing.T) {
 	assertContainsPlain(t, header, "claim_abc")
 }
 
+// Every step is always listed; only the step in play spends rows on its tasks.
 func TestRenderStepList(t *testing.T) {
 	m := testModel()
 	list := m.renderStepList()
 
 	assertContainsPlain(t, list, "Set up product")
+	assertContainsPlain(t, list, "Handle webhooks")
+
+	// Step 0 has an active task, so it is the step in play.
 	assertContainsPlain(t, list, "Create product")
 	assertContainsPlain(t, list, "Create checkout")
-	assertContainsPlain(t, list, "Handle webhooks")
-	assertContainsPlain(t, list, "Handle event")
+
+	// Step 1 has not started, so its tasks stay collapsed.
+	assertNotContainsPlain(t, list, "Handle event")
 }
 
 func TestRenderStepListAlignsStepTitleWithRule(t *testing.T) {

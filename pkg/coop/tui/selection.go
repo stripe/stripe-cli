@@ -1,6 +1,10 @@
 package tui
 
-import "github.com/stripe/stripe-cli/pkg/coop"
+import (
+	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/coop"
+)
 
 type navigationKind int
 
@@ -129,8 +133,69 @@ func (m Model) selectedStepIndex() (int, bool) {
 	}
 }
 
+// stepCollapsed decides whether a step shows its tasks.
+//
+// The default is derived from state rather than fixed: only the step in play —
+// the one being worked on or awaiting review — is worth spending rows on, and
+// an eight-step blueprint otherwise fills the screen with history and things
+// that have not started. A manual toggle overrides that, but only until the
+// step's own state changes, so a step opened out of curiosity while pending
+// cannot silently suppress its own review box later.
 func (m Model) stepCollapsed(stepIndex int) bool {
-	return m.collapsedSteps != nil && m.collapsedSteps[stepIndex]
+	if override, ok := m.collapseOverride(stepIndex); ok {
+		return override
+	}
+	return !m.stepInPlay(stepIndex)
+}
+
+// stepInPlay reports whether a step is the one the session is currently about.
+func (m Model) stepInPlay(stepIndex int) bool {
+	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+		return false
+	}
+	if m.stepReviewReady(stepIndex) {
+		return true
+	}
+	for _, node := range m.session.Steps[stepIndex].Nodes {
+		if node.State == coop.NodeActive {
+			return true
+		}
+	}
+	return false
+}
+
+// collapseOverride returns a manual toggle if one still applies to the step's
+// current state.
+func (m Model) collapseOverride(stepIndex int) (bool, bool) {
+	if m.collapsedSteps == nil {
+		return false, false
+	}
+	override, ok := m.collapsedSteps[stepIndex]
+	if !ok || m.stepStateSignatures[stepIndex] != m.stepStateSignature(stepIndex) {
+		return false, false
+	}
+	return override, true
+}
+
+// stepStateSignature summarizes a step's task states, so a manual collapse can
+// be dropped the moment the step becomes something else.
+func (m Model) stepStateSignature(stepIndex int) string {
+	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+		return ""
+	}
+	var b strings.Builder
+	for _, node := range m.session.Steps[stepIndex].Nodes {
+		b.WriteString(string(node.State))
+		b.WriteByte('|')
+	}
+	return b.String()
+}
+
+func (m *Model) recordCollapseOverride(stepIndex int) {
+	if m.stepStateSignatures == nil {
+		m.stepStateSignatures = map[int]string{}
+	}
+	m.stepStateSignatures[stepIndex] = m.stepStateSignature(stepIndex)
 }
 
 func (m *Model) collapseStep(stepIndex int) {
@@ -138,6 +203,7 @@ func (m *Model) collapseStep(stepIndex int) {
 		m.collapsedSteps = map[int]bool{}
 	}
 	m.collapsedSteps[stepIndex] = true
+	m.recordCollapseOverride(stepIndex)
 	if selectedStep, ok := m.selectedStepIndex(); ok && selectedStep == stepIndex {
 		m.selectStep(stepIndex)
 	}
@@ -145,9 +211,10 @@ func (m *Model) collapseStep(stepIndex int) {
 
 func (m *Model) expandStep(stepIndex int) {
 	if m.collapsedSteps == nil {
-		return
+		m.collapsedSteps = map[int]bool{}
 	}
-	delete(m.collapsedSteps, stepIndex)
+	m.collapsedSteps[stepIndex] = false
+	m.recordCollapseOverride(stepIndex)
 }
 
 func (m *Model) collapseSelectedStep() bool {
