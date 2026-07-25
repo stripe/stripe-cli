@@ -76,7 +76,9 @@ func (m Model) renderHeader() string {
 	available := m.contentWidth()
 	var header string
 	if lipgloss.Width(left)+lipgloss.Width(rightPart)+4 > available {
-		header = left + "\n  " + rightPart
+		// Stacked fallback: truncate too, or a long blueprint name runs past
+		// the terminal edge (real sessions carry names the fixtures do not).
+		header = left + "\n  " + ansi.Truncate(rightPart, max(available-2, 1), "…")
 	} else {
 		header = lipgloss.JoinHorizontal(lipgloss.Top, left, lipgloss.PlaceHorizontal(available-lipgloss.Width(left), lipgloss.Right, rightPart))
 	}

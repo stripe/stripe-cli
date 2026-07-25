@@ -171,7 +171,7 @@ func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
 		md.WriteString("**Confirmation steps:** " + node.ReviewPrompt + "\n\n")
 	}
 	if node.Description == "" && node.ReviewPrompt == "" {
-		md.WriteString("*No summary available for this step.*\n\n")
+		md.WriteString("*No summary available for this task.*\n\n")
 	}
 }
 

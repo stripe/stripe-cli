@@ -1248,3 +1248,30 @@ func TestTopBottomKeysMoveSelection(t *testing.T) {
 	top := res.(Model)
 	assert.True(t, top.navigationItemSelected(items[0]), "g selects the first outline item")
 }
+
+// A missing heartbeat means the agent process is gone, which is different from
+// an agent that is merely quiet. Reporting it as "not idle" left the UI
+// claiming work was in progress indefinitely.
+func TestAgentHeartbeatMissingIsDistinctFromIdle(t *testing.T) {
+	m := readyModel()
+	m.lastUpdateTime = time.Now().Add(-10 * time.Second)
+
+	m.updateAgentIdle(0, false, time.Now())
+	assert.True(t, m.agentHeartbeatMissing)
+	assert.False(t, m.agentIsIdle)
+
+	m.updateAgentIdle(time.Minute, true, time.Now().Add(3*time.Minute))
+	assert.False(t, m.agentHeartbeatMissing)
+	assert.True(t, m.agentIsIdle)
+}
+
+// Before the session has reported anything there is nothing to be missing yet,
+// so a starting session must not be labeled as a crashed one.
+func TestAgentHeartbeatMissingIgnoresUnstartedSession(t *testing.T) {
+	m := readyModel()
+	m.lastUpdateTime = time.Time{}
+
+	m.updateAgentIdle(0, false, time.Now())
+
+	assert.False(t, m.agentHeartbeatMissing)
+}

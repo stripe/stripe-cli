@@ -18,7 +18,10 @@ func (m Model) renderFooter() string {
 
 	var lines []string
 
-	if m.agentIdle() {
+	switch {
+	case m.agentHeartbeatMissing:
+		lines = append(lines, m.theme.ErrorStyle.Render("  Agent is not running. Restart it, or run: stripe coop status"))
+	case m.agentIdle():
 		lines = append(lines, m.theme.AttentionStyle.Render("  Waiting for agent: no recent updates. Reconnect: stripe coop status"))
 	}
 

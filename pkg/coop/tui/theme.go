@@ -48,7 +48,9 @@ func NewTheme(isDark bool) Theme {
 	}
 	t.BrandStyle = lipgloss.NewStyle().Foreground(t.Purple500)
 	t.SuccessStyle = lipgloss.NewStyle().Foreground(t.Green400)
-	t.AttentionStyle = lipgloss.NewStyle().Foreground(t.Orange400)
+	// Bold as well as colored: this is the only style that means "you are
+	// blocking progress", and it has to stay legible when color is stripped.
+	t.AttentionStyle = lipgloss.NewStyle().Foreground(t.Orange400).Bold(true)
 	t.ReviewStyle = lipgloss.NewStyle().Foreground(t.Purple400)
 	t.MutedStyle = lipgloss.NewStyle().Foreground(t.Gray400)
 	t.DimmedStyle = lipgloss.NewStyle().Foreground(t.Gray500).Italic(true)

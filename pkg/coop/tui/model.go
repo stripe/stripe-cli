@@ -68,6 +68,8 @@ type Model struct {
 	lastUpdateTime     time.Time
 	agentIsIdle        bool
 
+	agentHeartbeatMissing bool
+
 	isDark  bool
 	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
 }
@@ -1072,10 +1074,22 @@ func (m *Model) clearExpiredStatus(now time.Time) {
 }
 
 func (m *Model) updateAgentIdle(heartbeatAge time.Duration, heartbeatOK bool, now time.Time) {
-	if m.session == nil || m.session.IsComplete() || !heartbeatOK {
+	if m.session == nil || m.session.IsComplete() {
 		m.agentIsIdle = false
+		m.agentHeartbeatMissing = false
 		return
 	}
+	if !heartbeatOK {
+		// No heartbeat file at all, which is different from an agent that is
+		// merely quiet: the process is gone. Treating it as "not idle" left the
+		// UI claiming the agent was still working indefinitely. Only trust it
+		// once the session has reported at least once, so a session that has
+		// not started yet is not mislabeled as crashed.
+		m.agentIsIdle = false
+		m.agentHeartbeatMissing = !m.lastUpdateTime.IsZero()
+		return
+	}
+	m.agentHeartbeatMissing = false
 	if heartbeatAge >= 0 && heartbeatAge < 5*time.Second {
 		m.agentIsIdle = false
 		return

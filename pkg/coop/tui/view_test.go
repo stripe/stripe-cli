@@ -977,3 +977,15 @@ func TestSummarizeCheckLeavesShortNotesIntact(t *testing.T) {
 func TestSummarizeCheckFlattensNewlines(t *testing.T) {
 	assert.Equal(t, "first second", summarizeCheck("first\n\n  second  ", failedCheckBudget))
 }
+
+// A blueprint name longer than the fixture's used to run past the terminal edge
+// in the stacked header fallback.
+func TestRenderHeaderTruncatesLongBlueprintName(t *testing.T) {
+	m := testModel()
+	m.width = 40
+	m.session.Blueprint = "accept-payment-with-payment-element"
+
+	for _, line := range strings.Split(m.renderHeader(), "\n") {
+		assert.LessOrEqual(t, lipgloss.Width(line), 40, "header line should fit: %q", ansi.Strip(line))
+	}
+}

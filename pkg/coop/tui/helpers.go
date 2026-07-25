@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/open"
 )
@@ -59,7 +60,9 @@ func clampLines(s string, width int) string {
 	lines := strings.Split(s, "\n")
 	for i, line := range lines {
 		if lipgloss.Width(line) > width {
-			lines[i] = lipgloss.NewStyle().MaxWidth(width).Render(line)
+			// Truncate with an indicator: MaxWidth cuts silently, so a clipped
+			// title is indistinguishable from one that simply ends there.
+			lines[i] = ansi.Truncate(line, width, "…")
 		}
 	}
 	return strings.Join(lines, "\n")
