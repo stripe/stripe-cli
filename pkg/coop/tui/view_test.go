@@ -248,7 +248,7 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	assert.NotContains(t, ansi.Strip(detail), "Summary")
 	assertNotContainsPlain(t, detail, "Files  Checks  Reference")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
-	assertContainsPlain(t, detail, "Confirmation steps")
+	assertContainsPlain(t, detail, "To confirm")
 	assertNotContainsPlain(t, detail, "POST /v1/products")
 	assertNotContainsPlain(t, detail, "You check")
 }
@@ -276,9 +276,8 @@ func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 	detail := m.renderDetail()
 
 	assertContainsPlain(t, detail, "✓ Create product")
-	assertContainsPlain(t, detail, "● Create checkout")
-	assertContainsPlain(t, detail, "Confirmation steps")
-	assertContainsPlain(t, detail, "Agent help")
+	assertContainsPlain(t, detail, "Create checkout")
+	assertContainsPlain(t, detail, "Do this")
 	assertNotContainsPlain(t, detail, "SDK example")
 }
 

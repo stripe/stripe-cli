@@ -334,7 +334,10 @@ func (m Model) nodeIcon(node coop.SessionNode) string {
 	case coop.NodeDone:
 		return m.theme.SuccessStyle.Render("✓")
 	case coop.NodeActive:
-		return lipgloss.NewStyle().Width(1).Render(m.spinner.View())
+		// Width sets a minimum, not a maximum, so a spinner that renders wider
+		// than one cell — an uninitialised one yields "(error)" — would push
+		// everything after it out of alignment. Bound it to a single cell.
+		return lipgloss.NewStyle().Width(1).MaxWidth(1).Render(m.spinner.View())
 	case coop.NodeReview:
 		return m.theme.AttentionStyle.Render("◆")
 	case coop.NodeSkipped:

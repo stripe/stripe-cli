@@ -91,7 +91,7 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	content := strings.TrimSpace(md.String())
 	suffix := ""
 	if _, ok := m.selectedReviewTarget(); ok {
-		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm all · r request changes", innerW)
+		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm step · r changes", innerW)
 	}
 	if content == "" && suffix == "" {
 		return ""
@@ -164,7 +164,7 @@ func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
 		md.WriteString(node.Description + "\n\n")
 	}
 	if node.ReviewPrompt != "" {
-		md.WriteString("**Confirmation steps:** " + node.ReviewPrompt + "\n\n")
+		md.WriteString("**To confirm:** " + node.ReviewPrompt + "\n\n")
 	}
 	if node.Description == "" && node.ReviewPrompt == "" {
 		md.WriteString("*No summary available for this task.*\n\n")
@@ -187,35 +187,111 @@ func (m Model) writeStepSDKSnippetDetail(md *strings.Builder, node *coop.Session
 	}
 }
 
+// writeStepSummaryDetail renders the expanded step.
+//
+// It mirrors the review card deliberately: same headings, same hues, same
+// flush-left layout. The two used to diverge — the card had structure while
+// this view emitted unstyled headings, hardcoded indents, and every task's
+// prose concatenated into one paragraph — so opening a step took you from a
+// readable summary to a wall of text.
 func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep, width int) {
 	wrapWidth := width - 2
 	if wrapWidth < 20 {
 		wrapWidth = 20
 	}
-	md.WriteString("Steps\n")
+
+	if goal := strings.TrimSpace(ch.DescriptionText()); goal != "" {
+		writeWrapped(md, m.theme.MutedStyle.Render("Goal ")+goal, wrapWidth)
+		md.WriteString("\n")
+	}
+
+	md.WriteString(evidenceLabel(m.theme, "Tasks") + "\n")
 	for _, node := range ch.Nodes {
-		md.WriteString("  " + stepNodeStatusLabel(node) + " " + node.Title + "\n")
+		label, style := m.nodeStatusLabel(node)
+		line := m.nodeIcon(node) + " " + node.Title
+		if label != "" {
+			line += "  " + style(label)
+		}
+		writeWrapped(md, line, wrapWidth)
+		if node.Implementation != nil && node.Implementation.File != "" {
+			writeWrapped(md, m.theme.FileAnnotationStyle.Render(
+				truncatePath(implementationFileLabel(node.Implementation), wrapWidth)), wrapWidth)
+		}
+		if note := taskEvidence(node); note != "" {
+			writeWrapped(md, m.theme.DimmedStyle.Render(note), wrapWidth)
+		}
 	}
 	md.WriteString("\n")
-	if changed := stepChangedFiles(ch); changed != "" {
-		md.WriteString("Changed\n")
-		for _, line := range strings.Split(wordWrap(changed, wrapWidth), "\n") {
-			md.WriteString("  " + line + "\n")
+
+	if prompts := stepReviewPrompts(ch); len(prompts) > 0 {
+		md.WriteString(actionLabel(m.theme, "Do this") + "\n")
+		for _, prompt := range prompts {
+			writeWrapped(md, prompt, wrapWidth)
 		}
 		md.WriteString("\n")
 	}
-	if checks := stepConfirmationNodes(ch); checks != "" {
-		md.WriteString("Confirmation steps\n")
-		for _, line := range strings.Split(wordWrap(checks, wrapWidth), "\n") {
-			md.WriteString("  " + line + "\n")
+
+	failed, passed := stepCheckResults(ch)
+	if len(failed) > 0 || passed > 0 {
+		md.WriteString(evidenceLabel(m.theme, "Checks") + "\n")
+		for _, check := range failed {
+			writeWrapped(md, m.theme.ErrorStyle.Render("✗ ")+check, wrapWidth)
+		}
+		if passed > 0 {
+			md.WriteString(m.theme.SuccessStyle.Render("✓ ") +
+				m.theme.MutedStyle.Render(pluralChecks(passed)+" passed") + "\n")
 		}
 		md.WriteString("\n")
 	}
-	md.WriteString("Agent help\n")
-	for _, line := range strings.Split(wordWrap("The agent should run relevant checks, keep any app or server available, share a local URL when useful, and create or identify test data.", wrapWidth), "\n") {
-		md.WriteString("  " + line + "\n")
+}
+
+// writeWrapped wraps to the available width with no indentation: hierarchy in
+// this view comes from weight and hue, as it does in the card.
+func writeWrapped(md *strings.Builder, text string, width int) {
+	for _, line := range strings.Split(wordWrap(text, width), "\n") {
+		md.WriteString(line + "\n")
 	}
-	md.WriteString("\n")
+}
+
+// taskEvidence is the agent's own note about a task, condensed to one line.
+func taskEvidence(node coop.SessionNode) string {
+	for _, verification := range node.Verifications {
+		if check := summarizeCheck(verification.Check, failedCheckBudget); check != "" {
+			return check
+		}
+	}
+	return ""
+}
+
+func stepReviewPrompts(ch *coop.SessionStep) []string {
+	var prompts []string
+	seen := map[string]bool{}
+	for _, node := range ch.Nodes {
+		if node.ReviewPrompt == "" || seen[node.ReviewPrompt] {
+			continue
+		}
+		seen[node.ReviewPrompt] = true
+		prompts = append(prompts, node.ReviewPrompt)
+	}
+	return prompts
+}
+
+// stepCheckResults names failures and counts passes, as the card does.
+func stepCheckResults(ch *coop.SessionStep) ([]string, int) {
+	var failed []string
+	passed := 0
+	for _, node := range ch.Nodes {
+		for _, verification := range node.Verifications {
+			if verification.Passed {
+				passed++
+				continue
+			}
+			if check := summarizeCheck(verification.Check, failedCheckBudget); check != "" {
+				failed = append(failed, node.Title+": "+check)
+			}
+		}
+	}
+	return failed, passed
 }
 
 func (m Model) writeStepFilesDetail(md *strings.Builder, ch *coop.SessionStep) {
@@ -260,7 +336,6 @@ func (m Model) writeStepChecksDetail(md *strings.Builder, ch *coop.SessionStep) 
 	}
 	md.WriteString("*No confirmation checks reported for this step yet.*\n\n")
 }
-
 func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionStep) {
 	wrote := false
 	for _, node := range ch.Nodes {
@@ -278,60 +353,6 @@ func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionSte
 		return
 	}
 	md.WriteString("*No reference metadata for this step yet.*\n\n")
-}
-
-func stepNodeStatusLabel(node coop.SessionNode) string {
-	switch node.State {
-	case coop.NodeDone:
-		return "✓"
-	case coop.NodeActive:
-		return "●"
-	case coop.NodeReview:
-		return "◆"
-	case coop.NodeSkipped:
-		return "–"
-	default:
-		return "○"
-	}
-}
-
-func stepChangedFiles(ch *coop.SessionStep) string {
-	var files []string
-	for _, node := range ch.Nodes {
-		if node.Implementation != nil && node.Implementation.File != "" {
-			files = append(files, implementationFileLabel(node.Implementation))
-		}
-	}
-	return strings.Join(files, ", ")
-}
-
-func stepConfirmationNodes(ch *coop.SessionStep) string {
-	var agentChecks []string
-	seenAgentCheck := map[string]bool{}
-	for _, node := range ch.Nodes {
-		for _, verification := range node.Verifications {
-			check := strings.TrimSpace(verification.Check)
-			if !verification.Passed || check == "" || seenAgentCheck[check] {
-				continue
-			}
-			seenAgentCheck[check] = true
-			if node.Title != "" {
-				check = node.Title + ": " + check
-			}
-			agentChecks = append(agentChecks, check)
-		}
-	}
-	if len(agentChecks) > 0 {
-		return strings.Join(agentChecks, " ")
-	}
-
-	var checks []string
-	for _, node := range ch.Nodes {
-		if node.ReviewPrompt != "" {
-			checks = append(checks, node.Title+": "+node.ReviewPrompt)
-		}
-	}
-	return strings.Join(checks, " ")
 }
 
 func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.SessionNode) {
