@@ -866,9 +866,6 @@ func (m *Model) handleConfirm() tea.Cmd {
 	}
 	m.session = session
 	m.lastVersion = m.session.Version
-	if target.kind == "node" && len(target.nodeNumbers) > 0 {
-		m.selectNode(target.nodeNumbers[0] - 1)
-	}
 	m.userMoved = false
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
 	m.clearRejectionState()
@@ -953,9 +950,6 @@ func (m *Model) handleReject(note string) {
 	}
 	m.session = session
 	m.lastVersion = m.session.Version
-	if target.kind == "node" && len(target.nodeNumbers) > 0 {
-		m.selectNode(target.nodeNumbers[0] - 1)
-	}
 	m.userMoved = false
 	m.clearRejectionState()
 	m.setStatus("Feedback sent. Waiting for agent...", 5*time.Second)
@@ -965,7 +959,6 @@ func (m *Model) handleReject(note string) {
 
 type reviewTarget struct {
 	title       string
-	kind        string
 	nodeNumbers []int
 	stepIndex   int
 }
@@ -993,7 +986,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 		if len(nodeNumbers) == 0 {
 			return reviewTarget{}, false
 		}
-		return reviewTarget{title: ch.Title, kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
+		return reviewTarget{title: ch.Title, nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
 	}
 	nodeIndex, ok := m.selectedNodeIndex()
 	if !ok {
@@ -1021,7 +1014,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if len(nodeNumbers) == 0 {
 		return reviewTarget{}, false
 	}
-	return reviewTarget{title: step.Title, kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
+	return reviewTarget{title: step.Title, nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
 }
 
 func (m Model) reviewIsActionable(nodeNumber int) bool {

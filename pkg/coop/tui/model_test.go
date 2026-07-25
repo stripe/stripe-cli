@@ -23,24 +23,25 @@ func readyModel() Model {
 
 func TestUpdateKeyDown(t *testing.T) {
 	m := readyModel()
-	m.selectionCursor = 0
+	m.selectStep(0)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
-	assert.Equal(t, 1, updated.selectionCursor)
+	assert.Equal(t, navigationStep, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.stepIndex)
 	assert.True(t, updated.userMoved)
 }
 
 func TestUpdateKeyUp(t *testing.T) {
 	m := readyModel()
-	m.selectionCursor = 2
+	m.selectStep(1)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
 
 	assert.Equal(t, navigationStep, updated.selected.kind)
-	assert.Equal(t, 1, updated.selected.stepIndex)
+	assert.Equal(t, 0, updated.selected.stepIndex)
 }
 
 func TestUpdateKeyUpAtTop(t *testing.T) {
@@ -81,7 +82,7 @@ func TestUpdateKeyExpand(t *testing.T) {
 	m := readyModel()
 	m.expanded = false
 
-	result, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
 	assert.True(t, updated.expanded)
@@ -91,7 +92,7 @@ func TestUpdateKeyExpandToggle(t *testing.T) {
 	m := readyModel()
 	m.expanded = true
 
-	result, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
 	assert.False(t, updated.expanded)
@@ -253,12 +254,13 @@ func TestMouseActionSelectsVisibleStep(t *testing.T) {
 	assert.True(t, updated.userMoved)
 }
 
-func TestNavigationMovesBetweenStepAndStepRows(t *testing.T) {
+// The step is the only cursor target, so navigation moves step to step and
+// never stops on the task rows in between.
+func TestNavigationMovesBetweenSteps(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
 	m.selectStep(0)
-
 	m.syncViewport()
 
 	m.moveCursorUp()
@@ -266,8 +268,31 @@ func TestNavigationMovesBetweenStepAndStepRows(t *testing.T) {
 	assert.Equal(t, 0, m.selected.stepIndex)
 
 	m.moveCursorDown()
-	assert.Equal(t, navigationNode, m.selected.kind)
-	assert.Equal(t, 0, m.selectionCursor)
+	assert.Equal(t, navigationStep, m.selected.kind)
+	assert.Equal(t, 1, m.selected.stepIndex)
+}
+
+func TestNavigationOffersOnlyStepsAsTargets(t *testing.T) {
+	m := readyModel()
+
+	items := m.navigationItems()
+
+	assert.Len(t, items, len(m.session.Steps))
+	for _, item := range items {
+		assert.Equal(t, navigationStep, item.kind)
+	}
+}
+
+// Clicking a task row selects the step that owns it: mouse targets come from
+// the rendered outline, which still lists tasks.
+func TestMouseClickOnTaskSelectsOwningStep(t *testing.T) {
+	m := readyModel()
+
+	result, _ := m.Update(mouseActionMsg{action: mouseActionSelectNode, index: 2})
+	updated := result.(Model)
+
+	assert.Equal(t, navigationStep, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.stepIndex)
 }
 
 func TestMouseActionSelectsStep(t *testing.T) {
@@ -464,7 +489,6 @@ func TestSelectedReviewTargetStepRequiresReadyStep(t *testing.T) {
 	target, ok := m.selectedReviewTarget()
 
 	assert.True(t, ok)
-	assert.Equal(t, "step", target.kind)
 	assert.Equal(t, "Set up product", target.title)
 	assert.Equal(t, []int{1, 2}, target.nodeNumbers)
 	assert.True(t, m.reviewIsActionable(1))
@@ -1220,8 +1244,8 @@ func TestCompletionViewGatesWorkViewKeys(t *testing.T) {
 	require.True(t, m.session.IsComplete())
 	require.False(t, m.expanded)
 
-	// 'e' (expand) must be inert in the completion view.
-	res, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	// The expand key must be inert in the completion view.
+	res, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	assert.False(t, res.(Model).expanded, "expand must not toggle in completion view")
 
 	// 'r' (request changes) must not enter rejecting mode in the completion view.

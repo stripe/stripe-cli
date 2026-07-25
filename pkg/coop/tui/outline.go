@@ -65,10 +65,7 @@ func (m Model) renderSplitWorkspace() string {
 
 func (m Model) renderSplitDetail(width int) string {
 	if !m.expanded {
-		if m.selected.kind == navigationStep {
-			return m.theme.MutedStyle.Render("Press enter to inspect this step.")
-		}
-		return m.theme.MutedStyle.Render("Press enter to inspect this node.")
+		return m.theme.MutedStyle.Render("Press enter to inspect this step.")
 	}
 	detail := strings.TrimSpace(m.renderDetail())
 	if detail == "" {
@@ -96,7 +93,6 @@ func (m Model) renderStepOutline() renderedOutline {
 	for stepIdx, ch := range m.session.Steps {
 		stepItem := navigationItem{kind: navigationStep, stepIndex: stepIdx}
 		stepSelected := m.navigationItemSelected(stepItem)
-		stepReviewReady := m.stepReviewReady(stepIdx)
 		lines = append(lines, "")
 		navigationLines[len(lines)] = stepItem
 		lines = append(lines, m.renderStepLine(ch, stepIdx, stepSelected))
@@ -115,7 +111,7 @@ func (m Model) renderStepOutline() renderedOutline {
 			nodeItem := navigationItem{kind: navigationNode, nodeIndex: nodeIdx, stepIndex: stepIdx}
 			nodeSelected := m.navigationItemSelected(nodeItem)
 			navigationLines[len(lines)] = nodeItem
-			lines = append(lines, m.renderNodeLine(node, nodeIdx, stepReviewReady, nodeSelected))
+			lines = append(lines, m.renderNodeLine(node, nodeIdx, nodeSelected))
 			if m.expanded && nodeSelected && !m.useSplitWorkspace() {
 				if detail := m.renderDetail(); detail != "" {
 					lines = append(lines, detail)
@@ -252,7 +248,7 @@ func (m Model) stepHasPendingReviewWithNoActiveWork(stepIndex int) bool {
 	return hasReview
 }
 
-func (m Model) renderNodeLine(node coop.SessionNode, idx int, includedInStepReview bool, selected bool) string {
+func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) string {
 	icon := m.nodeIcon(node)
 
 	cursor := "  "
@@ -277,9 +273,6 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, includedInStepRevi
 		}
 		annText = ann
 		annStyle = func(s string) string { return m.theme.FileAnnotationStyle.Render(s) }
-	case node.State == coop.NodeReview && !includedInStepReview:
-		annText = "Waiting for you to review"
-		annStyle = func(s string) string { return m.theme.AttentionStyle.Render(s) }
 	case node.State == coop.NodeActive && node.Activity != "":
 		elapsed := ""
 		if node.StartedAt != nil {
@@ -296,7 +289,7 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, includedInStepRevi
 	}
 
 	line := fmt.Sprintf("%s%s %s", cursor, icon, title)
-	if label, style := m.nodeStatusLabel(node, includedInStepReview); label != "" {
+	if label, style := m.nodeStatusLabel(node); label != "" {
 		line += "  " + style(label)
 	}
 
@@ -314,17 +307,16 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, includedInStepRevi
 	return line
 }
 
-func (m Model) nodeStatusLabel(node coop.SessionNode, includedInStepReview bool) (string, func(string) string) {
+func (m Model) nodeStatusLabel(node coop.SessionNode) (string, func(string) string) {
 	switch node.State {
 	case coop.NodeDone:
 		return "Done", func(s string) string { return m.theme.SuccessStyle.Render(s) }
 	case coop.NodeActive:
 		return "Agent working", func(s string) string { return m.theme.MutedStyle.Render(s) }
 	case coop.NodeReview:
-		if includedInStepReview {
-			return "Included", func(s string) string { return m.theme.MutedStyle.Render(s) }
-		}
-		return "Needs review", func(s string) string { return m.theme.AttentionStyle.Render(s) }
+		// A task is never reviewed on its own, so a finished task is simply
+		// ready; the step above it is what the user acts on.
+		return "Ready", func(s string) string { return m.theme.MutedStyle.Render(s) }
 	case coop.NodeSkipped:
 		return "Skipped", func(s string) string { return m.theme.DimmedStyle.Render(s) }
 	case coop.NodePending:

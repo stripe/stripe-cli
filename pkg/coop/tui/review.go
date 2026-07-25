@@ -92,11 +92,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	w, _ := m.reviewCardWidths()
 
 	var lines []cardLine
-	prefix := "Review"
-	if target.kind == "step" {
-		prefix = "Review step"
-	}
-	lines = append(lines, cardLine{text: m.theme.ReviewStyle.Render(prefix)})
+	lines = append(lines, cardLine{text: m.theme.ReviewStyle.Render("Review step")})
 
 	// What the reviewer should do comes first: the blueprint's own review
 	// prompt is written for a human, unlike the agent's verification notes.
@@ -146,7 +142,9 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 
 	metadataStart := len(lines)
-	if target.kind == "step" {
+	// A single-task step already names itself in the outline, so only spell out
+	// the covered tasks when the step actually groups several.
+	if len(target.nodeNumbers) > 1 {
 		if included := m.reviewNodeTitleLabel(target.nodeNumbers); included != "" {
 			lines = append(lines, cardLine{
 				text:   m.theme.MutedStyle.Render("Includes: ") + included,
@@ -270,27 +268,8 @@ func (m Model) renderReviewCardLines(width, maxHeight int, lines []string) strin
 	}
 }
 
-func (m Model) requestChangesPlaceholder(target reviewTarget) string {
-	if target.kind == "step" {
-		return "Describe what should change in this step"
-	}
-	for _, nodeNumber := range target.nodeNumbers {
-		node, err := m.session.NodeByNumber(nodeNumber)
-		if err != nil {
-			continue
-		}
-		switch node.Type {
-		case coop.NodeAsyncHandler, coop.NodeSetUpWebhooks:
-			return "Describe what should change in signature verification or event handling"
-		case coop.NodeAPIRequest:
-			return "Describe what should change in the API call, IDs, or stored values"
-		case coop.NodeUIComponent:
-			return "Describe what should change in the user-facing flow"
-		case coop.NodeTestHelper:
-			return "Describe the failing path or expected result"
-		}
-	}
-	return "Describe what should change"
+func (m Model) requestChangesPlaceholder(_ reviewTarget) string {
+	return "Describe what should change in this step"
 }
 
 func (m Model) reviewChangedLabel(nodeNumbers []int) string {

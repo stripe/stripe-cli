@@ -66,12 +66,12 @@ func newKeyMap() keyMap {
 			key.WithHelp("G", "bottom"),
 		),
 		Expand: key.NewBinding(
-			key.WithKeys("e", "?"),
-			key.WithHelp("e/?", "details"),
+			key.WithKeys("?"),
+			key.WithHelp("?", "details"),
 		),
 		Enter: key.NewBinding(
 			key.WithKeys("enter"),
-			key.WithHelp("enter", "expand"),
+			key.WithHelp("enter", "details"),
 		),
 		Submit: key.NewBinding(
 			key.WithKeys("ctrl+enter", "super+enter"),
@@ -123,17 +123,20 @@ func (m Model) ShortHelp() []key.Binding {
 		bindings = append(bindings, m.keys.Follow)
 	}
 
-	if target, ok := m.selectedReviewTarget(); ok {
+	if _, ok := m.selectedReviewTarget(); ok {
 		if m.selectedReviewCommand() != "" {
 			bindings = append(bindings, m.keys.Copy)
 		}
 		confirm := m.keys.Confirm
 		reject := m.keys.Reject
+		// Confirm always acts on the whole step. Narrow terminals drop the
+		// qualifier for room; that stays unambiguous because a step is the only
+		// thing the cursor can be on.
 		if m.width > 0 && m.width < 56 {
 			confirm.SetHelp("c", "confirm")
 			reject.SetHelp("r", "changes")
-		} else if target.kind == "step" {
-			confirm.SetHelp("c", "confirm all")
+		} else {
+			confirm.SetHelp("c", "confirm step")
 			reject.SetHelp("r", "changes")
 		}
 		bindings = append(bindings, confirm, reject)

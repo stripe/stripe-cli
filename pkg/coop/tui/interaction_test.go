@@ -180,7 +180,6 @@ func TestStepReviewInteractionJourney(t *testing.T) {
 
 	target, ok := m.selectedReviewTarget()
 	require.True(t, ok)
-	assert.Equal(t, "step", target.kind)
 	assert.Equal(t, []int{1, 2}, target.nodeNumbers)
 	assertInteractionLayout(t, m, "step review")
 

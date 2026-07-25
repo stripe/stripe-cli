@@ -20,18 +20,13 @@ func (m Model) navigationItems() []navigationItem {
 		return nil
 	}
 
+	// The step is the unit of work and the unit of review: confirming and
+	// requesting changes always act on a whole step, never on one task. So the
+	// step is also the only cursor target. Tasks stay visible beneath it as
+	// status rows and are reachable through the step's detail view.
 	var items []navigationItem
-	nodeIndex := 0
-	for stepIndex, step := range m.session.Steps {
+	for stepIndex := range m.session.Steps {
 		items = append(items, navigationItem{kind: navigationStep, stepIndex: stepIndex})
-		if m.stepCollapsed(stepIndex) {
-			nodeIndex += len(step.Nodes)
-			continue
-		}
-		for range step.Nodes {
-			items = append(items, navigationItem{kind: navigationNode, nodeIndex: nodeIndex, stepIndex: stepIndex})
-			nodeIndex++
-		}
 	}
 	return items
 }
@@ -95,12 +90,18 @@ func (m *Model) selectNavigationItem(item navigationItem) {
 	}
 }
 
+// selectNode points the cursor at a task. Tasks are status rows rather than
+// cursor targets, so the selection itself lands on the step that owns the task;
+// the cursor index is kept so per-task rendering still tracks the right row.
 func (m *Model) selectNode(nodeIndex int) {
-	m.selected = navigationItem{kind: navigationNode}
 	m.selectionCursor = nodeIndex
-	if stepIndex, ok := m.stepIndexForNode(nodeIndex); ok {
-		m.expandStep(stepIndex)
+	stepIndex, ok := m.stepIndexForNode(nodeIndex)
+	if !ok {
+		m.selected = navigationItem{kind: navigationNode}
+		return
 	}
+	m.expandStep(stepIndex)
+	m.selected = navigationItem{kind: navigationStep, stepIndex: stepIndex}
 }
 
 func (m *Model) selectStep(stepIndex int) {

@@ -52,8 +52,7 @@ func (m Model) renderDetail() string {
 	}
 
 	content := strings.TrimSpace(md.String())
-	suffix := m.renderDetailSuffix(node, innerW)
-	if content == "" && suffix == "" {
+	if content == "" {
 		return ""
 	}
 
@@ -63,9 +62,6 @@ func (m Model) renderDetail() string {
 	}
 	if content != "" {
 		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
-	}
-	if suffix != "" {
-		parts = append(parts, suffix)
 	}
 	body := clampLines(strings.Join(parts, "\n"), innerW)
 	box := m.theme.DetailBoxStyle.Width(w).Render(body)
@@ -94,7 +90,7 @@ func (m Model) renderStepDetail(stepIndex int) string {
 
 	content := strings.TrimSpace(md.String())
 	suffix := ""
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "step" {
+	if _, ok := m.selectedReviewTarget(); ok {
 		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm all · r request changes", innerW)
 	}
 	if content == "" && suffix == "" {
@@ -422,14 +418,6 @@ func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNo
 		}
 	}
 	md.WriteString("\n")
-}
-
-func (m Model) renderDetailSuffix(node *coop.SessionNode, width int) string {
-	var suffix string
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "node" && node.State == coop.NodeReview {
-		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm · r request changes", width)
-	}
-	return suffix
 }
 
 func (m Model) attentionWrapped(text string, width int) string {

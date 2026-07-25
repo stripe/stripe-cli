@@ -154,8 +154,8 @@ func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
 
 	assertContainsPlain(t, list, "Awaiting review")
 	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
-	assertContainsPlain(t, list, "Create product  Included")
-	assertContainsPlain(t, list, "Create checkout  Included")
+	assertContainsPlain(t, list, "Create product  Ready")
+	assertContainsPlain(t, list, "Create checkout  Ready")
 	assertNotContainsPlain(t, list, "Create product  Needs review")
 }
 
@@ -168,7 +168,7 @@ func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, list, "Awaiting review")
-	assertContainsPlain(t, footer, "confirm all")
+	assertContainsPlain(t, footer, "confirm step")
 }
 
 func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
@@ -186,7 +186,7 @@ func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
 func TestRenderStepLineAnnotation(t *testing.T) {
 	m := testModel()
 	node := m.session.Steps[0].Nodes[0]
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 
 	assertContainsPlain(t, line, "server.js:5-20")
 }
@@ -194,7 +194,7 @@ func TestRenderStepLineAnnotation(t *testing.T) {
 func TestRenderStepLineActivity(t *testing.T) {
 	m := testModel()
 	node := m.session.Steps[0].Nodes[1]
-	line := m.renderNodeLine(node, 1, false, false)
+	line := m.renderNodeLine(node, 1, false)
 
 	assertContainsPlain(t, line, "Writing endpoint")
 }
@@ -203,7 +203,7 @@ func TestRenderStepLineCursor(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 1
 	node := m.session.Steps[0].Nodes[1]
-	line := m.renderNodeLine(node, 1, false, true)
+	line := m.renderNodeLine(node, 1, true)
 
 	assertContainsPlain(t, line, strings.TrimSpace(cursorMarker))
 }
@@ -212,7 +212,7 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
 	node := m.session.Steps[0].Nodes[1]
-	line := m.renderNodeLine(node, 1, false, false)
+	line := m.renderNodeLine(node, 1, false)
 
 	assertNotContainsPlain(t, line, strings.TrimSpace(cursorMarker))
 }
@@ -470,7 +470,7 @@ func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
 	assertContainsPlain(t, card, "Review step")
 	assertNotContainsPlain(t, card, "Review step (2 steps): Set up product")
 	assertContainsPlain(t, card, "Includes: Create product, Create checkout")
-	assertContainsPlain(t, footer, "confirm all")
+	assertContainsPlain(t, footer, "confirm step")
 	assertContainsPlain(t, footer, "changes")
 }
 
@@ -621,7 +621,7 @@ func TestAnnotationWrapsAtNarrowWidth(t *testing.T) {
 		State:          coop.NodeActive,
 		Activity:       "This is a very long activity note that should wrap",
 	}
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 
 	// Should have a newline (wrapped)
 	assert.True(t, strings.Contains(line, "\n"))
@@ -635,7 +635,7 @@ func TestAnnotationInlineAtWideWidth(t *testing.T) {
 		State:          coop.NodeActive,
 		Activity:       "Short note",
 	}
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 
 	// Should contain the annotation inline (not wrapped to next line)
 	assertContainsPlain(t, line, "Short note")
@@ -680,7 +680,7 @@ func TestRenderStepLineSkipped(t *testing.T) {
 		State:          coop.NodeSkipped,
 		Activity:       "Not needed for this project",
 	}
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 	assertContainsPlain(t, line, "Not needed")
 }
 
