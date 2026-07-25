@@ -10,7 +10,36 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
-var detailSections = []string{"Summary", "Files", "Checks", "Reference"}
+// detailSections are the tabs a step can offer. Checks used to be one of them
+// and is gone: it restated the review prompts and commands the summary already
+// shows, differing only in printing verification text untruncated. Tabs are
+// offered only when the step has something to put in them, so an empty tab is
+// never advertised.
+var detailSections = []string{"Summary", "Files", "Reference"}
+
+// nodeDetailSections is the per-task view, reached only when a selection is not
+// resolvable to a step. It keeps its own Checks tab because there is no step
+// summary alongside it to carry that content.
+var nodeDetailSections = []string{"Summary", "Files", "Checks", "Reference"}
+
+// stepDetailSections returns the tabs this step actually has content for.
+func (m Model) stepDetailSections(ch *coop.SessionStep) []string {
+	sections := []string{"Summary"}
+	for _, node := range ch.Nodes {
+		if node.Implementation != nil && node.Implementation.File != "" {
+			sections = append(sections, "Files")
+			break
+		}
+	}
+	for _, node := range ch.Nodes {
+		if (node.Type == coop.NodeAsyncHandler && len(node.Events) > 0) ||
+			(node.Type == coop.NodeAPIRequest && node.Request != nil) {
+			sections = append(sections, "Reference")
+			break
+		}
+	}
+	return sections
+}
 
 func (m Model) renderDetail() string {
 	if m.session == nil {
@@ -31,7 +60,7 @@ func (m Model) renderDetail() string {
 	w, innerW := m.detailWidths()
 
 	var md strings.Builder
-	section := detailSections[m.detailTab%len(detailSections)]
+	section := nodeDetailSections[m.detailTab%len(nodeDetailSections)]
 	currentSnippet := m.sdkSnippetNode == nodeIndex && m.sdkSnippet != ""
 
 	switch section {
@@ -59,7 +88,7 @@ func (m Model) renderDetail() string {
 	}
 
 	var parts []string
-	if header := m.renderDetailHeader(section, innerW); header != "" {
+	if header := m.renderDetailTabs(nodeDetailSections, section, innerW); header != "" {
 		parts = append(parts, header)
 	}
 	if content != "" {
@@ -77,15 +106,14 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	w, innerW := m.detailWidths()
 
 	var md strings.Builder
-	section := detailSections[m.detailTab%len(detailSections)]
 	ch := &m.session.Steps[stepIndex]
+	sections := m.stepDetailSections(ch)
+	section := sections[m.detailTab%len(sections)]
 	switch section {
 	case "Summary":
 		m.writeStepSummaryDetail(&md, ch, innerW)
 	case "Files":
 		m.writeStepFilesDetail(&md, ch)
-	case "Checks":
-		m.writeStepChecksDetail(&md, ch)
 	case "Reference":
 		m.writeStepReferenceDetail(&md, ch)
 	}
@@ -100,7 +128,7 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	}
 
 	var parts []string
-	if header := m.renderDetailHeader(section, innerW); header != "" {
+	if header := m.renderDetailTabs(sections, section, innerW); header != "" {
 		parts = append(parts, header)
 	}
 	if content != "" {
@@ -125,12 +153,17 @@ func (m Model) renderStepDetail(stepIndex int) string {
 // others printed a bare word with no hint that it was one of several or that
 // tab moved between them. Listing all four, with the active one marked, makes
 // the control visible from the tab you start on.
-func (m Model) renderDetailHeader(section string, width int) string {
+func (m Model) renderDetailTabs(sections []string, section string, width int) string {
 	active := lipgloss.NewStyle().Foreground(m.theme.Purple400).Bold(true)
 	separator := m.theme.DimmedStyle.Render(" · ")
 
+	// A lone tab is not a choice; do not spend a row advertising it.
+	if len(sections) < 2 {
+		return ""
+	}
+
 	var parts []string
-	for _, name := range detailSections {
+	for _, name := range sections {
 		if name == section {
 			parts = append(parts, active.Render(name))
 			continue
@@ -142,13 +175,13 @@ func (m Model) renderDetailHeader(section string, width int) string {
 	// Too narrow for the full strip — say where you are and that tab moves.
 	if width > 0 && lipgloss.Width(ansi.Strip(strip)) > width {
 		position := 1
-		for i, name := range detailSections {
+		for i, name := range sections {
 			if name == section {
 				position = i + 1
 			}
 		}
 		return active.Render(section) + m.theme.DimmedStyle.Render(
-			fmt.Sprintf(" %d/%d · tab", position, len(detailSections)))
+			fmt.Sprintf(" %d/%d · tab", position, len(sections)))
 	}
 	return strip
 }
@@ -337,32 +370,6 @@ func (m Model) writeStepFilesDetail(md *strings.Builder, ch *coop.SessionStep) {
 	md.WriteString("*No files reported for this step yet.*\n\n")
 }
 
-func (m Model) writeStepChecksDetail(md *strings.Builder, ch *coop.SessionStep) {
-	wrote := false
-	for _, node := range ch.Nodes {
-		if node.ReviewPrompt != "" {
-			md.WriteString("- " + node.Title + ": " + node.ReviewPrompt + "\n")
-			wrote = true
-		}
-		for _, verification := range node.Verifications {
-			prefix := "✗"
-			if verification.Passed {
-				prefix = "✓"
-			}
-			md.WriteString("- " + prefix + " " + node.Title + ": " + verification.Check + "\n")
-			wrote = true
-		}
-		if command := reviewCommandForNode(&node); command != "" {
-			md.WriteString("- `" + strings.ReplaceAll(command, "`", "'") + "`\n")
-			wrote = true
-		}
-	}
-	if wrote {
-		md.WriteString("\n")
-		return
-	}
-	md.WriteString("*No confirmation checks reported for this step yet.*\n\n")
-}
 func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionStep) {
 	wrote := false
 	for _, node := range ch.Nodes {

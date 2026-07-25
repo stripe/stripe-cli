@@ -245,7 +245,7 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	detail := m.renderDetail()
 
 	assertNotContainsPlain(t, detail, "Details:")
-	assertContainsPlain(t, detail, "Summary · Files · Checks · Reference")
+	assertContainsPlain(t, detail, "Summary · Files")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
 	assertContainsPlain(t, detail, "To confirm")
 	assertNotContainsPlain(t, detail, "POST /v1/products")
@@ -1108,11 +1108,12 @@ func TestDetailTabStripIsAlwaysVisible(t *testing.T) {
 	m.selectStep(0)
 	m.expanded = true
 
-	for tab, name := range detailSections {
+	sections := m.stepDetailSections(&m.session.Steps[0])
+	for tab, name := range sections {
 		m.detailTab = tab
 		detail := m.renderDetail()
 
-		for _, section := range detailSections {
+		for _, section := range sections {
 			assertContainsPlain(t, detail, section)
 		}
 		assert.Contains(t, detail, lipgloss.NewStyle().
@@ -1126,9 +1127,9 @@ func TestDetailTabStripIsAlwaysVisible(t *testing.T) {
 func TestDetailTabStripDegradesWhenNarrow(t *testing.T) {
 	m := testModel()
 
-	header := m.renderDetailHeader("Checks", 12)
+	header := m.renderDetailTabs(detailSections, "Reference", 12)
 
-	assertContainsPlain(t, header, "Checks")
-	assertContainsPlain(t, header, "3/4")
+	assertContainsPlain(t, header, "Reference")
+	assertContainsPlain(t, header, "3/3")
 	assertContainsPlain(t, header, "tab")
 }
