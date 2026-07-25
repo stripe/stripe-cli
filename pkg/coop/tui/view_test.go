@@ -3,8 +3,10 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
@@ -96,8 +98,7 @@ func TestRenderHeader(t *testing.T) {
 
 	assertContainsPlain(t, header, "Co-op")
 	assertContainsPlain(t, header, "one-time-payment")
-	assertContainsPlain(t, header, "node")
-	assertContainsPlain(t, header, "1/3")
+	assertContainsPlain(t, header, "step 1/2")
 }
 
 func TestRenderHeaderWithClaimURL(t *testing.T) {
@@ -157,11 +158,11 @@ func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "Awaiting review")
+	assertContainsPlain(t, list, "needs you")
 	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
-	assertContainsPlain(t, list, "Create product  Ready")
-	assertContainsPlain(t, list, "Create checkout  Ready")
-	assertNotContainsPlain(t, list, "Create product  Needs review")
+	assertContainsPlain(t, list, "Create product  ready")
+	assertContainsPlain(t, list, "Create checkout  ready")
+	assertNotContainsPlain(t, list, "Create product  needs review")
 }
 
 func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
@@ -172,7 +173,7 @@ func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, list, "Awaiting review")
+	assertContainsPlain(t, list, "needs you")
 	assertContainsPlain(t, footer, "confirm step")
 }
 
@@ -1058,4 +1059,36 @@ func TestSectionLabelsAreNotPurple(t *testing.T) {
 
 	assert.Equal(t, theme.StepTitleStyle.Render("Do this"), sectionLabel(theme, "Do this"))
 	assert.NotEqual(t, theme.ReviewStyle.Render("Do this"), sectionLabel(theme, "Do this"))
+}
+
+// Confirming used to acknowledge only in the status line, several rows below
+// the card the user was reading, so the step they acted on simply vanished.
+func TestConfirmedStepShowsSettleFrame(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectStep(0)
+	m.confirmedStepIndex = 0
+	m.confirmedUntil = time.Now().Add(time.Second)
+
+	assertContainsPlain(t, m.renderStepList(), "✓ confirmed")
+}
+
+func TestSettleFrameExpires(t *testing.T) {
+	m := testModel()
+	m.confirmedStepIndex = 0
+	m.confirmedUntil = time.Now().Add(-time.Second)
+
+	assert.False(t, m.stepJustConfirmed(0))
+}
+
+// The progress signal reaches tmux and the OS taskbar without the pane being
+// focused, so it has to reflect "you are blocking progress", not just errors.
+func TestProgressBarSignalsWhenReviewIsWaiting(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+
+	require.Positive(t, m.actionableReviewCount())
+	assert.Equal(t, tea.ProgressBarWarning, m.progressBar().State)
 }

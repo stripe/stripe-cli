@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	"fmt"
 	"strings"
 
@@ -17,11 +19,15 @@ const (
 	// outline keeps at least a few rows.
 	minViewportHeight   = 3
 	terminalScrollGuard = 1
-	rowCursorWidth      = 2
-	rowRightGap         = 2
-	maxRuleWidth        = 80
-	detailIndent        = rowCursorWidth
-	cursorMarker        = "> "
+
+	// confirmSettleDuration is how long a confirmed step stays acknowledged in
+	// place before it collapses into the finished list.
+	confirmSettleDuration = 700 * time.Millisecond
+	rowCursorWidth        = 2
+	rowRightGap           = 2
+	maxRuleWidth          = 80
+	detailIndent          = rowCursorWidth
+	cursorMarker          = "> "
 )
 
 func (m Model) renderWaitingView() string {
@@ -62,16 +68,26 @@ func (m Model) renderHeader() string {
 
 	left := m.theme.HeaderStyle.Render("● Stripe Co-op")
 	right := m.session.Blueprint
-	if lang, ok := m.session.Settings["language"]; ok {
-		right += " · " + lang
+
+	skipped := m.session.NodeSummary()[coop.NodeSkipped]
+
+	// Count steps, not tasks: the step is the unit the user confirms, so a
+	// task-based count reported progress through something they never act on
+	// directly. A step counts as finished when all of its tasks are.
+	stepsDone := 0
+	for _, step := range m.session.Steps {
+		finished := true
+		for _, node := range step.Nodes {
+			if node.State != coop.NodeDone && node.State != coop.NodeSkipped {
+				finished = false
+				break
+			}
+		}
+		if finished {
+			stepsDone++
+		}
 	}
-
-	summary := m.session.NodeSummary()
-	done := summary[coop.NodeDone]
-	skipped := summary[coop.NodeSkipped]
-	total := m.session.TotalNodes()
-
-	progress := fmt.Sprintf("%d/%d", done, total-skipped)
+	progress := fmt.Sprintf("step %d/%d", min(stepsDone+1, len(m.session.Steps)), len(m.session.Steps))
 	if skipped > 0 {
 		progress += fmt.Sprintf(" · %d skipped", skipped)
 	}

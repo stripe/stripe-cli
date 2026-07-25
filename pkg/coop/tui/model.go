@@ -33,11 +33,15 @@ type Model struct {
 	// stepStateSignatures records what a step looked like when the user last
 	// toggled it, so the override expires when the step changes.
 	stepStateSignatures map[int]string
-	expanded            bool
-	detailTab           int
-	width               int
-	height              int
-	userMoved           bool
+
+	// confirmedStepIndex/confirmedUntil hold the settle frame after a confirm.
+	confirmedStepIndex int
+	confirmedUntil     time.Time
+	expanded           bool
+	detailTab          int
+	width              int
+	height             int
+	userMoved          bool
 
 	rejecting       bool // true while the request-changes input is active
 	rejectTarget    reviewTarget
@@ -371,8 +375,11 @@ func (m Model) progressBar() *tea.ProgressBar {
 		return tea.NewProgressBar(tea.ProgressBarNone, 0)
 	}
 	value := done * 100 / total
+	// This surfaces in tmux's status line and the OS taskbar without the pane
+	// being focused, which is the only signal that reaches a user watching the
+	// agent's pane instead of this one.
 	state := tea.ProgressBarDefault
-	if m.agentIdle() {
+	if m.agentIdle() || m.agentHeartbeatMissing || m.actionableReviewCount() > 0 {
 		state = tea.ProgressBarWarning
 	}
 	return tea.NewProgressBar(state, value)
@@ -886,6 +893,12 @@ func (m *Model) handleConfirm() tea.Cmd {
 	m.session = session
 	m.lastVersion = m.session.Version
 	m.userMoved = false
+	// Hold a brief acknowledgement on the step itself. The status line sits
+	// several rows below the card the user was reading, so without this the
+	// thing they acted on simply vanished with no confirmation at the point
+	// their eyes were.
+	m.confirmedStepIndex = target.stepIndex
+	m.confirmedUntil = time.Now().Add(confirmSettleDuration)
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
 	m.clearRejectionState()
 	if m.session.IsComplete() {
@@ -1076,6 +1089,11 @@ func (m *Model) setStatus(message string, ttl time.Duration) {
 		return
 	}
 	m.statusExpiresAt = time.Now().Add(ttl)
+}
+
+// stepJustConfirmed reports whether a step is inside its post-confirm settle.
+func (m Model) stepJustConfirmed(stepIndex int) bool {
+	return !m.confirmedUntil.IsZero() && m.confirmedStepIndex == stepIndex && time.Now().Before(m.confirmedUntil)
 }
 
 func (m *Model) clearExpiredStatus(now time.Time) {

@@ -141,8 +141,11 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
 	line := prefix + m.theme.MutedStyle.Render(disclosure) + m.theme.StepTitleStyle.Render(title)
-	if m.stepReviewCount(stepIndex) > 0 {
-		line += "  " + m.theme.ReviewStyle.Render("Awaiting review")
+	switch {
+	case m.stepJustConfirmed(stepIndex):
+		line += "  " + m.theme.SuccessStyle.Render("✓ confirmed")
+	case m.stepReviewCount(stepIndex) > 0:
+		line += "  " + m.theme.AttentionStyle.Render("needs you")
 	}
 	if m.stepCollapsed(stepIndex) {
 		if summary := m.collapsedStepSummary(stepIndex); summary != "" {
@@ -310,17 +313,17 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 func (m Model) nodeStatusLabel(node coop.SessionNode) (string, func(string) string) {
 	switch node.State {
 	case coop.NodeDone:
-		return "Done", func(s string) string { return m.theme.SuccessStyle.Render(s) }
+		return "done", func(s string) string { return m.theme.SuccessStyle.Render(s) }
 	case coop.NodeActive:
-		return "Agent working", func(s string) string { return m.theme.MutedStyle.Render(s) }
+		return "working", func(s string) string { return m.theme.MutedStyle.Render(s) }
 	case coop.NodeReview:
 		// A task is never reviewed on its own, so a finished task is simply
 		// ready; the step above it is what the user acts on.
-		return "Ready", func(s string) string { return m.theme.MutedStyle.Render(s) }
+		return "ready", func(s string) string { return m.theme.MutedStyle.Render(s) }
 	case coop.NodeSkipped:
-		return "Skipped", func(s string) string { return m.theme.DimmedStyle.Render(s) }
+		return "skipped", func(s string) string { return m.theme.DimmedStyle.Render(s) }
 	case coop.NodePending:
-		return "Pending", func(s string) string { return m.theme.MutedStyle.Render(s) }
+		return "pending", func(s string) string { return m.theme.MutedStyle.Render(s) }
 	default:
 		return "", func(s string) string { return s }
 	}

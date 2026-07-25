@@ -219,7 +219,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 				// Keep naming the action even when the card collapses, so a
 				// narrow terminal still says there is something to do.
 				more := m.theme.DimmedStyle.Render("Do this: enter for details")
-				wrapped = append(wrapped[:maxContentLines-1], more)
+				wrapped = append(trimDanglingSection(wrapped[:maxContentLines-1]), more)
 			}
 		}
 	}
@@ -342,6 +342,27 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 // prompts are authored for a human and say what to go and check; the agent's
 // verification notes are free-form prose describing what it already did, so
 // they belong in the detail view rather than in the card.
+// sectionNames are the box's headings, used to avoid truncating a card so that
+// a heading is left with nothing under it.
+var sectionNames = map[string]bool{
+	"Do this":          true,
+	"Checks":           true,
+	"Requested change": true,
+}
+
+// trimDanglingSection drops trailing blank lines and any heading left with no
+// content beneath it, so a truncated card never ends on an empty section.
+func trimDanglingSection(lines []string) []string {
+	for len(lines) > 0 {
+		last := strings.TrimSpace(ansi.Strip(lines[len(lines)-1]))
+		if last != "" && !sectionNames[last] {
+			break
+		}
+		lines = lines[:len(lines)-1]
+	}
+	return lines
+}
+
 // sectionLabel renders a heading inside the review box.
 //
 // Bold rather than colored-and-bold: purple already means "where you are" and
