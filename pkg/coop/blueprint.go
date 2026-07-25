@@ -21,11 +21,10 @@ const (
 // BlueprintStep is a step definition within a blueprint.
 type BlueprintStep struct {
 	StepDefinition
-	Description string             `json:"description,omitempty"`
-	Required    bool               `json:"required,omitempty"`
-	Settings    []BlueprintSetting `json:"settings,omitempty"`
-	Params      []BlueprintParam   `json:"params,omitempty"`
-	Nodes       []NodeDefinition   `json:"nodes"`
+	Required bool               `json:"required,omitempty"`
+	Settings []BlueprintSetting `json:"settings,omitempty"`
+	Params   []BlueprintParam   `json:"params,omitempty"`
+	Nodes    []NodeDefinition   `json:"nodes"`
 }
 
 // Blueprint is the CLI-friendly representation of a Workbench Blueprint.

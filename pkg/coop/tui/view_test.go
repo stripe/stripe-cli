@@ -1013,3 +1013,44 @@ func TestTruncatePathFallsBackToFilename(t *testing.T) {
 
 	assert.LessOrEqual(t, lipgloss.Width(got), 20)
 }
+
+// The blueprint authors a one-line purpose per step. It was parsed and then
+// dropped when a session was created, so the box had nothing to explain a step
+// with. It is imperative like the review prompt, hence the label.
+func TestRenderReviewCardShowsStepGoal(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Description = "Create a product with recurring pricing."
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectStep(0)
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Goal: Create a product with recurring pricing.")
+	plain := ansi.Strip(card)
+	assert.Less(t, strings.Index(plain, "Goal:"), strings.Index(plain, "Do this"))
+}
+
+// Rejection notes were stored and never rendered, so by the time the agent came
+// back the reviewer had no reminder of what they had asked for.
+func TestRenderReviewCardShowsRequestedChange(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.session.Steps[0].Nodes[0].RejectionNote = "the app doesn't load"
+	m.selectStep(0)
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Requested change")
+	assertContainsPlain(t, card, "the app doesn't load")
+}
+
+// Section headings must not use purple: it already means "where you are" and
+// "what needs review", and a neutral heading is a fourth job for one hue.
+func TestSectionLabelsAreNotPurple(t *testing.T) {
+	theme := NewTheme(true)
+
+	assert.Equal(t, theme.StepTitleStyle.Render("Do this"), sectionLabel(theme, "Do this"))
+	assert.NotEqual(t, theme.ReviewStyle.Render("Do this"), sectionLabel(theme, "Do this"))
+}

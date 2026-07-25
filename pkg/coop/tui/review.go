@@ -94,12 +94,32 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	var lines []cardLine
 	lines = append(lines, cardLine{text: m.theme.ReviewStyle.Render("Review step")})
 
-	// What the reviewer should do comes first: the blueprint's own review
-	// prompt is written for a human, unlike the agent's verification notes.
+	// The blueprint's own description says what the step is for. It is phrased
+	// as an imperative, exactly like the review prompt below it, so without a
+	// label the reviewer reads two commands and cannot tell which one to act
+	// on. "Goal:" marks it as context.
+	if goal := m.reviewGoalLabel(target.stepIndex); goal != "" {
+		lines = append(lines, cardLine{})
+		lines = append(lines, cardLine{
+			text:   m.theme.MutedStyle.Render("Goal: ") + goal,
+			indent: "  ",
+		})
+	}
+
+	// Feedback the user already gave outranks a fresh instruction: the agent is
+	// reworking, so there is nothing to confirm yet.
+	if note := m.requestedChangeLabel(target.nodeNumbers); note != "" {
+		lines = append(lines, cardLine{})
+		lines = append(lines, cardLine{text: sectionLabel(m.theme, "Requested change")})
+		lines = append(lines, cardLine{text: note})
+	}
+
+	// What the reviewer should do comes next: the blueprint's own review prompt
+	// is written for a human, unlike the agent's verification notes.
 	prompts := m.reviewPromptLabels(target.nodeNumbers)
 	if len(prompts) > 0 {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: m.theme.ConfirmationHeaderStyle.Render("Do this")})
+		lines = append(lines, cardLine{text: sectionLabel(m.theme, "Do this")})
 		for _, prompt := range prompts {
 			if len(prompts) > 1 {
 				lines = append(lines, cardLine{text: "• " + prompt, indent: "  "})
@@ -128,6 +148,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	passed := m.reviewPassedCheckCount(target.nodeNumbers)
 	if len(failed) > 0 || passed > 0 {
 		lines = append(lines, cardLine{})
+		lines = append(lines, cardLine{text: sectionLabel(m.theme, "Checks")})
 	}
 	for _, label := range failed {
 		lines = append(lines, cardLine{
@@ -321,6 +342,45 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 // prompts are authored for a human and say what to go and check; the agent's
 // verification notes are free-form prose describing what it already did, so
 // they belong in the detail view rather than in the card.
+// sectionLabel renders a heading inside the review box.
+//
+// Bold rather than colored-and-bold: purple already means "where you are" and
+// "what needs review", and reusing it for neutral headings gave one hue four
+// jobs. Bold also survives a terminal with color disabled, which is what the
+// flush-left layout relies on.
+func sectionLabel(t Theme, text string) string {
+	return t.StepTitleStyle.Render(text)
+}
+
+// reviewGoalLabel is the blueprint's own statement of what the step is for.
+func (m Model) reviewGoalLabel(stepIndex int) string {
+	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+		return ""
+	}
+	return strings.TrimSpace(m.session.Steps[stepIndex].DescriptionText())
+}
+
+// requestedChangeLabel surfaces feedback the user already sent. It was stored
+// on the node and never rendered anywhere, so by the time the agent came back
+// the user had no reminder of what they had asked for.
+func (m Model) requestedChangeLabel(nodeNumbers []int) string {
+	var notes []string
+	seen := map[string]bool{}
+	for _, nodeNumber := range nodeNumbers {
+		node, err := m.session.NodeByNumber(nodeNumber)
+		if err != nil {
+			continue
+		}
+		note := strings.TrimSpace(node.RejectionNote)
+		if note == "" || seen[note] {
+			continue
+		}
+		seen[note] = true
+		notes = append(notes, note)
+	}
+	return strings.Join(notes, " ")
+}
+
 func (m Model) reviewPromptLabels(nodeNumbers []int) []string {
 	if prompts := m.reviewBlueprintConfirmationPrompts(nodeNumbers); len(prompts) > 0 {
 		return prompts

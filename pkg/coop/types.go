@@ -88,6 +88,10 @@ type NodeDefinition struct {
 type StepDefinition struct {
 	Key   string `json:"key"`
 	Title string `json:"title"`
+	// Description is the blueprint's own one-line statement of what the step is
+	// for, written for a human. It was parsed from the blueprint but dropped
+	// when a session was created, so the TUI had nothing to explain a step with.
+	Description string `json:"description,omitempty"`
 }
 
 // SessionNode is a single action within a session step.
@@ -106,6 +110,12 @@ type SessionNode struct {
 type SessionStep struct {
 	StepDefinition
 	Nodes []SessionNode `json:"nodes"`
+}
+
+// DescriptionText returns the step's human-readable purpose, empty when the
+// blueprint did not supply one or the session predates the field.
+func (s *SessionStep) DescriptionText() string {
+	return s.Description
 }
 
 // Session is the shared state file between agent and TUI.
