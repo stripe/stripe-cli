@@ -384,3 +384,25 @@ func staticSpinner() spinner.Model {
 	s.Spinner = spinner.Spinner{Frames: []string{"●"}, FPS: 1}
 	return s
 }
+
+// The detail box in the split workspace is indented as a block. Trimming
+// whitespace rather than newlines stripped that indent from the first line
+// only, leaving the top border two columns left of its own sides.
+func TestSplitWorkspaceDetailBoxIsColumnAligned(t *testing.T) {
+	m := stepReviewLayoutModel()
+	m.expanded = true
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	columns := map[int]int{}
+	for _, line := range strings.Split(ansi.Strip(rendered), "\n") {
+		for col, r := range []rune(line) {
+			if r == '╭' || r == '│' || r == '╰' {
+				columns[col]++
+				break
+			}
+		}
+	}
+
+	require.NotEmpty(t, columns, "expected a detail box in the split workspace")
+	assert.Len(t, columns, 1, "every row of the box should start in the same column, got %v", columns)
+}

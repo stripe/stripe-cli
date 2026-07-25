@@ -67,7 +67,10 @@ func (m Model) renderSplitDetail(width int) string {
 	if !m.expanded {
 		return m.theme.MutedStyle.Render("Press enter to inspect this step.")
 	}
-	detail := strings.TrimSpace(m.renderDetail())
+	// Trim blank lines, not whitespace: renderDetail indents every line, and
+	// TrimSpace would strip that indent from the first line only — leaving the
+	// box's top border two columns left of its own sides.
+	detail := strings.Trim(m.renderDetail(), "\n")
 	if detail == "" {
 		return m.theme.MutedStyle.Render("No details available yet.")
 	}
