@@ -101,8 +101,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if goal := m.reviewGoalLabel(target.stepIndex); goal != "" {
 		lines = append(lines, cardLine{})
 		lines = append(lines, cardLine{
-			text:   m.theme.MutedStyle.Render("Goal: ") + goal,
-			indent: "  ",
+			text: m.theme.MutedStyle.Render("Goal ") + goal,
 		})
 	}
 
@@ -110,7 +109,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	// reworking, so there is nothing to confirm yet.
 	if note := m.requestedChangeLabel(target.nodeNumbers); note != "" {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: sectionLabel(m.theme, "Requested change")})
+		lines = append(lines, cardLine{text: feedbackLabel(m.theme, "Requested change")})
 		lines = append(lines, cardLine{text: note})
 	}
 
@@ -119,10 +118,10 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	prompts := m.reviewPromptLabels(target.nodeNumbers)
 	if len(prompts) > 0 {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: sectionLabel(m.theme, "Do this")})
+		lines = append(lines, cardLine{text: actionLabel(m.theme, "Do this")})
 		for _, prompt := range prompts {
 			if len(prompts) > 1 {
-				lines = append(lines, cardLine{text: "• " + prompt, indent: "  "})
+				lines = append(lines, cardLine{text: m.theme.BrandStyle.Render("• ") + prompt})
 				continue
 			}
 			lines = append(lines, cardLine{text: prompt})
@@ -132,13 +131,11 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	// to the node type when there isn't one.
 	if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
 		lines = append(lines, cardLine{
-			text:   m.theme.MutedStyle.Render("Run: ") + command,
-			indent: "  ",
+			text: m.theme.MutedStyle.Render("Run ") + m.theme.BrandStyle.Render(command),
 		})
 	} else if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
 		lines = append(lines, cardLine{
-			text:   m.theme.MutedStyle.Render("Where: ") + venue,
-			indent: "  ",
+			text: m.theme.MutedStyle.Render("Where ") + venue,
 		})
 	}
 
@@ -148,17 +145,16 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	passed := m.reviewPassedCheckCount(target.nodeNumbers)
 	if len(failed) > 0 || passed > 0 {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: sectionLabel(m.theme, "Checks")})
+		lines = append(lines, cardLine{text: evidenceLabel(m.theme, "Checks")})
 	}
 	for _, label := range failed {
 		lines = append(lines, cardLine{
-			text:   m.theme.ErrorStyle.Render("✗ ") + label,
-			indent: "  ",
+			text: m.theme.ErrorStyle.Render("✗ ") + label,
 		})
 	}
 	if passed > 0 {
 		lines = append(lines, cardLine{
-			text: m.theme.MutedStyle.Render(fmt.Sprintf("✓ %s passed", pluralChecks(passed))),
+			text: m.theme.SuccessStyle.Render("✓ ") + m.theme.MutedStyle.Render(fmt.Sprintf("%s passed", pluralChecks(passed))),
 		})
 	}
 
@@ -168,15 +164,13 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if len(target.nodeNumbers) > 1 {
 		if included := m.reviewNodeTitleLabel(target.nodeNumbers); included != "" {
 			lines = append(lines, cardLine{
-				text:   m.theme.MutedStyle.Render("Includes: ") + included,
-				indent: "  ",
+				text: m.theme.MutedStyle.Render("Includes ") + m.theme.DimmedStyle.Render(included),
 			})
 		}
 	}
 	if changed := m.reviewChangedLabel(target.nodeNumbers); changed != "" {
 		lines = append(lines, cardLine{
-			text:   m.theme.MutedStyle.Render("Changed: ") + changed,
-			indent: "  ",
+			text: m.theme.MutedStyle.Render("Changed ") + m.theme.FileAnnotationStyle.Render(changed),
 		})
 	}
 	if len(lines) > metadataStart {
@@ -363,14 +357,26 @@ func trimDanglingSection(lines []string) []string {
 	return lines
 }
 
-// sectionLabel renders a heading inside the review box.
+// Section headings carry hue as well as weight. The layout is flush left, so
+// color and weight are the only things left to separate a heading from the
+// sentence under it — and the headings do not all mean the same thing, so they
+// do not all look the same:
 //
-// Bold rather than colored-and-bold: purple already means "where you are" and
-// "what needs review", and reusing it for neutral headings gave one hue four
-// jobs. Bold also survives a terminal with color disabled, which is what the
-// flush-left layout relies on.
-func sectionLabel(t Theme, text string) string {
-	return t.StepTitleStyle.Render(text)
+//	Do this           the action, in the same orange as "needs you"
+//	Checks            evidence, in the review purple
+//	Requested change  feedback already given, in the error hue
+//
+// All three stay bold, so the structure survives a terminal without color.
+func actionLabel(t Theme, text string) string {
+	return t.AttentionStyle.Render(text)
+}
+
+func evidenceLabel(t Theme, text string) string {
+	return t.ReviewStyle.Bold(true).Render(text)
+}
+
+func feedbackLabel(t Theme, text string) string {
+	return t.ErrorStyle.Bold(true).Render(text)
 }
 
 // reviewGoalLabel is the blueprint's own statement of what the step is for.

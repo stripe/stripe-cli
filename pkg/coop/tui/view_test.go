@@ -390,7 +390,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review")
 	assertNotContainsPlain(t, card, "Review: Create product")
-	assertContainsPlain(t, card, "Changed: ")
+	assertContainsPlain(t, card, "Changed ")
 	assertContainsPlain(t, card, "server.js:5-20")
 
 	// The reviewer's instruction leads, not the agent's narration of what it
@@ -405,7 +405,7 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	plain := ansi.Strip(card)
 	assert.Less(t, strings.Index(plain, "Do this"), strings.Index(plain, "declined cards"))
-	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed: "))
+	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed "))
 }
 
 func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
@@ -429,12 +429,12 @@ func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
 		typ   coop.NodeType
 		venue string
 	}{
-		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Where: the changed files below"},
-		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Where: the changed files below"},
-		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Where: your running app"},
-		{name: "dashboard", typ: coop.NodeDashboard, venue: "Where: the Stripe Dashboard"},
-		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Where: your terminal"},
-		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Where: your webhook handler, after triggering the event"},
+		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Where the changed files below"},
+		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Where the changed files below"},
+		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Where your running app"},
+		{name: "dashboard", typ: coop.NodeDashboard, venue: "Where the Stripe Dashboard"},
+		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Where your terminal"},
+		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Where your webhook handler, after triggering the event"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := testModel()
@@ -460,8 +460,8 @@ func TestRenderReviewCardPrefersReviewCommandOverVenue(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Run: stripe trigger checkout.session.completed")
-	assertNotContainsPlain(t, card, "Where:")
+	assertContainsPlain(t, card, "Run stripe trigger checkout.session.completed")
+	assertNotContainsPlain(t, card, "Where")
 }
 
 func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
@@ -475,7 +475,7 @@ func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review step")
 	assertNotContainsPlain(t, card, "Review step (2 steps): Set up product")
-	assertContainsPlain(t, card, "Includes: Create product, Create checkout")
+	assertContainsPlain(t, card, "Includes Create product, Create checkout")
 	assertContainsPlain(t, footer, "confirm step")
 	assertContainsPlain(t, footer, "changes")
 }
@@ -496,7 +496,7 @@ func TestRenderFooterReviewCommand(t *testing.T) {
 	m.selectionCursor = 2
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, footer, "Run:")
+	assertContainsPlain(t, footer, "Run ")
 	assertContainsPlain(t, footer, "stripe trigger checkout.session.completed")
 	assertContainsPlain(t, footer, "y copy")
 }
@@ -1032,7 +1032,7 @@ func TestRenderReviewCardShowsStepGoal(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Goal: Create a product with recurring pricing.")
+	assertContainsPlain(t, card, "Goal Create a product with recurring pricing.")
 	plain := ansi.Strip(card)
 	assert.Less(t, strings.Index(plain, "Goal:"), strings.Index(plain, "Do this"))
 }
@@ -1052,13 +1052,21 @@ func TestRenderReviewCardShowsRequestedChange(t *testing.T) {
 	assertContainsPlain(t, card, "the app doesn't load")
 }
 
-// Section headings must not use purple: it already means "where you are" and
-// "what needs review", and a neutral heading is a fourth job for one hue.
-func TestSectionLabelsAreNotPurple(t *testing.T) {
+// The card is flush left, so hue and weight are the only things separating a
+// heading from the sentence under it — and headings that mean different things
+// must not look the same.
+func TestSectionHeadingsAreDistinctAndColored(t *testing.T) {
 	theme := NewTheme(true)
 
-	assert.Equal(t, theme.StepTitleStyle.Render("Do this"), sectionLabel(theme, "Do this"))
-	assert.NotEqual(t, theme.ReviewStyle.Render("Do this"), sectionLabel(theme, "Do this"))
+	action := actionLabel(theme, "Do this")
+	evidence := evidenceLabel(theme, "Checks")
+	feedback := feedbackLabel(theme, "Requested change")
+
+	for _, rendered := range []string{action, evidence, feedback} {
+		assert.NotEqual(t, ansi.Strip(rendered), rendered, "headings should carry styling")
+	}
+	assert.NotEqual(t, ansi.Strip(action), ansi.Strip(evidence))
+	assert.NotContains(t, evidence, "237;103;4", "evidence should not reuse the attention hue")
 }
 
 // Confirming used to acknowledge only in the status line, several rows below
