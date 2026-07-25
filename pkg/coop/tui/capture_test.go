@@ -1,0 +1,213 @@
+package tui
+
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"charm.land/bubbles/v2/viewport"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/colorprofile"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/coop"
+)
+
+// Frame capture harness.
+//
+// Design mocks drawn by hand repeatedly misrepresented real data — a fabricated
+// failure line, a step rendered with one Run: command when its nodes carry two,
+// a vertical budget quoted from a blueprint size that does not exist. Rendering
+// the real thing catches all of that in seconds, so the harness renders every
+// interesting state across every width tier that production actually uses, in
+// both color modes, and writes the frames out for review.
+//
+//	COOP_TUI_CAPTURE_DIR=/tmp/frames go test ./pkg/coop/tui -run TestCaptureFrames
+//
+// Without the env var the test still runs — it just asserts the frames render
+// without panicking and stay inside their terminal, so the harness itself is
+// covered in CI.
+
+// captureSizes covers the width tiers production switches on. 100 is the
+// threshold where the split workspace engages (outline.go useSplitWorkspace),
+// so 96 and 100 bracket it — that boundary is where a layout rule most easily
+// gets written for one mode and forgotten in the other.
+//
+// The split-workspace nav column is clamped to 34–48 columns, but those are
+// widths of a column inside a wide terminal, not terminal widths themselves;
+// they are exercised by the 100 and 120 captures rather than by shrinking the
+// whole frame, which production never does.
+var captureSizes = []layoutSize{
+	{name: "tiny", width: 40, height: 12},
+	{name: "narrow", width: 56, height: 18},
+	{name: "short", width: 80, height: 12},
+	{name: "normal", width: 80, height: 24},
+	{name: "presplit", width: 96, height: 30},
+	{name: "split", width: 100, height: 30},
+	{name: "wide", width: 120, height: 40},
+}
+
+// monochrome renders what a terminal with color disabled actually shows.
+//
+// This is deliberately not ansi.Strip: Strip removes every escape sequence,
+// including bold and italic, which would understate a design whose hierarchy
+// depends on weight surviving color loss. colorprofile.Ascii drops color SGR
+// parameters and keeps the rest, which is what a real no-color terminal does.
+func monochrome(s string) string {
+	var buf bytes.Buffer
+	w := &colorprofile.Writer{Forward: &buf, Profile: colorprofile.Ascii}
+	if _, err := w.WriteString(s); err != nil {
+		return s
+	}
+	return buf.String()
+}
+
+// logOverflow reports lines that exceed the terminal width without failing.
+// Used for real-session captures, where the data is local to the developer.
+func logOverflow(t *testing.T, label string, size layoutSize, rendered string) {
+	t.Helper()
+	for _, line := range strings.Split(rendered, "\n") {
+		if width := lipgloss.Width(line); width > size.width {
+			t.Logf("overflow %s @%s: %d > %d: %q", label, size.name, width, size.width, ansi.Strip(line))
+		}
+	}
+}
+
+func captureFrame(m *Model, size layoutSize) string {
+	m.spinner = staticSpinner()
+	m.ready = true
+	m.width = size.width
+	m.height = size.height
+	m.viewport = viewport.New(viewport.WithWidth(size.width), viewport.WithHeight(10))
+	m.resizeViewport()
+	m.syncViewport()
+	return m.View().Content
+}
+
+func writeCapture(t *testing.T, scenario, mode string, size layoutSize, rendered string) {
+	t.Helper()
+	dir := os.Getenv("COOP_TUI_CAPTURE_DIR")
+	if dir == "" {
+		return
+	}
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	name := fmt.Sprintf("%s--%s--%s-%dx%d.txt", scenario, mode, size.name, size.width, size.height)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(rendered), 0o644))
+}
+
+type captureScenario struct {
+	name  string
+	model func() Model
+}
+
+// captureScenarios reuses the model builders the layout and stress suites
+// already maintain, so new states get captured automatically as those grow.
+func captureScenarios() []captureScenario {
+	return []captureScenario{
+		{"waiting", waitingLayoutModel},
+		{"active_step", activeStepLayoutModel},
+		{"review_step_long_prompt", reviewStepLongPromptLayoutModel},
+		{"step_review_many_changes", stepReviewLayoutModel},
+		{"request_changes_input", requestChangesLayoutModel},
+		{"manual_navigation", manualNavigationLayoutModel},
+		{"expanded_details", expandedDetailsLayoutModel},
+		{"completion", completionLayoutModel},
+		{"stress_long_review", stressLongReviewModel},
+		{"stress_crowded_step_review", stressCrowdedStepReviewModel},
+		{"stress_long_claim_url", stressLongClaimURLModel},
+		{"stress_many_steps_manual_nav", stressManyStepsManualNavigationModel},
+		{"stress_long_rejection_input", stressLongRejectionInputModel},
+	}
+}
+
+func TestCaptureFrames(t *testing.T) {
+	for _, scenario := range captureScenarios() {
+		for _, size := range captureSizes {
+			m := scenario.model()
+			rendered := captureFrame(&m, size)
+
+			writeCapture(t, scenario.name, "color", size, rendered)
+			writeCapture(t, scenario.name, "mono", size, monochrome(rendered))
+
+			assertLayoutFits(t, rendered, size)
+		}
+	}
+}
+
+// TestCaptureExtremeBlueprints renders the blueprints that bound the layout:
+// the most steps, the most nodes in one step, and the longest step description.
+// These are the shapes that overflow first.
+func TestCaptureExtremeBlueprints(t *testing.T) {
+	for _, id := range []string{
+		"issuing-connect-fa", // 6 steps, the most of any blueprint
+		"credit-burndown",    // 7 nodes in one step, 18 nodes total
+		"issuing-direct",     // 453-char step description
+		"subscription-with-trial",
+	} {
+		bp, err := coop.LoadBlueprint(id)
+		require.NoError(t, err, id)
+		session := coop.NewSessionFromBlueprint(bp, "coop_capture", nil, nil)
+		require.NotNil(t, session)
+
+		for _, size := range captureSizes {
+			m := testModel()
+			m.session = session
+			m.selectStep(0)
+			rendered := captureFrame(&m, size)
+
+			writeCapture(t, "blueprint_"+id, "color", size, rendered)
+			assertLayoutFits(t, rendered, size)
+		}
+	}
+}
+
+// TestCaptureRealSession renders whatever sessions exist on this machine. It is
+// skipped when there are none, so it never fails in CI, but locally it is the
+// only way to see genuine agent-authored prose — which is nothing like the
+// tidy strings in the fixtures.
+func TestCaptureRealSession(t *testing.T) {
+	dir := os.Getenv("COOP_TUI_SESSION_DIR")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		require.NoError(t, err)
+		dir = filepath.Join(home, ".config", "stripe", "coop")
+	}
+	entries, err := filepath.Glob(filepath.Join(dir, "coop_*.json"))
+	if err != nil || len(entries) == 0 {
+		t.Skip("no local co-op sessions to render")
+	}
+
+	store, err := coop.NewStoreAt(dir)
+	require.NoError(t, err)
+
+	rendered := 0
+	for _, entry := range entries {
+		id := strings.TrimSuffix(filepath.Base(entry), ".json")
+		session, err := store.Read(id)
+		if err != nil || session == nil || len(session.Steps) == 0 {
+			continue
+		}
+		for _, size := range captureSizes {
+			m := testModel()
+			m.session = session
+			m.selectStep(0)
+			frame := captureFrame(&m, size)
+
+			writeCapture(t, "session_"+id, "color", size, frame)
+			writeCapture(t, "session_"+id, "mono", size, monochrome(frame))
+
+			// Reported, not asserted: these sessions live on the developer's
+			// machine and are not in the repo, so they cannot gate CI. The
+			// fixture and blueprint captures carry the hard assertions.
+			logOverflow(t, id, size, frame)
+		}
+		rendered++
+	}
+	if rendered == 0 {
+		t.Skip("no readable co-op sessions to render")
+	}
+}
