@@ -296,7 +296,7 @@ func init() {
 			return viper.GetString(Config.Profile.GetConfigField("sandbox_claim_url"))
 		},
 		AIAgentHelpAnnotationKey: AIAgentHelpAnnotationKey,
-		BlueprintRepository:      cooppkg.NewWorkbenchClient(&Config.Profile, stripe.DefaultAPIBaseURL, nil),
+		BlueprintRepository:      cooppkg.NewBlueprintClient(&Config.Profile, stripe.DefaultAPIBaseURL, nil),
 	}))
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)

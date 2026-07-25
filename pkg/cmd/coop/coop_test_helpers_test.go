@@ -17,8 +17,8 @@ import (
 
 type commandTestBlueprintRepository struct{}
 
-func (commandTestBlueprintRepository) List(context.Context) ([]coop.WorkbenchBlueprintSummary, error) {
-	return []coop.WorkbenchBlueprintSummary{
+func (commandTestBlueprintRepository) List(context.Context) ([]coop.BlueprintSummary, error) {
+	return []coop.BlueprintSummary{
 		{
 			ID:               "blpt_one_time",
 			Key:              "one-time-payment",
@@ -27,7 +27,7 @@ func (commandTestBlueprintRepository) List(context.Context) ([]coop.WorkbenchBlu
 			TemplateVersion:  1,
 			Title:            coop.MessageDescriptor{DefaultMessage: "Accept a one-time payment"},
 			Description:      coop.MessageDescriptor{DefaultMessage: "Create and verify a one-time payment."},
-			StepRefs:         []coop.WorkbenchStepRef{{StepKey: "one-time-payment--setup", StepVersion: 2}},
+			StepRefs:         []coop.BlueprintStepRef{{StepKey: "one-time-payment--setup", StepVersion: 2}},
 			Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
 		},
 		{ID: "blpt_flat_fee", Key: "flat-fee", BlueprintType: "learning"},
@@ -42,13 +42,13 @@ func (commandTestBlueprintRepository) List(context.Context) ([]coop.WorkbenchBlu
 	}, nil
 }
 
-func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*coop.WorkbenchBlueprint, error) {
+func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*coop.Blueprint, error) {
 	if key != "one-time-payment" {
 		return nil, fmt.Errorf("blueprint %q not found", key)
 	}
-	return &coop.WorkbenchBlueprint{
-		WorkbenchBlueprintDefinition: coop.WorkbenchBlueprintDefinition{
-			WorkbenchBlueprintSummary: coop.WorkbenchBlueprintSummary{
+	return &coop.Blueprint{
+		BlueprintDefinition: coop.BlueprintDefinition{
+			BlueprintSummary: coop.BlueprintSummary{
 				ID:               "blpt_one_time",
 				Key:              key,
 				BlueprintType:    "learning",
@@ -59,21 +59,21 @@ func (commandTestBlueprintRepository) Retrieve(_ context.Context, key string) (*
 				Metadata:         coop.BlueprintMetadata{Products: []string{"Payments"}},
 			},
 		},
-		Steps: []coop.WorkbenchStep{{
-			WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+		Steps: []coop.BlueprintStep{{
+			BlueprintStepDefinition: coop.BlueprintStepDefinition{
 				Key:             key + "--setup",
 				StepVersion:     2,
 				TemplateVersion: 1,
 				Title:           coop.MessageDescriptor{DefaultMessage: "Set up payment"},
 				Required:        true,
 			},
-			Nodes: []coop.WorkbenchBlueprintNode{{
+			Nodes: []coop.BlueprintNode{{
 				NodeType:    coop.NodeAPIRequest,
 				Key:         "create-payment",
 				Title:       coop.MessageDescriptor{DefaultMessage: "Create payment"},
 				Description: coop.MessageDescriptor{DefaultMessage: "Create a PaymentIntent and save its identifier."},
-				APIRequestDetails: &coop.WorkbenchAPIRequestDetails{
-					Fixture: coop.WorkbenchRequestFixture{
+				APIRequestDetails: &coop.BlueprintAPIRequestDetails{
+					Fixture: coop.BlueprintRequestFixture{
 						Method: "POST",
 						Path:   "/v1/payment_intents",
 						Params: map[string]any{"amount": float64(2000), "currency": "usd"},
@@ -88,7 +88,7 @@ func init() {
 	options.BlueprintRepository = commandTestBlueprintRepository{}
 }
 
-func commandTestBlueprint(t *testing.T) *coop.WorkbenchBlueprint {
+func commandTestBlueprint(t *testing.T) *coop.Blueprint {
 	t.Helper()
 	blueprint, err := (commandTestBlueprintRepository{}).Retrieve(t.Context(), "one-time-payment")
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func commandTestBlueprint(t *testing.T) *coop.WorkbenchBlueprint {
 
 func commandSessionNode(nodeType coop.NodeType, key, title string, state coop.NodeState) coop.SessionNode {
 	return coop.SessionNode{
-		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+		BlueprintNode: coop.BlueprintNode{
 			NodeType: nodeType,
 			Key:      key,
 			Title:    coop.MessageDescriptor{DefaultMessage: title},
@@ -108,7 +108,7 @@ func commandSessionNode(nodeType coop.NodeType, key, title string, state coop.No
 
 func commandSessionStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
 	return coop.SessionStep{
-		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+		BlueprintStepDefinition: coop.BlueprintStepDefinition{
 			Key:   key,
 			Title: coop.MessageDescriptor{DefaultMessage: title},
 		},

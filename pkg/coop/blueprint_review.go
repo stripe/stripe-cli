@@ -2,7 +2,7 @@ package coop
 
 import "fmt"
 
-func deriveReviewPrompt(node WorkbenchBlueprintNode) string {
+func deriveReviewPrompt(node BlueprintNode) string {
 	switch node.NodeType {
 	case NodeAPIRequest:
 		return "Confirm the implementation calls the intended Stripe API and reuses any IDs needed by later steps."
@@ -20,7 +20,7 @@ func deriveReviewPrompt(node WorkbenchBlueprintNode) string {
 	}
 }
 
-func deriveReviewCommand(node WorkbenchBlueprintNode) string {
+func deriveReviewCommand(node BlueprintNode) string {
 	if node.NodeType != NodeAsyncHandler || node.AsyncHandlerDetails == nil || len(node.AsyncHandlerDetails.Events) != 1 {
 		return ""
 	}

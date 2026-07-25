@@ -25,7 +25,7 @@ func assertNotContainsPlain(t *testing.T, s, substr string) {
 
 func tuiNode(nodeType coop.NodeType, key, title string, state coop.NodeState) coop.SessionNode {
 	return coop.SessionNode{
-		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+		BlueprintNode: coop.BlueprintNode{
 			NodeType: nodeType,
 			Key:      key,
 			Title:    coop.MessageDescriptor{DefaultMessage: title},
@@ -36,7 +36,7 @@ func tuiNode(nodeType coop.NodeType, key, title string, state coop.NodeState) co
 
 func tuiStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
 	return coop.SessionStep{
-		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+		BlueprintStepDefinition: coop.BlueprintStepDefinition{
 			Key:   key,
 			Title: coop.MessageDescriptor{DefaultMessage: title},
 		},
@@ -54,17 +54,17 @@ func testModel() Model {
 	theme := NewTheme(true)
 	createProduct := tuiNode(coop.NodeAPIRequest, "n1", "Create product", coop.NodeDone)
 	createProduct.ReviewPrompt = "Confirm the saved price ID is reused by Checkout."
-	createProduct.APIRequestDetails = &coop.WorkbenchAPIRequestDetails{Fixture: coop.WorkbenchRequestFixture{
+	createProduct.APIRequestDetails = &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{
 		Path: "/v1/products", Method: "post", Params: map[string]any{"name": "Gold plan"},
 	}}
 	createProduct.Implementation = &coop.Implementation{File: "server.js", Lines: "5-20", Note: "Created product"}
 	createCheckout := tuiNode(coop.NodeAPIRequest, "n2", "Create checkout", coop.NodeActive)
-	createCheckout.APIRequestDetails = &coop.WorkbenchAPIRequestDetails{Fixture: coop.WorkbenchRequestFixture{
+	createCheckout.APIRequestDetails = &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{
 		Path: "/v1/checkout/sessions", Method: "post",
 	}}
 	createCheckout.Activity = "Writing endpoint"
 	handleEvent := tuiNode(coop.NodeAsyncHandler, "n3", "Handle event", coop.NodePending)
-	handleEvent.AsyncHandlerDetails = &coop.WorkbenchAsyncHandlerDetails{
+	handleEvent.AsyncHandlerDetails = &coop.BlueprintAsyncHandlerDetails{
 		Events: []coop.AsyncEvent{{EventType: "checkout.session.completed"}},
 	}
 	m := Model{

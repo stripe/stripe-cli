@@ -18,12 +18,12 @@ type recordingBlueprintRepository struct {
 	retrievedKey  string
 }
 
-func (r *recordingBlueprintRepository) List(ctx context.Context) ([]coop.WorkbenchBlueprintSummary, error) {
+func (r *recordingBlueprintRepository) List(ctx context.Context) ([]coop.BlueprintSummary, error) {
 	r.listCalls++
 	return r.delegate.List(ctx)
 }
 
-func (r *recordingBlueprintRepository) Retrieve(ctx context.Context, key string) (*coop.WorkbenchBlueprint, error) {
+func (r *recordingBlueprintRepository) Retrieve(ctx context.Context, key string) (*coop.Blueprint, error) {
 	r.retrieveCalls++
 	r.retrievedKey = key
 	return r.delegate.Retrieve(ctx, key)

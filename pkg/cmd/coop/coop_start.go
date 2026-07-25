@@ -53,7 +53,7 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	inTmux := os.Getenv("TMUX") != ""
 
 	var blueprintID string
-	var blueprint *coop.WorkbenchBlueprint
+	var blueprint *coop.Blueprint
 	if len(args) > 0 {
 		blueprintID = args[0]
 		ctx := context.Background()
@@ -166,7 +166,7 @@ Start by running the "next" command exactly as written. Then follow agent_instru
 Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, string(data)), nil
 }
 
-func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.WorkbenchBlueprint) (*coop.Session, error) {
+func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.Blueprint) (*coop.Session, error) {
 	if blueprint == nil {
 		return nil, fmt.Errorf("cannot start a session without a blueprint")
 	}

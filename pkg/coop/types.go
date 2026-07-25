@@ -99,9 +99,9 @@ type BlueprintStepPin struct {
 	TemplateVersion int    `json:"template_version"`
 }
 
-// SessionNode combines an effective Workbench node with co-op progress.
+// SessionNode combines an effective blueprint node with co-op progress.
 type SessionNode struct {
-	WorkbenchBlueprintNode
+	BlueprintNode
 	ReviewPrompt   string          `json:"review_prompt,omitempty"`
 	ReviewCommand  string          `json:"review_command,omitempty"`
 	State          NodeState       `json:"state"`
@@ -113,8 +113,8 @@ type SessionNode struct {
 	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
 }
 
-// UnmarshalJSON accepts the pre-Workbench session shape so in-progress sessions
-// remain usable after the session model adopts Workbench node fields.
+// UnmarshalJSON accepts the legacy session shape so in-progress sessions remain
+// usable after the session model adopts the blueprint API fields.
 func (n *SessionNode) UnmarshalJSON(data []byte) error {
 	type sessionNode SessionNode
 	var decoded sessionNode
@@ -125,10 +125,10 @@ func (n *SessionNode) UnmarshalJSON(data []byte) error {
 	var legacy struct {
 		Type        NodeType                     `json:"type"`
 		AutoConfirm bool                         `json:"auto_confirm"`
-		Request     *WorkbenchRequestFixture     `json:"request"`
-		Requests    []WorkbenchRequestFixture    `json:"requests"`
+		Request     *BlueprintRequestFixture     `json:"request"`
+		Requests    []BlueprintRequestFixture    `json:"requests"`
 		Events      []AsyncEvent                 `json:"events"`
-		UIComponent *WorkbenchUIComponentDetails `json:"ui_component"`
+		UIComponent *BlueprintUIComponentDetails `json:"ui_component"`
 	}
 	if err := json.Unmarshal(data, &legacy); err != nil {
 		return err
@@ -138,13 +138,13 @@ func (n *SessionNode) UnmarshalJSON(data []byte) error {
 	}
 	decoded.IsInformationalNode = decoded.IsInformationalNode || legacy.AutoConfirm
 	if decoded.APIRequestDetails == nil && legacy.Request != nil {
-		decoded.APIRequestDetails = &WorkbenchAPIRequestDetails{Fixture: *legacy.Request}
+		decoded.APIRequestDetails = &BlueprintAPIRequestDetails{Fixture: *legacy.Request}
 	}
 	if decoded.TestHelperDetails == nil && legacy.Requests != nil {
-		decoded.TestHelperDetails = &WorkbenchTestHelperDetails{Requests: legacy.Requests}
+		decoded.TestHelperDetails = &BlueprintTestHelperDetails{Requests: legacy.Requests}
 	}
 	if decoded.AsyncHandlerDetails == nil && legacy.Events != nil {
-		decoded.AsyncHandlerDetails = &WorkbenchAsyncHandlerDetails{Events: legacy.Events}
+		decoded.AsyncHandlerDetails = &BlueprintAsyncHandlerDetails{Events: legacy.Events}
 	}
 	if decoded.UIComponentDetails == nil {
 		decoded.UIComponentDetails = legacy.UIComponent
@@ -161,7 +161,7 @@ func (n *SessionNode) DescriptionText() string {
 	return n.Description.DefaultMessage
 }
 
-func (n *SessionNode) Request() *WorkbenchRequestFixture {
+func (n *SessionNode) Request() *BlueprintRequestFixture {
 	if n.APIRequestDetails == nil {
 		return nil
 	}
@@ -175,9 +175,9 @@ func (n *SessionNode) Events() []AsyncEvent {
 	return n.AsyncHandlerDetails.Events
 }
 
-// SessionStep combines an effective Workbench step with co-op progress.
+// SessionStep combines an effective blueprint step with co-op progress.
 type SessionStep struct {
-	WorkbenchStepDefinition
+	BlueprintStepDefinition
 	Nodes []SessionNode `json:"nodes"`
 }
 
@@ -187,22 +187,22 @@ func (s *SessionStep) TitleText() string {
 
 // Session is the shared state file between agent and TUI.
 type Session struct {
-	SchemaVersion       int                           `json:"schema_version"`
-	ID                  string                        `json:"id"`
-	Blueprint           string                        `json:"blueprint"`
-	BlueprintDefinition *WorkbenchBlueprintDefinition `json:"blueprint_definition,omitempty"`
-	BlueprintPin        *BlueprintPin                 `json:"blueprint_pin,omitempty"`
-	Status              SessionStatus                 `json:"status"`
-	Settings            map[string]string             `json:"settings,omitempty"`
-	Params              map[string]string             `json:"params,omitempty"`
-	Steps               []SessionStep                 `json:"steps"`
-	UsedSandbox         bool                          `json:"used_sandbox,omitempty"`
-	NextSteps           *NextStepsState               `json:"next_steps,omitempty"`
-	ParentSessionID     string                        `json:"parent_session_id,omitempty"`
-	ParentStepID        string                        `json:"parent_step_id,omitempty"` // which next-step this session fulfills
-	CreatedAt           time.Time                     `json:"created_at"`
-	UpdatedAt           time.Time                     `json:"updated_at"`
-	Version             int                           `json:"version"`
+	SchemaVersion       int                  `json:"schema_version"`
+	ID                  string               `json:"id"`
+	Blueprint           string               `json:"blueprint"`
+	BlueprintDefinition *BlueprintDefinition `json:"blueprint_definition,omitempty"`
+	BlueprintPin        *BlueprintPin        `json:"blueprint_pin,omitempty"`
+	Status              SessionStatus        `json:"status"`
+	Settings            map[string]string    `json:"settings,omitempty"`
+	Params              map[string]string    `json:"params,omitempty"`
+	Steps               []SessionStep        `json:"steps"`
+	UsedSandbox         bool                 `json:"used_sandbox,omitempty"`
+	NextSteps           *NextStepsState      `json:"next_steps,omitempty"`
+	ParentSessionID     string               `json:"parent_session_id,omitempty"`
+	ParentStepID        string               `json:"parent_step_id,omitempty"` // which next-step this session fulfills
+	CreatedAt           time.Time            `json:"created_at"`
+	UpdatedAt           time.Time            `json:"updated_at"`
+	Version             int                  `json:"version"`
 }
 
 // NextStepsState tracks post-completion suggestions and selection.
@@ -229,7 +229,7 @@ type CommandResponse struct {
 	Message     string                   `json:"message,omitempty"`
 	Next        string                   `json:"next,omitempty"`
 	AgentPrompt string                   `json:"agent_prompt,omitempty"`
-	APIRequest  *WorkbenchRequestFixture `json:"api_request,omitempty"`
+	APIRequest  *BlueprintRequestFixture `json:"api_request,omitempty"`
 	SDKExample  string                   `json:"sdk_example,omitempty"`
 	Error       string                   `json:"error,omitempty"`
 	Hint        string                   `json:"hint,omitempty"`

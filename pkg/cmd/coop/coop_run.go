@@ -76,7 +76,7 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	return outputJSON(resp)
 }
 
-func newCoopAgentRunResponse(bp *coop.WorkbenchBlueprint, session *coop.Session) coopAgentRunResponse {
+func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgentRunResponse {
 	return newCoopAgentSessionResponse(bp.Title.DefaultMessage, session, agentInstructions(bp, session))
 }
 
@@ -117,7 +117,7 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 	return resp
 }
 
-func newCoopSession(bp *coop.WorkbenchBlueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
+func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
 	settings := make(map[string]string)
 	if language != "" {
 		settings["language"] = language
@@ -173,7 +173,7 @@ type nodeBrief struct {
 	AutoConfirm   bool   `json:"auto_confirm,omitempty"`
 }
 
-func agentInstructions(bp *coop.WorkbenchBlueprint, session *coop.Session) string {
+func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
 	preamble := fmt.Sprintf("You are building a working Stripe integration: %q", bp.Title.DefaultMessage)
 	return sessionLifecycleInstructions(preamble, session)
 }

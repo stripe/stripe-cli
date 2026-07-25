@@ -13,12 +13,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
-const workbenchBlueprintsPath = "/v1/_unstable/workbench/blueprints"
+const blueprintsPath = "/v1/_unstable/workbench/blueprints"
 
-// BlueprintRepository is the API-backed source of Workbench blueprints.
+// BlueprintRepository is an API-backed source of blueprints.
 type BlueprintRepository interface {
-	List(context.Context) ([]WorkbenchBlueprintSummary, error)
-	Retrieve(context.Context, string) (*WorkbenchBlueprint, error)
+	List(context.Context) ([]BlueprintSummary, error)
+	Retrieve(context.Context, string) (*Blueprint, error)
 }
 
 // APIKeyProvider supplies the configured Stripe API key for a mode.
@@ -26,41 +26,41 @@ type APIKeyProvider interface {
 	GetAPIKey(livemode bool) (string, error)
 }
 
-// WorkbenchClient loads Workbench blueprints with the configured test-mode key.
-type WorkbenchClient struct {
+// BlueprintClient loads blueprints with the configured test-mode key.
+type BlueprintClient struct {
 	apiBaseURL string
 	profile    APIKeyProvider
 	httpClient *http.Client
 }
 
-// NewWorkbenchClient creates an API-backed blueprint repository.
-func NewWorkbenchClient(profile APIKeyProvider, apiBaseURL string, httpClient *http.Client) *WorkbenchClient {
+// NewBlueprintClient creates an API-backed blueprint repository.
+func NewBlueprintClient(profile APIKeyProvider, apiBaseURL string, httpClient *http.Client) *BlueprintClient {
 	if apiBaseURL == "" {
 		apiBaseURL = stripe.DefaultAPIBaseURL
 	}
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &WorkbenchClient{
+	return &BlueprintClient{
 		apiBaseURL: strings.TrimRight(apiBaseURL, "/"),
 		profile:    profile,
 		httpClient: httpClient,
 	}
 }
 
-func (c *WorkbenchClient) List(ctx context.Context) ([]WorkbenchBlueprintSummary, error) {
+func (c *BlueprintClient) List(ctx context.Context) ([]BlueprintSummary, error) {
 	var response struct {
-		Data []WorkbenchBlueprintSummary `json:"data"`
+		Data []BlueprintSummary `json:"data"`
 	}
-	if err := c.get(ctx, workbenchBlueprintsPath, &response, nil); err != nil {
+	if err := c.get(ctx, blueprintsPath, &response, nil); err != nil {
 		return nil, err
 	}
 	return response.Data, nil
 }
 
-func (c *WorkbenchClient) Retrieve(ctx context.Context, blueprintKey string) (*WorkbenchBlueprint, error) {
-	path := workbenchBlueprintsPath + "/" + url.PathEscape(blueprintKey)
-	var blueprint WorkbenchBlueprint
+func (c *BlueprintClient) Retrieve(ctx context.Context, blueprintKey string) (*Blueprint, error) {
+	path := blueprintsPath + "/" + url.PathEscape(blueprintKey)
+	var blueprint Blueprint
 	var raw json.RawMessage
 	if err := c.get(ctx, path, &blueprint, &raw); err != nil {
 		return nil, err
@@ -69,37 +69,37 @@ func (c *WorkbenchClient) Retrieve(ctx context.Context, blueprintKey string) (*W
 	return &blueprint, nil
 }
 
-func (c *WorkbenchClient) get(ctx context.Context, path string, destination any, raw *json.RawMessage) error {
+func (c *BlueprintClient) get(ctx context.Context, path string, destination any, raw *json.RawMessage) error {
 	if c.profile == nil {
-		return fmt.Errorf("loading Workbench blueprints: no Stripe profile configured")
+		return fmt.Errorf("loading blueprints: no Stripe profile configured")
 	}
 	apiKey, err := c.profile.GetAPIKey(false)
 	if err != nil {
-		return fmt.Errorf("loading Workbench blueprints with the test-mode API key: %w", err)
+		return fmt.Errorf("loading blueprints with the test-mode API key: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.apiBaseURL+path, nil)
 	if err != nil {
-		return fmt.Errorf("creating Workbench blueprint request: %w", err)
+		return fmt.Errorf("creating blueprint request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Stripe-Version", requests.StripePreviewVersionHeaderValue)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("requesting Workbench blueprints: %w", err)
+		return fmt.Errorf("requesting blueprints: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("reading Workbench blueprint response: %w", err)
+		return fmt.Errorf("reading blueprint response: %w", err)
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return decodeWorkbenchAPIError(resp.StatusCode, body)
+		return decodeBlueprintAPIError(resp.StatusCode, body)
 	}
 	if err := json.Unmarshal(body, destination); err != nil {
-		return fmt.Errorf("decoding Workbench blueprint response: %w", err)
+		return fmt.Errorf("decoding blueprint response: %w", err)
 	}
 	if raw != nil {
 		*raw = append((*raw)[:0], body...)
@@ -107,7 +107,7 @@ func (c *WorkbenchClient) get(ctx context.Context, path string, destination any,
 	return nil
 }
 
-func decodeWorkbenchAPIError(status int, body []byte) error {
+func decodeBlueprintAPIError(status int, body []byte) error {
 	var response struct {
 		Error struct {
 			Message string `json:"message"`
@@ -116,32 +116,32 @@ func decodeWorkbenchAPIError(status int, body []byte) error {
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(body, &response); err == nil && response.Error.Message != "" {
-		return &WorkbenchAPIError{
+		return &BlueprintAPIError{
 			StatusCode: status,
 			Message:    response.Error.Message,
 			Type:       response.Error.Type,
 			Code:       response.Error.Code,
 		}
 	}
-	return &WorkbenchAPIError{
+	return &BlueprintAPIError{
 		StatusCode: status,
 		Message:    strings.TrimSpace(string(body)),
 	}
 }
 
-// WorkbenchAPIError is a non-success response from the blueprint API.
-type WorkbenchAPIError struct {
+// BlueprintAPIError is a non-success response from the blueprint API.
+type BlueprintAPIError struct {
 	StatusCode int
 	Message    string
 	Type       string
 	Code       string
 }
 
-func (e *WorkbenchAPIError) Error() string {
+func (e *BlueprintAPIError) Error() string {
 	if e.Message == "" {
-		return fmt.Sprintf("Workbench blueprint API returned status %d", e.StatusCode)
+		return fmt.Sprintf("blueprint API returned status %d", e.StatusCode)
 	}
-	return fmt.Sprintf("Workbench blueprint API returned status %d: %s", e.StatusCode, e.Message)
+	return fmt.Sprintf("blueprint API returned status %d: %s", e.StatusCode, e.Message)
 }
 
 type MessageDescriptor struct {
@@ -157,14 +157,14 @@ func (m *MessageDescriptor) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, (*descriptor)(m))
 }
 
-type WorkbenchBlueprintSummary struct {
+type BlueprintSummary struct {
 	ID               string             `json:"id"`
 	BlueprintType    string             `json:"blueprint_type"`
 	BlueprintVersion int                `json:"blueprint_version"`
 	Description      MessageDescriptor  `json:"description"`
 	Key              string             `json:"key"`
 	Metadata         BlueprintMetadata  `json:"metadata"`
-	StepRefs         []WorkbenchStepRef `json:"step_refs"`
+	StepRefs         []BlueprintStepRef `json:"step_refs"`
 	TemplateVersion  int                `json:"template_version"`
 	Title            MessageDescriptor  `json:"title"`
 }
@@ -173,31 +173,31 @@ type BlueprintMetadata struct {
 	Products []string `json:"products"`
 }
 
-type WorkbenchStepRef struct {
+type BlueprintStepRef struct {
 	StepKey     string            `json:"step_key"`
 	StepVersion int               `json:"step_version"`
 	Settings    map[string]string `json:"settings"`
 	Params      map[string]string `json:"params"`
 }
 
-type WorkbenchBlueprint struct {
-	WorkbenchBlueprintDefinition
-	Steps []WorkbenchStep `json:"steps"`
+type Blueprint struct {
+	BlueprintDefinition
+	Steps []BlueprintStep `json:"steps"`
 	raw   json.RawMessage
 }
 
-type WorkbenchBlueprintDefinition struct {
-	WorkbenchBlueprintSummary
-	BlueprintSettings []WorkbenchSettingGroup `json:"blueprint_settings"`
-	BlueprintParams   []WorkbenchParamGroup   `json:"blueprint_params"`
+type BlueprintDefinition struct {
+	BlueprintSummary
+	BlueprintSettings []BlueprintSettingGroup `json:"blueprint_settings"`
+	BlueprintParams   []BlueprintParamGroup   `json:"blueprint_params"`
 }
 
-type WorkbenchStep struct {
-	WorkbenchStepDefinition
-	Nodes []WorkbenchBlueprintNode `json:"nodes"`
+type BlueprintStep struct {
+	BlueprintStepDefinition
+	Nodes []BlueprintNode `json:"nodes"`
 }
 
-type WorkbenchStepDefinition struct {
+type BlueprintStepDefinition struct {
 	Key             string                  `json:"key"`
 	StepVersion     int                     `json:"step_version"`
 	TemplateVersion int                     `json:"template_version"`
@@ -206,99 +206,99 @@ type WorkbenchStepDefinition struct {
 	Required        bool                    `json:"required"`
 	IsIncluded      any                     `json:"is_included"`
 	Settings        map[string]string       `json:"settings"`
-	SettingsSchema  []WorkbenchSettingGroup `json:"settings_schema"`
+	SettingsSchema  []BlueprintSettingGroup `json:"settings_schema"`
 	Params          map[string]string       `json:"params"`
-	ParamsSchema    []WorkbenchParamGroup   `json:"params_schema"`
-	Outputs         []WorkbenchStepOutput   `json:"outputs"`
+	ParamsSchema    []BlueprintParamGroup   `json:"params_schema"`
+	Outputs         []BlueprintStepOutput   `json:"outputs"`
 }
 
-type WorkbenchStepOutput struct {
+type BlueprintStepOutput struct {
 	Name   string         `json:"name"`
 	Source string         `json:"source"`
 	Schema map[string]any `json:"schema"`
 }
 
-type WorkbenchSettingGroup struct {
+type BlueprintSettingGroup struct {
 	Key      string           `json:"key"`
-	Settings []WorkbenchField `json:"settings"`
+	Settings []BlueprintField `json:"settings"`
 }
 
-type WorkbenchParamGroup struct {
+type BlueprintParamGroup struct {
 	Key    string           `json:"key"`
-	Params []WorkbenchField `json:"params"`
+	Params []BlueprintField `json:"params"`
 }
 
-type WorkbenchField struct {
+type BlueprintField struct {
 	Name   string               `json:"name"`
-	Schema WorkbenchFieldSchema `json:"schema"`
+	Schema BlueprintFieldSchema `json:"schema"`
 }
 
-type WorkbenchFieldSchema struct {
+type BlueprintFieldSchema struct {
 	DefaultValue any `json:"default_value"`
 }
 
-type WorkbenchBlueprintNode struct {
+type BlueprintNode struct {
 	NodeType            NodeType                      `json:"node_type"`
 	Key                 string                        `json:"key"`
 	Title               MessageDescriptor             `json:"title"`
 	Description         MessageDescriptor             `json:"description"`
 	IsIncluded          any                           `json:"is_included"`
 	IsInformationalNode bool                          `json:"is_informational_node"`
-	APIRequestDetails   *WorkbenchAPIRequestDetails   `json:"api_request_details"`
-	AsyncHandlerDetails *WorkbenchAsyncHandlerDetails `json:"async_handler_details"`
-	TestHelperDetails   *WorkbenchTestHelperDetails   `json:"test_helper_details"`
-	UIComponentDetails  *WorkbenchUIComponentDetails  `json:"ui_component_details"`
+	APIRequestDetails   *BlueprintAPIRequestDetails   `json:"api_request_details"`
+	AsyncHandlerDetails *BlueprintAsyncHandlerDetails `json:"async_handler_details"`
+	TestHelperDetails   *BlueprintTestHelperDetails   `json:"test_helper_details"`
+	UIComponentDetails  *BlueprintUIComponentDetails  `json:"ui_component_details"`
 }
 
-type WorkbenchAPIRequestDetails struct {
-	Fixture WorkbenchRequestFixture `json:"fixture"`
+type BlueprintAPIRequestDetails struct {
+	Fixture BlueprintRequestFixture `json:"fixture"`
 }
 
-type WorkbenchAsyncHandlerDetails struct {
+type BlueprintAsyncHandlerDetails struct {
 	Events []AsyncEvent `json:"events"`
 }
 
-type WorkbenchTestHelperDetails struct {
-	Requests []WorkbenchRequestFixture `json:"requests"`
+type BlueprintTestHelperDetails struct {
+	Requests []BlueprintRequestFixture `json:"requests"`
 }
 
-type WorkbenchUIComponentDetails struct {
-	ConfiguredDetails   []WorkbenchUIConfiguredDetails `json:"configured_details,omitempty"`
+type BlueprintUIComponentDetails struct {
+	ConfiguredDetails   []BlueprintUIConfiguredDetails `json:"configured_details,omitempty"`
 	Display             string                         `json:"display"`
 	DisplayComponentRef *UIComponentReference          `json:"display_component_ref"`
 	StripeElementRef    map[string]any                 `json:"stripe_element_ref"`
-	Options             []WorkbenchUIOption            `json:"options"`
+	Options             []BlueprintUIOption            `json:"options"`
 }
 
-type WorkbenchUIConfiguredDetails struct {
+type BlueprintUIConfiguredDetails struct {
 	ConfigValue         map[string]string     `json:"config_value"`
 	Display             string                `json:"display"`
 	DisplayComponentRef *UIComponentReference `json:"display_component_ref"`
 	StripeElementRef    map[string]any        `json:"stripe_element_ref"`
-	Options             []WorkbenchUIOption   `json:"options"`
+	Options             []BlueprintUIOption   `json:"options"`
 }
 
-type WorkbenchUIOption struct {
+type BlueprintUIOption struct {
 	Type     string                    `json:"type"`
 	Title    MessageDescriptor         `json:"title"`
 	Link     string                    `json:"link"`
-	Requests []WorkbenchRequestFixture `json:"requests"`
+	Requests []BlueprintRequestFixture `json:"requests"`
 }
 
-type WorkbenchRequestFixture struct {
+type BlueprintRequestFixture struct {
 	Key               string                       `json:"key"`
 	Method            string                       `json:"method"`
 	Path              string                       `json:"path"`
 	Headers           map[string]string            `json:"headers"`
 	Params            map[string]any               `json:"params"`
 	HiddenParams      map[string]any               `json:"hidden_params"`
-	ConfiguredDetails []WorkbenchConfiguredDetails `json:"configured_details,omitempty"`
+	ConfiguredDetails []BlueprintConfiguredDetails `json:"configured_details,omitempty"`
 	ExpectedErrorType string                       `json:"expected_error_type,omitempty"`
 	ProcessingDetails *APIProcessingDetails        `json:"processing_details"`
 	RegenerateEnv     bool                         `json:"regenerate_env"`
 }
 
-type WorkbenchConfiguredDetails struct {
+type BlueprintConfiguredDetails struct {
 	ConfigValue       map[string]string `json:"config_value"`
 	Headers           map[string]string `json:"headers"`
 	Params            map[string]any    `json:"params"`

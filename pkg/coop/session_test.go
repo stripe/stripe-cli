@@ -9,7 +9,7 @@ import (
 
 func testSessionNode(key, title string, state NodeState) SessionNode {
 	return SessionNode{
-		WorkbenchBlueprintNode: WorkbenchBlueprintNode{
+		BlueprintNode: BlueprintNode{
 			Key:   key,
 			Title: MessageDescriptor{DefaultMessage: title},
 		},
@@ -19,7 +19,7 @@ func testSessionNode(key, title string, state NodeState) SessionNode {
 
 func testSessionStep(key, title string, nodes ...SessionNode) SessionStep {
 	return SessionStep{
-		WorkbenchStepDefinition: WorkbenchStepDefinition{
+		BlueprintStepDefinition: BlueprintStepDefinition{
 			Key:   key,
 			Title: MessageDescriptor{DefaultMessage: title},
 		},
@@ -309,14 +309,14 @@ func TestStepReadyForReviewIgnoresAutoConfirmNodes(t *testing.T) {
 			{Nodes: []SessionNode{
 				testSessionNode("a", "", NodeReview),
 				{
-					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "auto", IsInformationalNode: true},
-					State:                  NodePending,
+					BlueprintNode: BlueprintNode{Key: "auto", IsInformationalNode: true},
+					State:         NodePending,
 				},
 			}},
 			{Nodes: []SessionNode{
 				{
-					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "only-auto", IsInformationalNode: true},
-					State:                  NodePending,
+					BlueprintNode: BlueprintNode{Key: "only-auto", IsInformationalNode: true},
+					State:         NodePending,
 				},
 			}},
 		},

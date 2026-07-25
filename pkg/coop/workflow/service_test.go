@@ -11,7 +11,7 @@ import (
 
 func workflowNode(key, title string, state coop.NodeState) coop.SessionNode {
 	return coop.SessionNode{
-		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+		BlueprintNode: coop.BlueprintNode{
 			Key:   key,
 			Title: coop.MessageDescriptor{DefaultMessage: title},
 		},
@@ -21,7 +21,7 @@ func workflowNode(key, title string, state coop.NodeState) coop.SessionNode {
 
 func workflowStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
 	return coop.SessionStep{
-		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+		BlueprintStepDefinition: coop.BlueprintStepDefinition{
 			Key:   key,
 			Title: coop.MessageDescriptor{DefaultMessage: title},
 		},
