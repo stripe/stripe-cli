@@ -20,8 +20,8 @@ func NewSessionFromGuidedAction(action *GuidedAction, sessionID string, opts Gui
 	now := time.Now().UTC()
 	settings := copyStringMap(opts.Settings)
 	settings["guided_action"] = action.ID
-	definition := WorkbenchBlueprintDefinition{
-		WorkbenchBlueprintSummary: WorkbenchBlueprintSummary{
+	definition := BlueprintDefinition{
+		BlueprintSummary: BlueprintSummary{
 			Key:           action.Title,
 			BlueprintType: "guided_action",
 			Title:         MessageDescriptor{DefaultMessage: action.Title},
@@ -47,7 +47,7 @@ func NewSessionFromGuidedAction(action *GuidedAction, sessionID string, opts Gui
 func cloneGuidedActionSteps(steps []SessionStep) []SessionStep {
 	cloned := make([]SessionStep, len(steps))
 	for i, step := range steps {
-		cloned[i].WorkbenchStepDefinition = step.WorkbenchStepDefinition
+		cloned[i].BlueprintStepDefinition = step.BlueprintStepDefinition
 		cloned[i].Nodes = make([]SessionNode, len(step.Nodes))
 		copy(cloned[i].Nodes, step.Nodes)
 	}

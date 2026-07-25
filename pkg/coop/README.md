@@ -162,7 +162,7 @@ Post-completion choices are written into the session file for the agent. Deploy 
 
 ## Auto-Confirm
 
-Workbench nodes with `"is_informational_node": true` skip human review:
+Blueprint nodes with `"is_informational_node": true` skip human review:
 - `agent report-work` transitions directly to `done` (not `review`)
 - `agent await-review` returns immediately if the node is auto-confirmed
 - The prepended "Project context" step contains an auto-confirmed "Understand the project" node
@@ -191,11 +191,11 @@ Use `stripe coop join --resume` to pick from recent sessions.
 
 ## Blueprint loading
 
-Workbench blueprint definitions are loaded at runtime from the unstable
-Workbench list and retrieve API endpoints using the configured test-mode key and
-preview API version. `coop recommend --all` lists learning blueprints by default.
-`coop run` and `coop start` retrieve the selected definition and apply its
-selected/default configuration.
+Blueprint definitions are loaded at runtime from the unstable list and retrieve
+API endpoints using the configured test-mode key and preview API version.
+`coop recommend --all` lists learning blueprints by default. `coop run` and
+`coop start` retrieve the selected definition and apply its selected/default
+configuration.
 Recommend results report `step_count`; the former `node_count` field remains as
 `null` for migration compatibility because the list endpoint does not expose
 node definitions.
@@ -215,11 +215,11 @@ Node references may only point backward to completed blueprint nodes. Direct nod
 
 `testHelper` request metadata tells the agent which Stripe-backed test helpers can advance test state. Agents should use those helpers while verifying work, but should not encode helper-only request parameters into the user's application.
 
-The effective Workbench definition is stored directly in the session alongside
-co-op progress. The session also pins blueprint, step, and template versions
-plus the retrieved source digest, so an active session is unaffected by later
-upstream changes. Representative API responses used by tests live in
-`pkg/coop/testdata/`; they are not a runtime catalog.
+The effective blueprint definition is stored directly in the session alongside
+co-op progress. The session also pins blueprint, step, and template versions plus
+the retrieved source digest, so an active session is unaffected by later upstream
+changes. Representative API responses used by tests live in `pkg/coop/testdata/`;
+they are not a runtime catalog.
 
 ## Troubleshooting
 
@@ -246,8 +246,8 @@ pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
   store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
-  blueprint.go      — Workbench configuration resolution and session creation
-  blueprint_api.go  — Authenticated Workbench blueprint client
+  blueprint.go      — Blueprint configuration resolution and session creation
+  blueprint_api.go  — Authenticated blueprint client
   guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)
   testdata/         — Representative API responses for tests only

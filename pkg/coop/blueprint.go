@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// LoadBlueprint retrieves a Workbench blueprint by its exact key.
-func LoadBlueprint(ctx context.Context, repository BlueprintRepository, key string) (*WorkbenchBlueprint, error) {
+// LoadBlueprint retrieves a blueprint by its exact key.
+func LoadBlueprint(ctx context.Context, repository BlueprintRepository, key string) (*Blueprint, error) {
 	if repository == nil {
 		return nil, fmt.Errorf("loading blueprints: no blueprint repository configured")
 	}
@@ -26,9 +26,8 @@ func LoadBlueprint(ctx context.Context, repository BlueprintRepository, key stri
 	return blueprint, nil
 }
 
-// resolveBlueprint applies the selected Workbench configuration to a detached
-// copy. The result retains the Workbench shape used by the session.
-func resolveBlueprint(source *WorkbenchBlueprint, selectedSettings, selectedParams map[string]string) (*WorkbenchBlueprint, map[string]string, map[string]string, error) {
+// resolveBlueprint applies the selected configuration to a detached copy.
+func resolveBlueprint(source *Blueprint, selectedSettings, selectedParams map[string]string) (*Blueprint, map[string]string, map[string]string, error) {
 	if source == nil {
 		return nil, nil, nil, fmt.Errorf("cannot resolve a nil blueprint")
 	}
@@ -36,7 +35,7 @@ func resolveBlueprint(source *WorkbenchBlueprint, selectedSettings, selectedPara
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
 	}
-	var resolved WorkbenchBlueprint
+	var resolved Blueprint
 	if err := json.Unmarshal(data, &resolved); err != nil {
 		return nil, nil, nil, fmt.Errorf("copying blueprint %q: %w", source.Key, err)
 	}
@@ -82,7 +81,7 @@ func resolveBlueprint(source *WorkbenchBlueprint, selectedSettings, selectedPara
 	return &resolved, settings, params, nil
 }
 
-func resolveNode(node *WorkbenchBlueprintNode, settings map[string]string) error {
+func resolveNode(node *BlueprintNode, settings map[string]string) error {
 	switch node.NodeType {
 	case NodeAPIRequest:
 		if node.APIRequestDetails == nil {
@@ -115,7 +114,7 @@ func resolveNode(node *WorkbenchBlueprintNode, settings map[string]string) error
 	return nil
 }
 
-func resolveRequest(request *WorkbenchRequestFixture, settings map[string]string) {
+func resolveRequest(request *BlueprintRequestFixture, settings map[string]string) {
 	if request.Params == nil {
 		request.Params = make(map[string]any)
 	}
@@ -139,8 +138,8 @@ func resolveRequest(request *WorkbenchRequestFixture, settings map[string]string
 	request.ConfiguredDetails = nil
 }
 
-func matchingRequestDetails(details []WorkbenchConfiguredDetails, settings map[string]string) []WorkbenchConfiguredDetails {
-	var matches []WorkbenchConfiguredDetails
+func matchingRequestDetails(details []BlueprintConfiguredDetails, settings map[string]string) []BlueprintConfiguredDetails {
+	var matches []BlueprintConfiguredDetails
 	for _, configured := range details {
 		if configurationMatches(configured.ConfigValue, settings) {
 			matches = append(matches, configured)
@@ -152,7 +151,7 @@ func matchingRequestDetails(details []WorkbenchConfiguredDetails, settings map[s
 	return matches
 }
 
-func resolveUIComponent(component *WorkbenchUIComponentDetails, settings map[string]string) {
+func resolveUIComponent(component *BlueprintUIComponentDetails, settings map[string]string) {
 	if component.StripeElementRef == nil {
 		component.StripeElementRef = make(map[string]any)
 	}
@@ -177,8 +176,8 @@ func resolveUIComponent(component *WorkbenchUIComponentDetails, settings map[str
 	}
 }
 
-func matchingUIComponentDetails(details []WorkbenchUIConfiguredDetails, settings map[string]string) []WorkbenchUIConfiguredDetails {
-	var matches []WorkbenchUIConfiguredDetails
+func matchingUIComponentDetails(details []BlueprintUIConfiguredDetails, settings map[string]string) []BlueprintUIConfiguredDetails {
+	var matches []BlueprintUIConfiguredDetails
 	for _, configured := range details {
 		if configurationMatches(configured.ConfigValue, settings) {
 			matches = append(matches, configured)
@@ -212,7 +211,7 @@ func configurationMatches(selectors map[string]string, settings map[string]strin
 	return true
 }
 
-func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
+func resolveBlueprintSettings(source *Blueprint, selected map[string]string) map[string]string {
 	defaults, resolved := settingDefaults(source.BlueprintSettings)
 	for _, step := range source.Steps {
 		for _, group := range step.SettingsSchema {
@@ -230,7 +229,7 @@ func resolveBlueprintSettings(source *WorkbenchBlueprint, selected map[string]st
 	return resolved
 }
 
-func resolveBlueprintParams(source *WorkbenchBlueprint, selected map[string]string) map[string]string {
+func resolveBlueprintParams(source *Blueprint, selected map[string]string) map[string]string {
 	defaults, resolved := paramDefaults(source.BlueprintParams)
 	for _, step := range source.Steps {
 		for _, group := range step.ParamsSchema {
@@ -252,7 +251,7 @@ func resolveBlueprintParams(source *WorkbenchBlueprint, selected map[string]stri
 	return resolved
 }
 
-func settingDefaults(groups []WorkbenchSettingGroup) (map[string]string, map[string]string) {
+func settingDefaults(groups []BlueprintSettingGroup) (map[string]string, map[string]string) {
 	defaults := make(map[string]string)
 	resolved := make(map[string]string)
 	for _, group := range groups {
@@ -270,7 +269,7 @@ func settingDefaults(groups []WorkbenchSettingGroup) (map[string]string, map[str
 	return defaults, resolved
 }
 
-func paramDefaults(groups []WorkbenchParamGroup) (map[string]string, map[string]string) {
+func paramDefaults(groups []BlueprintParamGroup) (map[string]string, map[string]string) {
 	defaults := make(map[string]string)
 	resolved := make(map[string]string)
 	for _, group := range groups {
@@ -288,7 +287,7 @@ func paramDefaults(groups []WorkbenchParamGroup) (map[string]string, map[string]
 	return defaults, resolved
 }
 
-func addFieldDefaults(resolved map[string]string, fields []WorkbenchField) {
+func addFieldDefaults(resolved map[string]string, fields []BlueprintField) {
 	for _, field := range fields {
 		if field.Schema.DefaultValue == nil {
 			continue
@@ -326,8 +325,8 @@ func parseGroupedReference(value, referenceType string) (string, string, bool) {
 	return group, name, ok && group != "" && name != ""
 }
 
-// evaluateInclusion handles the equality expression currently returned by
-// Workbench. Unknown shapes fail instead of silently changing the workflow.
+// evaluateInclusion handles the equality expression currently returned by the
+// blueprint API. Unknown shapes fail instead of silently changing the workflow.
 func evaluateInclusion(condition any, values map[string]string) (bool, error) {
 	switch condition := condition.(type) {
 	case nil:
@@ -408,7 +407,7 @@ func mergeMap(destination, source map[string]any) {
 	}
 }
 
-func blueprintDigest(source *WorkbenchBlueprint) string {
+func blueprintDigest(source *Blueprint) string {
 	raw := source.raw
 	if len(raw) == 0 {
 		raw, _ = json.Marshal(source)
@@ -417,7 +416,7 @@ func blueprintDigest(source *WorkbenchBlueprint) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-func blueprintPin(source *WorkbenchBlueprint) BlueprintPin {
+func blueprintPin(source *Blueprint) BlueprintPin {
 	pin := BlueprintPin{
 		ID:               source.ID,
 		Key:              source.Key,
@@ -436,26 +435,26 @@ func blueprintPin(source *WorkbenchBlueprint) BlueprintPin {
 	return pin
 }
 
-// NewSessionFromBlueprint pins an effective Workbench definition with co-op progress.
-func NewSessionFromBlueprint(source *WorkbenchBlueprint, sessionID string, settings, params map[string]string) (*Session, error) {
+// NewSessionFromBlueprint pins an effective blueprint with co-op progress.
+func NewSessionFromBlueprint(source *Blueprint, sessionID string, settings, params map[string]string) (*Session, error) {
 	blueprint, resolvedSettings, resolvedParams, err := resolveBlueprint(source, settings, params)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now().UTC()
 	contextStep := SessionStep{
-		WorkbenchStepDefinition: WorkbenchStepDefinition{
+		BlueprintStepDefinition: BlueprintStepDefinition{
 			Key:   "context-step",
 			Title: MessageDescriptor{DefaultMessage: "Project context"},
 		},
 		Nodes: []SessionNode{{
-			WorkbenchBlueprintNode: WorkbenchBlueprintNode{
+			BlueprintNode: BlueprintNode{
 				NodeType:            NodeTestHelper,
 				Key:                 "scan-project",
 				Title:               MessageDescriptor{DefaultMessage: "Understand the project"},
 				Description:         MessageDescriptor{DefaultMessage: "Scan the codebase to identify language, framework, dependencies, and existing Stripe code. Report what you find."},
 				IsInformationalNode: true,
-				TestHelperDetails:   &WorkbenchTestHelperDetails{},
+				TestHelperDetails:   &BlueprintTestHelperDetails{},
 			},
 			State: NodePending,
 		}},
@@ -467,19 +466,19 @@ func NewSessionFromBlueprint(source *WorkbenchBlueprint, sessionID string, setti
 		nodes := make([]SessionNode, len(step.Nodes))
 		for index, node := range step.Nodes {
 			nodes[index] = SessionNode{
-				WorkbenchBlueprintNode: node,
-				ReviewPrompt:           deriveReviewPrompt(node),
-				ReviewCommand:          deriveReviewCommand(node),
-				State:                  NodePending,
+				BlueprintNode: node,
+				ReviewPrompt:  deriveReviewPrompt(node),
+				ReviewCommand: deriveReviewCommand(node),
+				State:         NodePending,
 			}
 		}
 		steps = append(steps, SessionStep{
-			WorkbenchStepDefinition: step.WorkbenchStepDefinition,
+			BlueprintStepDefinition: step.BlueprintStepDefinition,
 			Nodes:                   nodes,
 		})
 	}
 
-	definition := blueprint.WorkbenchBlueprintDefinition
+	definition := blueprint.BlueprintDefinition
 	pin := blueprintPin(source)
 	session := &Session{
 		SchemaVersion:       CurrentSessionSchemaVersion,

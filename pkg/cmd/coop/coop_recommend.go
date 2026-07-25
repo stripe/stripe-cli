@@ -49,7 +49,7 @@ func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) e
 		Type        string   `json:"type"`
 		Products    []string `json:"products,omitempty"`
 		// NodeCount is retained as a nullable compatibility field because the
-		// Workbench list endpoint does not expose nodes.
+		// The list endpoint does not expose nodes.
 		NodeCount *int   `json:"node_count"`
 		StepCount int    `json:"step_count"`
 		Command   string `json:"command"`

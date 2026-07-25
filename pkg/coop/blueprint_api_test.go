@@ -26,7 +26,7 @@ func (p *recordingKeyProvider) GetAPIKey(livemode bool) (string, error) {
 	return p.key, p.err
 }
 
-func TestWorkbenchClientListAndRetrieve(t *testing.T) {
+func TestBlueprintClientListAndRetrieve(t *testing.T) {
 	listFixture, err := os.ReadFile("testdata/blueprints-list.json")
 	require.NoError(t, err)
 	retrieveFixture, err := os.ReadFile("testdata/blueprint-retrieve.json")
@@ -39,9 +39,9 @@ func TestWorkbenchClientListAndRetrieve(t *testing.T) {
 		assert.Equal(t, "Bearer sk_test_blueprints", r.Header.Get("Authorization"))
 		assert.Equal(t, requests.StripePreviewVersionHeaderValue, r.Header.Get("Stripe-Version"))
 		switch r.URL.Path {
-		case workbenchBlueprintsPath:
+		case blueprintsPath:
 			_, _ = w.Write(listFixture)
-		case workbenchBlueprintsPath + "/sample-payment":
+		case blueprintsPath + "/sample-payment":
 			_, _ = w.Write(retrieveFixture)
 		default:
 			http.NotFound(w, r)
@@ -50,7 +50,7 @@ func TestWorkbenchClientListAndRetrieve(t *testing.T) {
 	defer server.Close()
 
 	profile := &recordingKeyProvider{key: "sk_test_blueprints"}
-	client := NewWorkbenchClient(profile, server.URL, server.Client())
+	client := NewBlueprintClient(profile, server.URL, server.Client())
 	summaries, err := client.List(context.Background())
 	require.NoError(t, err)
 	require.Len(t, summaries, 2)
@@ -71,29 +71,29 @@ func TestWorkbenchClientListAndRetrieve(t *testing.T) {
 	assert.Equal(t, NodeAPIRequest, blueprint.Steps[0].Nodes[0].NodeType)
 	assert.NotEmpty(t, blueprint.raw)
 	assert.Equal(t, []bool{false, false}, profile.livemode)
-	assert.Equal(t, []string{workbenchBlueprintsPath, workbenchBlueprintsPath + "/sample-payment"}, paths)
+	assert.Equal(t, []string{blueprintsPath, blueprintsPath + "/sample-payment"}, paths)
 }
 
-func TestWorkbenchClientReturnsStructuredErrors(t *testing.T) {
+func TestBlueprintClientReturnsStructuredErrors(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"error":{"message":"invalid test key","type":"invalid_request_error","code":"api_key_invalid"}}`))
 	}))
 	defer server.Close()
 
-	client := NewWorkbenchClient(&recordingKeyProvider{key: "sk_test_bad"}, server.URL, server.Client())
+	client := NewBlueprintClient(&recordingKeyProvider{key: "sk_test_bad"}, server.URL, server.Client())
 	_, err := client.List(context.Background())
 	require.Error(t, err)
-	var apiErr *WorkbenchAPIError
+	var apiErr *BlueprintAPIError
 	require.ErrorAs(t, err, &apiErr)
 	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
 	assert.Equal(t, "api_key_invalid", apiErr.Code)
 	assert.Contains(t, err.Error(), "invalid test key")
 }
 
-func TestWorkbenchClientPropagatesAuthenticationAndDecodeErrors(t *testing.T) {
+func TestBlueprintClientPropagatesAuthenticationAndDecodeErrors(t *testing.T) {
 	profile := &recordingKeyProvider{err: errors.New("not logged in")}
-	client := NewWorkbenchClient(profile, "https://api.example.test", nil)
+	client := NewBlueprintClient(profile, "https://api.example.test", nil)
 	_, err := client.List(context.Background())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "test-mode API key")
@@ -103,20 +103,20 @@ func TestWorkbenchClientPropagatesAuthenticationAndDecodeErrors(t *testing.T) {
 		_, _ = w.Write([]byte(`{"data":`))
 	}))
 	defer server.Close()
-	client = NewWorkbenchClient(&recordingKeyProvider{key: "sk_test_decode"}, server.URL, server.Client())
+	client = NewBlueprintClient(&recordingKeyProvider{key: "sk_test_decode"}, server.URL, server.Client())
 	_, err = client.List(context.Background())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "decoding Workbench blueprint response")
+	assert.Contains(t, err.Error(), "decoding blueprint response")
 }
 
-func TestWorkbenchHTTPRepositoryResolvesVariantsAndPinsSessions(t *testing.T) {
+func TestBlueprintHTTPRepositoryResolvesVariantsAndPinsSessions(t *testing.T) {
 	retrieveFixture, err := os.ReadFile("testdata/blueprint-retrieve.json")
 	require.NoError(t, err)
 
 	retrieveCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case workbenchBlueprintsPath + "/sample-payment":
+		case blueprintsPath + "/sample-payment":
 			retrieveCount++
 			if retrieveCount == 1 {
 				_, _ = w.Write(retrieveFixture)
@@ -131,7 +131,7 @@ func TestWorkbenchHTTPRepositoryResolvesVariantsAndPinsSessions(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewWorkbenchClient(&recordingKeyProvider{key: "sk_test_end_to_end"}, server.URL, server.Client())
+	client := NewBlueprintClient(&recordingKeyProvider{key: "sk_test_end_to_end"}, server.URL, server.Client())
 	blueprint, err := LoadBlueprint(context.Background(), client, "sample-payment")
 	require.NoError(t, err)
 	session, err := NewSessionFromBlueprint(blueprint, "coop_http_pin", map[string]string{"country": "GB"}, nil)

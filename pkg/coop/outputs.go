@@ -32,7 +32,7 @@ func (s *Session) RequiredOutputs(nodeNumber int) ([]RequiredOutput, error) {
 			if current <= nodeNumber {
 				continue
 			}
-			if err := walkNodeReferences(candidateNode.WorkbenchBlueprintNode, func(reference nodeReference) error {
+			if err := walkNodeReferences(candidateNode.BlueprintNode, func(reference nodeReference) error {
 				location, source, err := s.resolveNodeReference(reference.Ref)
 				if err != nil {
 					return err
@@ -76,7 +76,7 @@ func (s *Session) DependentNodeNumbers(nodeNumber int) ([]int, error) {
 				continue
 			}
 			dependent := false
-			if err := walkNodeReferences(candidateNode.WorkbenchBlueprintNode, func(reference nodeReference) error {
+			if err := walkNodeReferences(candidateNode.BlueprintNode, func(reference nodeReference) error {
 				location, _, err := s.resolveNodeReference(reference.Ref)
 				if err != nil {
 					return err
@@ -126,32 +126,32 @@ func (s *Session) MissingRequiredOutputs(nodeNumber int) ([]RequiredOutput, erro
 
 // ResolvedNodeDefinition returns a copy of a node definition with every
 // ${node...} reference replaced from persisted session outputs.
-func (s *Session) ResolvedNodeDefinition(nodeNumber int) (WorkbenchBlueprintNode, error) {
+func (s *Session) ResolvedNodeDefinition(nodeNumber int) (BlueprintNode, error) {
 	node, err := s.NodeByNumber(nodeNumber)
 	if err != nil {
-		return WorkbenchBlueprintNode{}, err
+		return BlueprintNode{}, err
 	}
 
-	data, err := json.Marshal(node.WorkbenchBlueprintNode)
+	data, err := json.Marshal(node.BlueprintNode)
 	if err != nil {
-		return WorkbenchBlueprintNode{}, fmt.Errorf("encoding node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("encoding node %d: %w", nodeNumber, err)
 	}
 	var value any
 	if err := json.Unmarshal(data, &value); err != nil {
-		return WorkbenchBlueprintNode{}, fmt.Errorf("decoding node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("decoding node %d: %w", nodeNumber, err)
 	}
 	resolved, err := s.resolveNodeValue(value, nodeNumber)
 	if err != nil {
-		return WorkbenchBlueprintNode{}, fmt.Errorf("resolving node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("resolving node %d: %w", nodeNumber, err)
 	}
 	data, err = json.Marshal(resolved)
 	if err != nil {
-		return WorkbenchBlueprintNode{}, fmt.Errorf("encoding resolved node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("encoding resolved node %d: %w", nodeNumber, err)
 	}
 
-	var definition WorkbenchBlueprintNode
+	var definition BlueprintNode
 	if err := json.Unmarshal(data, &definition); err != nil {
-		return WorkbenchBlueprintNode{}, fmt.Errorf("decoding resolved node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("decoding resolved node %d: %w", nodeNumber, err)
 	}
 	return definition, nil
 }

@@ -108,7 +108,7 @@ func (rc *coopAgentRunCmd) ensureStripeSkill() error {
 	return ensureRepoStripeBestPracticesSkill()
 }
 
-func newCoopAgentRunResponse(bp *coop.WorkbenchBlueprint, session *coop.Session) coop.CommandResponse {
+func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coop.CommandResponse {
 	return newCoopAgentSessionResponse(bp.Title.DefaultMessage, session, agentInstructions(bp))
 }
 
@@ -128,7 +128,7 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 	}
 }
 
-func newCoopSession(bp *coop.WorkbenchBlueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
+func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
 	settings := make(map[string]string)
 	if language != "" {
 		settings["language"] = language
@@ -168,7 +168,7 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 	return nil
 }
 
-func agentInstructions(bp *coop.WorkbenchBlueprint) string {
+func agentInstructions(bp *coop.Blueprint) string {
 	preamble := fmt.Sprintf("You are building a production-grade Stripe integration: %q", bp.Title.DefaultMessage)
 	return sessionLifecycleInstructions(preamble)
 }

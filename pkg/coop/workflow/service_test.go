@@ -14,7 +14,7 @@ import (
 
 func workflowNode(key, title string, state coop.NodeState) coop.SessionNode {
 	return coop.SessionNode{
-		WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+		BlueprintNode: coop.BlueprintNode{
 			Key:   key,
 			Title: coop.MessageDescriptor{DefaultMessage: title},
 		},
@@ -24,7 +24,7 @@ func workflowNode(key, title string, state coop.NodeState) coop.SessionNode {
 
 func workflowStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
 	return coop.SessionStep{
-		WorkbenchStepDefinition: coop.WorkbenchStepDefinition{
+		BlueprintStepDefinition: coop.BlueprintStepDefinition{
 			Key:   key,
 			Title: coop.MessageDescriptor{DefaultMessage: title},
 		},
@@ -62,14 +62,14 @@ func TestStartWorkReturnsOnlyCurrentNodeContext(t *testing.T) {
 		current.Description = coop.MessageDescriptor{DefaultMessage: "Advance the test clock and confirm an invoice is created."}
 		current.ReviewPrompt = "Confirm the new invoice appears."
 		current.ReviewCommand = "stripe invoices list --limit=1"
-		current.TestHelperDetails = &coop.WorkbenchTestHelperDetails{
-			Requests: []coop.WorkbenchRequestFixture{{
+		current.TestHelperDetails = &coop.BlueprintTestHelperDetails{
+			Requests: []coop.BlueprintRequestFixture{{
 				Key:    "advance-clock",
 				Path:   "/v1/test_helpers/test_clocks/clock_123/advance",
 				Method: "post",
 			}},
 		}
-		current.AsyncHandlerDetails = &coop.WorkbenchAsyncHandlerDetails{
+		current.AsyncHandlerDetails = &coop.BlueprintAsyncHandlerDetails{
 			Events: []coop.AsyncEvent{{EventType: "invoice.created"}},
 		}
 		session.Steps[0].Nodes[1].Description = coop.MessageDescriptor{DefaultMessage: "FUTURE NODE DETAILS MUST NOT LEAK"}
@@ -103,14 +103,14 @@ func TestReportWorkPersistsOutputsAndStartWorkResolvesLaterRequest(t *testing.T)
 		Status:        coop.SessionActive,
 		Settings:      map[string]string{"language": "node"},
 		Steps: []coop.SessionStep{{
-			WorkbenchStepDefinition: coop.WorkbenchStepDefinition{Key: "setup", Title: coop.MessageDescriptor{DefaultMessage: "Setup"}},
+			BlueprintStepDefinition: coop.BlueprintStepDefinition{Key: "setup", Title: coop.MessageDescriptor{DefaultMessage: "Setup"}},
 			Nodes: []coop.SessionNode{
 				{
-					WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+					BlueprintNode: coop.BlueprintNode{
 						Key:      "create-product",
 						Title:    coop.MessageDescriptor{DefaultMessage: "Create product"},
 						NodeType: coop.NodeAPIRequest,
-						APIRequestDetails: &coop.WorkbenchAPIRequestDetails{Fixture: coop.WorkbenchRequestFixture{
+						APIRequestDetails: &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{
 							Path:   "/v1/products",
 							Method: "post",
 						}},
@@ -118,11 +118,11 @@ func TestReportWorkPersistsOutputsAndStartWorkResolvesLaterRequest(t *testing.T)
 					State: coop.NodePending,
 				},
 				{
-					WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+					BlueprintNode: coop.BlueprintNode{
 						Key:      "use-product",
 						Title:    coop.MessageDescriptor{DefaultMessage: "Use product"},
 						NodeType: coop.NodeAPIRequest,
-						APIRequestDetails: &coop.WorkbenchAPIRequestDetails{Fixture: coop.WorkbenchRequestFixture{
+						APIRequestDetails: &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{
 							Path:   "/v1/products/${node.setup.create-product:id}",
 							Method: "get",
 							Params: map[string]any{
@@ -202,24 +202,24 @@ func TestSkipCascadesToTransitiveOutputDependents(t *testing.T) {
 		ID:            "skip_dependencies",
 		Status:        coop.SessionActive,
 		Steps: []coop.SessionStep{{
-			WorkbenchStepDefinition: coop.WorkbenchStepDefinition{Key: "setup", Title: coop.MessageDescriptor{DefaultMessage: "Setup"}},
+			BlueprintStepDefinition: coop.BlueprintStepDefinition{Key: "setup", Title: coop.MessageDescriptor{DefaultMessage: "Setup"}},
 			Nodes: []coop.SessionNode{
-				{WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{Key: "source", Title: coop.MessageDescriptor{DefaultMessage: "Source"}}, State: coop.NodePending},
+				{BlueprintNode: coop.BlueprintNode{Key: "source", Title: coop.MessageDescriptor{DefaultMessage: "Source"}}, State: coop.NodePending},
 				{
-					WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+					BlueprintNode: coop.BlueprintNode{
 						Key: "direct", Title: coop.MessageDescriptor{DefaultMessage: "Direct dependent"},
-						APIRequestDetails: &coop.WorkbenchAPIRequestDetails{Fixture: coop.WorkbenchRequestFixture{Path: "/v1/direct/${node.setup.source:id}", Method: "get"}},
+						APIRequestDetails: &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{Path: "/v1/direct/${node.setup.source:id}", Method: "get"}},
 					},
 					State: coop.NodePending,
 				},
 				{
-					WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{
+					BlueprintNode: coop.BlueprintNode{
 						Key: "transitive", Title: coop.MessageDescriptor{DefaultMessage: "Transitive dependent"},
-						APIRequestDetails: &coop.WorkbenchAPIRequestDetails{Fixture: coop.WorkbenchRequestFixture{Path: "/v1/transitive/${node.setup.direct:id}", Method: "get"}},
+						APIRequestDetails: &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{Path: "/v1/transitive/${node.setup.direct:id}", Method: "get"}},
 					},
 					State: coop.NodePending,
 				},
-				{WorkbenchBlueprintNode: coop.WorkbenchBlueprintNode{Key: "independent", Title: coop.MessageDescriptor{DefaultMessage: "Independent"}}, State: coop.NodePending},
+				{BlueprintNode: coop.BlueprintNode{Key: "independent", Title: coop.MessageDescriptor{DefaultMessage: "Independent"}}, State: coop.NodePending},
 			},
 		}},
 	}
@@ -252,8 +252,8 @@ func TestStartWorkAPIRequestGuidanceDefersPlacementToProjectContext(t *testing.T
 		current := &session.Steps[0].Nodes[0]
 		current.NodeType = coop.NodeAPIRequest
 		current.Description = coop.MessageDescriptor{DefaultMessage: "Create a product during integration setup."}
-		current.APIRequestDetails = &coop.WorkbenchAPIRequestDetails{
-			Fixture: coop.WorkbenchRequestFixture{Path: "/v1/products", Method: "post"},
+		current.APIRequestDetails = &coop.BlueprintAPIRequestDetails{
+			Fixture: coop.BlueprintRequestFixture{Path: "/v1/products", Method: "post"},
 		}
 		return nil
 	})

@@ -80,7 +80,7 @@ type ReportWorkInput struct {
 }
 
 func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop.CommandResponse, error) {
-	var resolvedDefinition coop.WorkbenchBlueprintNode
+	var resolvedDefinition coop.BlueprintNode
 	var requiredOutputs []coop.RequiredOutput
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
 		if err := requireActiveSession(session); err != nil {
@@ -112,7 +112,7 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 
 	node, _ := session.NodeByNumber(nodeNumber)
 	resolvedNode := *node
-	resolvedNode.WorkbenchBlueprintNode = resolvedDefinition
+	resolvedNode.BlueprintNode = resolvedDefinition
 	resp := coop.CommandResponse{
 		OK:              true,
 		SessionID:       session.ID,

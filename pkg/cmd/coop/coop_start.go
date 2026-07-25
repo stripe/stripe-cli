@@ -59,7 +59,7 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	inTmux := os.Getenv("TMUX") != ""
 
 	var blueprintID string
-	var blueprint *coop.WorkbenchBlueprint
+	var blueprint *coop.Blueprint
 	if len(args) > 0 {
 		blueprintID = args[0]
 		ctx := context.Background()
@@ -197,7 +197,7 @@ The session is already created. After the authentication check above, begin by r
 Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
 }
 
-func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.WorkbenchBlueprint) (*coop.Session, error) {
+func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.Blueprint) (*coop.Session, error) {
 	if blueprint == nil {
 		return nil, fmt.Errorf("cannot start a session without a blueprint")
 	}

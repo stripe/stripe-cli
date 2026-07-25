@@ -12,13 +12,13 @@ func TestNewSessionFromGuidedActionIsParentedSession(t *testing.T) {
 		Title: "Test follow-up",
 		Steps: []SessionStep{
 			{
-				WorkbenchStepDefinition: WorkbenchStepDefinition{
+				BlueprintStepDefinition: BlueprintStepDefinition{
 					Key:   "step",
 					Title: MessageDescriptor{DefaultMessage: "Step"},
 				},
 				Nodes: []SessionNode{
 					{
-						WorkbenchBlueprintNode: WorkbenchBlueprintNode{
+						BlueprintNode: BlueprintNode{
 							NodeType: NodeTestHelper,
 							Key:      "node",
 							Title:    MessageDescriptor{DefaultMessage: "Node"},

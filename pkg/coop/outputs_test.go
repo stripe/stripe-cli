@@ -101,11 +101,11 @@ func outputTestSession() *Session {
 		ID:     "outputs",
 		Status: SessionActive,
 		Steps: []SessionStep{{
-			WorkbenchStepDefinition: WorkbenchStepDefinition{Key: "setup", Title: MessageDescriptor{DefaultMessage: "Setup"}},
+			BlueprintStepDefinition: BlueprintStepDefinition{Key: "setup", Title: MessageDescriptor{DefaultMessage: "Setup"}},
 			Nodes: []SessionNode{
 				{
-					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "create-product", Title: MessageDescriptor{DefaultMessage: "Create product"}, NodeType: NodeAPIRequest},
-					State:                  NodeDone,
+					BlueprintNode: BlueprintNode{Key: "create-product", Title: MessageDescriptor{DefaultMessage: "Create product"}, NodeType: NodeAPIRequest},
+					State:         NodeDone,
 					Outputs: NodeOutputs{
 						DefaultOutputSource: {
 							"id":             raw("prod_123"),
@@ -115,25 +115,25 @@ func outputTestSession() *Session {
 					},
 				},
 				{
-					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "create-clock", Title: MessageDescriptor{DefaultMessage: "Create clock"}, NodeType: NodeTestHelper},
-					State:                  NodeDone,
+					BlueprintNode: BlueprintNode{Key: "create-clock", Title: MessageDescriptor{DefaultMessage: "Create clock"}, NodeType: NodeTestHelper},
+					State:         NodeDone,
 					Outputs: NodeOutputs{
 						"create-clock-request": {"id": raw("clock_123")},
 					},
 				},
 				{
-					WorkbenchBlueprintNode: WorkbenchBlueprintNode{Key: "wait-for-invoice", Title: MessageDescriptor{DefaultMessage: "Wait for invoice"}, NodeType: NodeAsyncHandler},
-					State:                  NodeDone,
+					BlueprintNode: BlueprintNode{Key: "wait-for-invoice", Title: MessageDescriptor{DefaultMessage: "Wait for invoice"}, NodeType: NodeAsyncHandler},
+					State:         NodeDone,
 					Outputs: NodeOutputs{
 						"0": {"id": raw("in_123")},
 					},
 				},
 				{
-					WorkbenchBlueprintNode: WorkbenchBlueprintNode{
+					BlueprintNode: BlueprintNode{
 						Key:      "use-results",
 						Title:    MessageDescriptor{DefaultMessage: "Use results"},
 						NodeType: NodeAPIRequest,
-						APIRequestDetails: &WorkbenchAPIRequestDetails{Fixture: WorkbenchRequestFixture{
+						APIRequestDetails: &BlueprintAPIRequestDetails{Fixture: BlueprintRequestFixture{
 							Path:   "/v1/products/${node.create-product:id}/versions/${node.setup.create-product:latest_version}",
 							Method: "post",
 							Params: map[string]any{

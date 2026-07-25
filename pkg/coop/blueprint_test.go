@@ -13,16 +13,16 @@ import (
 )
 
 type memoryBlueprintRepository struct {
-	blueprints   map[string]*WorkbenchBlueprint
+	blueprints   map[string]*Blueprint
 	retrieveErr  error
 	retrievedKey string
 }
 
-func (r *memoryBlueprintRepository) List(context.Context) ([]WorkbenchBlueprintSummary, error) {
+func (r *memoryBlueprintRepository) List(context.Context) ([]BlueprintSummary, error) {
 	return nil, nil
 }
 
-func (r *memoryBlueprintRepository) Retrieve(_ context.Context, key string) (*WorkbenchBlueprint, error) {
+func (r *memoryBlueprintRepository) Retrieve(_ context.Context, key string) (*Blueprint, error) {
 	r.retrievedKey = key
 	if r.retrieveErr != nil {
 		return nil, r.retrieveErr
@@ -34,17 +34,17 @@ func (r *memoryBlueprintRepository) Retrieve(_ context.Context, key string) (*Wo
 	return blueprint, nil
 }
 
-func loadTestBlueprint(t *testing.T) *WorkbenchBlueprint {
+func loadTestBlueprint(t *testing.T) *Blueprint {
 	t.Helper()
 	raw, err := os.ReadFile("testdata/blueprint-retrieve.json")
 	require.NoError(t, err)
-	var blueprint WorkbenchBlueprint
+	var blueprint Blueprint
 	require.NoError(t, json.Unmarshal(raw, &blueprint))
 	blueprint.raw = raw
 	return &blueprint
 }
 
-func TestResolveBlueprintKeepsWorkbenchShape(t *testing.T) {
+func TestResolveBlueprintKeepsBlueprintShape(t *testing.T) {
 	blueprint, settings, params, err := resolveBlueprint(loadTestBlueprint(t), map[string]string{"country": "GB"}, nil)
 	require.NoError(t, err)
 
@@ -132,7 +132,7 @@ func TestResolveBlueprintMergesEveryMatchingVariantWithoutMutatingSource(t *test
 func TestResolveBlueprintAppliesSingleStaticConfiguredDetail(t *testing.T) {
 	source := loadTestBlueprint(t)
 	request := &source.Steps[0].Nodes[0].APIRequestDetails.Fixture
-	request.ConfiguredDetails = []WorkbenchConfiguredDetails{{
+	request.ConfiguredDetails = []BlueprintConfiguredDetails{{
 		ConfigValue: map[string]string{"us": "US"},
 		Params:      map[string]any{"country": "US"},
 	}}
@@ -193,9 +193,9 @@ func TestResolveBlueprintAppliesKnownInclusionConditions(t *testing.T) {
 }
 
 func TestDeriveReviewMetadataUsesSingleEventType(t *testing.T) {
-	node := WorkbenchBlueprintNode{
+	node := BlueprintNode{
 		NodeType: NodeAsyncHandler,
-		AsyncHandlerDetails: &WorkbenchAsyncHandlerDetails{
+		AsyncHandlerDetails: &BlueprintAsyncHandlerDetails{
 			Events: []AsyncEvent{{EventType: "checkout.session.completed"}},
 		},
 	}
@@ -206,7 +206,7 @@ func TestDeriveReviewMetadataUsesSingleEventType(t *testing.T) {
 	assert.Empty(t, deriveReviewCommand(node))
 	node.AsyncHandlerDetails.Events = []AsyncEvent{{EventType: "event; echo unsafe"}}
 	assert.Empty(t, deriveReviewCommand(node))
-	assert.Empty(t, deriveReviewCommand(WorkbenchBlueprintNode{NodeType: NodeAPIRequest}))
+	assert.Empty(t, deriveReviewCommand(BlueprintNode{NodeType: NodeAPIRequest}))
 }
 
 func TestBlueprintDigestPinsRetrievedSnapshot(t *testing.T) {
@@ -222,7 +222,7 @@ func TestBlueprintDigestPinsRetrievedSnapshot(t *testing.T) {
 func TestLoadBlueprintRetrievesExactKey(t *testing.T) {
 	source := loadTestBlueprint(t)
 	repository := &memoryBlueprintRepository{
-		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": source},
+		blueprints: map[string]*Blueprint{"sample-payment": source},
 	}
 
 	loaded, err := LoadBlueprint(context.Background(), repository, "sample-payment")
@@ -233,7 +233,7 @@ func TestLoadBlueprintRetrievesExactKey(t *testing.T) {
 
 func TestLoadBlueprintDoesNotResolvePrefixes(t *testing.T) {
 	repository := &memoryBlueprintRepository{
-		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": loadTestBlueprint(t)},
+		blueprints: map[string]*Blueprint{"sample-payment": loadTestBlueprint(t)},
 	}
 
 	_, err := LoadBlueprint(context.Background(), repository, "sample-pay")
@@ -251,14 +251,14 @@ func TestLoadBlueprintWrapsRepositoryErrors(t *testing.T) {
 
 func TestLoadBlueprintRejectsEmptyResponse(t *testing.T) {
 	repository := &memoryBlueprintRepository{
-		blueprints: map[string]*WorkbenchBlueprint{"sample-payment": nil},
+		blueprints: map[string]*Blueprint{"sample-payment": nil},
 	}
 	_, err := LoadBlueprint(context.Background(), repository, "sample-payment")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "empty response")
 }
 
-func TestNewSessionPinsEffectiveWorkbenchDefinition(t *testing.T) {
+func TestNewSessionPinsEffectiveBlueprintDefinition(t *testing.T) {
 	source := loadTestBlueprint(t)
 	session, err := NewSessionFromBlueprint(source, "coop_pin", map[string]string{"language": "go"}, nil)
 	require.NoError(t, err)
