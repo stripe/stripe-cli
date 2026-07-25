@@ -101,7 +101,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if goal := m.reviewGoalLabel(target.stepIndex); goal != "" {
 		lines = append(lines, cardLine{})
 		lines = append(lines, cardLine{
-			text: m.theme.MutedStyle.Render("Goal ") + goal,
+			text: m.theme.MutedStyle.Render("Goal ") + m.theme.MutedStyle.Render(goal),
 		})
 	}
 
@@ -145,7 +145,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	passed := m.reviewPassedCheckCount(target.nodeNumbers)
 	if len(failed) > 0 || passed > 0 {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: evidenceLabel(m.theme, "Checks")})
+		lines = append(lines, cardLine{text: checksLabel(m.theme, len(failed) > 0)})
 	}
 	for _, label := range failed {
 		lines = append(lines, cardLine{
@@ -371,8 +371,18 @@ func actionLabel(t Theme, text string) string {
 	return t.AttentionStyle.Render(text)
 }
 
+// evidenceLabel colors the Checks heading by its own outcome, so the heading
+// carries information rather than just naming the section: red when something
+// failed, green when everything passed.
 func evidenceLabel(t Theme, text string) string {
 	return t.ReviewStyle.Bold(true).Render(text)
+}
+
+func checksLabel(t Theme, failed bool) string {
+	if failed {
+		return t.ErrorStyle.Bold(true).Render("Checks")
+	}
+	return t.SuccessStyle.Bold(true).Render("Checks")
 }
 
 func feedbackLabel(t Theme, text string) string {

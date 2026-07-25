@@ -171,6 +171,9 @@ func (m Model) renderDetailTabs(sections []string, section string, width int) st
 		parts = append(parts, m.theme.DimmedStyle.Render(name))
 	}
 	strip := strings.Join(parts, separator)
+	if width > 0 {
+		strip += "\n" + m.theme.StepRuleStyle.Render(strings.Repeat("─", width))
+	}
 
 	// Too narrow for the full strip — say where you are and that tab moves.
 	if width > 0 && lipgloss.Width(ansi.Strip(strip)) > width {
@@ -261,11 +264,11 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	}
 
 	if goal := strings.TrimSpace(ch.DescriptionText()); goal != "" {
-		writeWrapped(md, m.theme.MutedStyle.Render("Goal ")+goal, wrapWidth)
+		writeWrapped(md, m.theme.MutedStyle.Render("Goal ")+m.theme.MutedStyle.Render(goal), wrapWidth)
 		md.WriteString("\n")
 	}
 
-	md.WriteString(evidenceLabel(m.theme, "Tasks") + "\n")
+	md.WriteString(m.theme.ReviewStyle.Bold(true).Render("Tasks") + "\n")
 	for _, node := range ch.Nodes {
 		label, style := m.nodeStatusLabel(node)
 		line := m.nodeIcon(node) + " " + node.Title
@@ -293,7 +296,7 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 
 	failed, passed := stepCheckResults(ch)
 	if len(failed) > 0 || passed > 0 {
-		md.WriteString(evidenceLabel(m.theme, "Checks") + "\n")
+		md.WriteString(checksLabel(m.theme, len(failed) > 0) + "\n")
 		for _, check := range failed {
 			writeWrapped(md, m.theme.ErrorStyle.Render("✗ ")+check, wrapWidth)
 		}

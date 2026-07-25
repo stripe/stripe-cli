@@ -1133,3 +1133,13 @@ func TestDetailTabStripDegradesWhenNarrow(t *testing.T) {
 	assertContainsPlain(t, header, "3/3")
 	assertContainsPlain(t, header, "tab")
 }
+
+// The Checks heading reports its own outcome, so a step with a failure reads as
+// one before you get to the list underneath.
+func TestChecksHeadingColorsByOutcome(t *testing.T) {
+	theme := NewTheme(true)
+
+	assert.NotEqual(t, checksLabel(theme, true), checksLabel(theme, false))
+	assert.Equal(t, "Checks", ansi.Strip(checksLabel(theme, true)))
+	assert.Equal(t, "Checks", ansi.Strip(checksLabel(theme, false)))
+}
