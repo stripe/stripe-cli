@@ -41,8 +41,7 @@ func TestUILayoutStressSessions(t *testing.T) {
 					assertFooterIsPinned(t, rendered, "enter")
 				}
 				if scenario.expectReviewCard {
-					assert.Contains(t, rendered, "Review")
-					assert.Contains(t, rendered, "Do this")
+					assertReviewAffordanceVisible(t, m, rendered)
 					assert.LessOrEqual(t, lipgloss.Height(m.renderFooter()), m.footerHeightBudget())
 				}
 			})

@@ -79,8 +79,15 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if !ok {
 		return ""
 	}
-	if maxHeight > 0 && maxHeight < 3 {
-		return ""
+	// Too short for the bordered card, which costs two rows of frame. Fall back
+	// to a borderless line so the reviewer still learns there is something
+	// waiting, rather than the card vanishing outright. Never do this while the
+	// user is typing feedback — the input has to stay on screen.
+	if maxHeight > 0 && maxHeight < 3 && !m.rejecting {
+		if maxHeight < 1 {
+			return ""
+		}
+		return m.theme.DimmedStyle.Render("  Do this: enter for details")
 	}
 	w, _ := m.reviewCardWidths()
 
@@ -156,15 +163,19 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	if len(lines) > metadataStart {
 		lines = append(lines[:metadataStart], append([]cardLine{{}}, lines[metadataStart:]...)...)
 	}
+	// The feedback editor is pinned: it is appended last, so plain tail
+	// truncation would cut the very thing the user is typing into. Wrap it
+	// separately and always keep it, trimming the body above it instead.
+	var pinned []cardLine
 	if m.rejecting {
 		m.rejectionInput.SetWidth(m.requestChangesInputWidth())
 		inputView := m.rejectionInput.View()
 		if m.rejectionInput.Value() == "" {
 			inputView = m.theme.DimmedStyle.Render(m.rejectionInput.Placeholder)
 		}
-		lines = append(lines, cardLine{text: m.theme.ErrorStyle.Render("Request changes: ") + inputView})
+		pinned = append(pinned, cardLine{text: m.theme.ErrorStyle.Render("Request changes: ") + inputView})
 		if m.rejectionError != "" {
-			lines = append(lines, cardLine{text: m.theme.ErrorStyle.Render(m.rejectionError)})
+			pinned = append(pinned, cardLine{text: m.theme.ErrorStyle.Render(m.rejectionError)})
 		}
 	}
 
@@ -172,20 +183,28 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	for _, line := range lines {
 		wrapped = append(wrapped, line.wrap(w-4)...)
 	}
+	var wrappedPinned []string
+	for _, line := range pinned {
+		wrappedPinned = append(wrappedPinned, line.wrap(w-4)...)
+	}
+
 	if maxHeight > 0 {
-		maxContentLines := maxHeight - 2
+		maxContentLines := maxHeight - 2 - len(wrappedPinned)
 		if len(wrapped) > maxContentLines {
-			if maxContentLines <= 1 {
-				wrapped = []string{m.theme.DimmedStyle.Render("Review: enter for details")}
-			} else {
+			switch {
+			case maxContentLines < 1:
+				wrapped = nil
+			case maxContentLines == 1:
+				wrapped = []string{m.theme.DimmedStyle.Render("Review step")}
+			default:
 				// Keep naming the action even when the card collapses, so a
 				// narrow terminal still says there is something to do.
-				more := m.theme.DimmedStyle.Render("Do this: enter/e for details")
+				more := m.theme.DimmedStyle.Render("Do this: enter for details")
 				wrapped = append(wrapped[:maxContentLines-1], more)
 			}
 		}
 	}
-	return m.renderReviewCardLines(w, maxHeight, wrapped)
+	return m.renderReviewCardLines(w, maxHeight, append(wrapped, wrappedPinned...))
 }
 
 // cardLine is one logical line of the review card. indent is applied to
@@ -237,7 +256,7 @@ func (m Model) requestChangesInputWidth() int {
 }
 
 func (m Model) renderReviewCardLines(width, maxHeight int, lines []string) string {
-	more := m.theme.DimmedStyle.Render("Review: enter for details")
+	more := m.theme.DimmedStyle.Render("Do this: enter for details")
 	style := m.theme.ReviewCardStyle.Width(width).MaxWidth(width + 4)
 	for {
 		rendered := style.Render(strings.Join(lines, "\n"))
@@ -275,6 +294,7 @@ func (m Model) requestChangesPlaceholder(target reviewTarget) string {
 }
 
 func (m Model) reviewChangedLabel(nodeNumbers []int) string {
+	_, innerW := m.reviewCardWidths()
 	var labels []string
 	seen := map[string]bool{}
 	for _, nodeNumber := range nodeNumbers {
@@ -282,7 +302,7 @@ func (m Model) reviewChangedLabel(nodeNumbers []int) string {
 		if err != nil || node.Implementation == nil || node.Implementation.File == "" {
 			continue
 		}
-		label := implementationFileLabel(node.Implementation)
+		label := truncatePath(implementationFileLabel(node.Implementation), innerW)
 		if !seen[label] {
 			seen[label] = true
 			labels = append(labels, label)

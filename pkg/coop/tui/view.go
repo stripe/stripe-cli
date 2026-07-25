@@ -11,7 +11,11 @@ import (
 )
 
 const (
-	minViewportHeight   = 1
+	// The outline is how the user knows where they are in the blueprint. The
+	// footer can collapse to a one-line hint and the review card already
+	// degrades gracefully, so when space runs out those give way first and the
+	// outline keeps at least a few rows.
+	minViewportHeight   = 3
 	terminalScrollGuard = 1
 	rowCursorWidth      = 2
 	rowRightGap         = 2

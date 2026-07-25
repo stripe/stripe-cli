@@ -989,3 +989,27 @@ func TestRenderHeaderTruncatesLongBlueprintName(t *testing.T) {
 		assert.LessOrEqual(t, lipgloss.Width(line), 40, "header line should fit: %q", ansi.Strip(line))
 	}
 }
+
+// Paths contain no spaces, so wordWrap cannot break them — they used to run
+// past the card border. Truncation keeps the filename and line range, which is
+// the part that identifies the change.
+func TestTruncatePathKeepsFilenameAndLines(t *testing.T) {
+	path := "apps/web/src/app/(external-pages)/subscription-checkout-button.tsx:1-57"
+
+	got := truncatePath(path, 48)
+
+	assert.LessOrEqual(t, lipgloss.Width(got), 48)
+	assert.Contains(t, got, "subscription-checkout-button.tsx:1-57")
+	assert.Contains(t, got, "…/")
+}
+
+func TestTruncatePathLeavesShortPathsAlone(t *testing.T) {
+	assert.Equal(t, "server.js:5-20", truncatePath("server.js:5-20", 40))
+}
+
+// When even the filename will not fit there is nothing to preserve but the tail.
+func TestTruncatePathFallsBackToFilename(t *testing.T) {
+	got := truncatePath("a/very/deep/path/extremely-long-component-name.tsx:1-99", 20)
+
+	assert.LessOrEqual(t, lipgloss.Width(got), 20)
+}

@@ -462,8 +462,8 @@ func (m *Model) resizeViewport() {
 		footerH = lipgloss.Height(m.renderCompletionFooter()) + 1
 	}
 	vpHeight := m.height - headerH - footerH - terminalScrollGuard
-	if vpHeight < minViewportHeight {
-		vpHeight = minViewportHeight
+	if floor := m.minViewportRows(); vpHeight < floor {
+		vpHeight = floor
 	}
 	m.viewport.SetWidth(m.width)
 	m.viewport.SetHeight(vpHeight)

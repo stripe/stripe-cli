@@ -79,8 +79,8 @@ func (m Model) renderPinnedViewport(header, footer string) string {
 		headerH := lipgloss.Height(header) + 1
 		footerH := lipgloss.Height(footer)
 		available := m.height - headerH - footerH - footerGap
-		if available < minViewportHeight {
-			available = minViewportHeight
+		if floor := m.minViewportRows(); available < floor {
+			available = floor
 		}
 		if viewHeight <= 0 || viewHeight > available {
 			viewHeight = available
@@ -97,12 +97,22 @@ func (m Model) renderPinnedViewport(header, footer string) string {
 	return rendered
 }
 
+// minViewportRows is the floor the outline keeps so the user does not lose
+// their place in the blueprint. While they are typing feedback they are not
+// navigating, so the editor outranks the floor and it drops back to one row.
+func (m Model) minViewportRows() int {
+	if m.rejecting {
+		return 1
+	}
+	return minViewportHeight
+}
+
 func (m Model) footerHeightBudget() int {
 	if m.height <= 0 {
 		return 0
 	}
 	headerHeight := lipgloss.Height(m.renderHeader())
-	budget := m.height - headerHeight - minViewportHeight - 2 - terminalScrollGuard
+	budget := m.height - headerHeight - m.minViewportRows() - 2 - terminalScrollGuard
 	if budget < 1 {
 		return 1
 	}

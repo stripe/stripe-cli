@@ -56,6 +56,27 @@ func (m Model) pinFooter(content, footer string) string {
 	return content + "\n" + footer
 }
 
+// truncatePath shortens a file path to fit, keeping the filename and line range
+// — the parts that identify the change — and eliding directories in the middle.
+// wordWrap cannot help here: paths contain no spaces, so they overflow rather
+// than wrap.
+func truncatePath(path string, width int) string {
+	if width <= 0 || lipgloss.Width(path) <= width {
+		return path
+	}
+	idx := strings.LastIndex(path, "/")
+	if idx < 0 {
+		return ansi.Truncate(path, width, "…")
+	}
+	tail := path[idx+1:]
+	// Keep the head only if the elision leaves room for a recognizable prefix.
+	if lipgloss.Width(tail)+2 >= width {
+		return ansi.Truncate(tail, width, "…")
+	}
+	head := ansi.Truncate(path[:idx], width-lipgloss.Width(tail)-2, "")
+	return head + "…/" + tail
+}
+
 func clampLines(s string, width int) string {
 	lines := strings.Split(s, "\n")
 	for i, line := range lines {

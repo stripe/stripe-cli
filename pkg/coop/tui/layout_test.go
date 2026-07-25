@@ -107,7 +107,7 @@ func TestUILayoutMatrix(t *testing.T) {
 					assert.Contains(t, rendered, strings.TrimSpace(cursorMarker), "selected row should remain visible")
 				}
 				if scenario.expectReviewCard {
-					assert.Contains(t, rendered, "Review", "review card should remain visible")
+					assertReviewAffordanceVisible(t, m, rendered)
 					assert.LessOrEqual(t, lipgloss.Height(m.renderFooter()), m.footerHeightBudget(), "review footer should stay within its budget")
 				}
 				if scenario.expectCompletion {
@@ -233,6 +233,19 @@ func assertLayoutFits(t *testing.T, rendered string, size layoutSize) {
 	t.Helper()
 	assert.LessOrEqual(t, lipgloss.Height(rendered), size.height, "layout should not exceed terminal height")
 	assertLinesWithinWidth(t, rendered, size.width)
+}
+
+// assertReviewAffordanceVisible checks the reviewer can still act. What that
+// means depends on state: while typing feedback the editor is the thing that
+// must survive truncation, otherwise it is the instruction — which may have
+// collapsed to a one-line hint on a short terminal.
+func assertReviewAffordanceVisible(t *testing.T, m Model, rendered string) {
+	t.Helper()
+	if m.rejecting {
+		assert.Contains(t, ansi.Strip(rendered), "Request changes", "feedback editor should stay visible")
+		return
+	}
+	assert.Contains(t, ansi.Strip(rendered), "Do this", "review instruction should stay visible, in full or collapsed")
 }
 
 func assertHeaderIsPinned(t *testing.T, rendered string) {
