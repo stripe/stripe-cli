@@ -26,6 +26,20 @@ func newTestTokenBillingInitCmd(t *testing.T, serverURL string) *tokenBillingIni
 	return ic
 }
 
+func TestTokenBillingInitDefaults(t *testing.T) {
+	ic := newTokenBillingInitCmd()
+
+	body := ic.buildRequestBody()
+
+	assert.Equal(t, "AI starter", body["plan_name"])
+	assert.Equal(t, []interface{}{"openai/gpt-4o-mini"}, body["models"])
+	assert.Equal(t, "20.0", body["default_markup_percent"])
+	assert.Equal(t, "disabled", body["price_tracking_preference"])
+	assert.Equal(t, "0", body["subscription_fee_amount"])
+	assert.Equal(t, "1000", body["credit_grant_per_period_amount"])
+	assert.Equal(t, "month", body["interval"])
+}
+
 func TestTokenBillingInitBuildRequestBody(t *testing.T) {
 	ic := newTokenBillingInitCmd()
 	ic.planName = "Custom AI plan"
@@ -45,6 +59,68 @@ func TestTokenBillingInitBuildRequestBody(t *testing.T) {
 	assert.Equal(t, "1000", body["subscription_fee_amount"])
 	assert.Equal(t, "500", body["credit_grant_per_period_amount"])
 	assert.Equal(t, "month", body["interval"])
+}
+
+func TestTokenBillingInitPromptAcceptsDefaults(t *testing.T) {
+	ic := newTokenBillingInitCmd()
+	ic.cmd.SetIn(strings.NewReader("\n\n\n\n\n\n\n\n"))
+
+	var output strings.Builder
+	ic.cmd.SetOut(&output)
+
+	err := ic.promptForInitConfig(ic.cmd)
+	require.NoError(t, err)
+
+	body := ic.buildRequestBody()
+	assert.Equal(t, "AI starter", body["plan_name"])
+	assert.Equal(t, []interface{}{"openai/gpt-4o-mini"}, body["models"])
+	assert.Equal(t, "20.0", body["default_markup_percent"])
+	assert.Equal(t, "disabled", body["price_tracking_preference"])
+	assert.Equal(t, "0", body["subscription_fee_amount"])
+	assert.Equal(t, "1000", body["credit_grant_per_period_amount"])
+	assert.Equal(t, "month", body["interval"])
+	assert.Contains(t, output.String(), "Token Billing setup")
+	assert.Contains(t, output.String(), "Proceed with creating Token Billing resources?")
+}
+
+func TestTokenBillingInitPromptCollectsValues(t *testing.T) {
+	ic := newTokenBillingInitCmd()
+	ic.cmd.SetIn(strings.NewReader(strings.Join([]string{
+		"Production AI plan",
+		"openai/gpt-4o-mini, anthropic/claude-3-5-sonnet",
+		"15.5",
+		"new_customers_only",
+		"2000",
+		"500",
+		"year",
+		"y",
+		"",
+	}, "\n")))
+
+	var output strings.Builder
+	ic.cmd.SetOut(&output)
+
+	err := ic.promptForInitConfig(ic.cmd)
+	require.NoError(t, err)
+
+	body := ic.buildRequestBody()
+	assert.Equal(t, "Production AI plan", body["plan_name"])
+	assert.Equal(t, []interface{}{"openai/gpt-4o-mini", "anthropic/claude-3-5-sonnet"}, body["models"])
+	assert.Equal(t, "15.5", body["default_markup_percent"])
+	assert.Equal(t, "new_customers_only", body["price_tracking_preference"])
+	assert.Equal(t, "2000", body["subscription_fee_amount"])
+	assert.Equal(t, "500", body["credit_grant_per_period_amount"])
+	assert.Equal(t, "year", body["interval"])
+	assert.Contains(t, output.String(), "Production AI plan")
+}
+
+func TestTokenBillingInitPromptCanCancel(t *testing.T) {
+	ic := newTokenBillingInitCmd()
+	ic.cmd.SetIn(strings.NewReader("\n\n\n\n\n\n\nn\n"))
+
+	err := ic.promptForInitConfig(ic.cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "canceled")
 }
 
 func TestTokenBillingInitCmd_HTTPRequest(t *testing.T) {

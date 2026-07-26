@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -72,7 +76,7 @@ func newTokenBillingInitCmd() *tokenBillingInitCmd {
 		defaultMarkupPercent:       "20.0",
 		priceTrackingPreference:    "disabled",
 		subscriptionFeeAmount:      "0",
-		creditGrantPerPeriodAmount: "0",
+		creditGrantPerPeriodAmount: "1000",
 		interval:                   "month",
 	}
 
@@ -97,7 +101,7 @@ the gateway endpoint, suggested environment variables, and next steps.`,
     --model openai/gpt-4o-mini \
     --default-markup-percent 20.0 \
     --subscription-fee-amount 0 \
-    --credit-grant-per-period-amount 0 \
+    --credit-grant-per-period-amount 1000 \
     --interval month`,
 		RunE: ic.runTokenBillingInitCmd,
 		Args: validators.NoArgs,
@@ -122,6 +126,12 @@ the gateway endpoint, suggested environment variables, and next steps.`,
 func (ic *tokenBillingInitCmd) runTokenBillingInitCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateAPIBaseURL(ic.rb.APIBaseURL); err != nil {
 		return err
+	}
+
+	if ic.shouldPromptForInit(cmd) {
+		if err := ic.promptForInitConfig(cmd); err != nil {
+			return err
+		}
 	}
 
 	if len(ic.models) == 0 {
@@ -159,6 +169,148 @@ func (ic *tokenBillingInitCmd) runTokenBillingInitCmd(cmd *cobra.Command, args [
 
 	ic.printStatus(cmd, status)
 	return nil
+}
+
+func (ic *tokenBillingInitCmd) shouldPromptForInit(cmd *cobra.Command) bool {
+	if !cmdInputIsTerminal(cmd) {
+		return false
+	}
+
+	for _, flagName := range []string{
+		"plan-name",
+		"model",
+		"default-markup-percent",
+		"price-tracking-preference",
+		"subscription-fee-amount",
+		"credit-grant-per-period-amount",
+		"interval",
+	} {
+		flag := cmd.Flags().Lookup(flagName)
+		if flag != nil && flag.Changed {
+			return false
+		}
+	}
+
+	return true
+}
+
+func cmdInputIsTerminal(cmd *cobra.Command) bool {
+	f, ok := cmd.InOrStdin().(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}
+
+func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
+	out := cmd.OutOrStdout()
+	reader := bufio.NewReader(cmd.InOrStdin())
+
+	fmt.Fprintln(out, "Token Billing setup")
+	fmt.Fprintln(out, "Press Enter to accept the suggested default for each prompt.")
+	fmt.Fprintln(out)
+
+	var err error
+	ic.planName, err = promptString(out, reader, "Plan name", ic.planName)
+	if err != nil {
+		return err
+	}
+
+	models, err := promptString(out, reader, "Models (comma-separated publisher/model values)", strings.Join(ic.models, ", "))
+	if err != nil {
+		return err
+	}
+	ic.models = splitCommaSeparatedValues(models)
+
+	ic.defaultMarkupPercent, err = promptString(out, reader, "Default markup percent", ic.defaultMarkupPercent)
+	if err != nil {
+		return err
+	}
+
+	ic.priceTrackingPreference, err = promptString(out, reader, "Price tracking preference", ic.priceTrackingPreference)
+	if err != nil {
+		return err
+	}
+
+	ic.subscriptionFeeAmount, err = promptString(out, reader, "Subscription fee amount in USD minor units", ic.subscriptionFeeAmount)
+	if err != nil {
+		return err
+	}
+
+	ic.creditGrantPerPeriodAmount, err = promptString(out, reader, "Credit grant amount per billing period in USD minor units", ic.creditGrantPerPeriodAmount)
+	if err != nil {
+		return err
+	}
+
+	ic.interval, err = promptString(out, reader, "Billing interval", ic.interval)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Token Billing will initialize with:")
+	fmt.Fprintf(out, "  Plan name: %s\n", ic.planName)
+	fmt.Fprintf(out, "  Models: %s\n", strings.Join(ic.models, ", "))
+	fmt.Fprintf(out, "  Default markup percent: %s\n", ic.defaultMarkupPercent)
+	fmt.Fprintf(out, "  Price tracking preference: %s\n", ic.priceTrackingPreference)
+	fmt.Fprintf(out, "  Subscription fee amount: %s\n", ic.subscriptionFeeAmount)
+	fmt.Fprintf(out, "  Credit grant amount per period: %s\n", ic.creditGrantPerPeriodAmount)
+	fmt.Fprintf(out, "  Billing interval: %s\n", ic.interval)
+	fmt.Fprintln(out)
+
+	confirmed, err := promptConfirm(out, reader, "Proceed with creating Token Billing resources?", true)
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		return fmt.Errorf("Token Billing initialization canceled")
+	}
+
+	fmt.Fprintln(out)
+	return nil
+}
+
+func promptString(out io.Writer, reader *bufio.Reader, label string, defaultValue string) (string, error) {
+	fmt.Fprintf(out, "%s [%s]: ", label, defaultValue)
+	input, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+
+	value := strings.TrimSpace(input)
+	if value == "" {
+		return defaultValue, nil
+	}
+	return value, nil
+}
+
+func promptConfirm(out io.Writer, reader *bufio.Reader, label string, defaultYes bool) (bool, error) {
+	suffix := "[y/N]"
+	if defaultYes {
+		suffix = "[Y/n]"
+	}
+
+	fmt.Fprintf(out, "%s %s ", label, suffix)
+	input, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	value := strings.ToLower(strings.TrimSpace(input))
+	if value == "" {
+		return defaultYes, nil
+	}
+
+	return value == "y" || value == "yes", nil
+}
+
+func splitCommaSeparatedValues(value string) []string {
+	parts := strings.Split(value, ",")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			values = append(values, trimmed)
+		}
+	}
+	return values
 }
 
 func (ic *tokenBillingInitCmd) buildRequestBody() map[string]interface{} {
