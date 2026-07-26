@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"image/color"
+
 	"charm.land/bubbles/v2/help"
 	"charm.land/lipgloss/v2"
 
@@ -41,6 +43,10 @@ type Theme struct {
 	ActionHeadingStyle  lipgloss.Style
 	TaskHeadingStyle    lipgloss.Style
 	EvidenceStyle       lipgloss.Style
+	SoftSuccessStyle    lipgloss.Style
+	SoftErrorStyle      lipgloss.Style
+	SoftAttentionStyle  lipgloss.Style
+	PromptStyle         lipgloss.Style
 	KeyStyle            lipgloss.Style
 	KeyDescriptionStyle lipgloss.Style
 	FooterStyle         lipgloss.Style
@@ -85,15 +91,38 @@ func NewTheme(isDark bool) Theme {
 		Background(t.Selection).
 		Bold(true).
 		Padding(0, 1)
+	// Accents at full strength read as neon against a dark panel, which is both
+	// distracting and off-brand. Blending each toward the muted text color keeps
+	// the hue identifiable while dropping its saturation, so the box reads as
+	// tinted rather than lit up.
+	soften := func(c color.Color) color.Color {
+		return lipgloss.Blend1D(5, t.Gray400, c)[2]
+	}
+	// A failure keeps more of its hue: muting it to the same degree as the rest
+	// made it read as decoration rather than as something that went wrong.
+	softenLess := func(c color.Color) color.Color {
+		return lipgloss.Blend1D(5, t.Gray400, c)[3]
+	}
+
 	// The instruction is the one thing the reader must act on, so it is the
 	// brightest text rather than a fourth hue competing with the others.
 	t.ActionHeadingStyle = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
 	// Blue for structure: purple already marks the cursor and review state, and
 	// orange is reserved for "you are blocking progress".
-	t.TaskHeadingStyle = lipgloss.NewStyle().Foreground(t.Blue400).Bold(true)
+	t.TaskHeadingStyle = lipgloss.NewStyle().Foreground(soften(t.Blue400)).Bold(true)
 	// Agent notes were Gray500 and italic — the dimmest value in the palette,
 	// with a face that reduces legibility further. One step brighter, upright.
 	t.EvidenceStyle = lipgloss.NewStyle().Foreground(t.Gray400)
+	t.SoftSuccessStyle = lipgloss.NewStyle().Foreground(soften(t.Green400)).Bold(true)
+	t.SoftErrorStyle = lipgloss.NewStyle().Foreground(softenLess(t.Error)).Bold(true)
+	t.SoftAttentionStyle = lipgloss.NewStyle().Foreground(soften(t.Orange400)).Bold(true)
+	// "Waiting for you" is a prompt, not a fault. Orange reads as a warning, so
+	// the line is plain emphasis and only its keys carry color.
+	t.PromptStyle = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
+	// "Waiting for you" is a prompt, not a fault. Orange reads as a warning, so
+	// the line is plain emphasis and only the keys carry color.
+	t.PromptStyle = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
+
 	// Matches the footer's help component, so a key looks like a key anywhere.
 	t.KeyStyle = lipgloss.NewStyle().Foreground(t.Purple400).Bold(true)
 	t.KeyDescriptionStyle = lipgloss.NewStyle().Foreground(t.Gray300)

@@ -121,9 +121,24 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	content := strings.TrimSpace(md.String())
 	suffix := ""
 	if _, ok := m.selectedReviewTarget(); ok {
-		suffix = "\n" + m.theme.AttentionStyle.Render("Waiting for you") +
-			m.theme.MutedStyle.Render("   ") + m.keyHint("c", "confirm step") +
-			m.theme.MutedStyle.Render(" · ") + m.keyHint("r", "request changes")
+		if m.rejecting {
+			// The editor lives here, not in the footer: in the split workspace
+			// the footer card is suppressed, so this is the only place the user
+			// can see what they are typing.
+			m.rejectionInput.SetWidth(max(innerW-lipgloss.Width("Request changes: "), 8))
+			inputView := m.rejectionInput.View()
+			if m.rejectionInput.Value() == "" {
+				inputView = m.theme.DimmedStyle.Render(m.rejectionInput.Placeholder)
+			}
+			suffix = "\n" + m.theme.SoftErrorStyle.Render("Request changes: ") + inputView
+			if m.rejectionError != "" {
+				suffix += "\n" + m.theme.SoftErrorStyle.Render(m.rejectionError)
+			}
+		} else {
+			suffix = "\n" + m.theme.PromptStyle.Render("Waiting for you") +
+				m.theme.MutedStyle.Render("   ") + m.keyHint("c", "confirm step") +
+				m.theme.MutedStyle.Render(" · ") + m.keyHint("r", "request changes")
+		}
 	}
 	if content == "" && suffix == "" {
 		return ""
@@ -271,13 +286,30 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	}
 
 	md.WriteString(m.theme.TaskHeadingStyle.Render("Tasks") + "\n")
-	for _, node := range ch.Nodes {
+	// Budget the list in lines, not tasks. A task costs up to four rows once its
+	// file and the agent's note are included, so even a handful of them pushed
+	// the instruction below out of the pane. Past a few tasks the list drops to
+	// one line each: at that point it is an inventory, not evidence to read.
+	const maxTaskRows = 8
+	const detailedTasksMax = 3
+	nodes := ch.Nodes
+	hidden := 0
+	if len(nodes) > maxTaskRows {
+		hidden = len(nodes) - maxTaskRows
+		nodes = nodes[:maxTaskRows]
+	}
+	detailed := len(nodes) <= detailedTasksMax
+	for _, node := range nodes {
 		label, style := m.nodeStatusLabel(node)
 		line := m.nodeIcon(node) + " " + node.Title
 		if label != "" {
 			line += "  " + style(label)
 		}
-		writeWrapped(md, line, wrapWidth)
+		// One row per task: a wrapped title reads as two entries.
+		md.WriteString(ansi.Truncate(line, wrapWidth, "…") + "\n")
+		if !detailed {
+			continue
+		}
 		if node.Implementation != nil && node.Implementation.File != "" {
 			writeWrapped(md, m.theme.FileAnnotationStyle.Render(
 				truncatePath(implementationFileLabel(node.Implementation), wrapWidth)), wrapWidth)
@@ -285,6 +317,9 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		if note := taskEvidence(node); note != "" {
 			writeWrapped(md, m.theme.EvidenceStyle.Render(note), wrapWidth)
 		}
+	}
+	if hidden > 0 {
+		writeWrapped(md, m.theme.MutedStyle.Render(fmt.Sprintf("+%d more", hidden)), wrapWidth)
 	}
 	md.WriteString("\n")
 
@@ -300,10 +335,10 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	if len(failed) > 0 || passed > 0 {
 		md.WriteString(checksLabel(m.theme, len(failed) > 0) + "\n")
 		for _, check := range failed {
-			writeWrapped(md, m.theme.ErrorStyle.Render("✗ ")+check, wrapWidth)
+			writeWrapped(md, m.theme.SoftErrorStyle.Render("✗ ")+check, wrapWidth)
 		}
 		if passed > 0 {
-			md.WriteString(m.theme.SuccessStyle.Render("✓ ") +
+			md.WriteString(m.theme.SoftSuccessStyle.Render("✓ ") +
 				m.theme.MutedStyle.Render(pluralChecks(passed)+" passed") + "\n")
 		}
 		md.WriteString("\n")

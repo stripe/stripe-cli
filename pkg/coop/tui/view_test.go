@@ -1144,3 +1144,33 @@ func TestChecksHeadingColorsByOutcome(t *testing.T) {
 	assert.Equal(t, "Agent checks", ansi.Strip(checksLabel(theme, true)))
 	assert.Equal(t, "Agent checks", ansi.Strip(checksLabel(theme, false)))
 }
+
+// The split workspace shows the step in its pane, so a second copy in the
+// footer put the same content on screen twice in two different shapes.
+func TestSplitWorkspaceDoesNotAlsoRenderFooterCard(t *testing.T) {
+	m := stepReviewLayoutModel()
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	assert.Equal(t, 1, strings.Count(ansi.Strip(rendered), "To confirm"),
+		"the step should be described in exactly one place")
+}
+
+// Suppressing the footer card in split mode removed the only home the feedback
+// editor had, so it moved into the pane.
+func TestSplitWorkspaceKeepsFeedbackEditorVisible(t *testing.T) {
+	m := stepReviewLayoutModel()
+	m.startReject()
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	assertContainsPlain(t, rendered, "Request changes")
+}
+
+// A step with many tasks pushed the instruction out of the pane.
+func TestDetailTaskListIsCapped(t *testing.T) {
+	m := stressCrowdedStepReviewModel()
+	m.expanded = true
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	assertContainsPlain(t, rendered, "more")
+	assertContainsPlain(t, rendered, "To confirm")
+}

@@ -32,7 +32,7 @@ func (m Model) renderFooter() string {
 	if m.session != nil {
 		if count := m.actionableReviewCount(); count > 0 {
 			lines = append(lines, "")
-			lines = append(lines, m.theme.AttentionStyle.Render("  Waiting for you: review step"))
+			lines = append(lines, m.theme.SoftAttentionStyle.Render("  Waiting for you: review step"))
 		}
 	}
 
@@ -41,7 +41,7 @@ func (m Model) renderFooter() string {
 	h.ShortSeparator = " · "
 	actionLine := m.theme.FooterStyle.MaxWidth(m.width).Render("  " + h.View(m))
 
-	if _, ok := m.selectedReviewTarget(); ok && !m.expanded {
+	if _, ok := m.selectedReviewTarget(); ok && !m.expanded && !m.useSplitWorkspace() {
 		budget := m.footerHeightBudget()
 		cardGapH := 1
 		actionH := lipgloss.Height(actionLine)
@@ -149,12 +149,12 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 	for _, label := range failed {
 		lines = append(lines, cardLine{
-			text: m.theme.ErrorStyle.Render("✗ ") + label,
+			text: m.theme.SoftErrorStyle.Render("✗ ") + label,
 		})
 	}
 	if passed > 0 {
 		lines = append(lines, cardLine{
-			text: m.theme.SuccessStyle.Render("✓ ") + m.theme.MutedStyle.Render(fmt.Sprintf("%s passed", pluralChecks(passed))),
+			text: m.theme.SoftSuccessStyle.Render("✓ ") + m.theme.MutedStyle.Render(fmt.Sprintf("%s passed", pluralChecks(passed))),
 		})
 	}
 
@@ -383,9 +383,9 @@ func evidenceLabel(t Theme, text string) string {
 // task — and colors the heading by its own outcome.
 func checksLabel(t Theme, failed bool) string {
 	if failed {
-		return t.ErrorStyle.Bold(true).Render("Agent checks")
+		return t.SoftErrorStyle.Render("Agent checks")
 	}
-	return t.SuccessStyle.Bold(true).Render("Agent checks")
+	return t.SoftSuccessStyle.Render("Agent checks")
 }
 
 func feedbackLabel(t Theme, text string) string {
@@ -511,7 +511,13 @@ func summarizeCheck(s string, budget int) string {
 	if budget <= 0 || lipgloss.Width(summary) <= budget {
 		return summary
 	}
-	return "…" + ansi.TruncateLeft(summary, lipgloss.Width(summary)-budget, "")
+	tail := ansi.TruncateLeft(summary, lipgloss.Width(summary)-budget, "")
+	// Start at a word boundary. Cutting mid-word produced "…e existing Stripe",
+	// which reads as a rendering fault rather than as a trimmed quotation.
+	if idx := strings.IndexByte(tail, ' '); idx >= 0 && idx < len(tail)/3 {
+		tail = tail[idx+1:]
+	}
+	return "… " + tail
 }
 
 // isProgressLine reports whether a line is only CLI progress output. A line that

@@ -64,9 +64,6 @@ func (m Model) renderSplitWorkspace() string {
 }
 
 func (m Model) renderSplitDetail(width int) string {
-	if !m.expanded {
-		return m.theme.MutedStyle.Render("Press enter to inspect this step.")
-	}
 	// Trim blank lines, not whitespace: renderDetail indents every line, and
 	// TrimSpace would strip that indent from the first line only — leaving the
 	// box's top border two columns left of its own sides.
@@ -148,7 +145,7 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	case m.stepJustConfirmed(stepIndex):
 		line += "  " + m.theme.SuccessStyle.Render("✓ confirmed")
 	case m.stepReviewCount(stepIndex) > 0:
-		line += "  " + m.theme.AttentionStyle.Render("needs you")
+		line += "  " + m.theme.SoftAttentionStyle.Render("needs you")
 	}
 	if m.stepCollapsed(stepIndex) {
 		if summary := m.collapsedStepSummary(stepIndex); summary != "" {
@@ -342,7 +339,10 @@ func (m Model) nodeIcon(node coop.SessionNode) string {
 		// everything after it out of alignment. Bound it to a single cell.
 		return lipgloss.NewStyle().Width(1).MaxWidth(1).Render(m.spinner.View())
 	case coop.NodeReview:
-		return m.theme.AttentionStyle.Render("◆")
+		// Muted, not attention-colored: the task is finished and waiting on the
+		// step, and an orange marker on every row made routine progress look
+		// like a problem.
+		return m.theme.MutedStyle.Render("◆")
 	case coop.NodeSkipped:
 		return m.theme.DimmedStyle.Render("–")
 	default:
