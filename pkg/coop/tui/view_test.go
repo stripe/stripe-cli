@@ -507,7 +507,7 @@ func TestRenderFooterReviewNotice(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you")
-	assertContainsPlain(t, footer, "review step")
+	assertContainsPlain(t, footer, "Waiting for you: Set up product")
 }
 
 func TestRenderCompletionView(t *testing.T) {
@@ -1173,4 +1173,45 @@ func TestDetailTaskListIsCapped(t *testing.T) {
 
 	assertContainsPlain(t, rendered, "more")
 	assertContainsPlain(t, rendered, "To confirm")
+}
+
+// The footer note is the one pinned guarantee that a review is pending, so it
+// names the step and offers a way to reach it.
+func TestFooterNamesTheWaitingStepAndOffersAJump(t *testing.T) {
+	m := testModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.width, m.height = 100, 30
+	m.ready = true
+	m.selectStep(0)
+
+	footer := m.renderFooter()
+
+	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
+	assertContainsPlain(t, footer, "go to it")
+}
+
+// Standing on the step already, the jump hint is noise.
+func TestFooterDropsJumpHintWhenAlreadyThere(t *testing.T) {
+	m := testModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.width, m.height = 100, 30
+	m.ready = true
+	m.selectStep(1)
+
+	footer := m.renderFooter()
+
+	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
+	assertNotContainsPlain(t, footer, "go to it")
+}
+
+func TestFollowJumpsToTheWaitingStep(t *testing.T) {
+	m := readyModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.selectStep(0)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
+	updated := result.(Model)
+
+	assert.Equal(t, navigationStep, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.stepIndex)
 }

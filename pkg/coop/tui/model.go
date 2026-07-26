@@ -758,8 +758,14 @@ func (m Model) handleActionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Follow):
+		// Jump straight to whatever is waiting on the user, rather than only
+		// resuming auto-follow: the footer advertises this as "go to it".
 		m.userMoved = false
-		m.autoScroll()
+		if stepIndex, ok := m.firstActionableReviewStep(); ok {
+			m.selectStep(stepIndex)
+		} else {
+			m.autoScroll()
+		}
 		m.setStatus("Following the current review step", 3*time.Second)
 		m.resizeViewport()
 		m.syncViewport()

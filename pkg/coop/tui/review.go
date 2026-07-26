@@ -29,11 +29,11 @@ func (m Model) renderFooter() string {
 		lines = append(lines, m.theme.AttentionStyle.Render("  "+m.statusMessage))
 	}
 
-	if m.session != nil {
-		if count := m.actionableReviewCount(); count > 0 {
-			lines = append(lines, "")
-			lines = append(lines, m.theme.SoftAttentionStyle.Render("  Waiting for you: review step"))
-		}
+	// Name the step and offer a way to it. The note is pinned outside the
+	// scrolling area, so it is the one guarantee that a pending review is
+	// visible no matter where the user has scrolled to.
+	if stepIndex, ok := m.firstActionableReviewStep(); ok {
+		lines = append(lines, "", m.reviewWaitingNote(stepIndex))
 	}
 
 	h := m.help
@@ -68,6 +68,36 @@ func (m Model) renderFooter() string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// reviewWaitingNote names the step waiting on the user and, when the cursor is
+// elsewhere, offers a way to reach it. Step titles are blueprint-authored and
+// can be long, so the note is budgeted: the jump hint goes first, then the
+// title is truncated, rather than letting the line run past the terminal.
+func (m Model) reviewWaitingNote(stepIndex int) string {
+	const prefix = "  Waiting for you: "
+	title := m.session.Steps[stepIndex].Title
+
+	hint := ""
+	if selected, isStep := m.selectedStepIndex(); !isStep || selected != stepIndex {
+		hint = m.theme.MutedStyle.Render("   ") + m.keyHint("f", "go to it")
+	}
+
+	budget := m.width
+	if budget <= 0 {
+		budget = lipgloss.Width(prefix) + lipgloss.Width(title)
+	}
+	available := budget - lipgloss.Width(prefix) - lipgloss.Width(ansi.Strip(hint))
+	if available < 12 {
+		// No room for both; the step's name matters more than the shortcut.
+		hint = ""
+		available = budget - lipgloss.Width(prefix)
+	}
+	if available > 0 && lipgloss.Width(title) > available {
+		title = ansi.Truncate(title, available, "…")
+	}
+
+	return m.theme.SoftAttentionStyle.Render(prefix) + m.theme.PromptStyle.Render(title) + hint
 }
 
 func (m Model) renderReviewCard() string {
@@ -628,6 +658,24 @@ func reviewCommandForNode(node *coop.SessionNode) string {
 		return "stripe trigger " + node.Events[0]
 	}
 	return ""
+}
+
+// firstActionableReviewStep returns the step waiting on the user, so the footer
+// can name it and jump to it rather than just reporting that one exists.
+func (m Model) firstActionableReviewStep() (int, bool) {
+	if m.session == nil {
+		return 0, false
+	}
+	step := 0
+	for i := range m.session.Steps {
+		for j := range m.session.Steps[i].Nodes {
+			step++
+			if m.session.Steps[i].Nodes[j].State == coop.NodeReview && m.reviewIsActionable(step) {
+				return i, true
+			}
+		}
+	}
+	return 0, false
 }
 
 func (m Model) actionableReviewCount() int {
