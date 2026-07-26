@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -26,13 +27,26 @@ func newTestTokenBillingInitCmd(t *testing.T, serverURL string) *tokenBillingIni
 	return ic
 }
 
+func defaultTokenBillingModelsAsInterfaces() []interface{} {
+	models := make([]interface{}, 0, len(defaultTokenBillingModels))
+	for _, model := range defaultTokenBillingModels {
+		models = append(models, model)
+	}
+	return models
+}
+
+func updateTokenBillingModelPicker(m tokenBillingModelPicker, code rune) tokenBillingModelPicker {
+	next, _ := m.Update(tea.KeyPressMsg{Code: code})
+	return next.(tokenBillingModelPicker)
+}
+
 func TestTokenBillingInitDefaults(t *testing.T) {
 	ic := newTokenBillingInitCmd()
 
 	body := ic.buildRequestBody()
 
 	assert.Equal(t, "AI starter", body["plan_name"])
-	assert.Equal(t, []interface{}{"openai/gpt-4o-mini"}, body["models"])
+	assert.Equal(t, defaultTokenBillingModelsAsInterfaces(), body["models"])
 	assert.Equal(t, "20.0", body["default_markup_percent"])
 	assert.Equal(t, "disabled", body["price_tracking_preference"])
 	assert.Equal(t, "0", body["subscription_fee_amount"])
@@ -61,6 +75,34 @@ func TestTokenBillingInitBuildRequestBody(t *testing.T) {
 	assert.Equal(t, "month", body["interval"])
 }
 
+func TestTokenBillingModelPickerDefaultsToSelectedModels(t *testing.T) {
+	m := newTokenBillingModelPicker(defaultTokenBillingModels)
+
+	require.Len(t, m.rows, len(defaultTokenBillingModels))
+	require.Equal(t, defaultTokenBillingModels, m.selectedModels())
+}
+
+func TestTokenBillingModelPickerTogglesWithEnterAndFinishesWithD(t *testing.T) {
+	m := newTokenBillingModelPicker(defaultTokenBillingModels)
+
+	m = updateTokenBillingModelPicker(m, tea.KeyEnter)
+	require.False(t, m.rows[0].selected)
+	require.Equal(t, defaultTokenBillingModels[1:], m.selectedModels())
+
+	next, cmd := m.Update(tea.KeyPressMsg{Code: 'd'})
+	m = next.(tokenBillingModelPicker)
+	require.True(t, m.done)
+	require.False(t, m.quit)
+	require.NotNil(t, cmd)
+}
+
+func TestTokenBillingModelPickerIncludesFlagModels(t *testing.T) {
+	m := newTokenBillingModelPicker([]string{"custom/provider-model"})
+
+	require.Equal(t, "custom/provider-model", m.rows[len(m.rows)-1].name)
+	require.Equal(t, []string{"custom/provider-model"}, m.selectedModels())
+}
+
 func TestTokenBillingInitPromptAcceptsDefaults(t *testing.T) {
 	ic := newTokenBillingInitCmd()
 	ic.cmd.SetIn(strings.NewReader("\n\n\n\n\n\n\n\n"))
@@ -73,7 +115,7 @@ func TestTokenBillingInitPromptAcceptsDefaults(t *testing.T) {
 
 	body := ic.buildRequestBody()
 	assert.Equal(t, "AI starter", body["plan_name"])
-	assert.Equal(t, []interface{}{"openai/gpt-4o-mini"}, body["models"])
+	assert.Equal(t, defaultTokenBillingModelsAsInterfaces(), body["models"])
 	assert.Equal(t, "20.0", body["default_markup_percent"])
 	assert.Equal(t, "disabled", body["price_tracking_preference"])
 	assert.Equal(t, "0", body["subscription_fee_amount"])
@@ -87,7 +129,6 @@ func TestTokenBillingInitPromptCollectsValues(t *testing.T) {
 	ic := newTokenBillingInitCmd()
 	ic.cmd.SetIn(strings.NewReader(strings.Join([]string{
 		"Production AI plan",
-		"openai/gpt-4o-mini, anthropic/claude-3-5-sonnet",
 		"15.5",
 		"new_customers_only",
 		"2000",
@@ -105,7 +146,7 @@ func TestTokenBillingInitPromptCollectsValues(t *testing.T) {
 
 	body := ic.buildRequestBody()
 	assert.Equal(t, "Production AI plan", body["plan_name"])
-	assert.Equal(t, []interface{}{"openai/gpt-4o-mini", "anthropic/claude-3-5-sonnet"}, body["models"])
+	assert.Equal(t, defaultTokenBillingModelsAsInterfaces(), body["models"])
 	assert.Equal(t, "15.5", body["default_markup_percent"])
 	assert.Equal(t, "new_customers_only", body["price_tracking_preference"])
 	assert.Equal(t, "2000", body["subscription_fee_amount"])
@@ -116,7 +157,7 @@ func TestTokenBillingInitPromptCollectsValues(t *testing.T) {
 
 func TestTokenBillingInitPromptCanCancel(t *testing.T) {
 	ic := newTokenBillingInitCmd()
-	ic.cmd.SetIn(strings.NewReader("\n\n\n\n\n\n\nn\n"))
+	ic.cmd.SetIn(strings.NewReader("\n\n\n\n\n\nn\n"))
 
 	err := ic.promptForInitConfig(ic.cmd)
 	require.Error(t, err)

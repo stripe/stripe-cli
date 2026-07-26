@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
@@ -20,6 +22,17 @@ import (
 )
 
 const tokenBillingOnboardingInitPath = "/v1/token_billing/onboarding/init"
+
+var defaultTokenBillingModels = []string{
+	"openai/gpt-4.1-mini",
+	"openai/gpt-4.1",
+	"openai/o4-mini",
+	"anthropic/claude-3-5-sonnet",
+	"anthropic/claude-3-5-haiku",
+	"google/gemini-1.5-pro",
+	"google/gemini-1.5-flash",
+	"meta/llama-3.1-70b-instruct",
+}
 
 type tokenBillingCmd struct {
 	cmd *cobra.Command
@@ -73,7 +86,7 @@ resources for testing token-based pricing flows.`,
 func newTokenBillingInitCmd() *tokenBillingInitCmd {
 	ic := &tokenBillingInitCmd{
 		planName:                   "AI starter",
-		models:                     []string{"openai/gpt-4o-mini"},
+		models:                     append([]string(nil), defaultTokenBillingModels...),
 		defaultMarkupPercent:       "20.0",
 		priceTrackingPreference:    "disabled",
 		subscriptionFeeAmount:      "0",
@@ -99,7 +112,8 @@ the gateway endpoint, suggested environment variables, and next steps.`,
 
   stripe token-billing init \
     --plan-name "AI starter" \
-    --model openai/gpt-4o-mini \
+    --model openai/gpt-4.1-mini \
+    --model anthropic/claude-3-5-sonnet \
     --default-markup-percent 20.0 \
     --subscription-fee-amount 0 \
     --credit-grant-per-period-amount 1000 \
@@ -210,7 +224,7 @@ func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
 
 	fmt.Fprintln(out, color.Bold("Token Billing setup"))
 	fmt.Fprintln(out, faint(out, "Create pricing, meter, and AI Gateway testmode resources for this account."))
-	fmt.Fprintln(out, faint(out, "Press Enter to accept the suggested default for each prompt."))
+	fmt.Fprintln(out, faint(out, "Press Enter to accept text defaults. Use the model picker to choose models."))
 	fmt.Fprintln(out)
 
 	var err error
@@ -219,11 +233,13 @@ func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
 		return err
 	}
 
-	models, err := promptString(out, reader, "Models (comma-separated publisher/model values)", strings.Join(ic.models, ", "))
-	if err != nil {
-		return err
+	if cmdInputIsTerminal(cmd) {
+		models, err := runTokenBillingModelPicker(cmd, ic.models)
+		if err != nil {
+			return err
+		}
+		ic.models = models
 	}
-	ic.models = splitCommaSeparatedValues(models)
 
 	ic.defaultMarkupPercent, err = promptString(out, reader, "Default markup percent", ic.defaultMarkupPercent)
 	if err != nil {
@@ -309,16 +325,142 @@ func promptConfirm(out io.Writer, reader *bufio.Reader, label string, defaultYes
 	return value == "y" || value == "yes", nil
 }
 
-func splitCommaSeparatedValues(value string) []string {
-	parts := strings.Split(value, ",")
-	values := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			values = append(values, trimmed)
+type tokenBillingModelRow struct {
+	name     string
+	selected bool
+}
+
+type tokenBillingModelPicker struct {
+	rows   []tokenBillingModelRow
+	cursor int
+	done   bool
+	quit   bool
+}
+
+func newTokenBillingModelPicker(selectedModels []string) tokenBillingModelPicker {
+	selected := make(map[string]bool, len(selectedModels))
+	for _, model := range selectedModels {
+		selected[model] = true
+	}
+
+	rows := make([]tokenBillingModelRow, 0, len(defaultTokenBillingModels)+len(selectedModels))
+	seen := make(map[string]bool, len(defaultTokenBillingModels)+len(selectedModels))
+	for _, model := range defaultTokenBillingModels {
+		rows = append(rows, tokenBillingModelRow{name: model, selected: selected[model]})
+		seen[model] = true
+	}
+	for _, model := range selectedModels {
+		if !seen[model] {
+			rows = append(rows, tokenBillingModelRow{name: model, selected: true})
 		}
 	}
-	return values
+
+	return tokenBillingModelPicker{rows: rows}
+}
+
+func (m tokenBillingModelPicker) Init() tea.Cmd { return nil }
+
+func (m tokenBillingModelPicker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	key, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch {
+	case key.Code == tea.KeyUp || key.Code == 'k':
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case key.Code == tea.KeyDown || key.Code == 'j':
+		if m.cursor < len(m.rows)-1 {
+			m.cursor++
+		}
+	case key.Code == tea.KeyEnter || key.Code == tea.KeySpace:
+		if len(m.rows) > 0 {
+			m.rows[m.cursor].selected = !m.rows[m.cursor].selected
+		}
+	case key.Code == 'a':
+		m.toggleAllModels()
+	case key.Code == 'd' || key.Code == tea.KeyTab:
+		m.done = true
+		return m, tea.Quit
+	case key.Code == 'q' || key.Code == tea.KeyEscape || (key.Code == 'c' && key.Mod == tea.ModCtrl):
+		m.quit = true
+		return m, tea.Quit
+	}
+
+	return m, nil
+}
+
+func (m *tokenBillingModelPicker) toggleAllModels() {
+	anyUnselected := false
+	for _, row := range m.rows {
+		if !row.selected {
+			anyUnselected = true
+			break
+		}
+	}
+	for i := range m.rows {
+		m.rows[i].selected = anyUnselected
+	}
+}
+
+func (m tokenBillingModelPicker) selectedModels() []string {
+	models := make([]string, 0, len(m.rows))
+	for _, row := range m.rows {
+		if row.selected {
+			models = append(models, row.name)
+		}
+	}
+	return models
+}
+
+var (
+	tokenBillingPickerSelectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	tokenBillingPickerMutedStyle    = lipgloss.NewStyle().Faint(true)
+	tokenBillingPickerCursorStyle   = lipgloss.NewStyle().Bold(true)
+	tokenBillingPickerBoxStyle      = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(1, 2)
+)
+
+func (m tokenBillingModelPicker) View() tea.View {
+	body := "Select models to include in your Token Billing pricing plan:\n\n"
+	for i, row := range m.rows {
+		pointer := "  "
+		if i == m.cursor {
+			pointer = "▶ "
+		}
+
+		box := tokenBillingPickerMutedStyle.Render("·")
+		if row.selected {
+			box = tokenBillingPickerSelectedStyle.Render("✔")
+		}
+
+		line := fmt.Sprintf("%s[%s] %s", pointer, box, row.name)
+		if i == m.cursor {
+			line = tokenBillingPickerCursorStyle.Render(line)
+		}
+		body += line + "\n"
+	}
+
+	body += "\n↑/↓ move · enter toggle · a all · d done · q cancel"
+	return tea.NewView(tokenBillingPickerBoxStyle.Render(body))
+}
+
+func runTokenBillingModelPicker(cmd *cobra.Command, selectedModels []string) ([]string, error) {
+	final, err := tea.NewProgram(
+		newTokenBillingModelPicker(selectedModels),
+		tea.WithInput(cmd.InOrStdin()),
+		tea.WithOutput(cmd.OutOrStdout()),
+	).Run()
+	if err != nil {
+		return nil, fmt.Errorf("model selection: %w", err)
+	}
+
+	result, ok := final.(tokenBillingModelPicker)
+	if !ok || result.quit || !result.done {
+		return nil, fmt.Errorf("Token Billing initialization canceled")
+	}
+	return result.selectedModels(), nil
 }
 
 func printSummaryLine(out io.Writer, label string, value string) {
