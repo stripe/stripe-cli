@@ -40,6 +40,11 @@ func updateTokenBillingModelPicker(m tokenBillingModelPicker, code rune) tokenBi
 	return next.(tokenBillingModelPicker)
 }
 
+func updateTokenBillingPriceTrackingPicker(m tokenBillingPriceTrackingPicker, code rune) tokenBillingPriceTrackingPicker {
+	next, _ := m.Update(tea.KeyPressMsg{Code: code})
+	return next.(tokenBillingPriceTrackingPicker)
+}
+
 func TestTokenBillingInitDefaults(t *testing.T) {
 	ic := newTokenBillingInitCmd()
 
@@ -103,6 +108,25 @@ func TestTokenBillingModelPickerIncludesFlagModels(t *testing.T) {
 	require.Equal(t, []string{"custom/provider-model"}, m.selectedModels())
 }
 
+func TestTokenBillingPriceTrackingPickerDefaultsToSelectedPreference(t *testing.T) {
+	m := newTokenBillingPriceTrackingPicker("migrate_all")
+
+	require.Equal(t, "migrate_all", m.selectedPreference())
+}
+
+func TestTokenBillingPriceTrackingPickerSelectsSingleOption(t *testing.T) {
+	m := newTokenBillingPriceTrackingPicker("disabled")
+
+	m = updateTokenBillingPriceTrackingPicker(m, tea.KeyDown)
+	require.Equal(t, "migrate_all", m.selectedPreference())
+
+	next, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = next.(tokenBillingPriceTrackingPicker)
+	require.True(t, m.done)
+	require.False(t, m.quit)
+	require.NotNil(t, cmd)
+}
+
 func TestTokenBillingInitPromptAcceptsDefaults(t *testing.T) {
 	ic := newTokenBillingInitCmd()
 	ic.cmd.SetIn(strings.NewReader("\n\n\n\n\n\n\n\n"))
@@ -130,7 +154,6 @@ func TestTokenBillingInitPromptCollectsValues(t *testing.T) {
 	ic.cmd.SetIn(strings.NewReader(strings.Join([]string{
 		"Production AI plan",
 		"15.5",
-		"new_customers_only",
 		"2000",
 		"500",
 		"year",
@@ -148,7 +171,7 @@ func TestTokenBillingInitPromptCollectsValues(t *testing.T) {
 	assert.Equal(t, "Production AI plan", body["plan_name"])
 	assert.Equal(t, defaultTokenBillingModelsAsInterfaces(), body["models"])
 	assert.Equal(t, "15.5", body["default_markup_percent"])
-	assert.Equal(t, "new_customers_only", body["price_tracking_preference"])
+	assert.Equal(t, "disabled", body["price_tracking_preference"])
 	assert.Equal(t, "2000", body["subscription_fee_amount"])
 	assert.Equal(t, "500", body["credit_grant_per_period_amount"])
 	assert.Equal(t, "year", body["interval"])

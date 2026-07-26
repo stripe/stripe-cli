@@ -34,6 +34,12 @@ var defaultTokenBillingModels = []string{
 	"meta/llama-3.1-70b-instruct",
 }
 
+var tokenBillingPriceTrackingPreferences = []string{
+	"disabled",
+	"migrate_all",
+	"new_customers_only",
+}
+
 type tokenBillingCmd struct {
 	cmd *cobra.Command
 }
@@ -246,9 +252,12 @@ func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
 		return err
 	}
 
-	ic.priceTrackingPreference, err = promptString(out, reader, "Price tracking preference", ic.priceTrackingPreference)
-	if err != nil {
-		return err
+	if cmdInputIsTerminal(cmd) {
+		priceTrackingPreference, err := runTokenBillingPriceTrackingPicker(cmd, ic.priceTrackingPreference)
+		if err != nil {
+			return err
+		}
+		ic.priceTrackingPreference = priceTrackingPreference
 	}
 
 	ic.subscriptionFeeAmount, err = promptString(out, reader, "Subscription fee amount in USD minor units", ic.subscriptionFeeAmount)
@@ -461,6 +470,109 @@ func runTokenBillingModelPicker(cmd *cobra.Command, selectedModels []string) ([]
 		return nil, fmt.Errorf("Token Billing initialization canceled")
 	}
 	return result.selectedModels(), nil
+}
+
+type tokenBillingPriceTrackingPicker struct {
+	options []string
+	cursor  int
+	done    bool
+	quit    bool
+}
+
+func newTokenBillingPriceTrackingPicker(selected string) tokenBillingPriceTrackingPicker {
+	options := append([]string(nil), tokenBillingPriceTrackingPreferences...)
+	cursor := 0
+	for i, option := range options {
+		if option == selected {
+			cursor = i
+			break
+		}
+	}
+	return tokenBillingPriceTrackingPicker{options: options, cursor: cursor}
+}
+
+func (m tokenBillingPriceTrackingPicker) Init() tea.Cmd { return nil }
+
+func (m tokenBillingPriceTrackingPicker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	key, ok := msg.(tea.KeyPressMsg)
+	if !ok {
+		return m, nil
+	}
+
+	switch {
+	case key.Code == tea.KeyUp || key.Code == 'k':
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case key.Code == tea.KeyDown || key.Code == 'j':
+		if m.cursor < len(m.options)-1 {
+			m.cursor++
+		}
+	case key.Code == tea.KeyEnter || key.Code == tea.KeySpace:
+		m.done = true
+		return m, tea.Quit
+	case key.Code == 'q' || key.Code == tea.KeyEscape || (key.Code == 'c' && key.Mod == tea.ModCtrl):
+		m.quit = true
+		return m, tea.Quit
+	}
+
+	return m, nil
+}
+
+func (m tokenBillingPriceTrackingPicker) selectedPreference() string {
+	if len(m.options) == 0 {
+		return ""
+	}
+	return m.options[m.cursor]
+}
+
+func (m tokenBillingPriceTrackingPicker) View() tea.View {
+	body := "Choose a price tracking preference:\n\n"
+	for i, option := range m.options {
+		marker := "( )"
+		if i == m.cursor {
+			marker = tokenBillingPickerSelectedStyle.Render("(•)")
+		}
+
+		line := fmt.Sprintf("  %s %s  %s", marker, option, priceTrackingPreferenceDescription(option))
+		if i == m.cursor {
+			line = tokenBillingPickerCursorStyle.Render(line)
+		}
+		body += line + "\n"
+	}
+
+	body += "\n↑/↓ move · enter select · q cancel"
+	return tea.NewView(tokenBillingPickerBoxStyle.Render(body))
+}
+
+func priceTrackingPreferenceDescription(option string) string {
+	switch option {
+	case "disabled":
+		return tokenBillingPickerMutedStyle.Render("do not automatically update prices")
+	case "migrate_all":
+		return tokenBillingPickerMutedStyle.Render("update prices for all customers")
+	case "new_customers_only":
+		return tokenBillingPickerMutedStyle.Render("update prices for new customers only")
+	default:
+		return ""
+	}
+}
+
+func runTokenBillingPriceTrackingPicker(cmd *cobra.Command, selected string) (string, error) {
+	final, err := tea.NewProgram(
+		newTokenBillingPriceTrackingPicker(selected),
+		tea.WithInput(cmd.InOrStdin()),
+		tea.WithOutput(cmd.OutOrStdout()),
+	).Run()
+	if err != nil {
+		return "", fmt.Errorf("price tracking selection: %w", err)
+	}
+
+	result, ok := final.(tokenBillingPriceTrackingPicker)
+	if !ok || result.quit || !result.done {
+		return "", fmt.Errorf("Token Billing initialization canceled")
+	}
+	return result.selectedPreference(), nil
 }
 
 func printSummaryLine(out io.Writer, label string, value string) {
