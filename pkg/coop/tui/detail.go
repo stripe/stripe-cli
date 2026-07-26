@@ -136,8 +136,8 @@ func (m Model) renderStepDetail(stepIndex int) string {
 			}
 		} else {
 			suffix = "\n" + m.theme.PromptStyle.Render("Waiting for you") +
-				m.theme.MutedStyle.Render("   ") + m.keyHint("c", "confirm step") +
-				m.theme.MutedStyle.Render(" · ") + m.keyHint("r", "request changes")
+				m.theme.MutedStyle.Render("   ") + m.keyHint(m.keys.Confirm.Help().Key, "confirm step") +
+				m.theme.MutedStyle.Render(" · ") + m.keyHint(m.keys.Reject.Help().Key, "request changes")
 		}
 	}
 	if content == "" && suffix == "" {
@@ -326,7 +326,7 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	if prompts := stepReviewPrompts(ch); len(prompts) > 0 {
 		md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
 		for _, prompt := range prompts {
-			writeWrapped(md, prompt, wrapWidth)
+			writeWrapped(md, m.theme.InstructionStyle.Render(prompt), wrapWidth)
 		}
 		md.WriteString("\n")
 	}

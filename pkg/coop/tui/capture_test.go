@@ -111,6 +111,8 @@ func captureScenarios() []captureScenario {
 		{"waiting", waitingLayoutModel},
 		{"active_step", activeStepLayoutModel},
 		{"review_step_long_prompt", reviewStepLongPromptLayoutModel},
+		{"failed_check", failedCheckLayoutModel},
+		{"step_goal", goalLayoutModel},
 		{"step_review_many_changes", stepReviewLayoutModel},
 		{"request_changes_input", requestChangesLayoutModel},
 		{"manual_navigation", manualNavigationLayoutModel},

@@ -428,12 +428,12 @@ func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
 		typ   coop.NodeType
 		venue string
 	}{
-		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Where the changed files below"},
-		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Where the changed files below"},
-		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Where your running app"},
-		{name: "dashboard", typ: coop.NodeDashboard, venue: "Where the Stripe Dashboard"},
-		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Where your terminal"},
-		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Where your webhook handler, after triggering the event"},
+		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Check the changed files below"},
+		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Check the changed files below"},
+		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Check your running app"},
+		{name: "dashboard", typ: coop.NodeDashboard, venue: "Check the Stripe Dashboard"},
+		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Check your terminal"},
+		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Check your webhook handler, after triggering the event"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := testModel()
@@ -731,7 +731,7 @@ func TestRenderFooterShowsFollowWhenUserMoved(t *testing.T) {
 
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, footer, "f follow")
+	assertContainsPlain(t, footer, "f review")
 }
 
 func TestRenderFooterRejectionInput(t *testing.T) {
@@ -872,7 +872,7 @@ func TestViewportShowsMoreBelowIndicator(t *testing.T) {
 
 	rendered := m.renderViewportRegionWithHeight(4)
 
-	assertContainsPlain(t, rendered, "more below")
+	assertContainsPlain(t, rendered, "scroll for more")
 	assertLinesWithinWidth(t, rendered, m.width)
 }
 
@@ -894,7 +894,7 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 
 	assert.Contains(t, rendered, "╰")
 	assert.Contains(t, rendered, "╯")
-	assertContainsPlain(t, rendered, "more below")
+	assertContainsPlain(t, rendered, "scroll for more")
 	assertLinesWithinWidth(t, rendered, m.width)
 }
 
@@ -1187,7 +1187,7 @@ func TestFooterNamesTheWaitingStepAndOffersAJump(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
-	assertContainsPlain(t, footer, "go to review")
+	assertContainsPlain(t, footer, "review")
 }
 
 // Standing on the step already, the jump hint is noise.
@@ -1201,7 +1201,7 @@ func TestFooterDropsJumpHintWhenAlreadyThere(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
-	assertNotContainsPlain(t, footer, "go to review")
+	assertNotContainsPlain(t, footer, "review")
 }
 
 func TestFollowJumpsToTheWaitingStep(t *testing.T) {

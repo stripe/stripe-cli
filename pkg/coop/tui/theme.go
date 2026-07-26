@@ -47,6 +47,7 @@ type Theme struct {
 	SoftErrorStyle      lipgloss.Style
 	SoftAttentionStyle  lipgloss.Style
 	PromptStyle         lipgloss.Style
+	InstructionStyle    lipgloss.Style
 	KeyStyle            lipgloss.Style
 	KeyDescriptionStyle lipgloss.Style
 	FooterStyle         lipgloss.Style
@@ -64,7 +65,7 @@ func NewTheme(isDark bool) Theme {
 	// Bold as well as colored: this is the only style that means "you are
 	// blocking progress", and it has to stay legible when color is stripped.
 	t.AttentionStyle = lipgloss.NewStyle().Foreground(t.Orange400).Bold(true)
-	t.ReviewStyle = lipgloss.NewStyle().Foreground(t.Purple400)
+	t.ReviewStyle = lipgloss.NewStyle().Foreground(t.Purple400).Bold(true)
 	t.MutedStyle = lipgloss.NewStyle().Foreground(t.Gray400)
 	t.DimmedStyle = lipgloss.NewStyle().Foreground(t.Gray500).Italic(true)
 	t.ErrorStyle = lipgloss.NewStyle().Foreground(t.Error)
@@ -106,7 +107,13 @@ func NewTheme(isDark bool) Theme {
 
 	// The instruction is the one thing the reader must act on, so it is the
 	// brightest text rather than a fourth hue competing with the others.
+	// Headings stay the prominent element. The instruction is lifted by hue
+	// instead of weight: full-strength text against the grays everything else
+	// uses, so it is the brightest *content* without out-weighting its label.
+	// Underline gives the heading a second channel, so it stays distinct from
+	// the other bold headings once color is stripped.
 	t.ActionHeadingStyle = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
+	t.InstructionStyle = lipgloss.NewStyle().Foreground(t.Text)
 	// Blue for structure: purple already marks the cursor and review state, and
 	// orange is reserved for "you are blocking progress".
 	t.TaskHeadingStyle = lipgloss.NewStyle().Foreground(soften(t.Blue400)).Bold(true)

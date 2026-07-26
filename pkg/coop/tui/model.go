@@ -76,6 +76,9 @@ type Model struct {
 	agentIsIdle        bool
 
 	agentHeartbeatMissing bool
+	// consecutiveReadErrors tracks failed session polls, so a single transient
+	// one does not surface as a fatal error.
+	consecutiveReadErrors int
 
 	isDark  bool
 	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
@@ -202,6 +205,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.checkForUpdates(), tickCmd())
 
 	case noUpdateMsg:
+		m.clearReadError()
 		m.updateAgentIdle(msg.heartbeatAge, msg.heartbeatOK, time.Now())
 		return m, nil
 
@@ -221,6 +225,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadSession()
 
 	case sessionUpdatedMsg:
+		m.clearReadError()
 		wasComplete := m.session != nil && m.session.IsComplete()
 		m.resumeFollowingIfReviewAppeared(msg.session)
 		m.session = msg.session
@@ -250,7 +255,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 
 	case errMsg:
-		m.err = msg.err
+		m.recordReadError(msg.err)
 		return m, tickCmd()
 
 	case statusMsg:
@@ -512,9 +517,30 @@ func (m *Model) syncViewport() {
 	m.ensureValidNavigationSelection()
 	content := m.renderStepList()
 	m.viewport.SetContent(content)
+	// The editor renders at the end of the step's detail, and the viewport
+	// offset is driven by the outline's selected row — which knows nothing
+	// about the textarea growing as you type, so the pane clipped the text
+	// nearest the cursor while the user was writing it. Only takes over when
+	// the editor is actually inside the viewport: in the stacked layout it
+	// lives in the footer, and the cursor still governs scrolling.
+	if m.rejecting && m.ensureEditorVisible(content) {
+		return
+	}
 	if !m.userMoved {
 		m.scrollToCursor()
 	}
+}
+
+// ensureEditorVisible scrolls the feedback editor into view, reporting whether
+// it was found in the viewport's content at all.
+func (m *Model) ensureEditorVisible(content string) bool {
+	for i, line := range strings.Split(content, "\n") {
+		if strings.Contains(ansi.Strip(line), "Request changes") {
+			m.viewport.EnsureVisible(i, 0, 0)
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Model) scrollToCursor() {
@@ -1098,6 +1124,25 @@ func (m *Model) setStatus(message string, ttl time.Duration) {
 }
 
 // stepJustConfirmed reports whether a step is inside its post-confirm settle.
+// recordReadError holds a failed poll back from the view until it repeats.
+//
+// The session file is read every 500ms while the agent writes it, so a torn
+// read is routine. Treating one as fatal left the view stuck on an error string
+// forever while the poll kept succeeding underneath — worst during exactly the
+// step-away-and-return this UI is built for.
+func (m *Model) recordReadError(err error) {
+	m.consecutiveReadErrors++
+	if m.consecutiveReadErrors >= readErrorTolerance {
+		m.err = err
+	}
+}
+
+// clearReadError recovers the view after a poll succeeds again.
+func (m *Model) clearReadError() {
+	m.consecutiveReadErrors = 0
+	m.err = nil
+}
+
 func (m Model) stepJustConfirmed(stepIndex int) bool {
 	return !m.confirmedUntil.IsZero() && m.confirmedStepIndex == stepIndex && time.Now().Before(m.confirmedUntil)
 }

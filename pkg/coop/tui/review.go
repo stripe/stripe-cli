@@ -70,38 +70,120 @@ func (m Model) renderFooter() string {
 	return strings.Join(lines, "\n")
 }
 
-// reviewWaitingNote names the step waiting on the user and, when the cursor is
-// elsewhere, offers a way to reach it. Step titles are blueprint-authored and
-// can be long, so the note is budgeted: the jump hint goes first, then the
-// title is truncated, rather than letting the line run past the terminal.
+// reviewWaitingElsewhere reports whether a review is waiting on a step other
+// than the one under the cursor — the case where jumping actually moves you.
+func (m Model) reviewWaitingElsewhere() bool {
+	step, ok := m.firstActionableReviewStep()
+	if !ok {
+		return false
+	}
+	selected, isStep := m.selectedStepIndex()
+	return !isStep || selected != step
+}
+
+// reviewWaitingNote names the step waiting on the user. The key bar below
+// carries the jump key, so the note carries no hint of its own. Step titles are
+// blueprint-authored and can be long, so the title is truncated rather than
+// letting the line run past the terminal.
 func (m Model) reviewWaitingNote(stepIndex int) string {
 	const prefix = "  Waiting for you: "
 	title := m.session.Steps[stepIndex].Title
 
-	hint := ""
-	if selected, isStep := m.selectedStepIndex(); !isStep || selected != stepIndex {
-		hint = m.theme.MutedStyle.Render("   ") + m.keyHint("f", "go to review")
-	}
-
+	// No key hint here. It only ever applied when the cursor had moved away —
+	// which is exactly when the key bar below already lists the same key — so
+	// it put the identical hint on two adjacent lines.
 	budget := m.width
 	if budget <= 0 {
 		budget = lipgloss.Width(prefix) + lipgloss.Width(title)
 	}
-	available := budget - lipgloss.Width(prefix) - lipgloss.Width(ansi.Strip(hint))
-	if available < 12 {
-		// No room for both; the step's name matters more than the shortcut.
-		hint = ""
-		available = budget - lipgloss.Width(prefix)
-	}
-	if available > 0 && lipgloss.Width(title) > available {
+	if available := budget - lipgloss.Width(prefix); available > 0 && lipgloss.Width(title) > available {
 		title = ansi.Truncate(title, available, "…")
 	}
 
-	return m.theme.SoftAttentionStyle.Render(prefix) + m.theme.PromptStyle.Render(title) + hint
+	return m.theme.SoftAttentionStyle.Render(prefix) + m.theme.PromptStyle.Render(title)
 }
 
 func (m Model) renderReviewCard() string {
 	return m.renderReviewCardWithMaxHeight(0)
+}
+
+// The hint on a card that could not show everything. Which one applies depends
+// on whether the heading survived the clip: repeating "To confirm" directly
+// under the heading of the same name read as a second section rather than as an
+// overflow affordance, but when the card collapses entirely the hint is the only
+// thing left naming the action, so there it has to say it.
+const confirmHeading = "To confirm"
+
+const (
+	cardOverflowHint  = "▼ enter for details"
+	cardCollapsedHint = "To confirm: enter for details"
+)
+
+// overflowHint picks between them by looking at what survived.
+//
+// A failure clipped out of the card is the one thing the hint must not stay
+// quiet about: the card's rule is that failures are named, and a reviewer who
+// sees a bare "enter for details" has no reason to think anything is wrong.
+func overflowHint(kept []string, failed int) string {
+	if failed > 0 && !containsFailureLine(kept) {
+		return fmt.Sprintf("▼ %s failed — enter for details", pluralChecks(failed))
+	}
+	for _, line := range kept {
+		if strings.Contains(ansi.Strip(line), confirmHeading) {
+			return cardOverflowHint
+		}
+	}
+	return cardCollapsedHint
+}
+
+func containsFailureLine(lines []string) bool {
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(ansi.Strip(line)), "✗") {
+			return true
+		}
+	}
+	return false
+}
+
+// markClippedLine marks the last surviving line when content was dropped below
+// it. Without this a check clipped mid-wrap — "creates a new price on every
+// request instead of reusing" — reads as a finished sentence rather than a
+// truncated one.
+func markClippedLine(lines []string) []string {
+	if len(lines) == 0 {
+		return lines
+	}
+	last := len(lines) - 1
+	if strings.TrimSpace(ansi.Strip(lines[last])) == "" {
+		return lines
+	}
+	lines[last] += "…"
+	return lines
+}
+
+// clipCardContent cuts the card's body to the rows available, leaving a hint in
+// place of what it dropped.
+func (m Model) clipCardContent(wrapped []string, maxContentLines, failed int) []string {
+	if len(wrapped) <= maxContentLines {
+		return wrapped
+	}
+	switch {
+	case maxContentLines < 1:
+		return nil
+	case maxContentLines == 1:
+		// One line left: spend it on a failure if there is one, since "Review
+		// step" tells the reviewer nothing they did not already know.
+		if failed > 0 {
+			return []string{m.theme.MutedStyle.Render(overflowHint(nil, failed))}
+		}
+		return []string{m.theme.DimmedStyle.Render("Review step")}
+	default:
+		// Keep naming the action even when the card collapses, so a narrow
+		// terminal still says there is something to do.
+		kept := trimDanglingSection(wrapped[:maxContentLines-1])
+		more := m.theme.MutedStyle.Render(overflowHint(kept, failed))
+		return append(markClippedLine(kept), more)
+	}
 }
 
 func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
@@ -117,7 +199,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		if maxHeight < 1 {
 			return ""
 		}
-		return m.theme.MutedStyle.Render("  To confirm: enter for details")
+		return m.theme.MutedStyle.Render("  " + overflowHint(nil, len(m.reviewFailedCheckLabels(target.nodeNumbers))))
 	}
 	w, _ := m.reviewCardWidths()
 
@@ -148,13 +230,13 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	prompts := m.reviewPromptLabels(target.nodeNumbers)
 	if len(prompts) > 0 {
 		lines = append(lines, cardLine{})
-		lines = append(lines, cardLine{text: actionLabel(m.theme, "To confirm")})
+		lines = append(lines, cardLine{text: actionLabel(m.theme, confirmHeading)})
 		for _, prompt := range prompts {
 			if len(prompts) > 1 {
-				lines = append(lines, cardLine{text: m.theme.BrandStyle.Render("• ") + prompt})
+				lines = append(lines, cardLine{text: m.theme.BrandStyle.Render("• ") + m.theme.InstructionStyle.Render(prompt)})
 				continue
 			}
-			lines = append(lines, cardLine{text: prompt})
+			lines = append(lines, cardLine{text: m.theme.InstructionStyle.Render(prompt)})
 		}
 	}
 	// Say where to go. A review command already answers that, so only fall back
@@ -165,7 +247,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		})
 	} else if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
 		lines = append(lines, cardLine{
-			text: m.theme.MutedStyle.Render("Where ") + venue,
+			text: m.theme.MutedStyle.Render("Check ") + venue,
 		})
 	}
 
@@ -232,22 +314,9 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 
 	if maxHeight > 0 {
-		maxContentLines := maxHeight - 2 - len(wrappedPinned)
-		if len(wrapped) > maxContentLines {
-			switch {
-			case maxContentLines < 1:
-				wrapped = nil
-			case maxContentLines == 1:
-				wrapped = []string{m.theme.DimmedStyle.Render("Review step")}
-			default:
-				// Keep naming the action even when the card collapses, so a
-				// narrow terminal still says there is something to do.
-				more := m.theme.MutedStyle.Render("To confirm: enter for details")
-				wrapped = append(trimDanglingSection(wrapped[:maxContentLines-1]), more)
-			}
-		}
+		wrapped = m.clipCardContent(wrapped, maxHeight-2-len(wrappedPinned), len(failed))
 	}
-	return m.renderReviewCardLines(w, maxHeight, append(wrapped, wrappedPinned...))
+	return m.renderReviewCardLines(w, maxHeight, len(failed), append(wrapped, wrappedPinned...))
 }
 
 // cardLine is one logical line of the review card. indent is applied to
@@ -298,8 +367,7 @@ func (m Model) requestChangesInputWidth() int {
 	return width
 }
 
-func (m Model) renderReviewCardLines(width, maxHeight int, lines []string) string {
-	more := m.theme.MutedStyle.Render("To confirm: enter for details")
+func (m Model) renderReviewCardLines(width, maxHeight, failed int, lines []string) string {
 	style := m.theme.ReviewCardStyle.Width(width).MaxWidth(width + 4)
 	for {
 		rendered := style.Render(strings.Join(lines, "\n"))
@@ -309,7 +377,15 @@ func (m Model) renderReviewCardLines(width, maxHeight int, lines []string) strin
 		if len(lines) <= 2 {
 			return style.MaxHeight(maxHeight).Render(strings.Join(lines, "\n"))
 		}
-		lines = append(lines[:len(lines)-2], more)
+		// Trim here too, not only at the caller: this loop shrinks the card
+		// until it fits, and without the trim it could stop just below a
+		// heading — leaving "Agent checks" over a hint, with the failure it was
+		// introducing dropped entirely.
+		kept := trimDanglingSection(lines[:len(lines)-2])
+		if len(kept) == 0 {
+			return style.MaxHeight(maxHeight).Render(strings.Join(lines, "\n"))
+		}
+		lines = append(markClippedLine(kept), m.theme.MutedStyle.Render(overflowHint(kept, failed)))
 	}
 }
 
@@ -369,7 +445,7 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 // sectionNames are the box's headings, used to avoid truncating a card so that
 // a heading is left with nothing under it.
 var sectionNames = map[string]bool{
-	"To confirm":   true,
+	confirmHeading: true,
 	"Agent checks": true,
 
 	"Requested change": true,
@@ -624,7 +700,7 @@ func (m Model) reviewBlueprintConfirmationPrompts(nodeNumbers []int) []string {
 	}
 	const limit = 2
 	if len(prompts) > limit {
-		return append(prompts[:limit], fmt.Sprintf("Open details for %d more check(s).", len(prompts)-limit))
+		return append(prompts[:limit], fmt.Sprintf("Open details for %s.", pluralChecks(len(prompts)-limit)))
 	}
 	return prompts
 }

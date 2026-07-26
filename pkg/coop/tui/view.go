@@ -20,6 +20,10 @@ const (
 	minViewportHeight   = 3
 	terminalScrollGuard = 1
 
+	// readErrorTolerance is how many consecutive failed session polls are
+	// tolerated before the error is shown. At a 500ms tick this is ~2 seconds.
+	readErrorTolerance = 4
+
 	// confirmSettleDuration is how long a confirmed step stays acknowledged in
 	// place before it collapses into the finished list.
 	confirmSettleDuration = 700 * time.Millisecond

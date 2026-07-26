@@ -279,7 +279,7 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	assertInteractionLayout(t, m, "moved onto review card")
 	assert.Equal(t, m.height-1, lineIndexContaining(m.View().Content, "enter"))
 	assert.Contains(t, m.View().Content, "Review")
-	assertContainsPlain(t, m.View().Content, "f follow")
+	assertContainsPlain(t, m.View().Content, "f review")
 }
 
 func attachTestStore(t *testing.T, m Model) Model {

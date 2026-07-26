@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
@@ -223,6 +224,11 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 				line = candidate
 			}
 		}
+	}
+	// Truncate rather than let a long title run off: every other truncation in
+	// the UI marks itself, and this one did not.
+	if width := m.outlineWidth(); width > 0 && lipgloss.Width(line) > width {
+		line = ansi.Truncate(line, width, "…")
 	}
 	return line
 }

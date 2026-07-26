@@ -77,7 +77,7 @@ func TestUILayoutMatrix(t *testing.T) {
 		{
 			name:        "manual_navigation",
 			model:       manualNavigationLayoutModel,
-			footerToken: "f follow",
+			footerToken: "f review",
 		},
 		{
 			name:         "expanded_details",
@@ -185,7 +185,7 @@ func TestFooterActionRowStaysPinnedAcrossFooterModes(t *testing.T) {
 	}{
 		{name: "active", model: activeStepLayoutModel, token: "enter"},
 		{name: "review", model: reviewStepLongPromptLayoutModel, token: "enter"},
-		{name: "manual", model: manualNavigationLayoutModel, token: "f follow"},
+		{name: "manual", model: manualNavigationLayoutModel, token: "f review"},
 		{name: "request_changes", model: requestChangesLayoutModel, token: "esc cancel"},
 	}
 
@@ -320,6 +320,27 @@ func reviewStepLongPromptLayoutModel() Model {
 	return m
 }
 
+// A failing check is the highest-stakes thing the card renders and nothing in
+// the matrix produced one, so every frame reviewed so far showed only the
+// all-passed shape.
+func failedCheckLayoutModel() Model {
+	m := reviewStepLongPromptLayoutModel()
+	m.session.Steps[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Created product and price", Passed: true},
+		{Check: "Checkout Session creates a new price on every request instead of reusing the persisted price ID", Passed: false},
+		{Check: "Ran local Checkout flow", Passed: true},
+	}
+	return m
+}
+
+// Sessions in the fixtures predate step descriptions, so no captured frame had
+// a Goal line and its spacing went unreviewed.
+func goalLayoutModel() Model {
+	m := reviewStepLongPromptLayoutModel()
+	m.session.Steps[0].Description = "Create a product and a recurring price once, and persist the price ID so later steps reuse it rather than creating a new price per request."
+	return m
+}
+
 func stepReviewLayoutModel() Model {
 	m := testModel()
 	m.spinner = staticSpinner()
@@ -417,7 +438,12 @@ func TestOutlineWindowsWhenViewportIsShort(t *testing.T) {
 	tall := renderLayoutScenario(&m, layoutSize{name: "tall", width: 92, height: 60})
 	assertNotContainsPlain(t, tall, "more above")
 
-	short := renderLayoutScenario(&m, layoutSize{name: "short", width: 92, height: 26})
+	// Assert against the outline itself, not the frame. The markers live inside
+	// the scrollable outline, so the one below the selection can sit past the
+	// viewport's bottom edge; checking the frame previously only passed because
+	// the viewport's own overflow label happened to read "more below" too.
+	renderLayoutScenario(&m, layoutSize{name: "short", width: 92, height: 26})
+	short := m.renderStepOutline().content
 	assertContainsPlain(t, short, "more above")
 	assertContainsPlain(t, short, "more below")
 }
@@ -435,4 +461,22 @@ func TestOutlineWindowKeepsOneStepEitherSide(t *testing.T) {
 	assert.Equal(t, 4, last)
 	assert.Equal(t, 2, above)
 	assert.Positive(t, below)
+}
+
+// A failed check is the one thing the card must never lose to height pressure.
+// Before this, an 80x24 terminal clipped the failure out and left a bare
+// "enter for details" — nothing on screen suggested anything was wrong.
+func TestFailedCheckSurvivesEveryHeight(t *testing.T) {
+	for _, size := range captureSizes {
+		t.Run(size.name, func(t *testing.T) {
+			m := failedCheckLayoutModel()
+			rendered := ansi.Strip(renderLayoutScenario(&m, size))
+
+			named := strings.Contains(rendered, "✗")
+			counted := strings.Contains(rendered, "check failed") ||
+				strings.Contains(rendered, "checks failed")
+			assert.True(t, named || counted,
+				"the failure must be named or counted, not silently clipped:\n%s", rendered)
+		})
+	}
 }

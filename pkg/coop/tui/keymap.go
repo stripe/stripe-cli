@@ -85,9 +85,13 @@ func newKeyMap() keyMap {
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "close"),
 		),
+		// One label, used by both the key bar and the pinned note — they showed
+		// different verbs for the same key on adjacent lines when each owned
+		// its own string. Short enough for the bar, still explanatory in the
+		// note, and more accurate than the old "follow".
 		Follow: key.NewBinding(
 			key.WithKeys("f"),
-			key.WithHelp("f", "follow"),
+			key.WithHelp("f", "review"),
 		),
 		Confirm: key.NewBinding(
 			key.WithKeys("c"),
@@ -119,7 +123,11 @@ func (m Model) ShortHelp() []key.Binding {
 
 	var bindings []key.Binding
 
-	if m.userMoved {
+	// Follow does two things: jump to a waiting review, or resume auto-follow
+	// after the user has scrolled away. Offer it when either applies. Gating on
+	// userMoved alone hid it when a review arrived somewhere the cursor had
+	// simply not caught up to.
+	if m.userMoved || m.reviewWaitingElsewhere() {
 		bindings = append(bindings, m.keys.Follow)
 	}
 
@@ -132,12 +140,19 @@ func (m Model) ShortHelp() []key.Binding {
 		// Confirm always acts on the whole step. Narrow terminals drop the
 		// qualifier for room; that stays unambiguous because a step is the only
 		// thing the cursor can be on.
-		if m.width > 0 && m.width < 56 {
+		// Three tiers, so the fullest phrasing appears only where the key bar
+		// has room for it. Naming the object costs width, and the bar losing
+		// its trailing keys is worse than a terser label.
+		switch {
+		case m.width > 0 && m.width < 56:
 			confirm.SetHelp("c", "confirm")
 			reject.SetHelp("r", "changes")
-		} else {
+		case m.width > 0 && m.width < 80:
 			confirm.SetHelp("c", "confirm step")
 			reject.SetHelp("r", "changes")
+		default:
+			confirm.SetHelp("c", "confirm step")
+			reject.SetHelp("r", "request changes")
 		}
 		bindings = append(bindings, confirm, reject)
 	}

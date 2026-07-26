@@ -33,7 +33,9 @@ func (m Model) renderViewportRegionWithHeight(height int) string {
 }
 
 func (m Model) renderMoreBelowIndicator() string {
-	label := m.theme.MutedStyle.Render("more below")
+	// Matches the outline's "▼ N more below" so the two affordances teach the
+	// same pattern rather than unlearning each other two lines apart.
+	label := m.theme.MutedStyle.Render("▼ scroll for more")
 	width := m.outlineRuleWidth()
 	if width < lipgloss.Width(label) {
 		width = lipgloss.Width(label)

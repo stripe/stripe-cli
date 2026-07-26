@@ -37,7 +37,7 @@ func (m Model) renderCompletionBodyWithLines() completionBody {
 	total := m.session.TotalNodes()
 
 	box := m.theme.SuccessStyle.Render(fmt.Sprintf("✓ Integration complete: %s", m.session.Blueprint)) +
-		"\n" + m.theme.MutedStyle.Render(fmt.Sprintf("All %d nodes done.", done))
+		"\n" + m.theme.MutedStyle.Render(fmt.Sprintf("All %d tasks done.", done))
 	if total != done {
 		box += m.theme.MutedStyle.Render(fmt.Sprintf(" (%d skipped)", total-done))
 	}
