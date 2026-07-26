@@ -188,7 +188,7 @@ func TestTokenBillingInitCmd_HTTPRequest(t *testing.T) {
 	assert.Contains(t, output.String(), "Token Billing initialized")
 	assert.Contains(t, output.String(), "STRIPE_TOKEN_BILLING_GATEWAY_URL=https://llm.stripe.com/v1")
 	assert.Contains(t, output.String(), "pricing_plan_id=bpp_test_123")
-	assert.Contains(t, output.String(), "[x] Pricing configured")
+	assert.Contains(t, output.String(), "✔ Pricing configured")
 	assert.Contains(t, output.String(), "Run one AI Gateway test request.")
 }
 

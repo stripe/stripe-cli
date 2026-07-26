@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -157,10 +158,13 @@ func (ic *tokenBillingInitCmd) runTokenBillingInitCmd(cmd *cobra.Command, args [
 		return nil
 	}
 
+	spinner := ansi.StartNewSpinner("Initializing Token Billing resources...", cmd.OutOrStdout())
 	resp, err := ic.rb.MakeRequest(cmd.Context(), apiKey, tokenBillingOnboardingInitPath, &requests.RequestParameters{}, body, true, nil)
 	if err != nil {
+		ansi.StopSpinner(spinner, "Token Billing initialization failed", cmd.OutOrStdout())
 		return err
 	}
+	ansi.StopSpinner(spinner, "Token Billing resources ready", cmd.OutOrStdout())
 
 	var status tokenBillingOnboardingStatus
 	if err := json.Unmarshal(resp, &status); err != nil {
@@ -202,9 +206,11 @@ func cmdInputIsTerminal(cmd *cobra.Command) bool {
 func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
 	out := cmd.OutOrStdout()
 	reader := bufio.NewReader(cmd.InOrStdin())
+	color := ansi.Color(out)
 
-	fmt.Fprintln(out, "Token Billing setup")
-	fmt.Fprintln(out, "Press Enter to accept the suggested default for each prompt.")
+	fmt.Fprintln(out, color.Bold("Token Billing setup"))
+	fmt.Fprintln(out, faint(out, "Create pricing, meter, and AI Gateway testmode resources for this account."))
+	fmt.Fprintln(out, faint(out, "Press Enter to accept the suggested default for each prompt."))
 	fmt.Fprintln(out)
 
 	var err error
@@ -245,14 +251,14 @@ func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
 	}
 
 	fmt.Fprintln(out)
-	fmt.Fprintln(out, "Token Billing will initialize with:")
-	fmt.Fprintf(out, "  Plan name: %s\n", ic.planName)
-	fmt.Fprintf(out, "  Models: %s\n", strings.Join(ic.models, ", "))
-	fmt.Fprintf(out, "  Default markup percent: %s\n", ic.defaultMarkupPercent)
-	fmt.Fprintf(out, "  Price tracking preference: %s\n", ic.priceTrackingPreference)
-	fmt.Fprintf(out, "  Subscription fee amount: %s\n", ic.subscriptionFeeAmount)
-	fmt.Fprintf(out, "  Credit grant amount per period: %s\n", ic.creditGrantPerPeriodAmount)
-	fmt.Fprintf(out, "  Billing interval: %s\n", ic.interval)
+	fmt.Fprintln(out, color.Bold("Review configuration"))
+	printSummaryLine(out, "Plan name", ic.planName)
+	printSummaryLine(out, "Models", strings.Join(ic.models, ", "))
+	printSummaryLine(out, "Default markup percent", ic.defaultMarkupPercent)
+	printSummaryLine(out, "Price tracking preference", ic.priceTrackingPreference)
+	printSummaryLine(out, "Subscription fee amount", ic.subscriptionFeeAmount)
+	printSummaryLine(out, "Credit grant amount per period", ic.creditGrantPerPeriodAmount)
+	printSummaryLine(out, "Billing interval", ic.interval)
 	fmt.Fprintln(out)
 
 	confirmed, err := promptConfirm(out, reader, "Proceed with creating Token Billing resources?", true)
@@ -268,7 +274,8 @@ func (ic *tokenBillingInitCmd) promptForInitConfig(cmd *cobra.Command) error {
 }
 
 func promptString(out io.Writer, reader *bufio.Reader, label string, defaultValue string) (string, error) {
-	fmt.Fprintf(out, "%s [%s]: ", label, defaultValue)
+	color := ansi.Color(out)
+	fmt.Fprintf(out, "%s %s: ", color.Bold(label), faint(out, "["+defaultValue+"]"))
 	input, err := reader.ReadString('\n')
 	if err != nil && err != io.EOF {
 		return "", err
@@ -287,7 +294,8 @@ func promptConfirm(out io.Writer, reader *bufio.Reader, label string, defaultYes
 		suffix = "[Y/n]"
 	}
 
-	fmt.Fprintf(out, "%s %s ", label, suffix)
+	color := ansi.Color(out)
+	fmt.Fprintf(out, "%s %s ", color.Bold(label), faint(out, suffix))
 	input, err := reader.ReadString('\n')
 	if err != nil && err != io.EOF {
 		return false, err
@@ -313,6 +321,14 @@ func splitCommaSeparatedValues(value string) []string {
 	return values
 }
 
+func printSummaryLine(out io.Writer, label string, value string) {
+	fmt.Fprintf(out, "  %s %s\n", faint(out, label+":"), value)
+}
+
+func faint(out io.Writer, text string) string {
+	return ansi.Color(out).Faint(text).String()
+}
+
 func (ic *tokenBillingInitCmd) buildRequestBody() map[string]interface{} {
 	models := make([]interface{}, 0, len(ic.models))
 	for _, model := range ic.models {
@@ -332,21 +348,22 @@ func (ic *tokenBillingInitCmd) buildRequestBody() map[string]interface{} {
 
 func (ic *tokenBillingInitCmd) printStatus(cmd *cobra.Command, status tokenBillingOnboardingStatus) {
 	out := cmd.OutOrStdout()
-	fmt.Fprintln(out, "Token Billing initialized")
+	color := ansi.Color(out)
+	fmt.Fprintf(out, "%s %s\n", color.Green("✔"), color.Bold("Token Billing initialized"))
 	if status.Status != "" {
-		fmt.Fprintf(out, "Status: %s\n", status.Status)
+		printSummaryLine(out, "Status", status.Status)
 	}
 	if status.Message != "" {
-		fmt.Fprintf(out, "%s\n", status.Message)
+		fmt.Fprintf(out, "%s\n", faint(out, status.Message))
 	}
 	if status.GatewayEndpoint != "" {
-		fmt.Fprintf(out, "\nGateway endpoint:\n  %s\n", status.GatewayEndpoint)
+		fmt.Fprintf(out, "\n%s\n  %s\n", color.Bold("Gateway endpoint"), status.GatewayEndpoint)
 	}
 
 	printStringMap(out, "Resources", status.Resources)
 	printStringMap(out, "Suggested environment variables", status.EnvironmentVariables)
 
-	fmt.Fprintln(out, "\nChecklist:")
+	fmt.Fprintf(out, "\n%s\n", color.Bold("Checklist"))
 	printChecklistItem(out, "AI Gateway enabled", status.AIGatewayEnabled)
 	printChecklistItem(out, "Pricing configured", status.PricingConfigured)
 	printChecklistItem(out, "Token meters configured", status.TokenMetersConfigured)
@@ -354,13 +371,13 @@ func (ic *tokenBillingInitCmd) printStatus(cmd *cobra.Command, status tokenBilli
 	printChecklistItem(out, "Zero-credit rejection enabled", status.ZeroCreditRejectionEnabled)
 	printChecklistItem(out, "Webhook healthy", status.WebhookHealthy)
 	if status.InferenceMode != "" {
-		fmt.Fprintf(out, "  Inference mode: %s\n", status.InferenceMode)
+		printSummaryLine(out, "Inference mode", status.InferenceMode)
 	}
 
 	if len(status.NextSteps) > 0 {
-		fmt.Fprintln(out, "\nNext steps:")
+		fmt.Fprintf(out, "\n%s\n", color.Bold("Next steps"))
 		for _, step := range status.NextSteps {
-			fmt.Fprintf(out, "  - %s\n", step)
+			fmt.Fprintf(out, "  %s %s\n", color.Cyan("→"), step)
 		}
 	}
 }
@@ -370,7 +387,8 @@ func printStringMap(out interface{ Write([]byte) (int, error) }, title string, v
 		return
 	}
 
-	fmt.Fprintf(out, "\n%s:\n", title)
+	color := ansi.Color(out)
+	fmt.Fprintf(out, "\n%s\n", color.Bold(title))
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		keys = append(keys, key)
@@ -381,14 +399,15 @@ func printStringMap(out interface{ Write([]byte) (int, error) }, title string, v
 		if value == "" {
 			continue
 		}
-		fmt.Fprintf(out, "  %s=%s\n", key, value)
+		fmt.Fprintf(out, "  %s%s\n", faint(out, key+"="), value)
 	}
 }
 
 func printChecklistItem(out interface{ Write([]byte) (int, error) }, label string, done bool) {
-	marker := " "
+	color := ansi.Color(out)
+	marker := color.Yellow("○")
 	if done {
-		marker = "x"
+		marker = color.Green("✔")
 	}
-	fmt.Fprintf(out, "  [%s] %s\n", marker, label)
+	fmt.Fprintf(out, "  %s %s\n", marker, label)
 }
