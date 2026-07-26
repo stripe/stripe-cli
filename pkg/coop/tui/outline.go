@@ -90,13 +90,31 @@ func (m Model) renderStepOutline() renderedOutline {
 
 	ruleWidth := m.outlineRuleWidth()
 
+	cramped := m.outlineIsCramped()
+	first, last, above, below := m.outlineWindow()
+	if above > 0 {
+		lines = append(lines, m.theme.MutedStyle.Render(
+			fmt.Sprintf("  ▲ %d more above", above)))
+	}
+
 	for stepIdx, ch := range m.session.Steps {
+		if stepIdx < first || stepIdx > last {
+			nodeIdx += len(ch.Nodes)
+			continue
+		}
 		stepItem := navigationItem{kind: navigationStep, stepIndex: stepIdx}
 		stepSelected := m.navigationItemSelected(stepItem)
-		lines = append(lines, "")
+		// In a cramped list the neighbors are there for orientation only, so
+		// they give up their separator and rule; the selected step keeps both.
+		compact := cramped && !stepSelected
+		if !compact {
+			lines = append(lines, "")
+		}
 		navigationLines[len(lines)] = stepItem
 		lines = append(lines, m.renderStepLine(ch, stepIdx, stepSelected))
-		lines = append(lines, strings.Repeat(" ", rowCursorWidth)+m.theme.StepRuleStyle.Render(strings.Repeat("─", ruleWidth)))
+		if !compact {
+			lines = append(lines, strings.Repeat(" ", rowCursorWidth)+m.theme.StepRuleStyle.Render(strings.Repeat("─", ruleWidth)))
+		}
 		if m.expanded && stepSelected && !m.useSplitWorkspace() {
 			if detail := m.renderDetail(); detail != "" {
 				lines = append(lines, detail)
@@ -121,10 +139,61 @@ func (m Model) renderStepOutline() renderedOutline {
 		}
 	}
 
+	if below > 0 {
+		lines = append(lines, m.theme.MutedStyle.Render(
+			fmt.Sprintf("  ▼ %d more below", below)))
+	}
+
 	return renderedOutline{
 		content:        strings.Join(lines, "\n"),
 		navigationLine: navigationLines,
 	}
+}
+
+// outlineWindow decides which steps to draw.
+//
+// With room, every step is listed. When the viewport is short the detail view
+// is what the user is actually reading, so the list gives up its rows and keeps
+// only the selected step with one either side — enough to know where you are —
+// plus counts of what was hidden, so the list never silently looks complete.
+func (m Model) outlineWindow() (first, last, above, below int) {
+	total := len(m.session.Steps)
+	if total == 0 {
+		return 0, -1, 0, 0
+	}
+	last = total - 1
+	if !m.outlineIsCramped() {
+		return 0, last, 0, 0
+	}
+
+	selected := 0
+	if idx, ok := m.selectedStepIndex(); ok {
+		selected = idx
+	}
+	first = max(selected-1, 0)
+	last = min(selected+1, total-1)
+	return first, last, first, total - 1 - last
+}
+
+// outlineIsCramped reports whether the full list would not fit. Each step costs
+// a blank line, its title and a rule, and the step in play also lists its tasks.
+func (m Model) outlineIsCramped() bool {
+	height := m.viewport.Height()
+	if height <= 0 {
+		return false
+	}
+	rows := 0
+	for stepIdx, step := range m.session.Steps {
+		rows += 3
+		if !m.stepCollapsed(stepIdx) {
+			rows += len(step.Nodes)
+		}
+	}
+	// Tolerance, so a list that only just overflows still renders in full and
+	// scrolls. Windowing is a real loss of context; it should take a clear
+	// shortfall to trigger, not a single row.
+	const tolerance = 4
+	return rows > height+tolerance
 }
 
 func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool) string {

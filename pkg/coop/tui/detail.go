@@ -354,9 +354,13 @@ func writeWrapped(md *strings.Builder, text string, width int) {
 }
 
 // taskEvidence is the agent's own note about a task, condensed to one line.
+// taskEvidence is the agent's own note about a task. It is stripped of CLI
+// progress noise and flattened, but not truncated: the pane has vertical room,
+// and a leading ellipsis on text that would have fit reads as damage. The
+// character budget belongs to the card, which is height-constrained.
 func taskEvidence(node coop.SessionNode) string {
 	for _, verification := range node.Verifications {
-		if check := summarizeCheck(verification.Check, failedCheckBudget); check != "" {
+		if check := summarizeCheck(verification.Check, 0); check != "" {
 			return check
 		}
 	}

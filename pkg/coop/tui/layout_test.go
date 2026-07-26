@@ -406,3 +406,33 @@ func TestSplitWorkspaceDetailBoxIsColumnAligned(t *testing.T) {
 	require.NotEmpty(t, columns, "expected a detail box in the split workspace")
 	assert.Len(t, columns, 1, "every row of the box should start in the same column, got %v", columns)
 }
+
+// With room the whole blueprint is listed; when the viewport cannot hold it the
+// detail view keeps its height and the list narrows to the step in play plus
+// one either side, with counts so it never looks complete when it is not.
+func TestOutlineWindowsWhenViewportIsShort(t *testing.T) {
+	m := stressManyStepsManualNavigationModel()
+	m.selectStep(3)
+
+	tall := renderLayoutScenario(&m, layoutSize{name: "tall", width: 92, height: 60})
+	assertNotContainsPlain(t, tall, "more above")
+
+	short := renderLayoutScenario(&m, layoutSize{name: "short", width: 92, height: 26})
+	assertContainsPlain(t, short, "more above")
+	assertContainsPlain(t, short, "more below")
+}
+
+// The neighbors are orientation, not content: they exist so the user knows
+// where they are in the blueprint.
+func TestOutlineWindowKeepsOneStepEitherSide(t *testing.T) {
+	m := stressManyStepsManualNavigationModel()
+	m.selectStep(3)
+	m.viewport = viewport.New(viewport.WithWidth(92), viewport.WithHeight(8))
+
+	first, last, above, below := m.outlineWindow()
+
+	assert.Equal(t, 2, first)
+	assert.Equal(t, 4, last)
+	assert.Equal(t, 2, above)
+	assert.Positive(t, below)
+}
