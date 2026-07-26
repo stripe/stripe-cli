@@ -11,7 +11,11 @@ func (m Model) renderViewportRegionWithHeight(height int) string {
 		return m.viewport.View()
 	}
 	hasMoreBelow := m.viewport.YOffset()+height < m.viewport.TotalLineCount()
-	if hasMoreBelow && height >= 3 {
+	// The indicator costs a blank line plus its own row. At a three-row region
+	// that left a single body row, which landed on the outline's leading blank
+	// and hid the step entirely — pointing at content the user could no longer
+	// see. Below four rows the content wins.
+	if hasMoreBelow && height >= 4 {
 		vp := m.viewport
 		vp.SetHeight(height - 2)
 		body := lipgloss.NewStyle().

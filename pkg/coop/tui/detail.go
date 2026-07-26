@@ -285,6 +285,27 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		md.WriteString("\n")
 	}
 
+	if prompts := stepReviewPrompts(ch); len(prompts) > 0 {
+		md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
+		for _, prompt := range prompts {
+			writeWrapped(md, m.theme.InstructionStyle.Render(prompt), wrapWidth)
+		}
+		md.WriteString("\n")
+	}
+
+	// Where to go, carried over from the footer card this replaced. Not nested
+	// under the prompts above: a step can have a command to run and no prose
+	// prompt, and that command is the most actionable thing on the card.
+	if target, ok := m.selectedReviewTarget(); ok {
+		if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
+			writeWrapped(md, m.theme.MutedStyle.Render("Run ")+m.theme.BrandStyle.Render(command), wrapWidth)
+			md.WriteString("\n")
+		} else if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
+			writeWrapped(md, m.theme.MutedStyle.Render("Check ")+venue, wrapWidth)
+			md.WriteString("\n")
+		}
+	}
+
 	md.WriteString(m.theme.TaskHeadingStyle.Render("Tasks") + "\n")
 	// Budget the list in lines, not tasks. A task costs up to four rows once its
 	// file and the agent's note are included, so even a handful of them pushed
@@ -323,19 +344,12 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	}
 	md.WriteString("\n")
 
-	if prompts := stepReviewPrompts(ch); len(prompts) > 0 {
-		md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
-		for _, prompt := range prompts {
-			writeWrapped(md, m.theme.InstructionStyle.Render(prompt), wrapWidth)
-		}
-		md.WriteString("\n")
-	}
-
 	failed, passed := stepCheckResults(ch)
 	if len(failed) > 0 || passed > 0 {
 		md.WriteString(checksLabel(m.theme, len(failed) > 0) + "\n")
 		for _, check := range failed {
-			writeWrapped(md, m.theme.SoftErrorStyle.Render("✗ ")+check, wrapWidth)
+			writeWrapped(md, m.theme.SoftErrorStyle.Render("✗ ")+
+				highlightIdentifiers(check, m.theme.MutedStyle, m.theme.IdentifierStyle), wrapWidth)
 		}
 		if passed > 0 {
 			md.WriteString(m.theme.SoftSuccessStyle.Render("✓ ") +
@@ -358,10 +372,19 @@ func writeWrapped(md *strings.Builder, text string, width int) {
 // progress noise and flattened, but not truncated: the pane has vertical room,
 // and a leading ellipsis on text that would have fit reads as damage. The
 // character budget belongs to the card, which is height-constrained.
+// taskEvidenceBudget keeps a task's evidence to about one wrapped line.
+//
+// This used to pass 0, meaning "no limit", so a task whose agent pasted a full
+// command transcript into --check rendered the entire thing under the task
+// title. Three of those buried the instruction the reviewer actually needed.
+// The full text is still reachable — that is what the Reference tab is for.
+const taskEvidenceBudget = 100
+
 func taskEvidence(node coop.SessionNode) string {
 	for _, verification := range node.Verifications {
-		if check := summarizeCheck(verification.Check, 0); check != "" {
-			return check
+		summary := summarizeCheckResult(verification.Check, taskEvidenceBudget, !verification.Passed)
+		if summary != "" {
+			return summary
 		}
 	}
 	return ""
@@ -390,7 +413,7 @@ func stepCheckResults(ch *coop.SessionStep) ([]string, int) {
 				passed++
 				continue
 			}
-			if check := summarizeCheck(verification.Check, failedCheckBudget); check != "" {
+			if check := summarizeCheckFailure(verification.Check, failedCheckBudget); check != "" {
 				failed = append(failed, node.Title+": "+check)
 			}
 		}

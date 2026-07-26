@@ -278,7 +278,9 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	assert.Equal(t, 2, m.selectionCursor)
 	assertInteractionLayout(t, m, "moved onto review card")
 	assert.Equal(t, m.height-1, lineIndexContaining(m.View().Content, "enter"))
-	assert.Contains(t, m.View().Content, "Review")
+	// The card identifies itself by sitting under its step, not by a "Review
+	// step" title, so assert on the content that matters.
+	assert.Contains(t, m.View().Content, "To confirm")
 	assertContainsPlain(t, m.View().Content, "f review")
 }
 

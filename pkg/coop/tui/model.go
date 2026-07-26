@@ -487,8 +487,12 @@ func (m *Model) resizeViewport() {
 	if !m.ready || m.height == 0 {
 		return
 	}
-	headerH := lipgloss.Height(m.renderHeader()) + 1
-	footerH := lipgloss.Height(m.renderFooter()) + 1
+	// The footer already carries its own leading blank line, and the header its
+	// own trailing one. The extra +1s here were slack for a review card that
+	// used to live in the footer and could grow; with the card inline they only
+	// left dead rows between the content and the keys.
+	headerH := lipgloss.Height(m.renderHeader())
+	footerH := lipgloss.Height(m.renderFooter())
 	if m.session != nil && m.session.IsComplete() {
 		footerH = lipgloss.Height(m.renderCompletionFooter()) + 1
 	}

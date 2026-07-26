@@ -360,18 +360,32 @@ func TestRenderFooter(t *testing.T) {
 	assertNotContainsPlain(t, footer, "confirm")
 }
 
+// reviewSurface is everything the user can see of a step's review: the card,
+// which now renders inline under its step, plus the footer keys. These tests
+// care that the content is reachable in the frame, not which of the two
+// surfaces happens to carry it — pinning that is what made them break when the
+// card moved out of the footer.
+func reviewSurface(m Model) string {
+	return m.renderStepList() + "\n" + m.renderFooter()
+}
+
 func TestRenderFooterReviewStep(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
 	m.selectionCursor = 0
-	footer := m.renderFooter()
+	m.ready = true
+	m.width, m.height = 80, 30
+	m.selectStep(0)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "confirm")
 	assertContainsPlain(t, footer, "changes")
-	assertContainsPlain(t, footer, "Review")
-	assertContainsPlain(t, footer, "Changed")
+	// "Review step" as a title and a separate "Changed" file list both went
+	// away with the footer card: the card now sits under the step line that
+	// names it, and each task carries its own file.
 	assertContainsPlain(t, footer, "To confirm")
+	assertContainsPlain(t, footer, "Tasks")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -493,7 +507,10 @@ func TestRenderFooterReviewCommand(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
 	m.selectionCursor = 2
-	footer := m.renderFooter()
+	m.ready = true
+	m.width, m.height = 80, 30
+	m.selectStep(1)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "Run ")
 	assertContainsPlain(t, footer, "stripe trigger checkout.session.completed")
@@ -742,7 +759,8 @@ func TestRenderFooterRejectionInput(t *testing.T) {
 	m.rejecting = true
 	m.rejectionInput.SetValue("Missing webhook test")
 
-	footer := m.renderFooter()
+	m.selectStep(0)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "enter newline")
 	assertContainsPlain(t, footer, "ctrl/cmd+enter send")
@@ -759,7 +777,8 @@ func TestRenderFooterRejectionPlaceholder(t *testing.T) {
 	m.rejectionInput.Placeholder = m.requestChangesPlaceholder(target)
 	m.rejectionInput.Focus()
 
-	footer := m.renderFooter()
+	m.selectStep(1)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "Describe what should change in this step")
 }
@@ -843,7 +862,9 @@ func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {
 	assert.LessOrEqual(t, lipgloss.Height(view), m.height)
 	assertLinesWithinWidth(t, view, m.width)
 	assertContainsPlain(t, view, "Stripe Co-op")
-	assertContainsPlain(t, view, "Review step")
+	// The card no longer titles itself "Review step": it renders directly under
+	// the step line that already names the step, so the title was repeating it.
+	assertContainsPlain(t, view, "To confirm")
 	assertContainsPlain(t, view, "q quit")
 }
 
@@ -880,10 +901,13 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 	m := testModel()
 	m.ready = true
 	m.width = 69
-	m.height = 12
+	// Tall enough that the card renders in place — below minInlineCardRows it
+	// falls back to a footer line and there is no box to clip. The short
+	// viewport region below is what this test is actually about.
+	m.height = 24
 	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(6))
 	m.session.Steps[0].Nodes[0].ReviewPrompt = strings.Repeat("Confirm the Checkout flow uses the saved price ID and redirects correctly. ", 5)
-	m.selectionCursor = 0
+	m.selectStep(0)
 	m.expanded = true
 	m.resizeViewport()
 	m.syncViewport()
@@ -965,9 +989,12 @@ func TestSummarizeCheckKeepsTheFindingNotTheTranscript(t *testing.T) {
 			"it returned HTTP 400 because STRIPE_WEBHOOK_SECRET is not configured.",
 	}, "\n")
 
-	summary := summarizeCheck(transcript, failedCheckBudget)
+	summary := summarizeCheckFailure(transcript, failedCheckBudget)
 
 	assert.Contains(t, summary, "STRIPE_WEBHOOK_SECRET is not configured")
+	// The reason leads. The trailing narration about what did work must not be
+	// what a red ✗ line shows, and the line must not open mid-sentence.
+	assert.False(t, strings.HasPrefix(summary, "…"), "summary should not open with an ellipsis: %q", summary)
 	assert.NotContains(t, summary, "Setting up fixture for")
 	assert.NotContains(t, summary, "A newer version of the Stripe CLI")
 	assert.LessOrEqual(t, lipgloss.Width(summary), failedCheckBudget+1)

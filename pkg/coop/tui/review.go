@@ -2,7 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"unicode"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -41,27 +43,14 @@ func (m Model) renderFooter() string {
 	h.ShortSeparator = " · "
 	actionLine := m.theme.FooterStyle.MaxWidth(m.width).Render("  " + h.View(m))
 
-	if _, ok := m.selectedReviewTarget(); ok && !m.expanded && !m.useSplitWorkspace() {
-		budget := m.footerHeightBudget()
-		cardGapH := 1
-		actionH := lipgloss.Height(actionLine)
-		prefixH := lipgloss.Height(strings.Join(lines, "\n"))
-		cardMaxHeight := budget - prefixH - cardGapH - actionH
-		card := m.renderReviewCardWithMaxHeight(cardMaxHeight)
-		if card != "" {
-			result := append(append([]string{}, lines...), card, "", actionLine)
-			if footerLinesFit(result, budget) {
-				return strings.Join(result, "\n")
-			}
-		}
-
-		cardMaxHeight = budget - cardGapH - actionH
-		card = m.renderReviewCardWithMaxHeight(cardMaxHeight)
-		if card != "" {
-			return strings.Join([]string{card, "", actionLine}, "\n")
+	// The card renders inline, under its own step. The exception is a terminal
+	// too short to show it there at all, where a one-line fallback is the only
+	// thing standing between the user and a screen with nothing to act on.
+	if _, ok := m.selectedReviewTarget(); ok && !m.useSplitWorkspace() {
+		if selected, isStep := m.selectedStepIndex(); isStep && !m.stepShowsInlineCard(selected) {
+			lines = append(lines, m.theme.MutedStyle.Render("  "+cardCollapsedHint))
 		}
 	}
-
 	lines = append(lines, actionLine)
 	if budget := m.footerHeightBudget(); budget > 0 && lipgloss.Height(strings.Join(lines, "\n")) > budget {
 		lines = append(lines[:max(len(lines)-2, 0)], actionLine)
@@ -261,7 +250,8 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 	}
 	for _, label := range failed {
 		lines = append(lines, cardLine{
-			text: m.theme.SoftErrorStyle.Render("✗ ") + label,
+			text: m.theme.SoftErrorStyle.Render("✗ ") +
+				highlightIdentifiers(label, m.theme.MutedStyle, m.theme.IdentifierStyle),
 		})
 	}
 	if passed > 0 {
@@ -339,10 +329,6 @@ func (l cardLine) wrap(width int) []string {
 		}
 	}
 	return out
-}
-
-func footerLinesFit(lines []string, budget int) bool {
-	return budget <= 0 || lipgloss.Height(strings.Join(lines, "\n")) <= budget
 }
 
 func (m Model) reviewCardWidths() (int, int) {
@@ -549,7 +535,7 @@ func (m Model) reviewFailedCheckLabels(nodeNumbers []int) []string {
 			continue
 		}
 		for _, verification := range node.Verifications {
-			check := summarizeCheck(verification.Check, failedCheckBudget)
+			check := summarizeCheckFailure(verification.Check, failedCheckBudget)
 			if verification.Passed || check == "" || seen[check] {
 				continue
 			}
@@ -604,7 +590,30 @@ var checkNoisePrefixes = []string{
 // truncation — therefore returns the chatter and discards the result. Drop the
 // pure progress lines, then keep the tail. The untouched text stays in the
 // detail view.
+// summarizeCheck reduces a verification to the one line a reviewer needs.
+//
+// When the agent supplies --detail this is barely needed: Check is already a
+// label. It matters for sessions where the agent pasted a whole transcript into
+// --check, and the shape of that prose is specific. The finding is not at the
+// end — agent transcripts trail off into what *did* work ("The handler reads the
+// raw body, verifies the signature…") after stating what did not. An earlier
+// tail-biased version of this showed exactly that trailing reassurance under a
+// red ✗, and opened it with a bare "…".
+//
+// So: drop the progress noise, then lead with the reason. "because X" is where
+// agents put it, and a sentence carrying a failure marker beats one that does
+// not. Truncation is always at the end, so a line never opens mid-word.
 func summarizeCheck(s string, budget int) string {
+	return summarizeCheckResult(s, budget, false)
+}
+
+// summarizeCheckFailure is summarizeCheck for a check that did not pass, where
+// preferring the sentence that explains the failure is the whole point.
+func summarizeCheckFailure(s string, budget int) string {
+	return summarizeCheckResult(s, budget, true)
+}
+
+func summarizeCheckResult(s string, budget int, failed bool) string {
 	var kept []string
 	for _, line := range strings.Split(s, "\n") {
 		line = strings.TrimSpace(line)
@@ -614,16 +623,127 @@ func summarizeCheck(s string, budget int) string {
 		kept = append(kept, line)
 	}
 	summary := strings.Join(strings.Fields(strings.Join(kept, " ")), " ")
+	if summary == "" {
+		return ""
+	}
+
+	if failed {
+		if reason := failureReason(summary); reason != "" {
+			summary = reason
+		}
+	}
 	if budget <= 0 || lipgloss.Width(summary) <= budget {
 		return summary
 	}
-	tail := ansi.TruncateLeft(summary, lipgloss.Width(summary)-budget, "")
-	// Start at a word boundary. Cutting mid-word produced "…e existing Stripe",
-	// which reads as a rendering fault rather than as a trimmed quotation.
-	if idx := strings.IndexByte(tail, ' '); idx >= 0 && idx < len(tail)/3 {
-		tail = tail[idx+1:]
+	return ansi.Truncate(summary, budget, "…")
+}
+
+// identifierPattern matches the tokens a reviewer scans for in a check: Stripe
+// event names (checkout.session.completed) and environment variables
+// (STRIPE_WEBHOOK_SECRET). Both are the subject of the sentence, and in a wall
+// of prose at one weight they were impossible to pick out.
+var identifierPattern = regexp.MustCompile(`\b([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){2,}|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+){1,})\b`)
+
+// highlightIdentifiers emphasizes those tokens inside an already-styled line.
+// The surrounding style is reapplied after each match so the rest of the line
+// keeps its color rather than reverting to the terminal default.
+func highlightIdentifiers(text string, base, accent lipgloss.Style) string {
+	matches := identifierPattern.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return base.Render(text)
 	}
-	return "… " + tail
+	var b strings.Builder
+	last := 0
+	for _, m := range matches {
+		b.WriteString(base.Render(text[last:m[0]]))
+		b.WriteString(accent.Render(text[m[0]:m[1]]))
+		last = m[1]
+	}
+	b.WriteString(base.Render(text[last:]))
+	return b.String()
+}
+
+// failureMarkers are the phrases agents use when reporting that something did
+// not work. Ordered by how specific they are.
+var failureMarkers = []string{
+	"could not", "cannot", "was not able", "unable to",
+	"is not configured", "not configured", "missing",
+	"failed", "error", "does not", "did not",
+}
+
+// failureReason picks the clause explaining why a check did not pass.
+func failureReason(summary string) string {
+	for _, sentence := range splitSentences(summary) {
+		lower := strings.ToLower(sentence)
+		if !containsAny(lower, failureMarkers) {
+			continue
+		}
+		// Agents write "<what was tried> because <the actual reason>". The
+		// reason is the half worth the single line available.
+		if idx := strings.Index(lower, " because "); idx >= 0 {
+			return tidyClause(sentence[idx+len(" because "):])
+		}
+		return tidyClause(sentence)
+	}
+	return ""
+}
+
+// splitSentences breaks on sentence-ending punctuation followed by a space. It
+// keeps abbreviations and decimals intact by requiring the next character to
+// start a new word.
+func splitSentences(s string) []string {
+	var out []string
+	start := 0
+	for i := 0; i < len(s)-1; i++ {
+		if s[i] != '.' && s[i] != '!' && s[i] != '?' && s[i] != ';' {
+			continue
+		}
+		if s[i+1] != ' ' {
+			continue
+		}
+		if sentence := strings.TrimSpace(s[start : i+1]); sentence != "" {
+			out = append(out, sentence)
+		}
+		start = i + 1
+	}
+	if sentence := strings.TrimSpace(s[start:]); sentence != "" {
+		out = append(out, sentence)
+	}
+	return out
+}
+
+// tidyClause makes a mid-sentence fragment stand on its own: a clause lifted
+// from after "because" keeps the semicolon that joined it to the rest, which
+// reads as though the line were cut short.
+func tidyClause(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimRight(s, ";,")
+	if s != "" && !strings.HasSuffix(s, ".") && !strings.HasSuffix(s, "!") && !strings.HasSuffix(s, "?") {
+		s += "."
+	}
+	return capitalize(s)
+}
+
+func containsAny(s string, needles []string) bool {
+	for _, needle := range needles {
+		if strings.Contains(s, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	// Leave identifiers like STRIPE_WEBHOOK_SECRET and checkout.session.completed
+	// alone: forcing a case change on them makes them wrong, not tidy.
+	if unicode.IsUpper(r[0]) || !unicode.IsLetter(r[0]) {
+		return s
+	}
+	return string(unicode.ToUpper(r[0])) + string(r[1:])
 }
 
 // isProgressLine reports whether a line is only CLI progress output. A line that

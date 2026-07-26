@@ -43,6 +43,7 @@ type Theme struct {
 	ActionHeadingStyle  lipgloss.Style
 	TaskHeadingStyle    lipgloss.Style
 	EvidenceStyle       lipgloss.Style
+	IdentifierStyle     lipgloss.Style
 	SoftSuccessStyle    lipgloss.Style
 	SoftErrorStyle      lipgloss.Style
 	SoftAttentionStyle  lipgloss.Style
@@ -113,6 +114,9 @@ func NewTheme(isDark bool) Theme {
 	// Underline gives the heading a second channel, so it stays distinct from
 	// the other bold headings once color is stripped.
 	t.ActionHeadingStyle = lipgloss.NewStyle().Foreground(t.Text).Bold(true)
+	// Event names and env vars are the subject of a check; they carry the
+	// review purple so they can be picked out of the sentence around them.
+	t.IdentifierStyle = lipgloss.NewStyle().Foreground(t.Purple400)
 	t.InstructionStyle = lipgloss.NewStyle().Foreground(t.Text)
 	// Blue for structure: purple already marks the cursor and review state, and
 	// orange is reserved for "you are blocking progress".

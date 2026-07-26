@@ -80,6 +80,42 @@ type renderedOutline struct {
 	navigationLine map[int]navigationItem
 }
 
+// stepShowsInlineCard reports whether this step draws its full card in place.
+//
+// The step in play always does: its card is the thing the user is here to read,
+// and it belongs under the step, not at the bottom of the screen. Any other
+// step draws one only when the user opens it with enter.
+func (m Model) stepShowsInlineCard(stepIndex int) bool {
+	if m.useSplitWorkspace() {
+		return false
+	}
+	if selected, ok := m.selectedStepIndex(); !ok || selected != stepIndex {
+		return false
+	}
+	// Below this the card cannot show enough of itself to be worth the space:
+	// it would sit entirely under the fold, and the user would see a step line
+	// and nothing to act on. The footer carries a one-line fallback instead.
+	//
+	// Measured against the terminal, not the viewport: the viewport's height is
+	// derived from the footer, and the footer asks this question, so reading the
+	// viewport here would make the two definitions circular.
+	// While the user is typing feedback the card is the editor's only home, so
+	// it renders in place at any height; the body above the input is what gives
+	// way instead.
+	if m.height > 0 && m.height < minInlineCardRows && !m.rejecting {
+		return false
+	}
+	if _, hasReview := m.selectedReviewTarget(); hasReview {
+		return true
+	}
+	return m.expanded
+}
+
+// minInlineCardRows is the terminal height below which the card stops rendering
+// in place: header, step line and rule, the card's own frame, a few rows of
+// content, and the footer.
+const minInlineCardRows = 18
+
 func (m Model) renderStepOutline() renderedOutline {
 	if m.session == nil {
 		return renderedOutline{navigationLine: map[int]navigationItem{}}
@@ -116,10 +152,19 @@ func (m Model) renderStepOutline() renderedOutline {
 		if !compact {
 			lines = append(lines, strings.Repeat(" ", rowCursorWidth)+m.theme.StepRuleStyle.Render(strings.Repeat("─", ruleWidth)))
 		}
-		if m.expanded && stepSelected && !m.useSplitWorkspace() {
+		// The step's card renders here, directly under the step it belongs to.
+		// It used to live pinned at the bottom of the screen, with `enter`
+		// toggling between that and an inline copy — two presentations of one
+		// step, in two places, and shrinking the terminal moved the content
+		// away from the step it described.
+		if m.stepShowsInlineCard(stepIdx) {
 			if detail := m.renderDetail(); detail != "" {
 				lines = append(lines, detail)
 			}
+			// The card lists the tasks itself, so listing them again out here
+			// would show each one twice.
+			nodeIdx += len(ch.Nodes)
+			continue
 		}
 
 		if m.stepCollapsed(stepIdx) {
@@ -216,6 +261,12 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 		line += "  " + m.theme.SuccessStyle.Render("✓ confirmed")
 	case m.stepReviewCount(stepIndex) > 0:
 		line += "  " + m.theme.SoftAttentionStyle.Render("needs you")
+	}
+	// A failed check is carried on the step line, not only inside the card.
+	// The card scrolls; this row is what the user sees while moving through the
+	// blueprint, and a failure they have to scroll to find is one they miss.
+	if failed, _ := stepCheckResults(&ch); len(failed) > 0 {
+		line += "  " + m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", len(failed)))
 	}
 	if m.stepCollapsed(stepIndex) {
 		if summary := m.collapsedStepSummary(stepIndex); summary != "" {
