@@ -1187,7 +1187,7 @@ func TestFooterNamesTheWaitingStepAndOffersAJump(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
-	assertContainsPlain(t, footer, "go to it")
+	assertContainsPlain(t, footer, "go to review")
 }
 
 // Standing on the step already, the jump hint is noise.
@@ -1201,7 +1201,7 @@ func TestFooterDropsJumpHintWhenAlreadyThere(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
-	assertNotContainsPlain(t, footer, "go to it")
+	assertNotContainsPlain(t, footer, "go to review")
 }
 
 func TestFollowJumpsToTheWaitingStep(t *testing.T) {

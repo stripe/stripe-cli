@@ -80,7 +80,7 @@ func (m Model) reviewWaitingNote(stepIndex int) string {
 
 	hint := ""
 	if selected, isStep := m.selectedStepIndex(); !isStep || selected != stepIndex {
-		hint = m.theme.MutedStyle.Render("   ") + m.keyHint("f", "go to it")
+		hint = m.theme.MutedStyle.Render("   ") + m.keyHint("f", "go to review")
 	}
 
 	budget := m.width
