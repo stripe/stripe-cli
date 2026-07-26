@@ -170,10 +170,14 @@ func (m Model) renderStepDetail(stepIndex int) string {
 // others printed a bare word with no hint that it was one of several or that
 // tab moved between them. Listing all four, with the active one marked, makes
 // the control visible from the tab you start on.
+// renderDetailTabs draws the section strip as actual tabs.
+//
+// They used to be words joined by " · ", which read as a sentence fragment
+// rather than as a control — the tabs went unnoticed until someone pressed tab
+// by accident. Filled backgrounds make the strip look like something you can
+// move between: the active tab is a solid block in the selection color, the
+// others sit on the panel ground.
 func (m Model) renderDetailTabs(sections []string, section string, width int) string {
-	active := lipgloss.NewStyle().Foreground(m.theme.Purple400).Bold(true)
-	separator := m.theme.DimmedStyle.Render(" · ")
-
 	// A lone tab is not a choice; do not spend a row advertising it.
 	if len(sections) < 2 {
 		return ""
@@ -182,15 +186,12 @@ func (m Model) renderDetailTabs(sections []string, section string, width int) st
 	var parts []string
 	for _, name := range sections {
 		if name == section {
-			parts = append(parts, active.Render(name))
+			parts = append(parts, m.theme.TabActiveStyle.Render(name))
 			continue
 		}
-		parts = append(parts, m.theme.DimmedStyle.Render(name))
+		parts = append(parts, m.theme.TabInactiveStyle.Render(name))
 	}
-	strip := strings.Join(parts, separator)
-	if width > 0 {
-		strip += "\n" + m.theme.StepRuleStyle.Render(strings.Repeat("─", width))
-	}
+	strip := strings.Join(parts, m.theme.TabGapStyle.Render(" "))
 
 	// Too narrow for the full strip — say where you are and that tab moves.
 	if width > 0 && lipgloss.Width(ansi.Strip(strip)) > width {
@@ -200,10 +201,28 @@ func (m Model) renderDetailTabs(sections []string, section string, width int) st
 				position = i + 1
 			}
 		}
-		return active.Render(section) + m.theme.DimmedStyle.Render(
+		return m.theme.TabActiveStyle.Render(section) + m.theme.DimmedStyle.Render(
 			fmt.Sprintf(" %d/%d · tab", position, len(sections)))
 	}
+	if width > 0 {
+		strip += "\n" + m.theme.StepRuleStyle.Render(strings.Repeat("─", width))
+	}
 	return strip
+}
+
+// visibleDetailTabCount is how many tabs the card on screen is actually
+// offering, so tab cycles through exactly those.
+func (m Model) visibleDetailTabCount() int {
+	if m.session == nil {
+		return 0
+	}
+	if stepIndex, ok := m.selectedStepIndex(); ok {
+		if stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+			return 0
+		}
+		return len(m.stepDetailSections(&m.session.Steps[stepIndex]))
+	}
+	return len(nodeDetailSections)
 }
 
 func (m Model) detailWidths() (int, int) {
@@ -306,56 +325,17 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		}
 	}
 
-	md.WriteString(m.theme.TaskHeadingStyle.Render("Tasks") + "\n")
-	// Budget the list in lines, not tasks. A task costs up to four rows once its
-	// file and the agent's note are included, so even a handful of them pushed
-	// the instruction below out of the pane. Past a few tasks the list drops to
-	// one line each: at that point it is an inventory, not evidence to read.
-	const maxTaskRows = 8
-	const detailedTasksMax = 3
-	nodes := ch.Nodes
-	hidden := 0
-	if len(nodes) > maxTaskRows {
-		hidden = len(nodes) - maxTaskRows
-		nodes = nodes[:maxTaskRows]
-	}
-	detailed := len(nodes) <= detailedTasksMax
-	for _, node := range nodes {
-		label, style := m.nodeStatusLabel(node)
-		line := m.nodeIcon(node) + " " + node.Title
-		if label != "" {
-			line += "  " + style(label)
-		}
-		// One row per task: a wrapped title reads as two entries.
-		md.WriteString(ansi.Truncate(line, wrapWidth, "…") + "\n")
-		if !detailed {
-			continue
-		}
-		if node.Implementation != nil && node.Implementation.File != "" {
-			writeWrapped(md, m.theme.FileAnnotationStyle.Render(
-				truncatePath(implementationFileLabel(node.Implementation), wrapWidth)), wrapWidth)
-		}
-		if note := taskEvidence(node); note != "" {
-			writeWrapped(md, m.theme.EvidenceStyle.Render(note), wrapWidth)
-		}
-	}
-	if hidden > 0 {
-		writeWrapped(md, m.theme.MutedStyle.Render(fmt.Sprintf("+%d more", hidden)), wrapWidth)
-	}
-	md.WriteString("\n")
+	// No task list and no checks section here. Tasks render outside the card,
+	// under it, and each one carries its own check results — the two lists were
+	// the same list, with the second copy restating every title from the first.
 
-	failed, passed := stepCheckResults(ch)
-	if len(failed) > 0 || passed > 0 {
-		md.WriteString(checksLabel(m.theme, len(failed) > 0) + "\n")
-		for _, check := range failed {
-			writeWrapped(md, m.theme.SoftErrorStyle.Render("✗ ")+
-				highlightIdentifiers(check, m.theme.MutedStyle, m.theme.IdentifierStyle), wrapWidth)
+	// The step's state closes the card, matching the small card a collapsed
+	// step shows. It sits below the instruction rather than above it, because
+	// what the reviewer has to do outranks a tally of what is done.
+	if stepIndex, ok := m.selectedStepIndex(); ok {
+		if status := m.stepStatusSummary(stepIndex); status != "" {
+			writeWrapped(md, status, wrapWidth)
 		}
-		if passed > 0 {
-			md.WriteString(m.theme.SoftSuccessStyle.Render("✓ ") +
-				m.theme.MutedStyle.Render(pluralChecks(passed)+" passed") + "\n")
-		}
-		md.WriteString("\n")
 	}
 }
 
@@ -372,24 +352,6 @@ func writeWrapped(md *strings.Builder, text string, width int) {
 // progress noise and flattened, but not truncated: the pane has vertical room,
 // and a leading ellipsis on text that would have fit reads as damage. The
 // character budget belongs to the card, which is height-constrained.
-// taskEvidenceBudget keeps a task's evidence to about one wrapped line.
-//
-// This used to pass 0, meaning "no limit", so a task whose agent pasted a full
-// command transcript into --check rendered the entire thing under the task
-// title. Three of those buried the instruction the reviewer actually needed.
-// The full text is still reachable — that is what the Reference tab is for.
-const taskEvidenceBudget = 100
-
-func taskEvidence(node coop.SessionNode) string {
-	for _, verification := range node.Verifications {
-		summary := summarizeCheckResult(verification.Check, taskEvidenceBudget, !verification.Passed)
-		if summary != "" {
-			return summary
-		}
-	}
-	return ""
-}
-
 func stepReviewPrompts(ch *coop.SessionStep) []string {
 	var prompts []string
 	seen := map[string]bool{}

@@ -48,7 +48,15 @@ func (m Model) renderFooter() string {
 	// thing standing between the user and a screen with nothing to act on.
 	if _, ok := m.selectedReviewTarget(); ok && !m.useSplitWorkspace() {
 		if selected, isStep := m.selectedStepIndex(); isStep && !m.stepShowsInlineCard(selected) {
-			lines = append(lines, m.theme.MutedStyle.Render("  "+cardCollapsedHint))
+			// Name a failure here too. At this size the fallback line is the
+			// only row left over for the step's state, so a silent "enter for
+			// details" is the difference between seeing a failed check and
+			// not knowing one exists.
+			failed := 0
+			if target, hasTarget := m.selectedReviewTarget(); hasTarget {
+				failed = len(m.reviewFailedCheckLabels(target.nodeNumbers))
+			}
+			lines = append(lines, m.theme.MutedStyle.Render("  "+overflowHint(nil, failed)))
 		}
 	}
 	lines = append(lines, actionLine)
@@ -89,7 +97,17 @@ func (m Model) reviewWaitingNote(stepIndex int) string {
 		title = ansi.Truncate(title, available, "…")
 	}
 
-	return m.theme.SoftAttentionStyle.Render(prefix) + m.theme.PromptStyle.Render(title)
+	note := m.theme.SoftAttentionStyle.Render(prefix) + m.theme.PromptStyle.Render(title)
+	// The failure count rides along here because this line is pinned. Inside
+	// the card it can be clipped by a short viewport, and on the task rows it
+	// can be scrolled past; the note is the one place it cannot be missed.
+	if target, ok := m.selectedReviewTarget(); ok {
+		if failed := len(m.reviewFailedCheckLabels(target.nodeNumbers)); failed > 0 {
+			note += m.theme.MutedStyle.Render(" · ") +
+				m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", failed))
+		}
+	}
+	return note
 }
 
 func (m Model) renderReviewCard() string {

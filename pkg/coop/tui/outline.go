@@ -116,6 +116,56 @@ func (m Model) stepShowsInlineCard(stepIndex int) bool {
 // content, and the footer.
 const minInlineCardRows = 18
 
+// stepBlockLines renders one step as it appears in the outline: its separator,
+// title, rule, card, and tasks. It returns the lines and the offset of the
+// title within them.
+//
+// The severe-cramping check measures with this same function rather than
+// estimating row counts of its own. The estimate and the renderer had drifted —
+// tasks were counted as one row each while rendering two — so the layout
+// dropped to its most degraded tier at heights where the windowed one fits.
+func (m Model) stepBlockLines(stepIndex int, selected, compact bool) (lines []string, titleOffset int, taskOffsets []int) {
+	ch := m.session.Steps[stepIndex]
+	if !compact {
+		lines = append(lines, "")
+	}
+	titleOffset = len(lines)
+	lines = append(lines, m.renderStepLine(ch, stepIndex, selected))
+	if !compact {
+		lines = append(lines, strings.Repeat(" ", rowCursorWidth)+
+			m.theme.StepRuleStyle.Render(strings.Repeat("─", m.outlineRuleWidth())))
+	}
+
+	// The step's card renders here, directly under the step it belongs to.
+	if m.stepShowsInlineCard(stepIndex) {
+		if detail := m.renderDetail(); detail != "" {
+			lines = append(lines, detail)
+		}
+	} else if card := m.renderStepStatusCard(stepIndex); card != "" {
+		lines = append(lines, card)
+	}
+
+	// Tasks render outside the card, underneath it.
+	if !m.stepShowsTasks(stepIndex) {
+		return lines, titleOffset, nil
+	}
+	for i := range ch.Nodes {
+		taskOffsets = append(taskOffsets, len(lines))
+		lines = append(lines, m.renderNodeLine(ch.Nodes[i], m.nodeGlobalIndex(stepIndex, i), false))
+	}
+	return lines, titleOffset, taskOffsets
+}
+
+// nodeGlobalIndex is a task's position across the whole session, which is what
+// the node-level selection and mouse mapping are keyed on.
+func (m Model) nodeGlobalIndex(stepIndex, nodeIndex int) int {
+	idx := 0
+	for i := 0; i < stepIndex; i++ {
+		idx += len(m.session.Steps[i].Nodes)
+	}
+	return idx + nodeIndex
+}
+
 func (m Model) renderStepOutline() renderedOutline {
 	if m.session == nil {
 		return renderedOutline{navigationLine: map[int]navigationItem{}}
@@ -125,13 +175,10 @@ func (m Model) renderStepOutline() renderedOutline {
 	navigationLines := map[int]navigationItem{}
 	nodeIdx := 0
 
-	ruleWidth := m.outlineRuleWidth()
-
 	cramped := m.outlineIsCramped()
 	first, last, above, below := m.outlineWindow()
 	if above > 0 {
-		lines = append(lines, m.theme.MutedStyle.Render(
-			fmt.Sprintf("  ▲ %d more above", above)))
+		lines = append(lines, m.theme.MutedStyle.Render("  "+scrollMarker("▲", above, m.outlineIsSeverelyCramped())))
 	}
 
 	for stepIdx, ch := range m.session.Steps {
@@ -144,50 +191,21 @@ func (m Model) renderStepOutline() renderedOutline {
 		// In a cramped list the neighbors are there for orientation only, so
 		// they give up their separator and rule; the selected step keeps both.
 		compact := cramped && !stepSelected
-		if !compact {
-			lines = append(lines, "")
-		}
-		navigationLines[len(lines)] = stepItem
-		lines = append(lines, m.renderStepLine(ch, stepIdx, stepSelected))
-		if !compact {
-			lines = append(lines, strings.Repeat(" ", rowCursorWidth)+m.theme.StepRuleStyle.Render(strings.Repeat("─", ruleWidth)))
-		}
-		// The step's card renders here, directly under the step it belongs to.
-		// It used to live pinned at the bottom of the screen, with `enter`
-		// toggling between that and an inline copy — two presentations of one
-		// step, in two places, and shrinking the terminal moved the content
-		// away from the step it described.
-		if m.stepShowsInlineCard(stepIdx) {
-			if detail := m.renderDetail(); detail != "" {
-				lines = append(lines, detail)
+		block, titleOffset, taskOffsets := m.stepBlockLines(stepIdx, stepSelected, compact)
+		navigationLines[len(lines)+titleOffset] = stepItem
+		// Task rows stay mouse targets even though the cursor only stops on
+		// steps: clicking one selects its step.
+		for i, offset := range taskOffsets {
+			navigationLines[len(lines)+offset] = navigationItem{
+				kind: navigationNode, nodeIndex: nodeIdx + i, stepIndex: stepIdx,
 			}
-			// The card lists the tasks itself, so listing them again out here
-			// would show each one twice.
-			nodeIdx += len(ch.Nodes)
-			continue
 		}
-
-		if m.stepCollapsed(stepIdx) {
-			nodeIdx += len(ch.Nodes)
-			continue
-		}
-		for _, node := range ch.Nodes {
-			nodeItem := navigationItem{kind: navigationNode, nodeIndex: nodeIdx, stepIndex: stepIdx}
-			nodeSelected := m.navigationItemSelected(nodeItem)
-			navigationLines[len(lines)] = nodeItem
-			lines = append(lines, m.renderNodeLine(node, nodeIdx, nodeSelected))
-			if m.expanded && nodeSelected && !m.useSplitWorkspace() {
-				if detail := m.renderDetail(); detail != "" {
-					lines = append(lines, detail)
-				}
-			}
-			nodeIdx++
-		}
+		lines = append(lines, block...)
+		nodeIdx += len(ch.Nodes)
 	}
 
 	if below > 0 {
-		lines = append(lines, m.theme.MutedStyle.Render(
-			fmt.Sprintf("  ▼ %d more below", below)))
+		lines = append(lines, m.theme.MutedStyle.Render("  "+scrollMarker("▼", below, m.outlineIsSeverelyCramped())))
 	}
 
 	return renderedOutline{
@@ -202,6 +220,19 @@ func (m Model) renderStepOutline() renderedOutline {
 // is what the user is actually reading, so the list gives up its rows and keeps
 // only the selected step with one either side — enough to know where you are —
 // plus counts of what was hidden, so the list never silently looks complete.
+// scrollMarker labels what is hidden in one direction. Under severe pressure it
+// drops to the arrow and a count, since the row it saves is a row of content.
+func scrollMarker(arrow string, count int, compact bool) string {
+	if compact {
+		return fmt.Sprintf("%s %d", arrow, count)
+	}
+	direction := "above"
+	if arrow == "▼" {
+		direction = "below"
+	}
+	return fmt.Sprintf("%s %d more %s", arrow, count, direction)
+}
+
 func (m Model) outlineWindow() (first, last, above, below int) {
 	total := len(m.session.Steps)
 	if total == 0 {
@@ -216,8 +247,15 @@ func (m Model) outlineWindow() (first, last, above, below int) {
 	if idx, ok := m.selectedStepIndex(); ok {
 		selected = idx
 	}
-	first = max(selected-1, 0)
-	last = min(selected+1, total-1)
+	// Two levels of pressure. With the card not fitting, keep one step either
+	// side for orientation. Tighter than that, the neighbors are the first
+	// thing to go — the selected step and the two markers are what is left.
+	span := 1
+	if m.outlineIsSeverelyCramped() {
+		span = 0
+	}
+	first = max(selected-span, 0)
+	last = min(selected+span, total-1)
 	return first, last, first, total - 1 - last
 }
 
@@ -242,6 +280,114 @@ func (m Model) outlineIsCramped() bool {
 	return rows > height+tolerance
 }
 
+// outlineIsSeverelyCramped reports whether even the selected step plus one
+// neighbor either side will not fit. At that point the neighbors are dropped
+// and only the markers say there is more in each direction.
+func (m Model) outlineIsSeverelyCramped() bool {
+	height := m.viewport.Height()
+	if height <= 0 || m.session == nil {
+		return false
+	}
+	selected := 0
+	if idx, ok := m.selectedStepIndex(); ok {
+		selected = idx
+	}
+	blockRows := func(stepIdx int) int {
+		block, _, _ := m.stepBlockLines(stepIdx, stepIdx == selected, stepIdx != selected)
+		return lipgloss.Height(strings.Join(block, "\n"))
+	}
+
+	const markerRows = 2
+	own := markerRows + blockRows(selected)
+	withNeighbors := own
+	for stepIdx := max(selected-1, 0); stepIdx <= min(selected+1, len(m.session.Steps)-1); stepIdx++ {
+		if stepIdx != selected {
+			withNeighbors += blockRows(stepIdx)
+		}
+	}
+
+	// Drop the neighbors only when that is what buys the fit. If the selected
+	// step overflows on its own, the view is scrolling either way and hiding
+	// the neighbors costs orientation without gaining a row of content.
+	//
+	// The same tolerance the cramping check uses: a window that overshoots by a
+	// row or two still shows its neighbors and scrolls, rather than blanking
+	// them and leaving the space empty.
+	const tolerance = 4
+	return own <= height && withNeighbors > height+tolerance
+}
+
+// renderStepStatusCard is the small card under every step header.
+//
+// It carries what used to trail the header: the step's state and the count of
+// its tasks by state. A collapsed step shows only this; the step in play shows
+// the full review card instead.
+// stepShowsTasks reports whether a step lists its tasks under its card.
+//
+// The step in play always does. A collapsed step does too when there is height
+// for it — collapsing is about reclaiming rows under pressure, and with rows to
+// spare there is no reason to hide work the user could be reading.
+func (m Model) stepShowsTasks(stepIndex int) bool {
+	// In the windowed layout the neighbors exist to say where you are. Listing
+	// their tasks pushed the "more below" marker off the bottom of the screen,
+	// so the window hid the very thing it was drawn to advertise.
+	if m.outlineIsCramped() {
+		selected, ok := m.selectedStepIndex()
+		return ok && selected == stepIndex
+	}
+	return true
+}
+
+// stepStatusSummary is the one line of state a step carries: whether it is
+// waiting on the user, how many checks failed, and the count of its tasks by
+// state. It used to trail the step title; it is now the body of the small card
+// and the first line of the full one, so the same information appears in the
+// same place whichever card a step is showing.
+func (m Model) stepStatusSummary(stepIndex int) string {
+	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+		return ""
+	}
+	var parts []string
+	switch {
+	case m.stepJustConfirmed(stepIndex):
+		parts = append(parts, m.theme.SuccessStyle.Render("✓ confirmed"))
+	case m.stepReviewCount(stepIndex) > 0:
+		parts = append(parts, m.theme.SoftAttentionStyle.Render("needs you"))
+	}
+	if failed, _ := stepCheckResults(&m.session.Steps[stepIndex]); len(failed) > 0 {
+		parts = append(parts, m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", len(failed))))
+	}
+	if summary := m.collapsedStepSummary(stepIndex); summary != "" {
+		parts = append(parts, m.theme.MutedStyle.Render(summary))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return strings.Join(parts, m.theme.MutedStyle.Render(" · "))
+}
+
+func (m Model) renderStepStatusCard(stepIndex int) string {
+	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+		return ""
+	}
+	body := m.stepStatusSummary(stepIndex)
+	if body == "" {
+		return ""
+	}
+
+	// Same widths as the review card, so the two line up under the same rule
+	// instead of sitting at different insets depending on the step's state.
+	width, inner := m.detailWidths()
+	if inner < 8 {
+		inner = 8
+	}
+	if lipgloss.Width(ansi.Strip(body)) > inner {
+		body = ansi.Truncate(body, inner, "…")
+	}
+	card := m.theme.StatusCardStyle.Width(width).Render(body)
+	return indentBlock(card, rowCursorWidth)
+}
+
 func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool) string {
 	prefix := "  "
 	if selected {
@@ -255,27 +401,11 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	if selected {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
+	// Title only. Everything that used to trail the header — the state, the
+	// per-state counts, the failure badge — now sits in the card directly
+	// beneath it, where it is one readable line instead of a row of glyphs
+	// competing with the title for the same space.
 	line := prefix + m.theme.MutedStyle.Render(disclosure) + m.theme.StepTitleStyle.Render(title)
-	switch {
-	case m.stepJustConfirmed(stepIndex):
-		line += "  " + m.theme.SuccessStyle.Render("✓ confirmed")
-	case m.stepReviewCount(stepIndex) > 0:
-		line += "  " + m.theme.SoftAttentionStyle.Render("needs you")
-	}
-	// A failed check is carried on the step line, not only inside the card.
-	// The card scrolls; this row is what the user sees while moving through the
-	// blueprint, and a failure they have to scroll to find is one they miss.
-	if failed, _ := stepCheckResults(&ch); len(failed) > 0 {
-		line += "  " + m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", len(failed)))
-	}
-	if m.stepCollapsed(stepIndex) {
-		if summary := m.collapsedStepSummary(stepIndex); summary != "" {
-			candidate := line + "  " + m.theme.MutedStyle.Render(summary)
-			if lipgloss.Width(candidate) <= m.outlineWidth() {
-				line = candidate
-			}
-		}
-	}
 	// Truncate rather than let a long title run off: every other truncation in
 	// the UI marks itself, and this one did not.
 	if width := m.outlineWidth(); width > 0 && lipgloss.Width(line) > width {
@@ -377,6 +507,22 @@ func (m Model) stepHasPendingReviewWithNoActiveWork(stepIndex int) bool {
 	return hasReview
 }
 
+// nodeCheckResults returns this task's failure reasons and its passed count.
+func nodeCheckResults(node coop.SessionNode) ([]string, int) {
+	var failed []string
+	passed := 0
+	for _, verification := range node.Verifications {
+		if verification.Passed {
+			passed++
+			continue
+		}
+		if reason := summarizeCheckFailure(verification.Check, failedCheckBudget); reason != "" {
+			failed = append(failed, reason)
+		}
+	}
+	return failed, passed
+}
+
 func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) string {
 	icon := m.nodeIcon(node)
 
@@ -420,6 +566,34 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 	line := fmt.Sprintf("%s%s %s", cursor, icon, title)
 	if label, style := m.nodeStatusLabel(node); label != "" {
 		line += "  " + style(label)
+	}
+	// The task carries its own check results. They used to live in a separate
+	// "Agent checks" section that restated every task title above it, so the
+	// same list appeared twice with the second copy prefixed by the first.
+	failed, passed := nodeCheckResults(node)
+	if len(failed) > 0 {
+		line += "  " + m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", len(failed)))
+	}
+	if passed > 0 {
+		line += "  " + m.theme.SoftSuccessStyle.Render(fmt.Sprintf("✓%d", passed))
+	}
+
+	indent := strings.Repeat(" ", rowCursorWidth+2)
+	wrapW := m.outlineWidth() - 8
+	if wrapW < 20 {
+		wrapW = 20
+	}
+	for _, reason := range failed {
+		// The ✗ marks the finding once. Repeating it on every wrapped line read
+		// as several separate failures.
+		for i, wl := range strings.Split(wordWrap(reason, wrapW-2), "\n") {
+			marker := m.theme.SoftErrorStyle.Render("✗ ")
+			if i > 0 {
+				marker = "  "
+			}
+			line += "\n" + indent + marker +
+				highlightIdentifiers(wl, m.theme.MutedStyle, m.theme.IdentifierStyle)
+		}
 	}
 
 	if annText != "" {

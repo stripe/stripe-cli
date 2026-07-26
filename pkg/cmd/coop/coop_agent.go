@@ -55,7 +55,7 @@ func newCoopAgentStartWorkCmd() *coopAgentActionCmd {
 	c := &coopAgentActionCmd{}
 	c.cmd = &cobra.Command{
 		Use:   "start-work",
-		Short: "Mark a node as active",
+		Short: "Mark a task as active",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
@@ -122,7 +122,7 @@ func newCoopAgentSkipCmd() *coopAgentActionCmd {
 	c := &coopAgentActionCmd{}
 	c.cmd = &cobra.Command{
 		Use:   "skip",
-		Short: "Skip a node",
+		Short: "Skip a task",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service, err := newWorkflowService()
 			if err != nil {
@@ -189,7 +189,7 @@ func newCoopAgentStartFollowupCmd() *coopAgentActionCmd {
 
 func (c *coopAgentActionCmd) addSessionStepFlags() {
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
-	c.cmd.Flags().IntVar(&c.step, "step", 0, "1-based node number")
+	c.cmd.Flags().IntVar(&c.step, "step", 0, "1-based task number")
 	mustMarkFlagRequired(c.cmd, "session")
 	mustMarkFlagRequired(c.cmd, "step")
 }

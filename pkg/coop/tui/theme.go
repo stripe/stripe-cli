@@ -44,6 +44,10 @@ type Theme struct {
 	TaskHeadingStyle    lipgloss.Style
 	EvidenceStyle       lipgloss.Style
 	IdentifierStyle     lipgloss.Style
+	StatusCardStyle     lipgloss.Style
+	TabActiveStyle      lipgloss.Style
+	TabInactiveStyle    lipgloss.Style
+	TabGapStyle         lipgloss.Style
 	SoftSuccessStyle    lipgloss.Style
 	SoftErrorStyle      lipgloss.Style
 	SoftAttentionStyle  lipgloss.Style
@@ -88,6 +92,25 @@ func NewTheme(isDark bool) Theme {
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(t.Selection).
 		Padding(0, 1)
+	// The small card under a step header. Quieter than the review card: it
+	// carries a single line of status, so a heavy border would outweigh it.
+	t.StatusCardStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Gray700).
+		Padding(0, 1)
+	// Tabs read as tabs when they have a filled body, not when they are words
+	// separated by dots. The active one is a solid block; the others sit on a
+	// dim ground so the strip still reads as a row of controls.
+	t.TabActiveStyle = lipgloss.NewStyle().
+		Foreground(t.Text).
+		Background(t.Selection).
+		Bold(true).
+		Padding(0, 1)
+	t.TabInactiveStyle = lipgloss.NewStyle().
+		Foreground(t.Gray400).
+		Background(t.Panel).
+		Padding(0, 1)
+	t.TabGapStyle = lipgloss.NewStyle().Foreground(t.Gray700)
 	t.ConfirmationHeaderStyle = lipgloss.NewStyle().
 		Foreground(t.Text).
 		Background(t.Selection).

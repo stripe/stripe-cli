@@ -6,6 +6,30 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// viewportIndicatorRows is what the overflow indicator costs: a blank line and
+// its own row.
+const viewportIndicatorRows = 2
+
+// viewportFooterGap is the blank space between the scrolling region and the
+// pinned footer.
+const viewportFooterGap = 2
+
+// viewportRegionHeight is how many rows the scrolling region actually gets.
+//
+// This is the single definition. It used to be computed twice — once here when
+// drawing and once in resizeViewport when sizing — with different arithmetic,
+// so the viewport believed it was two rows taller than the region it was drawn
+// into. Anything reasoning about what is on screen, EnsureVisible above all,
+// was working from the wrong number, and the difference showed up as dead rows
+// above the footer.
+func (m Model) viewportRegionHeight(header, footer string) int {
+	available := m.height - (lipgloss.Height(header) + 1) - lipgloss.Height(footer) - viewportFooterGap
+	if floor := m.minViewportRows(); available < floor {
+		return floor
+	}
+	return available
+}
+
 func (m Model) renderViewportRegionWithHeight(height int) string {
 	if m.width <= 0 || height <= 0 {
 		return m.viewport.View()
@@ -79,15 +103,10 @@ func closeOpenBoxAtViewportBoundary(s string) string {
 }
 
 func (m Model) renderPinnedViewport(header, footer string) string {
-	footerGap := 2
+	footerGap := viewportFooterGap
 	viewHeight := m.viewport.Height()
 	if m.height > 0 {
-		headerH := lipgloss.Height(header) + 1
-		footerH := lipgloss.Height(footer)
-		available := m.height - headerH - footerH - footerGap
-		if floor := m.minViewportRows(); available < floor {
-			available = floor
-		}
+		available := m.viewportRegionHeight(header, footer)
 		if viewHeight <= 0 || viewHeight > available {
 			viewHeight = available
 		}

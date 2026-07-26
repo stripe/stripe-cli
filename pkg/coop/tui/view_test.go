@@ -122,8 +122,10 @@ func TestRenderStepList(t *testing.T) {
 	assertContainsPlain(t, list, "Create product")
 	assertContainsPlain(t, list, "Create checkout")
 
-	// Step 1 has not started, so its tasks stay collapsed.
-	assertNotContainsPlain(t, list, "Handle event")
+	// Step 1 has not started, but with height to spare its tasks are listed
+	// under its small card too: collapsing exists to reclaim rows under
+	// pressure, not to hide work the user has room to read.
+	assertContainsPlain(t, list, "Handle event")
 }
 
 func TestRenderStepListAlignsStepTitleWithRule(t *testing.T) {
@@ -184,9 +186,8 @@ func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
 	list := m.renderStepList()
 
 	assertContainsPlain(t, list, "+ Set up product")
+	// The counts moved off the header into the small card beneath it.
 	assertContainsPlain(t, list, "✓1 ●1")
-	assertNotContainsPlain(t, list, "Create product")
-	assertNotContainsPlain(t, list, "Create checkout")
 }
 
 func TestRenderStepLineAnnotation(t *testing.T) {
@@ -245,7 +246,9 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	detail := m.renderDetail()
 
 	assertNotContainsPlain(t, detail, "Details:")
-	assertContainsPlain(t, detail, "Summary · Files")
+	// Tabs are filled blocks now, not words joined by " · ".
+	assertContainsPlain(t, detail, "Summary")
+	assertContainsPlain(t, detail, "Files")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
 	assertContainsPlain(t, detail, "To confirm")
 	assertNotContainsPlain(t, detail, "POST /v1/products")
@@ -274,9 +277,10 @@ func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 
 	detail := m.renderDetail()
 
-	assertContainsPlain(t, detail, "✓ Create product")
-	assertContainsPlain(t, detail, "Create checkout")
+	// Tasks are not in the card any more — they render underneath it, in the
+	// outline. The card carries the step-level content.
 	assertContainsPlain(t, detail, "To confirm")
+	assertNotContainsPlain(t, detail, "✓ Create product")
 	assertNotContainsPlain(t, detail, "SDK example")
 }
 
@@ -385,7 +389,9 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	// away with the footer card: the card now sits under the step line that
 	// names it, and each task carries its own file.
 	assertContainsPlain(t, footer, "To confirm")
-	assertContainsPlain(t, footer, "Tasks")
+	// "Tasks" is no longer a heading inside the card; the task rows sit
+	// below it in the outline, which reviewSurface also covers.
+	assertContainsPlain(t, footer, "Create product")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -1144,8 +1150,8 @@ func TestDetailTabStripIsAlwaysVisible(t *testing.T) {
 		for _, section := range sections {
 			assertContainsPlain(t, detail, section)
 		}
-		assert.Contains(t, detail, lipgloss.NewStyle().
-			Foreground(m.theme.Purple400).Bold(true).Render(name),
+		// The active tab is a filled block now, not purple text.
+		assert.Contains(t, detail, m.theme.TabActiveStyle.Render(name),
 			"the active tab should be marked")
 	}
 }

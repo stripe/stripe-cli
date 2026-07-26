@@ -417,9 +417,16 @@ func TestSplitWorkspaceDetailBoxIsColumnAligned(t *testing.T) {
 	m.expanded = true
 	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
 
+	// Only the right pane. The nav column now draws a small status card under
+	// each step header, so the frame legitimately contains more than one box;
+	// this test is about the detail box holding a single left edge.
+	const rightPaneStart = 42
 	columns := map[int]int{}
 	for _, line := range strings.Split(ansi.Strip(rendered), "\n") {
 		for col, r := range []rune(line) {
+			if col < rightPaneStart {
+				continue
+			}
 			if r == '╭' || r == '│' || r == '╰' {
 				columns[col]++
 				break
@@ -476,10 +483,14 @@ func TestFailedCheckSurvivesEveryHeight(t *testing.T) {
 			rendered := ansi.Strip(renderLayoutScenario(&m, size))
 
 			// The card scrolls now that it renders inline, so the guarantee is
-			// that the frame signals the failure somewhere the user is looking
-			// — the step line carries a ✗N badge for exactly this reason — not
-			// that the full finding fits on screen unscrolled.
-			assert.Contains(t, rendered, "✗",
+			// that the frame signals the failure somewhere the user is looking,
+			// not that the full finding fits on screen unscrolled. The step's
+			// status line carries a ✗N badge; at heights too short for any card
+			// the footer fallback counts the failures instead.
+			named := strings.Contains(rendered, "✗")
+			counted := strings.Contains(rendered, "check failed") ||
+				strings.Contains(rendered, "checks failed")
+			assert.True(t, named || counted,
 				"the failure must be signaled somewhere in the frame:\n%s", rendered)
 		})
 	}

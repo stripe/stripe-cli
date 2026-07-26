@@ -487,19 +487,13 @@ func (m *Model) resizeViewport() {
 	if !m.ready || m.height == 0 {
 		return
 	}
-	// The footer already carries its own leading blank line, and the header its
-	// own trailing one. The extra +1s here were slack for a review card that
-	// used to live in the footer and could grow; with the card inline they only
-	// left dead rows between the content and the keys.
-	headerH := lipgloss.Height(m.renderHeader())
-	footerH := lipgloss.Height(m.renderFooter())
+	footer := m.renderFooter()
 	if m.session != nil && m.session.IsComplete() {
-		footerH = lipgloss.Height(m.renderCompletionFooter()) + 1
+		footer = m.renderCompletionFooter()
 	}
-	vpHeight := m.height - headerH - footerH - terminalScrollGuard
-	if floor := m.minViewportRows(); vpHeight < floor {
-		vpHeight = floor
-	}
+	// Same definition the view draws with, so the viewport is never sized to
+	// more rows than actually appear on screen.
+	vpHeight := m.viewportRegionHeight(m.renderHeader(), footer)
 	m.viewport.SetWidth(m.width)
 	m.viewport.SetHeight(vpHeight)
 	m.viewport.YPosition = lipgloss.Height(m.renderHeader())
@@ -540,7 +534,21 @@ func (m *Model) syncViewport() {
 func (m *Model) ensureEditorVisible(content string) bool {
 	for i, line := range strings.Split(content, "\n") {
 		if strings.Contains(ansi.Strip(line), "Request changes") {
-			m.viewport.EnsureVisible(i, 0, 0)
+			// Scroll explicitly rather than through EnsureVisible: the rows the
+			// overflow indicator claims are not rows the viewport knows about,
+			// so it considered the editor visible while it sat just under the
+			// fold. Reserve them here.
+			// Two rows for the overflow indicator, and one more for the border
+			// the clipped card draws to close itself — that closing line lands
+			// on the last visible row, so without it the editor was scrolled to
+			// exactly the row the border then took.
+			visible := m.viewport.Height() - viewportIndicatorRows - 1
+			if visible < 1 {
+				visible = 1
+			}
+			if bottom := i - visible + 1; bottom > m.viewport.YOffset() {
+				m.viewport.SetYOffset(bottom)
+			}
 			return true
 		}
 	}
@@ -774,8 +782,12 @@ func (m Model) handleActionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Enter):
 		return m.handleEnter()
 	case key.Matches(msg, m.keys.Tab):
-		if m.expanded {
-			m.detailTab = (m.detailTab + 1) % len(detailSections)
+		// Gated on m.expanded, this stopped working the moment the card began
+		// rendering in place without being opened first. It also cycled modulo
+		// a fixed list of three while a step offers only the tabs it has
+		// content for, so the count could disagree with the strip on screen.
+		if count := m.visibleDetailTabCount(); count > 1 {
+			m.detailTab = (m.detailTab + 1) % count
 			m.syncViewport()
 			return m, m.fetchSnippetIfNeeded()
 		}
