@@ -33,7 +33,6 @@ const (
 	// install: it is written last, so a target directory without it is a
 	// partial install that a later run repairs instead of skipping.
 	stripeSkillCompletionMarker = "SKILL.md"
-	stripeSkillStagingSuffix    = ".incomplete"
 )
 
 var (
@@ -278,41 +277,12 @@ func installStripeSkillTarget(project *os.Root, target string, files map[string]
 		return false, err
 	}
 
-	if err := project.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return false, fmt.Errorf("creating project skills directory: %w", err)
+	// Writing into target covers both a fresh install and finishing a partial
+	// one. Files the project may still own are never removed.
+	if err := project.MkdirAll(target, 0o755); err != nil {
+		return false, fmt.Errorf("creating Stripe skill directory: %w", err)
 	}
-
-	if _, err := project.Lstat(target); err == nil {
-		// A partial install already occupies the path. Complete it in place
-		// rather than deleting files the project may still own.
-		return true, writeStripeSkillFiles(project, target, files)
-	} else if !os.IsNotExist(err) {
-		return false, fmt.Errorf("checking existing Stripe skill: %w", err)
-	}
-
-	// Write to a staging directory and rename it into place, so target never
-	// appears as a directory that agents can discover but is missing files.
-	staging := target + stripeSkillStagingSuffix
-	if err := project.RemoveAll(staging); err != nil {
-		return false, fmt.Errorf("clearing Stripe skill staging directory: %w", err)
-	}
-	if err := project.Mkdir(staging, 0o755); err != nil {
-		return false, fmt.Errorf("creating Stripe skill staging directory: %w", err)
-	}
-	defer func() { _ = project.RemoveAll(staging) }()
-
-	if err := writeStripeSkillFiles(project, staging, files); err != nil {
-		return false, err
-	}
-	if err := project.Rename(staging, target); err != nil {
-		// A concurrent run may have published the skill first, which is the
-		// same outcome from this run's point of view.
-		if stillNeeded, checkErr := stripeSkillTargetNeedsInstall(project, target); checkErr == nil && !stillNeeded {
-			return false, nil
-		}
-		return false, fmt.Errorf("publishing Stripe skill directory: %w", err)
-	}
-	return true, nil
+	return true, writeStripeSkillFiles(project, target, files)
 }
 
 // writeStripeSkillFiles writes every skill file under directory, saving the

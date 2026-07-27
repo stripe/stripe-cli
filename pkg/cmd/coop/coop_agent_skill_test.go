@@ -191,43 +191,6 @@ func TestWriteStripeSkillFilesOmitsCompletionMarkerWhenAnEarlierWriteFails(t *te
 	assert.NoFileExists(t, filepath.Join(skillDirectory, stripeSkillCompletionMarker))
 }
 
-func TestInstallStripeBestPracticesSkillLeavesNoStagingDirectory(t *testing.T) {
-	projectDirectory := t.TempDir()
-
-	_, err := installStripeBestPracticesSkillFrom(
-		context.Background(),
-		projectDirectory,
-		startStripeSkillSource(t, testStripeBestPracticesSkillFiles),
-	)
-
-	require.NoError(t, err)
-	for _, relativeTarget := range stripeBestPracticesSkillTargets {
-		assert.NoDirExists(t, filepath.Join(projectDirectory, relativeTarget+stripeSkillStagingSuffix))
-	}
-}
-
-// A staging directory left behind by an interrupted run must not block or
-// pollute the next install.
-func TestInstallStripeBestPracticesSkillClearsAbandonedStagingDirectory(t *testing.T) {
-	projectDirectory := t.TempDir()
-	staging := filepath.Join(projectDirectory, stripeBestPracticesSkillTargets[0]+stripeSkillStagingSuffix)
-	require.NoError(t, os.MkdirAll(staging, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(staging, "stale.md"), []byte("stale\n"), 0o600))
-
-	installed, err := installStripeBestPracticesSkillFrom(
-		context.Background(),
-		projectDirectory,
-		startStripeSkillSource(t, testStripeBestPracticesSkillFiles),
-	)
-
-	require.NoError(t, err)
-	assert.True(t, installed)
-	assert.NoDirExists(t, staging)
-	target := filepath.Join(projectDirectory, stripeBestPracticesSkillTargets[0])
-	assert.FileExists(t, filepath.Join(target, stripeSkillCompletionMarker))
-	assert.NoFileExists(t, filepath.Join(target, "stale.md"))
-}
-
 func TestInstallStripeBestPracticesSkillFetchFailureDoesNotCreateTargets(t *testing.T) {
 	projectDirectory := t.TempDir()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
