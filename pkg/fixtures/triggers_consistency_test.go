@@ -185,3 +185,52 @@ func TestEventNamesFollowConvention(t *testing.T) {
 		})
 	}
 }
+
+// TestV1PrefixAliasesRegistered ensures that every snapshot event (no v1./v2. prefix)
+// has a corresponding "v1.<name>" entry in the events map pointing to the same fixture.
+func TestV1PrefixAliasesRegistered(t *testing.T) {
+	evts := getEvents()
+
+	for name, path := range evts {
+		if strings.HasPrefix(name, "v1.") || strings.HasPrefix(name, "v2.") {
+			continue
+		}
+		if _, ok := v1TriggerableEvents[name]; !ok {
+			continue // no thin event for this snapshot event; no v1. alias expected
+		}
+		t.Run(name, func(t *testing.T) {
+			v1Name := "v1." + name
+			v1Path, ok := evts[v1Name]
+			assert.True(t, ok,
+				"expected v1 alias %q to be registered for snapshot event %q", v1Name, name)
+			assert.Equal(t, path, v1Path,
+				"v1 alias %q should point to same fixture path as %q", v1Name, name)
+		})
+	}
+}
+
+// TestNativeV1EventsNotOverridden ensures that events with a dedicated
+// "triggers/v1.*" fixture file (e.g. v1.billing.meter.error_report_triggered)
+// are not replaced by auto-generated snapshot aliases.
+func TestNativeV1EventsNotOverridden(t *testing.T) {
+	evts := getEvents()
+
+	for name, path := range evts {
+		if !strings.HasPrefix(name, "v1.") {
+			continue
+		}
+		// A native v1 event owns a fixture file named after itself.
+		expectedNativePath := "triggers/" + name + ".json"
+		if path != expectedNativePath {
+			// This is an auto-generated alias pointing to a snapshot fixture — skip.
+			continue
+		}
+		t.Run(name, func(t *testing.T) {
+			content, err := triggers.ReadFile(path)
+			require.NoError(t, err,
+				"native v1 event %q: fixture file %q should be readable", name, path)
+			require.NotEmpty(t, content,
+				"native v1 event %q: fixture file %q should not be empty", name, path)
+		})
+	}
+}

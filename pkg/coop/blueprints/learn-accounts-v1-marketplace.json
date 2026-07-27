@@ -1,0 +1,132 @@
+{
+  "id": "learn-accounts-v1-marketplace",
+  "title": "Collect payments as a marketplace",
+  "description": "Collect payments then pay out on your marketplace.",
+  "type": "learning",
+  "products": [
+    "Connect",
+    "Checkout"
+  ],
+  "settings": null,
+  "steps": [
+    {
+      "key": "create-account-chapter",
+      "title": "Create and onboard a connected account",
+      "description": "Create an account for each seller on your marketplace.",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-account",
+          "title": "Create an account",
+          "description": "Create a connected account to represent a seller on your marketplace.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/accounts",
+            "method": "post",
+            "params": {
+              "business_profile": {
+                "name": "Test account"
+              },
+              "controller": {
+                "fees": {
+                  "payer": "application"
+                },
+                "losses": {
+                  "payments": "application"
+                },
+                "requirement_collection": "stripe",
+                "stripe_dashboard": {
+                  "type": "express"
+                }
+              },
+              "country": "${env:connectedAccountCountry}"
+            }
+          }
+        },
+        {
+          "type": "apiRequest",
+          "key": "create-account-link",
+          "title": "Create an account link",
+          "description": "In your actual integration, create an account link to collect KYC information from your connected account, which will render a \u003cLinkHosted\u003eStripe-hosted onboarding flow\u003c/LinkHosted\u003e. Alternatively, you can use \u003cLinkEmbedded\u003eembedded onboarding\u003c/LinkEmbedded\u003e to integrate the onboarding component into your application or use \u003cLinkApi\u003eAPI onboarding\u003c/LinkApi\u003e to create a customized onboarding UI using Stripe's APIs.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/account_links",
+            "method": "post",
+            "params": {
+              "account": "${node.create-account-chapter.create-account:id}",
+              "refresh_url": "https://dashboard.stripe.com/workbench/blueprints/learn-accounts-v1-marketplace/create-account-chapter?confirmation-redirect=create-account-link",
+              "return_url": "https://dashboard.stripe.com/workbench/blueprints/learn-accounts-v1-marketplace/create-account-chapter?confirmation-redirect=create-account-link",
+              "type": "account_onboarding"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "onboard-account",
+          "title": "Complete KYC data collection",
+          "description": "Your connected account can use the generated account link to complete KYC data collection. This step isn't required for this example but will be necessary in your actual implementation.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        }
+      ]
+    },
+    {
+      "key": "accept-embedded-payments-chapter",
+      "title": "Accept embedded payments",
+      "description": "Create a \u003cLink\u003echarge\u003c/Link\u003e on behalf of the connected account and pay then out to sellers on your marketplace.",
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create a checkout interface",
+          "description": "Create a Checkout Session on behalf of the connected account to accept payments. The connected account's customer will be directed to a \u003cLinkHosted\u003eStripe-hosted prebuilt payment form\u003c/LinkHosted\u003e optimized for conversion. Alternatively, you can also \u003cLinkEmbedded\u003eembed a prebuilt payment form\u003c/LinkEmbedded\u003e on your site or use the API to build a more \u003cLinkApi\u003ecustomized checkout experience\u003c/LinkApi\u003e.",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post",
+            "params": {
+              "line_items": [
+                {
+                  "price_data": {
+                    "currency": "${env:currency}",
+                    "product_data": {
+                      "name": "Cookie"
+                    },
+                    "unit_amount": 100000
+                  },
+                  "quantity": 1
+                }
+              ],
+              "mode": "payment",
+              "payment_intent_data": {
+                "application_fee_amount": 123,
+                "transfer_data": {
+                  "destination": "${node.create-account-chapter.create-account:id}"
+                }
+              },
+              "success_url": "https://dashboard.stripe.com/workbench/blueprints/learn-accounts-v1-marketplace/accept-embedded-payments-chapter?confirmation-redirect=create-checkout-session"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "complete-checkout",
+          "title": "Accept a payment",
+          "description": "The connected account's customer can then complete a payment on the checkout surface. Click on the link below and fill in the \u003cLink\u003etest card information\u003c/Link\u003e with the card number as 4242 4242 4242 4242 to run a successful payment. Use a valid future date and any three-digit CVC.",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "asyncHandler",
+          "key": "wait-for-checkout",
+          "title": "Verify that the payment is complete",
+          "description": "Listen for the \u003cLink\u003ewebhook event\u003c/Link\u003e to identify if the payment successfully went through.",
+          "review_prompt": "Run the relevant Stripe CLI trigger or complete the upstream flow, then confirm the handler receives and verifies the expected event.",
+          "review_command": "stripe trigger checkout.session.completed",
+          "events": [
+            "checkout.session.completed"
+          ]
+        }
+      ]
+    }
+  ]
+}

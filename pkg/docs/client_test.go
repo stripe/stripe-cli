@@ -427,6 +427,84 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func strPtr(s string) *string { return &s }
+
+func TestFetchPrefs(t *testing.T) {
+	tests := []struct {
+		name      string
+		handler   http.HandlerFunc
+		wantErr   string
+		wantCheck func(t *testing.T, got *PrefsResponse)
+	}{
+		{
+			name: "success with multiple prefs",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/_endpoint/prefs", r.URL.Path)
+				assert.Equal(t, "application/json", r.Header.Get("Accept"))
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"prefs":[{"id":"lang","category":"code","description":"Programming language","values":["ruby","python"],"default":"ruby"},{"id":"theme","category":null,"description":"Color theme","values":["light","dark"],"default":null}]}`)
+			},
+			wantCheck: func(t *testing.T, got *PrefsResponse) {
+				require.Len(t, got.Prefs, 2)
+				assert.Equal(t, "lang", got.Prefs[0].ID)
+				assert.Equal(t, strPtr("code"), got.Prefs[0].Category)
+				assert.Equal(t, "Programming language", got.Prefs[0].Description)
+				assert.Equal(t, []string{"ruby", "python"}, got.Prefs[0].Values)
+				assert.Equal(t, strPtr("ruby"), got.Prefs[0].Default)
+				assert.Equal(t, "theme", got.Prefs[1].ID)
+				assert.Nil(t, got.Prefs[1].Category)
+				assert.Nil(t, got.Prefs[1].Default)
+			},
+		},
+		{
+			name: "empty prefs list",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"prefs":[]}`)
+			},
+			wantCheck: func(t *testing.T, got *PrefsResponse) {
+				assert.Empty(t, got.Prefs)
+			},
+		},
+		{
+			name: "non-200 response returns error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			wantErr: "returned 500",
+		},
+		{
+			name: "invalid json returns error",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprint(w, `{"prefs":[`)
+			},
+			wantErr: "prefs: unmarshal response",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(tt.handler)
+			defer server.Close()
+
+			client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
+			got, err := client.FetchPrefs(context.Background())
+
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			if tt.wantCheck != nil {
+				tt.wantCheck(t, got)
+			}
+		})
+	}
+}
+
 // evictingMockCache always returns a miss, simulating TTL expiry.
 type evictingMockCache struct{}
 

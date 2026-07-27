@@ -178,6 +178,42 @@ func (c *Client) do(req *http.Request) (response, error) {
 	return response{body: body, finalURL: resp.Request.URL}, nil
 }
 
+// Pref represents a single documentation preference.
+type Pref struct {
+	ID          string   `json:"id"`
+	Category    *string  `json:"category"`
+	Description string   `json:"description"`
+	Values      []string `json:"values"`
+	Default     *string  `json:"default"`
+}
+
+// PrefsResponse represents the response from the docs prefs endpoint.
+type PrefsResponse struct {
+	Prefs []Pref `json:"prefs"`
+}
+
+// FetchPrefs retrieves the list of documentation preferences from docs.stripe.com.
+func (c *Client) FetchPrefs(ctx context.Context) (*PrefsResponse, error) {
+	u := c.baseURL.JoinPath("/_endpoint/prefs")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("prefs: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	res, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var response PrefsResponse
+	if err := json.Unmarshal(res.body, &response); err != nil {
+		return nil, fmt.Errorf("prefs: unmarshal response: %w", err)
+	}
+	return &response, nil
+}
+
 // Search sends the request to docs search endpoint and returns a list of search results.
 //
 //	response, err := c.Search(ctx, "payment methods")

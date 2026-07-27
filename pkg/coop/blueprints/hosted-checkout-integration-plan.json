@@ -1,0 +1,51 @@
+{
+  "id": "hosted-checkout-integration-plan",
+  "title": "Build your Integration",
+  "description": "Implement Build your Integration with Stripe.",
+  "type": "learning",
+  "settings": null,
+  "steps": [
+    {
+      "key": "api-chapter",
+      "title": "Set up your API",
+      "required": true,
+      "nodes": [
+        {
+          "type": "apiRequest",
+          "key": "create-checkout-session",
+          "title": "Create a checkout session",
+          "review_prompt": "Confirm the implementation calls the intended Stripe API, reuses values needed by later steps, and handles API errors without exposing secrets.",
+          "request": {
+            "path": "/v1/checkout/sessions",
+            "method": "post",
+            "params": {
+              "cancel_url": "{{CANCEL_URL}}",
+              "mode": "${settings.api-chapter.create-checkout-session:mode}",
+              "success_url": "{{SUCCESS_URL}}",
+              "ui_mode": "hosted_page"
+            }
+          }
+        },
+        {
+          "type": "uiComponent",
+          "key": "add-preview-page-snippet",
+          "title": "Add a preview page",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "uiComponent",
+          "key": "add-success-page-snippet",
+          "title": "Add a success page",
+          "review_prompt": "Open the app and confirm the user-facing flow works as described."
+        },
+        {
+          "type": "setUpWebhooks",
+          "key": "webhooks-setup",
+          "title": "Handle Checkout and billing events reliably",
+          "description": "Run webhook setup and confirm add events to an event destination to send events to your integration",
+          "review_prompt": "Run the Stripe CLI listener and confirm webhook forwarding reaches the local endpoint."
+        }
+      ]
+    }
+  ]
+}

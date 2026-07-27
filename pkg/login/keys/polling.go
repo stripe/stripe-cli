@@ -29,6 +29,7 @@ type PollAPIKeyResponse struct {
 	UAT                    string `json:"uat"`
 	LiveContext            string `json:"live_context"`
 	TestWorkspaceID        string `json:"test_workspace_id"`
+	UserID                 string `json:"user_id"`
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.

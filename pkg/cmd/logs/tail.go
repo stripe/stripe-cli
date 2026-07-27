@@ -2,6 +2,7 @@
 package logs
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -16,8 +17,6 @@ import (
 	"github.com/briandowns/spinner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	"context"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -57,11 +56,11 @@ func NewTailCmd(config *config.Config) *TailCmd {
 Log tailing allows you to filter data similarly to the Stripe Dashboard; filter
 HTTP methods, IP addresses, paths, response status, and more.`,
 		Example: `stripe logs tail
-  stripe logs tail --filter-http-methods GET
+  stripe logs tail --filter-http-method GET
   stripe logs tail --filter-status-code-type 4XX`,
 		Annotations: map[string]string{
 			"ai_agent_help": "  Use `--format json` for machine-readable output.\n" +
-				"  Filter with `--filter-http-methods`, `--filter-status-code-type`, or `--filter-request-path`.",
+				"  Filter with `--filter-http-method`, `--filter-status-code-type`, or `--filter-request-path`.",
 		},
 		RunE: tailCmd.runTailCmd,
 	}

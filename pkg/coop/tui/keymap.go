@@ -17,6 +17,7 @@ type keyMap struct {
 	Bottom    key.Binding
 	Expand    key.Binding
 	Enter     key.Binding
+	Submit    key.Binding
 	Tab       key.Binding
 	Escape    key.Binding
 	Follow    key.Binding
@@ -72,6 +73,10 @@ func newKeyMap() keyMap {
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "expand"),
 		),
+		Submit: key.NewBinding(
+			key.WithKeys("ctrl+enter", "super+enter"),
+			key.WithHelp("ctrl/cmd+enter", "send"),
+		),
 		Tab: key.NewBinding(
 			key.WithKeys("tab"),
 			key.WithHelp("tab", "next tab"),
@@ -106,8 +111,9 @@ func newKeyMap() keyMap {
 func (m Model) ShortHelp() []key.Binding {
 	if m.rejecting {
 		return []key.Binding{
-			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "send")),
+			m.keys.Submit,
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "newline")),
 		}
 	}
 

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -39,7 +41,7 @@ func TestReviewInteractionJourney(t *testing.T) {
 	assertContainsPlain(t, m.renderFooter(), "esc cancel")
 	assertInteractionLayout(t, m, "request changes input")
 
-	m = updateWithKey(t, m, tea.KeyEnter)
+	m = updateWithModifiedKey(t, m, tea.KeyEnter, tea.ModCtrl)
 	assert.True(t, m.rejecting)
 	assert.Contains(t, m.rejectionError, "short note")
 	node, err := m.session.NodeByNumber(1)
@@ -48,7 +50,7 @@ func TestReviewInteractionJourney(t *testing.T) {
 	assertInteractionLayout(t, m, "empty request changes validation")
 
 	m = updateWithRunes(t, m, "Use the stored price ID before redirecting to Checkout")
-	m = updateWithKey(t, m, tea.KeyEnter)
+	m = updateWithModifiedKey(t, m, tea.KeyEnter, tea.ModCtrl)
 	assert.False(t, m.rejecting)
 	node, err = m.session.NodeByNumber(1)
 	require.NoError(t, err)
@@ -56,6 +58,104 @@ func TestReviewInteractionJourney(t *testing.T) {
 	assert.Contains(t, node.RejectionNote, "stored price ID")
 	assert.Contains(t, m.statusMessage, "Feedback sent")
 	assertInteractionLayout(t, m, "feedback submitted")
+}
+
+func TestRequestChangesEditorPreservesMultilineFeedback(t *testing.T) {
+	m := reviewStepLongPromptLayoutModel()
+	m = attachTestStore(t, m)
+	m = prepareInteractiveModel(m, 69, 50)
+
+	m = updateWithRunes(t, m, "r")
+	m = updateWithRunes(t, m, "Keep the existing webhook signature check.")
+	m = updateWithKey(t, m, tea.KeyEnter)
+	m = updateWithRunes(t, m, "Add coverage for duplicate events.")
+
+	note := "Keep the existing webhook signature check.\nAdd coverage for duplicate events."
+	assert.True(t, m.rejecting)
+	assert.Equal(t, note, m.rejectionInput.Value())
+	assertContainsPlain(t, m.renderFooter(), "enter newline")
+	assertContainsPlain(t, m.renderFooter(), "ctrl/cmd+enter send")
+
+	m = updateWithModifiedKey(t, m, tea.KeyEnter, tea.ModCtrl)
+	assert.False(t, m.rejecting)
+	persisted, err := m.store.Read(m.session.ID)
+	require.NoError(t, err)
+	node, err := persisted.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Equal(t, note, node.RejectionNote)
+}
+
+func TestRequestChangesEditorPreservesLongPasteAndBurstInput(t *testing.T) {
+	m := reviewStepLongPromptLayoutModel()
+	m = attachTestStore(t, m)
+	m = prepareInteractiveModel(m, 56, 18)
+	m = updateWithRunes(t, m, "r")
+
+	pasted := strings.Repeat("Preserve signature verification and retry behavior. ", 24)
+	updated, _ := m.Update(tea.PasteMsg{Content: pasted})
+	m = updated.(Model)
+	for _, burst := range []string{
+		"Also keep the idempotency guard intact. ",
+		"Cover the timeout path and show a useful error. ",
+		"Reuse the stored Checkout identifiers.",
+	} {
+		m = updateWithRunes(t, m, burst)
+	}
+	note := pasted + "Also keep the idempotency guard intact. " +
+		"Cover the timeout path and show a useful error. " +
+		"Reuse the stored Checkout identifiers."
+	require.Greater(t, len(note), 500)
+	assert.Equal(t, note, m.rejectionInput.Value())
+
+	m = updateWithModifiedKey(t, m, tea.KeyEnter, tea.ModSuper)
+	assert.False(t, m.rejecting)
+	persisted, err := m.store.Read(m.session.ID)
+	require.NoError(t, err)
+	node, err := persisted.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Equal(t, note, node.RejectionNote)
+}
+
+func TestRequestChangesEditorCancellationDiscardsFeedback(t *testing.T) {
+	m := reviewStepLongPromptLayoutModel()
+	m = attachTestStore(t, m)
+	m = prepareInteractiveModel(m, 69, 50)
+
+	m = updateWithRunes(t, m, "r")
+	m = updateWithRunes(t, m, "This should not be sent")
+	m = updateWithKey(t, m, tea.KeyEsc)
+
+	assert.False(t, m.rejecting)
+	assert.Empty(t, m.rejectionInput.Value())
+	assert.Contains(t, m.statusMessage, "canceled")
+	persisted, err := m.store.Read(m.session.ID)
+	require.NoError(t, err)
+	node, err := persisted.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Empty(t, node.RejectionNote)
+}
+
+func TestRequestChangesEditorPreservesFeedbackAfterStoreError(t *testing.T) {
+	dir := t.TempDir()
+	store, err := coop.NewStoreAt(dir)
+	require.NoError(t, err)
+	m := reviewStepLongPromptLayoutModel()
+	require.NoError(t, store.Write(m.session))
+	m.store = store
+	m = prepareInteractiveModel(m, 69, 50)
+
+	m = updateWithRunes(t, m, "r")
+	note := "Keep this feedback available so I can retry after fixing the store."
+	m = updateWithRunes(t, m, note)
+	require.NoError(t, os.Remove(filepath.Join(dir, m.session.ID+".json")))
+
+	m = updateWithModifiedKey(t, m, tea.KeyEnter, tea.ModCtrl)
+
+	assert.True(t, m.rejecting)
+	assert.Equal(t, note, m.rejectionInput.Value())
+	assert.Contains(t, m.rejectionError, "failed to request changes")
+	assert.NoError(t, m.err)
+	assertContainsPlain(t, m.View().Content, "Keep this feedback available")
 }
 
 func TestFollowInteractionJourney(t *testing.T) {
@@ -212,6 +312,12 @@ func updateWithRunes(t *testing.T, m Model, text string) Model {
 func updateWithKey(t *testing.T, m Model, key rune) Model {
 	t.Helper()
 	updated, _ := m.Update(tea.KeyPressMsg{Code: key})
+	return updated.(Model)
+}
+
+func updateWithModifiedKey(t *testing.T, m Model, key rune, mod tea.KeyMod) Model {
+	t.Helper()
+	updated, _ := m.Update(tea.KeyPressMsg{Code: key, Mod: mod})
 	return updated.(Model)
 }
 

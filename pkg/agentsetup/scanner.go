@@ -2,8 +2,10 @@ package agentsetup
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // LookPathFunc matches exec.LookPath and exists to make detection testable.
@@ -24,7 +26,8 @@ type ReadDirFunc func(string) ([]os.DirEntry, error)
 // StatFunc matches os.Stat and exists to make file existence checks testable.
 type StatFunc func(string) (os.FileInfo, error)
 
-// RunCommandFunc runs a command. The production implementation streams stdio.
+// RunCommandFunc runs a command. The production implementation captures output
+// silently and returns a concise error on failure.
 type RunCommandFunc func(context.Context, string, ...string) error
 
 // Scanner scans local agent installations without mutating them.
@@ -72,11 +75,34 @@ func (s Scanner) withDefaults() Scanner {
 	return s
 }
 
-// RunCommand streams a command through the current process stdio.
+// RunCommand runs a command silently. Plugin installs run behind a spinner, so
+// streaming subprocess stdio to the terminal would interleave with our animation.
+// On failure, return a single line from the subprocess output.
 func RunCommand(ctx context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if msg := errorFromOutput(out); msg != "" {
+		return errors.New(msg)
+	}
+	return err
+}
+
+func errorFromOutput(out []byte) string {
+	text := strings.ReplaceAll(string(out), "\r", "\n")
+	var last string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		last = line
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, "failed") || strings.Contains(lower, "error") {
+			return strings.TrimLeft(line, "✘✗× \t")
+		}
+	}
+	return last
 }

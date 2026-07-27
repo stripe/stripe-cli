@@ -18,7 +18,7 @@ const (
 	TargetCodexPlugin = "stripe@openai-curated"
 	CodexDisplayName  = "Codex CLI"
 
-	codexListTimeout = 10 * time.Second
+	codexListTimeout = 5 * time.Second
 )
 
 // RunOutputFunc runs a command and returns its standard output. It exists so

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -49,6 +50,7 @@ type IConfig interface {
 	RemoveAllAuthFields() error
 	WriteConfigField(field string, value interface{}) error
 	GetInstalledPlugins() []string
+	GetMachineUUID() string
 }
 
 // Config handles all overall configuration for the CLI
@@ -319,6 +321,19 @@ func (c *Config) GetInstalledPlugins() []string {
 	runtimeViper := viper.GetViper()
 
 	return runtimeViper.GetStringSlice("installed_plugins")
+}
+
+// GetMachineUUID returns the persistent machine UUID from config,
+// generating and saving one if it doesn't exist.
+func (c *Config) GetMachineUUID() string {
+	runtimeViper := viper.GetViper()
+	id := runtimeViper.GetString("machine_uuid")
+	if id != "" {
+		return id
+	}
+	id = uuid.NewString()
+	_ = c.WriteConfigField("machine_uuid", id)
+	return id
 }
 
 func (c *Config) SwitchProfile(profileName string) error {

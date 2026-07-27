@@ -74,7 +74,7 @@ ci: build-all-platforms test go-mod-tidy protoc-ci
 # Build a beta version of stripe
 build:
 	go generate ./...
-	go build -o stripe cmd/stripe/main.go
+	go build -trimpath -o stripe cmd/stripe/main.go
 .PHONY: build
 
 # Build a beta version of stripe with the `dev` tag
@@ -195,14 +195,38 @@ protoc-gen-plugin:
 	@echo "Successfully compiled proto files for plugins"
 .PHONY: protoc-plugin
 
+BLUEPRINT_IDS ?= accept-payment-with-payment-element,billing-portal,connect-onboarding-embedded,credit-burndown,customer-payment-method-sharing,embedded-form-implementation-plan,financial-connections-ach-direct-debit,financial-connections-data-powered-products,flat-fee-and-overages,flat-subscription-with-entitlements,hosted-checkout-integration-plan,invoice-payments,issuing-connect-fa-v2,issuing-connect-fa,issuing-direct,learn-accounts-v1-marketplace,learn-accounts-v1-platform,learn-accounts-v2-marketplace,learn-accounts-v2,managed-payments,metered-subscription-with-entitlements,one-time-payment,pay-as-you-go,setup-future-payments,subscription-with-trial,usage-based-billing,usage-recording
+
 sync-blueprints:
 	@if [ -z "$$BLUEPRINT_SOURCE" ]; then \
-		echo "Set BLUEPRINT_SOURCE to a directory of exported blueprint JSON files."; \
-		echo "Example: BLUEPRINT_SOURCE=/path/to/raw-exports make sync-blueprints"; \
+		echo "Set BLUEPRINT_SOURCE to a pay-server blueprintDefinitions directory or exported blueprint JSON directory."; \
+		echo "Example: BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/src/blueprintDefinitions make sync-blueprints"; \
 		exit 1; \
 	fi
-	@echo "Exporting blueprints from $$BLUEPRINT_SOURCE..."
-	@cd scripts/export-blueprints && npm install && npm run export -- --source "$$BLUEPRINT_SOURCE" --out ../../pkg/coop/blueprints
+	@source="$$BLUEPRINT_SOURCE"; \
+	if ls "$$source"/*.json >/dev/null 2>&1; then \
+		export_source="$$source"; \
+	elif [ -f "$$source/index.tsx" ] && [ -f "$$(dirname "$$(dirname "$$source")")/scripts/export-blueprints.ts" ]; then \
+		package_root="$$(dirname "$$(dirname "$$source")")"; \
+		echo "Exporting Workbench blueprints from $$package_root..."; \
+		(cd "$$package_root" && pay js:run export); \
+		export_source="$$package_root/dist/blueprints"; \
+	else \
+		echo "BLUEPRINT_SOURCE must contain exported *.json files or point to pay-server's src/blueprintDefinitions directory."; \
+		exit 1; \
+	fi; \
+	if ! ls "$$export_source"/*.json >/dev/null 2>&1; then \
+		echo "No exported blueprint JSON files found in $$export_source."; \
+		exit 1; \
+	fi; \
+	ids="$(BLUEPRINT_IDS)"; \
+	if [ "$$ids" = "all" ]; then \
+		ids_arg=""; \
+	else \
+		ids_arg="--ids $$ids"; \
+	fi; \
+	echo "Transforming blueprints from $$export_source..."; \
+	cd scripts/export-blueprints && npm install --no-package-lock && npm run export -- --source "$$export_source" $$ids_arg --out ../../pkg/coop/blueprints
 .PHONY: sync-blueprints
 
 .DEFAULT_GOAL := build

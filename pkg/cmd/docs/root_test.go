@@ -26,6 +26,62 @@ func TestNew(t *testing.T) {
 	assert.NotEmpty(t, root.Short)
 }
 
+func TestRootParsesDocsURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantPath string
+	}{
+		{
+			name:     "full docs.stripe.com URL",
+			args:     []string{"https://docs.stripe.com/connect/accounts"},
+			wantPath: "/connect/accounts",
+		},
+		{
+			name:     "full docs.stripe.com URL with query",
+			args:     []string{"https://docs.stripe.com/api/customers?api_version=2024-06-30"},
+			wantPath: "/api/customers",
+		},
+		{
+			name:     "plain path unchanged",
+			args:     []string{"/payments"},
+			wantPath: "/payments",
+		},
+		{
+			name:     "multi-segment args joined",
+			args:     []string{"connect", "accounts"},
+			wantPath: "/connect/accounts",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotPath string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPath = r.URL.Path
+				fmt.Fprint(w, "# Test\n\nContent.")
+			}))
+			defer server.Close()
+
+			client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+			renderer, err := markdown.NewRenderer()
+			require.NoError(t, err)
+
+			var out bytes.Buffer
+			root := cmd.New().WithOptions(
+				cmd.WithClient(client),
+				cmd.WithRenderer(renderer),
+			).Root()
+			root.SetOut(&out)
+			root.SetArgs(tc.args)
+
+			err = root.ExecuteContext(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantPath, gotPath)
+		})
+	}
+}
+
 func TestRootPrefixesPath(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/connect/accounts", r.URL.Path)

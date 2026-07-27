@@ -1,42 +1,41 @@
 # Blueprint Exporter
 
-Converts Workbench Blueprint TypeScript definitions into CLI-friendly JSON for co-op mode.
+Converts exported Workbench Blueprint JSON into CLI-friendly JSON for co-op mode.
 
 ## Pipeline
 
 ```
 pay-server/blueprintDefinitions/*.tsx
+    ↓  (pay-server: pay js:run export)
+pay-server/dist/blueprints/*.json
     ↓  (this script)
 pkg/coop/blueprints/*.json  (checked into stripe-cli and embedded via //go:embed)
 ```
 
 ## Usage
 
-### From pre-exported JSON (recommended for CI)
+### From pay-server source
 
-If someone has already exported the raw blueprint objects as JSON:
+Point `BLUEPRINT_SOURCE` at pay-server's `src/blueprintDefinitions` directory.
+The Make target runs pay-server's exporter first, then transforms the exported
+JSON into the CLI schema:
 
 ```bash
-cd scripts/export-blueprints
-npm install
-npm run export -- --source ./raw-exports --out ../../pkg/coop/blueprints
+BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/src/blueprintDefinitions make sync-blueprints
 ```
 
-### From pay-server source (requires module context)
+By default, the Make target syncs Workbench learning blueprints that represent
+merchant integration guides. Testing blueprints, examples, health alert helpers,
+and partner-certification/dashboard-only flows are left out of the coop catalog.
+To try exporting every pay-server blueprint, run with `BLUEPRINT_IDS=all`.
 
-The TypeScript blueprints use `MessageDescriptor` objects and React components
-that require pay-server's module resolution. To export from source:
+### From exported JSON
 
-1. Copy this script into the pay-server tree (or symlink)
-2. Add an entry point that imports `rawBlueprintsList` from the definitions index
-3. Call `transformBlueprint` on each entry and write to the output directory
-
-### After exporting
-
-Run the Make target from the repository root to update the embedded blueprints:
+If pay-server has already produced `dist/blueprints/*.json`, point
+`BLUEPRINT_SOURCE` there:
 
 ```bash
-BLUEPRINT_SOURCE=/path/to/raw-exports make sync-blueprints
+BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/dist/blueprints make sync-blueprints
 ```
 
 ## What gets stripped

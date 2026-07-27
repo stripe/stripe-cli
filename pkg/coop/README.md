@@ -194,11 +194,14 @@ Each node has:
 
 ### Syncing Blueprints
 
-Workbench blueprint definitions are the source of truth. Do not supplement or modify `pkg/coop/blueprints/` by hand to add CLI-only product work. Update the upstream blueprint source, then export the CLI-friendly JSON:
+Workbench blueprint definitions are the source of truth. Do not supplement or modify `pkg/coop/blueprints/` by hand to add CLI-only product work. Update the upstream blueprint source, then sync the CLI-friendly JSON:
 
 ```bash
-BLUEPRINT_SOURCE=/path/to/blueprintDefinitions make sync-blueprints
+BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/src/blueprintDefinitions make sync-blueprints
 ```
+
+If pay-server has already exported `dist/blueprints/*.json`, `BLUEPRINT_SOURCE`
+can point at that directory instead.
 
 After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix matching works: short prefixes resolve to full IDs if unambiguous.
 
