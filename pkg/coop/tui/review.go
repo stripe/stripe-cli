@@ -54,7 +54,7 @@ func (m Model) renderFooter() string {
 			// not knowing one exists.
 			failed := 0
 			if target, hasTarget := m.selectedReviewTarget(); hasTarget {
-				failed = len(m.reviewFailedCheckLabels(target.nodeNumbers))
+				failed = m.reviewFailedCheckCount(target.nodeNumbers)
 			}
 			lines = append(lines, m.theme.MutedStyle.Render("  "+overflowHint(nil, failed)))
 		}
@@ -102,7 +102,7 @@ func (m Model) reviewWaitingNote(stepIndex int) string {
 	// the card it can be clipped by a short viewport, and on the task rows it
 	// can be scrolled past; the note is the one place it cannot be missed.
 	if target, ok := m.selectedReviewTarget(); ok {
-		if failed := len(m.reviewFailedCheckLabels(target.nodeNumbers)); failed > 0 {
+		if failed := m.reviewFailedCheckCount(target.nodeNumbers); failed > 0 {
 			note += m.theme.MutedStyle.Render(" · ") +
 				m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", failed))
 		}
@@ -206,7 +206,7 @@ func (m Model) renderReviewCardWithMaxHeight(maxHeight int) string {
 		if maxHeight < 1 {
 			return ""
 		}
-		return m.theme.MutedStyle.Render("  " + overflowHint(nil, len(m.reviewFailedCheckLabels(target.nodeNumbers))))
+		return m.theme.MutedStyle.Render("  " + overflowHint(nil, m.reviewFailedCheckCount(target.nodeNumbers)))
 	}
 	w, _ := m.reviewCardWidths()
 
@@ -543,6 +543,28 @@ func (m Model) reviewPromptLabels(nodeNumbers []int) []string {
 // card. The full text remains available in the detail view.
 const failedCheckBudget = 160
 
+// reviewFailedCheckCount counts the checks that did not pass.
+//
+// Not len(reviewFailedCheckLabels): that list collapses duplicate lines so the
+// card does not print the same finding twice, and once identical root causes
+// started normalizing to identical text it began collapsing genuinely separate
+// checks as well. The label list is for display; this is for counting.
+func (m Model) reviewFailedCheckCount(nodeNumbers []int) int {
+	count := 0
+	for _, nodeNumber := range nodeNumbers {
+		node, err := m.session.NodeByNumber(nodeNumber)
+		if err != nil {
+			continue
+		}
+		for _, verification := range node.Verifications {
+			if !verification.Passed {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 func (m Model) reviewFailedCheckLabels(nodeNumbers []int) []string {
 	var checks []string
 	seen := map[string]bool{}
@@ -699,11 +721,41 @@ func failureReason(summary string) string {
 		// Agents write "<what was tried> because <the actual reason>". The
 		// reason is the half worth the single line available.
 		if idx := strings.Index(lower, " because "); idx >= 0 {
-			return tidyClause(sentence[idx+len(" because "):])
+			return canonicalCause(tidyClause(sentence[idx+len(" because "):]))
 		}
-		return tidyClause(sentence)
+		return canonicalCause(tidyClause(sentence))
 	}
 	return ""
+}
+
+// missingConfigPattern matches the way agents report an unset environment
+// variable, in the several shapes they phrase it.
+var missingConfigPattern = regexp.MustCompile(
+	`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\s+(?:is|was)\s+not\s+(?:configured|set|present)|` +
+		`(?:has|have)\s+no\s+([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)|` +
+		`(?:missing|no)\s+([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`)
+
+// canonicalCause reduces a failure to the configuration it is actually blocked
+// on, when it names one.
+//
+// Two tasks blocked on the same unset variable were reporting it in different
+// words and at different lengths — "X is not configured, so a signed end-to-end
+// delivery could not be completed in this environment." against "X is not
+// configured." — because the agent wrote each sentence differently and the
+// extraction faithfully preserved both. The consequence clause is noise; the
+// variable is the thing to act on, and stating it identically makes one root
+// cause read as one root cause.
+func canonicalCause(reason string) string {
+	m := missingConfigPattern.FindStringSubmatch(reason)
+	if m == nil {
+		return reason
+	}
+	for _, name := range m[1:] {
+		if name != "" {
+			return name + " is not configured."
+		}
+	}
+	return reason
 }
 
 // splitSentences breaks on sentence-ending punctuation followed by a space. It

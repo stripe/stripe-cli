@@ -122,10 +122,10 @@ func TestRenderStepList(t *testing.T) {
 	assertContainsPlain(t, list, "Create product")
 	assertContainsPlain(t, list, "Create checkout")
 
-	// Step 1 has not started, but with height to spare its tasks are listed
-	// under its small card too: collapsing exists to reclaim rows under
-	// pressure, not to hide work the user has room to read.
-	assertContainsPlain(t, list, "Handle event")
+	// Step 1 is not the selected step, so it shows its small card and no
+	// tasks. Only the step the reader is standing on lists them.
+	assertNotContainsPlain(t, list, "Handle event")
+	assertContainsPlain(t, list, "Not started")
 }
 
 func TestRenderStepListAlignsStepTitleWithRule(t *testing.T) {
@@ -160,7 +160,7 @@ func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "needs you")
+	assertContainsPlain(t, list, "Waiting for you")
 	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
 	assertContainsPlain(t, list, "Create product  ready")
 	assertContainsPlain(t, list, "Create checkout  ready")
@@ -175,7 +175,7 @@ func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, list, "needs you")
+	assertContainsPlain(t, list, "Waiting for you")
 	assertContainsPlain(t, footer, "confirm step")
 }
 
@@ -186,8 +186,8 @@ func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
 	list := m.renderStepList()
 
 	assertContainsPlain(t, list, "+ Set up product")
-	// The counts moved off the header into the small card beneath it.
-	assertContainsPlain(t, list, "✓1 ●1")
+	// The small card says what is happening rather than counting states.
+	assertContainsPlain(t, list, "Working on")
 }
 
 func TestRenderStepLineAnnotation(t *testing.T) {
@@ -931,8 +931,21 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 func TestViewportBoundaryDoesNotTurnTopBorderIntoBottomBorder(t *testing.T) {
 	rendered := closeOpenBoxAtViewportBoundary("before\n  ╭────────╮")
 
-	assert.Contains(t, rendered, "╭")
+	// The top border must never become a bottom border. It is also not worth
+	// keeping on its own: a card cut to just its opening line is a box with no
+	// content and no bottom, which reads as a rendering fault. It is dropped.
 	assert.NotContains(t, rendered, "╰")
+	assert.NotContains(t, rendered, "╭")
+	assert.Contains(t, rendered, "before", "content above the card must survive")
+}
+
+// A card with room for content keeps it and gains a closing border.
+func TestViewportBoundaryClosesACardWithContent(t *testing.T) {
+	rendered := closeOpenBoxAtViewportBoundary("  ╭────────╮\n  │ body   │\n  │ more   │")
+
+	assert.Contains(t, rendered, "╭")
+	assert.Contains(t, rendered, "╰")
+	assert.Contains(t, rendered, "body")
 }
 
 func assertLinesWithinWidth(t *testing.T, rendered string, width int) {
@@ -1199,13 +1212,17 @@ func TestSplitWorkspaceKeepsFeedbackEditorVisible(t *testing.T) {
 }
 
 // A step with many tasks pushed the instruction out of the pane.
-func TestDetailTaskListIsCapped(t *testing.T) {
+// The card no longer carries a task list to cap — tasks render beneath it and
+// scroll. What has to hold is that a step crowded with tasks still leads with
+// the instruction and stays inside its frame.
+func TestCrowdedStepStillLeadsWithTheInstruction(t *testing.T) {
 	m := stressCrowdedStepReviewModel()
 	m.expanded = true
-	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+	size := layoutSize{name: "wide", width: 120, height: 34}
+	rendered := renderLayoutScenario(&m, size)
 
-	assertContainsPlain(t, rendered, "more")
 	assertContainsPlain(t, rendered, "To confirm")
+	assertLayoutFits(t, rendered, size)
 }
 
 // The footer note is the one pinned guarantee that a review is pending, so it

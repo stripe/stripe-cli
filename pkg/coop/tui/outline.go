@@ -64,6 +64,47 @@ func (m Model) renderSplitWorkspace() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", gapW), right)
 }
 
+// clipRenderedBox trims an already-drawn card to maxHeight, keeping its borders
+// and leaving a hint where it dropped content.
+func (m Model) clipRenderedBox(box string, maxHeight int) string {
+	lines := strings.Split(box, "\n")
+	if maxHeight <= 0 || len(lines) <= maxHeight {
+		return box
+	}
+	// Top border, at least one row of content, the hint, and the bottom border.
+	const minRows = 4
+	if maxHeight < minRows {
+		return box
+	}
+	bottom := lines[len(lines)-1]
+	hint := lines[1]
+	if inner := lipgloss.Width(ansi.Strip(hint)) - 4; inner > 0 {
+		hint = replaceBoxRowText(lines[1], m.theme.MutedStyle.Render(cardOverflowHint), inner)
+	}
+	kept := append([]string{}, lines[:maxHeight-2]...)
+	return strings.Join(append(kept, hint, bottom), "\n")
+}
+
+// replaceBoxRowText swaps the text inside a rendered card row, keeping the row's
+// own borders and padding so the replacement lines up with the rows around it.
+func replaceBoxRowText(row, text string, inner int) string {
+	plain := ansi.Strip(row)
+	left := strings.Index(plain, "│")
+	right := strings.LastIndex(plain, "│")
+	if left < 0 || right <= left {
+		return row
+	}
+	body := ansi.Truncate(text, inner, "…")
+	pad := inner - lipgloss.Width(ansi.Strip(body))
+	if pad < 0 {
+		pad = 0
+	}
+	return strings.Repeat(" ", left) + boxSide + " " + body + strings.Repeat(" ", pad) + " " + boxSide
+}
+
+// boxSide is the vertical border glyph the cards are drawn with.
+const boxSide = "│"
+
 func (m Model) renderSplitDetail(width int) string {
 	// Trim blank lines, not whitespace: renderDetail indents every line, and
 	// TrimSpace would strip that indent from the first line only — leaving the
@@ -72,6 +113,11 @@ func (m Model) renderSplitDetail(width int) string {
 	if detail == "" {
 		return m.theme.MutedStyle.Render("No details available yet.")
 	}
+	// Bound the pane to the rows it has. The joined columns scroll as one
+	// block, so a pane taller than the viewport was cut by the scroll — and a
+	// cut that lands inside a card leaves it with no bottom border, which
+	// cannot be repaired afterwards without overwriting the other column too.
+	detail = m.clipRenderedBox(detail, m.viewport.Height())
 	return lipgloss.NewStyle().MaxWidth(width).Render(detail)
 }
 
@@ -103,6 +149,11 @@ func (m Model) stepShowsInlineCard(stepIndex int) bool {
 	// it renders in place at any height; the body above the input is what gives
 	// way instead.
 	if m.height > 0 && m.height < minInlineCardRows && !m.rejecting {
+		return false
+	}
+	// A step the reader just confirmed shows the acknowledgement in its small
+	// card instead of the review card it has finished with.
+	if m.stepJustConfirmed(stepIndex) {
 		return false
 	}
 	if _, hasReview := m.selectedReviewTarget(); hasReview {
@@ -328,49 +379,179 @@ func (m Model) outlineIsSeverelyCramped() bool {
 // for it — collapsing is about reclaiming rows under pressure, and with rows to
 // spare there is no reason to hide work the user could be reading.
 func (m Model) stepShowsTasks(stepIndex int) bool {
-	// In the windowed layout the neighbors exist to say where you are. Listing
-	// their tasks pushed the "more below" marker off the bottom of the screen,
-	// so the window hid the very thing it was drawn to advertise.
-	if m.outlineIsCramped() {
-		selected, ok := m.selectedStepIndex()
-		return ok && selected == stepIndex
-	}
-	return true
+	// Only the selected step. Listing every step's tasks turned the outline
+	// into a wall of rows where nothing stood out, and the small card now
+	// carries what a step the reader is not standing on needs to say.
+	selected, ok := m.selectedStepIndex()
+	return ok && selected == stepIndex
 }
 
-// stepStatusSummary is the one line of state a step carries: whether it is
-// waiting on the user, how many checks failed, and the count of its tasks by
-// state. It used to trail the step title; it is now the body of the small card
-// and the first line of the full one, so the same information appears in the
-// same place whichever card a step is showing.
-func (m Model) stepStatusSummary(stepIndex int) string {
+// wrapHanging wraps text and indents every line after the first, so a wrapped
+// summary lines up under its own opening word instead of under its marker.
+func wrapHanging(text string, width, indent int) string {
+	if width-indent < 8 {
+		return wordWrap(text, width)
+	}
+	// Wrap to the narrower width up front. Wrapping to the full width and then
+	// adding the indent afterwards pushes every continuation line past the
+	// border by exactly the indent.
+	lines := strings.Split(wordWrap(text, width-indent), "\n")
+	for i := 1; i < len(lines); i++ {
+		lines[i] = strings.Repeat(" ", indent) + lines[i]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// limitWrappedLines keeps at most max lines of already-wrapped text, marking
+// the last one when it drops any.
+func limitWrappedLines(s string, max, width int) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) <= max {
+		return s
+	}
+	lines = lines[:max]
+	last := len(lines) - 1
+	lines[last] = ansi.Truncate(lines[last], width-1, "") + "…"
+	return strings.Join(lines, "\n")
+}
+
+// stepCardSummary is what the small card says about a step.
+//
+// It used to be a row of glyphs — "✓1", "●1", "needs you · ✗2 · ◆2" — which
+// said how many of something there were without saying what happened or what
+// the reader should do about it. A step the reader is not standing on shows no
+// tasks now, so this line carries the whole story for it.
+func (m Model) stepCardSummary(stepIndex int) string {
 	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
 		return ""
 	}
-	var parts []string
-	switch {
-	case m.stepJustConfirmed(stepIndex):
-		parts = append(parts, m.theme.SuccessStyle.Render("✓ confirmed"))
-	case m.stepReviewCount(stepIndex) > 0:
-		parts = append(parts, m.theme.SoftAttentionStyle.Render("needs you"))
+	step := &m.session.Steps[stepIndex]
+
+	if m.stepJustConfirmed(stepIndex) {
+		return m.theme.SuccessStyle.Render("✓ confirmed")
 	}
-	if failed, _ := stepCheckResults(&m.session.Steps[stepIndex]); len(failed) > 0 {
-		parts = append(parts, m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", len(failed))))
+
+	// A failure outranks everything else the card could say. A finished step
+	// with a check that did not pass was reporting a green tick and the note
+	// describing what it built, which reads as success.
+	failed, _ := stepCheckResults(step)
+	awaiting := m.stepReviewCount(stepIndex) > 0
+	if len(failed) > 0 {
+		lead := m.theme.SoftErrorStyle.Render("✗ ")
+		if awaiting {
+			lead = m.theme.SoftAttentionStyle.Render("Needs you") + m.theme.MutedStyle.Render(" — ")
+		}
+		if cause := stepBlockingCause(step); cause != "" {
+			return lead + m.theme.MutedStyle.Render(pluralChecks(len(failed))+" could not finish: ") +
+				highlightIdentifiers(cause, m.theme.MutedStyle, m.theme.IdentifierStyle)
+		}
+		return lead + highlightIdentifiers(failed[0], m.theme.MutedStyle, m.theme.IdentifierStyle)
 	}
-	if summary := m.collapsedStepSummary(stepIndex); summary != "" {
-		parts = append(parts, m.theme.MutedStyle.Render(summary))
+
+	// Waiting on the reader: say so, and say what to do rather than counting
+	// the tasks involved.
+	if awaiting {
+		return m.theme.SoftAttentionStyle.Render("Needs you") +
+			m.theme.MutedStyle.Render(" — review the work and confirm the step.")
 	}
-	if len(parts) == 0 {
+
+	// In progress: name the task actually running, which nothing else did once
+	// the tasks stopped being listed under every step.
+	for _, node := range step.Nodes {
+		if node.State != coop.NodeActive {
+			continue
+		}
+		detail := node.Title
+		if node.Activity != "" {
+			detail = node.Activity
+		}
+		return m.theme.MutedStyle.Render("Working on ") + m.theme.StepTitleStyle.Render(detail)
+	}
+
+	// Finished: what the agent actually built, in its own words.
+	if note := stepWorkSummary(step); note != "" {
+		return m.theme.SuccessStyle.Render("✓ ") + m.theme.MutedStyle.Render(note)
+	}
+	if pending := countNodes(step, coop.NodePending); pending == len(step.Nodes) && pending > 0 {
+		return m.theme.DimmedStyle.Render(fmt.Sprintf("Not started — %s queued", pluralTasks(pending)))
+	}
+	return ""
+}
+
+// stepWorkSummary is the agent's own account of what it built, trimmed to the
+// first sentence or two.
+func stepWorkSummary(step *coop.SessionStep) string {
+	for _, node := range step.Nodes {
+		if node.Implementation == nil {
+			continue
+		}
+		if note := firstSentences(node.Implementation.Note, 2); note != "" {
+			return note
+		}
+	}
+	return ""
+}
+
+// stepBlockingCause returns the shared reason a step's checks did not pass,
+// when every failure names the same one.
+func stepBlockingCause(step *coop.SessionStep) string {
+	cause := ""
+	for _, node := range step.Nodes {
+		for _, verification := range node.Verifications {
+			if verification.Passed {
+				continue
+			}
+			reason := summarizeCheckFailure(verification.Check, 0)
+			if reason == "" {
+				continue
+			}
+			if cause == "" {
+				cause = reason
+				continue
+			}
+			if cause != reason {
+				return ""
+			}
+		}
+	}
+	return cause
+}
+
+// firstSentences keeps the opening of a longer note.
+func firstSentences(s string, n int) string {
+	s = strings.Join(strings.Fields(s), " ")
+	sentences := splitSentences(s)
+	if len(sentences) == 0 {
 		return ""
 	}
-	return strings.Join(parts, m.theme.MutedStyle.Render(" · "))
+	if len(sentences) > n {
+		sentences = sentences[:n]
+	}
+	return strings.Join(sentences, " ")
+}
+
+func countNodes(step *coop.SessionStep, state coop.NodeState) int {
+	count := 0
+	for _, node := range step.Nodes {
+		if node.State == state {
+			count++
+		}
+	}
+	return count
+}
+
+func pluralTasks(n int) string {
+	if n == 1 {
+		return "1 task"
+	}
+	return fmt.Sprintf("%d tasks", n)
 }
 
 func (m Model) renderStepStatusCard(stepIndex int) string {
 	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
 		return ""
 	}
-	body := m.stepStatusSummary(stepIndex)
+	body := m.stepCardSummary(stepIndex)
 	if body == "" {
 		return ""
 	}
@@ -381,9 +562,10 @@ func (m Model) renderStepStatusCard(stepIndex int) string {
 	if inner < 8 {
 		inner = 8
 	}
-	if lipgloss.Width(ansi.Strip(body)) > inner {
-		body = ansi.Truncate(body, inner, "…")
-	}
+	// Two lines, wrapped with a hanging indent so the second line starts under
+	// the first line's text rather than under its glyph.
+	const hang = 2
+	body = limitWrappedLines(wrapHanging(body, inner, hang), 2, inner)
 	card := m.theme.StatusCardStyle.Width(width).Render(body)
 	return indentBlock(card, rowCursorWidth)
 }
@@ -423,44 +605,6 @@ func (m Model) outlineRuleWidth() int {
 		return maxRuleWidth
 	}
 	return w
-}
-
-func (m Model) collapsedStepSummary(stepIndex int) string {
-	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
-		return ""
-	}
-	var done, review, active, pending, skipped int
-	for _, node := range m.session.Steps[stepIndex].Nodes {
-		switch node.State {
-		case coop.NodeDone:
-			done++
-		case coop.NodeReview:
-			review++
-		case coop.NodeActive:
-			active++
-		case coop.NodePending:
-			pending++
-		case coop.NodeSkipped:
-			skipped++
-		}
-	}
-	var parts []string
-	if done > 0 {
-		parts = append(parts, fmt.Sprintf("✓%d", done))
-	}
-	if review > 0 {
-		parts = append(parts, fmt.Sprintf("◆%d", review))
-	}
-	if active > 0 {
-		parts = append(parts, fmt.Sprintf("●%d", active))
-	}
-	if pending > 0 {
-		parts = append(parts, fmt.Sprintf("○%d", pending))
-	}
-	if skipped > 0 {
-		parts = append(parts, fmt.Sprintf("–%d", skipped))
-	}
-	return strings.Join(parts, " ")
 }
 
 func (m Model) stepReviewReady(stepIndex int) bool {
@@ -507,6 +651,12 @@ func (m Model) stepHasPendingReviewWithNoActiveWork(stepIndex int) bool {
 	return hasReview
 }
 
+// taskIndent is the column a task row starts in: the card's inner text column,
+// so tasks line up with the card body they hang from rather than with its
+// border. rowCursorWidth of it is the cursor gutter, the rest is the card's
+// border and padding.
+const taskIndent = rowCursorWidth + 2
+
 // nodeCheckResults returns this task's failure reasons and its passed count.
 func nodeCheckResults(node coop.SessionNode) ([]string, int) {
 	var failed []string
@@ -526,9 +676,13 @@ func nodeCheckResults(node coop.SessionNode) ([]string, int) {
 func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) string {
 	icon := m.nodeIcon(node)
 
-	cursor := "  "
+	// Indent to the card's text column, not to its border. The tasks belong to
+	// the card above them and read as a continuation of it; starting them two
+	// columns to the left of its first character made them look like a separate
+	// list that happened to follow.
+	cursor := strings.Repeat(" ", taskIndent)
 	if selected {
-		cursor = m.theme.BrandStyle.Render(cursorMarker)
+		cursor = m.theme.BrandStyle.Render(cursorMarker) + strings.Repeat(" ", taskIndent-rowCursorWidth)
 	}
 
 	title := node.Title
@@ -536,6 +690,14 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 		title = m.theme.DimmedStyle.Render(title)
 	} else if selected {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
+	}
+
+	// One definition of the room a continuation line has. Truncating the path
+	// to one width and then wrapping to a narrower one put the tail of an
+	// already-ellipsised path on a second line.
+	wrapW := m.outlineWidth() - (taskIndent + 2)
+	if wrapW < 20 {
+		wrapW = 20
 	}
 
 	var annText string
@@ -546,7 +708,9 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 		if node.Implementation.Lines != "" {
 			ann += ":" + node.Implementation.Lines
 		}
-		annText = ann
+		// One line, middle-ellipsised. Wrapping a long path spread it over four
+		// rows of fragments that read as separate files.
+		annText = truncatePath(ann, wrapW)
 		annStyle = func(s string) string { return m.theme.FileAnnotationStyle.Render(s) }
 	case node.State == coop.NodeActive && node.Activity != "":
 		elapsed := ""
@@ -578,11 +742,15 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 		line += "  " + m.theme.SoftSuccessStyle.Render(fmt.Sprintf("✓%d", passed))
 	}
 
-	indent := strings.Repeat(" ", rowCursorWidth+2)
-	wrapW := m.outlineWidth() - 8
-	if wrapW < 20 {
-		wrapW = 20
+	// Continuation lines align with the task title, not with its icon.
+	// Truncate the row like the step line above it. Left to wrap, a long task
+	// title spilled past the outline's width — and in the split workspace the
+	// overflow restarted at column zero, straddling both panes.
+	if width := m.outlineWidth(); width > 0 && lipgloss.Width(ansi.Strip(line)) > width {
+		line = ansi.Truncate(line, width, "…")
 	}
+
+	indent := strings.Repeat(" ", taskIndent+2)
 	for _, reason := range failed {
 		// The ✗ marks the finding once. Repeating it on every wrapped line read
 		// as several separate failures.
@@ -597,13 +765,9 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 	}
 
 	if annText != "" {
-		wrapW := m.outlineWidth() - 8
-		if wrapW < 20 {
-			wrapW = 20
-		}
 		wrapped := wordWrap(annText, wrapW)
 		for _, wl := range strings.Split(wrapped, "\n") {
-			line += "\n" + strings.Repeat(" ", rowCursorWidth+2) + annStyle(wl)
+			line += "\n" + indent + annStyle(wl)
 		}
 	}
 
@@ -634,10 +798,15 @@ func (m Model) nodeIcon(node coop.SessionNode) string {
 	case coop.NodeDone:
 		return m.theme.SuccessStyle.Render("✓")
 	case coop.NodeActive:
-		// Width sets a minimum, not a maximum, so a spinner that renders wider
-		// than one cell — an uninitialised one yields "(error)" — would push
-		// everything after it out of alignment. Bound it to a single cell.
-		return lipgloss.NewStyle().Width(1).MaxWidth(1).Render(m.spinner.View())
+		// Truncate, do not clamp. MaxWidth wraps rather than cuts, so an
+		// uninitialised spinner — which renders the literal "(error)" — came
+		// out as seven rows of one character each, tearing the row apart. Any
+		// frame that is not a single cell falls back to a static marker.
+		frame := strings.TrimSpace(strings.ReplaceAll(m.spinner.View(), "\n", ""))
+		if frame == "" || lipgloss.Width(ansi.Strip(frame)) != 1 {
+			return m.theme.MutedStyle.Render("●")
+		}
+		return frame
 	case coop.NodeReview:
 		// Muted, not attention-colored: the task is finished and waiting on the
 		// step, and an orange marker on every row made routine progress look

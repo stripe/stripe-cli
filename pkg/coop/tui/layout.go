@@ -51,13 +51,15 @@ func (m Model) renderViewportRegionWithHeight(height int) string {
 		indicator := m.renderMoreBelowIndicator()
 		return strings.Join([]string{body, "", indicator}, "\n")
 	}
-	view := m.viewport.View()
-	rendered := lipgloss.NewStyle().
+	// Same tidy on this path. It only ran when the overflow indicator was being
+	// drawn, so the shortest viewports — the ones most likely to cut a card in
+	// half — were the ones left showing the fragment.
+	view := closeOpenBoxAtViewportBoundary(m.viewport.View())
+	return lipgloss.NewStyle().
 		Width(m.width).
 		Height(height).
 		MaxHeight(height).
 		Render(view)
-	return rendered
 }
 
 func (m Model) renderMoreBelowIndicator() string {
@@ -75,30 +77,44 @@ func (m Model) renderMoreBelowIndicator() string {
 		Render(strings.Repeat(" ", rowCursorWidth) + centered)
 }
 
+// closeOpenBoxAtViewportBoundary tidies a card the viewport cut in half.
+//
+// Two ways it used to leave a mess. It gave up the moment any box had closed
+// earlier in the frame, so in the split workspace — where the nav column draws
+// a card under every step — it never ran at all. And when the cut landed on a
+// card's top border it returned the frame untouched, leaving a lone "╭────╮"
+// hanging over blank space with no body and no bottom: the most broken-looking
+// thing the layout could produce.
+//
+// So: find the box that is still open at the end, and either close it or, when
+// there is not enough room left to show anything of it, drop it.
 func closeOpenBoxAtViewportBoundary(s string) string {
-	if !strings.Contains(s, "╭") || strings.Contains(s, "╰") {
-		return s
-	}
 	lines := strings.Split(s, "\n")
-	if len(lines) == 0 {
-		return s
-	}
 	topLine := -1
-	bottomLine := -1
 	for i, line := range lines {
-		if strings.Contains(line, "╭") && strings.Contains(line, "╮") {
+		switch {
+		case strings.Contains(line, "╭") && strings.Contains(line, "╮"):
 			topLine = i
-		}
-		if strings.Contains(line, "╰") && strings.Contains(line, "╯") {
-			bottomLine = i
+		case strings.Contains(line, "╰") && strings.Contains(line, "╯"):
+			topLine = -1
 		}
 	}
-	if topLine == -1 || bottomLine > topLine || topLine >= len(lines)-1 {
+	if topLine == -1 {
 		return s
 	}
-	top := lines[topLine]
-	bottom := strings.NewReplacer("╭", "╰", "╮", "╯").Replace(top)
-	lines[len(lines)-1] = bottom
+
+	// A card needs its top, at least one row of content, and its bottom. With
+	// less than that there is nothing worth showing, so drop the fragment and
+	// leave the rows blank rather than draw a box that says nothing.
+	const minVisibleBoxRows = 3
+	if len(lines)-topLine < minVisibleBoxRows {
+		for i := topLine; i < len(lines); i++ {
+			lines[i] = ""
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	lines[len(lines)-1] = strings.NewReplacer("╭", "╰", "╮", "╯").Replace(lines[topLine])
 	return strings.Join(lines, "\n")
 }
 

@@ -12,6 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
@@ -212,4 +213,38 @@ func TestCaptureRealSession(t *testing.T) {
 	if rendered == 0 {
 		t.Skip("no readable co-op sessions to render")
 	}
+}
+
+// TestFramesAreNotVisiblyBroken sweeps every captured frame for the two faults
+// that make the UI look broken rather than merely cramped: content past the
+// right edge, and a card whose borders do not balance.
+//
+// Both were found by eye first. A lone "╭────╮" hanging over blank space
+// survived a full test suite because every assertion was about content, not
+// about the frame holding together.
+func TestFramesAreNotVisiblyBroken(t *testing.T) {
+	for _, scenario := range captureScenarios() {
+		for _, size := range captureSizes {
+			t.Run(scenario.name+"/"+size.name, func(t *testing.T) {
+				m := scenario.model()
+				rendered := captureFrame(&m, size)
+
+				assertLayoutFits(t, rendered, size)
+				assertBoxesBalance(t, rendered)
+			})
+		}
+	}
+}
+
+// assertBoxesBalance reports a card that opens and never closes. Split-workspace
+// frames join two independently drawn columns onto shared lines, so a border
+// from either column can appear on any line; the check is over the frame as a
+// whole rather than per column.
+func assertBoxesBalance(t *testing.T, rendered string) {
+	t.Helper()
+	plain := ansi.Strip(rendered)
+	opens := strings.Count(plain, "╭")
+	closes := strings.Count(plain, "╰")
+	assert.Equal(t, opens, closes,
+		"every card that opens should close; got %d open and %d closed:\n%s", opens, closes, plain)
 }

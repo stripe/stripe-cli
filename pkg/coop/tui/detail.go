@@ -286,6 +286,47 @@ func (m Model) writeStepSDKSnippetDetail(md *strings.Builder, node *coop.Session
 	}
 }
 
+// confirmationClause drops a prompt's opening instruction when the card has
+// already printed the exact command.
+//
+// Blueprint prompts are written to cover every way a step might be exercised —
+// "Run the relevant Stripe CLI trigger or complete the upstream flow, then
+// confirm the handler receives the expected event." With the command spelled
+// out directly above, that first clause is a vaguer restatement of it, and the
+// part worth reading is what to look for afterwards.
+func confirmationClause(prompt string, haveCommand bool) string {
+	if !haveCommand {
+		return prompt
+	}
+	idx := strings.Index(prompt, ", then ")
+	if idx < 0 {
+		return prompt
+	}
+	if !strings.Contains(strings.ToLower(prompt[:idx]), "run ") {
+		return prompt
+	}
+	rest := strings.TrimSpace(prompt[idx+len(", then "):])
+	if rest == "" {
+		return prompt
+	}
+	return capitalize(rest)
+}
+
+// recoveryHint says what to do about a failed check. The reader is holding two
+// options and the card never named either: fix it themselves, or hand it back.
+func (m Model) recoveryHint(cause string) string {
+	fix := "Fix it and re-run"
+	if name := missingConfigPattern.FindStringSubmatch(cause); name != nil {
+		for _, candidate := range name[1:] {
+			if candidate != "" {
+				fix = "Set " + candidate + " and re-run"
+				break
+			}
+		}
+	}
+	return fix + ", or press " + m.keys.Reject.Help().Key + " to send this back to the agent."
+}
+
 // writeStepSummaryDetail renders the expanded step.
 //
 // It mirrors the review card deliberately: same headings, same hues, same
@@ -304,39 +345,59 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		md.WriteString("\n")
 	}
 
-	if prompts := stepReviewPrompts(ch); len(prompts) > 0 {
-		md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
-		for _, prompt := range prompts {
-			writeWrapped(md, m.theme.InstructionStyle.Render(prompt), wrapWidth)
-		}
-		md.WriteString("\n")
-	}
+	md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
 
-	// Where to go, carried over from the footer card this replaced. Not nested
-	// under the prompts above: a step can have a command to run and no prose
-	// prompt, and that command is the most actionable thing on the card.
-	if target, ok := m.selectedReviewTarget(); ok {
-		if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
-			writeWrapped(md, m.theme.MutedStyle.Render("Run ")+m.theme.BrandStyle.Render(command), wrapWidth)
-			md.WriteString("\n")
-		} else if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
-			writeWrapped(md, m.theme.MutedStyle.Render("Check ")+venue, wrapWidth)
-			md.WriteString("\n")
+	// The command comes first. The blueprint prose is written to cover every
+	// way a step might be exercised — "run the relevant Stripe CLI trigger or
+	// complete the upstream flow" — which tells a reader holding a terminal
+	// nothing they can type. The exact command was already on the card, two
+	// lines further down, phrased as an aside.
+	target, hasTarget := m.selectedReviewTarget()
+	command := ""
+	if hasTarget {
+		command = m.reviewCommandLabel(target.nodeNumbers)
+	}
+	switch {
+	case command != "":
+		// Every command under the first, not under the "Run " label, so a step
+		// with two triggers reads as two commands rather than as a sentence
+		// that wrapped.
+		for i, line := range strings.Split(command, "\n") {
+			label := m.theme.MutedStyle.Render("Run ")
+			if i > 0 {
+				label = strings.Repeat(" ", lipgloss.Width("Run "))
+			}
+			writeWrapped(md, label+m.theme.BrandStyle.Render(line), wrapWidth)
 		}
+	case hasTarget:
+		if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
+			writeWrapped(md, m.theme.MutedStyle.Render("Check ")+venue, wrapWidth)
+		}
+	}
+	for _, prompt := range stepReviewPrompts(ch) {
+		writeWrapped(md, m.theme.InstructionStyle.Render(confirmationClause(prompt, command != "")), wrapWidth)
+	}
+	md.WriteString("\n")
+
+	// What is blocking, and what to do about it. A count of failed checks says
+	// something is wrong without saying whether the reader is meant to fix it,
+	// re-run it, or hand it back — which was the one question the card never
+	// answered.
+	if failed, _ := stepCheckResults(ch); len(failed) > 0 {
+		cause := stepBlockingCause(ch)
+		headline := pluralChecks(len(failed)) + " could not finish"
+		if cause != "" {
+			headline += ": " + cause
+		}
+		writeWrapped(md, m.theme.SoftErrorStyle.Render("✗ ")+
+			highlightIdentifiers(headline, m.theme.MutedStyle, m.theme.IdentifierStyle), wrapWidth)
+		writeWrapped(md, m.theme.MutedStyle.Render(m.recoveryHint(cause)), wrapWidth)
+		md.WriteString("\n")
 	}
 
 	// No task list and no checks section here. Tasks render outside the card,
 	// under it, and each one carries its own check results — the two lists were
 	// the same list, with the second copy restating every title from the first.
-
-	// The step's state closes the card, matching the small card a collapsed
-	// step shows. It sits below the instruction rather than above it, because
-	// what the reviewer has to do outranks a tally of what is done.
-	if stepIndex, ok := m.selectedStepIndex(); ok {
-		if status := m.stepStatusSummary(stepIndex); status != "" {
-			writeWrapped(md, status, wrapWidth)
-		}
-	}
 }
 
 // writeWrapped wraps to the available width with no indentation: hierarchy in
