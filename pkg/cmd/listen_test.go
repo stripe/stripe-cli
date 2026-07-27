@@ -336,19 +336,19 @@ func TestCheckRemovedFlags(t *testing.T) {
 			name:    "--thin-events returns helpful error",
 			flag:    "thin-events",
 			value:   "v1.billing.meter.no_meter_found",
-			wantErr: "--thin-events has been removed; use --events instead",
+			wantErr: "--thin-events has been replaced by --events",
 		},
 		{
 			name:    "--forward-thin-to returns helpful error",
 			flag:    "forward-thin-to",
 			value:   "http://localhost:3000",
-			wantErr: "--forward-thin-to has been removed; use --forward-to instead",
+			wantErr: "--forward-thin-to has been replaced by --forward-to",
 		},
 		{
 			name:    "--forward-thin-connect-to returns helpful error",
 			flag:    "forward-thin-connect-to",
 			value:   "http://localhost:3000",
-			wantErr: "--forward-thin-connect-to has been removed; use --forward-connect-to instead",
+			wantErr: "--forward-thin-connect-to has been replaced by --forward-connect-to",
 		},
 	}
 

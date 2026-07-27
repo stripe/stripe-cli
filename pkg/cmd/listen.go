@@ -504,13 +504,13 @@ func (lc *listenCmd) validateForwardingConfig(snapshotEvents, thinEvents []strin
 // removed in the v2 CLI release.
 func (lc *listenCmd) checkRemovedFlags() error {
 	if lc.cmd.Flags().Changed("thin-events") {
-		return fmt.Errorf("--thin-events has been removed; use --events instead, which now accepts both snapshot and thin event types")
+		return fmt.Errorf("--thin-events has been replaced by --events, which now accepts both snapshot and thin event types")
 	}
 	if lc.cmd.Flags().Changed("forward-thin-to") {
-		return fmt.Errorf("--forward-thin-to has been removed; use --forward-to instead, which now forwards both snapshot and thin events")
+		return fmt.Errorf("--forward-thin-to has been replaced by --forward-to, which now forwards both snapshot and thin events")
 	}
 	if lc.cmd.Flags().Changed("forward-thin-connect-to") {
-		return fmt.Errorf("--forward-thin-connect-to has been removed; use --forward-connect-to instead")
+		return fmt.Errorf("--forward-thin-connect-to has been replaced by --forward-connect-to")
 	}
 	return nil
 }
