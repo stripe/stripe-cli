@@ -375,7 +375,6 @@ func manualNavigationLayoutModel() Model {
 
 func expandedDetailsLayoutModel() Model {
 	m := reviewStepLongPromptLayoutModel()
-	m.expanded = true
 	m.detailTab = 1
 	m.session.Steps[0].Nodes[0].Implementation.Snippet = strings.Repeat("const session = await stripe.checkout.sessions.create({ mode: 'payment' })\n", 8)
 	return m
@@ -414,7 +413,6 @@ func staticSpinner() spinner.Model {
 // only, leaving the top border two columns left of its own sides.
 func TestSplitWorkspaceDetailBoxIsColumnAligned(t *testing.T) {
 	m := stepReviewLayoutModel()
-	m.expanded = true
 	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
 
 	// Only the right pane. The nav column now draws a small status card under

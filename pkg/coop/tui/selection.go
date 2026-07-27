@@ -275,3 +275,12 @@ func firstNodeIndexInStep(session *coop.Session, stepIndex int) int {
 	}
 	return -1
 }
+
+// selectedStepIndexOrZero is the selected step, or the first one when the
+// selection has not resolved to a step yet.
+func (m Model) selectedStepIndexOrZero() int {
+	if idx, ok := m.selectedStepIndex(); ok {
+		return idx
+	}
+	return 0
+}

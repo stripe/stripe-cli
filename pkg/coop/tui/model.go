@@ -37,11 +37,13 @@ type Model struct {
 	// confirmedStepIndex/confirmedUntil hold the settle frame after a confirm.
 	confirmedStepIndex int
 	confirmedUntil     time.Time
-	expanded           bool
 	detailTab          int
-	width              int
-	height             int
-	userMoved          bool
+	// cardCollapsed tracks the reader closing the selected step's card. Moving
+	// to another step clears it, so arriving on a step opens it.
+	cardCollapsed bool
+	width         int
+	height        int
+	userMoved     bool
 
 	rejecting       bool // true while the request-changes input is active
 	rejectTarget    reviewTarget
@@ -444,7 +446,7 @@ func (m *Model) resetSelectionState() {
 	m.selectionCursor = 0
 	m.selected = navigationItem{}
 	m.collapsedSteps = nil
-	m.expanded = false
+	m.cardCollapsed = false
 	m.userMoved = false
 }
 
@@ -633,7 +635,7 @@ func (m *Model) autoScroll() {
 	for i := range m.session.Steps {
 		if m.stepReviewReady(i) {
 			m.selectStep(i)
-			m.expanded = false
+			m.cardCollapsed = false
 			return
 		}
 	}
@@ -642,7 +644,7 @@ func (m *Model) autoScroll() {
 		for j := range m.session.Steps[i].Nodes {
 			if m.session.Steps[i].Nodes[j].State == coop.NodeReview && m.reviewIsActionable(idx+1) {
 				m.selectNode(idx)
-				m.expanded = false
+				m.cardCollapsed = false
 				return
 			}
 			idx++
@@ -719,7 +721,7 @@ func (m Model) handleNavigationKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
 	case key.Matches(msg, m.keys.Left):
 		if m.collapseSelectedStep() {
 			m.userMoved = true
-			m.expanded = false
+			m.cardCollapsed = false
 			m.resizeViewport()
 			m.syncViewport()
 		}
@@ -772,17 +774,17 @@ func (m Model) handleActionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Expand):
-		m.expanded = !m.expanded
+		m.cardCollapsed = !m.cardCollapsed
 		m.resizeViewport()
 		m.syncViewport()
-		if m.expanded {
+		if !m.cardCollapsed {
 			return m, m.fetchSnippetIfNeeded()
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Enter):
 		return m.handleEnter()
 	case key.Matches(msg, m.keys.Tab):
-		// Gated on m.expanded, this stopped working the moment the card began
+		// Gated on the card being explicitly opened, this stopped working the moment it began
 		// rendering in place without being opened first. It also cycled modulo
 		// a fixed list of three while a step offers only the tabs it has
 		// content for, so the count could disagree with the strip on screen.
@@ -793,8 +795,8 @@ func (m Model) handleActionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Escape):
-		if m.expanded {
-			m.expanded = false
+		if !m.cardCollapsed {
+			m.cardCollapsed = true
 			m.resizeViewport()
 			m.syncViewport()
 		}
@@ -907,10 +909,10 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	m.expanded = !m.expanded
+	m.cardCollapsed = !m.cardCollapsed
 	m.resizeViewport()
 	m.syncViewport()
-	if m.expanded {
+	if !m.cardCollapsed {
 		return m, m.fetchSnippetIfNeeded()
 	}
 	return m, nil

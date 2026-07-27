@@ -345,6 +345,27 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		md.WriteString("\n")
 	}
 
+	prompts := stepReviewPrompts(ch)
+	target, hasTarget := m.selectedReviewTarget()
+	instruction := ""
+	if hasTarget {
+		if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
+			instruction = command
+		}
+	}
+
+	// A step with nothing pending has nothing to confirm. Writing the heading
+	// unconditionally left "To confirm" standing over an empty card the moment
+	// arriving on a step opened it, which is when finished steps started being
+	// opened at all.
+	if instruction == "" && len(prompts) == 0 && !hasTarget {
+		if summary := m.stepCardSummary(m.selectedStepIndexOrZero()); summary != "" {
+			writeWrapped(md, summary, wrapWidth)
+			md.WriteString("\n")
+		}
+		return
+	}
+
 	md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
 
 	// The command comes first. The blueprint prose is written to cover every
@@ -352,11 +373,7 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	// complete the upstream flow" — which tells a reader holding a terminal
 	// nothing they can type. The exact command was already on the card, two
 	// lines further down, phrased as an aside.
-	target, hasTarget := m.selectedReviewTarget()
-	command := ""
-	if hasTarget {
-		command = m.reviewCommandLabel(target.nodeNumbers)
-	}
+	command := instruction
 	switch {
 	case command != "":
 		// Every command under the first, not under the "Run " label, so a step
@@ -374,7 +391,7 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 			writeWrapped(md, m.theme.MutedStyle.Render("Check ")+venue, wrapWidth)
 		}
 	}
-	for _, prompt := range stepReviewPrompts(ch) {
+	for _, prompt := range prompts {
 		writeWrapped(md, m.theme.InstructionStyle.Render(confirmationClause(prompt, command != "")), wrapWidth)
 	}
 	md.WriteString("\n")

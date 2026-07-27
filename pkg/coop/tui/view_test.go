@@ -182,6 +182,9 @@ func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
 func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
 	m := testModel()
 	m.collapseStep(0)
+	// Stand somewhere else: the selected step shows its full card, and this is
+	// about what a step the reader is not on says for itself.
+	m.selectStep(1)
 
 	list := m.renderStepList()
 
@@ -227,7 +230,6 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 func TestRenderDetail(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 1
 	detail := m.renderDetail()
 
@@ -240,7 +242,6 @@ func TestRenderDetail(t *testing.T) {
 func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 0
 
 	detail := m.renderDetail()
@@ -258,7 +259,6 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 func TestRenderSummaryDetailShowsStepSDKSnippet(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 0
 	m.sdkSnippet = "const product = await stripe.products.create({name: 'Gold plan'});"
 	m.sdkSnippetNode = 0
@@ -272,7 +272,6 @@ func TestRenderSummaryDetailShowsStepSDKSnippet(t *testing.T) {
 func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 	m := testModel()
 	m.selectStep(0)
-	m.expanded = true
 	m.detailTab = 0
 
 	detail := m.renderDetail()
@@ -287,7 +286,6 @@ func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 func TestRenderDetailWebhook(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 2 // asyncHandler node
-	m.expanded = true
 	m.detailTab = 2
 	detail := m.renderDetail()
 
@@ -302,7 +300,6 @@ func TestRenderDetailWebhook(t *testing.T) {
 func TestRenderDetailWithSDKSnippet(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 3
 	m.sdkSnippet = "const product = await stripe.products.create({});"
 	m.sdkSnippetNode = 0
@@ -316,7 +313,6 @@ func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
 	m := testModel()
 	m.width = 69
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 1
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
@@ -332,7 +328,6 @@ func TestRenderDetailBoxMatchesOutlineWidth(t *testing.T) {
 	m := testModel()
 	m.width = 69
 	m.selectionCursor = 0
-	m.expanded = true
 
 	detail := ansi.Strip(m.renderDetail())
 	lines := strings.Split(detail, "\n")
@@ -914,7 +909,6 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(6))
 	m.session.Steps[0].Nodes[0].ReviewPrompt = strings.Repeat("Confirm the Checkout flow uses the saved price ID and redirects correctly. ", 5)
 	m.selectStep(0)
-	m.expanded = true
 	m.resizeViewport()
 	m.syncViewport()
 	m.viewport.SetHeight(6)
@@ -1153,7 +1147,6 @@ func TestDetailTabStripIsAlwaysVisible(t *testing.T) {
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
 	m.selectStep(0)
-	m.expanded = true
 
 	sections := m.stepDetailSections(&m.session.Steps[0])
 	for tab, name := range sections {
@@ -1217,7 +1210,6 @@ func TestSplitWorkspaceKeepsFeedbackEditorVisible(t *testing.T) {
 // the instruction and stays inside its frame.
 func TestCrowdedStepStillLeadsWithTheInstruction(t *testing.T) {
 	m := stressCrowdedStepReviewModel()
-	m.expanded = true
 	size := layoutSize{name: "wide", width: 120, height: 34}
 	rendered := renderLayoutScenario(&m, size)
 

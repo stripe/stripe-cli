@@ -78,29 +78,28 @@ func TestUpdatePageKeysMoveViewport(t *testing.T) {
 	assert.True(t, updated.userMoved)
 }
 
-func TestUpdateKeyExpand(t *testing.T) {
+// Arriving on a step opens its card, so enter's job is to close it again.
+func TestUpdateKeyEnterClosesAnOpenCard(t *testing.T) {
 	m := readyModel()
-	m.expanded = false
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
-	assert.True(t, updated.expanded)
+	assert.True(t, updated.cardCollapsed)
 }
 
-func TestUpdateKeyExpandToggle(t *testing.T) {
+func TestUpdateKeyEnterReopensAClosedCard(t *testing.T) {
 	m := readyModel()
-	m.expanded = true
+	m.cardCollapsed = true
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
-	assert.False(t, updated.expanded)
+	assert.False(t, updated.cardCollapsed)
 }
 
 func TestUpdateKeyTabCyclesDetailStep(t *testing.T) {
 	m := readyModel()
-	m.expanded = true
 	m.detailTab = 0
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -111,12 +110,12 @@ func TestUpdateKeyTabCyclesDetailStep(t *testing.T) {
 
 func TestUpdateKeyEscClosesDetails(t *testing.T) {
 	m := readyModel()
-	m.expanded = true
+	require.False(t, m.cardCollapsed, "the card is open on arrival")
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	updated := result.(Model)
 
-	assert.False(t, updated.expanded)
+	assert.True(t, updated.cardCollapsed)
 }
 
 func TestUpdateKeyConfirm(t *testing.T) {
@@ -219,7 +218,6 @@ func TestSyncViewportPreservesManualScroll(t *testing.T) {
 	m.height = 12
 	m.resizeViewport()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.sdkSnippet = strings.Repeat("const product = await stripe.products.create({});\n", 20)
 	m.sdkSnippetNode = 0
 	m.syncViewport()
@@ -1003,22 +1001,22 @@ func TestHandleKeyCopyReviewCommand(t *testing.T) {
 
 func TestHandleKeyQuestionMark(t *testing.T) {
 	m := readyModel()
-	m.expanded = false
+	m.cardCollapsed = true
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	updated := result.(Model)
-	assert.True(t, updated.expanded)
+	assert.False(t, updated.cardCollapsed, "? reopens a closed card")
 }
 
 func TestAutoScrollFocusesReviewWithoutExpanding(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.expanded = false
+	m.cardCollapsed = true
 
 	m.autoScroll()
 
-	assert.False(t, m.expanded)
+	assert.False(t, m.cardCollapsed)
 	assert.Equal(t, 0, m.selectionCursor)
 }
 
@@ -1057,7 +1055,7 @@ func TestCompletionTransitionResetsCursor(t *testing.T) {
 	updated := result.(Model)
 
 	assert.Equal(t, 0, updated.selectionCursor)
-	assert.False(t, updated.expanded)
+	assert.False(t, updated.cardCollapsed)
 	assert.Equal(t, 0, updated.viewport.YOffset())
 }
 
@@ -1242,11 +1240,11 @@ func completedReadyModel() Model {
 func TestCompletionViewGatesWorkViewKeys(t *testing.T) {
 	m := completedReadyModel()
 	require.True(t, m.session.IsComplete())
-	require.False(t, m.expanded)
+	require.False(t, m.cardCollapsed)
 
 	// The expand key must be inert in the completion view.
 	res, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	assert.False(t, res.(Model).expanded, "expand must not toggle in completion view")
+	assert.False(t, res.(Model).cardCollapsed, "expand must not toggle in completion view")
 
 	// 'r' (request changes) must not enter rejecting mode in the completion view.
 	res, _ = m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})

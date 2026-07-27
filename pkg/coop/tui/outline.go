@@ -156,10 +156,11 @@ func (m Model) stepShowsInlineCard(stepIndex int) bool {
 	if m.stepJustConfirmed(stepIndex) {
 		return false
 	}
-	if _, hasReview := m.selectedReviewTarget(); hasReview {
-		return true
-	}
-	return m.expanded
+	// Arriving on a step opens it. It used to open only when a review was
+	// waiting on it, so reading a finished or running step meant moving to it
+	// and then pressing enter — a second keystroke to see the thing the cursor
+	// was already pointing at. enter now closes it again.
+	return !m.cardCollapsed
 }
 
 // minInlineCardRows is the terminal height below which the card stops rendering

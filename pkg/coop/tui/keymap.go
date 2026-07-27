@@ -167,7 +167,7 @@ func (m Model) ShortHelp() []key.Binding {
 		}
 	}
 
-	if m.expanded {
+	if !m.cardCollapsed {
 		bindings = append(bindings, m.keys.Tab, m.keys.Escape)
 	}
 
