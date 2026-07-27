@@ -21,6 +21,7 @@ type triggerCmd struct {
 	apiVersion    string
 	skip          []string
 	override      []string
+	param         []string
 	add           []string
 	remove        []string
 	raw           string
@@ -46,7 +47,11 @@ needed to create the triggered event as well as the corresponding API objects.
 			ansi.Bold("Supported events:"),
 			fixtures.EventList(),
 		),
-		Example: `stripe trigger payment_intent.created`,
+		Example: `# Trigger a basic event
+  stripe trigger payment_intent.created
+
+  # Trigger an event that requires parameters
+  stripe trigger application_fee.created --param charge:transfer_data.destination=acct_123`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--override` to customize event data, e.g. `--override customer:email=test@example.com`.\n" +
 				"  Use `--skip` to skip specific steps in the trigger sequence.\n" +
@@ -58,6 +63,7 @@ needed to create the triggered event as well as the corresponding API objects.
 	tc.cmd.Flags().StringVar(&tc.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 	tc.cmd.Flags().StringArrayVar(&tc.skip, "skip", []string{}, "Skip specific steps in the trigger")
 	tc.cmd.Flags().StringArrayVar(&tc.override, "override", []string{}, "Override params in the trigger")
+	tc.cmd.Flags().StringArrayVar(&tc.param, "param", []string{}, "Set required parameters (validated before execution)")
 	tc.cmd.Flags().StringArrayVar(&tc.add, "add", []string{}, "Add params to the trigger")
 	tc.cmd.Flags().StringArrayVar(&tc.remove, "remove", []string{}, "Remove params from the trigger")
 	tc.cmd.Flags().StringVar(&tc.raw, "raw", "", "Raw fixture in string format to replace all default fixtures")
@@ -91,7 +97,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	event := args[0]
 
-	_, err = fixtures.Trigger(cmd.Context(), event, tc.stripeAccount, tc.apiBaseURL, apiKey, tc.skip, tc.override, tc.add, tc.remove, tc.raw, tc.apiVersion, tc.edit)
+	_, err = fixtures.Trigger(cmd.Context(), event, tc.stripeAccount, tc.apiBaseURL, apiKey, tc.skip, tc.override, tc.param, tc.add, tc.remove, tc.raw, tc.apiVersion, tc.edit)
 	if err != nil {
 		return err
 	}

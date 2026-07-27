@@ -28,6 +28,7 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 		apiKey,
 		req.Skip,
 		req.Override,
+		[]string{}, // param - not yet supported in RPC, can be added later
 		req.Add,
 		req.Remove,
 		req.Raw,
