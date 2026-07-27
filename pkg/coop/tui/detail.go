@@ -395,7 +395,14 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 			writeWrapped(md, m.theme.MutedStyle.Render("Check ")+venue, wrapWidth)
 		}
 	}
-	for _, prompt := range prompts {
+	// Each instruction is its own paragraph. Run together, two prompts read as
+	// one wrapped sentence — the reader cannot see where the first thing to do
+	// ends and the second begins. A blank line after the command block
+	// separates what to type from what to look for once it has run.
+	for i, prompt := range prompts {
+		if i > 0 || command != "" {
+			md.WriteString("\n")
+		}
 		writeWrapped(md, m.theme.InstructionStyle.Render(confirmationClause(prompt, command != "")), wrapWidth)
 	}
 	md.WriteString("\n")
@@ -410,8 +417,14 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 		if cause != "" {
 			headline += ": " + cause
 		}
-		writeWrapped(md, m.theme.SoftErrorStyle.Render("✗ ")+
-			highlightIdentifiers(headline, m.theme.MutedStyle, m.theme.IdentifierStyle), wrapWidth)
+		// Hangs under its own glyph, like the small card's version of the same
+		// sentence.
+		failure := m.theme.SoftErrorStyle.Render("✗ ") +
+			highlightIdentifiers(headline, m.theme.MutedStyle, m.theme.IdentifierStyle)
+		for _, line := range strings.Split(wrapHanging(failure, wrapWidth, 2), "\n") {
+			md.WriteString(line + "\n")
+		}
+		md.WriteString("\n")
 		writeWrapped(md, m.theme.MutedStyle.Render(m.recoveryHint(cause)), wrapWidth)
 		md.WriteString("\n")
 	}

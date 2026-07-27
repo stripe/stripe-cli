@@ -387,10 +387,26 @@ func (m Model) stepShowsTasks(stepIndex int) bool {
 	return ok && selected == stepIndex
 }
 
+// startsWithMarker reports whether a line opens with a status glyph and a
+// space, which is what a hanging indent aligns under.
+func startsWithMarker(text string) bool {
+	plain := strings.TrimLeft(ansi.Strip(text), " ")
+	for _, marker := range []string{"✓ ", "✗ ", "◆ ", "● ", "○ ", "– "} {
+		if strings.HasPrefix(plain, marker) {
+			return true
+		}
+	}
+	return false
+}
+
 // wrapHanging wraps text and indents every line after the first, so a wrapped
 // summary lines up under its own opening word instead of under its marker.
 func wrapHanging(text string, width, indent int) string {
-	if width-indent < 8 {
+	// Only hang under a leading marker. A sentence that starts flush left —
+	// "Needs you — 2 checks could not finish: X" — was being indented from its
+	// second line on, which reads as a mid-sentence step in rather than as text
+	// aligned under its own glyph.
+	if width-indent < 8 || !startsWithMarker(text) {
 		return wordWrap(text, width)
 	}
 	// Wrap to the narrower width up front. Wrapping to the full width and then
@@ -466,7 +482,10 @@ func (m Model) stepCardSummary(stepIndex int) string {
 		if node.Activity != "" {
 			detail = node.Activity
 		}
-		return m.theme.MutedStyle.Render("Working on ") + m.theme.StepTitleStyle.Render(detail)
+		// Same icon the task row shows, so a running step reads as running at a
+		// glance rather than only on the word "Working".
+		return m.nodeIcon(node) + m.theme.MutedStyle.Render(" Working on ") +
+			m.theme.StepTitleStyle.Render(detail)
 	}
 
 	// Finished: what the agent actually built, in its own words.
@@ -584,7 +603,11 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	}
 	title := ch.Title
 	if selected {
-		title = lipgloss.NewStyle().Bold(true).Render(title)
+		// A filled title, not just a bold one behind a "> " and a "-". Those
+		// two glyphs were the only thing marking the step the reader was on,
+		// and at a glance they disappeared into the rules and disclosure
+		// markers around them.
+		title = m.theme.SelectedStepTitleStyle.Render(title)
 	}
 	// Title only. Everything that used to trail the header — the state, the
 	// per-state counts, the failure badge — now sits in the card directly
@@ -737,11 +760,16 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 	// The task carries its own check results. They used to live in a separate
 	// "Agent checks" section that restated every task title above it, so the
 	// same list appeared twice with the second copy prefixed by the first.
+	// A ratio when some checks passed and some did not. "done ✗1 ✓1" put three
+	// status tokens in a row and left the reader to work out that one check
+	// passed while another could not run; "✗1 of 2" says it.
 	failed, passed := nodeCheckResults(node)
-	if len(failed) > 0 {
+	switch {
+	case len(failed) > 0 && passed > 0:
+		line += "  " + m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d of %d", len(failed), len(failed)+passed))
+	case len(failed) > 0:
 		line += "  " + m.theme.SoftErrorStyle.Render(fmt.Sprintf("✗%d", len(failed)))
-	}
-	if passed > 0 {
+	case passed > 0:
 		line += "  " + m.theme.SoftSuccessStyle.Render(fmt.Sprintf("✓%d", passed))
 	}
 

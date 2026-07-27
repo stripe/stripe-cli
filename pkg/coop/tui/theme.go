@@ -40,23 +40,24 @@ type Theme struct {
 	ConfirmationHeaderStyle lipgloss.Style
 
 	// Section headings inside the review box and the detail pane.
-	ActionHeadingStyle  lipgloss.Style
-	TaskHeadingStyle    lipgloss.Style
-	EvidenceStyle       lipgloss.Style
-	IdentifierStyle     lipgloss.Style
-	StatusCardStyle     lipgloss.Style
-	TabActiveStyle      lipgloss.Style
-	TabInactiveStyle    lipgloss.Style
-	TabGapStyle         lipgloss.Style
-	SoftSuccessStyle    lipgloss.Style
-	SoftErrorStyle      lipgloss.Style
-	SoftAttentionStyle  lipgloss.Style
-	PromptStyle         lipgloss.Style
-	InstructionStyle    lipgloss.Style
-	KeyStyle            lipgloss.Style
-	KeyDescriptionStyle lipgloss.Style
-	FooterStyle         lipgloss.Style
-	FileAnnotationStyle lipgloss.Style
+	ActionHeadingStyle     lipgloss.Style
+	TaskHeadingStyle       lipgloss.Style
+	EvidenceStyle          lipgloss.Style
+	IdentifierStyle        lipgloss.Style
+	StatusCardStyle        lipgloss.Style
+	SelectedStepTitleStyle lipgloss.Style
+	TabActiveStyle         lipgloss.Style
+	TabInactiveStyle       lipgloss.Style
+	TabGapStyle            lipgloss.Style
+	SoftSuccessStyle       lipgloss.Style
+	SoftErrorStyle         lipgloss.Style
+	SoftAttentionStyle     lipgloss.Style
+	PromptStyle            lipgloss.Style
+	InstructionStyle       lipgloss.Style
+	KeyStyle               lipgloss.Style
+	KeyDescriptionStyle    lipgloss.Style
+	FooterStyle            lipgloss.Style
+	FileAnnotationStyle    lipgloss.Style
 }
 
 func NewTheme(isDark bool) Theme {
@@ -91,6 +92,13 @@ func NewTheme(isDark bool) Theme {
 	t.ReviewCardStyle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(t.Selection).
+		Padding(0, 1)
+	// The step the cursor is on, filled so it separates from the steps around
+	// it without depending on a two-character marker.
+	t.SelectedStepTitleStyle = lipgloss.NewStyle().
+		Foreground(t.Text).
+		Background(t.Selection).
+		Bold(true).
 		Padding(0, 1)
 	// The small card under a step header. Quieter than the review card: it
 	// carries a single line of status, so a heavy border would outweigh it.
