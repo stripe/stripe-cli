@@ -108,7 +108,7 @@ func TestUILayoutMatrix(t *testing.T) {
 				// belongs to is still named by the pinned footer note. The card
 				// is taller than a short viewport, so both cannot be shown.
 				if scenario.expectCursor && !scenario.model().rejecting {
-					assert.Contains(t, rendered, strings.TrimSpace(cursorMarker), "selected row should remain visible")
+					assertSelectedRowVisible(t, rendered)
 				}
 				if scenario.expectReviewCard {
 					assertReviewAffordanceVisible(t, m, rendered)
@@ -492,4 +492,17 @@ func TestFailedCheckSurvivesEveryHeight(t *testing.T) {
 				"the failure must be signaled somewhere in the frame:\n%s", rendered)
 		})
 	}
+}
+
+// assertSelectedRowVisible checks the timeline's filled node is on screen. The
+// cursor used to be a "> " in front of the title; it is the node on the rail
+// down the left now, so a row is "selected" when a line opens with it.
+func assertSelectedRowVisible(t *testing.T, rendered string) {
+	t.Helper()
+	for _, line := range strings.Split(ansi.Strip(rendered), "\n") {
+		if strings.HasPrefix(line, timelineNodeCurrent) {
+			return
+		}
+	}
+	assert.Fail(t, "selected row should remain visible", rendered)
 }

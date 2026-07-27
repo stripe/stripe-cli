@@ -128,28 +128,35 @@ func TestRenderStepList(t *testing.T) {
 	assertContainsPlain(t, list, "Not started")
 }
 
-func TestRenderStepListAlignsStepTitleWithRule(t *testing.T) {
+// The rule under each step title is gone — every step draws a card, and the
+// card's own top border was drawing the same boundary a row later. What still
+// has to hold is that the title and the card beneath it share a left edge.
+func TestRenderStepTitleAlignsWithItsCard(t *testing.T) {
 	m := testModel()
 	lines := strings.Split(ansi.Strip(m.renderStepList()), "\n")
 
-	var titleLine, ruleLine string
+	var titleLine, cardLine string
 	for i, line := range lines {
 		if strings.Contains(line, "Set up product") && i+1 < len(lines) {
 			titleLine = line
-			ruleLine = lines[i+1]
+			cardLine = lines[i+1]
 			break
 		}
 	}
 
 	require.NotEmpty(t, titleLine)
-	require.NotEmpty(t, ruleLine)
-	titleDash := strings.Index(titleLine, "-")
-	ruleDash := strings.Index(ruleLine, "─")
-	require.NotEqual(t, -1, titleDash)
-	require.NotEqual(t, -1, ruleDash)
-	titlePrefix := titleLine[:titleDash]
-	rulePrefix := ruleLine[:ruleDash]
-	assert.Equal(t, lipgloss.Width(titlePrefix), lipgloss.Width(rulePrefix))
+	require.Contains(t, cardLine, "╭", "a card should follow the title")
+
+	// Both sit past the same two-column timeline gutter: the card's border and
+	// the title's block start there. The title's text is one further in, inside
+	// the padding that lets the selected title render as a filled block rather
+	// than as inverted text jammed against its own edge.
+	// Columns, not bytes: the gutter glyphs are multi-byte.
+	assert.Equal(t, rowCursorWidth, runeIndex(cardLine, '╭'),
+		"the card's border sits just past the timeline gutter")
+	titleText := len([]rune(titleLine)) - len([]rune(strings.TrimLeft(titleLine, " ○●│╎")))
+	assert.Equal(t, rowCursorWidth+1, titleText,
+		"the title's text sits one column inside its own padding")
 }
 
 func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
@@ -161,7 +168,7 @@ func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 
 	assertContainsPlain(t, list, "Waiting for you")
-	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
+	assertSelectedRowVisible(t, list)
 	assertContainsPlain(t, list, "Create product  ready")
 	assertContainsPlain(t, list, "Create checkout  ready")
 	assertNotContainsPlain(t, list, "Create product  needs review")
@@ -188,7 +195,8 @@ func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "+ Set up product")
+	// No disclosure marker any more; the timeline node and the card say it.
+	assertContainsPlain(t, list, "Set up product")
 	// The small card says what is happening rather than counting states.
 	assertContainsPlain(t, list, "Working on")
 }
@@ -1256,4 +1264,14 @@ func TestFollowJumpsToTheWaitingStep(t *testing.T) {
 
 	assert.Equal(t, navigationStep, updated.selected.kind)
 	assert.Equal(t, 1, updated.selected.stepIndex)
+}
+
+// runeIndex is strings.IndexRune in columns rather than bytes.
+func runeIndex(s string, target rune) int {
+	for i, r := range []rune(s) {
+		if r == target {
+			return i
+		}
+	}
+	return -1
 }

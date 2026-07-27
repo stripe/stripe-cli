@@ -176,36 +176,101 @@ const minInlineCardRows = 18
 // estimating row counts of its own. The estimate and the renderer had drifted —
 // tasks were counted as one row each while rendering two — so the layout
 // dropped to its most degraded tier at heights where the windowed one fits.
+// The timeline rail down the left of the outline. Solid through finished work,
+// dotted through work still ahead; the step the cursor is on is a filled node.
+const (
+	timelineDone        = "│"
+	timelinePending     = "╎"
+	timelineNode        = "○"
+	timelineNodeCurrent = "●"
+)
+
 func (m Model) stepBlockLines(stepIndex int, selected, compact bool) (lines []string, titleOffset int, taskOffsets []int) {
 	ch := m.session.Steps[stepIndex]
+	// Physical lines, not logical ones. Cards and task rows are multi-line
+	// strings, and holding one in a single slice entry meant the timeline rail
+	// reached only its first row and the offsets below counted a whole card as
+	// one line.
+	add := func(block string) {
+		lines = append(lines, strings.Split(block, "\n")...)
+	}
+
 	if !compact {
 		lines = append(lines, "")
 	}
 	titleOffset = len(lines)
-	lines = append(lines, m.renderStepLine(ch, stepIndex, selected))
-	if !compact {
-		lines = append(lines, strings.Repeat(" ", rowCursorWidth)+
-			m.theme.StepRuleStyle.Render(strings.Repeat("─", m.outlineRuleWidth())))
-	}
+	add(m.renderStepLine(ch, stepIndex, selected))
+	// No rule under the title. It existed to separate one step from the next
+	// when a step was a bare line; every step draws a card now, and the rule sat
+	// one row above that card's own top border drawing the same boundary twice.
 
 	// The step's card renders here, directly under the step it belongs to.
 	if m.stepShowsInlineCard(stepIndex) {
 		if detail := m.renderDetail(); detail != "" {
-			lines = append(lines, detail)
+			add(detail)
 		}
 	} else if card := m.renderStepStatusCard(stepIndex); card != "" {
-		lines = append(lines, card)
+		add(card)
 	}
 
 	// Tasks render outside the card, underneath it.
 	if !m.stepShowsTasks(stepIndex) {
+		m.drawTimelineGutter(lines, stepIndex, titleOffset, selected)
 		return lines, titleOffset, nil
 	}
 	for i := range ch.Nodes {
 		taskOffsets = append(taskOffsets, len(lines))
-		lines = append(lines, m.renderNodeLine(ch.Nodes[i], m.nodeGlobalIndex(stepIndex, i), false))
+		add(m.renderNodeLine(ch.Nodes[i], m.nodeGlobalIndex(stepIndex, i), false))
 	}
+	m.drawTimelineGutter(lines, stepIndex, titleOffset, selected)
 	return lines, titleOffset, taskOffsets
+}
+
+// drawTimelineGutter replaces each line's first two columns with a rail, the
+// way a commit graph runs one down the left of the log.
+//
+// It reuses the columns the cursor marker had to itself, so the rail costs no
+// width. The step the cursor is on is a filled node on that rail; the rest are
+// open ones. The rail itself is solid through work that is finished and dotted
+// through work that is not, which is the one thing the outline never said
+// without the reader counting glyphs across four separate step headers.
+func (m Model) drawTimelineGutter(lines []string, stepIndex, titleOffset int, selected bool) {
+	rail := m.theme.StepRuleStyle.Render(timelinePending)
+	if m.stepComplete(stepIndex) {
+		rail = m.theme.MutedStyle.Render(timelineDone)
+	}
+	node := m.theme.MutedStyle.Render(timelineNode)
+	if selected {
+		node = m.theme.BrandStyle.Render(timelineNodeCurrent)
+	}
+
+	for i, line := range lines {
+		glyph := rail
+		if i == titleOffset {
+			glyph = node
+		}
+		// A blank separator keeps the rail running so the line is continuous
+		// between steps rather than restarting at each one.
+		lines[i] = glyph + " " + ansi.TruncateLeft(line, rowCursorWidth, "")
+	}
+}
+
+// stepComplete reports whether every task in a step is finished, which is what
+// the solid rail means.
+func (m Model) stepComplete(stepIndex int) bool {
+	if m.session == nil || stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+		return false
+	}
+	nodes := m.session.Steps[stepIndex].Nodes
+	if len(nodes) == 0 {
+		return false
+	}
+	for _, node := range nodes {
+		if node.State != coop.NodeDone && node.State != coop.NodeSkipped {
+			return false
+		}
+	}
+	return true
 }
 
 // nodeGlobalIndex is a task's position across the whole session, which is what
@@ -591,29 +656,30 @@ func (m Model) renderStepStatusCard(stepIndex int) string {
 }
 
 func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool) string {
+	// The gutter is drawn by the timeline rail afterwards; this reserves its
+	// two columns so the rest of the line lands where it always did.
 	prefix := "  "
-	if selected {
-		prefix = m.theme.BrandStyle.Render(cursorMarker)
-	}
-	// The marker follows the card. A selected step shows its card, so marking
-	// it "+" said closed about something visibly open.
-	disclosure := "- "
-	if !m.stepShowsInlineCard(stepIndex) && m.stepCollapsed(stepIndex) {
-		disclosure = "+ "
-	}
+	// No disclosure marker. The timeline node on the left says where the cursor
+	// is and the card below says what the step is doing; a "+" or "-" beside
+	// them was a third glyph competing to say the same thing.
+	disclosure := ""
 	title := ch.Title
 	if selected {
-		// A filled title, not just a bold one behind a "> " and a "-". Those
-		// two glyphs were the only thing marking the step the reader was on,
-		// and at a glance they disappeared into the rules and disclosure
-		// markers around them.
+		// A filled title, not just a bold one behind a marker. The fill needs a
+		// column of padding on each side to read as a block rather than as
+		// inverted text.
 		title = m.theme.SelectedStepTitleStyle.Render(title)
+	} else {
+		// Match the fill's left padding so titles hold the same column whether
+		// or not the cursor is on them, instead of shifting a column as it
+		// moves.
+		title = " " + m.theme.StepTitleStyle.Render(title)
 	}
 	// Title only. Everything that used to trail the header — the state, the
 	// per-state counts, the failure badge — now sits in the card directly
 	// beneath it, where it is one readable line instead of a row of glyphs
 	// competing with the title for the same space.
-	line := prefix + m.theme.MutedStyle.Render(disclosure) + m.theme.StepTitleStyle.Render(title)
+	line := prefix + m.theme.MutedStyle.Render(disclosure) + title
 	// Truncate rather than let a long title run off: every other truncation in
 	// the UI marks itself, and this one did not.
 	if width := m.outlineWidth(); width > 0 && lipgloss.Width(line) > width {

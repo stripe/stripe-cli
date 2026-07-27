@@ -245,6 +245,9 @@ func assertBoxesBalance(t *testing.T, rendered string) {
 	plain := ansi.Strip(rendered)
 	opens := strings.Count(plain, "╭")
 	closes := strings.Count(plain, "╰")
-	assert.Equal(t, opens, closes,
+	// One-directional. A card whose top has scrolled out of view closes without
+	// opening, which is correct; a card that opens and never closes is the
+	// fault — it runs off the bottom of the region with nothing terminating it.
+	assert.LessOrEqual(t, opens, closes,
 		"every card that opens should close; got %d open and %d closed:\n%s", opens, closes, plain)
 }

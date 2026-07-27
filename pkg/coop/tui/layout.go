@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"charm.land/lipgloss/v2"
 )
 
@@ -88,6 +90,47 @@ func (m Model) renderMoreBelowIndicator() string {
 //
 // So: find the box that is still open at the end, and either close it or, when
 // there is not enough room left to show anything of it, drop it.
+// closeDanglingBoxBody closes a card whose top border is scrolled out of view.
+func closeDanglingBoxBody(lines []string) string {
+	last := len(lines) - 1
+	for last >= 0 && strings.TrimSpace(ansi.Strip(lines[last])) == "" {
+		last--
+	}
+	if last < 0 {
+		return strings.Join(lines, "\n")
+	}
+	left, right, ok := boxSideColumns(ansi.Strip(lines[last]))
+	if !ok {
+		return strings.Join(lines, "\n")
+	}
+	// Keep whatever sits left of the card — the timeline rail — with its own
+	// styling, rather than replacing the whole row with spaces and dropping the
+	// rail for one line.
+	prefix := ansi.Truncate(lines[last], left, "")
+	lines[last] = prefix + "╰" + strings.Repeat("─", right-left-1) + "╯"
+	return strings.Join(lines, "\n")
+}
+
+// boxSideColumns finds a card row's own left and right borders. The timeline
+// rail is drawn with the same glyph, so the leftmost one is not necessarily the
+// card's — the card's is the one at its indent.
+func boxSideColumns(plain string) (int, int, bool) {
+	var columns []int
+	for i, r := range []rune(plain) {
+		if string(r) == boxSide {
+			columns = append(columns, i)
+		}
+	}
+	if len(columns) < 2 {
+		return 0, 0, false
+	}
+	left, right := columns[len(columns)-2], columns[len(columns)-1]
+	if right-left < 2 {
+		return 0, 0, false
+	}
+	return left, right, true
+}
+
 func closeOpenBoxAtViewportBoundary(s string) string {
 	lines := strings.Split(s, "\n")
 	topLine := -1
@@ -100,7 +143,11 @@ func closeOpenBoxAtViewportBoundary(s string) string {
 		}
 	}
 	if topLine == -1 {
-		return s
+		// The window can start below a card's top border, in which case there
+		// is no "╭" to find and the card runs to the bottom of the region as a
+		// pair of side borders with nothing closing them. Close it from the
+		// geometry of the last body row.
+		return closeDanglingBoxBody(lines)
 	}
 
 	// A card needs its top, at least one row of content, and its bottom. With
