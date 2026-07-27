@@ -40,11 +40,13 @@ type Hit struct {
 
 // Client fetches documentation pages and calls endpoints on docs.stripe.com.
 type Client struct {
-	http      *http.Client
-	baseURL   *url.URL
-	userAgent string
-	cache     Cache
-	logger    *log.Entry
+	http           *http.Client
+	baseURL        *url.URL
+	userAgent      string
+	apiKey         string
+	cacheKeyPrefix string
+	cache          Cache
+	logger         *log.Entry
 }
 
 // ClientOption configures a Client.
@@ -63,6 +65,17 @@ func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = ca
 
 // WithLogger sets a custom logger.
 func WithLogger(logger *log.Entry) ClientOption { return func(c *Client) { c.logger = logger } }
+
+// WithAPIKey sets the Stripe API key sent as an Authorization header on every request.
+func WithAPIKey(key string) ClientOption { return func(c *Client) { c.apiKey = key } }
+
+// WithCacheKeyPrefix scopes the FetchPage cache to a specific account by prefixing
+// all cache keys with prefix. Pass the account ID (e.g. "acct_xxx") so that cached
+// entries from one account are never served to another. An empty prefix is a no-op,
+// which keeps unauthenticated usage working without changes.
+func WithCacheKeyPrefix(prefix string) ClientOption {
+	return func(c *Client) { c.cacheKeyPrefix = prefix }
+}
 
 // NewClient creates a Client configured to talk to docs.stripe.com.
 func NewClient(_ string) *Client {
@@ -94,9 +107,10 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	// a consistent cache key regardless of how callers construct RawQuery.
 	resolvedURL.RawQuery = resolvedURL.Query().Encode()
 	rawURL := resolvedURL.String()
+	cacheKey := c.cacheKey(rawURL)
 
 	if c.cache != nil {
-		if data, cachedAt, ok, err := c.cache.Get(rawURL); err != nil {
+		if data, cachedAt, ok, err := c.cache.Get(cacheKey); err != nil {
 			c.logger.WithFields(log.Fields{"url": rawURL}).WithError(err).Error("cache read failed")
 			return Page{}, fmt.Errorf("docs: cache read: %w", err)
 		} else if ok {
@@ -122,7 +136,7 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	}
 
 	if c.cache != nil {
-		if err := c.cache.Set(rawURL, res.body); err != nil {
+		if err := c.cache.Set(cacheKey, res.body); err != nil {
 			c.logger.WithField("url", rawURL).WithError(err).Error("cache write failed")
 			return Page{}, fmt.Errorf("docs: cache write: %w", err)
 		}
@@ -138,6 +152,15 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 type response struct {
 	body     []byte
 	finalURL *url.URL
+}
+
+// cacheKey returns a cache key for a resolved URL, prefixed by the account ID
+// when one is configured so that entries are scoped per account.
+func (c *Client) cacheKey(rawURL string) string {
+	if c.cacheKeyPrefix == "" {
+		return rawURL
+	}
+	return c.cacheKeyPrefix + ":" + rawURL
 }
 
 func (c *Client) do(req *http.Request) (response, error) {
