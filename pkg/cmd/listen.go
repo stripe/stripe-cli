@@ -56,11 +56,6 @@ type listenCmd struct {
 	noWSS                 bool
 	timeout               int64
 	deviceToken           string
-
-	// Deprecated flags (kept for backward compatibility)
-	thinEvents            []string
-	forwardThinURL        string
-	forwardThinConnectURL string
 }
 
 func newListenCmd() *listenCmd {
@@ -99,13 +94,14 @@ Stripe account.`,
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
 
-	// Deprecated flags
-	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
-	lc.cmd.Flags().MarkDeprecated("thin-events", "use --events instead, which now accepts both snapshot and thin event types")
-	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
-	lc.cmd.Flags().MarkDeprecated("forward-thin-to", "use --forward-to instead, which now forwards both snapshot and thin events")
-	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
-	lc.cmd.Flags().MarkDeprecated("forward-thin-connect-to", "use --forward-connect-to instead")
+	// Removed flags — register as hidden so users get a clear error instead of "unknown flag"
+	lc.cmd.Flags().StringSlice("thin-events", []string{}, "")
+	lc.cmd.Flags().MarkHidden("thin-events") // nolint:errcheck
+	lc.cmd.Flags().String("forward-thin-to", "", "")
+	lc.cmd.Flags().MarkHidden("forward-thin-to") // nolint:errcheck
+	lc.cmd.Flags().String("forward-thin-connect-to", "", "")
+	lc.cmd.Flags().MarkHidden("forward-thin-connect-to") // nolint:errcheck
+
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -142,6 +138,10 @@ Stripe account.`,
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	if err := lc.checkRemovedFlags(); err != nil {
+		return err
+	}
+
 	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
 		return err
 	}
@@ -200,16 +200,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	snapshotEvents, thinEvents := lc.resolveEvents()
 	directURL, connectURL := lc.resolveForwardURLs()
 
-	forwardThinURL := directURL
-	if lc.forwardThinURL != "" {
-		forwardThinURL = lc.forwardThinURL
-	}
-	forwardThinConnectURL := connectURL
-	if lc.forwardThinConnectURL != "" {
-		forwardThinConnectURL = lc.forwardThinConnectURL
-	}
-
-	if err := lc.validateForwardingConfig(snapshotEvents, thinEvents, directURL, forwardThinURL, connectURL, forwardThinConnectURL); err != nil {
+	if err := lc.validateForwardingConfig(snapshotEvents, thinEvents, directURL, directURL, connectURL, connectURL); err != nil {
 		return err
 	}
 
@@ -218,10 +209,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
 		ForwardURL:            directURL,
-		ForwardThinURL:        forwardThinURL,
+		ForwardThinURL:        directURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     connectURL,
-		ForwardThinConnectURL: forwardThinConnectURL,
+		ForwardThinConnectURL: connectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
@@ -394,7 +385,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 
 func (lc *listenCmd) getFeatures() []string {
 	needsSnapshot := lc.allSnapshot
-	needsThin := lc.allThin || len(lc.thinEvents) > 0
+	needsThin := lc.allThin
 
 	for _, e := range lc.events {
 		if isThinEvent(e) {
@@ -420,29 +411,9 @@ func (lc *listenCmd) getFeatures() []string {
 	return features
 }
 
-// resolveEvents merges deprecated --thin-events into the unified --events list,
-// then splits into snapshot and thin event lists for the proxy.
+// resolveEvents splits the --events list into snapshot and thin event lists for the proxy.
 func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
-	eventsExplicit := lc.cmd.Flags().Changed("events")
-	return mergeAndSplitEvents(lc.events, lc.thinEvents, eventsExplicit, lc.allSnapshot, lc.allThin)
-}
-
-// mergeAndSplitEvents combines the events and deprecated thinEvents lists,
-// then splits into snapshot and thin event lists for the proxy.
-func mergeAndSplitEvents(events, thinEvents []string, eventsExplicit, allSnapshot, allThin bool) (snapshotEvents []string, thinEventsOut []string) {
-	if len(thinEvents) > 0 && !eventsExplicit {
-		// --thin-events used without explicit --events: subscribe to all snapshot
-		// events (the default behavior) plus only the specified thin events.
-		return []string{"*"}, thinEvents
-	}
-
-	// Merge deprecated thin events into the unified list
-	merged := events
-	if len(thinEvents) > 0 {
-		merged = append(merged, thinEvents...)
-	}
-
-	return splitEventsByType(merged, allSnapshot, allThin)
+	return splitEventsByType(lc.events, lc.allSnapshot, lc.allThin)
 }
 
 // splitEventsByType separates an event list into snapshot and thin event lists.
@@ -510,7 +481,7 @@ func (lc *listenCmd) validateForwardingConfig(snapshotEvents, thinEvents []strin
 	}
 
 	// Must be explicit about subscriptions when forwarding
-	if !lc.allSnapshot && !lc.allThin && len(lc.events) == 0 && len(lc.thinEvents) == 0 {
+	if !lc.allSnapshot && !lc.allThin && len(lc.events) == 0 {
 		return fmt.Errorf("must specify events to forward using --events, --all-snapshot, or --all-thin")
 	}
 
@@ -519,12 +490,27 @@ func (lc *listenCmd) validateForwardingConfig(snapshotEvents, thinEvents []strin
 	hasThin := len(thinEvents) > 0
 	if hasSnapshot && hasThin {
 		if directURL != "" && directURL == forwardThinURL {
-			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination; use --forward-to and --forward-thin-to to separate them, or use --all-snapshot / --all-thin to subscribe to only one type")
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination; use --all-snapshot or --all-thin to subscribe to only one type")
 		}
 		if connectURL != "" && connectURL == forwardThinConnectURL {
-			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination; use --forward-connect-to and --forward-thin-connect-to to separate them, or use --all-snapshot / --all-thin to subscribe to only one type")
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination; use --all-snapshot or --all-thin to subscribe to only one type")
 		}
 	}
 
+	return nil
+}
+
+// checkRemovedFlags returns a helpful error if the user passes flags that were
+// removed in the v2 CLI release.
+func (lc *listenCmd) checkRemovedFlags() error {
+	if lc.cmd.Flags().Changed("thin-events") {
+		return fmt.Errorf("--thin-events has been replaced by --events, which now accepts both snapshot and thin event types")
+	}
+	if lc.cmd.Flags().Changed("forward-thin-to") {
+		return fmt.Errorf("--forward-thin-to has been replaced by --forward-to, which now forwards both snapshot and thin events")
+	}
+	if lc.cmd.Flags().Changed("forward-thin-connect-to") {
+		return fmt.Errorf("--forward-thin-connect-to has been replaced by --forward-connect-to")
+	}
 	return nil
 }

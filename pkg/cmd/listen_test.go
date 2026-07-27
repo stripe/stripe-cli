@@ -169,66 +169,6 @@ func TestGetFeatures(t *testing.T) {
 	}
 }
 
-func TestMergeAndSplitEvents(t *testing.T) {
-	tests := []struct {
-		name           string
-		events         []string
-		thinEvents     []string
-		eventsExplicit bool
-		wantSnapshot   []string
-		wantThin       []string
-	}{
-		{
-			name:           "thin-events without explicit --events: snapshot wildcard + specific thin",
-			events:         []string{"*"},
-			thinEvents:     []string{"v1.billing.meter.no_meter_found"},
-			eventsExplicit: false,
-			wantSnapshot:   []string{"*"},
-			wantThin:       []string{"v1.billing.meter.no_meter_found"},
-		},
-		{
-			name:           "thin-events with explicit --events: merged and split",
-			events:         []string{"charge.captured"},
-			thinEvents:     []string{"v1.billing.meter.no_meter_found"},
-			eventsExplicit: true,
-			wantSnapshot:   []string{"charge.captured"},
-			wantThin:       []string{"v1.billing.meter.no_meter_found"},
-		},
-		{
-			name:           "thin-events with explicit wildcard --events: all of both",
-			events:         []string{"*"},
-			thinEvents:     []string{"v1.billing.meter.no_meter_found"},
-			eventsExplicit: true,
-			wantSnapshot:   []string{"*"},
-			wantThin:       []string{"*", "v1.billing.meter.no_meter_found"},
-		},
-		{
-			name:           "no thin-events: normal split",
-			events:         []string{"charge.captured"},
-			thinEvents:     []string{},
-			eventsExplicit: true,
-			wantSnapshot:   []string{"charge.captured"},
-			wantThin:       nil,
-		},
-		{
-			name:           "no thin-events with wildcard: both channels",
-			events:         []string{"*"},
-			thinEvents:     []string{},
-			eventsExplicit: false,
-			wantSnapshot:   []string{"*"},
-			wantThin:       []string{"*"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			snapshot, thin := mergeAndSplitEvents(tt.events, tt.thinEvents, tt.eventsExplicit, false, false)
-			assert.Equal(t, tt.wantSnapshot, snapshot)
-			assert.Equal(t, tt.wantThin, thin)
-		})
-	}
-}
-
 func TestResolveForwardURLs(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -381,6 +321,43 @@ func TestValidateForwardingConfig(t *testing.T) {
 			} else {
 				assert.ErrorContains(t, err, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestCheckRemovedFlags(t *testing.T) {
+	tests := []struct {
+		name    string
+		flag    string
+		value   string
+		wantErr string
+	}{
+		{
+			name:    "--thin-events returns helpful error",
+			flag:    "thin-events",
+			value:   "v1.billing.meter.no_meter_found",
+			wantErr: "--thin-events has been replaced by --events",
+		},
+		{
+			name:    "--forward-thin-to returns helpful error",
+			flag:    "forward-thin-to",
+			value:   "http://localhost:3000",
+			wantErr: "--forward-thin-to has been replaced by --forward-to",
+		},
+		{
+			name:    "--forward-thin-connect-to returns helpful error",
+			flag:    "forward-thin-connect-to",
+			value:   "http://localhost:3000",
+			wantErr: "--forward-thin-connect-to has been replaced by --forward-connect-to",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lc := newListenCmd()
+			lc.cmd.Flags().Set(tt.flag, tt.value)
+			err := lc.checkRemovedFlags()
+			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
 }
