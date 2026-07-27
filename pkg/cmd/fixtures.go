@@ -33,10 +33,11 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	}
 
 	fixturesCmd.Cmd = &cobra.Command{
-		Use:   "fixtures",
-		Args:  validators.ExactArgs(1),
+		Use:   "fixtures <file> [file...]",
+		Args:  validators.MinimumNArgs(1),
 		Short: "Run fixtures to populate your account with data",
-		Long:  `Run fixtures to populate your account with data`,
+		Long: `Run fixtures to populate your account with data. ` +
+			`Multiple fixture files may be provided and will be executed sequentially in the given order.`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Fixtures execute a sequence of API requests defined in a JSON file.\n" +
 				"  Use `--override` to customize parameters, e.g. `--override customer:email=test@example.com`.\n" +
@@ -76,31 +77,34 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fixture, err := fixtures.NewFixtureFromFile(
-		afero.NewOsFs(),
-		apiKey,
-		fc.stripeAccount,
-		fc.apiBaseURL,
-		args[0],
-		fc.skip,
-		fc.override,
-		fc.add,
-		fc.remove,
-		fc.edit,
-	)
-	if err != nil {
-		return err
-	}
+	// Execute each fixture file sequentially. UpdateEnv is called after each so
+	// later files can reference vars produced by earlier ones via ${.env:VAR}.
+	// Abort on the first error rather than continuing, to preserve the
+	// established single-file behavior and to surface failures immediately.
+	for _, file := range args {
+		fixture, err := fixtures.NewFixtureFromFile(
+			afero.NewOsFs(),
+			apiKey,
+			fc.stripeAccount,
+			fc.apiBaseURL,
+			file,
+			fc.skip,
+			fc.override,
+			fc.add,
+			fc.remove,
+			fc.edit,
+		)
+		if err != nil {
+			return err
+		}
 
-	_, err = fixture.Execute(cmd.Context(), fc.apiVersion)
+		if _, err := fixture.Execute(cmd.Context(), fc.apiVersion); err != nil {
+			return err
+		}
 
-	if err != nil {
-		return err
-	}
-
-	err = fixture.UpdateEnv()
-	if err != nil {
-		return err
+		if err := fixture.UpdateEnv(); err != nil {
+			return err
+		}
 	}
 
 	return nil
