@@ -27,6 +27,13 @@ const (
 	stripeSkillDownloadTimeout         = 15 * time.Second
 	codexProjectDirectory              = ".agents"
 	claudeProjectDirectory             = ".claude"
+
+	// stripeSkillCompletionMarker is the file that makes an installed skill
+	// discoverable by an agent. It doubles as the marker for a finished
+	// install: it is written last, so a target directory without it is a
+	// partial install that a later run repairs instead of skipping.
+	stripeSkillCompletionMarker = "SKILL.md"
+	stripeSkillStagingSuffix    = ".incomplete"
 )
 
 var (
@@ -56,8 +63,8 @@ type stripeSkillGitTree struct {
 }
 
 // ensureRepoStripeBestPracticesSkill makes the latest skill available in the
-// current project after Co-op selects an integration. It never replaces a
-// skill path that the project already owns.
+// current project after Co-op selects an integration. It never replaces an
+// installed skill or any other path that the project already owns.
 func ensureRepoStripeBestPracticesSkill() error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -110,7 +117,8 @@ func warnRepoClaudeSkillsDiscovery(cmd *cobra.Command, err error) {
 }
 
 // installStripeBestPracticesSkill installs the complete skill directly from
-// stripe/ai's main branch. Existing targets are left untouched.
+// stripe/ai's main branch. Targets that already hold an installed skill are
+// left untouched.
 func installStripeBestPracticesSkill(projectDirectory string) (bool, error) {
 	return installStripeBestPracticesSkillFrom(
 		context.Background(),
@@ -153,14 +161,41 @@ func installStripeBestPracticesSkillFrom(ctx context.Context, projectDirectory s
 func missingStripeSkillTargets(project *os.Root) ([]string, error) {
 	missing := make([]string, 0, len(stripeBestPracticesSkillTargets))
 	for _, target := range stripeBestPracticesSkillTargets {
-		if _, err := project.Lstat(target); err == nil {
-			continue
-		} else if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("checking existing Stripe skill at %s: %w", target, err)
+		needsInstall, err := stripeSkillTargetNeedsInstall(project, target)
+		if err != nil {
+			return nil, err
 		}
-		missing = append(missing, target)
+		if needsInstall {
+			missing = append(missing, target)
+		}
 	}
 	return missing, nil
+}
+
+// stripeSkillTargetNeedsInstall reports whether target still needs the skill
+// written to it. A directory without the completion marker is a partial
+// install — left by an interrupted run, or by a run that failed partway
+// through its writes — and is repaired rather than skipped. Anything else that
+// already occupies the path belongs to the project and is left alone.
+func stripeSkillTargetNeedsInstall(project *os.Root, target string) (bool, error) {
+	info, err := project.Lstat(target)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("checking existing Stripe skill at %s: %w", target, err)
+	}
+	if !info.IsDir() {
+		return false, nil
+	}
+
+	marker := filepath.Join(target, stripeSkillCompletionMarker)
+	if _, err := project.Lstat(marker); err == nil {
+		return false, nil
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("checking existing Stripe skill at %s: %w", marker, err)
+	}
+	return true, nil
 }
 
 func fetchStripeBestPracticesSkill(ctx context.Context, source stripeSkillGitHubSource) (map[string][]byte, error) {
@@ -194,8 +229,8 @@ func fetchStripeBestPracticesSkill(ctx context.Context, source stripeSkillGitHub
 		relativePaths = append(relativePaths, relativePath)
 	}
 	sort.Strings(relativePaths)
-	if !containsString(relativePaths, "SKILL.md") {
-		return nil, errors.New("stripe skill does not contain SKILL.md")
+	if !containsString(relativePaths, stripeSkillCompletionMarker) {
+		return nil, errors.New("stripe skill does not contain " + stripeSkillCompletionMarker)
 	}
 
 	files := make(map[string][]byte, len(relativePaths))
@@ -238,32 +273,77 @@ func safeStripeSkillRelativePath(relativePath string) bool {
 }
 
 func installStripeSkillTarget(project *os.Root, target string, files map[string][]byte) (bool, error) {
-	if _, err := project.Lstat(target); err == nil {
-		return false, nil
-	} else if !os.IsNotExist(err) {
-		return false, fmt.Errorf("checking existing Stripe skill: %w", err)
+	needsInstall, err := stripeSkillTargetNeedsInstall(project, target)
+	if err != nil || !needsInstall {
+		return false, err
 	}
 
 	if err := project.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return false, fmt.Errorf("creating project skills directory: %w", err)
 	}
-	if err := project.Mkdir(target, 0o755); err != nil {
-		if os.IsExist(err) {
+
+	if _, err := project.Lstat(target); err == nil {
+		// A partial install already occupies the path. Complete it in place
+		// rather than deleting files the project may still own.
+		return true, writeStripeSkillFiles(project, target, files)
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("checking existing Stripe skill: %w", err)
+	}
+
+	// Write to a staging directory and rename it into place, so target never
+	// appears as a directory that agents can discover but is missing files.
+	staging := target + stripeSkillStagingSuffix
+	if err := project.RemoveAll(staging); err != nil {
+		return false, fmt.Errorf("clearing Stripe skill staging directory: %w", err)
+	}
+	if err := project.Mkdir(staging, 0o755); err != nil {
+		return false, fmt.Errorf("creating Stripe skill staging directory: %w", err)
+	}
+	defer func() { _ = project.RemoveAll(staging) }()
+
+	if err := writeStripeSkillFiles(project, staging, files); err != nil {
+		return false, err
+	}
+	if err := project.Rename(staging, target); err != nil {
+		// A concurrent run may have published the skill first, which is the
+		// same outcome from this run's point of view.
+		if stillNeeded, checkErr := stripeSkillTargetNeedsInstall(project, target); checkErr == nil && !stillNeeded {
 			return false, nil
 		}
-		return false, fmt.Errorf("creating Stripe skill directory: %w", err)
+		return false, fmt.Errorf("publishing Stripe skill directory: %w", err)
+	}
+	return true, nil
+}
+
+// writeStripeSkillFiles writes every skill file under directory, saving the
+// completion marker for last so an interrupted write leaves a directory that
+// stripeSkillTargetNeedsInstall still reports as needing an install.
+func writeStripeSkillFiles(project *os.Root, directory string, files map[string][]byte) error {
+	marker, ok := files[stripeSkillCompletionMarker]
+	if !ok {
+		return fmt.Errorf("stripe skill does not contain %s", stripeSkillCompletionMarker)
 	}
 
 	for _, relativePath := range sortedStripeSkillPaths(files) {
-		destination := filepath.Join(target, filepath.FromSlash(relativePath))
-		if err := project.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return false, fmt.Errorf("creating Stripe skill subdirectory for %s: %w", relativePath, err)
+		if relativePath == stripeSkillCompletionMarker {
+			continue
 		}
-		if err := project.WriteFile(destination, files[relativePath], 0o600); err != nil {
-			return false, fmt.Errorf("writing Stripe skill file %s: %w", relativePath, err)
+		if err := writeStripeSkillFile(project, directory, relativePath, files[relativePath]); err != nil {
+			return err
 		}
 	}
-	return true, nil
+	return writeStripeSkillFile(project, directory, stripeSkillCompletionMarker, marker)
+}
+
+func writeStripeSkillFile(project *os.Root, directory, relativePath string, contents []byte) error {
+	destination := filepath.Join(directory, filepath.FromSlash(relativePath))
+	if err := project.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		return fmt.Errorf("creating Stripe skill subdirectory for %s: %w", relativePath, err)
+	}
+	if err := project.WriteFile(destination, contents, 0o600); err != nil {
+		return fmt.Errorf("writing Stripe skill file %s: %w", relativePath, err)
+	}
+	return nil
 }
 
 func sortedStripeSkillPaths(files map[string][]byte) []string {

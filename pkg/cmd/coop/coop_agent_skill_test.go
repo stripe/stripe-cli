@@ -87,10 +87,11 @@ func TestInstallStripeBestPracticesSkillDoesNothingWhenTargetsExist(t *testing.T
 		create func(t *testing.T, target string)
 	}{
 		{
-			name: "directories",
+			name: "installed skills",
 			create: func(t *testing.T, target string) {
 				t.Helper()
 				require.NoError(t, os.MkdirAll(target, 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(target, stripeSkillCompletionMarker), []byte("installed\n"), 0o600))
 			},
 		},
 		{
@@ -118,6 +119,113 @@ func TestInstallStripeBestPracticesSkillDoesNothingWhenTargetsExist(t *testing.T
 			assert.False(t, installed)
 		})
 	}
+}
+
+// A target directory without SKILL.md is a skill an agent cannot discover, so
+// a later run must finish it instead of treating the bare path as installed.
+func TestInstallStripeBestPracticesSkillRepairsPartialInstall(t *testing.T) {
+	tests := []struct {
+		name   string
+		create func(t *testing.T, target string)
+	}{
+		{
+			name: "empty directory",
+			create: func(t *testing.T, target string) {
+				t.Helper()
+				require.NoError(t, os.MkdirAll(target, 0o755))
+			},
+		},
+		{
+			name: "directory missing the completion marker",
+			create: func(t *testing.T, target string) {
+				t.Helper()
+				require.NoError(t, os.MkdirAll(filepath.Join(target, "references"), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(target, "references", "payments.md"), []byte("truncated"), 0o600))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			projectDirectory := t.TempDir()
+			for _, relativeTarget := range stripeBestPracticesSkillTargets {
+				tt.create(t, filepath.Join(projectDirectory, relativeTarget))
+			}
+
+			installed, err := installStripeBestPracticesSkillFrom(
+				context.Background(),
+				projectDirectory,
+				startStripeSkillSource(t, testStripeBestPracticesSkillFiles),
+			)
+
+			require.NoError(t, err)
+			assert.True(t, installed)
+			for _, relativeTarget := range stripeBestPracticesSkillTargets {
+				target := filepath.Join(projectDirectory, relativeTarget)
+				for relativePath, sourceContents := range testStripeBestPracticesSkillFiles {
+					got, readErr := os.ReadFile(filepath.Join(target, filepath.FromSlash(relativePath)))
+					require.NoError(t, readErr, relativeTarget+"/"+relativePath)
+					assert.Equal(t, sourceContents, got, relativeTarget+"/"+relativePath)
+				}
+			}
+		})
+	}
+}
+
+// The completion marker is what later runs use to tell a finished install from
+// an interrupted one, so a write that fails partway must not leave it behind.
+func TestWriteStripeSkillFilesOmitsCompletionMarkerWhenAnEarlierWriteFails(t *testing.T) {
+	projectDirectory := t.TempDir()
+	skillDirectory := filepath.Join(projectDirectory, "skill")
+	require.NoError(t, os.MkdirAll(skillDirectory, 0o755))
+	// A regular file where the skill expects a subdirectory fails the
+	// references/ writes, which sort after the marker.
+	require.NoError(t, os.WriteFile(filepath.Join(skillDirectory, "references"), []byte("blocked\n"), 0o600))
+	project, err := os.OpenRoot(projectDirectory)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = project.Close() })
+
+	err = writeStripeSkillFiles(project, "skill", testStripeBestPracticesSkillFiles)
+
+	require.Error(t, err)
+	assert.NoFileExists(t, filepath.Join(skillDirectory, stripeSkillCompletionMarker))
+}
+
+func TestInstallStripeBestPracticesSkillLeavesNoStagingDirectory(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	_, err := installStripeBestPracticesSkillFrom(
+		context.Background(),
+		projectDirectory,
+		startStripeSkillSource(t, testStripeBestPracticesSkillFiles),
+	)
+
+	require.NoError(t, err)
+	for _, relativeTarget := range stripeBestPracticesSkillTargets {
+		assert.NoDirExists(t, filepath.Join(projectDirectory, relativeTarget+stripeSkillStagingSuffix))
+	}
+}
+
+// A staging directory left behind by an interrupted run must not block or
+// pollute the next install.
+func TestInstallStripeBestPracticesSkillClearsAbandonedStagingDirectory(t *testing.T) {
+	projectDirectory := t.TempDir()
+	staging := filepath.Join(projectDirectory, stripeBestPracticesSkillTargets[0]+stripeSkillStagingSuffix)
+	require.NoError(t, os.MkdirAll(staging, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(staging, "stale.md"), []byte("stale\n"), 0o600))
+
+	installed, err := installStripeBestPracticesSkillFrom(
+		context.Background(),
+		projectDirectory,
+		startStripeSkillSource(t, testStripeBestPracticesSkillFiles),
+	)
+
+	require.NoError(t, err)
+	assert.True(t, installed)
+	assert.NoDirExists(t, staging)
+	target := filepath.Join(projectDirectory, stripeBestPracticesSkillTargets[0])
+	assert.FileExists(t, filepath.Join(target, stripeSkillCompletionMarker))
+	assert.NoFileExists(t, filepath.Join(target, "stale.md"))
 }
 
 func TestInstallStripeBestPracticesSkillFetchFailureDoesNotCreateTargets(t *testing.T) {
