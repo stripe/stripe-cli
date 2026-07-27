@@ -206,6 +206,7 @@ func TestAPIReportingQueryRunsCreateDryRun(t *testing.T) {
 
 func TestAPIDataMetricsRunLive(t *testing.T) {
 	requireAPIKey(t)
+	logAPIKeyMode(t)
 	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
 	}))
@@ -238,6 +239,7 @@ func TestAPIDataMetricsRunLive(t *testing.T) {
 
 func TestAPIReportingQueryRunsCreateLive(t *testing.T) {
 	requireAPIKey(t)
+	logAPIKeyMode(t)
 	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
 	}))
@@ -251,6 +253,7 @@ func TestAPIReportingQueryRunsCreateLive(t *testing.T) {
 
 func TestAPIReportingQueryRunsRetrieveLive(t *testing.T) {
 	requireAPIKey(t)
+	logAPIKeyMode(t)
 	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
 	}))
@@ -309,4 +312,21 @@ func createQueryRun(t *testing.T, runner *testutil.Runner) string {
 
 	id, _ := data["id"].(string)
 	return id
+}
+
+// logAPIKeyMode logs whether the configured API key targets test or live mode,
+// deriving it from the key prefix. It never prints the key itself — only the
+// derived mode — so it's safe for CI logs. Useful for diagnosing which
+// environment a canary run hit.
+func logAPIKeyMode(t *testing.T) {
+	t.Helper()
+	key := testutil.GetAPIKey()
+	mode := "unknown"
+	switch {
+	case strings.HasPrefix(key, "sk_test_"), strings.HasPrefix(key, "rk_test_"):
+		mode = "test"
+	case strings.HasPrefix(key, "sk_live_"), strings.HasPrefix(key, "rk_live_"):
+		mode = "live"
+	}
+	t.Logf("Canary API key mode: %s", mode)
 }
