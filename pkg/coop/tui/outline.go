@@ -576,8 +576,10 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	if selected {
 		prefix = m.theme.BrandStyle.Render(cursorMarker)
 	}
+	// The marker follows the card. A selected step shows its card, so marking
+	// it "+" said closed about something visibly open.
 	disclosure := "- "
-	if m.stepCollapsed(stepIndex) {
+	if !m.stepShowsInlineCard(stepIndex) && m.stepCollapsed(stepIndex) {
 		disclosure = "+ "
 	}
 	title := ch.Title

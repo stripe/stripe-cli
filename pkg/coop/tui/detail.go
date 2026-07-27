@@ -359,8 +359,12 @@ func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep,
 	// arriving on a step opened it, which is when finished steps started being
 	// opened at all.
 	if instruction == "" && len(prompts) == 0 && !hasTarget {
+		// Hanging indent, like the small card this expands from, so the same
+		// sentence keeps the same shape whether it is trimmed or shown whole.
 		if summary := m.stepCardSummary(m.selectedStepIndexOrZero()); summary != "" {
-			writeWrapped(md, summary, wrapWidth)
+			for _, line := range strings.Split(wrapHanging(summary, wrapWidth, 2), "\n") {
+				md.WriteString(line + "\n")
+			}
 			md.WriteString("\n")
 		}
 		return
