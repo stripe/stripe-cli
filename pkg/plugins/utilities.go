@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -1207,8 +1208,12 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	}
 
 	if comparePluginVersions(installedVersion, latestVersion) < 0 {
-		fmt.Fprintf(os.Stderr, "A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.\n",
-			plugin.Shortname, installedVersion, latestVersion, plugin.Shortname)
+		c := ansi.Color(os.Stderr)
+		msg := fmt.Sprintf(
+			"A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.",
+			plugin.Shortname, installedVersion, latestVersion, plugin.Shortname,
+		)
+		fmt.Fprintln(os.Stderr, c.Yellow(msg).String())
 	}
 }
 
