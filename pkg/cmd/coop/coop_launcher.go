@@ -42,6 +42,7 @@ var (
 const (
 	defaultCoopTmuxSessionWidth  = 200
 	defaultCoopTmuxSessionHeight = 50
+	claudeCoopAgents             = `{"coop-cost-effective-worker":{"description":"Use proactively for well-bounded, self-contained exploration, documentation research, test execution, log analysis, and verification tasks when delegation saves main-session context and cost.","prompt":"Work as a focused cost-effective Co-op subagent. Complete only the bounded task you receive, verify your result, and return concise evidence to the main agent. Find and honor applicable repository guidance, including AGENTS.md and CLAUDE.md, before acting. Do not choose or change the Stripe integration or run Co-op lifecycle commands.","model":"haiku"}}`
 )
 
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
@@ -96,11 +97,14 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 	var choice string
 
 	var title string
+	var bypassLabel string
 	switch agent.name {
 	case "claude":
 		title = "Permission mode for Claude Code:"
+		bypassLabel = "Bypass permissions — skip safety checks (isolated environments only)"
 	case "codex":
 		title = "Permission mode for Codex:"
+		bypassLabel = "Bypass approvals and sandbox — skip safety checks (isolated environments only)"
 	default:
 		return false, nil
 	}
@@ -108,14 +112,14 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 	err := selectString(title,
 		[]huh.Option[string]{
 			huh.NewOption("Normal — agent asks before running commands", "normal"),
-			huh.NewOption("Auto-approve — skip all permission prompts (faster, less safe)", "auto"),
+			huh.NewOption(bypassLabel, "bypass"),
 		},
 		&choice,
 	)
 	if err != nil {
 		return false, err
 	}
-	return choice == "auto", nil
+	return choice == "bypass", nil
 }
 
 func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
@@ -124,9 +128,9 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 
 	switch agent.name {
 	case "claude":
-		flags := ""
+		flags := " --agents " + shellQuote(claudeCoopAgents)
 		if autoApprove {
-			flags = " --dangerously-skip-permissions"
+			flags += " --dangerously-skip-permissions"
 		}
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
 			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)

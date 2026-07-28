@@ -17,10 +17,11 @@ type coopAgentCmd struct {
 }
 
 type coopAgentActionCmd struct {
-	cmd     *cobra.Command
-	session string
-	step    int
-	note    string
+	cmd         *cobra.Command
+	ensureSkill func() error
+	session     string
+	step        int
+	note        string
 
 	file    string
 	lines   string
@@ -169,12 +170,12 @@ func newCoopAgentNextActionCmd() *coopAgentActionCmd {
 }
 
 func newCoopAgentStartFollowupCmd() *coopAgentActionCmd {
-	c := &coopAgentActionCmd{}
+	c := &coopAgentActionCmd{ensureSkill: ensureRepoStripeBestPracticesSkill}
 	c.cmd = &cobra.Command{
 		Use:   "start-followup",
 		Short: "Start an internal guided follow-up session",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCoopStartFollowup(c.session, c.action, c.target)
+			return runCoopStartFollowup(cmd, c.session, c.action, c.target, c.ensureSkill)
 		},
 	}
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Parent session ID")
@@ -226,7 +227,7 @@ func nextActionHint(sessionID string) string {
 	return fmt.Sprintf("stripe coop agent next-action --session=%s", sessionID)
 }
 
-func runCoopStartFollowup(parentSessionID, actionID, target string) error {
+func runCoopStartFollowup(cmd *cobra.Command, parentSessionID, actionID, target string, ensureSkill func() error) error {
 	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return fmt.Errorf("creating store: %w", err)
@@ -243,6 +244,11 @@ func runCoopStartFollowup(parentSessionID, actionID, target string) error {
 	}
 	if err := validateFollowupParent(parent, action.ID); err != nil {
 		return outputCoopError(err.Error(), "stripe coop agent next-action --session="+parent.ID)
+	}
+	if ensureSkill != nil {
+		if err := ensureSkill(); err != nil {
+			warnRepoStripeBestPracticesSkill(cmd, err)
+		}
 	}
 
 	settings := make(map[string]string, len(parent.Settings)+1)
