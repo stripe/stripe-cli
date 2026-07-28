@@ -26,6 +26,20 @@ send_pagerduty_event() {
     fi
 }
 
+send_slack_notification() {
+    message="$1"
+    if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+        return 0
+    fi
+    if [ "${DRYRUN:-false}" = "true" ]; then
+        echo "Dry run: Slack notification would send: $message"
+        return 0
+    fi
+    curl -s -X POST "$SLACK_WEBHOOK_URL" \
+        -H "Content-Type: application/json" \
+        -d "{\"text\": \"$message\"}"
+}
+
 trigger_pagerduty_alert() {
     if [ "${DRYRUN:-false}" = "true" ]; then
         echo "Dry run: PagerDuty alert would have fired with:"
@@ -35,8 +49,10 @@ trigger_pagerduty_alert() {
         echo "  timestamp: $(date)"
         echo "  source:    Stripe CLI GitHub Actions"
         echo "  severity:  $SEVERITY"
+        send_slack_notification ":red_circle: [DRY RUN] $SUMMARY"
         return 0
     fi
+    send_slack_notification ":red_circle: $SUMMARY"
     send_pagerduty_event '{
         "routing_key": "'"$PAGERDUTY_INTEGRATION_KEY"'",
         "event_action": "trigger",
