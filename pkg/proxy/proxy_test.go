@@ -228,7 +228,7 @@ func TestRun_RetryOnAuthorizationServerError(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	cfg := Config{
-		Client: &stripe.Client{Credentials: stripe.Credentials{Token: "sk_test_123"}, BaseURL: baseURL},
+		Client: &stripe.Client{Credentials: stripe.NewAPIKeyCredentials("sk_test_123"), BaseURL: baseURL},
 		OutCh:  make(chan websocket.IElement, 2),
 	}
 	p, err := Init(context.Background(), &cfg)
@@ -253,7 +253,7 @@ func TestRun_NoRetryOnAuthorizationClientError(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	cfg := Config{
-		Client: &stripe.Client{Credentials: stripe.Credentials{Token: "sk_test_123"}, BaseURL: baseURL},
+		Client: &stripe.Client{Credentials: stripe.NewAPIKeyCredentials("sk_test_123"), BaseURL: baseURL},
 		OutCh:  make(chan websocket.IElement, 2),
 	}
 	p, err := Init(context.Background(), &cfg)
@@ -278,7 +278,7 @@ func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 
 	cfg := Config{
-		Client: &stripe.Client{Credentials: stripe.Credentials{Token: "sk_test_123"}, BaseURL: baseURL},
+		Client: &stripe.Client{Credentials: stripe.NewAPIKeyCredentials("sk_test_123"), BaseURL: baseURL},
 		OutCh:  make(chan websocket.IElement, 2),
 	}
 	p, err := Init(context.Background(), &cfg)

@@ -192,7 +192,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	tailer := logtailing.New(&logtailing.Config{
 		Client: &stripe.Client{
 			BaseURL:     apiBase,
-			Credentials: stripe.Credentials{Token: key},
+			Credentials: stripe.NewAPIKeyCredentials(key),
 		},
 		DeviceName: deviceName,
 		Filters:    tailCmd.LogFilters,
