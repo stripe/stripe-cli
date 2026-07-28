@@ -32,6 +32,11 @@ type Credentials struct {
 	Token string
 }
 
+// NewAPIKeyCredentials returns Credentials using a standard Stripe API key.
+func NewAPIKeyCredentials(key string) Credentials {
+	return Credentials{Token: key}
+}
+
 // SetRequestHeaders applies auth-related headers to req.
 func (c Credentials) SetRequestHeaders(req *http.Request) {
 	if c.Token != "" {

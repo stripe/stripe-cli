@@ -21,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // SupportedVersions is the version number of the fixture template the CLI supports
@@ -56,7 +57,7 @@ type FixtureRequest struct {
 // Fixture contains a mapping of an individual fixtures responses for querying
 type Fixture struct {
 	Fs            afero.Fs
-	APIKey        string
+	Credentials   stripe.Credentials
 	StripeAccount string
 	Skip          []string
 	Overrides     map[string]interface{}
@@ -68,10 +69,10 @@ type Fixture struct {
 }
 
 // NewFixtureFromFile creates a to later run steps for populating test data
-func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
+func NewFixtureFromFile(fs afero.Fs, creds stripe.Credentials, stripeAccount, baseURL, file string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
-		APIKey:        apiKey,
+		Credentials:   creds,
 		StripeAccount: stripeAccount,
 		BaseURL:       baseURL,
 		Responses:     make(map[string]gjson.Result),
@@ -136,10 +137,10 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 }
 
 // NewFixtureFromRawString creates fixtures from user inputted string
-func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw string) (*Fixture, error) {
+func NewFixtureFromRawString(fs afero.Fs, creds stripe.Credentials, stripeAccount, baseURL, raw string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
-		APIKey:        apiKey,
+		Credentials:   creds,
 		StripeAccount: stripeAccount,
 		Skip:          []string{},
 		BaseURL:       baseURL,
@@ -343,7 +344,7 @@ func (fxt *Fixture) getAPIBase(request FixtureRequest) string {
 }
 
 func (fxt *Fixture) unsupportedAPIKey(path string) bool {
-	return strings.HasPrefix(path, "/v2/") && !strings.HasPrefix(fxt.APIKey, "sk_")
+	return strings.HasPrefix(path, "/v2/") && !strings.HasPrefix(fxt.Credentials.Token, "sk_")
 }
 
 func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.Request) error {
@@ -394,7 +395,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		additionalConfigure = fxt.addCustomHeaders(data.Headers)
 	}
 
-	return req.MakeRequest(ctx, fxt.APIKey, path, params, make(map[string]interface{}), true, additionalConfigure)
+	return req.MakeRequest(ctx, fxt.Credentials, path, params, make(map[string]interface{}), true, additionalConfigure)
 }
 
 func (fxt *Fixture) createParams(params interface{}, apiVersion string, path string, method string) (*requests.RequestParameters, error) {

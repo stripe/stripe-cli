@@ -89,13 +89,13 @@ func runClimateOperation(cmd *cobra.Command, opCmd *OperationCmd, requestParams 
 	// Suppress base output so we can transform the response before printing.
 	opCmd.SuppressOutput = true
 
-	apiKey, apiKeyErr := opCmd.Profile.GetAPIKey(opCmd.Livemode)
+	creds, credsErr := opCmd.ResolveCredentials()
 	if opCmd.DryRun {
-		dryRunKey := apiKey
-		if apiKeyErr != nil {
-			dryRunKey = ""
+		dryRunCreds := creds
+		if credsErr != nil {
+			dryRunCreds = stripe.Credentials{}
 		}
-		output, err := opCmd.BuildDryRunOutput(dryRunKey, opCmd.APIBaseURL, opCmd.Path, &opCmd.Parameters, requestParams)
+		output, err := opCmd.BuildDryRunOutput(dryRunCreds, opCmd.APIBaseURL, opCmd.Path, &opCmd.Parameters, requestParams)
 		if err != nil {
 			return err
 		}
@@ -104,11 +104,11 @@ func runClimateOperation(cmd *cobra.Command, opCmd *OperationCmd, requestParams 
 		return nil
 	}
 
-	if apiKeyErr != nil {
-		return apiKeyErr
+	if credsErr != nil {
+		return credsErr
 	}
 
-	body, err := opCmd.MakeRequest(cmd.Context(), apiKey, opCmd.Path, &opCmd.Parameters, requestParams, false, nil)
+	body, err := opCmd.MakeRequest(cmd.Context(), creds, opCmd.Path, &opCmd.Parameters, requestParams, false, nil)
 	if err != nil || len(body) == 0 {
 		return err
 	}

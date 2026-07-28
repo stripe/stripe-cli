@@ -50,7 +50,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	apiKey, apiKeyErr := oc.Profile.GetAPIKey(oc.Livemode)
+	creds, credsErr := oc.ResolveCredentials()
 
 	path := formatURL(oc.Path, args)
 	requestParams := make(map[string]interface{})
@@ -63,11 +63,11 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	}
 
 	if oc.DryRun {
-		dryRunKey := apiKey
-		if apiKeyErr != nil {
-			dryRunKey = ""
+		dryRunCreds := creds
+		if credsErr != nil {
+			dryRunCreds = stripe.Credentials{}
 		}
-		output, err := oc.BuildDryRunOutput(dryRunKey, oc.APIBaseURL, path, &oc.Parameters, requestParams)
+		output, err := oc.BuildDryRunOutput(dryRunCreds, oc.APIBaseURL, path, &oc.Parameters, requestParams)
 		if err != nil {
 			return err
 		}
@@ -76,8 +76,8 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return nil
 	}
 
-	if apiKeyErr != nil {
-		return apiKeyErr
+	if credsErr != nil {
+		return credsErr
 	}
 
 	if oc.HTTPVerb == http.MethodDelete {
@@ -110,12 +110,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 
 		// if confirmation is provided, make the request
-		_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
+		_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
 
 		return err
 	}
 	// else
-	_, err := oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
+	_, err := oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 

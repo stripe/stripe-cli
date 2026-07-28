@@ -16,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const testFixture = `
@@ -113,7 +115,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{}, false)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{}, []string{}, []string{}, []string{}, false)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -145,7 +147,7 @@ func TestMakeRequestWithStringFixture(t *testing.T) {
 
 	defer func() { ts.Close() }()
 
-	fxt, err := NewFixtureFromRawString(fs, apiKey, "", ts.URL, testFixture)
+	fxt, err := NewFixtureFromRawString(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, testFixture)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -175,7 +177,7 @@ func TestWithSkipMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{}, false)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{}, false)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -216,7 +218,7 @@ func TestMakeRequestWithOverride(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{}, false)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{}, false)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -253,7 +255,7 @@ func TestMakeRequestWithAdd(t *testing.T) {
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
 	fxt, err := NewFixtureFromFile(
-		fs, apiKey, "", ts.URL, file,
+		fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file,
 		[]string{}, []string{}, []string{
 			"cust_bender:birthdate=2996-09-04",
 			"char_bender:receipt_email=prof.farnsworth@planex.com",
@@ -298,7 +300,7 @@ func TestMakeRequestWithRemove(t *testing.T) {
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
 	fxt, err := NewFixtureFromFile(
-		fs, apiKey, "", ts.URL, file, []string{}, []string{},
+		fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{}, []string{},
 		[]string{}, []string{"cust_bender:phone", "char_bender:capture"},
 		false)
 	require.NoError(t, err)
@@ -316,7 +318,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{}, false)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{}, false)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -333,7 +335,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{}, false)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{}, false)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -417,7 +419,7 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{}, false)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{}, []string{}, []string{}, []string{}, false)
 	require.NoError(t, err)
 
 	requestNames, err := fxt.Execute(context.Background(), "")
@@ -572,7 +574,7 @@ func TestSkipSkipFlagIfEditIsTrue(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{}, true)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{}, true)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -614,7 +616,7 @@ func TestSkipOverrideFlagIfEditIsTrue(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{}, true)
+	fxt, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{}, true)
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background(), "")
@@ -652,7 +654,7 @@ func TestSkipAddFlagIfEditIsTrue(t *testing.T) {
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
 	fxt, err := NewFixtureFromFile(
-		fs, apiKey, "", ts.URL, file,
+		fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file,
 		[]string{}, []string{}, []string{
 			"cust_bender:birthdate=2996-09-04",
 			"char_bender:receipt_email=prof.farnsworth@planex.com",
@@ -698,7 +700,7 @@ func TestSkipRemoveFlagIfEditIsTrue(t *testing.T) {
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
 	fxt, err := NewFixtureFromFile(
-		fs, apiKey, "", ts.URL, file, []string{}, []string{},
+		fs, stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, file, []string{}, []string{},
 		[]string{}, []string{"cust_bender:phone", "char_bender:capture"},
 		true)
 	require.NoError(t, err)

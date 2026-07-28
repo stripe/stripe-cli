@@ -67,7 +67,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	apiKey, err := fc.Cfg.Profile.GetAPIKey(false)
+	creds, err := fc.Cfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 
 	fixture, err := fixtures.NewFixtureFromFile(
 		afero.NewOsFs(),
-		apiKey,
+		creds,
 		fc.stripeAccount,
 		fc.apiBaseURL,
 		args[0],

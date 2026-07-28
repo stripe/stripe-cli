@@ -64,9 +64,9 @@ func DiscoverReaders(ctx context.Context, tsCtx TerminalSessionContext) ([]Reade
 	var readersList []Reader
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
+		BaseURL:     parsedBaseURL,
 		Credentials: stripe.Credentials{Token: tsCtx.PstToken},
-		Verbose: false,
+		Verbose:     false,
 	}
 
 	res, err := client.PerformRequest(ctx, http.MethodGet, stripeTerminalReadersPath, "", nil)
@@ -165,9 +165,9 @@ func GetNewConnectionToken(ctx context.Context, tsCtx TerminalSessionContext) (s
 	}
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
+		BaseURL:     parsedBaseURL,
 		Credentials: stripe.Credentials{Token: tsCtx.APIKey},
-		Verbose: false,
+		Verbose:     false,
 	}
 
 	res, err := client.PerformRequest(ctx, http.MethodPost, stripeTerminalConnectionTokensPath, "", nil)
@@ -208,9 +208,9 @@ func CreatePaymentIntent(ctx context.Context, tsCtx TerminalSessionContext) (str
 	amountStr := strconv.Itoa(tsCtx.Amount)
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
+		BaseURL:     parsedBaseURL,
 		Credentials: stripe.Credentials{Token: tsCtx.APIKey},
-		Verbose: false,
+		Verbose:     false,
 	}
 
 	data := url.Values{}
@@ -257,9 +257,9 @@ func CapturePaymentIntent(ctx context.Context, tsCtx TerminalSessionContext) err
 	stripeCapturePaymentIntentURL := fmt.Sprintf(stripeCapturePaymentIntentPath, tsCtx.PaymentIntentID)
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
+		BaseURL:     parsedBaseURL,
 		Credentials: stripe.Credentials{Token: tsCtx.APIKey},
-		Verbose: false,
+		Verbose:     false,
 	}
 
 	res, err := client.PerformRequest(ctx, http.MethodPost, stripeCapturePaymentIntentURL, "", nil)
@@ -294,9 +294,9 @@ func RegisterReader(ctx context.Context, regcode string, tsCtx TerminalSessionCo
 	}
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
+		BaseURL:     parsedBaseURL,
 		Credentials: stripe.Credentials{Token: tsCtx.APIKey},
-		Verbose: false,
+		Verbose:     false,
 	}
 
 	data := url.Values{}

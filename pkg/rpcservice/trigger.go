@@ -15,7 +15,7 @@ var baseURL = stripe.DefaultAPIBaseURL
 
 // Trigger triggers a Stripe event.
 func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*rpc.TriggerResponse, error) {
-	apiKey, err := srv.cfg.UserCfg.Profile.GetAPIKey(false)
+	creds, err := srv.cfg.UserCfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -25,7 +25,7 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 		req.Event,
 		req.StripeAccount,
 		baseURL,
-		apiKey,
+		creds,
 		req.Skip,
 		req.Override,
 		req.Add,

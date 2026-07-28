@@ -496,14 +496,14 @@ func executeDatabaseOperation(cmd *cobra.Command, opCmd *OperationCmd, args []st
 		return nil, err
 	}
 
-	apiKey, apiKeyErr := opCmd.Profile.GetAPIKey(opCmd.Livemode)
+	creds, credsErr := opCmd.ResolveCredentials()
 	if opCmd.DryRun {
-		dryRunKey := apiKey
-		if apiKeyErr != nil {
-			dryRunKey = ""
+		dryRunCreds := creds
+		if credsErr != nil {
+			dryRunCreds = stripe.Credentials{}
 		}
 
-		output, err := opCmd.BuildDryRunOutput(dryRunKey, opCmd.APIBaseURL, path, &opCmd.Parameters, requestParams)
+		output, err := opCmd.BuildDryRunOutput(dryRunCreds, opCmd.APIBaseURL, path, &opCmd.Parameters, requestParams)
 		if err != nil {
 			return nil, err
 		}
@@ -517,11 +517,11 @@ func executeDatabaseOperation(cmd *cobra.Command, opCmd *OperationCmd, args []st
 		return nil, nil
 	}
 
-	if apiKeyErr != nil {
-		return nil, apiKeyErr
+	if credsErr != nil {
+		return nil, credsErr
 	}
 
-	body, err := opCmd.MakeRequest(cmd.Context(), apiKey, path, &opCmd.Parameters, requestParams, true, nil)
+	body, err := opCmd.MakeRequest(cmd.Context(), creds, path, &opCmd.Parameters, requestParams, true, nil)
 	return body, err
 }
 

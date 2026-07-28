@@ -159,8 +159,8 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if rb.DryRun {
-		apiKey, _ := rb.Profile.GetAPIKey(rb.Livemode)
-		output, err := rb.BuildDryRunOutput(apiKey, rb.APIBaseURL, path, &rb.Parameters, make(map[string]interface{}))
+		creds, _ := rb.ResolveCredentials()
+		output, err := rb.BuildDryRunOutput(creds, rb.APIBaseURL, path, &rb.Parameters, make(map[string]interface{}))
 		if err != nil {
 			return err
 		}
@@ -177,12 +177,12 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	apiKey, err := rb.Profile.GetAPIKey(rb.Livemode)
+	creds, err := rb.ResolveCredentials()
 	if err != nil {
 		return err
 	}
 
-	_, err = rb.MakeRequest(cmd.Context(), apiKey, path, &rb.Parameters, make(map[string]interface{}), false, nil)
+	_, err = rb.MakeRequest(cmd.Context(), creds, path, &rb.Parameters, make(map[string]interface{}), false, nil)
 
 	return err
 }
@@ -224,10 +224,15 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 }
 
+// ResolveCredentials returns Credentials for this request using the associated profile.
+func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
+	return rb.Profile.ResolveCredentials(rb.Livemode)
+}
+
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
 // Similar to making a multipart request using curl, add the local filepath to params arg with @ prefix.
 // e.g. params.AppendData([]string{"photo=@/path/to/local/file.png"})
-func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+func (rb *Base) MakeMultiPartRequest(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
 	reqBody, contentType, err := rb.buildMultiPartRequest(params)
 	if err != nil {
 		return []byte{}, err
@@ -245,7 +250,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
-		Credentials: stripe.Credentials{Token: apiKey},
+		Credentials: creds,
 		Verbose:     rb.showHeaders,
 	}
 
@@ -253,7 +258,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 }
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+func (rb *Base) MakeRequest(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -261,7 +266,7 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
-		Credentials: stripe.Credentials{Token: apiKey},
+		Credentials: creds,
 		Verbose:     rb.showHeaders,
 	}
 
@@ -358,7 +363,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 }
 
 // BuildDryRunOutput constructs the dry-run output for a request without executing it.
-func (rb *Base) BuildDryRunOutput(apiKey, baseURL, path string, params *RequestParameters, additionalParams map[string]interface{}) (*DryRunOutput, error) {
+func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string, params *RequestParameters, additionalParams map[string]interface{}) (*DryRunOutput, error) {
 	isV2 := stripe.IsV2Path(path)
 
 	// Build params map
@@ -446,10 +451,10 @@ func (rb *Base) BuildDryRunOutput(apiKey, baseURL, path string, params *RequestP
 		headers["Stripe-Context"] = params.stripeContext
 	}
 
-	if apiKey != "" && len(apiKey) >= 12 {
-		headers["Authorization"] = "Bearer " + config.RedactAPIKey(apiKey)
-	} else if apiKey != "" {
-		headers["Authorization"] = "Bearer " + apiKey
+	if creds.Token != "" && len(creds.Token) >= 12 {
+		headers["Authorization"] = "Bearer " + config.RedactAPIKey(creds.Token)
+	} else if creds.Token != "" {
+		headers["Authorization"] = "Bearer " + creds.Token
 	}
 
 	return &DryRunOutput{

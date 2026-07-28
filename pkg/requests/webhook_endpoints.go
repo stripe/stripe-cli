@@ -37,7 +37,7 @@ func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey strin
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	resp, _ := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
+	resp, _ := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
@@ -91,7 +91,7 @@ func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	_, err := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
+	_, err := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return err
 	}

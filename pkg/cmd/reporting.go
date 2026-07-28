@@ -167,7 +167,7 @@ func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra
 		return err
 	}
 
-	apiKey, err := cc.rb.Profile.GetAPIKey(cc.rb.Livemode)
+	creds, err := cc.rb.ResolveCredentials()
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra
 	body := cc.buildRequestBody(sql)
 
 	if cc.rb.DryRun {
-		output, err := cc.rb.BuildDryRunOutput(apiKey, cc.rb.APIBaseURL, queryRunsPath, &requests.RequestParameters{}, body)
+		output, err := cc.rb.BuildDryRunOutput(creds, cc.rb.APIBaseURL, queryRunsPath, &requests.RequestParameters{}, body)
 		if err != nil {
 			return err
 		}
@@ -187,7 +187,7 @@ func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra
 		return nil
 	}
 
-	_, err = cc.rb.MakeRequest(cmd.Context(), apiKey, queryRunsPath, &requests.RequestParameters{}, body, true, nil)
+	_, err = cc.rb.MakeRequest(cmd.Context(), creds, queryRunsPath, &requests.RequestParameters{}, body, true, nil)
 	return err
 }
 
@@ -242,14 +242,14 @@ func (rc *reportingQueryRunsRetrieveCmd) runReportingQueryRunsRetrieveCmd(cmd *c
 		return err
 	}
 
-	apiKey, err := rc.rb.Profile.GetAPIKey(rc.rb.Livemode)
+	creds, err := rc.rb.ResolveCredentials()
 	if err != nil {
 		return err
 	}
 
 	path := queryRunsPath + "/" + url.PathEscape(args[0])
 
-	_, err = rc.rb.MakeRequest(cmd.Context(), apiKey, path, &requests.RequestParameters{}, nil, true, nil)
+	_, err = rc.rb.MakeRequest(cmd.Context(), creds, path, &requests.RequestParameters{}, nil, true, nil)
 	return err
 }
 

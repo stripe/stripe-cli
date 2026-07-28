@@ -159,7 +159,7 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 		return fmt.Errorf("at least one --metric is required")
 	}
 
-	apiKey, err := c.rb.Profile.GetAPIKey(c.rb.Livemode)
+	creds, err := c.rb.ResolveCredentials()
 	if err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 	}
 
 	if c.rb.DryRun {
-		output, err := c.rb.BuildDryRunOutput(apiKey, c.rb.APIBaseURL, dataMetricsRunPath, &requests.RequestParameters{}, body)
+		output, err := c.rb.BuildDryRunOutput(creds, c.rb.APIBaseURL, dataMetricsRunPath, &requests.RequestParameters{}, body)
 		if err != nil {
 			return err
 		}
@@ -180,7 +180,7 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 		return nil
 	}
 
-	_, err = c.rb.MakeRequest(cmd.Context(), apiKey, dataMetricsRunPath, &requests.RequestParameters{}, body, true, nil)
+	_, err = c.rb.MakeRequest(cmd.Context(), creds, dataMetricsRunPath, &requests.RequestParameters{}, body, true, nil)
 	return err
 }
 
