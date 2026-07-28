@@ -65,8 +65,8 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 ### Agent-facing (AI agent runs these)
 | Command | Purpose |
 |---------|---------|
-| `stripe coop run <blueprint>` | Create a session (outputs JSON with instructions) |
-| `stripe coop agent start-work --step <n>` | Mark a node as active |
+| `stripe coop run <blueprint>` | Create a session (outputs a compact JSON bootstrap) |
+| `stripe coop agent start-work --step <n>` | Mark a node active and return its task context |
 | `stripe coop agent report-work --step <n>` | Mark a node complete (→ review or → done if auto_confirm) |
 | `stripe coop agent report-check --step <n>` | Add a verification check |
 | `stripe coop agent skip --step <n>` | Skip a node |
@@ -74,7 +74,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 
-All agent commands output JSON with an `ok` field and a `next` field suggesting the next command. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+All agent commands output JSON with an `ok` field and a `next` field suggesting the next command. Agents replace any `<...>` placeholders in a suggested command with real values before running it. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, and SDK example. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
 
 ## TUI Keybindings
 
@@ -114,10 +114,11 @@ In the completion view:
 $ stripe coop start one-time-payment --language=node
 
 # What happens behind the scenes:
-# 1. CLI creates the session and gives the agent the exact session protocol
+# 1. CLI creates the session and gives the agent a compact protocol bootstrap
 # 2. Agent (Claude/Codex) is launched in right pane
 # 3. TUI appears in left pane showing step progress
-# 4. Agent starts from the provided next command:
+# 4. Agent starts from the provided next command; its response supplies the
+#    current node's task and acceptance criteria:
 #      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Beginning: Understand the project"
 # 5. Agent works through steps, calling:
 #      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Scanning project"

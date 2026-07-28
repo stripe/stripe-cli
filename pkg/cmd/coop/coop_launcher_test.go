@@ -46,7 +46,7 @@ func TestNormalizeCoopTmuxSessionDimensionsFallsBack(t *testing.T) {
 	}
 }
 
-func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
+func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	rc := &coopRunCmd{language: "node"}
@@ -59,20 +59,24 @@ func TestExplicitBlueprintPromptIncludesSessionProtocol(t *testing.T) {
 	assert.Contains(t, prompt, "cheaper subagents wherever possible, using your best judgment")
 
 	assert.Contains(t, prompt, session.ID)
-	assert.Contains(t, prompt, `"agent_instructions"`)
-	assert.Contains(t, prompt, `"nodes"`)
-	assert.Contains(t, prompt, `"next": "stripe coop agent start-work --session=`+session.ID+` --step=1`)
-	assert.Contains(t, prompt, "Understand the project")
-	assert.Contains(t, prompt, "Start by running the \"next\" command exactly as written")
+	assert.Contains(t, prompt, "stripe coop agent start-work --session="+session.ID+" --step=1")
+	assert.Contains(t, prompt, "agent_prompt and next fields")
+	assert.Contains(t, prompt, "production-grade Stripe integration")
+	assert.Contains(t, prompt, "context from the current app or codebase")
+	assert.NotContains(t, prompt, `"ok": true`)
+	assert.NotContains(t, prompt, `"agent_instructions"`)
+	assert.NotContains(t, prompt, `"nodes"`)
+	assert.NotContains(t, prompt, "Create a Stripe Product with inline default_price_data")
 	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceStart))
 	assert.Equal(t, 1, strings.Count(prompt, stripeAgentGuidanceEnd))
 	assert.Contains(t, prompt, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
 	assert.Contains(t, prompt, "stripe docs search")
 	assert.Contains(t, prompt, "Documentation lookup is optional, not a mandatory preflight or ceremony")
 	assert.NotContains(t, prompt, "Open at least one relevant result")
-	assert.Contains(t, prompt, `stripe docs \u003cresult-path\u003e --non-interactive --no-pager`)
-	assert.Contains(t, prompt, `stripe docs api \u003cresource-or-event\u003e --non-interactive --no-pager`)
-	assert.Contains(t, prompt, `stripe docs api \u003cHTTP-method\u003e \u003cendpoint\u003e --non-interactive --no-pager`)
+	assert.Contains(t, prompt, `stripe docs <result-path> --non-interactive --no-pager`)
+	assert.Contains(t, prompt, `stripe docs api <resource-or-event> --non-interactive --no-pager`)
+	assert.Contains(t, prompt, `stripe docs api <HTTP-method> <endpoint> --non-interactive --no-pager`)
+	assert.Less(t, len(prompt), 10000)
 }
 
 func TestDiscoveryPromptKeepsCoopAsIntegrationAuthority(t *testing.T) {
@@ -80,6 +84,10 @@ func TestDiscoveryPromptKeepsCoopAsIntegrationAuthority(t *testing.T) {
 	assert.Contains(t, prompt, "We will handle coordination and orchestration with you")
 	assert.Contains(t, prompt, "cheaper subagents wherever possible, using your best judgment")
 
+	assert.Contains(t, prompt, "production-grade Stripe integration")
+	assert.Contains(t, prompt, "context from the current app or codebase")
+	assert.Contains(t, prompt, "architecture, language, framework, conventions, dependencies, and existing Stripe code")
+	assert.Contains(t, prompt, "The developer is working in go")
 	assert.Contains(t, prompt, "Your first job is to understand what they're building and what they need from Stripe")
 	assert.Contains(t, prompt, `run "stripe coop recommend --query=<description of what they need>"`)
 	assert.Contains(t, prompt, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
