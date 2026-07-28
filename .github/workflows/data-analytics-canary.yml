@@ -57,7 +57,12 @@ jobs:
         run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: ${{ steps.canary.outcome == 'success' && 'success' || 'failure' }}
-          DRYRUN: ${{ inputs.dryrun }}
+          # TEMPORARY: PagerDuty paging is silenced (forced dry-run) while the
+          # Analytics API private-preview enrollment for the canary account is
+          # still in progress (metric_query currently 404s). notify.sh will log
+          # what it *would* send but won't page. Revert to
+          # `DRYRUN: ${{ inputs.dryrun }}` once the account is enrolled.
+          DRYRUN: "true"
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_DATA_ANALYTICS_KEY }}
           PAGERDUTY_DEDUP_KEY: data-analytics-canary
           PAGERDUTY_SEVERITY: warning
