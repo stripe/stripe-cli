@@ -31,10 +31,6 @@ send_slack_notification() {
     if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
         return 0
     fi
-    if [ "${DRYRUN:-false}" = "true" ]; then
-        echo "Dry run: Slack notification would send: $message"
-        return 0
-    fi
     curl -s -X POST "$SLACK_WEBHOOK_URL" \
         -H "Content-Type: application/json" \
         -d "{\"text\": \"$message\"}"
