@@ -24,7 +24,6 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-
 	if req.EventId == "" {
 		return nil, status.Error(codes.InvalidArgument, "Event ID is required")
 	}

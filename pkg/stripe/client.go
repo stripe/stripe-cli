@@ -46,7 +46,6 @@ func NewOAKCredentials(token, context string, livemode bool) Credentials {
 	return Credentials{Token: token, OAKContext: context, OAKLivemode: &livemode}
 }
 
-
 // SetRequestHeaders applies all auth-related headers to req.
 func (c Credentials) SetRequestHeaders(req *http.Request) {
 	if c.Token != "" {
