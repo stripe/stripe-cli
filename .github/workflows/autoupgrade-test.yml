@@ -228,7 +228,7 @@ jobs:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-autoupgrade-test
-          PAGERDUTY_SUMMARY: "Auto-upgrade test failed: ${{ steps.summary.outputs.msg }}. Investigate: https://github.com/stripe/stripe-cli/actions/workflows/autoupgrade-test.yml"
+          PAGERDUTY_SUMMARY: "Auto-upgrade test failed: ${{ steps.summary.outputs.msg }}. <@U0575JBT249> please investigate: https://github.com/stripe/stripe-cli/actions/workflows/autoupgrade-test.yml"
           PAGERDUTY_RESOLVE_SUMMARY: "Auto-upgrade test is passing again"
           PAGERDUTY_SEVERITY: critical
           DRYRUN: "true" # TODO: switch to ${{ inputs.dryrun }} once confirmed stable
