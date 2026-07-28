@@ -11,6 +11,9 @@ on:
   pull_request:
     paths:
     - 'goreleaser/**'
+  merge_group:
+    paths:
+    - '.goreleaser/**'
 
 jobs:
   build-linux:

@@ -74,7 +74,7 @@ ci: build-all-platforms test go-mod-tidy protoc-ci
 # Build a beta version of stripe
 build:
 	go generate ./...
-	go build -o stripe cmd/stripe/main.go
+	go build -trimpath -o stripe cmd/stripe/main.go
 .PHONY: build
 
 # Build a beta version of stripe with the `dev` tag

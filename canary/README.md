@@ -101,6 +101,33 @@ Tests that require a valid Stripe test API key:
 | `TestAPIV2RawPost` | `stripe post /v2/billing/meter_event_session` | Raw POST to v2 path (JSON content-type) |
 | `TestAPIV2TriggerMeterNoMeterFound` | `stripe trigger v1.billing.meter.no_meter_found` | V2 trigger fixtures execute |
 
+### Scheduled Data & Analytics Tests (build tag: `data_analytics_canary`)
+
+Tests for the CLI data/analytics commands (`stripe data metrics run`, `stripe reporting query-runs`) live in `data_reporting_test.go` and are gated behind the `data_analytics_canary` Go build tag. They **do not** run in the normal push/PR/release suite. Instead they run once a day via `.github/workflows/data-analytics-canary.yml`, which builds with `-tags data_analytics_canary` and alerts on failure via PagerDuty (`scripts/notify.sh`) rather than blocking merges or releases.
+
+These commands wrap preview APIs (`metric_query` is Private Preview; `query_runs` is Public Preview). The live tests require the test account/runner to be enabled for those previews — without access they fail with a preview error rather than skip.
+
+| Test | Command | Validates |
+|------|---------|-----------|
+| `TestOfflineDataMetricsRunHelp` | `stripe data metrics run --help` | Hidden preview command help renders |
+| `TestOfflineReportingHelp` | `stripe reporting --help` | Reporting command lists `query-runs` |
+| `TestOfflineReportingQueryRunsHelp` | `stripe reporting query-runs --help` | `create`/`retrieve` subcommands listed |
+| `TestOfflineReportingQueryRunsRetrieveHelp` | `stripe reporting query-runs retrieve --help` | Retrieve command help renders |
+| `TestAPIDataMetricsRunDryRun` | `stripe data metrics run --dry-run` | Metric query request built correctly (no network call) |
+| `TestAPIReportingQueryRunsCreateDryRun` | `stripe reporting query-runs create --dry-run` | Query run request built correctly (no network call) |
+| `TestAPIDataMetricsRunLive` | `stripe data metrics run` | Metric query endpoint (Private Preview) |
+| `TestAPIReportingQueryRunsCreateLive` | `stripe reporting query-runs create` | Query run creation (Public Preview) |
+| `TestAPIReportingQueryRunsRetrieveLive` | `stripe reporting query-runs retrieve` | Query run create → retrieve round trip |
+
+Run them locally with:
+
+```bash
+export STRIPE_CLI_BINARY=$(pwd)/stripe
+export STRIPE_API_KEY=sk_test_...
+go test -tags data_analytics_canary -v ./canary/... \
+  -run "TestOfflineDataMetricsRunHelp|TestOfflineReporting|TestAPIDataMetricsRun|TestAPIReportingQueryRuns"
+```
+
 ## Environment Variables
 
 | Variable | Required | Description |
@@ -165,6 +192,8 @@ Canary tests do not run on PRs. Unit tests provide coverage for PR validation.
    - `logs_test.go` - Log streaming tests
    - `config_test.go` - Configuration tests
    - `login_test.go` - Authentication tests
+   - `v2_api_test.go` - V2 resource/raw API tests
+   - `data_reporting_test.go` - Data & reporting (analytics) commands; gated behind the `data_analytics_canary` build tag and run on a schedule (see above)
 2. Use `TestOffline` prefix for tests without API requirements
 3. Use `TestAPI` prefix and call `requireAPIKey(t)` for API tests
 4. Use isolated config directories via `testutil.CreateTempConfigDir()`

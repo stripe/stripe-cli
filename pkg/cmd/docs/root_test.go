@@ -28,9 +28,10 @@ func TestNew(t *testing.T) {
 
 func TestRootParsesDocsURL(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		wantPath string
+		name      string
+		args      []string
+		wantPath  string
+		wantQuery string
 	}{
 		{
 			name:     "full docs.stripe.com URL",
@@ -38,14 +39,27 @@ func TestRootParsesDocsURL(t *testing.T) {
 			wantPath: "/connect/accounts",
 		},
 		{
-			name:     "full docs.stripe.com URL with query",
-			args:     []string{"https://docs.stripe.com/api/customers?api_version=2024-06-30"},
-			wantPath: "/api/customers",
+			name:      "full docs.stripe.com URL with query",
+			args:      []string{"https://docs.stripe.com/api/customers?api_version=2024-06-30"},
+			wantPath:  "/api/customers",
+			wantQuery: "api_version=2024-06-30",
 		},
 		{
 			name:     "plain path unchanged",
 			args:     []string{"/payments"},
 			wantPath: "/payments",
+		},
+		{
+			name:      "plain path with query params",
+			args:      []string{"payments?test=foo"},
+			wantPath:  "/payments",
+			wantQuery: "test=foo",
+		},
+		{
+			name:      "absolute path with query params",
+			args:      []string{"/payments?test=foo"},
+			wantPath:  "/payments",
+			wantQuery: "test=foo",
 		},
 		{
 			name:     "multi-segment args joined",
@@ -56,9 +70,10 @@ func TestRootParsesDocsURL(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gotPath string
+			var gotPath, gotQuery string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPath = r.URL.Path
+				gotQuery = r.URL.RawQuery
 				fmt.Fprint(w, "# Test\n\nContent.")
 			}))
 			defer server.Close()
@@ -78,6 +93,7 @@ func TestRootParsesDocsURL(t *testing.T) {
 			err = root.ExecuteContext(context.Background())
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantPath, gotPath)
+			assert.Equal(t, tc.wantQuery, gotQuery)
 		})
 	}
 }
@@ -251,6 +267,61 @@ func TestPreRun_LoggerRespectsConfiguredLevel(t *testing.T) {
 	err = root.ExecuteContext(context.Background())
 	require.NoError(t, err)
 	assert.NotEmpty(t, logBuf.String(), "injected debug-level logger should capture log output")
+}
+
+func TestPrefsForwardedToPageFetch(t *testing.T) {
+	cfg, cleanup := setupPrefsTestConfig(t)
+	defer cleanup()
+	require.NoError(t, cfg.Profile.WriteConfigField("docs_prefs.lang", "ruby"))
+
+	var gotQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		fmt.Fprint(w, "# File Upload")
+	}))
+	defer server.Close()
+
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	root := cmd.New().WithOptions(
+		cmd.WithConfig(&cliconfig.Config{Color: "off", Profile: cfg.Profile}),
+		cmd.WithClient(docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"--non-interactive", "/file-upload"})
+
+	require.NoError(t, root.ExecuteContext(context.Background()))
+	assert.Contains(t, gotQuery, "lang=ruby")
+}
+
+func TestPrefsNotOverriddenByExistingQueryParam(t *testing.T) {
+	cfg, cleanup := setupPrefsTestConfig(t)
+	defer cleanup()
+	require.NoError(t, cfg.Profile.WriteConfigField("docs_prefs.lang", "ruby"))
+
+	var gotQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		fmt.Fprint(w, "# Page")
+	}))
+	defer server.Close()
+
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	root := cmd.New().WithOptions(
+		cmd.WithConfig(&cliconfig.Config{Color: "off", Profile: cfg.Profile}),
+		cmd.WithClient(docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(new(bytes.Buffer))
+	root.SetArgs([]string{"--non-interactive", "/page?lang=go"})
+
+	require.NoError(t, root.ExecuteContext(context.Background()))
+	assert.Contains(t, gotQuery, "lang=go")
+	assert.NotContains(t, gotQuery, "lang=ruby")
 }
 
 func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {

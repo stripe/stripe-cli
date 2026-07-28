@@ -82,6 +82,10 @@ func TestExampleCommands(t *testing.T) {
 		_, err := executeCommand(rootCmd, "post")
 		require.Equal(t, "`stripe post` requires exactly 1 positional argument. See `stripe post --help` for supported flags and usage", err.Error())
 	}
+	{
+		_, err := executeCommand(rootCmd, "samples", "create", "foo", "foo", "foo")
+		require.Equal(t, "`stripe samples create` accepts at maximum 2 positional arguments. See `stripe samples create --help` for supported flags and usage", err.Error())
+	}
 }
 
 func TestReadProjectDefault(t *testing.T) {

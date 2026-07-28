@@ -1,0 +1,14 @@
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Every 10 minutes
+name: Auto-upgrade test (trigger)
+permissions:
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh workflow run autoupgrade-test.yml --ref v2 --repo stripe/stripe-cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

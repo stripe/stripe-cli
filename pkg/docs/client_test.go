@@ -101,6 +101,20 @@ func TestWithOptions(t *testing.T) {
 				assert.Equal(t, "https://second.com", c.baseURL.String())
 			},
 		},
+		{
+			name: "set API key",
+			opts: []ClientOption{WithAPIKey("sk_test_abc123")},
+			wantCheck: func(t *testing.T, c *Client) {
+				assert.Equal(t, "sk_test_abc123", c.apiKey)
+			},
+		},
+		{
+			name: "set cache key prefix",
+			opts: []ClientOption{WithCacheKeyPrefix("acct_123")},
+			wantCheck: func(t *testing.T, c *Client) {
+				assert.Equal(t, "acct_123", c.cacheKeyPrefix)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -500,6 +514,138 @@ func TestFetchPrefs(t *testing.T) {
 			require.NoError(t, err)
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, got)
+			}
+		})
+	}
+}
+
+func TestFetchPage_CacheKeyPrefix_ScopesByAccount(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprintf(w, "response %d", calls)
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	ref := &url.URL{Path: "/payments"}
+
+	acct1 := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix("acct_111"))
+	acct2 := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix("acct_222"))
+
+	got1, err := acct1.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("response 1"), got1.Content)
+
+	// same URL, different prefix — must not hit acct1's cache entry
+	got2, err := acct2.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("response 2"), got2.Content)
+
+	assert.Equal(t, 2, calls)
+	assert.Equal(t, 0, cache.hits)
+}
+
+func TestFetchPage_CacheKeyPrefix_HitsWithinSameAccount(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	ref := &url.URL{Path: "/payments"}
+
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix("acct_111"))
+
+	_, err := client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	_, err = client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, calls)
+	assert.Equal(t, 1, cache.hits)
+}
+
+func TestFetchPage_EmptyCacheKeyPrefix_UsesRawURL(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	ref := &url.URL{Path: "/payments"}
+
+	// WithCacheKeyPrefix("") is a no-op — behaves identically to not setting a prefix
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL), WithCache(cache), WithCacheKeyPrefix(""))
+
+	_, err := client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	_, err = client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, calls)
+	assert.Equal(t, 1, cache.hits)
+}
+
+func TestFetchPageWithPrefs(t *testing.T) {
+	tests := []struct {
+		name       string
+		prefs      map[string]string
+		ref        *url.URL
+		wantParams map[string]string
+		wantAbsent []string
+	}{
+		{
+			name:       "prefs are added as query params",
+			prefs:      map[string]string{"lang": "go", "theme": "dark"},
+			ref:        &url.URL{Path: "/payments"},
+			wantParams: map[string]string{"lang": "go", "theme": "dark"},
+		},
+		{
+			name:       "existing param is not overridden",
+			prefs:      map[string]string{"lang": "go"},
+			ref:        &url.URL{Path: "/payments", RawQuery: "lang=ruby"},
+			wantParams: map[string]string{"lang": "ruby"},
+		},
+		{
+			name:       "prefs fill missing params but preserve existing ones",
+			prefs:      map[string]string{"lang": "go", "theme": "dark"},
+			ref:        &url.URL{Path: "/payments", RawQuery: "lang=ruby"},
+			wantParams: map[string]string{"lang": "ruby", "theme": "dark"},
+		},
+		{
+			name:       "no prefs adds no params",
+			prefs:      nil,
+			ref:        &url.URL{Path: "/payments"},
+			wantAbsent: []string{"lang", "theme"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotQuery url.Values
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotQuery = r.URL.Query()
+				w.Header().Set("Content-Type", "text/plain")
+				fmt.Fprint(w, "content")
+			}))
+			defer server.Close()
+
+			client := NewClient("test").WithOptions(WithBaseURL(server.URL), WithPrefs(tt.prefs))
+			_, err := client.FetchPage(context.Background(), tt.ref)
+			require.NoError(t, err)
+
+			for k, v := range tt.wantParams {
+				assert.Equal(t, v, gotQuery.Get(k))
+			}
+			for _, k := range tt.wantAbsent {
+				assert.Empty(t, gotQuery.Get(k))
 			}
 		})
 	}
