@@ -244,9 +244,9 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 	}
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
-		APIKey:  apiKey,
-		Verbose: rb.showHeaders,
+		BaseURL:     parsedBaseURL,
+		Credentials: stripe.Credentials{APIKey: apiKey},
+		Verbose:     rb.showHeaders,
 	}
 
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
@@ -260,9 +260,9 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 	}
 
 	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
-		APIKey:  apiKey,
-		Verbose: rb.showHeaders,
+		BaseURL:     parsedBaseURL,
+		Credentials: stripe.Credentials{APIKey: apiKey},
+		Verbose:     rb.showHeaders,
 	}
 
 	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)

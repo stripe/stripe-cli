@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,15 +28,23 @@ const (
 	V2Request     = "v2"
 )
 
+// Credentials holds the auth credentials for a Stripe API request. For plain
+// API keys only APIKey is set. For OAK tokens all three fields are populated.
+type Credentials struct {
+	APIKey      string
+	OAKContext  string
+	OAKLivemode *bool
+}
+
 // Client is the API client used to send requests to Stripe.
 type Client struct {
 	// The base URL (protocol + hostname) used for all requests sent by this
 	// client.
 	BaseURL *url.URL
 
-	// API key used to authenticate requests sent by this client. If left
-	// empty, the `Authorization` header will be omitted.
-	APIKey string
+	// Credentials holds the auth credentials for the request. If APIKey is
+	// empty, the Authorization header is omitted.
+	Credentials Credentials
 
 	// When this is enabled, request and response headers will be printed to
 	// stdout.
@@ -87,8 +96,15 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if c.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	if c.Credentials.APIKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Credentials.APIKey)
+	}
+
+	if c.Credentials.OAKContext != "" {
+		req.Header.Set("Stripe-Context", c.Credentials.OAKContext)
+	}
+	if c.Credentials.OAKLivemode != nil {
+		req.Header.Set("Stripe-Livemode", strconv.FormatBool(*c.Credentials.OAKLivemode))
 	}
 
 	if configure != nil {
@@ -112,7 +128,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	livemode := strings.Contains(c.APIKey, "live")
+	livemode := strings.Contains(c.Credentials.APIKey, "live")
 	go sendTelemetryEvent(ctx, requestID, livemode)
 	return resp, nil
 }

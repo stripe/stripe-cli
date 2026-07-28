@@ -159,8 +159,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	})
 
 	client := &stripe.Client{
-		APIKey:  key,
-		BaseURL: apiBase,
+		BaseURL:     apiBase,
+		Credentials: stripe.Credentials{APIKey: key},
 	}
 
 	// --print-secret option
