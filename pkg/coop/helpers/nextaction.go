@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +41,7 @@ type Response struct {
 	Completed   string       `json:"completed"`
 	Suggestions []Suggestion `json:"suggestions"`
 	AgentPrompt string       `json:"agent_prompt"`
-	Next        string       `json:"next"`
+	coop.Continuation
 }
 
 type Environment struct {
@@ -238,7 +237,9 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: BuildSummarizePrompt(session),
-			Next:        fmt.Sprintf("Write STRIPE.md, then run: stripe coop agent next-action --session=%s --completed=summarize", session.ID),
+			Continuation: coop.Continue(
+				coop.NextActionCommand(session.ID, "summarize"),
+			),
 		}
 	case "deploy":
 		return Response{
@@ -247,7 +248,9 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: BuildDeployPrompt(session),
-			Next:        followupCommand(session.ID, "deploy", ""),
+			Continuation: coop.Continue(
+				coop.StartFollowupCommand(session.ID, "deploy", ""),
+			),
 		}
 	case "deploy-update":
 		target := deployTargetFromSuggestion(suggestions, selected)
@@ -257,7 +260,9 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: BuildDeployUpdatePrompt(session, target),
-			Next:        followupCommand(session.ID, "deploy-update", target),
+			Continuation: coop.Continue(
+				coop.StartFollowupCommand(session.ID, "deploy-update", target),
+			),
 		}
 	case "add-integration":
 		return Response{
@@ -266,7 +271,9 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			Completed:   session.Blueprint,
 			Suggestions: suggestions,
 			AgentPrompt: fmt.Sprintf("The developer wants to add another Stripe feature. Run 'stripe coop recommend' and ask what they need, then start a new session with --parent-session=%s --parent-step=add-integration.", session.ID),
-			Next:        "stripe coop recommend",
+			Continuation: coop.Continue(
+				"stripe coop recommend",
+			),
 		}
 	case "done":
 		return Response{
@@ -274,7 +281,9 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			AgentPrompt: "The developer is done. End the session.",
-			Next:        fmt.Sprintf("stripe coop stop --session=%s", session.ID),
+			Continuation: coop.Continue(
+				coop.StopCommand(session.ID),
+			),
 		}
 	default:
 		return Response{
@@ -282,7 +291,9 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 			SessionID:   session.ID,
 			Completed:   session.Blueprint,
 			AgentPrompt: fmt.Sprintf("The developer selected: %s", selected),
-			Next:        "stripe coop stop",
+			Continuation: coop.Continue(
+				coop.StopCommand(""),
+			),
 		}
 	}
 }
@@ -302,14 +313,6 @@ func deployTargetFromSuggestion(suggestions []Suggestion, selected string) strin
 		}
 	}
 	return "the detected deployment target"
-}
-
-func followupCommand(sessionID, action, target string) string {
-	cmd := fmt.Sprintf("stripe coop agent start-followup --session=%s --action=%s", strconv.Quote(sessionID), strconv.Quote(action))
-	if target != "" {
-		cmd += fmt.Sprintf(" --target=%s", strconv.Quote(target))
-	}
-	return cmd
 }
 
 func BuildDeployPrompt(session *coop.Session) string {

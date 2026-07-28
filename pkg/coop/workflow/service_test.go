@@ -2,11 +2,13 @@ package workflow
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 )
 
 func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
@@ -19,7 +21,9 @@ func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.OK)
 	assert.Equal(t, "active", resp.State)
-	assert.Contains(t, resp.Next, "stripe coop agent report-work")
+	assert.Empty(t, resp.Next)
+	assert.Contains(t, resp.NextTemplate, "stripe coop agent report-work")
+	require.NotEmpty(t, resp.RequiredInputs)
 
 	loaded, err := store.Read(session.ID)
 	require.NoError(t, err)
@@ -27,6 +31,71 @@ func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, coop.NodeActive, node.State)
 	assert.Equal(t, "Scanning", node.Activity)
+}
+
+func TestStartWorkReturnsOnlyCurrentNodeContext(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		current := &session.Steps[0].Nodes[0]
+		current.Type = coop.NodeTestHelper
+		current.Description = "Advance the test clock and confirm an invoice is created."
+		current.ReviewPrompt = "Confirm the new invoice appears."
+		current.ReviewCommand = "stripe invoices list --limit=1"
+		current.TestRequests = []coop.TestHelperRequest{{
+			Key: "advance-clock",
+			APIRequest: coop.APIRequest{
+				Path:   "/v1/test_helpers/test_clocks/clock_123/advance",
+				Method: "post",
+			},
+		}}
+		current.Events = []string{"invoice.created"}
+		session.Steps[0].Nodes[1].Description = "FUTURE NODE DETAILS MUST NOT LEAK"
+		return nil
+	})
+	require.NoError(t, err)
+
+	resp, err := NewService(store).StartWork(session.ID, 1, "Starting")
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+
+	assert.Contains(t, resp.AgentPrompt, "Current node 1 of 2")
+	assert.Contains(t, resp.AgentPrompt, "Advance the test clock")
+	assert.Contains(t, resp.AgentPrompt, "Confirm the new invoice appears")
+	assert.Contains(t, resp.AgentPrompt, `stripe invoices list --limit=1`)
+	assert.Contains(t, resp.AgentPrompt, `stripe coop agent report-check --session=workflow_test --step=1 --check="<what you verified>" --passed`)
+	assert.Contains(t, resp.AgentPrompt, `stripe coop agent skip --session=workflow_test --step=1 --note="<reason>"`)
+	assert.NotContains(t, resp.AgentPrompt, "FUTURE NODE DETAILS MUST NOT LEAK")
+	require.Len(t, resp.TestRequests, 1)
+	assert.Equal(t, "advance-clock", resp.TestRequests[0].Key)
+	assert.Equal(t, []string{"invoice.created"}, resp.Events)
+}
+
+func TestStartWorkAPIRequestGuidanceDefersPlacementToProjectContext(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		current := &session.Steps[0].Nodes[0]
+		current.Type = coop.NodeAPIRequest
+		current.Description = "Create a product during integration setup."
+		current.Request = &coop.APIRequest{Path: "/v1/products", Method: "post"}
+		return nil
+	})
+	require.NoError(t, err)
+
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		return "stripe.products.create(...)", nil
+	}))
+	resp, err := service.StartWork(session.ID, 1, "Starting")
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+
+	require.NotNil(t, resp.APIRequest)
+	assert.Equal(t, "/v1/products", resp.APIRequest.Path)
+	assert.Equal(t, "stripe.products.create(...)", resp.SDKExample)
+	assert.Contains(t, resp.AgentPrompt, "Based on the task and existing project")
+	assert.Contains(t, resp.AgentPrompt, "runtime application code")
+	assert.Contains(t, resp.AgentPrompt, "setup or seed script")
+	assert.Contains(t, resp.AgentPrompt, "one-time provisioning")
+	assert.NotContains(t, resp.AgentPrompt, "Implement the Stripe call in api_request in the application")
 }
 
 func TestReportWorkContinuesStepBeforeReview(t *testing.T) {
@@ -49,15 +118,66 @@ func TestReportWorkRoutesToAwaitReviewWhenStepReady(t *testing.T) {
 
 	_, err := service.StartWork(session.ID, 1, "First")
 	require.NoError(t, err)
-	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{File: "server.go"}, false)
+	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{File: "server.go", Note: "Implemented server work"}, false)
 	require.NoError(t, err)
 	_, err = service.StartWork(session.ID, 2, "Second")
 	require.NoError(t, err)
-	resp, err := service.ReportWork(session.ID, 2, ReportWorkInput{File: "client.go"}, false)
+	resp, err := service.ReportWork(session.ID, 2, ReportWorkInput{File: "client.go", Note: "Implemented client work"}, false)
 	require.NoError(t, err)
 	require.True(t, resp.OK)
 	assert.Contains(t, resp.Message, "Step ready for review")
 	assert.Contains(t, resp.Next, "stripe coop agent await-review")
+	assert.Equal(t, int(AwaitTimeout.Seconds()), resp.WaitTimeoutSeconds)
+}
+
+func TestAwaitTimeoutContractLeavesHarnessHeadroom(t *testing.T) {
+	assert.Equal(t, 5*time.Minute, AwaitTimeout)
+	assert.Greater(t, AwaitHarnessTimeout, AwaitTimeout)
+
+	resp := timeoutResponse("session_123", 4, AwaitTimeout)
+	require.NoError(t, resp.Validate())
+	assert.Equal(t, int(AwaitTimeout.Seconds()), resp.WaitTimeoutSeconds)
+	assert.Contains(t, resp.Message, AwaitTimeout.String())
+}
+
+func TestConfiguredAwaitTimeoutIsAdvertised(t *testing.T) {
+	store, session := workflowTestStore(t)
+	timeout := 45 * time.Second
+	service := NewService(store, WithAwaitTimeout(timeout))
+
+	_, err := service.StartWork(session.ID, 1, "First")
+	require.NoError(t, err)
+	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{Note: "First done"}, false)
+	require.NoError(t, err)
+	_, err = service.StartWork(session.ID, 2, "Second")
+	require.NoError(t, err)
+	resp, err := service.ReportWork(session.ID, 2, ReportWorkInput{Note: "Second done"}, false)
+	require.NoError(t, err)
+
+	require.True(t, resp.OK)
+	assert.Contains(t, resp.Next, "stripe coop agent await-review")
+	assert.Equal(t, int(timeout.Seconds()), resp.WaitTimeoutSeconds)
+
+	timedOut := timeoutResponse(session.ID, 2, timeout)
+	assert.Equal(t, int(timeout.Seconds()), timedOut.WaitTimeoutSeconds)
+	assert.Contains(t, timedOut.Message, timeout.String())
+}
+
+func TestReportWorkRequiresNoteWithTemplateRecovery(t *testing.T) {
+	store, session := workflowTestStore(t)
+	service := NewService(store)
+
+	_, err := service.StartWork(session.ID, 1, "First")
+	require.NoError(t, err)
+	resp, err := service.ReportWork(session.ID, 1, ReportWorkInput{}, false)
+	require.NoError(t, err)
+
+	assert.False(t, resp.OK)
+	assert.Empty(t, resp.Next)
+	require.NotNil(t, resp.Recovery)
+	assert.Contains(t, resp.Recovery.NextTemplate, `--note="<what you did>"`)
+	require.Len(t, resp.Recovery.RequiredInputs, 1)
+	require.NoError(t, resp.Validate())
 }
 
 func TestConfirmAndRequestChangesUseCentralWorkflow(t *testing.T) {
@@ -66,7 +186,7 @@ func TestConfirmAndRequestChangesUseCentralWorkflow(t *testing.T) {
 
 	_, err := service.StartWork(session.ID, 1, "First")
 	require.NoError(t, err)
-	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{File: "server.go"}, false)
+	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{File: "server.go", Note: "Implemented server work"}, false)
 	require.NoError(t, err)
 
 	updated, err := service.ConfirmReview(session.ID, []int{1})
@@ -96,7 +216,7 @@ func TestRequestChangesMovesReviewNodeBackToActive(t *testing.T) {
 
 	_, err := service.StartWork(session.ID, 1, "First")
 	require.NoError(t, err)
-	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{File: "server.go"}, false)
+	_, err = service.ReportWork(session.ID, 1, ReportWorkInput{File: "server.go", Note: "Implemented server work"}, false)
 	require.NoError(t, err)
 	updated, err := service.RequestChanges(session.ID, []int{1}, "Needs tests")
 	require.NoError(t, err)
@@ -121,7 +241,7 @@ func TestAgentWorkflowRejectsInactiveSessions(t *testing.T) {
 		{
 			name: "report work",
 			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
-				return service.ReportWork(sessionID, 1, ReportWorkInput{File: "server.go"}, false)
+				return service.ReportWork(sessionID, 1, ReportWorkInput{File: "server.go", Note: "Implemented server work"}, false)
 			},
 		},
 		{
@@ -247,6 +367,7 @@ func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.OK)
 	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=add-integration", resp.Next)
+	assert.Equal(t, int(helpers.NextActionSelectionTimeout.Seconds()), resp.WaitTimeoutSeconds)
 }
 
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {

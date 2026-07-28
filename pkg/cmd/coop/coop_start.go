@@ -1,7 +1,6 @@
 package coopcmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,15 +10,22 @@ import (
 )
 
 type coopRunCmd struct {
-	cmd        *cobra.Command
-	language   string
-	settings   []string
-	agent      string
-	debugAgent bool
+	cmd                   *cobra.Command
+	language              string
+	settings              []string
+	agent                 string
+	debugAgent            bool
+	ensureSkill           func() error
+	prepareSkillDiscovery func() error
 }
 
 func newCoopRunCmd() *coopRunCmd {
-	rc := &coopRunCmd{}
+	rc := &coopRunCmd{
+		ensureSkill: ensureRepoStripeBestPracticesSkill,
+		prepareSkillDiscovery: func() error {
+			return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
+		},
+	}
 	rc.cmd = &cobra.Command{
 		Use:   "start [blueprint-id]",
 		Short: "Launch a co-op session with an AI agent in split-screen",
@@ -58,11 +64,13 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("%w. Run 'stripe coop recommend' to see available blueprints", err)
 		}
 	}
-
+	if rc.debugAgent && blueprintID == "" {
+		return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
+	}
 	stripeBin, _ := os.Executable()
 	if rc.debugAgent {
-		if blueprintID == "" {
-			return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
+		if err := rc.ensureStripeSkill(); err != nil {
+			warnRepoStripeBestPracticesSkill(cmd, err)
 		}
 		buildDebugPane := rc.debugAgentPaneCommandBuilder(stripeBin)
 		if inTmux {
@@ -82,6 +90,15 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if blueprintID != "" {
+		if err := rc.ensureStripeSkill(); err != nil {
+			warnRepoStripeBestPracticesSkill(cmd, err)
+		}
+	} else if agent.name == "claude" {
+		if err := rc.prepareAgentSkillDiscovery(); err != nil {
+			warnRepoClaudeSkillsDiscovery(cmd, err)
+		}
+	}
 	fmt.Println()
 
 	agentPrompt := rc.buildAgentPrompt(blueprintID)
@@ -95,6 +112,20 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	return rc.runFallback(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
 }
 
+func (rc *coopRunCmd) ensureStripeSkill() error {
+	if rc.ensureSkill != nil {
+		return rc.ensureSkill()
+	}
+	return ensureRepoStripeBestPracticesSkill()
+}
+
+func (rc *coopRunCmd) prepareAgentSkillDiscovery() error {
+	if rc.prepareSkillDiscovery != nil {
+		return rc.prepareSkillDiscovery()
+	}
+	return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
+}
+
 func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {
 	if blueprintID != "" {
 		return ""
@@ -105,9 +136,13 @@ func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {
 		langHint = fmt.Sprintf("\nThe developer is working in %s.", rc.language)
 	}
 
-	return fmt.Sprintf(`You are helping a developer add Stripe to their project.
+	return fmt.Sprintf(`You are helping a developer build a production-grade Stripe integration.
 
 A developer is watching your progress in a live terminal UI (the other pane).%s
+
+%s
+
+Use context from the current app or codebase, if one exists, to inform your recommendations and decisions. Inspect its architecture, language, framework, conventions, dependencies, and existing Stripe code so the integration fits the project naturally.
 
 Your first job is to understand what they're building and what they need from Stripe. Do NOT assume they know Stripe product names.
 
@@ -126,7 +161,9 @@ Steps:
 
 The developer will confirm each step in the TUI before you proceed.
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, langHint)
+Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.
+
+%s`, langHint, coopAgentCoordinationInstructions(), stripeAgentGuidanceInstructions())
 }
 
 func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string, error) {
@@ -135,22 +172,16 @@ func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string,
 		return "", err
 	}
 	resp := newCoopAgentRunResponse(bp, session)
-	data, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		return "", err
-	}
 
-	return fmt.Sprintf(`You are running a Stripe co-op integration session.
-
-A developer is watching your progress in a live terminal UI (the other pane).
-
-The session is already created. Use this structured start response as the protocol source of truth:
+	return fmt.Sprintf(`You are running a Stripe co-op integration session. A developer is watching your progress in a live terminal UI.
 
 %s
 
-Start by running the "next" command exactly as written. Then follow agent_instructions and continue using the JSON responses from the typed co-op agent commands.
+The session is already created. After the authentication check above, begin by running this command exactly:
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, string(data)), nil
+%s
+
+Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
 }
 
 func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (*coop.Session, error) {
