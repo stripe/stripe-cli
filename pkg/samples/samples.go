@@ -337,7 +337,7 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 
 	stripeClient := &stripe.Client{
 		BaseURL:     apiBase,
-		Credentials: stripe.Credentials{APIKey: apiKey},
+		Credentials: stripe.Credentials{Token: apiKey},
 	}
 	authClient := stripeauth.NewClient(stripeClient, nil)
 

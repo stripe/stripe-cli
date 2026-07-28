@@ -99,7 +99,7 @@ func TestPerformRequest_ApiKey_Provided(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 	client := Client{
 		BaseURL:     baseURL,
-		Credentials: Credentials{APIKey: "sk_test_1234"},
+		Credentials: Credentials{Token: "sk_test_1234"},
 	}
 
 	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", nil)

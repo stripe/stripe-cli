@@ -29,9 +29,9 @@ const (
 )
 
 // Credentials holds the auth credentials for a Stripe API request. For plain
-// API keys only APIKey is set. For OAK tokens all three fields are populated.
+// API keys only Token is set. For OAK tokens all three fields are populated.
 type Credentials struct {
-	APIKey      string
+	Token       string
 	OAKContext  string
 	OAKLivemode *bool
 }
@@ -42,7 +42,7 @@ type Client struct {
 	// client.
 	BaseURL *url.URL
 
-	// Credentials holds the auth credentials for the request. If APIKey is
+	// Credentials holds the auth credentials for the request. If Token is
 	// empty, the Authorization header is omitted.
 	Credentials Credentials
 
@@ -96,8 +96,8 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if c.Credentials.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.Credentials.APIKey)
+	if c.Credentials.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Credentials.Token)
 	}
 
 	if c.Credentials.OAKContext != "" {
@@ -128,7 +128,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	livemode := strings.Contains(c.Credentials.APIKey, "live")
+	livemode := strings.Contains(c.Credentials.Token, "live")
 	go sendTelemetryEvent(ctx, requestID, livemode)
 	return resp, nil
 }
