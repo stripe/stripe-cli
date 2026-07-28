@@ -29,6 +29,71 @@ func TestStartWorkTransitionsNodeAndReturnsTypedNextCommand(t *testing.T) {
 	assert.Equal(t, "Scanning", node.Activity)
 }
 
+func TestStartWorkReturnsOnlyCurrentNodeContext(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		current := &session.Steps[0].Nodes[0]
+		current.Type = coop.NodeTestHelper
+		current.Description = "Advance the test clock and confirm an invoice is created."
+		current.ReviewPrompt = "Confirm the new invoice appears."
+		current.ReviewCommand = "stripe invoices list --limit=1"
+		current.TestRequests = []coop.TestHelperRequest{{
+			Key: "advance-clock",
+			APIRequest: coop.APIRequest{
+				Path:   "/v1/test_helpers/test_clocks/clock_123/advance",
+				Method: "post",
+			},
+		}}
+		current.Events = []string{"invoice.created"}
+		session.Steps[0].Nodes[1].Description = "FUTURE NODE DETAILS MUST NOT LEAK"
+		return nil
+	})
+	require.NoError(t, err)
+
+	resp, err := NewService(store).StartWork(session.ID, 1, "Starting")
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+
+	assert.Contains(t, resp.AgentPrompt, "Current node 1 of 2")
+	assert.Contains(t, resp.AgentPrompt, "Advance the test clock")
+	assert.Contains(t, resp.AgentPrompt, "Confirm the new invoice appears")
+	assert.Contains(t, resp.AgentPrompt, `stripe invoices list --limit=1`)
+	assert.Contains(t, resp.AgentPrompt, `stripe coop agent report-check --session=workflow_test --step=1 --check="<what you verified>" --passed`)
+	assert.Contains(t, resp.AgentPrompt, `stripe coop agent skip --session=workflow_test --step=1 --note="<reason>"`)
+	assert.NotContains(t, resp.AgentPrompt, "FUTURE NODE DETAILS MUST NOT LEAK")
+	require.Len(t, resp.TestRequests, 1)
+	assert.Equal(t, "advance-clock", resp.TestRequests[0].Key)
+	assert.Equal(t, []string{"invoice.created"}, resp.Events)
+}
+
+func TestStartWorkAPIRequestGuidanceDefersPlacementToProjectContext(t *testing.T) {
+	store, session := workflowTestStore(t)
+	_, err := store.Update(session.ID, func(session *coop.Session) error {
+		current := &session.Steps[0].Nodes[0]
+		current.Type = coop.NodeAPIRequest
+		current.Description = "Create a product during integration setup."
+		current.Request = &coop.APIRequest{Path: "/v1/products", Method: "post"}
+		return nil
+	})
+	require.NoError(t, err)
+
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		return "stripe.products.create(...)", nil
+	}))
+	resp, err := service.StartWork(session.ID, 1, "Starting")
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+
+	require.NotNil(t, resp.APIRequest)
+	assert.Equal(t, "/v1/products", resp.APIRequest.Path)
+	assert.Equal(t, "stripe.products.create(...)", resp.SDKExample)
+	assert.Contains(t, resp.AgentPrompt, "Based on the task and existing project")
+	assert.Contains(t, resp.AgentPrompt, "runtime application code")
+	assert.Contains(t, resp.AgentPrompt, "setup or seed script")
+	assert.Contains(t, resp.AgentPrompt, "one-time provisioning")
+	assert.NotContains(t, resp.AgentPrompt, "Implement the Stripe call in api_request in the application")
+}
+
 func TestReportWorkContinuesStepBeforeReview(t *testing.T) {
 	store, session := workflowTestStore(t)
 	service := NewService(store)
