@@ -195,6 +195,9 @@ func (r *RootCommand) initLogger() {
 func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
+	if r.client != nil {
+		r.client.WithOptions(pkgdocs.WithPrefs(r.loadDocsPrefMap()))
+	}
 	if r.logger != nil {
 		if a := useragent.DetectAIAgent(os.Getenv); a != "" {
 			r.logger.WithField("name", a).Debug("agent detected")

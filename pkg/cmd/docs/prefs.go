@@ -185,6 +185,18 @@ func (r *RootCommand) renderPrefsList(w io.Writer, response *pkgdocs.PrefsRespon
 	return nil
 }
 
+// loadDocsPrefMap returns all stored docs preferences as a map suitable for passing to the client.
+func (r *RootCommand) loadDocsPrefMap() map[string]string {
+	if r.cfg == nil {
+		return nil
+	}
+	raw := viper.GetStringMapString(r.cfg.Profile.GetConfigField(docsPrefsConfigKey))
+	if len(raw) == 0 {
+		return nil
+	}
+	return raw
+}
+
 func (r *RootCommand) getDocsPref(id string) string {
 	if r.cfg == nil {
 		return ""
