@@ -41,6 +41,12 @@ func NewAPIKeyCredentials(key string) Credentials {
 	return Credentials{Token: key}
 }
 
+// NewOAKCredentials returns Credentials for an OAK (User Access Token).
+func NewOAKCredentials(token, context string, livemode bool) Credentials {
+	return Credentials{Token: token, OAKContext: context, OAKLivemode: &livemode}
+}
+
+
 // SetRequestHeaders applies all auth-related headers to req.
 func (c Credentials) SetRequestHeaders(req *http.Request) {
 	if c.Token != "" {

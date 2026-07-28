@@ -675,19 +675,14 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			if err != nil {
 				return stripe.Credentials{}, err
 			}
-			lm := livemode
-			return stripe.Credentials{
-				Token:       uat,
-				OAKContext:  compartmentID,
-				OAKLivemode: &lm,
-			}, nil
+			return stripe.NewOAKCredentials(uat, compartmentID, livemode), nil
 		}
 	}
 	key, err := p.GetAPIKey(livemode)
 	if err != nil {
 		return stripe.Credentials{}, err
 	}
-	return stripe.Credentials{Token: key}, nil
+	return stripe.NewAPIKeyCredentials(key), nil
 }
 
 // GetSessionCredentials retrieves the session credentials from the keyring
