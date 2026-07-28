@@ -27,15 +27,37 @@ const (
 	V2Request     = "v2"
 )
 
+// Credentials holds the auth credentials for a Stripe API request.
+type Credentials struct {
+	Token string
+}
+
+// NewAPIKeyCredentials returns Credentials using a standard Stripe API key.
+func NewAPIKeyCredentials(key string) Credentials {
+	return Credentials{Token: key}
+}
+
+// SetRequestHeaders applies auth-related headers to req.
+func (c Credentials) SetRequestHeaders(req *http.Request) {
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+}
+
+// Livemode reports whether the credentials are for live mode.
+func (c Credentials) Livemode() bool {
+	return strings.Contains(c.Token, "live")
+}
+
 // Client is the API client used to send requests to Stripe.
 type Client struct {
 	// The base URL (protocol + hostname) used for all requests sent by this
 	// client.
 	BaseURL *url.URL
 
-	// API key used to authenticate requests sent by this client. If left
-	// empty, the `Authorization` header will be omitted.
-	APIKey string
+	// Credentials holds the auth credentials for the request. If Token is
+	// empty, the Authorization header is omitted.
+	Credentials Credentials
 
 	// When this is enabled, request and response headers will be printed to
 	// stdout.
@@ -87,9 +109,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if c.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.APIKey)
-	}
+	c.Credentials.SetRequestHeaders(req)
 
 	if configure != nil {
 		if err := configure(req); err != nil {
@@ -112,8 +132,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	livemode := strings.Contains(c.APIKey, "live")
-	go sendTelemetryEvent(ctx, requestID, livemode)
+	go sendTelemetryEvent(ctx, requestID, c.Credentials.Livemode())
 	return resp, nil
 }
 

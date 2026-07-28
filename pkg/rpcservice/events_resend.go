@@ -19,7 +19,7 @@ import (
 
 // EventsResend resends an event given an event ID
 func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRequest) (*rpc.EventsResendResponse, error) {
-	apiKey, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
+	creds, err := srv.cfg.UserCfg.Profile.ResolveCredentials(req.Live)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -48,7 +48,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, err
 	}
 
-	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, make(map[string]interface{}), true, nil)
+	stripeResp, err := stripeReq.MakeRequest(ctx, creds, path, params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}

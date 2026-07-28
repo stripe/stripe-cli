@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // PluginMetadata contains plugin-specific manifest and binary information.
@@ -70,7 +71,7 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		APIBaseURL:     metadataBaseURL,
 	}
 
-	resp, err := base.MakeRequest(ctx, apiKey, metadataPath, params, map[string]interface{}{
+	resp, err := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), metadataPath, params, map[string]interface{}{
 		"plugin":  pluginName,
 		"version": version,
 		"os":      os,
@@ -115,7 +116,7 @@ func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion
 		APIBaseURL:     listBaseURL,
 	}
 
-	resp, err := base.MakeRequest(ctx, apiKey, listPath, params, map[string]interface{}{
+	resp, err := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), listPath, params, map[string]interface{}{
 		"os":   os,
 		"arch": arch,
 	}, true, nil)

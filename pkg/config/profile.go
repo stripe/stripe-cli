@@ -12,6 +12,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/keyring"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -307,6 +308,15 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	}
 
 	return "", validators.ErrAPIKeyNotConfigured
+}
+
+// ResolveCredentials returns the API credentials for the given profile and livemode.
+func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
+	apiKey, err := p.GetAPIKey(livemode)
+	if err != nil {
+		return stripe.Credentials{}, err
+	}
+	return stripe.NewAPIKeyCredentials(apiKey), nil
 }
 
 // GetExpiresAt returns the API key expirary date

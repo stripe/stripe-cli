@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestBuildDataForRequest(t *testing.T) {
@@ -110,7 +112,7 @@ func TestMakeRequest(t *testing.T) {
 		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), true, nil)
+	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, make(map[string]interface{}), true, nil)
 	require.NoError(t, err)
 }
 
@@ -138,7 +140,7 @@ func TestMakeRequest_RefusesWriteThroughPDFSymlink(t *testing.T) {
 	rb.Method = http.MethodGet
 
 	params := &RequestParameters{}
-	_, err = rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/quotes/qt_123/pdf", params, make(map[string]interface{}), false, nil)
+	_, err = rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v1/quotes/qt_123/pdf", params, make(map[string]interface{}), false, nil)
 	require.ErrorContains(t, err, "symlink")
 
 	victimContents, err := os.ReadFile(victimFile)
@@ -177,7 +179,7 @@ func TestMakeRequest_GetV2(t *testing.T) {
 		}`},
 	}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v2/core/events", params, make(map[string]interface{}), true, nil)
+	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v2/core/events", params, make(map[string]interface{}), true, nil)
 	require.NoError(t, err)
 }
 
@@ -207,7 +209,7 @@ func TestMakeRequest_PostV2(t *testing.T) {
 		data: []string{`{"name": "foo"}`},
 	}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v2/core/event_destinations", params, make(map[string]interface{}), true, nil)
+	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v2/core/event_destinations", params, make(map[string]interface{}), true, nil)
 	require.NoError(t, err)
 }
 
@@ -223,7 +225,7 @@ func TestMakeRequest_ErrOnStatus(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), true, nil)
+	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, make(map[string]interface{}), true, nil)
 	require.Error(t, err)
 	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
 }
@@ -249,7 +251,7 @@ func TestMakeRequest_ErrOnAPIKeyExpired(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), false, nil)
+	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, make(map[string]interface{}), false, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Request failed, status=401, body=")
 }
@@ -286,7 +288,7 @@ func TestMakeMultiPartRequest(t *testing.T) {
 		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
 	}
 
-	_, err = rb.MakeMultiPartRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
+	_, err = rb.MakeMultiPartRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, true)
 	require.NoError(t, err)
 }
 
@@ -481,7 +483,7 @@ func TestBuildDryRunOutput_V1Post(t *testing.T) {
 	}
 
 	// "sk_test_1234567890abcdef" (24 chars) redacts to "sk_test_************cdef"
-	output, err := rb.BuildDryRunOutput("sk_test_1234567890abcdef", "https://api.stripe.com", "/v1/customers", &RequestParameters{}, additional)
+	output, err := rb.BuildDryRunOutput(stripe.NewAPIKeyCredentials("sk_test_1234567890abcdef"), "https://api.stripe.com", "/v1/customers", &RequestParameters{}, additional)
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method: "POST",
@@ -503,7 +505,7 @@ func TestBuildDryRunOutput_V1PostDataParams(t *testing.T) {
 		data: []string{"metadata[env]=staging", "metadata[version]=2"},
 	}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{"email": "test@example.com"})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{"email": "test@example.com"})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method: "POST",
@@ -530,7 +532,7 @@ func TestBuildDryRunOutput_V1Get(t *testing.T) {
 		expand:        []string{"default_source"},
 	}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method: "GET",
@@ -551,7 +553,7 @@ func TestBuildDryRunOutput_V1PostExpand(t *testing.T) {
 		expand: []string{"default_source", "invoice_settings"},
 	}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{"email": "test@example.com"})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{"email": "test@example.com"})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method: "POST",
@@ -572,7 +574,7 @@ func TestBuildDryRunOutput_V2Post(t *testing.T) {
 		data: []string{`{"event_name": "foo", "value": 100}`},
 	}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v2/billing/meter_events", params, map[string]interface{}{})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v2/billing/meter_events", params, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method: "POST",
@@ -591,7 +593,7 @@ func TestBuildDryRunOutput_V2Post(t *testing.T) {
 func TestBuildDryRunOutput_NoAPIKey(t *testing.T) {
 	rb := Base{Method: http.MethodPost}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", &RequestParameters{}, map[string]interface{}{})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", &RequestParameters{}, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method:  "POST",
@@ -604,7 +606,7 @@ func TestBuildDryRunOutput_NoAPIKey(t *testing.T) {
 func TestBuildDryRunOutput_ExplicitStripeVersion(t *testing.T) {
 	rb := Base{Method: http.MethodPost}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", &RequestParameters{version: "2025-01-01"}, map[string]interface{}{})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", &RequestParameters{version: "2025-01-01"}, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method:  "POST",
@@ -622,7 +624,7 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 		stripeContext: "ctx_456",
 	}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method: "POST",
@@ -640,7 +642,7 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 func TestBuildDryRunOutput_PathParamSubstitutedURL(t *testing.T) {
 	rb := Base{Method: http.MethodGet}
 
-	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers/cus_abc123", &RequestParameters{}, map[string]interface{}{})
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers/cus_abc123", &RequestParameters{}, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
 		Method:  "GET",
@@ -680,7 +682,7 @@ func TestMakeRequest_StripeNotice(t *testing.T) {
 		rb := Base{APIBaseURL: ts.URL}
 		rb.Method = http.MethodGet
 		params := &RequestParameters{}
-		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v1/charges", params, make(map[string]interface{}), false, nil)
 		require.NoError(t, err)
 	})
 
@@ -700,7 +702,7 @@ func TestMakeRequest_StripeNoticeMultiNotice(t *testing.T) {
 		rb := Base{APIBaseURL: ts.URL}
 		rb.Method = http.MethodGet
 		params := &RequestParameters{}
-		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v1/charges", params, make(map[string]interface{}), false, nil)
 		require.NoError(t, err)
 	})
 
@@ -718,7 +720,7 @@ func TestMakeRequest_NoUpgradeNotice(t *testing.T) {
 		rb := Base{APIBaseURL: ts.URL}
 		rb.Method = http.MethodGet
 		params := &RequestParameters{}
-		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v1/charges", params, make(map[string]interface{}), false, nil)
 		require.NoError(t, err)
 	})
 
@@ -737,7 +739,7 @@ func TestMakeRequest_UpgradeNoticeSuppressed(t *testing.T) {
 		rb := Base{APIBaseURL: ts.URL, SuppressOutput: true}
 		rb.Method = http.MethodGet
 		params := &RequestParameters{}
-		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/v1/charges", params, make(map[string]interface{}), false, nil)
 		require.NoError(t, err)
 	})
 

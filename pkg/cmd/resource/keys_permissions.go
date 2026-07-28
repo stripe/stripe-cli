@@ -66,8 +66,8 @@ func (kpc *KeysPermissionsCmd) runKeysPermissionsCmd(cmd *cobra.Command, args []
 
 	baseURL, _ := url.Parse(kpc.apiBaseURL)
 	client := &stripe.Client{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:     baseURL,
+		Credentials: stripe.NewAPIKeyCredentials(apiKey),
 	}
 
 	// Build form-encoded body

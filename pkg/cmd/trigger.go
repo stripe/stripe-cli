@@ -84,14 +84,14 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	apiKey, err := Config.Profile.GetAPIKey(false)
+	creds, err := Config.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err
 	}
 
 	event := args[0]
 
-	_, err = fixtures.Trigger(cmd.Context(), event, tc.stripeAccount, tc.apiBaseURL, apiKey, tc.skip, tc.override, tc.add, tc.remove, tc.raw, tc.apiVersion, tc.edit)
+	_, err = fixtures.Trigger(cmd.Context(), event, tc.stripeAccount, tc.apiBaseURL, creds, tc.skip, tc.override, tc.add, tc.remove, tc.raw, tc.apiVersion, tc.edit)
 	if err != nil {
 		return err
 	}
