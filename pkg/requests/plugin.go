@@ -71,7 +71,12 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		APIBaseURL:     metadataBaseURL,
 	}
 
-	resp, err := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), metadataPath, params, map[string]interface{}{
+	resolvedCreds, err := base.ResolveCredentials()
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
+
+	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, map[string]interface{}{
 		"plugin":  pluginName,
 		"version": version,
 		"os":      os,
@@ -116,7 +121,12 @@ func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion
 		APIBaseURL:     listBaseURL,
 	}
 
-	resp, err := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), listPath, params, map[string]interface{}{
+	resolvedCreds, err := base.ResolveCredentials()
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
+
+	resp, err := base.MakeRequest(ctx, resolvedCreds, listPath, params, map[string]interface{}{
 		"os":   os,
 		"arch": arch,
 	}, true, nil)

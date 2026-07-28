@@ -449,6 +449,11 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 	}
 	if params.stripeContext != "" {
 		headers["Stripe-Context"] = params.stripeContext
+	} else if creds.OAKContext != "" {
+		headers["Stripe-Context"] = creds.OAKContext
+	}
+	if creds.OAKLivemode != nil {
+		headers["Stripe-Livemode"] = strconv.FormatBool(*creds.OAKLivemode)
 	}
 
 	if creds.Token != "" && len(creds.Token) >= 12 {

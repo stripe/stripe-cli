@@ -308,32 +308,12 @@ func FixtureContents(eventName string) (string, error) {
 
 // BuildFromFixtureFile creates a new fixture struct for a file
 func BuildFromFixtureFile(fs afero.Fs, creds stripe.Credentials, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
-	fixture, err := NewFixtureFromFile(
-		fs,
-		creds,
-		stripeAccount,
-		apiBaseURL,
-		jsonFile,
-		skip,
-		override,
-		add,
-		remove,
-		edit,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return fixture, nil
+	return NewFixtureFromFile(fs, creds, stripeAccount, apiBaseURL, jsonFile, skip, override, add, remove, edit)
 }
 
 // BuildFromFixtureString creates a new fixture from a string
 func BuildFromFixtureString(fs afero.Fs, creds stripe.Credentials, stripeAccount, apiBaseURL, raw string) (*Fixture, error) {
-	fixture, err := NewFixtureFromRawString(fs, creds, stripeAccount, apiBaseURL, raw)
-	if err != nil {
-		return nil, err
-	}
-	return fixture, nil
+	return NewFixtureFromRawString(fs, creds, stripeAccount, apiBaseURL, raw)
 }
 
 // EventList prints out a padded list of supported trigger events for printing the help file
