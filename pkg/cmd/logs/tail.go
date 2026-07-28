@@ -172,7 +172,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	key, err := tailCmd.cfg.Profile.GetAPIKey(false)
+	creds, err := tailCmd.cfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	tailer := logtailing.New(&logtailing.Config{
 		Client: &stripe.Client{
 			BaseURL:     apiBase,
-			Credentials: stripe.NewAPIKeyCredentials(key),
+			Credentials: creds,
 		},
 		DeviceName: deviceName,
 		Filters:    tailCmd.LogFilters,

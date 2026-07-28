@@ -310,15 +310,6 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	return "", validators.ErrAPIKeyNotConfigured
 }
 
-// ResolveCredentials returns the API credentials for the given profile and livemode.
-func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
-	apiKey, err := p.GetAPIKey(livemode)
-	if err != nil {
-		return stripe.Credentials{}, err
-	}
-	return stripe.NewAPIKeyCredentials(apiKey), nil
-}
-
 // GetExpiresAt returns the API key expirary date
 func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 	var timeString string
@@ -636,6 +627,67 @@ type SessionCredentials struct {
 	UAT        string `json:"uat"`
 	PrivateKey string `json:"private_key"`
 	AccountID  string `json:"account_id"`
+}
+
+// GetUAT retrieves the user access token from the keyring.
+// Returns an empty string if no UAT is stored.
+func (p *Profile) GetUAT() (string, error) {
+	if KeyRing == nil {
+		return "", nil
+	}
+	data, err := KeyRing.Get(UATKeychainItemKey)
+	if err != nil {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	return string(data), nil
+}
+
+// GetCompartmentID returns the compartment (workspace) ID for the given mode
+// from the stored UserInfo. Returns an empty string if none is configured.
+func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
+	ui, err := p.GetUserInfo()
+	if err != nil || ui == nil {
+		return "", err
+	}
+	for _, c := range ui.Compartments {
+		if c.Livemode == livemode {
+			return c.CompartmentID, nil
+		}
+	}
+	return "", nil
+}
+
+// ResolveCredentials returns the credentials for the given mode. If an OAK
+// token (prefix "oak_") is stored in the keyring and no explicit override is
+// active, it is preferred over the configured API key and the compartment ID
+// and livemode flag are populated. Otherwise it falls back to GetAPIKey.
+func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
+	if !p.HasOverrideAPIKey() {
+		uat, err := p.GetUAT()
+		if err != nil {
+			return stripe.Credentials{}, err
+		}
+		if strings.HasPrefix(uat, "oak_") {
+			compartmentID, err := p.GetCompartmentID(livemode)
+			if err != nil {
+				return stripe.Credentials{}, err
+			}
+			lm := livemode
+			return stripe.Credentials{
+				Token:       uat,
+				OAKContext:  compartmentID,
+				OAKLivemode: &lm,
+			}, nil
+		}
+	}
+	key, err := p.GetAPIKey(livemode)
+	if err != nil {
+		return stripe.Credentials{}, err
+	}
+	return stripe.Credentials{Token: key}, nil
 }
 
 // GetSessionCredentials retrieves the session credentials from the keyring

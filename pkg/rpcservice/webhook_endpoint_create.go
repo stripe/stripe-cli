@@ -11,18 +11,11 @@ import (
 // WebhookEndpointCreate create a new webhook endpoint
 func (srv *RPCService) WebhookEndpointCreate(ctx context.Context, req *rpc.WebhookEndpointCreateRequest) (*rpc.WebhookEndpointCreateResponse, error) {
 	userConfig := srv.cfg.UserCfg
-	livemode := false
 
-	key, err := userConfig.Profile.GetAPIKey(livemode)
-	if err != nil {
-		return nil, err
-	}
-
-	err = requests.WebhookEndpointCreate(
+	err := requests.WebhookEndpointCreate(
 		ctx,
 		stripe.DefaultAPIBaseURL,
 		stripe.APIVersion,
-		key,
 		req.Url,
 		req.Description,
 		req.Connect,

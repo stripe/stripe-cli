@@ -11,14 +11,8 @@ import (
 // WebhookEndpointsList returns a list of webhook endpoints.
 func (srv *RPCService) WebhookEndpointsList(ctx context.Context, req *rpc.WebhookEndpointsListRequest) (*rpc.WebhookEndpointsListResponse, error) {
 	userConfig := srv.cfg.UserCfg
-	livemode := false
 
-	key, err := userConfig.Profile.GetAPIKey(livemode)
-	if err != nil {
-		return nil, err
-	}
-
-	endpoints := requests.WebhookEndpointsList(ctx, stripe.DefaultAPIBaseURL, stripe.APIVersion, key, &userConfig.Profile)
+	endpoints := requests.WebhookEndpointsList(ctx, stripe.DefaultAPIBaseURL, stripe.APIVersion, &userConfig.Profile)
 
 	formattedEndpoints := make([]*rpc.WebhookEndpointsListResponse_WebhookEndpointData, 0, len(endpoints.Data))
 	for _, v := range endpoints.Data {

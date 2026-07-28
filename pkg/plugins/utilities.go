@@ -324,10 +324,11 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 // ListPlugins fetches the live plugin list visible to the current caller for
 // the current platform using the list-plugins API endpoints.
 func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboardBaseURL string) (PluginList, error) {
-	apiKey, err := config.GetProfile().GetAPIKey(false)
+	creds, err := config.GetProfile().ResolveCredentials(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return PluginList{}, err
 	}
+	apiKey := creds.Token
 
 	if dashboardBaseURL == "" {
 		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
@@ -371,10 +372,11 @@ func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.I
 		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
 	}
 
-	apiKey, err := config.GetProfile().GetAPIKey(false)
+	creds, err := config.GetProfile().ResolveCredentials(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return err
 	}
+	apiKey := creds.Token
 
 	pluginNames, err := GetInstalledPluginNames(config, fs)
 	if err != nil {
@@ -505,10 +507,11 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	apiKey, err := config.GetProfile().GetAPIKey(false)
+	creds, err := config.GetProfile().ResolveCredentials(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}
+	apiKey := creds.Token
 
 	resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey)
 	if err == nil {
@@ -555,10 +558,11 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	apiKey, err := config.GetProfile().GetAPIKey(false)
+	creds, err := config.GetProfile().ResolveCredentials(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}
+	apiKey := creds.Token
 
 	resolvedPlugin, endpointErr := resolvePluginFromMetadata(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL, apiKey)
 	if endpointErr == nil {

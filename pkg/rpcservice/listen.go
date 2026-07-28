@@ -44,7 +44,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
+	creds, err := srv.cfg.UserCfg.Profile.ResolveCredentials(req.Live)
 	if err != nil {
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -62,7 +62,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 	p, err := createProxy(ctx, &proxy.Config{
 		Client: &stripe.Client{
 			BaseURL:     apiBase,
-			Credentials: stripe.NewAPIKeyCredentials(key),
+			Credentials: creds,
 		},
 		DeviceName:            deviceName,
 		ForwardURL:            req.ForwardTo,

@@ -323,7 +323,7 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 		publishableKey = TestPublishableKeyPlaceholder
 	}
 
-	apiKey, err := config.Profile.GetAPIKey(false)
+	creds, err := config.Profile.ResolveCredentials(false)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 
 	stripeClient := &stripe.Client{
 		BaseURL:     apiBase,
-		Credentials: stripe.NewAPIKeyCredentials(apiKey),
+		Credentials: creds,
 	}
 	authClient := stripeauth.NewClient(stripeClient, nil)
 
@@ -351,7 +351,7 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 
 	return map[string]string{
 		"STRIPE_PUBLISHABLE_KEY": publishableKey,
-		"STRIPE_SECRET_KEY":      apiKey,
+		"STRIPE_SECRET_KEY":      creds.Token,
 		"STRIPE_WEBHOOK_SECRET":  authSession.Secret,
 		"STATIC_DIR":             "../client",
 	}, nil

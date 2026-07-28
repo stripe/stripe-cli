@@ -20,6 +20,7 @@ var inspectHeaders = []string{
 	"Request-Id",
 	"Stripe-Account",
 	"Stripe-Context",
+	"Stripe-Livemode",
 	"Stripe-Version",
 }
 

@@ -137,12 +137,12 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	key, err := Config.Profile.GetAPIKey(lc.livemode)
+	creds, err := Config.Profile.ResolveCredentials(lc.livemode)
 	if err != nil {
 		return err
 	}
 
-	if strings.Contains(key, "sk_org") {
+	if strings.Contains(creds.Token, "sk_org") {
 		log.Errorf("The listen command is not supported in an organization sandbox at this time.")
 		return nil
 	}
@@ -160,7 +160,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	client := &stripe.Client{
 		BaseURL:     apiBase,
-		Credentials: stripe.NewAPIKeyCredentials(key),
+		Credentials: creds,
 	}
 
 	// --print-secret option

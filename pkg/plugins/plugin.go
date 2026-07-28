@@ -318,7 +318,8 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
-	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
+	creds, _ := cfg.GetProfile().ResolveCredentials(false)
+	apiKey := creds.Token
 	pluginToInstall := p
 	pluginDownloadURL := resolvedBinaryURL
 	var metadataLookupErr error

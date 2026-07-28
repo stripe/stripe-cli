@@ -31,7 +31,7 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(false)
+	creds, err := srv.cfg.UserCfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -48,7 +48,7 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 	tailer := createTailer(&logtailing.Config{
 		Client: &stripe.Client{
 			BaseURL:     apiBase,
-			Credentials: stripe.NewAPIKeyCredentials(key),
+			Credentials: creds,
 		},
 		DeviceName: deviceName,
 		Filters:    filters,
