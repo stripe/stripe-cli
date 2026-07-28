@@ -257,7 +257,7 @@ Got feedback for us? Please don't hesitate to tell us on [feedback](https://stri
 
 ## Contributing
 
-See [Developing the Stripe CLI](../../wiki/developing-the-stripe-cli) for more info on how to make contributions to this project.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on developing the Stripe CLI. All contributions are governed by the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 Copyright (c) Stripe. All rights reserved.
