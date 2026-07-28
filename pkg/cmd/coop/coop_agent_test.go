@@ -1,6 +1,7 @@
 package coopcmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -132,7 +133,15 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 	}
 	require.NoError(t, store.Write(parent))
 
-	cmd := newCoopAgentStartFollowupCmd().cmd
+	followupCmd := newCoopAgentStartFollowupCmd()
+	ensureCalls := 0
+	followupCmd.ensureSkill = func() error {
+		ensureCalls++
+		return errors.New("read-only repository")
+	}
+	cmd := followupCmd.cmd
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"--session", parent.ID, "--action", "deploy-update", "--target", "Vercel"})
 
 	output := captureStdout(t, func() {
@@ -142,6 +151,8 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 	var resp coopAgentRunResponse
 	require.NoError(t, json.Unmarshal([]byte(output), &resp))
 	require.True(t, resp.OK)
+	assert.Equal(t, 1, ensureCalls)
+	assert.Contains(t, stderr.String(), "unable to install the optional project-scoped Stripe skill; continuing without it")
 	assert.Contains(t, resp.Message, "Deploy your changes")
 	assert.Contains(t, resp.Next, "stripe coop agent start-work")
 	assert.Contains(t, resp.AgentInstructions, "guided co-op follow-up")
