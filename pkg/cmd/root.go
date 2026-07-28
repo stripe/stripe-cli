@@ -21,7 +21,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/reporting"
 
-
 	cmddocs "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
