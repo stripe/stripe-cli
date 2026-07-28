@@ -1,6 +1,7 @@
 package coopcmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,6 +31,7 @@ type coopAgentActionCmd struct {
 	snippet string
 	check   string
 	passed  bool
+	outputs []string
 
 	completed string
 	action    string
@@ -96,6 +98,14 @@ func newCoopAgentReportWorkCmd() *coopAgentActionCmd {
 			if err := c.validateSessionStep("report-work"); err != nil {
 				return err
 			}
+			outputs, err := parseReportedOutputs(c.outputs)
+			if err != nil {
+				return outputCoopError(
+					err.Error(),
+					"Use --output field=value or --output source:field=value.",
+					coop.ReportWorkOutputTemplate(c.session, c.step),
+				)
+			}
 			service, err := newWorkflowService()
 			if err != nil {
 				return outputAgentError(err)
@@ -105,6 +115,7 @@ func newCoopAgentReportWorkCmd() *coopAgentActionCmd {
 				Lines:   c.lines,
 				Snippet: c.snippet,
 				Note:    c.note,
+				Outputs: outputs,
 			}, false)
 			return outputAgentResponse(resp, err)
 		},
@@ -114,6 +125,7 @@ func newCoopAgentReportWorkCmd() *coopAgentActionCmd {
 	c.cmd.Flags().StringVar(&c.lines, "lines", "", "Line range, e.g. 1-15")
 	c.cmd.Flags().StringVar(&c.snippet, "snippet", "", "Code snippet")
 	c.cmd.Flags().StringVar(&c.note, "note", "", "Implementation summary")
+	c.cmd.Flags().StringArrayVar(&c.outputs, "output", nil, "Produced value as field=value or source:field=value (repeatable)")
 	configureAgentCommand(c.cmd)
 	return c
 }
@@ -282,6 +294,50 @@ func newWorkflowService() (*workflow.Service, error) {
 		return nil, fmt.Errorf("creating store: %w", err)
 	}
 	return workflow.NewService(store), nil
+}
+
+func parseReportedOutputs(values []string) (coop.NodeOutputs, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	outputs := coop.NodeOutputs{}
+	for _, value := range values {
+		selector, rawValue, ok := strings.Cut(value, "=")
+		if !ok {
+			return nil, fmt.Errorf("--output must be in field=value or source:field=value format: %q", value)
+		}
+		selector = strings.TrimSpace(selector)
+		if selector == "" {
+			return nil, fmt.Errorf("--output field cannot be empty: %q", value)
+		}
+		if rawValue == "" {
+			return nil, fmt.Errorf("--output value cannot be empty: %q", value)
+		}
+
+		source := coop.DefaultOutputSource
+		field := selector
+		if parsedSource, parsedField, hasSource := strings.Cut(selector, ":"); hasSource {
+			source = strings.TrimSpace(parsedSource)
+			field = strings.TrimSpace(parsedField)
+			if source == "" || field == "" {
+				return nil, fmt.Errorf("--output source and field cannot be empty: %q", value)
+			}
+		}
+
+		raw := json.RawMessage(rawValue)
+		if !json.Valid(raw) {
+			encoded, err := json.Marshal(rawValue)
+			if err != nil {
+				return nil, fmt.Errorf("encoding --output %q: %w", selector, err)
+			}
+			raw = encoded
+		}
+		if outputs[source] == nil {
+			outputs[source] = map[string]json.RawMessage{}
+		}
+		outputs[source][field] = append(json.RawMessage(nil), raw...)
+	}
+	return outputs, nil
 }
 
 func runCoopNextAction(sessionID, completed string) error {
