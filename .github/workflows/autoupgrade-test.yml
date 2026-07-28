@@ -220,15 +220,6 @@ jobs:
 
           echo "msg=$MSG" >> "$GITHUB_OUTPUT"
 
-      - name: Notify Slack on failure
-        if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          curl -s -X POST "$SLACK_WEBHOOK_URL" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\": \":red_circle: *Auto-upgrade test failed*: ${{ steps.summary.outputs.msg }}\n<@U0575JBT249> please investigate: https://github.com/stripe/stripe-cli/actions/workflows/autoupgrade-test.yml\"}"
-
       - name: Trigger PagerDuty alert
         if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
         run: bash scripts/notify.sh
