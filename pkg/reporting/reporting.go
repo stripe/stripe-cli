@@ -2,6 +2,9 @@
 package reporting
 
 import (
+	"errors"
+	"fmt"
+	"runtime"
 	"time"
 
 	sentry "github.com/getsentry/sentry-go"
@@ -36,7 +39,7 @@ func Init(dsn, release string) error {
 
 // CaptureException reports err to the error reporting backend.
 func CaptureException(err error) {
-	sentry.ConfigureScope(func(scope *sentry.Scope) {
+	sentry.WithScope(func(scope *sentry.Scope) {
 		if accountIDProvider != nil {
 			if accountID, _ := accountIDProvider(); accountID != "" {
 				scope.SetTag("account_id", accountID)
@@ -45,8 +48,22 @@ func CaptureException(err error) {
 		if commandPath != "" {
 			scope.SetTag("command", commandPath)
 		}
+		// Walk to the root cause so wrapped context ("failed to create customer:
+		// EOF") doesn't prevent grouping on the underlying error.
+		root := err
+		for e := errors.Unwrap(root); e != nil; e = errors.Unwrap(e) {
+			root = e
+		}
+		// Include the call site so that identical generic errors (e.g.
+		// *errors.errorString "EOF") from different code paths land in separate
+		// Sentry issues without requiring callers to use custom error types.
+		caller := "unknown"
+		if _, file, line, ok := runtime.Caller(1); ok {
+			caller = fmt.Sprintf("%s:%d", file, line)
+		}
+		scope.SetFingerprint([]string{caller, fmt.Sprintf("%T", root), root.Error()})
+		sentry.CaptureException(err)
 	})
-	sentry.CaptureException(err)
 }
 
 // RecoverAndReport captures a recovered panic value to the error reporting backend.
