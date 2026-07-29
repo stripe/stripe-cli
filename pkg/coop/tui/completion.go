@@ -186,7 +186,7 @@ func (m Model) completionBuiltItems() []string {
 			}
 		}
 		if relevant > 0 && done == relevant {
-			items = append(items, ch.Title)
+			items = append(items, ch.TitleText())
 		}
 	}
 	return items

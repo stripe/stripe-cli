@@ -62,15 +62,14 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 
 func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	blueprintID := args[0]
-
-	bp, err := coop.LoadBlueprint(blueprintID)
+	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID)
 	if err != nil {
 		// Surface the specific error (e.g. an ambiguous prefix and its candidate
 		// list) rather than a generic "not found".
 		return outputCoopError(
 			err.Error(),
 			"Choose an available blueprint ID.",
-			coop.Continue("stripe coop recommend"),
+			coop.Continue("stripe coop recommend --all"),
 		)
 	}
 
@@ -110,7 +109,7 @@ func (rc *coopAgentRunCmd) ensureStripeSkill() error {
 }
 
 func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coop.CommandResponse {
-	return newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp))
+	return newCoopAgentSessionResponse(bp.Title.DefaultMessage, session, agentInstructions(bp))
 }
 
 func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coop.CommandResponse {
@@ -124,7 +123,7 @@ func newCoopAgentSessionResponse(title string, session *coop.Session, instructio
 		Node:         1,
 		State:        "created",
 		Message:      fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
-		Continuation: coop.Continue(coop.StartWorkCommand(session.ID, 1, "Beginning: "+session.Steps[0].Nodes[0].Title)),
+		Continuation: coop.Continue(coop.StartWorkCommand(session.ID, 1, "Beginning: "+session.Steps[0].Nodes[0].TitleText())),
 		AgentPrompt:  instructions,
 	}
 }
@@ -143,7 +142,10 @@ func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings,
 		return nil, err
 	}
 
-	session := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	session, err := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	if err != nil {
+		return nil, err
+	}
 	session.CreatedAt = time.Now().UTC()
 	session.ParentSessionID = parentSession
 	session.ParentStepID = parentStep
@@ -167,7 +169,7 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 }
 
 func agentInstructions(bp *coop.Blueprint) string {
-	preamble := fmt.Sprintf("You are building a production-grade Stripe integration: %q", bp.Title)
+	preamble := fmt.Sprintf("You are building a production-grade Stripe integration: %q", bp.Title.DefaultMessage)
 	return sessionLifecycleInstructions(preamble)
 }
 

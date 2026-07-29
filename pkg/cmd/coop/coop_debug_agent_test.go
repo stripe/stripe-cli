@@ -39,15 +39,11 @@ func TestDebugAgentPaneCommandUsesStripeBinaryAndSession(t *testing.T) {
 
 func TestCoopDebugAgentRerunsRequestedChanges(t *testing.T) {
 	store, session := setupDebugAgentSession(t, []coop.SessionStep{
-		{
-			StepDefinition: coop.StepDefinition{Key: "step", Title: "Step"},
-			Nodes: []coop.SessionNode{
-				{
-					NodeDefinition: coop.NodeDefinition{Key: "checkout", Title: "Build Checkout", Type: coop.NodeAPIRequest},
-					State:          coop.NodePending,
-				},
-			},
-		},
+		commandSessionStep(
+			"step",
+			"Step",
+			commandSessionNode(coop.NodeAPIRequest, "checkout", "Build Checkout", coop.NodePending),
+		),
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), debugAgentTestTimeout)
@@ -88,19 +84,12 @@ func TestCoopDebugAgentRerunsRequestedChanges(t *testing.T) {
 
 func TestCoopDebugAgentWaitsForStepReviewAfterStepIsReady(t *testing.T) {
 	store, session := setupDebugAgentSession(t, []coop.SessionStep{
-		{
-			StepDefinition: coop.StepDefinition{Key: "step", Title: "Step"},
-			Nodes: []coop.SessionNode{
-				{
-					NodeDefinition: coop.NodeDefinition{Key: "product", Title: "Create product", Type: coop.NodeAPIRequest},
-					State:          coop.NodePending,
-				},
-				{
-					NodeDefinition: coop.NodeDefinition{Key: "checkout", Title: "Build Checkout", Type: coop.NodeAPIRequest},
-					State:          coop.NodePending,
-				},
-			},
-		},
+		commandSessionStep(
+			"step",
+			"Step",
+			commandSessionNode(coop.NodeAPIRequest, "product", "Create product", coop.NodePending),
+			commandSessionNode(coop.NodeAPIRequest, "checkout", "Build Checkout", coop.NodePending),
+		),
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), debugAgentTestTimeout)

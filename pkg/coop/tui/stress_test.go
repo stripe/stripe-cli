@@ -81,7 +81,7 @@ func TestUILayoutCopyAudit(t *testing.T) {
 
 func stressLongReviewModel() Model {
 	m := reviewStepLongPromptLayoutModel()
-	m.session.Steps[0].Nodes[0].Title = "Review Checkout Session creation, saved IDs, redirect behavior, and webhook assumptions"
+	m.session.Steps[0].Nodes[0].Title.DefaultMessage = "Review Checkout Session creation, saved IDs, redirect behavior, and webhook assumptions"
 	m.session.Steps[0].Nodes[0].Implementation = &coop.Implementation{
 		File:    "server/src/very/long/path/to/payments/checkout/session/create_checkout_session_handler_with_extremely_specific_name.ts",
 		Lines:   "128-276",
@@ -103,29 +103,23 @@ func stressCrowdedStepReviewModel() Model {
 	m := testModel()
 	m.spinner = staticSpinner()
 	m.session.Steps = []coop.SessionStep{
-		{
-			StepDefinition: coop.StepDefinition{
-				Key:   "crowded",
-				Title: "Build a complete Checkout and fulfillment path with intentionally long labels",
-			},
-			Nodes: make([]coop.SessionNode, 0, 8),
-		},
+		tuiStep("crowded", "Build a complete Checkout and fulfillment path with intentionally long labels"),
 	}
+	m.session.Steps[0].Nodes = make([]coop.SessionNode, 0, 8)
 	for i := 0; i < 8; i++ {
-		m.session.Steps[0].Nodes = append(m.session.Steps[0].Nodes, coop.SessionNode{
-			NodeDefinition: coop.NodeDefinition{
-				Key:          fmt.Sprintf("node-%d", i),
-				Type:         coop.NodeUIComponent,
-				Title:        fmt.Sprintf("Step %d with a detailed title that still needs to scan well in the terminal", i+1),
-				ReviewPrompt: fmt.Sprintf("Confirm item %d is observable, documented by verification evidence, and does not require hidden context from previous steps.", i+1),
-			},
-			State: coop.NodeReview,
-			Implementation: &coop.Implementation{
-				File:  fmt.Sprintf("app/src/features/payments/checkout/step_%d/component_or_handler_with_long_name.tsx", i+1),
-				Lines: fmt.Sprintf("%d-%d", 20+i*12, 31+i*12),
-			},
-			Verifications: []coop.Verification{{Check: fmt.Sprintf("Verification %d passed", i+1), Passed: true}},
-		})
+		sessionNode := tuiNode(
+			coop.NodeUIComponent,
+			fmt.Sprintf("node-%d", i),
+			fmt.Sprintf("Step %d with a detailed title that still needs to scan well in the terminal", i+1),
+			coop.NodeReview,
+		)
+		sessionNode.ReviewPrompt = fmt.Sprintf("Confirm item %d is observable, documented by verification evidence, and does not require hidden context from previous steps.", i+1)
+		sessionNode.Implementation = &coop.Implementation{
+			File:  fmt.Sprintf("app/src/features/payments/checkout/step_%d/component_or_handler_with_long_name.tsx", i+1),
+			Lines: fmt.Sprintf("%d-%d", 20+i*12, 31+i*12),
+		}
+		sessionNode.Verifications = []coop.Verification{{Check: fmt.Sprintf("Verification %d passed", i+1), Passed: true}}
+		m.session.Steps[0].Nodes = append(m.session.Steps[0].Nodes, sessionNode)
 	}
 	m.selectStep(0)
 	return m
@@ -145,30 +139,27 @@ func stressManyStepsManualNavigationModel() Model {
 	m.session.Steps = nil
 	stepCount := 0
 	for ch := 0; ch < 6; ch++ {
-		step := coop.SessionStep{
-			StepDefinition: coop.StepDefinition{
-				Key:   fmt.Sprintf("step-%d", ch),
-				Title: fmt.Sprintf("Step %d with enough steps to force scrolling", ch+1),
-			},
-		}
+		step := tuiStep(
+			fmt.Sprintf("step-%d", ch),
+			fmt.Sprintf("Step %d with enough steps to force scrolling", ch+1),
+		)
 		for node := 0; node < 8; node++ {
 			state := coop.NodeDone
 			if ch == 4 && node == 2 {
 				state = coop.NodeReview
 			}
-			step.Nodes = append(step.Nodes, coop.SessionNode{
-				NodeDefinition: coop.NodeDefinition{
-					Key:          fmt.Sprintf("node-%d-%d", ch, node),
-					Type:         coop.NodeAPIRequest,
-					Title:        fmt.Sprintf("Generated step %d.%d with a moderately long label", ch+1, node+1),
-					ReviewPrompt: "Confirm this generated stress step has a visible acceptance check.",
-				},
-				State: state,
-				Implementation: &coop.Implementation{
-					File:  fmt.Sprintf("generated/step_%d/step_%d/payment_flow_handler.go", ch+1, node+1),
-					Lines: "1-20",
-				},
-			})
+			sessionNode := tuiNode(
+				coop.NodeAPIRequest,
+				fmt.Sprintf("node-%d-%d", ch, node),
+				fmt.Sprintf("Generated step %d.%d with a moderately long label", ch+1, node+1),
+				state,
+			)
+			sessionNode.ReviewPrompt = "Confirm this generated stress step has a visible acceptance check."
+			sessionNode.Implementation = &coop.Implementation{
+				File:  fmt.Sprintf("generated/step_%d/step_%d/payment_flow_handler.go", ch+1, node+1),
+				Lines: "1-20",
+			}
+			step.Nodes = append(step.Nodes, sessionNode)
 			stepCount++
 		}
 		m.session.Steps = append(m.session.Steps, step)

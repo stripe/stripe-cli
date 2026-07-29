@@ -20,11 +20,9 @@ func (o RequiredOutput) Selector() string {
 // RequiredOutputs returns the values produced by nodeNumber that later nodes
 // reference.
 func (s *Session) RequiredOutputs(nodeNumber int) ([]RequiredOutput, error) {
-	step, _, nodeIndex, err := s.StepByNodeNumber(nodeNumber)
-	if err != nil {
+	if _, err := s.NodeByNumber(nodeNumber); err != nil {
 		return nil, err
 	}
-	targetBase := step.Key + "." + step.Nodes[nodeIndex].Key
 
 	seen := map[string]RequiredOutput{}
 	current := 0
@@ -34,11 +32,15 @@ func (s *Session) RequiredOutputs(nodeNumber int) ([]RequiredOutput, error) {
 			if current <= nodeNumber {
 				continue
 			}
-			if err := walkNodeReferences(candidateNode.NodeDefinition, func(reference nodeReference) error {
-				if reference.Base != targetBase {
+			if err := walkNodeReferences(candidateNode.BlueprintNode, func(reference nodeReference) error {
+				location, source, err := s.resolveNodeReference(reference.Ref)
+				if err != nil {
+					return err
+				}
+				if location.nodeNumber != nodeNumber {
 					return nil
 				}
-				output := RequiredOutput{Source: reference.Source, Field: reference.Field}
+				output := RequiredOutput{Source: source, Field: reference.Field}
 				seen[output.Selector()] = output
 				return nil
 			}); err != nil {
@@ -60,14 +62,11 @@ func (s *Session) RequiredOutputs(nodeNumber int) ([]RequiredOutput, error) {
 // DependentNodeNumbers returns later nodes that directly or transitively
 // reference outputs from nodeNumber.
 func (s *Session) DependentNodeNumbers(nodeNumber int) ([]int, error) {
-	step, _, nodeIndex, err := s.StepByNodeNumber(nodeNumber)
-	if err != nil {
+	if _, err := s.NodeByNumber(nodeNumber); err != nil {
 		return nil, err
 	}
 
-	dependencyBases := map[string]bool{
-		step.Key + "." + step.Nodes[nodeIndex].Key: true,
-	}
+	dependencyNumbers := map[int]bool{nodeNumber: true}
 	var dependents []int
 	current := 0
 	for _, candidateStep := range s.Steps {
@@ -77,8 +76,12 @@ func (s *Session) DependentNodeNumbers(nodeNumber int) ([]int, error) {
 				continue
 			}
 			dependent := false
-			if err := walkNodeReferences(candidateNode.NodeDefinition, func(reference nodeReference) error {
-				if dependencyBases[reference.Base] {
+			if err := walkNodeReferences(candidateNode.BlueprintNode, func(reference nodeReference) error {
+				location, _, err := s.resolveNodeReference(reference.Ref)
+				if err != nil {
+					return err
+				}
+				if dependencyNumbers[location.nodeNumber] {
 					dependent = true
 				}
 				return nil
@@ -89,7 +92,7 @@ func (s *Session) DependentNodeNumbers(nodeNumber int) ([]int, error) {
 				continue
 			}
 			dependents = append(dependents, current)
-			dependencyBases[candidateStep.Key+"."+candidateNode.Key] = true
+			dependencyNumbers[current] = true
 		}
 	}
 	return dependents, nil
@@ -123,44 +126,44 @@ func (s *Session) MissingRequiredOutputs(nodeNumber int) ([]RequiredOutput, erro
 
 // ResolvedNodeDefinition returns a copy of a node definition with every
 // ${node...} reference replaced from persisted session outputs.
-func (s *Session) ResolvedNodeDefinition(nodeNumber int) (NodeDefinition, error) {
+func (s *Session) ResolvedNodeDefinition(nodeNumber int) (BlueprintNode, error) {
 	node, err := s.NodeByNumber(nodeNumber)
 	if err != nil {
-		return NodeDefinition{}, err
+		return BlueprintNode{}, err
 	}
 
-	data, err := json.Marshal(node.NodeDefinition)
+	data, err := json.Marshal(node.BlueprintNode)
 	if err != nil {
-		return NodeDefinition{}, fmt.Errorf("encoding node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("encoding node %d: %w", nodeNumber, err)
 	}
 	var value any
 	if err := json.Unmarshal(data, &value); err != nil {
-		return NodeDefinition{}, fmt.Errorf("decoding node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("decoding node %d: %w", nodeNumber, err)
 	}
-	resolved, err := s.resolveNodeValue(value)
+	resolved, err := s.resolveNodeValue(value, nodeNumber)
 	if err != nil {
-		return NodeDefinition{}, fmt.Errorf("resolving node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("resolving node %d: %w", nodeNumber, err)
 	}
 	data, err = json.Marshal(resolved)
 	if err != nil {
-		return NodeDefinition{}, fmt.Errorf("encoding resolved node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("encoding resolved node %d: %w", nodeNumber, err)
 	}
 
-	var definition NodeDefinition
+	var definition BlueprintNode
 	if err := json.Unmarshal(data, &definition); err != nil {
-		return NodeDefinition{}, fmt.Errorf("decoding resolved node %d: %w", nodeNumber, err)
+		return BlueprintNode{}, fmt.Errorf("decoding resolved node %d: %w", nodeNumber, err)
 	}
 	return definition, nil
 }
 
-func (s *Session) resolveNodeValue(value any) (any, error) {
+func (s *Session) resolveNodeValue(value any, nodeNumber int) (any, error) {
 	switch typed := value.(type) {
 	case string:
-		return s.resolveNodeString(typed)
+		return s.resolveNodeString(typed, nodeNumber)
 	case []any:
 		resolved := make([]any, len(typed))
 		for i, item := range typed {
-			value, err := s.resolveNodeValue(item)
+			value, err := s.resolveNodeValue(item, nodeNumber)
 			if err != nil {
 				return nil, err
 			}
@@ -170,7 +173,7 @@ func (s *Session) resolveNodeValue(value any) (any, error) {
 	case map[string]any:
 		resolved := make(map[string]any, len(typed))
 		for key, item := range typed {
-			resolvedKeyValue, err := s.resolveNodeString(key)
+			resolvedKeyValue, err := s.resolveNodeString(key, nodeNumber)
 			if err != nil {
 				return nil, err
 			}
@@ -181,7 +184,7 @@ func (s *Session) resolveNodeValue(value any) (any, error) {
 			if _, exists := resolved[resolvedKey]; exists {
 				return nil, fmt.Errorf("node reference produced duplicate object key %q", resolvedKey)
 			}
-			resolvedValue, err := s.resolveNodeValue(item)
+			resolvedValue, err := s.resolveNodeValue(item, nodeNumber)
 			if err != nil {
 				return nil, err
 			}
@@ -193,14 +196,22 @@ func (s *Session) resolveNodeValue(value any) (any, error) {
 	}
 }
 
-func (s *Session) resolveNodeString(value string) (any, error) {
+func (s *Session) resolveNodeString(value string, nodeNumber int) (any, error) {
 	matches := nodeReferencePattern.FindAllStringSubmatchIndex(value, -1)
 	if len(matches) == 0 {
 		return value, nil
 	}
 
 	if len(matches) == 1 && matches[0][0] == 0 && matches[0][1] == len(value) {
-		raw, err := s.lookupNodeOutput(value[matches[0][2]:matches[0][3]], value[matches[0][4]:matches[0][5]])
+		ref := value[matches[0][2]:matches[0][3]]
+		location, _, err := s.resolveNodeReference(ref)
+		if err != nil {
+			return nil, err
+		}
+		if location.nodeNumber == nodeNumber {
+			return value, nil
+		}
+		raw, err := s.lookupNodeOutput(ref, value[matches[0][4]:matches[0][5]])
 		if err != nil {
 			return nil, err
 		}
@@ -217,6 +228,15 @@ func (s *Session) resolveNodeString(value string) (any, error) {
 		resolved.WriteString(value[last:match[0]])
 		ref := value[match[2]:match[3]]
 		field := value[match[4]:match[5]]
+		location, _, err := s.resolveNodeReference(ref)
+		if err != nil {
+			return nil, err
+		}
+		if location.nodeNumber == nodeNumber {
+			resolved.WriteString(value[match[0]:match[1]])
+			last = match[1]
+			continue
+		}
 		raw, err := s.lookupNodeOutput(ref, field)
 		if err != nil {
 			return nil, err
@@ -233,31 +253,78 @@ func (s *Session) resolveNodeString(value string) (any, error) {
 }
 
 func (s *Session) lookupNodeOutput(ref, field string) (json.RawMessage, error) {
-	base, source, ok := splitNodeReference(ref)
-	if !ok {
-		return nil, fmt.Errorf("invalid node output reference ${node.%s:%s}", ref, field)
+	location, source, err := s.resolveNodeReference(ref)
+	if err != nil {
+		return nil, err
 	}
-	stepKey, nodeKey, _ := strings.Cut(base, ".")
-	for i := range s.Steps {
-		if s.Steps[i].Key != stepKey {
-			continue
-		}
-		for j := range s.Steps[i].Nodes {
-			node := &s.Steps[i].Nodes[j]
-			if node.Key != nodeKey {
+	outputSource := source
+	if outputSource == "" {
+		outputSource = DefaultOutputSource
+	}
+	if values := location.node.Outputs[outputSource]; values != nil && len(values[field]) > 0 {
+		return values[field], nil
+	}
+	return nil, fmt.Errorf("missing output %q for ${node.%s:%s}", RequiredOutput{Source: source, Field: field}.Selector(), ref, field)
+}
+
+type sessionNodeLocation struct {
+	nodeNumber int
+	node       *SessionNode
+}
+
+func (s *Session) resolveNodeReference(ref string) (sessionNodeLocation, string, error) {
+	if ref == "" {
+		return sessionNodeLocation{}, "", fmt.Errorf("invalid empty node output reference")
+	}
+
+	if location, source, matches := s.matchNodeReference(ref, true); matches == 1 {
+		return location, source, nil
+	} else if matches > 1 {
+		return sessionNodeLocation{}, "", fmt.Errorf("ambiguous node output reference %q", ref)
+	}
+	if location, source, matches := s.matchNodeReference(ref, false); matches == 1 {
+		return location, source, nil
+	} else if matches > 1 {
+		return sessionNodeLocation{}, "", fmt.Errorf("ambiguous node output reference %q", ref)
+	}
+	return sessionNodeLocation{}, "", fmt.Errorf("unknown output source ${node.%s}", ref)
+}
+
+func (s *Session) matchNodeReference(ref string, qualified bool) (sessionNodeLocation, string, int) {
+	var found sessionNodeLocation
+	foundSource := ""
+	matches := 0
+	nodeNumber := 0
+	for stepIndex := range s.Steps {
+		step := &s.Steps[stepIndex]
+		for nodeIndex := range step.Nodes {
+			nodeNumber++
+			node := &step.Nodes[nodeIndex]
+			base := node.Key
+			if qualified {
+				base = step.Key + "." + node.Key
+			}
+			source, ok := referenceSuffix(ref, base)
+			if !ok {
 				continue
 			}
-			outputSource := source
-			if outputSource == "" {
-				outputSource = DefaultOutputSource
-			}
-			if values := node.Outputs[outputSource]; values != nil && len(values[field]) > 0 {
-				return values[field], nil
-			}
-			return nil, fmt.Errorf("missing output %q for ${node.%s:%s}", RequiredOutput{Source: source, Field: field}.Selector(), ref, field)
+			matches++
+			found = sessionNodeLocation{nodeNumber: nodeNumber, node: node}
+			foundSource = source
 		}
 	}
-	return nil, fmt.Errorf("unknown output source ${node.%s:%s}", ref, field)
+	return found, foundSource, matches
+}
+
+func referenceSuffix(ref, base string) (string, bool) {
+	if ref == base {
+		return "", true
+	}
+	prefix := base + "."
+	if strings.HasPrefix(ref, prefix) {
+		return strings.TrimPrefix(ref, prefix), true
+	}
+	return "", false
 }
 
 func outputAsString(raw json.RawMessage) (string, error) {

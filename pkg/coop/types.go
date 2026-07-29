@@ -16,7 +16,7 @@ var commandTemplatePlaceholder = regexp.MustCompile(`<[^>]+>`)
 type NodeState string
 
 const (
-	CurrentSessionSchemaVersion = 3
+	CurrentSessionSchemaVersion = 4
 )
 
 const (
@@ -68,44 +68,52 @@ type Verification struct {
 	Passed bool   `json:"passed"`
 }
 
-// APIRequest describes the expected API call for a node.
-type APIRequest struct {
-	Path         string            `json:"path"`
-	Method       string            `json:"method"`
-	Headers      map[string]string `json:"headers,omitempty"`
-	Params       interface{}       `json:"params,omitempty"`
-	HiddenParams interface{}       `json:"hidden_params,omitempty"`
+type APIProcessingDetails struct {
+	OutputField      string `json:"output_field,omitempty"`
+	OutputFieldLabel string `json:"output_field_label,omitempty"`
 }
 
-// TestHelperRequest describes an API-backed request used to advance test state.
-type TestHelperRequest struct {
-	Key string `json:"key"`
-	APIRequest
+type AsyncEvent struct {
+	ConnectedAccountID string                 `json:"connected_account_id,omitempty"`
+	EventCount         int                    `json:"event_count,omitempty"`
+	EventData          map[string]interface{} `json:"event_data,omitempty"`
+	EventPayloadType   string                 `json:"event_payload_type,omitempty"`
+	EventType          string                 `json:"event_type"`
+	ObjectID           string                 `json:"object_id,omitempty"`
+	OnNodeComplete     *NodeReference         `json:"on_node_complete,omitempty"`
 }
 
-// NodeDefinition is the source-derived static definition for a node.
-type NodeDefinition struct {
-	Type          NodeType            `json:"type"`
-	Key           string              `json:"key"`
-	Title         string              `json:"title"`
-	Description   string              `json:"description,omitempty"`
-	ReviewPrompt  string              `json:"review_prompt,omitempty"`
-	ReviewCommand string              `json:"review_command,omitempty"`
-	AutoConfirm   bool                `json:"auto_confirm,omitempty"`
-	Request       *APIRequest         `json:"request,omitempty"`
-	TestRequests  []TestHelperRequest `json:"requests,omitempty"`
-	Events        []string            `json:"events,omitempty"`
+type NodeReference struct {
+	NodeKey string `json:"node_key"`
+	StepKey string `json:"step_key"`
 }
 
-// StepDefinition is the source-derived static definition for a step.
-type StepDefinition struct {
-	Key   string `json:"key"`
-	Title string `json:"title"`
+type UIComponentReference struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
 }
 
-// SessionNode is a single action within a session step.
+type BlueprintPin struct {
+	ID               string             `json:"id"`
+	Key              string             `json:"key"`
+	Title            string             `json:"title,omitempty"`
+	BlueprintVersion int                `json:"blueprint_version"`
+	TemplateVersion  int                `json:"template_version"`
+	Steps            []BlueprintStepPin `json:"steps"`
+	Digest           string             `json:"digest"`
+}
+
+type BlueprintStepPin struct {
+	Key             string `json:"key"`
+	StepVersion     int    `json:"step_version"`
+	TemplateVersion int    `json:"template_version"`
+}
+
+// SessionNode combines an effective blueprint node with co-op progress.
 type SessionNode struct {
-	NodeDefinition
+	BlueprintNode
+	ReviewPrompt   string          `json:"review_prompt,omitempty"`
+	ReviewCommand  string          `json:"review_command,omitempty"`
 	State          NodeState       `json:"state"`
 	Activity       string          `json:"activity,omitempty"`
 	Implementation *Implementation `json:"implementation,omitempty"`
@@ -116,28 +124,103 @@ type SessionNode struct {
 	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
 }
 
-// SessionStep groups nodes under a titled step.
+// UnmarshalJSON accepts the legacy session shape so in-progress sessions remain
+// usable after the session model adopts the blueprint API fields.
+func (n *SessionNode) UnmarshalJSON(data []byte) error {
+	type sessionNode SessionNode
+	var decoded sessionNode
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	var legacy struct {
+		Type        NodeType                     `json:"type"`
+		AutoConfirm bool                         `json:"auto_confirm"`
+		Request     *BlueprintRequestFixture     `json:"request"`
+		Requests    []BlueprintRequestFixture    `json:"requests"`
+		Events      []AsyncEvent                 `json:"events"`
+		UIComponent *BlueprintUIComponentDetails `json:"ui_component"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+	if decoded.NodeType == "" {
+		decoded.NodeType = legacy.Type
+	}
+	decoded.IsInformationalNode = decoded.IsInformationalNode || legacy.AutoConfirm
+	if decoded.APIRequestDetails == nil && legacy.Request != nil {
+		decoded.APIRequestDetails = &BlueprintAPIRequestDetails{Fixture: *legacy.Request}
+	}
+	if decoded.TestHelperDetails == nil && legacy.Requests != nil {
+		decoded.TestHelperDetails = &BlueprintTestHelperDetails{Requests: legacy.Requests}
+	}
+	if decoded.AsyncHandlerDetails == nil && legacy.Events != nil {
+		decoded.AsyncHandlerDetails = &BlueprintAsyncHandlerDetails{Events: legacy.Events}
+	}
+	if decoded.UIComponentDetails == nil {
+		decoded.UIComponentDetails = legacy.UIComponent
+	}
+	*n = SessionNode(decoded)
+	return nil
+}
+
+func (n *SessionNode) TitleText() string {
+	return n.Title.DefaultMessage
+}
+
+func (n *SessionNode) DescriptionText() string {
+	return n.Description.DefaultMessage
+}
+
+func (n *SessionNode) Request() *BlueprintRequestFixture {
+	if n.APIRequestDetails == nil {
+		return nil
+	}
+	return &n.APIRequestDetails.Fixture
+}
+
+func (n *SessionNode) Events() []AsyncEvent {
+	if n.AsyncHandlerDetails == nil {
+		return nil
+	}
+	return n.AsyncHandlerDetails.Events
+}
+
+func (n *SessionNode) TestRequests() []BlueprintRequestFixture {
+	if n.TestHelperDetails == nil {
+		return nil
+	}
+	return n.TestHelperDetails.Requests
+}
+
+// SessionStep combines an effective blueprint step with co-op progress.
 type SessionStep struct {
-	StepDefinition
+	BlueprintStepDefinition
 	Nodes []SessionNode `json:"nodes"`
+}
+
+func (s *SessionStep) TitleText() string {
+	return s.Title.DefaultMessage
 }
 
 // Session is the shared state file between agent and TUI.
 type Session struct {
-	SchemaVersion   int               `json:"schema_version"`
-	ID              string            `json:"id"`
-	Blueprint       string            `json:"blueprint"`
-	Status          SessionStatus     `json:"status"`
-	Settings        map[string]string `json:"settings,omitempty"`
-	Params          map[string]string `json:"params,omitempty"`
-	Steps           []SessionStep     `json:"steps"`
-	UsedSandbox     bool              `json:"used_sandbox,omitempty"`
-	NextSteps       *NextStepsState   `json:"next_steps,omitempty"`
-	ParentSessionID string            `json:"parent_session_id,omitempty"`
-	ParentStepID    string            `json:"parent_step_id,omitempty"` // which next-step this session fulfills
-	CreatedAt       time.Time         `json:"created_at"`
-	UpdatedAt       time.Time         `json:"updated_at"`
-	Version         int               `json:"version"`
+	SchemaVersion       int                  `json:"schema_version"`
+	ID                  string               `json:"id"`
+	Blueprint           string               `json:"blueprint"`
+	BlueprintDefinition *BlueprintDefinition `json:"blueprint_definition,omitempty"`
+	BlueprintPin        *BlueprintPin        `json:"blueprint_pin,omitempty"`
+	Status              SessionStatus        `json:"status"`
+	Settings            map[string]string    `json:"settings,omitempty"`
+	Params              map[string]string    `json:"params,omitempty"`
+	Steps               []SessionStep        `json:"steps"`
+	UsedSandbox         bool                 `json:"used_sandbox,omitempty"`
+	NextSteps           *NextStepsState      `json:"next_steps,omitempty"`
+	ParentSessionID     string               `json:"parent_session_id,omitempty"`
+	ParentStepID        string               `json:"parent_step_id,omitempty"` // which next-step this session fulfills
+	CreatedAt           time.Time            `json:"created_at"`
+	UpdatedAt           time.Time            `json:"updated_at"`
+	Version             int                  `json:"version"`
 }
 
 // NextStepsState tracks post-completion suggestions and selection.
@@ -209,14 +292,14 @@ type CommandResponse struct {
 	State     string `json:"state,omitempty"`
 	Message   string `json:"message,omitempty"`
 	Continuation
-	RequiredOutputs []RequiredOutput    `json:"required_outputs,omitempty"`
-	AgentPrompt     string              `json:"agent_prompt,omitempty"`
-	APIRequest      *APIRequest         `json:"api_request,omitempty"`
-	TestRequests    []TestHelperRequest `json:"test_requests,omitempty"`
-	Events          []string            `json:"events,omitempty"`
-	SDKExample      string              `json:"sdk_example,omitempty"`
-	Error           string              `json:"error,omitempty"`
-	Recovery        *Recovery           `json:"recovery,omitempty"`
+	RequiredOutputs []RequiredOutput          `json:"required_outputs,omitempty"`
+	AgentPrompt     string                    `json:"agent_prompt,omitempty"`
+	APIRequest      *BlueprintRequestFixture  `json:"api_request,omitempty"`
+	TestRequests    []BlueprintRequestFixture `json:"test_requests,omitempty"`
+	Events          []AsyncEvent              `json:"events,omitempty"`
+	SDKExample      string                    `json:"sdk_example,omitempty"`
+	Error           string                    `json:"error,omitempty"`
+	Recovery        *Recovery                 `json:"recovery,omitempty"`
 }
 
 // Validate checks the invariants agents rely on when interpreting a response.

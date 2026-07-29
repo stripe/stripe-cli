@@ -1,0 +1,422 @@
+{
+  "id": "blpt_sample",
+  "blueprint_scope": "universal",
+  "blueprint_type": "learning",
+  "blueprint_version": 7,
+  "description": {
+    "default_message": "Build and verify a representative payment flow."
+  },
+  "key": "sample-payment",
+  "metadata": {
+    "products": [
+      "Payments"
+    ]
+  },
+  "step_refs": [
+    {
+      "settings": {
+        "country": "${blueprint_settings.payment:country}",
+        "controller": "${blueprint_settings.payment:controller}",
+        "simulation": "${blueprint_settings.payment:simulation}"
+      },
+      "params": {
+        "amount": "${blueprint_params.payment:amount}"
+      },
+      "step_key": "sample-payment--setup",
+      "step_version": 3
+    }
+  ],
+  "template_version": 4,
+  "title": {
+    "default_message": "Sample payment"
+  },
+  "blueprint_settings": [
+    {
+      "key": "payment",
+      "settings": [
+        {
+          "name": "simulation",
+          "display_name": {
+            "default_message": "Simulation"
+          },
+          "description": {
+            "default_message": "Choose the payment result."
+          },
+          "schema": {
+            "default_value": "success",
+            "enum_options": [
+              {
+                "key": "success",
+                "display_name": {
+                  "default_message": "Success"
+                }
+              },
+              {
+                "key": "declined",
+                "display_name": {
+                  "default_message": "Declined"
+                }
+              }
+            ],
+            "enum_values": [
+              "success",
+              "declined"
+            ],
+            "field_type": "string",
+            "required": true
+          }
+        },
+        {
+          "name": "country",
+          "display_name": {
+            "default_message": "Country"
+          },
+          "schema": {
+            "default_value": "US",
+            "field_type": "string",
+            "required": true
+          }
+        },
+        {
+          "name": "controller",
+          "display_name": {
+            "default_message": "Controller"
+          },
+          "schema": {
+            "default_value": "application",
+            "field_type": "string",
+            "required": true
+          }
+        }
+      ]
+    }
+  ],
+  "blueprint_params": [
+    {
+      "key": "payment",
+      "params": [
+        {
+          "name": "amount",
+          "display_name": {
+            "default_message": "Amount"
+          },
+          "schema": {
+            "default_value": 2000,
+            "field_type": "number",
+            "required": true
+          }
+        }
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "step_sample",
+      "key": "sample-payment--setup",
+      "step_version": 3,
+      "template_version": 2,
+      "title": {
+        "default_message": "Set up the payment"
+      },
+      "description": {
+        "default_message": "Create a payment and verify its result."
+      },
+      "required": true,
+      "is_included": null,
+      "settings_schema": [
+        {
+          "key": "step-settings",
+          "settings": [
+            {
+              "name": "simulation",
+              "schema": {
+                "default_value": "success",
+                "field_type": "string",
+                "required": true
+              }
+            },
+            {
+              "name": "country",
+              "schema": {
+                "default_value": "US",
+                "field_type": "string",
+                "required": true
+              }
+            },
+            {
+              "name": "controller",
+              "schema": {
+                "default_value": "application",
+                "field_type": "string",
+                "required": true
+              }
+            }
+          ]
+        }
+      ],
+      "settings": {
+        "country": "${blueprint_settings.payment:country}",
+        "controller": "${blueprint_settings.payment:controller}",
+        "simulation": "${blueprint_settings.payment:simulation}"
+      },
+      "params_schema": [
+        {
+          "key": "step-params",
+          "params": [
+            {
+              "name": "amount",
+              "schema": {
+                "default_value": 2000,
+                "field_type": "number",
+                "required": true
+              }
+            }
+          ]
+        }
+      ],
+      "params": {
+        "amount": "${blueprint_params.payment:amount}"
+      },
+      "outputs": [
+        {
+          "name": "payment_id",
+          "source": "${node.create-payment:id}",
+          "schema": {
+            "field_type": "string",
+            "required": true
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "node_type": "apiRequest",
+          "key": "create-payment",
+          "title": {
+            "default_message": "Create the payment"
+          },
+          "description": {
+            "default_message": "Create a PaymentIntent with the selected configuration."
+          },
+          "api_request_details": {
+            "fixture": {
+              "key": "create-payment-request",
+              "method": "POST",
+              "path": "/v1/payment_intents",
+              "headers": {
+                "Stripe-Context": "ctx_test"
+              },
+              "params": {
+                "amount": 2000,
+                "metadata": {
+                  "source": "base"
+                }
+              },
+              "hidden_params": {
+                "internal": true
+              },
+              "processing_details": {
+                "output_field": "client_secret",
+                "output_field_label": "client_secret"
+              },
+              "configured_details": [
+                {
+                  "config_value": {},
+                  "params": {
+                    "currency": "usd",
+                    "metadata": {
+                      "baseline": "yes"
+                    }
+                  }
+                },
+                {
+                  "config_value": {
+                    "${settings:simulation}": "success"
+                  },
+                  "params": {
+                    "payment_method": "pm_card_visa"
+                  }
+                },
+                {
+                  "config_value": {
+                    "${settings:simulation}": "declined"
+                  },
+                  "expected_error_type": "card_error",
+                  "params": {
+                    "payment_method": "pm_card_chargeDeclined"
+                  }
+                },
+                {
+                  "config_value": {
+                    "${settings:country}": "US"
+                  },
+                  "params": {
+                    "account": {
+                      "country": "US"
+                    }
+                  }
+                },
+                {
+                  "config_value": {
+                    "${settings:country}": "GB"
+                  },
+                  "params": {
+                    "account": {
+                      "country": "GB"
+                    }
+                  }
+                },
+                {
+                  "config_value": {
+                    "${settings:controller}": "application"
+                  },
+                  "params": {
+                    "account": {
+                      "controller": "application"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "node_type": "asyncHandler",
+          "key": "handle-payment",
+          "title": {
+            "default_message": "Handle payment success"
+          },
+          "description": {
+            "default_message": "Handle the payment_intent.succeeded event."
+          },
+          "async_handler_details": {
+            "events": [
+              {
+                "event_count": 1,
+                "event_data": {
+                  "additional_properties": {
+                    "status": "succeeded"
+                  }
+                },
+                "event_payload_type": "snapshot",
+                "event_type": "payment_intent.succeeded",
+                "object_id": "${node.create-payment:id}",
+                "on_node_complete": {
+                  "node_key": "create-payment",
+                  "step_key": "setup"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "node_type": "testHelper",
+          "key": "confirm-payment",
+          "title": {
+            "default_message": "Confirm the payment"
+          },
+          "description": {
+            "default_message": "Use a test helper to confirm the PaymentIntent."
+          },
+          "test_helper_details": {
+            "requests": [
+              {
+                "method": "POST",
+                "path": "/v1/test_helpers/payment_intents/${node.create-payment:id}/confirm",
+                "headers": {
+                  "Stripe-Account": "acct_test"
+                },
+                "params": {
+                  "payment_method": "pm_card_visa"
+                },
+                "configured_details": [
+                  {
+                    "config_value": {
+                      "${settings:country}": "GB"
+                    },
+                    "params": {
+                      "expected_country": "GB"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "node_type": "uiComponent",
+          "key": "show-payment",
+          "title": {
+            "default_message": "Show PaymentElement"
+          },
+          "description": {
+            "default_message": "Mount PaymentElement and offer hosted and test options."
+          },
+          "ui_component_details": {
+            "configured_details": [
+              {
+                "config_value": {
+                  "${settings:simulation}": "declined"
+                },
+                "display": "modal",
+                "options": [
+                  {
+                    "type": "hosted",
+                    "title": {
+                      "default_message": "Review the declined payment"
+                    },
+                    "link": "https://example.com/declined/${node.create-payment:id}",
+                    "requests": []
+                  }
+                ]
+              }
+            ],
+            "display": "inline",
+            "display_component_ref": {
+              "id": "ui_component.payment",
+              "version": "1.0.0"
+            },
+            "stripe_element_ref": {
+              "appearance": "stripe",
+              "element": "payment",
+              "params": {
+                "client_secret": "${node.create-payment:client_secret}"
+              }
+            },
+            "options": [
+              {
+                "type": "hosted",
+                "title": {
+                  "default_message": "Open the hosted payment"
+                },
+                "link": "https://example.com/pay/${node.create-payment:id}",
+                "requests": []
+              },
+              {
+                "type": "testHelper",
+                "title": {
+                  "default_message": "Simulate payment completion"
+                },
+                "requests": [
+                  {
+                    "method": "GET",
+                    "path": "/v1/payment_intents/${node.create-payment:id}",
+                    "params": {},
+                    "configured_details": []
+                  },
+                  {
+                    "method": "POST",
+                    "path": "/v1/payment_intents/${node.show-payment.0:id}/confirm",
+                    "params": {
+                      "payment_method": "pm_card_visa"
+                    },
+                    "configured_details": []
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
