@@ -148,8 +148,8 @@ func (r *RootCommand) initClient() {
 		if accountID, err := r.cfg.Profile.GetAccountID(); err == nil {
 			clientOpts = append(clientOpts, pkgdocs.WithCacheKeyPrefix(accountID))
 		}
-		if apiKey, err := r.cfg.Profile.GetAPIKey(false); err == nil {
-			clientOpts = append(clientOpts, pkgdocs.WithAPIKey(apiKey))
+		if creds, err := r.cfg.Profile.ResolveCredentials(false); err == nil {
+			clientOpts = append(clientOpts, pkgdocs.WithAPIKey(creds.Token))
 		}
 	}
 	if len(clientOpts) > 0 {

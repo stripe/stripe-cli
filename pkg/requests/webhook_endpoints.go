@@ -25,7 +25,7 @@ type WebhookEndpoint struct {
 }
 
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
-func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
+func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion string, profile *config.Profile) WebhookEndpointList {
 	params := &RequestParameters{
 		data:    []string{"limit=30"},
 		version: apiVersion,
@@ -37,7 +37,11 @@ func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey strin
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	resp, _ := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
+	creds, err := base.ResolveCredentials()
+	if err != nil {
+		return WebhookEndpointList{}
+	}
+	resp, _ := base.MakeRequest(ctx, creds, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
@@ -64,7 +68,7 @@ func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPe
 }
 
 // WebhookEndpointCreate creates a new webhook endpoint
-func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url, description string, connect bool, profile *config.Profile) error {
+func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, url, description string, connect bool, profile *config.Profile) error {
 	if strings.TrimSpace(url) == "" {
 		return fmt.Errorf("url cannot be empty")
 	}
@@ -91,7 +95,11 @@ func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	_, err := base.MakeRequest(ctx, stripe.NewAPIKeyCredentials(apiKey), "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
+	creds, err := base.ResolveCredentials()
+	if err != nil {
+		return err
+	}
+	_, err = base.MakeRequest(ctx, creds, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return err
 	}

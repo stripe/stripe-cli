@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,9 +28,12 @@ const (
 	V2Request     = "v2"
 )
 
-// Credentials holds the auth credentials for a Stripe API request.
+// Credentials holds the auth credentials for a Stripe API request. For plain
+// API keys only Token is set. For OAK tokens all three fields are populated.
 type Credentials struct {
-	Token string
+	Token       string
+	OAKContext  string
+	OAKLivemode *bool
 }
 
 // NewAPIKeyCredentials returns Credentials using a standard Stripe API key.
@@ -37,15 +41,30 @@ func NewAPIKeyCredentials(key string) Credentials {
 	return Credentials{Token: key}
 }
 
-// SetRequestHeaders applies auth-related headers to req.
+// NewOAKCredentials returns Credentials for an OAK (User Access Token).
+func NewOAKCredentials(token, context string, livemode bool) Credentials {
+	return Credentials{Token: token, OAKContext: context, OAKLivemode: &livemode}
+}
+
+// SetRequestHeaders applies all auth-related headers to req.
 func (c Credentials) SetRequestHeaders(req *http.Request) {
 	if c.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
+	if c.OAKContext != "" {
+		req.Header.Set("Stripe-Context", c.OAKContext)
+	}
+	if c.OAKLivemode != nil {
+		req.Header.Set("Stripe-Livemode", strconv.FormatBool(*c.OAKLivemode))
+	}
 }
 
-// Livemode reports whether the credentials are for live mode.
+// Livemode reports the effective livemode for the credentials. For OAK tokens
+// this is explicit; for plain API keys it is inferred from the key string.
 func (c Credentials) Livemode() bool {
+	if c.OAKLivemode != nil {
+		return *c.OAKLivemode
+	}
 	return strings.Contains(c.Token, "live")
 }
 

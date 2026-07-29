@@ -344,7 +344,7 @@ func (fxt *Fixture) getAPIBase(request FixtureRequest) string {
 }
 
 func (fxt *Fixture) unsupportedAPIKey(path string) bool {
-	return strings.HasPrefix(path, "/v2/") && !strings.HasPrefix(fxt.Credentials.Token, "sk_")
+	return strings.HasPrefix(path, "/v2/") && !strings.HasPrefix(fxt.Credentials.Token, "sk_") && !strings.HasPrefix(fxt.Credentials.Token, "oak_")
 }
 
 func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.Request) error {
@@ -390,7 +390,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		params.SetIdempotency(idempotencyKey)
 	}
 
-	var additionalConfigure func(req *http.Request) error
+	var additionalConfigure func(*http.Request) error
 	if data.Headers != nil {
 		additionalConfigure = fxt.addCustomHeaders(data.Headers)
 	}
