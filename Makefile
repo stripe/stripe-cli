@@ -6,7 +6,7 @@ PROTOC_FAILURE_MESSAGE="\nFailed to compile protobuf files: protoc exited with c
 export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
-export GOLANGCI_LINT_VERSION := v2.10.1
+export GOLANGCI_LINT_VERSION := v2.12.2
 
 # Install all the build and lint dependencies
 setup:
@@ -58,7 +58,7 @@ lint: bin/golangci-lint
 .PHONY: lint
 
 bin/golangci-lint:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $(GOLANGCI_LINT_VERSION)
+	GOBIN=$(GOBIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 # Clean go.mod
 go-mod-tidy:
