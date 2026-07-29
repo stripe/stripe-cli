@@ -50,7 +50,7 @@ func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	rc := &coopRunCmd{language: "node"}
-	session, err := rc.startSessionQuietly("one-time-payment")
+	session, err := rc.startSessionQuietly(commandTestBlueprint(t))
 	require.NoError(t, err)
 
 	prompt, err := rc.buildAgentPromptForSession(session)
@@ -89,7 +89,7 @@ func TestDiscoveryPromptKeepsCoopAsIntegrationAuthority(t *testing.T) {
 	assert.Contains(t, prompt, "architecture, language, framework, conventions, dependencies, and existing Stripe code")
 	assert.Contains(t, prompt, "The developer is working in go")
 	assert.Contains(t, prompt, "Your first job is to understand what they're building and what they need from Stripe")
-	assert.Contains(t, prompt, `run "stripe coop recommend --query=<description of what they need>"`)
+	assert.Contains(t, prompt, `run "stripe coop recommend --all" and pick the best blueprint`)
 	assert.Contains(t, prompt, "Co-op is responsible for selecting the integration and API family through its recommender and blueprint")
 	assert.Contains(t, prompt, "Do not use documentation or the repo-scoped Stripe skill to choose or switch integrations or API families")
 	assert.Contains(t, prompt, "Documentation lookup is optional, not a mandatory preflight or ceremony")
@@ -210,7 +210,7 @@ func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 	rc := &coopRunCmd{language: "node"}
 	buildErr := errors.New("pane build failed")
 
-	err := rc.runFallbackWithCommand("/stripe", "one-time-payment", func(session *coop.Session) (string, func(), error) {
+	err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
 		require.NotNil(t, session)
 		return "", nil, buildErr
 	})
@@ -234,7 +234,7 @@ func TestFallbackJoinInstructionsIncludeCoopEnv(t *testing.T) {
 
 	rc := &coopRunCmd{language: "node"}
 	output := captureStdout(t, func() {
-		err := rc.runFallbackWithCommand("/stripe", "one-time-payment", func(session *coop.Session) (string, func(), error) {
+		err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
 			require.NotNil(t, session)
 			return "true", nil, nil
 		})
@@ -250,7 +250,7 @@ func TestFallbackWaitInstructionsIncludeCoopEnv(t *testing.T) {
 
 	rc := &coopRunCmd{language: "node"}
 	output := captureStdout(t, func() {
-		err := rc.runFallbackWithCommand("/stripe", "", func(session *coop.Session) (string, func(), error) {
+		err := rc.runFallbackWithCommand("/stripe", nil, func(session *coop.Session) (string, func(), error) {
 			require.Nil(t, session)
 			return "true", nil, nil
 		})
@@ -284,7 +284,7 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 
 	cleanupCalled := false
 	rc := &coopRunCmd{language: "node"}
-	err := rc.runInNewTmuxWithCommand("/stripe", "one-time-payment", func(session *coop.Session) (string, func(), error) {
+	err := rc.runInNewTmuxWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
 		require.NotNil(t, session)
 		return "agent", func() { cleanupCalled = true }, nil
 	})

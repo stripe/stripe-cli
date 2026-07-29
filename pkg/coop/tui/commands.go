@@ -80,16 +80,17 @@ func (m *Model) fetchSnippetIfNeeded() tea.Cmd {
 		return nil
 	}
 	node, err := m.session.NodeByNumber(nodeIndex + 1)
-	if err != nil || node.Type != coop.NodeAPIRequest || node.Request == nil {
+	if err != nil || node.NodeType != coop.NodeAPIRequest || node.Request() == nil {
 		return nil
 	}
 	lang := m.session.Settings["language"]
 	if lang == "" {
 		lang = "node"
 	}
-	path := node.Request.Path
-	method := node.Request.Method
-	params := node.Request.Params
+	request := node.Request()
+	path := request.Path
+	method := request.Method
+	params := request.Params
 	cursor := nodeIndex
 	m.sdkLoading = true
 	m.sdkLoadingNode = cursor

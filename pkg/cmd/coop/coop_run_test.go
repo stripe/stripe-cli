@@ -24,7 +24,7 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 	t.Cleanup(func() { options = previousOptions })
 
 	session, err := newCoopSession(
-		&coop.Blueprint{ID: "one-time-payment"},
+		commandTestBlueprint(t),
 		"coop_123",
 		"go",
 		[]string{"framework=gin", "framework=chi"},
@@ -53,7 +53,7 @@ func TestAgentInstructionsAdvertiseAwaitTimeoutWithHarnessHeadroom(t *testing.T)
 }
 
 func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
-	bp := &coop.Blueprint{ID: "one-time-payment"}
+	bp := commandTestBlueprint(t)
 
 	tests := []struct {
 		name     string
@@ -81,24 +81,17 @@ func TestNewCoopSessionRejectsMalformedKeyValues(t *testing.T) {
 }
 
 func TestAgentInstructionsIncludeOptionalStripeDocsGuidanceExactlyOnce(t *testing.T) {
-	bp, err := coop.LoadBlueprint("one-time-payment")
+	bp := commandTestBlueprint(t)
+	normalSession, err := coop.NewSessionFromBlueprint(bp, "coop_normal", nil, nil)
 	require.NoError(t, err)
-	normalSession := coop.NewSessionFromBlueprint(bp, "coop_normal", nil, nil)
 
 	guidedAction := &coop.GuidedAction{
 		ID:           "guided-action",
 		Title:        "Guided action",
 		AgentContext: "Use the existing project.",
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{Key: "guided-step", Title: "Guided step"},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{Key: "guided-node", Title: "Guided node"},
-						State:          coop.NodePending,
-					},
-				},
-			},
+			commandSessionStep("guided-step", "Guided step",
+				commandSessionNode(coop.NodeTestHelper, "guided-node", "Guided node", coop.NodePending)),
 		},
 	}
 	guidedSession := coop.NewSessionFromGuidedAction(guidedAction, "coop_guided", coop.GuidedActionSessionOptions{})
@@ -369,26 +362,6 @@ func TestCoopRunReturnsStructuredErrorForMalformedParam(t *testing.T) {
 	assert.Empty(t, ids)
 }
 
-func TestCoopRunPreservesBlueprintLoadError(t *testing.T) {
-	cmd := newCoopAgentRunCmd().cmd
-	cmd.SilenceErrors = true
-	cmd.SilenceUsage = true
-	cmd.SetArgs([]string{"flat"})
-
-	stderr := captureStderr(t, func() {
-		err := cmd.Execute()
-		require.Error(t, err)
-	})
-
-	var resp coop.CommandResponse
-	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
-	assert.False(t, resp.OK)
-	assert.Contains(t, resp.Error, "ambiguous blueprint prefix")
-	assert.NotContains(t, resp.Error, "not found")
-	require.NotNil(t, resp.Recovery)
-	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
-}
-
 func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	cmd := newCoopAgentRunCmd().cmd
 	cmd.SilenceErrors = true
@@ -404,16 +377,7 @@ func TestCoopRunKeepsNotFoundGuidance(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.Contains(t, resp.Error, "not found")
 	require.NotNil(t, resp.Recovery)
-	assert.Equal(t, "stripe coop recommend", resp.Recovery.Next)
-}
-
-func TestCoopStartPreservesBlueprintLoadError(t *testing.T) {
-	err := newCoopRunCmd().runCmd(nil, []string{"flat"})
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "ambiguous blueprint prefix")
-	assert.NotContains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend")
+	assert.Equal(t, "stripe coop recommend --all", resp.Recovery.Next)
 }
 
 func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
@@ -421,11 +385,12 @@ func TestCoopStartKeepsNotFoundGuidance(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
-	assert.Contains(t, err.Error(), "stripe coop recommend")
+	assert.Contains(t, err.Error(), "stripe coop recommend --all")
 }
 
 func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
-	bp := &coop.Blueprint{Title: "Metered subscription"}
+	bp := commandTestBlueprint(t)
+	bp.Title = coop.MessageDescriptor{DefaultMessage: "Metered subscription"}
 
 	instructions := agentInstructions(bp)
 
@@ -442,9 +407,9 @@ func TestAgentInstructionsFrameBlueprintAsAppImplementation(t *testing.T) {
 }
 
 func TestCoopAgentRunResponseOmitsBlueprintNodes(t *testing.T) {
-	bp, err := coop.LoadBlueprint("one-time-payment")
+	bp := commandTestBlueprint(t)
+	session, err := coop.NewSessionFromBlueprint(bp, "coop_123", nil, nil)
 	require.NoError(t, err)
-	session := coop.NewSessionFromBlueprint(bp, "coop_123", nil, nil)
 
 	data, err := json.Marshal(newCoopAgentRunResponse(bp, session))
 	require.NoError(t, err)

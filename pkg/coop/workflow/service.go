@@ -80,7 +80,7 @@ type ReportWorkInput struct {
 }
 
 func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop.CommandResponse, error) {
-	var resolvedDefinition coop.NodeDefinition
+	var resolvedDefinition coop.BlueprintNode
 	var requiredOutputs []coop.RequiredOutput
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
 		if err := requireActiveSession(session); err != nil {
@@ -112,22 +112,22 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 
 	node, _ := session.NodeByNumber(nodeNumber)
 	resolvedNode := *node
-	resolvedNode.NodeDefinition = resolvedDefinition
+	resolvedNode.BlueprintNode = resolvedDefinition
 	resp := coop.CommandResponse{
 		OK:              true,
 		SessionID:       session.ID,
 		Node:            nodeNumber,
 		State:           string(coop.NodeActive),
-		Message:         fmt.Sprintf("Started: %s", resolvedNode.Title),
+		Message:         fmt.Sprintf("Started: %s", resolvedNode.TitleText()),
 		Continuation:    coop.ReportWorkTemplate(session.ID, nodeNumber, requiredOutputs),
 		RequiredOutputs: requiredOutputs,
 		AgentPrompt:     nodeAgentPrompt(session, &resolvedNode, nodeNumber, requiredOutputs),
-		TestRequests:    resolvedNode.TestRequests,
-		Events:          resolvedNode.Events,
+		TestRequests:    resolvedNode.TestRequests(),
+		Events:          resolvedNode.Events(),
 	}
-	if resolvedNode.Type == coop.NodeAPIRequest && resolvedNode.Request != nil {
-		resp.APIRequest = resolvedNode.Request
-		if snippet, err := s.fetchSnippet(resolvedNode.Request.Path, resolvedNode.Request.Method, resolvedNode.Request.Params, language(session)); err == nil {
+	if request := resolvedNode.Request(); resolvedNode.NodeType == coop.NodeAPIRequest && request != nil {
+		resp.APIRequest = request
+		if snippet, err := s.fetchSnippet(request.Path, request.Method, request.Params, language(session)); err == nil {
 			resp.SDKExample = snippet
 		}
 	}
@@ -137,7 +137,7 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 func nodeAgentPrompt(session *coop.Session, node *coop.SessionNode, nodeNumber int, requiredOutputs []coop.RequiredOutput) string {
 	stepTitle := ""
 	if step, _, _, err := session.StepByNodeNumber(nodeNumber); err == nil {
-		stepTitle = step.Title
+		stepTitle = step.TitleText()
 	}
 
 	var prompt strings.Builder
@@ -145,13 +145,13 @@ func nodeAgentPrompt(session *coop.Session, node *coop.SessionNode, nodeNumber i
 	if stepTitle != "" {
 		fmt.Fprintf(&prompt, " in step %q", stepTitle)
 	}
-	fmt.Fprintf(&prompt, ": %s\n\n", node.Title)
+	fmt.Fprintf(&prompt, ": %s\n\n", node.TitleText())
 
-	if node.Type != "" {
-		fmt.Fprintf(&prompt, "Node type: %s\n\n", node.Type)
+	if node.NodeType != "" {
+		fmt.Fprintf(&prompt, "Node type: %s\n\n", node.NodeType)
 	}
-	if node.Description != "" {
-		fmt.Fprintf(&prompt, "Task (source of truth): %s\n\n", node.Description)
+	if node.DescriptionText() != "" {
+		fmt.Fprintf(&prompt, "Task (source of truth): %s\n\n", node.DescriptionText())
 	}
 	if guidance := nodeTypeGuidance(node); guidance != "" {
 		fmt.Fprintf(&prompt, "How to approach it: %s\n\n", guidance)
@@ -162,7 +162,7 @@ func nodeAgentPrompt(session *coop.Session, node *coop.SessionNode, nodeNumber i
 	if node.ReviewCommand != "" {
 		fmt.Fprintf(&prompt, "Verification command: run %q exactly, or explain concretely why it does not apply.\n", node.ReviewCommand)
 	}
-	if node.AutoConfirm {
+	if node.IsInformationalNode {
 		prompt.WriteString("This node is auto-confirmed, so continue immediately after reporting the work.\n")
 	}
 	if len(requiredOutputs) > 0 {
@@ -187,7 +187,7 @@ func nodeTypeGuidance(node *coop.SessionNode) string {
 		return "Read the project files, identify the stack and existing Stripe integration points, and summarize what you find. Do not ask the developer questions you can answer from the code."
 	}
 
-	switch node.Type {
+	switch node.NodeType {
 	case coop.NodeAPIRequest:
 		return "Use api_request and, when present, sdk_example as the technical starting point. Based on the task and existing project, decide whether the call belongs in runtime application code, a setup or seed script, or one-time provisioning; do not add a runtime endpoint for one-time provisioning unless the task requires one. Run and verify the call, and reuse returned IDs where later work needs them."
 	case coop.NodeAsyncHandler:
@@ -240,7 +240,7 @@ func (s *Service) ReportWork(sessionID string, nodeNumber int, input ReportWorkI
 			return fmt.Errorf("missing required --output values: %s", strings.Join(selectors, ", "))
 		}
 		targetState = coop.NodeReview
-		if autoConfirm || node.AutoConfirm {
+		if autoConfirm || node.IsInformationalNode {
 			targetState = coop.NodeDone
 		}
 		if err := session.TransitionNode(nodeNumber, targetState); err != nil {
@@ -363,7 +363,7 @@ func (s *Service) Skip(sessionID string, nodeNumber int, note string) (coop.Comm
 		return sessionErrorResponse(err), nil
 	}
 	node, _ := session.NodeByNumber(nodeNumber)
-	message := fmt.Sprintf("Skipped: %s", node.Title)
+	message := fmt.Sprintf("Skipped: %s", node.TitleText())
 	if len(cascaded) > 0 {
 		message += fmt.Sprintf(". Also skipped dependent nodes: %s", formatNodeNumbers(cascaded))
 	}
@@ -442,7 +442,7 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 		return sessionErrorResponse(err), nil
 	}
 
-	if node.AutoConfirm && node.State == coop.NodeReview {
+	if node.IsInformationalNode && node.State == coop.NodeReview {
 		return s.autoConfirm(sessionID, nodeNumber)
 	}
 	if node.State == coop.NodeReview {
@@ -460,7 +460,7 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 				Continuation: coop.Continue(nextInStepOrStatus(session, stepIndex, nodeNumber)),
 			}, nil
 		}
-		return s.awaitStepReview(session.ID, step.Title, stepIndex, nodeNumber)
+		return s.awaitStepReview(session.ID, step.TitleText(), stepIndex, nodeNumber)
 	}
 	// Node is not in review (auto-confirm handled above, review handled in the
 	// block above): it has already moved on. Review always waits at step
@@ -518,7 +518,7 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 				Node:         activeNodeNumber,
 				State:        "rejected",
 				Message:      msg,
-				Continuation: coop.Continue(coop.StartWorkCommand(session.ID, activeNodeNumber, "Redoing: "+activeNode.Title)),
+				Continuation: coop.Continue(coop.StartWorkCommand(session.ID, activeNodeNumber, "Redoing: "+activeNode.TitleText())),
 			}, nil
 		}
 		if session.StepHasReview(stepIndex) {
@@ -537,7 +537,7 @@ func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNo
 				SessionID:    session.ID,
 				Node:         nodeNumber,
 				State:        string(coop.NodeReview),
-				Message:      fmt.Sprintf("Ready: %s. Continue the step before asking for human review.", node.Title),
+				Message:      fmt.Sprintf("Ready: %s. Continue the step before asking for human review.", node.TitleText()),
 				Continuation: coop.Continue(nextInStepOrStatus(session, stepIndex, nodeNumber)),
 			}
 		}
@@ -547,7 +547,7 @@ func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNo
 				SessionID: session.ID,
 				Node:      nodeNumber,
 				State:     string(coop.NodeReview),
-				Message:   fmt.Sprintf("Step ready for review: %s. Run relevant checks, keep useful servers running, share local URLs or test data, then await review.", step.Title),
+				Message:   fmt.Sprintf("Step ready for review: %s. Run relevant checks, keep useful servers running, share local URLs or test data, then await review.", step.TitleText()),
 				Continuation: coop.Continue(coop.AwaitReviewCommand(session.ID, nodeNumber)).
 					WithWaitTimeout(int(s.awaitTimeout.Seconds())),
 			}
@@ -557,13 +557,13 @@ func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNo
 			SessionID: session.ID,
 			Node:      nodeNumber,
 			State:     string(coop.NodeReview),
-			Message:   fmt.Sprintf("Ready for review: %s", node.Title),
+			Message:   fmt.Sprintf("Ready for review: %s", node.TitleText()),
 			Continuation: coop.Continue(coop.AwaitReviewCommand(session.ID, nodeNumber)).
 				WithWaitTimeout(int(s.awaitTimeout.Seconds())),
 		}
 	}
 
-	msg := fmt.Sprintf("Completed: %s", node.Title)
+	msg := fmt.Sprintf("Completed: %s", node.TitleText())
 	next := nextAfterNode(session, nodeNumber)
 	if session.IsComplete() {
 		msg += " All nodes complete. Run next-action so the developer can choose what happens next."
@@ -581,7 +581,7 @@ func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNo
 func nextAfterNode(session *coop.Session, nodeNumber int) coop.Continuation {
 	if nextNodeNumber := session.NextPendingNode(nodeNumber); nextNodeNumber > 0 {
 		nextNode, _ := session.NodeByNumber(nextNodeNumber)
-		return coop.Continue(coop.StartWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.Title))
+		return coop.Continue(coop.StartWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.TitleText()))
 	}
 	if session.IsComplete() {
 		var command string
@@ -599,7 +599,7 @@ func nextAfterNode(session *coop.Session, nodeNumber int) coop.Continuation {
 func nextInStepOrStatus(session *coop.Session, stepIndex, afterNode int) string {
 	if nextNodeNumber := helpers.NextPendingNodeInStep(session, stepIndex+1, afterNode); nextNodeNumber > 0 {
 		nextNode, _ := session.NodeByNumber(nextNodeNumber)
-		return coop.StartWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.Title)
+		return coop.StartWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.TitleText())
 	}
 	return coop.StatusCommand(session.ID)
 }

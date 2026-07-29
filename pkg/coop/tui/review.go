@@ -191,7 +191,7 @@ func (m Model) requestChangesPlaceholder(target reviewTarget) string {
 		if err != nil {
 			continue
 		}
-		switch node.Type {
+		switch node.NodeType {
 		case coop.NodeAsyncHandler, coop.NodeSetUpWebhooks:
 			return "Describe what should change in signature verification or event handling"
 		case coop.NodeAPIRequest:
@@ -259,10 +259,10 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 	var titles []string
 	for _, nodeNumber := range nodeNumbers {
 		node, err := m.session.NodeByNumber(nodeNumber)
-		if err != nil || node.Title == "" {
+		if err != nil || node.TitleText() == "" {
 			continue
 		}
-		titles = append(titles, node.Title)
+		titles = append(titles, node.TitleText())
 	}
 	if len(titles) == 0 {
 		return ""
@@ -298,8 +298,8 @@ func (m Model) reviewAgentConfirmationLabel(nodeNumbers []int) string {
 				continue
 			}
 			seen[check] = true
-			if showStepTitle && node.Title != "" {
-				check = node.Title + ": " + check
+			if showStepTitle && node.TitleText() != "" {
+				check = node.TitleText() + ": " + check
 			}
 			checks = append(checks, check)
 		}
@@ -353,13 +353,7 @@ func (m Model) reviewCommandLabel(nodeNumbers []int) string {
 }
 
 func reviewCommandForNode(node *coop.SessionNode) string {
-	if node.ReviewCommand != "" {
-		return node.ReviewCommand
-	}
-	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-		return "stripe trigger " + node.Events[0]
-	}
-	return ""
+	return node.ReviewCommand
 }
 
 func (m Model) actionableReviewCount() int {

@@ -98,7 +98,7 @@ func (a *coopDebugAgent) run(ctx context.Context) error {
 					return err
 				}
 				if next := helpers.NextPendingNodeInStep(session, stepIndex+1, step); next > 0 {
-					a.logf("step %q still has pending work; continuing with node %d", sessionStep.Title, next)
+					a.logf("step %q still has pending work; continuing with node %d", sessionStep.TitleText(), next)
 					if err := a.startStep(next); err != nil {
 						return err
 					}
@@ -137,14 +137,14 @@ func (a *coopDebugAgent) startStep(step int) error {
 		return nil
 	}
 
-	resp, err := workflow.NewService(a.store).StartWork(a.sessionID, step, "Debug agent working: "+node.Title)
+	resp, err := workflow.NewService(a.store).StartWork(a.sessionID, step, "Debug agent working: "+node.TitleText())
 	if err != nil {
 		return err
 	}
 	if !resp.OK {
 		return fmt.Errorf("%s", resp.Error)
 	}
-	a.logf("step %d active: %s", step, node.Title)
+	a.logf("step %d active: %s", step, node.TitleText())
 	return nil
 }
 
@@ -176,7 +176,7 @@ func (a *coopDebugAgent) completeActiveStep(ctx context.Context, step int) error
 	resp, err = service.ReportWork(a.sessionID, step, workflow.ReportWorkInput{
 		File:  "debug/" + safeDebugFileName(node.Key) + ".txt",
 		Lines: "1-1",
-		Note:  "Deterministic debug agent completed " + node.Title,
+		Note:  "Deterministic debug agent completed " + node.TitleText(),
 	}, false)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (a *coopDebugAgent) completeActiveStep(ctx context.Context, step int) error
 	if !resp.OK {
 		return fmt.Errorf("%s", resp.Error)
 	}
-	a.logf("step %d %s: %s", step, resp.State, node.Title)
+	a.logf("step %d %s: %s", step, resp.State, node.TitleText())
 	return nil
 }
 
@@ -197,7 +197,7 @@ func (a *coopDebugAgent) awaitReview(ctx context.Context, step int) error {
 	if err != nil {
 		return err
 	}
-	a.logf("waiting for step review: %s", stepDefinition.Title)
+	a.logf("waiting for step review: %s", stepDefinition.TitleText())
 	return a.awaitStepReview(ctx, stepIndex)
 }
 
