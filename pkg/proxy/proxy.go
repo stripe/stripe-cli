@@ -117,6 +117,9 @@ type Config struct {
 
 	// LoggedInAccountID is the currently logged-in account ID
 	LoggedInAccountID string
+
+	// EventsFrom filters events by source: "@self", "@accounts", or "all"
+	EventsFrom string
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -453,6 +456,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		SkipVerify:          cfg.SkipVerify,
 		Timeout:             cfg.Timeout,
 		LoggedInAccountID:   cfg.LoggedInAccountID,
+		EventsFrom:          cfg.EventsFrom,
 	}
 
 	p := &Proxy{
