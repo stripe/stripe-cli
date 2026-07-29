@@ -252,14 +252,6 @@ func outputJSONTo(w io.Writer, v interface{}) error {
 	return nil
 }
 
-func outputCoopError(message, hint string, continuation coop.Continuation) error {
-	return outputAgentResponse(coop.CommandResponse{
-		OK:       false,
-		Error:    message,
-		Recovery: continuation.Recovery(hint),
-	}, nil)
-}
-
 type RenderedError struct{}
 
 func (RenderedError) Error() string {
