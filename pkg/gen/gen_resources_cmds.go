@@ -544,7 +544,8 @@ func markMostCommon(params map[string]*resource.ParamSpec, subResourceCandidates
 // mergeEnumValues builds the EnumSpec slice from a schema's enum/x-stripeEnum fields.
 // enum provides the complete set of values; x-stripeEnum provides descriptions for a subset.
 func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
-	if len(schema.Enum) == 0 && len(schema.XStripeEnum) == 0 {
+	stripeEnumValues := schema.XStripeEnum != nil && len(schema.XStripeEnum.Values) > 0
+	if len(schema.Enum) == 0 && !stripeEnumValues {
 		return nil
 	}
 
@@ -564,7 +565,7 @@ func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
 
 	// Fall back to x-stripeEnum only
 	var enums []resource.EnumSpec
-	for _, ev := range schema.XStripeEnum {
+	for _, ev := range schema.XStripeEnum.Values {
 		enums = append(enums, resource.EnumSpec{
 			Value: ev.Value,
 		})
