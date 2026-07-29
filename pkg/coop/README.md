@@ -67,14 +67,30 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 |---------|---------|
 | `stripe coop run <blueprint>` | Create a session (outputs a compact JSON bootstrap) |
 | `stripe coop agent start-work --step <n>` | Mark a node active and return its task context |
-| `stripe coop agent report-work --step <n>` | Mark a node complete (→ review or → done if auto_confirm) |
+| `stripe coop agent report-work --step <n>` | Record implementation and outputs, then mark a node complete |
 | `stripe coop agent report-check --step <n>` | Add a verification check |
 | `stripe coop agent skip --step <n>` | Skip a node |
 | `stripe coop agent await-review --step <n>` | Block until developer confirms or requests changes |
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 
-Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, and SDK example. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, SDK example, and `required_outputs`. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+
+`report-work` requires a concrete `--note`. Use repeatable `--output` flags for values named by `required_outputs`:
+
+```bash
+stripe coop agent report-work \
+  --session=coop_abc123 \
+  --step=2 \
+  --note="Created the product and captured its result" \
+  --output=id=prod_123 \
+  --output=latest_version=7 \
+  --output=create-test-clock-request:id=clock_123
+```
+
+Values that are valid JSON retain their type; other values are stored as strings. Co-op resolves `${node.<step>.<node>:<field>}` references from these persisted outputs before returning a later node's request.
+
+Skipping an output-producing node also skips later nodes that directly or transitively reference its outputs. Co-op refuses the skip if one of those dependent nodes is already done.
 
 ## TUI Keybindings
 
@@ -124,7 +140,7 @@ $ stripe coop start one-time-payment --language=node
 #      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Scanning project"
 #      stripe coop agent report-work --session=coop_abc123 --step=1 --note="Found Next.js app"
 #      stripe coop agent start-work --session=coop_abc123 --step=2 --note="Creating product"
-#      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product"
+#      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product" --output=id=prod_123
 #      stripe coop agent await-review --session=coop_abc123 --step=2   ← blocks until developer confirms
 # 6. Developer sees progress live, presses 'c' to confirm
 # 7. Agent continues to next step
@@ -190,6 +206,8 @@ Each node has:
 - `request.hidden_params` — request fields that should not be shown directly in the TUI
 - `requests` — API-backed test helper requests for `testHelper` nodes
 - `events` — webhook events (for `asyncHandler` nodes)
+
+Node references may only point backward to completed blueprint nodes. Direct node results use `${node.<step>.<node>:<field>}`; named test-helper or numeric event results add a source segment, such as `${node.<step>.<node>.<request>:id}` or `${node.<step>.<node>.0:id}`.
 
 `testHelper` request metadata tells the agent which Stripe-backed test helpers can advance test state. Agents should use those helpers while verifying work, but should not encode helper-only request parameters into the user's application.
 

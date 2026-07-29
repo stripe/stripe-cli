@@ -160,6 +160,97 @@ func TestValidateBlueprintReferences(t *testing.T) {
 	}
 }
 
+func TestValidateBlueprintReferencesRejectsSelfAndForwardReferences(t *testing.T) {
+	tests := []struct {
+		name      string
+		reference string
+	}{
+		{name: "self", reference: "${node.setup.first:id}"},
+		{name: "forward", reference: "${node.setup.second:id}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bp := &Blueprint{
+				ID: "test",
+				Steps: []BlueprintStep{{
+					StepDefinition: StepDefinition{Key: "setup", Title: "Setup"},
+					Nodes: []NodeDefinition{
+						{
+							Key: "first",
+							Request: &APIRequest{
+								Path:   "/v1/resources/" + tt.reference,
+								Method: "get",
+							},
+						},
+						{Key: "second", Request: &APIRequest{Path: "/v1/resources", Method: "post"}},
+					},
+				}},
+			}
+
+			err := validateBlueprintReferences(bp)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "before it has completed")
+		})
+	}
+}
+
+func TestValidateBlueprintReferencesRejectsReferencesOutsideNodes(t *testing.T) {
+	newBlueprint := func() *Blueprint {
+		return &Blueprint{
+			ID: "test",
+			Steps: []BlueprintStep{{
+				StepDefinition: StepDefinition{Key: "setup", Title: "Setup"},
+				Nodes: []NodeDefinition{
+					{Key: "create-product", Request: &APIRequest{Path: "/v1/products", Method: "post"}},
+					{Key: "use-product", Request: &APIRequest{
+						Path:   "/v1/products/${node.setup.create-product:id}",
+						Method: "get",
+					}},
+				},
+			}},
+		}
+	}
+
+	tests := []struct {
+		name   string
+		mutate func(*Blueprint)
+	}{
+		{
+			name: "blueprint description",
+			mutate: func(bp *Blueprint) {
+				bp.Description = "Created ${node.setup.create-product:id}"
+			},
+		},
+		{
+			name: "step description",
+			mutate: func(bp *Blueprint) {
+				bp.Steps[0].Description = "Created ${node.setup.create-product:id}"
+			},
+		},
+		{
+			name: "setting default",
+			mutate: func(bp *Blueprint) {
+				bp.Settings = []BlueprintSetting{{
+					Key:     "product",
+					Default: "${node.setup.create-product:id}",
+				}}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bp := newBlueprint()
+			tt.mutate(bp)
+
+			err := validateBlueprintReferences(bp)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "only supported inside node definitions")
+		})
+	}
+}
+
 func TestLoadBlueprintPrefixMatch(t *testing.T) {
 	bp, err := LoadBlueprint("setup-future")
 	require.NoError(t, err)
