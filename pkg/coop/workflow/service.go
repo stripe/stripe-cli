@@ -2,7 +2,9 @@
 package workflow
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -74,11 +76,23 @@ type ReportWorkInput struct {
 	Lines   string
 	Snippet string
 	Note    string
+	Outputs coop.NodeOutputs
 }
 
 func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop.CommandResponse, error) {
+	var resolvedDefinition coop.NodeDefinition
+	var requiredOutputs []coop.RequiredOutput
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
 		if err := requireActiveSession(session); err != nil {
+			return err
+		}
+		var err error
+		requiredOutputs, err = session.RequiredOutputs(nodeNumber)
+		if err != nil {
+			return err
+		}
+		resolvedDefinition, err = session.ResolvedNodeDefinition(nodeNumber)
+		if err != nil {
 			return err
 		}
 		if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
@@ -89,31 +103,38 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 		return nil
 	})
 	if err != nil {
-		return sessionErrorResponse(err), nil
+		return errorResponse(
+			err,
+			"Inspect the session and its recorded outputs before retrying.",
+			coop.Continue(coop.StatusCommand("")),
+		), nil
 	}
 
 	node, _ := session.NodeByNumber(nodeNumber)
+	resolvedNode := *node
+	resolvedNode.NodeDefinition = resolvedDefinition
 	resp := coop.CommandResponse{
-		OK:           true,
-		SessionID:    session.ID,
-		Node:         nodeNumber,
-		State:        string(coop.NodeActive),
-		Message:      fmt.Sprintf("Started: %s", node.Title),
-		Continuation: coop.ReportWorkTemplate(session.ID, nodeNumber),
-		AgentPrompt:  nodeAgentPrompt(session, node, nodeNumber),
-		TestRequests: node.TestRequests,
-		Events:       node.Events,
+		OK:              true,
+		SessionID:       session.ID,
+		Node:            nodeNumber,
+		State:           string(coop.NodeActive),
+		Message:         fmt.Sprintf("Started: %s", resolvedNode.Title),
+		Continuation:    coop.ReportWorkTemplate(session.ID, nodeNumber, requiredOutputs),
+		RequiredOutputs: requiredOutputs,
+		AgentPrompt:     nodeAgentPrompt(session, &resolvedNode, nodeNumber, requiredOutputs),
+		TestRequests:    resolvedNode.TestRequests,
+		Events:          resolvedNode.Events,
 	}
-	if node.Type == coop.NodeAPIRequest && node.Request != nil {
-		resp.APIRequest = node.Request
-		if snippet, err := s.fetchSnippet(node.Request.Path, node.Request.Method, node.Request.Params, language(session)); err == nil {
+	if resolvedNode.Type == coop.NodeAPIRequest && resolvedNode.Request != nil {
+		resp.APIRequest = resolvedNode.Request
+		if snippet, err := s.fetchSnippet(resolvedNode.Request.Path, resolvedNode.Request.Method, resolvedNode.Request.Params, language(session)); err == nil {
 			resp.SDKExample = snippet
 		}
 	}
 	return resp, nil
 }
 
-func nodeAgentPrompt(session *coop.Session, node *coop.SessionNode, nodeNumber int) string {
+func nodeAgentPrompt(session *coop.Session, node *coop.SessionNode, nodeNumber int, requiredOutputs []coop.RequiredOutput) string {
 	stepTitle := ""
 	if step, _, _, err := session.StepByNodeNumber(nodeNumber); err == nil {
 		stepTitle = step.Title
@@ -143,6 +164,12 @@ func nodeAgentPrompt(session *coop.Session, node *coop.SessionNode, nodeNumber i
 	}
 	if node.AutoConfirm {
 		prompt.WriteString("This node is auto-confirmed, so continue immediately after reporting the work.\n")
+	}
+	if len(requiredOutputs) > 0 {
+		prompt.WriteString("\nRecord these outputs with report-work because later nodes reference them:\n")
+		for _, output := range requiredOutputs {
+			fmt.Fprintf(&prompt, "- %s\n", output.Selector())
+		}
 	}
 
 	prompt.WriteString("\nWork only on this node. Inspect the existing project before changing it, implement a working result, and verify it. Make your report-work note and report-check evidence directly address the task")
@@ -181,14 +208,8 @@ func nodeTypeGuidance(node *coop.SessionNode) string {
 }
 
 func (s *Service) ReportWork(sessionID string, nodeNumber int, input ReportWorkInput, autoConfirm bool) (coop.CommandResponse, error) {
-	if strings.TrimSpace(input.Note) == "" {
-		return errorResponse(
-			fmt.Errorf("--note flag is required"),
-			"Describe the completed implementation.",
-			coop.ReportWorkTemplate(sessionID, nodeNumber),
-		), nil
-	}
 	var targetState coop.NodeState
+	var requiredOutputs []coop.RequiredOutput
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
 		if err := requireActiveSession(session); err != nil {
 			return err
@@ -196,6 +217,27 @@ func (s *Service) ReportWork(sessionID string, nodeNumber int, input ReportWorkI
 		node, err := session.NodeByNumber(nodeNumber)
 		if err != nil {
 			return err
+		}
+		requiredOutputs, err = session.RequiredOutputs(nodeNumber)
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(input.Note) == "" {
+			return fmt.Errorf("--note flag is required")
+		}
+		if err := mergeNodeOutputs(node, input.Outputs); err != nil {
+			return err
+		}
+		missing, err := session.MissingRequiredOutputs(nodeNumber)
+		if err != nil {
+			return err
+		}
+		if len(missing) > 0 {
+			selectors := make([]string, 0, len(missing))
+			for _, output := range missing {
+				selectors = append(selectors, output.Selector())
+			}
+			return fmt.Errorf("missing required --output values: %s", strings.Join(selectors, ", "))
 		}
 		targetState = coop.NodeReview
 		if autoConfirm || node.AutoConfirm {
@@ -220,7 +262,16 @@ func (s *Service) ReportWork(sessionID string, nodeNumber int, input ReportWorkI
 		return nil
 	})
 	if err != nil {
-		return sessionErrorResponse(err), nil
+		if current, readErr := s.store.Read(sessionID); readErr == nil {
+			if node, nodeErr := current.NodeByNumber(nodeNumber); current.Status != coop.SessionActive || (nodeErr == nil && node.State != coop.NodeActive) {
+				return sessionErrorResponse(err), nil
+			}
+		}
+		return errorResponse(
+			err,
+			"Correct the report and submit it again.",
+			coop.ReportWorkTemplate(sessionID, nodeNumber, requiredOutputs),
+		), nil
 	}
 	node, _ := session.NodeByNumber(nodeNumber)
 	return s.reportWorkResponse(session, node, nodeNumber, targetState), nil
@@ -249,30 +300,60 @@ func (s *Service) ReportCheck(sessionID string, nodeNumber int, check string, pa
 		return sessionErrorResponse(err), nil
 	}
 	node, _ := session.NodeByNumber(nodeNumber)
+	requiredOutputs, err := session.RequiredOutputs(nodeNumber)
+	if err != nil {
+		return sessionErrorResponse(err), nil
+	}
 	status := "failed"
 	if passed {
 		status = "passed"
 	}
 	return coop.CommandResponse{
-		OK:           true,
-		SessionID:    session.ID,
-		Node:         nodeNumber,
-		State:        string(node.State),
-		Message:      fmt.Sprintf("Verification %s: %s", status, check),
-		Continuation: coop.ReportWorkTemplate(session.ID, nodeNumber),
+		OK:              true,
+		SessionID:       session.ID,
+		Node:            nodeNumber,
+		State:           string(node.State),
+		Message:         fmt.Sprintf("Verification %s: %s", status, check),
+		Continuation:    coop.ReportWorkTemplate(session.ID, nodeNumber, requiredOutputs),
+		RequiredOutputs: requiredOutputs,
 	}, nil
 }
 
 func (s *Service) Skip(sessionID string, nodeNumber int, note string) (coop.CommandResponse, error) {
+	var cascaded []int
 	session, err := s.store.Update(sessionID, func(session *coop.Session) error {
 		if err := requireActiveSession(session); err != nil {
 			return err
+		}
+		dependents, err := session.DependentNodeNumbers(nodeNumber)
+		if err != nil {
+			return err
+		}
+		for _, dependentNumber := range dependents {
+			dependent, err := session.NodeByNumber(dependentNumber)
+			if err != nil {
+				return err
+			}
+			if dependent.State == coop.NodeDone {
+				return fmt.Errorf("cannot skip node %d because dependent node %d is already done", nodeNumber, dependentNumber)
+			}
 		}
 		if err := session.TransitionNode(nodeNumber, coop.NodeSkipped); err != nil {
 			return err
 		}
 		node, _ := session.NodeByNumber(nodeNumber)
 		node.Activity = note
+		for _, dependentNumber := range dependents {
+			dependent, _ := session.NodeByNumber(dependentNumber)
+			if dependent.State == coop.NodeSkipped {
+				continue
+			}
+			if err := session.TransitionNode(dependentNumber, coop.NodeSkipped); err != nil {
+				return err
+			}
+			dependent.Activity = fmt.Sprintf("Skipped because it depends on skipped node %d.", nodeNumber)
+			cascaded = append(cascaded, dependentNumber)
+		}
 		if session.IsComplete() {
 			session.Status = coop.SessionCompleted
 		}
@@ -282,12 +363,16 @@ func (s *Service) Skip(sessionID string, nodeNumber int, note string) (coop.Comm
 		return sessionErrorResponse(err), nil
 	}
 	node, _ := session.NodeByNumber(nodeNumber)
+	message := fmt.Sprintf("Skipped: %s", node.Title)
+	if len(cascaded) > 0 {
+		message += fmt.Sprintf(". Also skipped dependent nodes: %s", formatNodeNumbers(cascaded))
+	}
 	return coop.CommandResponse{
 		OK:           true,
 		SessionID:    session.ID,
 		Node:         nodeNumber,
 		State:        string(coop.NodeSkipped),
-		Message:      fmt.Sprintf("Skipped: %s", node.Title),
+		Message:      message,
 		Continuation: nextAfterNode(session, nodeNumber),
 	}, nil
 }
@@ -337,6 +422,7 @@ func (s *Service) RequestChanges(sessionID string, nodeNumbers []int, note strin
 			}
 			node.RejectionNote = note
 			node.Implementation = nil
+			node.Outputs = nil
 			node.Verifications = nil
 		}
 		return nil
@@ -570,6 +656,41 @@ func errorResponse(err error, hint string, continuation coop.Continuation) coop.
 		Error:    err.Error(),
 		Recovery: continuation.Recovery(hint),
 	}
+}
+
+func mergeNodeOutputs(node *coop.SessionNode, reported coop.NodeOutputs) error {
+	if len(reported) == 0 {
+		return nil
+	}
+	if node.Outputs == nil {
+		node.Outputs = coop.NodeOutputs{}
+	}
+	for source, values := range reported {
+		if strings.TrimSpace(source) == "" {
+			return fmt.Errorf("output source cannot be empty")
+		}
+		if node.Outputs[source] == nil {
+			node.Outputs[source] = map[string]json.RawMessage{}
+		}
+		for field, value := range values {
+			if strings.TrimSpace(field) == "" {
+				return fmt.Errorf("output field cannot be empty")
+			}
+			if !json.Valid(value) {
+				return fmt.Errorf("output %q is not valid JSON", field)
+			}
+			node.Outputs[source][field] = append(json.RawMessage(nil), value...)
+		}
+	}
+	return nil
+}
+
+func formatNodeNumbers(nodes []int) string {
+	values := make([]string, len(nodes))
+	for i, node := range nodes {
+		values[i] = strconv.Itoa(node)
+	}
+	return strings.Join(values, ", ")
 }
 
 func requireActiveSession(session *coop.Session) error {

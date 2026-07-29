@@ -112,12 +112,32 @@ func ReportCheckTemplate(sessionID string, nodeNumber int) Continuation {
 	)
 }
 
-// ReportWorkTemplate returns the continuation for reporting implementation.
-func ReportWorkTemplate(sessionID string, nodeNumber int) Continuation {
-	return commandTemplate(
+// ReportWorkTemplate returns the report command template and every input that
+// must be supplied for a node.
+func ReportWorkTemplate(sessionID string, nodeNumber int, outputs []RequiredOutput) Continuation {
+	continuation := commandTemplate(
 		fmt.Sprintf("stripe coop agent report-work --session=%s --step=%d --note=\"<what you did>\"", sessionID, nodeNumber),
 		commandInput("note", "--note", "Concrete summary of the completed implementation."),
 	)
+	for _, output := range outputs {
+		selector := output.Selector()
+		continuation.NextTemplate += " --output=" + strconv.Quote(selector+"=<"+selector+">")
+		continuation.RequiredInputs = append(continuation.RequiredInputs, commandInput(
+			selector, "--output", fmt.Sprintf("Value produced for the future blueprint reference %q.", selector),
+		))
+	}
+	return continuation
+}
+
+// ReportWorkOutputTemplate returns the report template used when an output flag
+// itself is malformed.
+func ReportWorkOutputTemplate(sessionID string, nodeNumber int) Continuation {
+	continuation := ReportWorkTemplate(sessionID, nodeNumber, nil)
+	continuation.NextTemplate += " --output=\"<field=value>\""
+	continuation.RequiredInputs = append(continuation.RequiredInputs, commandInput(
+		"output", "--output", "Output selector and value in field=value or source:field=value form.",
+	))
+	return continuation
 }
 
 func commandTemplate(command string, inputs ...CommandInput) Continuation {

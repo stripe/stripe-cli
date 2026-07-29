@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -68,6 +69,160 @@ func TestStartWorkReturnsOnlyCurrentNodeContext(t *testing.T) {
 	require.Len(t, resp.TestRequests, 1)
 	assert.Equal(t, "advance-clock", resp.TestRequests[0].Key)
 	assert.Equal(t, []string{"invoice.created"}, resp.Events)
+}
+
+func TestReportWorkPersistsOutputsAndStartWorkResolvesLaterRequest(t *testing.T) {
+	store, err := coop.NewStoreAt(t.TempDir())
+	require.NoError(t, err)
+	session := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "output_workflow",
+		Status:        coop.SessionActive,
+		Settings:      map[string]string{"language": "node"},
+		Steps: []coop.SessionStep{{
+			StepDefinition: coop.StepDefinition{Key: "setup", Title: "Setup"},
+			Nodes: []coop.SessionNode{
+				{
+					NodeDefinition: coop.NodeDefinition{
+						Key:   "create-product",
+						Title: "Create product",
+						Type:  coop.NodeAPIRequest,
+						Request: &coop.APIRequest{
+							Path:   "/v1/products",
+							Method: "post",
+						},
+					},
+					State: coop.NodePending,
+				},
+				{
+					NodeDefinition: coop.NodeDefinition{
+						Key:   "use-product",
+						Title: "Use product",
+						Type:  coop.NodeAPIRequest,
+						Request: &coop.APIRequest{
+							Path:   "/v1/products/${node.setup.create-product:id}",
+							Method: "get",
+							Params: map[string]any{
+								"version": "${node.setup.create-product:latest_version}",
+							},
+						},
+					},
+					State: coop.NodePending,
+				},
+			},
+		}},
+	}
+	require.NoError(t, store.Write(session))
+	service := NewService(store, WithSnippetFetcher(func(path, method string, params interface{}, language string) (string, error) {
+		return "", nil
+	}))
+
+	start, err := service.StartWork(session.ID, 1, "Creating product")
+	require.NoError(t, err)
+	require.True(t, start.OK)
+	assert.Equal(t, []coop.RequiredOutput{
+		{Field: "id"},
+		{Field: "latest_version"},
+	}, start.RequiredOutputs)
+	assert.Empty(t, start.Next)
+	assert.Contains(t, start.NextTemplate, `--output="id=<id>"`)
+
+	missingEverything, err := service.ReportWork(session.ID, 1, ReportWorkInput{}, false)
+	require.NoError(t, err)
+	assert.False(t, missingEverything.OK)
+	assert.Contains(t, missingEverything.Error, "--note flag is required")
+	require.NotNil(t, missingEverything.Recovery)
+	assert.Contains(t, missingEverything.Recovery.NextTemplate, `--note="<what you did>"`)
+	assert.Contains(t, missingEverything.Recovery.NextTemplate, `--output="id=<id>"`)
+	assert.Contains(t, missingEverything.Recovery.NextTemplate, `--output="latest_version=<latest_version>"`)
+	require.Len(t, missingEverything.Recovery.RequiredInputs, 3)
+
+	missing, err := service.ReportWork(session.ID, 1, ReportWorkInput{Note: "Created product"}, false)
+	require.NoError(t, err)
+	assert.False(t, missing.OK)
+	assert.Contains(t, missing.Error, "missing required --output values")
+	require.NotNil(t, missing.Recovery)
+	assert.Contains(t, missing.Recovery.NextTemplate, "--output")
+
+	loaded, err := store.Read(session.ID)
+	require.NoError(t, err)
+	first, err := loaded.NodeByNumber(1)
+	require.NoError(t, err)
+	assert.Equal(t, coop.NodeActive, first.State)
+	assert.Empty(t, first.Outputs)
+
+	reported, err := service.ReportWork(session.ID, 1, ReportWorkInput{
+		Note: "Created product",
+		Outputs: coop.NodeOutputs{
+			coop.DefaultOutputSource: {
+				"id":             json.RawMessage(`"prod_123"`),
+				"latest_version": json.RawMessage(`7`),
+			},
+		},
+	}, false)
+	require.NoError(t, err)
+	require.True(t, reported.OK)
+
+	next, err := service.StartWork(session.ID, 2, "Using product")
+	require.NoError(t, err)
+	require.True(t, next.OK)
+	require.NotNil(t, next.APIRequest)
+	assert.Equal(t, "/v1/products/prod_123", next.APIRequest.Path)
+	params, ok := next.APIRequest.Params.(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, float64(7), params["version"])
+}
+
+func TestSkipCascadesToTransitiveOutputDependents(t *testing.T) {
+	store, err := coop.NewStoreAt(t.TempDir())
+	require.NoError(t, err)
+	session := &coop.Session{
+		SchemaVersion: coop.CurrentSessionSchemaVersion,
+		ID:            "skip_dependencies",
+		Status:        coop.SessionActive,
+		Steps: []coop.SessionStep{{
+			StepDefinition: coop.StepDefinition{Key: "setup", Title: "Setup"},
+			Nodes: []coop.SessionNode{
+				{NodeDefinition: coop.NodeDefinition{Key: "source", Title: "Source"}, State: coop.NodePending},
+				{
+					NodeDefinition: coop.NodeDefinition{
+						Key: "direct", Title: "Direct dependent",
+						Request: &coop.APIRequest{Path: "/v1/direct/${node.setup.source:id}", Method: "get"},
+					},
+					State: coop.NodePending,
+				},
+				{
+					NodeDefinition: coop.NodeDefinition{
+						Key: "transitive", Title: "Transitive dependent",
+						Request: &coop.APIRequest{Path: "/v1/transitive/${node.setup.direct:id}", Method: "get"},
+					},
+					State: coop.NodePending,
+				},
+				{NodeDefinition: coop.NodeDefinition{Key: "independent", Title: "Independent"}, State: coop.NodePending},
+			},
+		}},
+	}
+	require.NoError(t, store.Write(session))
+
+	resp, err := NewService(store).Skip(session.ID, 1, "Does not apply")
+	require.NoError(t, err)
+	require.True(t, resp.OK)
+	assert.Contains(t, resp.Message, "dependent nodes: 2, 3")
+	assert.Contains(t, resp.Next, "--step=4")
+
+	updated, err := store.Read(session.ID)
+	require.NoError(t, err)
+	for _, nodeNumber := range []int{1, 2, 3} {
+		node, err := updated.NodeByNumber(nodeNumber)
+		require.NoError(t, err)
+		assert.Equal(t, coop.NodeSkipped, node.State)
+	}
+	direct, err := updated.NodeByNumber(2)
+	require.NoError(t, err)
+	assert.Contains(t, direct.Activity, "depends on skipped node 1")
+	independent, err := updated.NodeByNumber(4)
+	require.NoError(t, err)
+	assert.Equal(t, coop.NodePending, independent.State)
 }
 
 func TestStartWorkAPIRequestGuidanceDefersPlacementToProjectContext(t *testing.T) {

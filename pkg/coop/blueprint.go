@@ -1,11 +1,9 @@
 package coop
 
 import (
-	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 )
@@ -101,27 +99,53 @@ func validateBlueprintReferences(bp *Blueprint) error {
 		}
 	}
 
-	data, err := json.Marshal(bp)
-	if err != nil {
+	metadata := *bp
+	metadata.Steps = append([]BlueprintStep(nil), bp.Steps...)
+	for i := range metadata.Steps {
+		metadata.Steps[i].Nodes = nil
+	}
+	if err := visitJSONStrings(&metadata, func(value string) error {
+		if findBlueprintNodeCandidate(value) != -1 {
+			return fmt.Errorf("node references are only supported inside node definitions: %q", value)
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	for {
-		token, err := decoder.Token()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		value, ok := token.(string)
-		if !ok {
-			continue
-		}
-		if err := validateBlueprintReferenceString(value, validRefs); err != nil {
-			return err
+
+	if err := visitJSONStrings(bp, func(value string) error {
+		return validateBlueprintReferenceString(value, validRefs)
+	}); err != nil {
+		return err
+	}
+	return validateBlueprintReferenceOrder(bp)
+}
+
+func validateBlueprintReferenceOrder(bp *Blueprint) error {
+	nodeOrder := map[string]int{}
+	order := 0
+	for _, step := range bp.Steps {
+		for _, node := range step.Nodes {
+			order++
+			nodeOrder[step.Key+"."+node.Key] = order
 		}
 	}
+
+	order = 0
+	for _, step := range bp.Steps {
+		for _, node := range step.Nodes {
+			order++
+			if err := walkNodeReferences(node, func(reference nodeReference) error {
+				if nodeOrder[reference.Base] >= order {
+					return fmt.Errorf("node %q references %q before it has completed", step.Key+"."+node.Key, reference.Base)
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func validateBlueprintReferenceString(value string, validRefs map[string]bool) error {

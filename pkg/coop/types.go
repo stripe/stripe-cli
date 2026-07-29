@@ -3,6 +3,7 @@
 package coop
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -15,7 +16,7 @@ var commandTemplatePlaceholder = regexp.MustCompile(`<[^>]+>`)
 type NodeState string
 
 const (
-	CurrentSessionSchemaVersion = 2
+	CurrentSessionSchemaVersion = 3
 )
 
 const (
@@ -55,6 +56,11 @@ type Implementation struct {
 	Snippet string `json:"snippet,omitempty"`
 	Note    string `json:"note,omitempty"`
 }
+
+// NodeOutputs stores values produced by a node. The outer key identifies the
+// result source ("default" for a node's primary result, or a named/numeric
+// request result); the inner key is the field path referenced by a blueprint.
+type NodeOutputs map[string]map[string]json.RawMessage
 
 // Verification is a single check the agent ran.
 type Verification struct {
@@ -103,6 +109,7 @@ type SessionNode struct {
 	State          NodeState       `json:"state"`
 	Activity       string          `json:"activity,omitempty"`
 	Implementation *Implementation `json:"implementation,omitempty"`
+	Outputs        NodeOutputs     `json:"outputs,omitempty"`
 	Verifications  []Verification  `json:"verifications,omitempty"`
 	RejectionNote  string          `json:"rejection_note,omitempty"`
 	StartedAt      *time.Time      `json:"started_at,omitempty"`
@@ -156,6 +163,13 @@ type CommandInput struct {
 	Description string `json:"description"`
 }
 
+// RequiredOutput describes a node result that a future blueprint node
+// references. Source is empty for the node's primary result.
+type RequiredOutput struct {
+	Source string `json:"source,omitempty"`
+	Field  string `json:"field"`
+}
+
 // Continuation tells an agent either what to run next or what inputs are
 // needed to complete a command template.
 type Continuation struct {
@@ -195,13 +209,14 @@ type CommandResponse struct {
 	State     string `json:"state,omitempty"`
 	Message   string `json:"message,omitempty"`
 	Continuation
-	AgentPrompt  string              `json:"agent_prompt,omitempty"`
-	APIRequest   *APIRequest         `json:"api_request,omitempty"`
-	TestRequests []TestHelperRequest `json:"test_requests,omitempty"`
-	Events       []string            `json:"events,omitempty"`
-	SDKExample   string              `json:"sdk_example,omitempty"`
-	Error        string              `json:"error,omitempty"`
-	Recovery     *Recovery           `json:"recovery,omitempty"`
+	RequiredOutputs []RequiredOutput    `json:"required_outputs,omitempty"`
+	AgentPrompt     string              `json:"agent_prompt,omitempty"`
+	APIRequest      *APIRequest         `json:"api_request,omitempty"`
+	TestRequests    []TestHelperRequest `json:"test_requests,omitempty"`
+	Events          []string            `json:"events,omitempty"`
+	SDKExample      string              `json:"sdk_example,omitempty"`
+	Error           string              `json:"error,omitempty"`
+	Recovery        *Recovery           `json:"recovery,omitempty"`
 }
 
 // Validate checks the invariants agents rely on when interpreting a response.

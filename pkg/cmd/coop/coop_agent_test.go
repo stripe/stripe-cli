@@ -409,3 +409,28 @@ func TestOutputAgentErrorEmitsStructuredJSON(t *testing.T) {
 	require.NotNil(t, resp.Recovery)
 	assert.Equal(t, "stripe coop status", resp.Recovery.Next)
 }
+
+func TestParseReportedOutputsPreservesStringsAndJSONTypes(t *testing.T) {
+	outputs, err := parseReportedOutputs([]string{
+		"id=prod_123",
+		"latest_version=7",
+		"create-clock-request:id=clock_123",
+		"metadata={\"source\":\"coop\"}",
+	})
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `"prod_123"`, string(outputs[coop.DefaultOutputSource]["id"]))
+	assert.JSONEq(t, `7`, string(outputs[coop.DefaultOutputSource]["latest_version"]))
+	assert.JSONEq(t, `"clock_123"`, string(outputs["create-clock-request"]["id"]))
+	assert.JSONEq(t, `{"source":"coop"}`, string(outputs[coop.DefaultOutputSource]["metadata"]))
+}
+
+func TestParseReportedOutputsRejectsMalformedValues(t *testing.T) {
+	tests := []string{"id", "=prod_123", "source:=value", "id="}
+	for _, value := range tests {
+		t.Run(value, func(t *testing.T) {
+			_, err := parseReportedOutputs([]string{value})
+			require.Error(t, err)
+		})
+	}
+}

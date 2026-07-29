@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExactCoopCommands(t *testing.T) {
@@ -16,4 +17,17 @@ func TestExactCoopCommands(t *testing.T) {
 	assert.Equal(t, "stripe coop agent next-action --session=coop_123", NextActionCommand("coop_123", ""))
 	assert.Equal(t, "stripe coop agent next-action --session=coop_123 --completed=deploy", NextActionCommand("coop_123", "deploy"))
 	assert.Equal(t, `stripe coop agent start-followup --session="coop_123" --action="deploy" --target="Vercel"`, StartFollowupCommand("coop_123", "deploy", "Vercel"))
+}
+
+func TestReportWorkTemplateDescribesEveryInput(t *testing.T) {
+	continuation := ReportWorkTemplate("coop_123", 2, []RequiredOutput{
+		{Field: "id"},
+		{Source: "create-clock", Field: "id"},
+	})
+
+	assert.Equal(t, `stripe coop agent report-work --session=coop_123 --step=2 --note="<what you did>" --output="id=<id>" --output="create-clock:id=<create-clock:id>"`, continuation.NextTemplate)
+	require.Len(t, continuation.RequiredInputs, 3)
+	assert.Equal(t, "note", continuation.RequiredInputs[0].Name)
+	assert.Equal(t, "id", continuation.RequiredInputs[1].Name)
+	assert.Equal(t, "create-clock:id", continuation.RequiredInputs[2].Name)
 }
