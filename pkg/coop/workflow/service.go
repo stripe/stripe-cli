@@ -3,6 +3,8 @@ package workflow
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -10,8 +12,25 @@ import (
 )
 
 const (
-	AwaitTimeout        = 5 * time.Minute
-	AwaitHarnessTimeout = 6 * time.Minute
+	// AwaitTimeout is how long one await-review call blocks before returning a
+	// waiting response that asks the agent to run it again.
+	//
+	// It must stay under the agent harness's *default* command timeout, not
+	// merely under an advertised one: Claude Code's Bash tool defaults to 120s
+	// and its override env vars have open bugs, so anything longer is killed
+	// whenever a model does not set a timeout itself. A killed process hands
+	// the agent a raw timeout string with no next command, which is what makes
+	// cheap models skip ahead or stop. The developer is not rushed by this —
+	// review state lives in the session file, so the total wait is unbounded
+	// across calls.
+	AwaitTimeout = 45 * time.Second
+	// AwaitHarnessTimeout is the shell timeout Co-op asks agents to allow. It
+	// leaves headroom above AwaitTimeout for process start and session locking.
+	AwaitHarnessTimeout = 90 * time.Second
+
+	// awaitProgressEvery is how often a waiting call writes a keep-alive line,
+	// so the wait is never a silent process.
+	awaitProgressEvery = 10 * time.Second
 )
 
 type Store interface {
@@ -27,6 +46,7 @@ type Service struct {
 	now          func() time.Time
 	sleep        func(time.Duration)
 	awaitTimeout time.Duration
+	progress     io.Writer
 }
 
 type Option func(*Service)
@@ -54,6 +74,14 @@ func WithAwaitTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithProgressWriter redirects keep-alive lines emitted while waiting. Pass nil
+// to disable them. They never go to stdout, which stays a single JSON document.
+func WithProgressWriter(w io.Writer) Option {
+	return func(s *Service) {
+		s.progress = w
+	}
+}
+
 func NewService(store Store, opts ...Option) *Service {
 	s := &Service{
 		store:        store,
@@ -61,6 +89,7 @@ func NewService(store Store, opts ...Option) *Service {
 		now:          time.Now,
 		sleep:        time.Sleep,
 		awaitTimeout: AwaitTimeout,
+		progress:     os.Stderr,
 	}
 	for _, opt := range opts {
 		opt(s)

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/helpers"
 )
 
 func (s *Service) ConfirmReview(sessionID string, nodeNumbers []int) (*coop.Session, error) {
@@ -60,7 +61,23 @@ func (s *Service) RequestChanges(sessionID string, nodeNumbers []int, note strin
 	})
 }
 
+// AwaitReview waits for the developer's review of the step containing
+// nodeNumber. It returns a waiting response rather than blocking indefinitely
+// so an agent harness cannot kill it mid-wait; the agent runs it again until
+// advance_allowed is true.
+//
+// The heartbeat is cleared on every outcome except waiting. While waiting the
+// agent is still in the loop, and a previous waiting call deliberately left the
+// file behind, so any terminal outcome has to clean it up.
 func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
+	resp, err := s.awaitReview(sessionID, nodeNumber)
+	if err == nil && resp.State != "waiting" {
+		_ = s.store.RemoveHeartbeat(sessionID)
+	}
+	return resp, err
+}
+
+func (s *Service) awaitReview(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
 	session, err := s.store.Read(sessionID)
 	if err != nil {
 		return sessionErrorResponse(err), nil
@@ -123,19 +140,23 @@ func (s *Service) autoConfirm(sessionID string, nodeNumber int) (coop.CommandRes
 	), nil
 }
 
+// awaitStepReview blocks for at most one await interval. If the developer has
+// not acted by then it returns a waiting response asking the agent to run the
+// same command again, rather than holding the process long enough for an agent
+// harness to kill it. The developer's total review time stays unbounded because
+// the state being polled lives on disk, not in this process.
 func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNumber int) (coop.CommandResponse, error) {
 	if err := s.store.WriteHeartbeat(sessionID); err != nil {
 		return coop.CommandResponse{}, err
 	}
-	defer func() {
-		_ = s.store.RemoveHeartbeat(sessionID)
-	}()
 
-	deadline := s.now().Add(s.awaitTimeout)
+	start := s.now()
+	deadline := start.Add(s.awaitTimeout)
+	lastProgress := start
+
 	for {
-		if s.now().After(deadline) {
-			return timeoutResponse(sessionID, nodeNumber, s.awaitTimeout), nil
-		}
+		// Poll before checking the deadline so a very short interval still
+		// performs one read: a decision can land while the process starts.
 		s.sleep(500 * time.Millisecond)
 		if err := s.store.WriteHeartbeat(sessionID); err != nil {
 			return coop.CommandResponse{}, err
@@ -147,11 +168,28 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 		}
 		if activeNodeNumber := session.FirstActiveNodeInStep(stepIndex); activeNodeNumber > 0 {
 			activeNode, _ := session.NodeByNumber(activeNodeNumber)
+			_ = s.store.RemoveHeartbeat(sessionID)
 			return rejectedStepResponse(session, stepTitle, activeNodeNumber, activeNode), nil
 		}
-		if session.StepHasReview(stepIndex) {
-			continue
+		if !session.StepHasReview(stepIndex) {
+			_ = s.store.RemoveHeartbeat(sessionID)
+			return confirmedResponse(session, nodeNumber), nil
 		}
-		return confirmedResponse(session, nodeNumber), nil
+
+		now := s.now()
+		waited := helpers.WaitedInReview(session, stepIndex, now)
+		if s.progress != nil && now.Sub(lastProgress) >= awaitProgressEvery {
+			lastProgress = now
+			fmt.Fprintf(s.progress, "Waiting for the developer to review %q (%s so far)...\n",
+				stepTitle, formatWait(waited))
+		}
+		if now.After(deadline) {
+			// Deliberately leave the heartbeat in place. Clearing it on every
+			// interval would make the TUI flash "agent appears idle" during the
+			// gap between calls for any review over two minutes. A genuinely
+			// dead agent still goes stale inside the TUI's freshness window.
+			return waitingResponse(sessionID, nodeNumber, s.awaitTimeout, waited,
+				helpers.StepReviewPrompt(session, stepIndex)), nil
+		}
 	}
 }

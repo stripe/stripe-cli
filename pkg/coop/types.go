@@ -322,7 +322,19 @@ type CommandResponse struct {
 	SessionID string `json:"session_id,omitempty"`
 	Node      int    `json:"node,omitempty"`
 	State     string `json:"state,omitempty"`
-	Message   string `json:"message,omitempty"`
+
+	// AdvanceAllowed reports whether a decision is available and Next may be
+	// followed. It is false only while Co-op is still waiting on the developer,
+	// where Next repeats the command that was just run. A pointer so an unset
+	// call site omits the field rather than emitting a misleading false.
+	AdvanceAllowed *bool `json:"advance_allowed,omitempty"`
+	// WaitedSeconds is cumulative across await calls: it is derived from when
+	// the step entered review, not from time spent inside one process.
+	WaitedSeconds int `json:"waited_seconds,omitempty"`
+	// ReviewPrompt restates what the developer is being asked to verify.
+	ReviewPrompt string `json:"review_prompt,omitempty"`
+
+	Message string `json:"message,omitempty"`
 	Continuation
 	RequiredOutputs []RequiredOutput          `json:"required_outputs,omitempty"`
 	AgentPrompt     string                    `json:"agent_prompt,omitempty"`

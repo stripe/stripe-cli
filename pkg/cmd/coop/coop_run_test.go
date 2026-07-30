@@ -47,8 +47,10 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 func TestAgentInstructionsAdvertiseAwaitTimeoutWithHarnessHeadroom(t *testing.T) {
 	instructions := sessionLifecycleInstructions("Build an integration.")
 
-	assert.Contains(t, instructions, "Co-op returns from await-review after "+workflow.AwaitTimeout.String())
-	assert.Contains(t, instructions, "allow the shell command at least "+workflow.AwaitHarnessTimeout.String())
+	assert.Contains(t, instructions, "advance_allowed")
+	assert.Contains(t, instructions, "returns from await-review on its own after about "+workflow.AwaitTimeout.String())
+	assert.Contains(t, instructions, "do not set a shell timeout below "+workflow.AwaitHarnessTimeout.String())
+	assert.NotContains(t, instructions, "Re-run it if Co-op reports a timeout")
 	assert.NotContains(t, instructions, "Set a 5-minute timeout")
 }
 

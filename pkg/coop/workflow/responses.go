@@ -49,13 +49,20 @@ func waitFor(command string, timeout time.Duration) coop.Continuation {
 
 func nodeResponse(sessionID string, nodeNumber int, state, message string, continuation coop.Continuation) coop.CommandResponse {
 	return coop.CommandResponse{
-		OK:           true,
-		SessionID:    sessionID,
-		Node:         nodeNumber,
-		State:        state,
-		Message:      message,
-		Continuation: continuation,
+		OK:             true,
+		SessionID:      sessionID,
+		Node:           nodeNumber,
+		State:          state,
+		AdvanceAllowed: advanceAllowed(true),
+		Message:        message,
+		Continuation:   continuation,
 	}
+}
+
+// advanceAllowed returns a pointer so call sites that never set the field omit
+// it rather than emitting a false that would stall the agent.
+func advanceAllowed(v bool) *bool {
+	return &v
 }
 
 func nextAfterNode(session *coop.Session, nodeNumber int) coop.Continuation {
@@ -99,12 +106,34 @@ func confirmedResponse(session *coop.Session, nodeNumber int) coop.CommandRespon
 	)
 }
 
-func timeoutResponse(sessionID string, nodeNumber int, timeout time.Duration) coop.CommandResponse {
-	return nodeResponse(
-		sessionID, nodeNumber, "timeout",
-		fmt.Sprintf("Timed out after %s waiting for developer confirmation. Re-run await-review to wait again.", timeout),
+// waitingResponse says the developer simply has not finished reviewing yet. It
+// avoids failure vocabulary — a response that reads as an error makes models
+// abandon the loop or skip ahead — and repeats the invoked command verbatim so
+// re-running takes no judgment.
+func waitingResponse(sessionID string, nodeNumber int, timeout, waited time.Duration, reviewPrompt string) coop.CommandResponse {
+	message := fmt.Sprintf(
+		"The developer is still reviewing (%s so far). This is expected and nothing is wrong.\n"+
+			"Do not start the next task, do not report new work, and do not ask a question here.\n"+
+			"Run the command in \"next\" again now to keep waiting.", formatWait(waited))
+	if reviewPrompt != "" {
+		message += fmt.Sprintf("\nThe developer is checking: %s", reviewPrompt)
+	}
+	response := nodeResponse(
+		sessionID, nodeNumber, "waiting", message,
 		waitFor(coop.AwaitReviewCommand(sessionID, nodeNumber), timeout),
 	)
+	response.AdvanceAllowed = advanceAllowed(false)
+	response.WaitedSeconds = int(waited.Round(time.Second).Seconds())
+	response.ReviewPrompt = reviewPrompt
+	return response
+}
+
+func formatWait(d time.Duration) string {
+	d = d.Round(time.Second)
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
+	return fmt.Sprintf("%dm%ds", int(d.Minutes()), int((d % time.Minute).Seconds()))
 }
 
 func sessionErrorResponse(err error) coop.CommandResponse {

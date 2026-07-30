@@ -70,7 +70,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop agent report-work --step <n>` | Record implementation and outputs, then mark a node complete |
 | `stripe coop agent report-check --step <n>` | Add a verification check |
 | `stripe coop agent skip --step <n>` | Skip a node |
-| `stripe coop agent await-review --step <n>` | Block for up to five minutes until developer confirms or requests changes |
+| `stripe coop agent await-review --step <n>` | Wait for the developer, returning on an interval so a harness cannot kill it |
 | `stripe coop agent resume --session <id>` | Read the current lifecycle state and return its exact next command without mutating it |
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
@@ -92,6 +92,37 @@ stripe coop agent report-work \
 Values that are valid JSON retain their type; other values are stored as strings. Co-op resolves `${node.<step>.<node>:<field>}` references from these persisted outputs before returning a later node's request.
 
 Skipping an output-producing node also skips later nodes that directly or transitively reference its outputs. Co-op refuses the skip if one of those dependent nodes is already done.
+
+## Waiting for the Developer
+
+`await-review` does not block until the developer acts. Each call waits at most
+`AwaitTimeout` (45s) and then returns:
+
+```json
+{ "ok": true, "state": "waiting", "advance_allowed": false,
+  "waited_seconds": 320, "wait_timeout_seconds": 45,
+  "next": "stripe coop agent await-review --session=... --step=2" }
+```
+
+The agent runs `next` again until `advance_allowed` is true. The developer is
+never rushed — review state lives in the session file, so the total wait is
+unbounded across calls; only the individual shell command is short.
+
+The interval has to stay under an agent harness's *default* command timeout,
+not merely under one Co-op advertises. Claude Code's Bash tool defaults to 120s
+and its override env vars have open bugs, so a longer wait is killed whenever a
+model does not set a timeout itself — and a killed process hands the agent a raw
+timeout string with no `next`, which is what makes cheap models skip ahead or
+stop. `AwaitHarnessTimeout` (90s) is the shell timeout Co-op asks agents to
+allow, advertised per response as `wait_timeout_seconds`.
+
+`advance_allowed` is the only field an agent needs to branch on:
+
+| Value | Meaning |
+|-------|---------|
+| `true` | A decision is available (or none was needed). Follow `next`. |
+| `false` | Co-op is still waiting on the developer. Run `next` again; it repeats the command just executed. |
+| absent | Fall back to `ok`/`next`. It is a pointer so an unset call site omits it rather than emitting a misleading `false`. |
 
 ## TUI Keybindings
 
@@ -177,7 +208,7 @@ When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` f
 - **Fresh heartbeat (< 5s old):** Agent is actively waiting for confirmation
 - **No heartbeat + no session update in 2min:** Show idle warning
 
-The heartbeat file is cleaned up when `await` exits. The command advertises its five-minute wait as `wait_timeout_seconds`; agent harnesses should allow at least six minutes so the structured timeout response can arrive.
+The heartbeat is cleared on every await outcome except `waiting`. It is deliberately left in place while waiting: clearing it each interval would make the TUI flash "agent appears idle" during the gap between calls on any review longer than two minutes. A genuinely dead agent still goes stale inside the TUI's freshness window.
 
 Co-op never types into the agent pane. A review decision reaches the agent through its own `await-review` call, which returns as soon as the decision is durable. `stripe coop agent resume --session=<id>` stays available as a manual, read-only recovery command: it reads the latest durable state and returns the exact `next` command, or an empty `next` when the session already advanced.
 
