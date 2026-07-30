@@ -238,7 +238,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 	}
 	paneCmd = shellCommandWithCoopEnv(paneCmd)
 
-	if err := runTmux("split-window", "-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
+	if _, err := splitCoopAgentPane("-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -247,7 +247,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 	}
 
 	if blueprint != nil {
-		return tui.Run(store, session.ID, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
+		return tui.Run(store, session.ID, coopTUIOptions()...)
 	}
 
 	return runCoopTUIWait(store)
@@ -317,8 +317,8 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
-	if err := runTmux("split-window", "-h", "-t", sessionName, "-p", "60",
-		"bash", "-c", paneCmd); err != nil {
+	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd)
+	if err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -327,7 +327,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	runTmux("select-pane", "-t", sessionName+":0.1")
+	runTmux("select-pane", "-t", agentPane)
 
 	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
 	attach.Stdin = os.Stdin
@@ -414,5 +414,5 @@ func runCoopTUIWait(store *coop.Store) error {
 			existingIDs[id] = true
 		}
 	}
-	return tui.RunWaiting(store, existingIDs, tui.WithSandboxClaimURL(coopSandboxClaimURL()))
+	return tui.RunWaiting(store, existingIDs, coopTUIOptions()...)
 }
