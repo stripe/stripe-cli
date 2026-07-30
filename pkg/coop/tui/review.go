@@ -28,7 +28,12 @@ func (m Model) renderFooter() string {
 	}
 
 	if m.statusMessage != "" {
-		lines = append(lines, m.theme.AttentionStyle.Render("  "+m.statusMessage))
+		// Wrap: a status can now carry a command for the developer to run, which
+		// is longer than the short acknowledgements this line used to hold and
+		// would otherwise overflow the narrow layout.
+		for _, line := range strings.Split(wordWrap(m.statusMessage, m.width-2), "\n") {
+			lines = append(lines, m.theme.AttentionStyle.Render("  "+line))
+		}
 	}
 
 	// Name the step and offer a way to it. The note is pinned outside the

@@ -47,8 +47,17 @@ func TestNewCoopSessionAppliesSharedMetadata(t *testing.T) {
 func TestAgentInstructionsAdvertiseAwaitTimeoutWithHarnessHeadroom(t *testing.T) {
 	instructions := sessionLifecycleInstructions("Build an integration.")
 
-	assert.Contains(t, instructions, "Co-op returns from await-review after "+workflow.AwaitTimeout.String())
-	assert.Contains(t, instructions, "allow the shell command at least "+workflow.AwaitHarnessTimeout.String())
+	assert.Contains(t, instructions, "advance_allowed")
+	// The prompt must not claim the field is on every response: many success
+	// responses omit it, and error responses carry their command under recovery.
+	assert.NotContains(t, instructions, "Every response carries")
+	assert.Contains(t, instructions, "including one with no \"advance_allowed\"")
+	assert.Contains(t, instructions, "\"recovery\" object")
+	// A bare "stripe coop agent resume" exits non-zero; it needs a session.
+	assert.NotContains(t, instructions, `run "stripe coop agent resume" `)
+	assert.Contains(t, instructions, "returns from await-review on its own after about "+workflow.AwaitTimeout.String())
+	assert.Contains(t, instructions, "do not set a shell timeout below "+workflow.AwaitHarnessTimeout.String())
+	assert.NotContains(t, instructions, "Re-run it if Co-op reports a timeout")
 	assert.NotContains(t, instructions, "Set a 5-minute timeout")
 }
 

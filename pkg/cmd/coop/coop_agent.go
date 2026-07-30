@@ -54,6 +54,7 @@ func newCoopAgentCmd() *coopAgentCmd {
 	ac.cmd.AddCommand(newCoopAgentResumeCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentNextActionCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentStartFollowupCmd().cmd)
+	ac.cmd.AddCommand(newCoopStopHookCmd().cmd)
 	configureAgentCommand(ac.cmd)
 	return ac
 }
@@ -178,13 +179,19 @@ func newCoopAgentAwaitReviewCmd() *coopAgentActionCmd {
 	c := &coopAgentActionCmd{}
 	c.cmd = &cobra.Command{
 		Use:   "await-review",
-		Short: "Block until the developer confirms or requests changes",
-		Args:  agentNoArgs,
+		Short: "Wait for the developer to confirm or request changes",
+		Long: `Waits for the developer's review of the current step.
+
+Returns on its own within about a minute even when the developer has not acted,
+so an agent harness never kills it mid-wait. A response with advance_allowed
+false means the review is still open: run the command in "next" again to keep
+waiting. The developer's total review time is not limited.`,
+		Args: agentNoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := c.validateSessionStep("await-review"); err != nil {
 				return err
 			}
-			service, err := newWorkflowService()
+			service, err := newWorkflowService(workflow.WithProgressWriter(cmd.ErrOrStderr()))
 			if err != nil {
 				return outputAgentError(err)
 			}

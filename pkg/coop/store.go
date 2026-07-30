@@ -443,6 +443,27 @@ func (s *Store) LatestSession() (*Session, error) {
 	return nil, fmt.Errorf("no readable coop sessions found")
 }
 
+// ActiveSessions returns every session with status "active", most recently
+// updated first. Callers that must not act on the wrong session use this to
+// detect ambiguity rather than silently taking the newest one.
+func (s *Store) ActiveSessions() ([]*Session, error) {
+	entries, err := s.sortedSessionEntries()
+	if err != nil {
+		return nil, err
+	}
+	var active []*Session
+	for _, e := range entries {
+		session, err := s.Read(e.id)
+		if err != nil {
+			continue
+		}
+		if session.Status == SessionActive {
+			active = append(active, session)
+		}
+	}
+	return active, nil
+}
+
 // LatestActiveSession returns the most recently updated session with status "active".
 func (s *Store) LatestActiveSession() (*Session, error) {
 	entries, err := s.sortedSessionEntries()
@@ -464,11 +485,15 @@ func (s *Store) LatestActiveSession() (*Session, error) {
 }
 
 // Delete removes a session file.
+// Delete removes the session and its sidecars. Leaving the heartbeat and
+// stop-hook files behind would accumulate them in the config directory forever.
 func (s *Store) Delete(id string) error {
 	path, err := s.sessionPath(id)
 	if err != nil {
 		return err
 	}
+	_ = s.RemoveHeartbeat(id)
+	_ = s.RemoveStopHookState(id)
 	return os.Remove(path)
 }
 
@@ -504,6 +529,80 @@ func (s *Store) HeartbeatAge(id string) (time.Duration, error) {
 		return 0, err
 	}
 	return time.Since(info.ModTime()), nil
+}
+
+// StopHookState tracks how many times in a row an agent harness's Stop hook
+// held a turn open, and the session version it last saw. Consecutive blocks
+// without the session advancing mean the agent is stuck waiting on a developer
+// who is not there, which is the signal to stop blocking.
+type StopHookState struct {
+	Blocks int `json:"blocks"`
+	// FirstBlockedAt is when this run of blocks began. The budget is primarily
+	// a wall-clock bound: what it is really detecting is a developer who has
+	// walked away, and how many times the agent happened to try to stop in the
+	// meantime is a poor proxy for that.
+	FirstBlockedAt time.Time `json:"first_blocked_at,omitempty"`
+	// ObservedCommand is the next command the hook last handed back. Keying the
+	// budget on the command rather than the session version matters because the
+	// very command the hook orders can itself bump the version — next-action
+	// republishes suggestions — which would reset the counter every round and
+	// make the escape hatch unreachable.
+	ObservedCommand string `json:"observed_command"`
+}
+
+func (s *Store) stopHookPath(id string) (string, error) {
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return "", err
+	}
+	return path + ".stophook", nil
+}
+
+// ReadStopHookState returns the recorded state, or a zero value when no file
+// exists. A corrupt file reads as zero rather than erroring: the hook must
+// never fail an agent's turn over its own bookkeeping.
+func (s *Store) ReadStopHookState(id string) (StopHookState, error) {
+	path, err := s.stopHookPath(id)
+	if err != nil {
+		return StopHookState{}, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return StopHookState{}, nil
+		}
+		return StopHookState{}, err
+	}
+	var state StopHookState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return StopHookState{}, nil
+	}
+	return state, nil
+}
+
+// WriteStopHookState persists the consecutive-block bookkeeping.
+func (s *Store) WriteStopHookState(id string, state StopHookState) error {
+	path, err := s.stopHookPath(id)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
+// RemoveStopHookState clears the bookkeeping.
+func (s *Store) RemoveStopHookState(id string) error {
+	path, err := s.stopHookPath(id)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // RemoveHeartbeat cleans up the heartbeat file.
