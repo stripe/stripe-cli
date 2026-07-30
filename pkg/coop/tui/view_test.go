@@ -437,7 +437,7 @@ func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
 			m := testModel()
 			m.session.Steps[0].Nodes[0].State = coop.NodeReview
 			m.session.Steps[0].Nodes[1].State = coop.NodeDone
-			m.session.Steps[0].Nodes[0].Type = tc.typ
+			m.session.Steps[0].Nodes[0].NodeType = tc.typ
 			m.selectionCursor = 0
 
 			assertContainsPlain(t, m.renderReviewCard(), tc.venue)
@@ -451,7 +451,7 @@ func TestRenderReviewCardPrefersReviewCommandOverVenue(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.session.Steps[0].Nodes[0].Type = coop.NodeAsyncHandler
+	m.session.Steps[0].Nodes[0].NodeType = coop.NodeAsyncHandler
 	m.session.Steps[0].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 0
 

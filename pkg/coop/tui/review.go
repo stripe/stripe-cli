@@ -458,7 +458,7 @@ func (m Model) reviewVenueLabel(nodeNumbers []int) string {
 }
 
 func reviewVenueForNode(node *coop.SessionNode) string {
-	switch node.Type {
+	switch node.NodeType {
 	case coop.NodeAPIRequest, coop.NodeTestHelper:
 		return "the changed files below"
 	case coop.NodeUIComponent:
