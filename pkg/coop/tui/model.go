@@ -36,12 +36,17 @@ type Model struct {
 	height          int
 	userMoved       bool
 
-	rejecting       bool // true while the request-changes input is active
-	rejectTarget    reviewTarget
-	rejectionInput  textarea.Model
-	rejectionError  string
-	statusMessage   string
-	statusExpiresAt time.Time
+	rejecting    bool // true while the request-changes input is active
+	rejectTarget reviewTarget
+	// keyDisambiguation is true once the terminal answers the Kitty keyboard
+	// protocol query, meaning chords like ctrl+enter arrive distinguishable
+	// from a bare enter. Terminals without support never reply, so the
+	// zero value is the correct default.
+	keyDisambiguation bool
+	rejectionInput    textarea.Model
+	rejectionError    string
+	statusMessage     string
+	statusExpiresAt   time.Time
 
 	keys  keyMap
 	help  help.Model
@@ -172,6 +177,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 
+	case tea.KeyboardEnhancementsMsg, tea.FocusMsg, tea.BlurMsg:
+		return m.handleTerminalStateMsg(msg)
+
 	case tea.MouseWheelMsg:
 		m.userMoved = true
 		var cmd tea.Cmd
@@ -273,16 +281,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
-
-	case tea.FocusMsg:
-		m.focused = true
-		return m, nil
-
-	case tea.BlurMsg:
-		m.focused = false
-		return m, nil
 	}
 	return m.updateRejectionInputIfActive(msg)
+}
+
+// handleTerminalStateMsg records terminal-reported state that affects key
+// handling and rendering but never touches session data.
+func (m Model) handleTerminalStateMsg(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyboardEnhancementsMsg:
+		m.keyDisambiguation = msg.SupportsKeyDisambiguation()
+	case tea.FocusMsg:
+		m.focused = true
+	case tea.BlurMsg:
+		m.focused = false
+	}
+	return m, nil
 }
 
 func (m Model) updateRejectionInputIfActive(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -908,6 +922,10 @@ func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.resizeViewport()
 		m.syncViewport()
 		return m, nil
+	case key.Matches(msg, m.keys.Newline):
+		// Terminals that cannot report the bound chords send a bare enter, so
+		// the textarea only ever sees a plain newline press.
+		return m.updateRejectionInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	case key.Matches(msg, m.keys.Submit):
 		m.handleReject(strings.TrimSpace(m.rejectionInput.Value()))
 		return m, nil

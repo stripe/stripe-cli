@@ -18,6 +18,7 @@ type keyMap struct {
 	Expand    key.Binding
 	Enter     key.Binding
 	Submit    key.Binding
+	Newline   key.Binding
 	Tab       key.Binding
 	Escape    key.Binding
 	Follow    key.Binding
@@ -74,8 +75,17 @@ func newKeyMap() keyMap {
 			key.WithHelp("enter", "expand"),
 		),
 		Submit: key.NewBinding(
-			key.WithKeys("ctrl+enter", "super+enter"),
-			key.WithHelp("ctrl/cmd+enter", "send"),
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "send"),
+		),
+		// Only terminals implementing the Kitty keyboard protocol can report
+		// ctrl+enter and shift+enter; everywhere else they arrive as a bare
+		// enter and submit instead. ctrl+j is the LF control byte, which every
+		// terminal delivers. All are bound; newlineHelp picks which one to
+		// advertise based on what the terminal actually reported.
+		Newline: key.NewBinding(
+			key.WithKeys("ctrl+j", "alt+enter", "ctrl+enter", "shift+enter"),
+			key.WithHelp("ctrl+j", "newline"),
 		),
 		Tab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -108,12 +118,27 @@ func newKeyMap() keyMap {
 	}
 }
 
+// newlineHelp advertises the newline chord the current terminal can actually
+// deliver. Ghostty, kitty, WezTerm and iTerm2 with CSI u enabled report key
+// disambiguation and get the more discoverable ctrl+enter; Terminal.app and
+// stock iTerm2 send a bare enter for that chord, so they get ctrl+j instead.
+func (m Model) newlineHelp() key.Binding {
+	if !m.keyDisambiguation {
+		return m.keys.Newline
+	}
+	return key.NewBinding(
+		key.WithKeys(m.keys.Newline.Keys()...),
+		key.WithHelp("ctrl+enter", "newline"),
+	)
+}
+
 func (m Model) ShortHelp() []key.Binding {
 	if m.rejecting {
+		// Cancel stays second so it survives footer truncation at tiny widths.
 		return []key.Binding{
 			m.keys.Submit,
 			key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
-			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "newline")),
+			m.newlineHelp(),
 		}
 	}
 
