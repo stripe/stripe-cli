@@ -226,6 +226,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		ThinEvents:            thinEvents,
 		OutCh:                 proxyOutCh,
 		LoggedInAccountID:     accountID,
+		EventsFrom:            lc.eventsFrom,
 	})
 	if err != nil {
 		return err
