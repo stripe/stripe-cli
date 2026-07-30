@@ -537,6 +537,11 @@ func (s *Store) HeartbeatAge(id string) (time.Duration, error) {
 // who is not there, which is the signal to stop blocking.
 type StopHookState struct {
 	Blocks int `json:"blocks"`
+	// FirstBlockedAt is when this run of blocks began. The budget is primarily
+	// a wall-clock bound: what it is really detecting is a developer who has
+	// walked away, and how many times the agent happened to try to stop in the
+	// meantime is a poor proxy for that.
+	FirstBlockedAt time.Time `json:"first_blocked_at,omitempty"`
 	// ObservedCommand is the next command the hook last handed back. Keying the
 	// budget on the command rather than the session version matters because the
 	// very command the hook orders can itself bump the version — next-action

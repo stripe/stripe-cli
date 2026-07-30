@@ -151,9 +151,18 @@ review"); until the developer accepts it the hook is installed but inert. Claude
 Code loads settings-provided hooks directly.
 
 **Escape hatch:** blocking forever would burn tokens whenever the developer
-walks away, so the hook stops blocking after three consecutive blocks without
-the session advancing. The counter resets whenever the session version changes,
-since progress means the loop is working.
+walks away, so the hook stops holding turns once `stopBlockWindow` (30 minutes)
+passes without the lifecycle moving on. The window is wall-clock rather than a
+attempt count because what it is really detecting is an absent developer, and
+how often the agent happened to try to stop is a poor proxy for that. A separate
+`maxConsecutiveStopBlocks` ceiling guards against an agent that re-stops
+immediately without waiting. Both restart whenever the pending command changes.
+
+When the hook does release, the agent stops for good — nothing types into its
+pane. The TUI closes that loop: if the developer makes a review decision while
+no agent is waiting, the status line names the exact
+`stripe coop agent resume --session=<id>` to paste, and stays on screen until
+acted on.
 
 ## TUI Keybindings
 
