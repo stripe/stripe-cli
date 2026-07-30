@@ -541,7 +541,7 @@ func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.OK)
 	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=add-integration", resp.Next)
-	assert.Equal(t, int(helpers.NextActionSelectionTimeout.Seconds()), resp.WaitTimeoutSeconds)
+	assert.Equal(t, int(helpers.NextActionInterval.Seconds()), resp.WaitTimeoutSeconds)
 }
 
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {
