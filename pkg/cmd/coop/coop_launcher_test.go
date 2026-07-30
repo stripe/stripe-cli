@@ -161,7 +161,7 @@ func TestClaudeLauncherConfiguresCostEffectiveWorkerAndInteractivePrompt(t *test
 	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
 	rc := &coopRunCmd{}
 
-	launcherPath, err := rc.buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, true)
+	launcherPath, err := rc.buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, true, "/usr/local/bin/stripe", "coop_abc")
 	require.NoError(t, err)
 	launcher, err := os.ReadFile(launcherPath)
 	require.NoError(t, err)
@@ -180,7 +180,7 @@ func TestClaudeLauncherNormalModeDoesNotBypassPermissions(t *testing.T) {
 	promptPath := filepath.Join(t.TempDir(), "prompt")
 	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
 
-	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, false)
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, false, "/usr/local/bin/stripe", "coop_abc")
 	require.NoError(t, err)
 	launcher, err := os.ReadFile(launcherPath)
 	require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestCodexLauncherDoesNotReceiveClaudeAgents(t *testing.T) {
 	promptPath := filepath.Join(t.TempDir(), "prompt")
 	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
 
-	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "codex", path: "/usr/local/bin/codex"}, promptPath, true)
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "codex", path: "/usr/local/bin/codex"}, promptPath, true, "/usr/local/bin/stripe", "coop_abc")
 	require.NoError(t, err)
 	launcher, err := os.ReadFile(launcherPath)
 	require.NoError(t, err)
@@ -371,7 +371,7 @@ func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
 	t.Setenv("TEMP", tmp)
 
 	rc := &coopRunCmd{}
-	build := rc.agentPaneCommandBuilder(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, "discovery prompt", false)
+	build := rc.agentPaneCommandBuilder(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, "/usr/local/bin/stripe", "discovery prompt", false)
 	paneCmd, cleanup, err := build(nil)
 	require.NoError(t, err)
 	require.NotNil(t, cleanup)
@@ -385,4 +385,53 @@ func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
 	// The pane command must be exactly the single-quoted launcher path, so
 	// `bash -c` executes the launcher instead of parsing the path.
 	assert.Equal(t, shellQuote(matches[0]), paneCmd)
+}
+
+func TestClaudeLauncherInjectsStopHookSettings(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(
+		&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, false, "/usr/local/bin/stripe", "coop_abc")
+	require.NoError(t, err)
+	script, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(script), "--settings '")
+	assert.Contains(t, string(script), "coop agent stop-hook")
+	assert.Contains(t, string(script), "coop_abc")
+}
+
+func TestCodexLauncherInjectsStopHookConfig(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(
+		&agentInfo{name: "codex", path: "/usr/local/bin/codex"}, promptPath, false, "/usr/local/bin/stripe", "coop_abc")
+	require.NoError(t, err)
+	script, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(script), "-c '")
+	assert.Contains(t, string(script), "hooks.Stop=")
+	assert.Contains(t, string(script), "coop agent stop-hook")
+}
+
+// Discovery mode has no session when the hook is installed, so the command must
+// omit --session and let the hook resolve the latest active session itself.
+func TestLauncherOmitsSessionFlagInDiscoveryMode(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(
+		&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, false, "/usr/local/bin/stripe", "")
+	require.NoError(t, err)
+	script, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(script), "coop agent stop-hook")
+	assert.NotContains(t, string(script), "stop-hook --session")
 }

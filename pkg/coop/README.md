@@ -74,6 +74,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop agent resume --session <id>` | Read the current lifecycle state and return its exact next command without mutating it |
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
+| `stripe coop agent stop-hook` | Harness Stop hook (hidden); holds the turn while Co-op has work pending |
 
 Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, SDK example, and `required_outputs`. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
 
@@ -123,6 +124,35 @@ allow, advertised per response as `wait_timeout_seconds`.
 | `true` | A decision is available (or none was needed). Follow `next`. |
 | `false` | Co-op is still waiting on the developer. Run `next` again; it repeats the command just executed. |
 | absent | Fall back to `ok`/`next`. It is a pointer so an unset call site omits it rather than emitting a misleading `false`. |
+
+## Stop Hook
+
+Returning on an interval removes the hard failure, but a model can still drift
+out of the loop after several calls, and the CLI cannot force it back.
+`stripe coop start` therefore installs a `Stop` hook, which fires exactly when
+the agent tries to end its turn — precisely when it has drifted.
+
+The hook asks `stripe coop agent resume` what the session needs. Resume already
+knows about aborted and completed sessions, rejected work, steps ready for
+review, and the next pending task, and an empty `next` is its "nothing to do"
+signal, so the hook does not reimplement the state machine. When resume yields
+an actionable command the hook returns `{"decision":"block","reason":"..."}`
+carrying that exact command, and both harnesses feed the reason back as the
+agent's next instruction.
+
+Injection is via launch flags only — `claude --settings '<json>'` and
+`codex -c 'hooks.Stop=[...]'` — so nothing is written into the user's repo and
+there is nothing to clean up. Agents Co-op did not launch get no hook and rely
+on the await interval alone.
+
+Codex additionally gates hooks behind an interactive trust prompt ("Hooks need
+review"); until the developer accepts it the hook is installed but inert. Claude
+Code loads settings-provided hooks directly.
+
+**Escape hatch:** blocking forever would burn tokens whenever the developer
+walks away, so the hook stops blocking after three consecutive blocks without
+the session advancing. The counter resets whenever the session version changes,
+since progress means the loop is working.
 
 ## TUI Keybindings
 

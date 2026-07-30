@@ -1,6 +1,7 @@
 package coopcmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -122,13 +123,14 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 	return choice == "bypass", nil
 }
 
-func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
+func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool, stripeBin, sessionID string) (string, error) {
 	launcherPath := promptPath + ".sh"
 	var script string
 
 	switch agent.name {
 	case "claude":
 		flags := " --agents " + shellQuote(claudeCoopAgents)
+		flags += " --settings " + shellQuote(claudeStopHookSettings(stripeBin, sessionID))
 		if autoApprove {
 			flags += " --dangerously-skip-permissions"
 		}
@@ -136,7 +138,7 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
 
 	case "codex":
-		flags := ""
+		flags := " -c " + shellQuote(codexStopHookConfig(stripeBin, sessionID))
 		if autoApprove {
 			flags = " --dangerously-bypass-approvals-and-sandbox"
 		}
@@ -154,27 +156,85 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 	return launcherPath, nil
 }
 
+// claudeStopHookSettings builds the inline settings JSON for "claude
+// --settings". Passing it as a flag rather than writing .claude/settings.json
+// keeps Co-op from touching a file the project owns, so there is nothing to
+// merge and nothing to clean up when the session ends.
+func claudeStopHookSettings(stripeBin, sessionID string) string {
+	settings := map[string]any{
+		"hooks": map[string]any{
+			"Stop": []any{
+				map[string]any{
+					"hooks": []any{
+						map[string]any{
+							"type":    "command",
+							"command": stopHookCommand(stripeBin, sessionID),
+						},
+					},
+				},
+			},
+		},
+	}
+	encoded, err := json.Marshal(settings)
+	if err != nil {
+		return "{}"
+	}
+	return string(encoded)
+}
+
+// codexStopHookConfig builds the "codex -c" override. Codex parses the value as
+// TOML, so the hook is an inline array of tables. Like the Claude path this
+// layers over the user's config without modifying ~/.codex/config.toml.
+//
+// Codex additionally gates hooks behind an interactive trust prompt; until the
+// developer accepts it the hook is installed but inert, and Co-op falls back to
+// the await-review interval alone.
+func codexStopHookConfig(stripeBin, sessionID string) string {
+	return fmt.Sprintf(`hooks.Stop=[{hooks=[{type="command",command=%s}]}]`,
+		tomlQuote(stopHookCommand(stripeBin, sessionID)))
+}
+
+// tomlQuote renders s as a TOML basic string.
+func tomlQuote(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"':
+			b.WriteString(`\"`)
+		case '\\':
+			b.WriteString(`\\`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
 func (rc *coopRunCmd) hasTmux() bool {
 	_, err := exec.LookPath("tmux")
 	return err == nil
 }
 
-func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, discoveryPrompt string, autoApprove bool) coopPaneCommandBuilder {
+func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, stripeBin, discoveryPrompt string, autoApprove bool) coopPaneCommandBuilder {
 	return func(session *coop.Session) (string, func(), error) {
 		prompt := discoveryPrompt
+		sessionID := ""
 		if session != nil {
 			var err error
 			prompt, err = rc.buildAgentPromptForSession(session)
 			if err != nil {
 				return "", nil, err
 			}
+			sessionID = session.ID
 		}
 		promptPath, err := writePromptFile(prompt)
 		if err != nil {
 			return "", nil, err
 		}
 
-		agentCmd, err := rc.buildAgentCmd(agent, promptPath, autoApprove)
+		agentCmd, err := rc.buildAgentCmd(agent, promptPath, autoApprove, stripeBin, sessionID)
 		if err != nil {
 			os.Remove(promptPath)
 			return "", nil, err
@@ -209,7 +269,7 @@ func shellCommandWithCoopEnv(cmd string) string {
 }
 
 func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
-	return rc.runInTmuxSplitWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+	return rc.runInTmuxSplitWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, stripeBin, agentPrompt, autoApprove))
 }
 
 func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
@@ -254,7 +314,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 }
 
 func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
-	return rc.runInNewTmuxWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+	return rc.runInNewTmuxWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, stripeBin, agentPrompt, autoApprove))
 }
 
 func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
@@ -352,7 +412,7 @@ func normalizeCoopTmuxSessionDimensions(width, height int, err error) (int, int)
 }
 
 func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
-	return rc.runFallbackWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, agentPrompt, autoApprove))
+	return rc.runFallbackWithCommand(stripeBin, blueprint, rc.agentPaneCommandBuilder(agent, stripeBin, agentPrompt, autoApprove))
 }
 
 func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
