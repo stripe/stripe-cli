@@ -140,7 +140,7 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 	case "codex":
 		flags := " -c " + shellQuote(codexStopHookConfig(stripeBin, sessionID))
 		if autoApprove {
-			flags = " --dangerously-bypass-approvals-and-sandbox"
+			flags += " --dangerously-bypass-approvals-and-sandbox"
 		}
 		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
 			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
@@ -210,6 +210,26 @@ func tomlQuote(s string) string {
 	}
 	b.WriteByte('"')
 	return b.String()
+}
+
+// splitCoopPane splits a window and returns the new pane's real id. Addressing
+// it as "<session>:0.1" instead breaks for anyone who sets base-index or
+// pane-base-index in ~/.tmux.conf, which is common.
+func splitCoopPane(args ...string) (string, error) {
+	out, err := runTmuxOutput(append([]string{"split-window", "-P", "-F", "#{pane_id}"}, args...)...)
+	if err != nil {
+		return "", err
+	}
+	pane := strings.TrimSpace(out)
+	if pane == "" {
+		return "", fmt.Errorf("tmux split-window returned an empty pane ID")
+	}
+	return pane, nil
+}
+
+var runTmuxOutput = func(args ...string) (string, error) {
+	out, err := exec.Command("tmux", args...).CombinedOutput()
+	return string(out), err
 }
 
 func (rc *coopRunCmd) hasTmux() bool {
@@ -377,7 +397,8 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
-	if err := runTmux("split-window", "-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd); err != nil {
+	agentPane, err := splitCoopPane("-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd)
+	if err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -386,7 +407,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	runTmux("select-pane", "-t", sessionName+":0.1")
+	runTmux("select-pane", "-t", agentPane)
 
 	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
 	attach.Stdin = os.Stdin

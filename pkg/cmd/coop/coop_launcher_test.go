@@ -268,18 +268,25 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	splitErr := errors.New("split failed")
 	var tmuxCalls [][]string
 	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
 	runTmux = func(args ...string) error {
 		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
-		switch args[0] {
-		case "has-session":
+		if args[0] == "has-session" {
 			return errors.New("session not found")
-		case "split-window":
-			return splitErr
-		default:
-			return nil
 		}
+		return nil
 	}
-	t.Cleanup(func() { runTmux = originalRunTmux })
+	runTmuxOutput = func(args ...string) (string, error) {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		if args[0] == "split-window" {
+			return "", splitErr
+		}
+		return "%1", nil
+	}
+	t.Cleanup(func() {
+		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
+	})
 
 	cleanupCalled := false
 	rc := &coopRunCmd{language: "node"}
@@ -433,5 +440,37 @@ func TestLauncherOmitsSessionFlagInDiscoveryMode(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, string(script), "coop agent stop-hook")
-	assert.NotContains(t, string(script), "stop-hook --session")
+	assert.NotContains(t, string(script), "--session")
+}
+
+// Auto-approve previously replaced the injected hook flag instead of appending
+// to it, so the mode most sessions use launched Codex with no Stop hook at all.
+func TestCodexLauncherKeepsStopHookUnderAutoApprove(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(
+		&agentInfo{name: "codex", path: "/usr/local/bin/codex"}, promptPath, true, "/usr/local/bin/stripe", "coop_abc")
+	require.NoError(t, err)
+	script, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(script), "hooks.Stop=")
+	assert.Contains(t, string(script), "--dangerously-bypass-approvals-and-sandbox")
+}
+
+func TestClaudeLauncherKeepsStopHookUnderAutoApprove(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(
+		&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, true, "/usr/local/bin/stripe", "coop_abc")
+	require.NoError(t, err)
+	script, err := os.ReadFile(launcherPath)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(script), "coop agent stop-hook")
+	assert.Contains(t, string(script), "--dangerously-skip-permissions")
 }
