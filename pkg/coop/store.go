@@ -506,6 +506,70 @@ func (s *Store) HeartbeatAge(id string) (time.Duration, error) {
 	return time.Since(info.ModTime()), nil
 }
 
+// StopHookState tracks how many times in a row an agent harness's Stop hook
+// held a turn open, and the session version it last saw. Consecutive blocks
+// without the session advancing mean the agent is stuck waiting on a developer
+// who is not there, which is the signal to stop blocking.
+type StopHookState struct {
+	Blocks          int `json:"blocks"`
+	ObservedVersion int `json:"observed_version"`
+}
+
+func (s *Store) stopHookPath(id string) (string, error) {
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return "", err
+	}
+	return path + ".stophook", nil
+}
+
+// ReadStopHookState returns the recorded state, or a zero value when no file
+// exists. A corrupt file reads as zero rather than erroring: the hook must
+// never fail an agent's turn over its own bookkeeping.
+func (s *Store) ReadStopHookState(id string) (StopHookState, error) {
+	path, err := s.stopHookPath(id)
+	if err != nil {
+		return StopHookState{}, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return StopHookState{}, nil
+		}
+		return StopHookState{}, err
+	}
+	var state StopHookState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return StopHookState{}, nil
+	}
+	return state, nil
+}
+
+// WriteStopHookState persists the consecutive-block bookkeeping.
+func (s *Store) WriteStopHookState(id string, state StopHookState) error {
+	path, err := s.stopHookPath(id)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
+// RemoveStopHookState clears the bookkeeping.
+func (s *Store) RemoveStopHookState(id string) error {
+	path, err := s.stopHookPath(id)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 // RemoveHeartbeat cleans up the heartbeat file.
 func (s *Store) RemoveHeartbeat(id string) error {
 	path, err := s.heartbeatPath(id)
