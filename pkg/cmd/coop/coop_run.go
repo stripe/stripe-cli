@@ -3,8 +3,8 @@ package coopcmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
 type coopAgentRunCmd struct {
@@ -21,10 +22,11 @@ type coopAgentRunCmd struct {
 	params        []string
 	parentSession string
 	parentStep    string
+	ensureSkill   func() error
 }
 
 func newCoopAgentRunCmd() *coopAgentRunCmd {
-	rc := &coopAgentRunCmd{}
+	rc := &coopAgentRunCmd{ensureSkill: ensureRepoStripeBestPracticesSkill}
 	rc.cmd = &cobra.Command{
 		Use:   "run <blueprint-id>",
 		Short: "Create a co-op session from a blueprint (agent-facing)",
@@ -35,7 +37,16 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 		Example: `  stripe coop run one-time-payment
   stripe coop run one-time-payment --language=node
   stripe coop run setup-future-payments --setting=framework=express --param=customer_type=existing`,
-		Args: cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				return nil
+			}
+			return outputCoopError(
+				"coop run requires exactly one blueprint ID",
+				"Choose a blueprint before starting a session.",
+				coop.Continue("stripe coop recommend"),
+			)
+		},
 		RunE: rc.runCmd,
 	}
 
@@ -44,34 +55,45 @@ This is the agent-facing command. Developers should use "stripe coop start" inst
 	rc.cmd.Flags().StringArrayVar(&rc.params, "param", nil, "Blueprint params as key=value pairs")
 	rc.cmd.Flags().StringVar(&rc.parentSession, "parent-session", "", "Parent co-op session ID for follow-up work")
 	rc.cmd.Flags().StringVar(&rc.parentStep, "parent-step", "", "Parent next-step ID this session fulfills")
+	configureAgentCommand(rc.cmd)
 
 	return rc
 }
 
 func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	blueprintID := args[0]
-
-	bp, err := coop.LoadBlueprint(blueprintID)
+	bp, err := coop.LoadBlueprint(cmd.Context(), coopBlueprintRepository(), blueprintID)
 	if err != nil {
 		// Surface the specific error (e.g. an ambiguous prefix and its candidate
 		// list) rather than a generic "not found".
-		return outputCoopError(err.Error(), "stripe coop recommend")
+		return outputCoopError(
+			err.Error(),
+			"Choose an available blueprint ID.",
+			coop.Continue("stripe coop recommend --all"),
+		)
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
-		return fmt.Errorf("creating store: %w", err)
+		return outputAgentError(fmt.Errorf("creating store: %w", err))
 	}
 
 	sessionID := "coop_" + uuid.New().String()[:8]
 
 	session, err := newCoopSession(bp, sessionID, rc.language, rc.settings, rc.params, rc.parentSession, rc.parentStep)
 	if err != nil {
-		return outputCoopError(err.Error(), "Use --setting key=value and --param key=value.")
+		return outputCoopError(
+			err.Error(),
+			"Retry without the malformed setting or parameter; optional values use key=value syntax.",
+			coop.Continue(coop.RunCommand(blueprintID)),
+		)
+	}
+	if err := rc.ensureStripeSkill(); err != nil {
+		warnRepoStripeBestPracticesSkill(cmd, err)
 	}
 
 	if err := store.Write(session); err != nil {
-		return fmt.Errorf("writing session: %w", err)
+		return outputAgentError(fmt.Errorf("writing session: %w", err))
 	}
 
 	resp := newCoopAgentRunResponse(bp, session)
@@ -79,45 +101,31 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	return outputJSON(resp)
 }
 
-func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coopAgentRunResponse {
-	return newCoopAgentSessionResponse(bp.Title, session, agentInstructions(bp, session))
+func (rc *coopAgentRunCmd) ensureStripeSkill() error {
+	if rc.ensureSkill != nil {
+		return rc.ensureSkill()
+	}
+	return ensureRepoStripeBestPracticesSkill()
 }
 
-func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coopAgentRunResponse {
-	return newCoopAgentSessionResponse(action.Title, session, guidedActionAgentInstructions(action, session))
+func newCoopAgentRunResponse(bp *coop.Blueprint, session *coop.Session) coop.CommandResponse {
+	return newCoopAgentSessionResponse(bp.Title.DefaultMessage, session, agentInstructions(bp))
 }
 
-func newCoopAgentSessionResponse(title string, session *coop.Session, instructions string) coopAgentRunResponse {
-	var nodes []nodeBrief
-	nodeNumber := 0
-	for _, step := range session.Steps {
-		for _, n := range step.Nodes {
-			nodeNumber++
-			nodes = append(nodes, nodeBrief{
-				Number:        nodeNumber,
-				Title:         n.Title,
-				Type:          string(n.Type),
-				Description:   n.Description,
-				ReviewPrompt:  n.ReviewPrompt,
-				ReviewCommand: n.ReviewCommand,
-				AutoConfirm:   n.AutoConfirm,
-			})
-		}
-	}
+func newCoopAgentGuidedActionResponse(action *coop.GuidedAction, session *coop.Session) coop.CommandResponse {
+	return newCoopAgentSessionResponse(action.Title, session, guidedActionAgentInstructions(action))
+}
 
-	resp := coopAgentRunResponse{
-		CommandResponse: coop.CommandResponse{
-			OK:        true,
-			SessionID: session.ID,
-			Node:      1,
-			State:     "created",
-			Message:   fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
-			Next:      fmt.Sprintf("stripe coop agent start-work --session=%s --step=1 --note=%s", session.ID, quoteArg("Beginning: "+session.Steps[0].Nodes[0].Title)),
-		},
-		AgentInstructions: instructions,
-		Nodes:             nodes,
+func newCoopAgentSessionResponse(title string, session *coop.Session, instructions string) coop.CommandResponse {
+	return coop.CommandResponse{
+		OK:           true,
+		SessionID:    session.ID,
+		Node:         1,
+		State:        "created",
+		Message:      fmt.Sprintf("Session started: %s (%d nodes)", title, session.TotalNodes()),
+		Continuation: coop.Continue(coop.StartWorkCommand(session.ID, 1, "Beginning: "+session.Steps[0].Nodes[0].TitleText())),
+		AgentPrompt:  instructions,
 	}
-	return resp
 }
 
 func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings, rawParams []string, parentSession, parentStep string) (*coop.Session, error) {
@@ -134,7 +142,10 @@ func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings,
 		return nil, err
 	}
 
-	session := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	session, err := coop.NewSessionFromBlueprint(bp, sessionID, settings, params)
+	if err != nil {
+		return nil, err
+	}
 	session.CreatedAt = time.Now().UTC()
 	session.ParentSessionID = parentSession
 	session.ParentStepID = parentStep
@@ -157,36 +168,22 @@ func mergeKeyValues(dst map[string]string, flag string, values []string) error {
 	return nil
 }
 
-type coopAgentRunResponse struct {
-	coop.CommandResponse
-	AgentInstructions string      `json:"agent_instructions"`
-	Nodes             []nodeBrief `json:"nodes"`
+func agentInstructions(bp *coop.Blueprint) string {
+	preamble := fmt.Sprintf("You are building a production-grade Stripe integration: %q", bp.Title.DefaultMessage)
+	return sessionLifecycleInstructions(preamble)
 }
 
-type nodeBrief struct {
-	Number        int    `json:"number"`
-	Title         string `json:"title"`
-	Type          string `json:"type"`
-	Description   string `json:"description,omitempty"`
-	ReviewPrompt  string `json:"review_prompt,omitempty"`
-	ReviewCommand string `json:"review_command,omitempty"`
-	AutoConfirm   bool   `json:"auto_confirm,omitempty"`
-}
-
-func agentInstructions(bp *coop.Blueprint, session *coop.Session) string {
-	preamble := fmt.Sprintf("You are building a working Stripe integration: %q", bp.Title)
-	return sessionLifecycleInstructions(preamble, session)
-}
-
-func guidedActionAgentInstructions(action *coop.GuidedAction, session *coop.Session) string {
+func guidedActionAgentInstructions(action *coop.GuidedAction) string {
 	preamble := fmt.Sprintf("You are completing a guided co-op follow-up: %q.\n\n%s", action.Title, action.AgentContext)
-	return sessionLifecycleInstructions(preamble, session)
+	return sessionLifecycleInstructions(preamble)
 }
 
-func sessionLifecycleInstructions(preamble string, session *coop.Session) string {
+func sessionLifecycleInstructions(preamble string) string {
 	return fmt.Sprintf(`%s
 
 The blueprint describes the Stripe flow the developer wants in their app. Your deliverable is the user's app implementing that flow. Stripe CLI commands are useful for setup and verification, but they are not the implementation unless a node is explicitly a cliCommand.
+
+%s
 
 BEFORE YOU START — ensure you have API access:
 1. Run "stripe whoami" to check if you're authenticated.
@@ -216,59 +213,43 @@ For apiRequest, asyncHandler, and uiComponent nodes, a node is complete only whe
 
 Run at least one meaningful report-check before report-work for every non-skipped reviewable node, and add --passed only after observing the expected result. If the environment prevents full verification, report the concrete partial or failed check without --passed and explain the exact limitation instead of claiming success.
 
-If a node includes review_prompt, that is the baseline acceptance check shown to the human. If it includes review_command, run that exact command when verifying or explain why it does not apply. Make your implementation note and verifications directly answer these fields. When you add verification checks, write them as useful confirmation guidance for the human too: include concrete actions and expected results, such as "Visit http://localhost:3000/checkout, click Pay, and confirm the browser redirects to Stripe Checkout" rather than vague labels like "manual test passed".
+%s
 
-If a node asks you to understand the project, scan files, identify the tech stack, and summarize what you found. This helps you adapt the remaining nodes to the developer's actual setup. Don't ask the developer questions you can answer by reading the code.
+Use context from the current app or codebase, if one exists, to inform your decisions. Inspect its architecture, language, framework, conventions, dependencies, and existing Stripe code so the integration fits the project naturally.
 
-Agent lifecycle commands (use this session id: %s):
-1. stripe coop agent start-work --session=%s --step=<n> --note="<what you're about to do>"
-2. Write the code and run it to verify it works
-3. stripe coop agent report-check --session=%s --step=<n> --check="<what you verified>" --passed
-4. stripe coop agent report-work --session=%s --step=<n> --file=<main file> --lines=<range> --snippet="<key code>" --note="<summary>"
-5. Follow the JSON response's next command. Most nodes continue to the next node in the same step.
-6. Only run stripe coop agent await-review --session=%s --step=<n> when the response says the step is ready for review. Await blocks until the human confirms the step or requests changes.
-7. If confirmed: move to next node. If rejected: redo the affected node (check the message for feedback).
-8. When the final node is confirmed: IMMEDIATELY run the JSON response's next command. Do not stop or ask. It will return to the parent session for follow-up work or show the developer their options in the TUI.
+Work through one node at a time. Every start-work response includes an agent_prompt with the current task and acceptance criteria; do not work ahead. Write working code, run it, and report concrete file paths and test results. Use the latest Stripe SDK.
 
-Steps are the default human-review unit. Build and verify each node one at a time, but do not interrupt the developer for every node. At the end of each step, before running await, help the developer verify the step: run relevant review_command values, start any needed app/server, keep useful processes running, share the local URL or command to open it, create or identify test data, and explain exactly what observable result they should confirm. Add these concrete user-facing checks with stripe coop agent report-check --session=%s --step=<n> --check="..." --passed so the review card has useful evidence.
+Before starting, run "stripe whoami". If you are not authenticated or it says "Test mode key: not available", run "stripe sandbox create --from-git"; the claim URL will appear in the developer's TUI.
 
-The "await" command is critical at step boundaries — it blocks until the developer acts. Do NOT proceed to the next step without running await when the node response tells you the step is ready. Set a 5-minute timeout on the shell command (it will re-prompt you if it times out). If changes are requested, ask the developer what they'd like you to change before redoing the affected node.
+For each node:
+1. Run the next command returned by Co-op. Replace any <...> placeholders with real values before running it.
+2. Follow that response's agent_prompt as the source of truth.
+3. Verify the result and report each useful check with "stripe coop agent report-check".
+4. Report the implementation with "stripe coop agent report-work".
+5. Continue with the response's next command. If a task does not apply, use "stripe coop agent skip" with a reason.
 
-Some nodes are marked auto_confirm — these do not require human review. Continue following the next command returned by the CLI.
+Only await human review when the next command says to. Before awaiting, run the supplied review command, keep useful servers running, and give the developer concrete actions and expected results. Co-op returns from await-review after %s; allow the shell command at least %s so the structured timeout response arrives. Re-run it if Co-op reports a timeout. If changes are requested, redo the affected node from the feedback. After the final confirmation, immediately run the returned next command.
 
-Important:
-- The human is watching your progress live in a terminal UI.
-- Write working code, not stubs. Run it. Verify it actually works.
-- Report what you did concretely (file paths, line numbers, test results).
-- Never pass full card numbers to Stripe APIs or CLI commands. Collect card details only through hosted Checkout, Payment Element, or another official client-side integration. If an API needs a test payment method, use supported test PaymentMethod IDs such as pm_card_visa instead of card[number].
-- If a node doesn't apply to the user's setup, skip it: stripe coop agent skip --session=%s --step=<n> --note="<reason>"
-- Always install the LATEST version of the Stripe SDK for the language in use. Do not pin to old versions.
-  Examples: "npm install stripe@latest", "pip install --upgrade stripe", "gem install stripe"
-  Check https://docs.stripe.com/libraries for current versions if unsure.`, preamble, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID, session.ID)
+Never pass full card numbers to Stripe APIs or CLI commands. Collect card details only through hosted Checkout, Payment Element, or another official client-side integration. If an API needs a test payment method, use a supported test PaymentMethod ID such as pm_card_visa.`,
+		preamble,
+		coopAgentCoordinationInstructions(),
+		stripeAgentGuidanceInstructions(),
+		workflow.AwaitTimeout,
+		workflow.AwaitHarnessTimeout,
+	)
 }
 
 func outputJSON(v interface{}) error {
+	return outputJSONTo(os.Stdout, v)
+}
+
+func outputJSONTo(w io.Writer, v interface{}) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(data))
+	fmt.Fprintln(w, string(data))
 	return nil
-}
-
-func quoteArg(value string) string {
-	return strconv.Quote(value)
-}
-
-func outputCoopError(msg, hint string) error {
-	resp := coop.CommandResponse{
-		OK:    false,
-		Error: msg,
-		Hint:  hint,
-	}
-	data, _ := json.MarshalIndent(resp, "", "  ")
-	fmt.Fprintln(os.Stderr, string(data))
-	return RenderedError{}
 }
 
 type RenderedError struct{}

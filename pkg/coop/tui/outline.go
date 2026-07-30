@@ -140,7 +140,7 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	if m.stepCollapsed(stepIndex) {
 		disclosure = "+ "
 	}
-	title := ch.Title
+	title := ch.TitleText()
 	if selected {
 		title = lipgloss.NewStyle().Bold(true).Render(title)
 	}
@@ -238,7 +238,7 @@ func (m Model) stepHasPendingReviewWithNoActiveWork(stepIndex int) bool {
 	}
 	hasReview := false
 	for _, node := range m.session.Steps[stepIndex].Nodes {
-		if node.AutoConfirm {
+		if node.IsInformationalNode {
 			continue
 		}
 		switch node.State {
@@ -260,7 +260,7 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, includedInStepRevi
 		cursor = m.theme.BrandStyle.Render(cursorMarker)
 	}
 
-	title := node.Title
+	title := node.TitleText()
 	if node.State == coop.NodeSkipped {
 		title = m.theme.DimmedStyle.Render(title)
 	} else if selected {

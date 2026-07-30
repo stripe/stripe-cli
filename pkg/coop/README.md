@@ -60,21 +60,37 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop join [session-id]` | Open the TUI for an existing session |
 | `stripe coop status` | Show session summary |
 | `stripe coop stop` | End the session |
-| `stripe coop recommend` | List available blueprints |
+| `stripe coop recommend --all` | List available blueprint summaries for agent selection |
 
 ### Agent-facing (AI agent runs these)
 | Command | Purpose |
 |---------|---------|
-| `stripe coop run <blueprint>` | Create a session (outputs JSON with instructions) |
-| `stripe coop agent start-work --step <n>` | Mark a node as active |
-| `stripe coop agent report-work --step <n>` | Mark a node complete (→ review or → done if auto_confirm) |
+| `stripe coop run <blueprint>` | Create a session (outputs a compact JSON bootstrap) |
+| `stripe coop agent start-work --step <n>` | Mark a node active and return its task context |
+| `stripe coop agent report-work --step <n>` | Record implementation and outputs, then mark a node complete |
 | `stripe coop agent report-check --step <n>` | Add a verification check |
 | `stripe coop agent skip --step <n>` | Skip a node |
 | `stripe coop agent await-review --step <n>` | Block until developer confirms or requests changes |
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 
-All agent commands output JSON with an `ok` field and a `next` field suggesting the next command. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, SDK example, and `required_outputs`. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+
+`report-work` requires a concrete `--note`. Use repeatable `--output` flags for values named by `required_outputs`:
+
+```bash
+stripe coop agent report-work \
+  --session=coop_abc123 \
+  --step=2 \
+  --note="Created the product and captured its result" \
+  --output=id=prod_123 \
+  --output=latest_version=7 \
+  --output=create-test-clock-request:id=clock_123
+```
+
+Values that are valid JSON retain their type; other values are stored as strings. Co-op resolves `${node.<step>.<node>:<field>}` references from these persisted outputs before returning a later node's request.
+
+Skipping an output-producing node also skips later nodes that directly or transitively reference its outputs. Co-op refuses the skip if one of those dependent nodes is already done.
 
 ## TUI Keybindings
 
@@ -114,16 +130,17 @@ In the completion view:
 $ stripe coop start one-time-payment --language=node
 
 # What happens behind the scenes:
-# 1. CLI creates the session and gives the agent the exact session protocol
+# 1. CLI creates the session and gives the agent a compact protocol bootstrap
 # 2. Agent (Claude/Codex) is launched in right pane
 # 3. TUI appears in left pane showing step progress
-# 4. Agent starts from the provided next command:
+# 4. Agent starts from the provided next command; its response supplies the
+#    current node's task and acceptance criteria:
 #      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Beginning: Understand the project"
 # 5. Agent works through steps, calling:
 #      stripe coop agent start-work --session=coop_abc123 --step=1 --note="Scanning project"
 #      stripe coop agent report-work --session=coop_abc123 --step=1 --note="Found Next.js app"
 #      stripe coop agent start-work --session=coop_abc123 --step=2 --note="Creating product"
-#      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product"
+#      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product" --output=id=prod_123
 #      stripe coop agent await-review --session=coop_abc123 --step=2   ← blocks until developer confirms
 # 6. Developer sees progress live, presses 'c' to confirm
 # 7. Agent continues to next step
@@ -137,7 +154,7 @@ Discovery mode is different:
 $ stripe coop start
 
 # The agent explores the codebase, asks what the developer wants to build,
-# runs `stripe coop recommend`, and only then runs:
+# runs `stripe coop recommend --all`, picks the best summary, and only then runs:
 #   stripe coop run <blueprint-id> --language=<lang>
 ```
 
@@ -145,11 +162,11 @@ Post-completion choices are written into the session file for the agent. Deploy 
 
 ## Auto-Confirm
 
-Nodes with `"auto_confirm": true` skip human review:
+Blueprint nodes with `"is_informational_node": true` skip human review:
 - `agent report-work` transitions directly to `done` (not `review`)
 - `agent await-review` returns immediately if the node is auto-confirmed
 - The prepended "Project context" step contains an auto-confirmed "Understand the project" node
-- Blueprint nodes can set `"auto_confirm": true` for mechanical steps
+- Informational blueprint nodes are auto-confirmed after the agent reports work
 
 ## Heartbeat
 
@@ -157,7 +174,7 @@ When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` f
 - **Fresh heartbeat (< 5s old):** Agent is actively waiting for confirmation
 - **No heartbeat + no session update in 2min:** Show idle warning
 
-The heartbeat file is cleaned up when `await` exits.
+The heartbeat file is cleaned up when `await` exits. The command advertises its five-minute wait as `wait_timeout_seconds`; agent harnesses should allow at least six minutes so the structured timeout response can arrive.
 
 ## Resuming
 
@@ -172,12 +189,16 @@ Use `stripe coop join --resume` to pick from recent sessions.
 | Agent appears idle | Rejoin the session; the TUI shows heartbeat/idle state |
 | Need a specific older session | Run `stripe coop join --resume` |
 
-## Blueprint Format
+## Blueprint loading
 
-Blueprints are embedded JSON in `pkg/coop/blueprints/`. Each has:
-- `id` — unique identifier (also the filename without .json)
-- `title`, `description` — human-readable
-- `steps` — ordered groups of nodes
+Blueprint definitions are loaded at runtime from the unstable list and retrieve
+API endpoints using the configured test-mode key and preview API version.
+`coop recommend --all` lists learning blueprints by default. `coop run` and
+`coop start` retrieve the selected definition and apply its selected/default
+configuration.
+Recommend results report `step_count`; the former `node_count` field remains as
+`null` for migration compatibility because the list endpoint does not expose
+node definitions.
 
 Each node has:
 - `type` — `apiRequest`, `asyncHandler`, `uiComponent`, `cliCommand`, `dashboard`, `setUpWebhooks`, `testHelper`
@@ -190,20 +211,15 @@ Each node has:
 - `requests` — API-backed test helper requests for `testHelper` nodes
 - `events` — webhook events (for `asyncHandler` nodes)
 
+Node references may only point backward to completed blueprint nodes. Direct node results use `${node.<step>.<node>:<field>}`; named test-helper or numeric event results add a source segment, such as `${node.<step>.<node>.<request>:id}` or `${node.<step>.<node>.0:id}`.
+
 `testHelper` request metadata tells the agent which Stripe-backed test helpers can advance test state. Agents should use those helpers while verifying work, but should not encode helper-only request parameters into the user's application.
 
-### Syncing Blueprints
-
-Workbench blueprint definitions are the source of truth. Do not supplement or modify `pkg/coop/blueprints/` by hand to add CLI-only product work. Update the upstream blueprint source, then sync the CLI-friendly JSON:
-
-```bash
-BLUEPRINT_SOURCE=/path/to/pay-server/frontend/workbench/shared/blueprints/src/blueprintDefinitions make sync-blueprints
-```
-
-If pay-server has already exported `dist/blueprints/*.json`, `BLUEPRINT_SOURCE`
-can point at that directory instead.
-
-After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix matching works: short prefixes resolve to full IDs if unambiguous.
+The effective blueprint definition is stored directly in the session alongside
+co-op progress. The session also pins blueprint, step, and template versions plus
+the retrieved source digest, so an active session is unaffected by later upstream
+changes. Representative API responses used by tests live in `pkg/coop/testdata/`;
+they are not a runtime catalog.
 
 ## Troubleshooting
 
@@ -215,9 +231,9 @@ After syncing, test with `go run ./cmd/stripe coop run <blueprint-id>`. Prefix m
 | "timed out waiting for session lock" | A previous writer left a `.lock` file behind | If no `stripe coop` command is running, remove the named lock file and retry |
 | TUI shows wrong session | Multiple sessions exist | Use `stripe coop join <session-id>` with the correct ID |
 | Steps not updating in TUI | Agent created a duplicate session | Check `stripe coop status` for the correct session ID |
-| Agent ignores "next" hint | LLM didn't follow instructions | Copy the `next` value and run it manually, or restart |
+| Agent ignores its continuation | LLM didn't follow instructions | Run `next` exactly, or fill every `required_inputs` value in `next_template` |
 | Double footer / layout broken | Terminal resize not detected | Resize the terminal window (triggers recalculation) |
-| "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend` to see available IDs |
+| "Blueprint not found" | Typo in blueprint ID | Run `stripe coop recommend --all` to see available IDs |
 
 ## Locking
 
@@ -230,10 +246,11 @@ pkg/coop/
   types.go          — Session, Node, Step types and constants
   session.go        — State machine, validation, queries
   store.go          — Atomic file I/O, heartbeat, lock files, optimistic locking
-  blueprint.go      — Blueprint type, embed loader, prefix matching
+  blueprint.go      — Blueprint configuration resolution and session creation
+  blueprint_api.go  — Authenticated blueprint client
   guided_action.go  — In-code guided follow-up session model
   snippet.go        — SDK snippet fetcher (docs.stripe.com)
-  blueprints/       — Embedded JSON blueprints
+  testdata/         — Representative API responses for tests only
   colors/           — Sail Design System palette helpers
   followups/        — Built-in guided follow-up definitions
 

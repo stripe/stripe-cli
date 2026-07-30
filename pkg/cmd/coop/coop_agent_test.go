@@ -1,6 +1,7 @@
 package coopcmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -22,22 +23,11 @@ func setupAgentCommandTest(t *testing.T) (*coop.Store, *coop.Session) {
 		Status:        coop.SessionActive,
 		Settings:      map[string]string{"language": "node"},
 		Steps: []coop.SessionStep{
-			{
-				StepDefinition: coop.StepDefinition{
-					Key:   "step-1",
-					Title: "Step 1",
-				},
-				Nodes: []coop.SessionNode{
-					{
-						NodeDefinition: coop.NodeDefinition{
-							Key:   "node-1",
-							Title: "Node 1",
-							Type:  coop.NodeTestHelper,
-						},
-						State: coop.NodePending,
-					},
-				},
-			},
+			commandSessionStep(
+				"step-1",
+				"Step 1",
+				commandSessionNode(coop.NodeTestHelper, "node-1", "Node 1", coop.NodePending),
+			),
 		},
 	}
 	require.NoError(t, store.Write(session))
@@ -56,7 +46,8 @@ func TestCoopAgentStartWorkCommand(t *testing.T) {
 	var resp coop.CommandResponse
 	require.NoError(t, json.Unmarshal([]byte(output), &resp))
 	require.True(t, resp.OK)
-	assert.Contains(t, resp.Next, "stripe coop agent report-work")
+	assert.Empty(t, resp.Next)
+	assert.Contains(t, resp.NextTemplate, "stripe coop agent report-work")
 
 	loaded, err := store.Read(session.ID)
 	require.NoError(t, err)
@@ -92,6 +83,64 @@ func TestCoopAgentReportCheckCommand(t *testing.T) {
 	assert.True(t, node.Verifications[0].Passed)
 }
 
+func TestCoopAgentMissingInputsReturnTemplateRecovery(t *testing.T) {
+	cmd := newCoopAgentStartWorkCmd().cmd
+	cmd.SetArgs(nil)
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Empty(t, resp.Next)
+	require.NotNil(t, resp.Recovery)
+	assert.Contains(t, resp.Recovery.NextTemplate, `--session="<session>"`)
+	assert.Contains(t, resp.Recovery.NextTemplate, "--step=<step>")
+	require.Len(t, resp.Recovery.RequiredInputs, 2)
+	require.NoError(t, resp.Validate())
+}
+
+func TestCoopAgentFlagErrorsReturnStructuredRecovery(t *testing.T) {
+	cmd := newCoopAgentStartWorkCmd().cmd
+	cmd.SetArgs([]string{"--step", "not-a-number"})
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, "invalid argument")
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "stripe coop status", resp.Recovery.Next)
+	require.NoError(t, resp.Validate())
+}
+
+func TestCoopAgentRejectsPositionalArgumentsAsJSON(t *testing.T) {
+	cmd := newCoopAgentStartWorkCmd().cmd
+	cmd.SetArgs([]string{"unexpected"})
+
+	stderr := captureStderr(t, func() {
+		err := cmd.Execute()
+		require.Error(t, err)
+		assert.IsType(t, RenderedError{}, err)
+	})
+
+	var resp coop.CommandResponse
+	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
+	assert.False(t, resp.OK)
+	assert.Contains(t, resp.Error, "does not accept positional arguments")
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "stripe coop status", resp.Recovery.Next)
+}
+
 func TestCoopAgentNextActionReturnsStructuredErrorForHelperFailure(t *testing.T) {
 	store := &nextActionErrorStore{
 		session: &coop.Session{
@@ -111,7 +160,9 @@ func TestCoopAgentNextActionReturnsStructuredErrorForHelperFailure(t *testing.T)
 	assert.False(t, resp.OK)
 	assert.Contains(t, resp.Error, "writing next-action suggestions")
 	assert.Contains(t, resp.Error, "disk full")
-	assert.Equal(t, "stripe coop agent next-action --session=agent_test_session", resp.Hint)
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "Retry the next-action wait.", resp.Recovery.Hint)
+	assert.Equal(t, "stripe coop agent next-action --session=agent_test_session", resp.Recovery.Next)
 }
 
 func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
@@ -132,22 +183,34 @@ func TestCoopAgentStartFollowupCreatesGuidedSession(t *testing.T) {
 	}
 	require.NoError(t, store.Write(parent))
 
-	cmd := newCoopAgentStartFollowupCmd().cmd
+	followupCmd := newCoopAgentStartFollowupCmd()
+	ensureCalls := 0
+	followupCmd.ensureSkill = func() error {
+		ensureCalls++
+		return errors.New("read-only repository")
+	}
+	cmd := followupCmd.cmd
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"--session", parent.ID, "--action", "deploy-update", "--target", "Vercel"})
 
 	output := captureStdout(t, func() {
 		require.NoError(t, cmd.Execute())
 	})
 
-	var resp coopAgentRunResponse
+	var resp coop.CommandResponse
 	require.NoError(t, json.Unmarshal([]byte(output), &resp))
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(output), &fields))
 	require.True(t, resp.OK)
+	assert.Equal(t, 1, ensureCalls)
+	assert.Contains(t, stderr.String(), "unable to install the optional project-scoped Stripe skill; continuing without it")
 	assert.Contains(t, resp.Message, "Deploy your changes")
 	assert.Contains(t, resp.Next, "stripe coop agent start-work")
-	assert.Contains(t, resp.AgentInstructions, "guided co-op follow-up")
-	assert.Contains(t, resp.AgentInstructions, "Vercel")
-	require.Len(t, resp.Nodes, 3)
-	assert.Equal(t, "Inspect existing deploy config", resp.Nodes[0].Title)
+	assert.Contains(t, resp.AgentPrompt, "guided co-op follow-up")
+	assert.Contains(t, resp.AgentPrompt, "Vercel")
+	assert.NotContains(t, fields, "nodes")
+	assert.NotContains(t, fields, "agent_instructions")
 
 	ids, err := store.List()
 	require.NoError(t, err)
@@ -297,7 +360,9 @@ func TestCoopAgentStartFollowupRejectsUnknownAction(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stderr), &resp))
 	assert.False(t, resp.OK)
 	assert.Contains(t, resp.Error, `guided action "unknown" not found`)
-	assert.Equal(t, "stripe coop agent start-followup --session=<session> --action=deploy", resp.Hint)
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "Use an action offered by the parent session.", resp.Recovery.Hint)
+	assert.Equal(t, `stripe coop agent start-followup --session=parent_session --action="<action>"`, resp.Recovery.NextTemplate)
 }
 
 type nextActionErrorStore struct {
@@ -319,8 +384,8 @@ func (s *nextActionErrorStore) Write(session *coop.Session) error {
 func TestOutputAgentErrorEmitsStructuredJSON(t *testing.T) {
 	// Failures before a workflow response exists (e.g. newWorkflowService/store
 	// creation in start-work, report-work, etc.) must still emit structured JSON,
-	// not a bare plain-text error, so an agent parsing stdout can recover.
-	output := captureStdout(t, func() {
+	// not a bare plain-text error, so an agent parsing stderr can recover.
+	output := captureStderr(t, func() {
 		err := outputAgentError(errors.New("creating store: disk full"))
 		require.Error(t, err)
 		assert.IsType(t, RenderedError{}, err)
@@ -330,5 +395,31 @@ func TestOutputAgentErrorEmitsStructuredJSON(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(output), &resp))
 	assert.False(t, resp.OK)
 	assert.Contains(t, resp.Error, "creating store: disk full")
-	assert.NotEmpty(t, resp.Next)
+	require.NotNil(t, resp.Recovery)
+	assert.Equal(t, "stripe coop status", resp.Recovery.Next)
+}
+
+func TestParseReportedOutputsPreservesStringsAndJSONTypes(t *testing.T) {
+	outputs, err := parseReportedOutputs([]string{
+		"id=prod_123",
+		"latest_version=7",
+		"create-clock-request:id=clock_123",
+		"metadata={\"source\":\"coop\"}",
+	})
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `"prod_123"`, string(outputs[coop.DefaultOutputSource]["id"]))
+	assert.JSONEq(t, `7`, string(outputs[coop.DefaultOutputSource]["latest_version"]))
+	assert.JSONEq(t, `"clock_123"`, string(outputs["create-clock-request"]["id"]))
+	assert.JSONEq(t, `{"source":"coop"}`, string(outputs[coop.DefaultOutputSource]["metadata"]))
+}
+
+func TestParseReportedOutputsRejectsMalformedValues(t *testing.T) {
+	tests := []string{"id", "=prod_123", "source:=value", "id="}
+	for _, value := range tests {
+		t.Run(value, func(t *testing.T) {
+			_, err := parseReportedOutputs([]string{value})
+			require.Error(t, err)
+		})
+	}
 }
