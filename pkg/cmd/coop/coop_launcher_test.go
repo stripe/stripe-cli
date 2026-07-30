@@ -63,6 +63,7 @@ func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
 	assert.Contains(t, prompt, "agent_prompt and next fields")
 	assert.Contains(t, prompt, "production-grade Stripe integration")
 	assert.Contains(t, prompt, "context from the current app or codebase")
+	assert.Contains(t, prompt, "stripe coop agent resume")
 	assert.NotContains(t, prompt, `"ok": true`)
 	assert.NotContains(t, prompt, `"agent_instructions"`)
 	assert.NotContains(t, prompt, `"nodes"`)
@@ -267,19 +268,26 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	splitErr := errors.New("split failed")
 	var tmuxCalls [][]string
 	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
 	runTmux = func(args ...string) error {
 		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
 		switch args[0] {
 		case "has-session":
 			return errors.New("session not found")
-		case "split-window":
-			return splitErr
 		default:
 			return nil
 		}
 	}
+	runTmuxOutput = func(args ...string) (string, error) {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		if args[0] == "split-window" {
+			return "", splitErr
+		}
+		return "", nil
+	}
 	t.Cleanup(func() {
 		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
 	})
 
 	cleanupCalled := false
