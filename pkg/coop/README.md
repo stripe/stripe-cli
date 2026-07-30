@@ -72,7 +72,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop agent skip --step <n>` | Skip a node |
 | `stripe coop agent await-review --step <n>` | Wait for the developer, returning on an interval so a harness cannot kill it |
 | `stripe coop agent resume --session <id>` | Read the current lifecycle state and return its exact next command without mutating it |
-| `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
+| `stripe coop agent next-action` | Show post-completion options, returning on an interval until one is chosen |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 | `stripe coop agent stop-hook` | Harness Stop hook (hidden); holds the turn while Co-op has work pending |
 
@@ -114,8 +114,9 @@ not merely under one Co-op advertises. Claude Code's Bash tool defaults to 120s
 and its override env vars have open bugs, so a longer wait is killed whenever a
 model does not set a timeout itself — and a killed process hands the agent a raw
 timeout string with no `next`, which is what makes cheap models skip ahead or
-stop. `AwaitHarnessTimeout` (90s) is the shell timeout Co-op asks agents to
-allow, advertised per response as `wait_timeout_seconds`.
+stop. `wait_timeout_seconds` on each response carries the interval Co-op will wait
+(45s). `AwaitHarnessTimeout` (90s) is the *shell* timeout the agent prompt asks
+harnesses to allow; it leaves headroom above the interval and is not on the wire.
 
 `advance_allowed` is the only field an agent needs to branch on:
 
@@ -203,7 +204,7 @@ $ stripe coop start one-time-payment --language=node
 #      stripe coop agent report-work --session=coop_abc123 --step=1 --note="Found Next.js app"
 #      stripe coop agent start-work --session=coop_abc123 --step=2 --note="Creating product"
 #      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product" --output=id=prod_123
-#      stripe coop agent await-review --session=coop_abc123 --step=2   ← blocks until developer confirms
+#      stripe coop agent await-review --session=coop_abc123 --step=2   ← re-run until advance_allowed
 # 6. Developer sees progress live, presses 'c' to confirm
 # 7. The agent's own await-review call returns with the decision; no keystrokes
 #    are ever sent to the agent pane. "stripe coop agent resume" stays available
@@ -234,11 +235,9 @@ Blueprint nodes with `"is_informational_node": true` skip human review:
 
 ## Heartbeat
 
-When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` file every 500ms. The waiter intentionally ends after five minutes and returns the exact `await-review` retry command. A shell tool can stop waiting, or an agent turn can finish, before that Co-op timeout. The TUI checks the heartbeat file:
+When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` file every 500ms and removes it on every return. The waiter ends after `AwaitTimeout` (45s) and returns the exact `await-review` retry command. The TUI checks the heartbeat file:
 - **Fresh heartbeat (< 5s old):** Agent is actively waiting for confirmation
 - **No heartbeat + no session update in 2min:** Show idle warning
-
-The heartbeat is cleared on every await outcome except `waiting`. It is deliberately left in place while waiting: clearing it each interval would make the TUI flash "agent appears idle" during the gap between calls on any review longer than two minutes. A genuinely dead agent still goes stale inside the TUI's freshness window.
 
 Co-op never types into the agent pane. A review decision reaches the agent through its own `await-review` call, which returns as soon as the decision is durable. `stripe coop agent resume --session=<id>` stays available as a manual, read-only recovery command: it reads the latest durable state and returns the exact `next` command, or an empty `next` when the session already advanced.
 
