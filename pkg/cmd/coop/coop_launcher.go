@@ -238,7 +238,7 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 	}
 	paneCmd = shellCommandWithCoopEnv(paneCmd)
 
-	if _, err := splitCoopAgentPane("-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
+	if err := runTmux("split-window", "-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -317,8 +317,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
-	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd)
-	if err != nil {
+	if err := runTmux("split-window", "-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -327,7 +326,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	runTmux("select-pane", "-t", agentPane)
+	runTmux("select-pane", "-t", sessionName+":0.1")
 
 	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
 	attach.Stdin = os.Stdin

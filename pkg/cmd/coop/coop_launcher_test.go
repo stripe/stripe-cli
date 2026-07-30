@@ -268,27 +268,18 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	splitErr := errors.New("split failed")
 	var tmuxCalls [][]string
 	originalRunTmux := runTmux
-	originalRunTmuxOutput := runTmuxOutput
 	runTmux = func(args ...string) error {
 		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
 		switch args[0] {
 		case "has-session":
 			return errors.New("session not found")
+		case "split-window":
+			return splitErr
 		default:
 			return nil
 		}
 	}
-	runTmuxOutput = func(args ...string) (string, error) {
-		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
-		if args[0] == "split-window" {
-			return "", splitErr
-		}
-		return "", nil
-	}
-	t.Cleanup(func() {
-		runTmux = originalRunTmux
-		runTmuxOutput = originalRunTmuxOutput
-	})
+	t.Cleanup(func() { runTmux = originalRunTmux })
 
 	cleanupCalled := false
 	rc := &coopRunCmd{language: "node"}
