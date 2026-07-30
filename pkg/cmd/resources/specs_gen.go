@@ -145,6 +145,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether sending refunds is enabled",
 		},
+		"components.disputes_list.features.smart_disputes_management": {
+			Type:             "boolean",
+			ShortDescription: "Whether to allow connected accounts to submit disputes using Smart Disputes",
+		},
 		"components.documents.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
@@ -269,6 +273,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether sending refunds is enabled",
 		},
+		"components.payment_details.features.smart_disputes_management": {
+			Type:             "boolean",
+			ShortDescription: "Whether to allow connected accounts to submit disputes using Smart Disputes",
+		},
 		"components.payment_disputes.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
@@ -284,6 +292,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payment_disputes.features.refund_management": {
 			Type:             "boolean",
 			ShortDescription: "Whether sending refunds is enabled",
+		},
+		"components.payment_disputes.features.smart_disputes_management": {
+			Type:             "boolean",
+			ShortDescription: "Whether to allow connected accounts to submit disputes using Smart Disputes",
 		},
 		"components.payments.enabled": {
 			Type:             "boolean",
@@ -304,6 +316,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payments.features.refund_management": {
 			Type:             "boolean",
 			ShortDescription: "Whether sending refunds is enabled",
+		},
+		"components.payments.features.smart_disputes_management": {
+			Type:             "boolean",
+			ShortDescription: "Whether to allow connected accounts to submit disputes using Smart Disputes",
 		},
 		"components.payout_details.enabled": {
 			Type:             "boolean",
@@ -804,6 +820,30 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
 		},
+		"company.administrative_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"company.administrative_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"company.administrative_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"company.administrative_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"company.administrative_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"company.administrative_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
 		"company.directors_provided": {
 			Type:             "boolean",
 			ShortDescription: "Whether the company's directors have been provided",
@@ -873,6 +913,30 @@ var V1AccountsCreate = resource.OperationSpec{
 		"company.phone": {
 			Type:             "string",
 			ShortDescription: "The company's phone number (used for verification)",
+		},
+		"company.principal_place_of_business.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"company.principal_place_of_business.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"company.principal_place_of_business.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"company.principal_place_of_business.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"company.principal_place_of_business.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"company.principal_place_of_business.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"company.registration_date.day": {
 			Type:             "integer",
@@ -1022,14 +1086,6 @@ var V1AccountsCreate = resource.OperationSpec{
 		"documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
-		},
-		"documents.proof_of_registration.files": {
-			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
-		},
-		"documents.proof_of_registration.signer.person": {
-			Type:             "string",
-			ShortDescription: "The token of the person signing the document, if applicable",
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
@@ -1486,6 +1542,15 @@ var V1AccountsReject = resource.OperationSpec{
 	Path:   "/v1/accounts/{account}/reject",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"payouts_action": {
+			Type:             "string",
+			ShortDescription: "Whether to pause payouts on the account as part of the rejection",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "pause"},
+			},
+		},
 		"reason": {
 			Type:             "string",
 			ShortDescription: "The reason for rejecting the account",
@@ -1499,6 +1564,12 @@ var V1AccountsRetrieve = resource.OperationSpec{
 	Name:   "retrieve",
 	Path:   "/v1/account",
 	Method: "GET",
+}
+
+var V1AccountsUnreject = resource.OperationSpec{
+	Name:   "unreject",
+	Path:   "/v1/accounts/{account}/unreject",
+	Method: "POST",
 }
 
 var V1AccountsUpdate = resource.OperationSpec{
@@ -1947,6 +2018,30 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
 		},
+		"company.administrative_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"company.administrative_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"company.administrative_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"company.administrative_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"company.administrative_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"company.administrative_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
 		"company.directors_provided": {
 			Type:             "boolean",
 			ShortDescription: "Whether the company's directors have been provided",
@@ -2016,6 +2111,30 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"company.phone": {
 			Type:             "string",
 			ShortDescription: "The company's phone number (used for verification)",
+		},
+		"company.principal_place_of_business.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"company.principal_place_of_business.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"company.principal_place_of_business.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"company.principal_place_of_business.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"company.principal_place_of_business.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"company.principal_place_of_business.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"company.registration_date.day": {
 			Type:             "integer",
@@ -2497,6 +2616,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"settings.payouts.statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "The text that appears on the bank account statement for payouts",
+		},
+		"settings.sepa_debit_payments.creditor_id": {
+			Type:             "string",
+			ShortDescription: "The business creditor id for european payments",
 		},
 		"settings.treasury.tos_acceptance.date": {
 			Type:             "integer",
@@ -5233,6 +5356,13 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.payco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.paynow.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
@@ -5441,6 +5571,13 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			ShortDescription: "Controls when the funds will be captured from the customer's account",
 			Enum: []resource.EnumSpec{
 				{Value: "manual"},
+			},
+		},
+		"payment_method_options.samsung_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
 			},
 		},
 		"payment_method_options.satispay.capture_method": {
@@ -6222,14 +6359,17 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -8700,6 +8840,28 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "List of countries from which to collect accounts",
 		},
+		"filters.require_payment_method_support": {
+			Type:             "string",
+			ShortDescription: "Whether the session should require payment method support and successful account number retrieval before completion",
+			Enum: []resource.EnumSpec{
+				{Value: "all"},
+				{Value: "at_least_one"},
+				{Value: "none"},
+			},
+		},
+		"limits.accounts": {
+			Type:             "integer",
+			ShortDescription: "The number of accounts that can be linked in this Session",
+			MostCommon:       true,
+		},
+		"manual_entry.mode": {
+			Type:             "string",
+			ShortDescription: "How manual entry should be handled",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "disabled"},
+			},
+		},
 		"permissions": {
 			Type:             "array",
 			ShortDescription: "List of data features that you would like to request access to",
@@ -10909,7 +11071,7 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 		},
 		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -11080,7 +11242,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		},
 		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -11680,7 +11842,7 @@ var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 		},
 		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -12221,6 +12383,10 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 				{Value: "validation_and_normalization"},
 			},
 		},
+		"shipping.business_name": {
+			Type:             "string",
+			ShortDescription: "The name of the business at the shipping address, used on the shipping label to ensure delivery when the card is shipped to a cardholder's workplace",
+		},
 		"shipping.customs.eori_number": {
 			Type:             "string",
 			ShortDescription: "The Economic Operators Registration and Identification (EORI) number to use for Customs",
@@ -12449,6 +12615,10 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 				{Value: "normalization_only"},
 				{Value: "validation_and_normalization"},
 			},
+		},
+		"shipping.business_name": {
+			Type:             "string",
+			ShortDescription: "The name of the business at the shipping address, used on the shipping label to ensure delivery when the card is shipped to a cardholder's workplace",
 		},
 		"shipping.customs.eori_number": {
 			Type:             "string",
@@ -13716,7 +13886,7 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 		},
 		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -14201,7 +14371,7 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 		},
 		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -14612,6 +14782,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 	Path:   "/v1/payment_intents/{intent}/confirm",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "The list of payment method types allowed for use with this payment",
+		},
 		"amount_details": {
 			Type: "clearable_object",
 		},
@@ -14851,14 +15025,17 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -15911,6 +16088,13 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.payco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.paynow.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
@@ -16129,6 +16313,13 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.samsung_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.satispay.capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds are captured from the customer's account",
@@ -16341,6 +16532,11 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, a card) that this PaymentIntent can use",
+			MostCommon:       true,
+		},
+		"radar_options.referrer": {
+			Type:             "string",
+			ShortDescription: "The referrer URL of the current checkout session",
 		},
 		"radar_options.session": {
 			Type:             "string",
@@ -16424,6 +16620,10 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 	Path:   "/v1/payment_intents",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "The list of payment method types allowed for use with this payment",
+		},
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount intended to be collected by this PaymentIntent",
@@ -16720,14 +16920,17 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -17780,6 +17983,13 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.payco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.paynow.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
@@ -17998,6 +18208,13 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.samsung_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.satispay.capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds are captured from the customer's account",
@@ -18210,6 +18427,11 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, a card) that this PaymentIntent can use",
+			MostCommon:       true,
+		},
+		"radar_options.referrer": {
+			Type:             "string",
+			ShortDescription: "The referrer URL of the current checkout session",
 		},
 		"radar_options.session": {
 			Type:             "string",
@@ -18449,6 +18671,10 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 	Path:   "/v1/payment_intents/{intent}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "The list of payment method types allowed for use with this payment",
+		},
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount intended to be collected by this PaymentIntent",
@@ -18678,14 +18904,17 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -19738,6 +19967,13 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.payco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.paynow.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
@@ -19956,6 +20192,13 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.samsung_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_options.satispay.capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds are captured from the customer's account",
@@ -20168,6 +20411,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, card) that this PaymentIntent can use",
+			MostCommon:       true,
 		},
 		"receipt_email": {
 			Type:             "string",
@@ -20684,6 +20928,30 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 				{Value: "required"},
 			},
 		},
+		"consent_collection.payment_method_reuse_agreement.position": {
+			Type:             "string",
+			ShortDescription: "Determines the position and visibility of the payment method reuse agreement in the UI",
+			Enum: []resource.EnumSpec{
+				{Value: "auto"},
+				{Value: "hidden"},
+			},
+		},
+		"consent_collection.promotions": {
+			Type:             "string",
+			ShortDescription: "If set to `auto`, enables the collection of customer consent for promotional communications",
+			Enum: []resource.EnumSpec{
+				{Value: "auto"},
+				{Value: "none"},
+			},
+		},
+		"consent_collection.terms_of_service": {
+			Type:             "string",
+			ShortDescription: "If set to `required`, it requires customers to check a terms of service checkbox before being able to pay",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "required"},
+			},
+		},
 		"custom_text.after_submit.message": {
 			Type:             "string",
 			ShortDescription: "Text can be up to 1200 characters in length",
@@ -20774,6 +21042,14 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"payment_intent_data.description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+		},
+		"payment_intent_data.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to [make future payments](https://docs.stripe.com/payments/payment-intents#future-usage) with the payment method collected by this Checkout Session",
+			Enum: []resource.EnumSpec{
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
 		},
 		"payment_intent_data.statement_descriptor": {
 			Type:             "string",
@@ -22289,14 +22565,17 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -22765,6 +23044,36 @@ var V1PaymentMethodsUpdate = resource.OperationSpec{
 				{Value: "checking"},
 				{Value: "savings"},
 			},
+		},
+	},
+}
+
+var V1PaymentRecordsList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v1/payment_records",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"created_after": {
+			Type:             "integer",
+			ShortDescription: "Only return Payment Records that were created after this unix timestamp",
+			Format:           "unix-time",
+		},
+		"created_before": {
+			Type:             "integer",
+			ShortDescription: "Only return Payment Records that were created before this unix timestamp",
+			Format:           "unix-time",
+		},
+		"ending_before": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "A limit on the number of objects to be returned",
+		},
+		"starting_after": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
 		},
 	},
 }
@@ -25053,6 +25362,14 @@ var V1QuotesCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Number of days within which a customer must pay the invoice generated by this quote",
 		},
+		"invoice_settings.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the object",
+		},
+		"invoice_settings.footer": {
+			Type:             "string",
+			ShortDescription: "Footer to be displayed on the invoice",
+		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
 			ShortDescription: "The connected account being referenced when `type` is `account`",
@@ -25296,6 +25613,14 @@ var V1QuotesUpdate = resource.OperationSpec{
 		"invoice_settings.days_until_due": {
 			Type:             "integer",
 			ShortDescription: "Number of days within which a customer must pay the invoice generated by this quote",
+		},
+		"invoice_settings.description": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string attached to the object",
+		},
+		"invoice_settings.footer": {
+			Type:             "string",
+			ShortDescription: "Footer to be displayed on the invoice",
 		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
@@ -26664,6 +26989,11 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 	Path:   "/v1/setup_intents/{intent}/confirm",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "The list of payment method types to allow for this SetupIntent",
+			MostCommon:       true,
+		},
 		"confirmation_token": {
 			Type:             "string",
 			ShortDescription: "ID of the ConfirmationToken used to confirm this SetupIntent",
@@ -26832,14 +27162,17 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -27571,6 +27904,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 	Path:   "/v1/setup_intents",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "The list of payment method types to allow for this SetupIntent",
+		},
 		"attach_to_self": {
 			Type:             "boolean",
 			ShortDescription: "If present, the SetupIntent's payment method will be attached to the in-context Stripe Account",
@@ -27792,14 +28129,17 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -28518,6 +28858,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, card) that this SetupIntent can use",
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
@@ -28605,6 +28946,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 	Path:   "/v1/setup_intents/{intent}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "The list of payment method types to allow for this SetupIntent",
+		},
 		"attach_to_self": {
 			Type:             "boolean",
 			ShortDescription: "If present, the SetupIntent's payment method will be attached to the in-context Stripe Account",
@@ -28776,14 +29121,17 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -29502,6 +29850,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, card) that this SetupIntent can set up",
+			MostCommon:       true,
 		},
 	},
 }
@@ -30463,6 +30812,12 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Number of days within which a customer must pay invoices generated by this subscription schedule",
 		},
+		"default_settings.invoice_settings.description": {
+			Type: "string",
+		},
+		"default_settings.invoice_settings.footer": {
+			Type: "string",
+		},
 		"default_settings.invoice_settings.issuer.account": {
 			Type:             "string",
 			ShortDescription: "The connected account being referenced when `type` is `account`",
@@ -30639,6 +30994,12 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		"default_settings.invoice_settings.days_until_due": {
 			Type:             "integer",
 			ShortDescription: "Number of days within which a customer must pay invoices generated by this subscription schedule",
+		},
+		"default_settings.invoice_settings.description": {
+			Type: "string",
+		},
+		"default_settings.invoice_settings.footer": {
+			Type: "string",
 		},
 		"default_settings.invoice_settings.issuer.account": {
 			Type:             "string",
@@ -31819,7 +32180,7 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 		},
 		"tax_date": {
 			Type:             "integer",
-			ShortDescription: "Timestamp of date at which the tax rules and rates in effect applies for the calculation",
+			ShortDescription: "The calculation uses the tax rules and rates that are in effect at this timestamp",
 		},
 	},
 }
@@ -31883,7 +32244,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"type": {
 			Type:             "string",
-			ShortDescription: "Type of the tax ID, one of `ad_nrt`, `ae_trn`, `al_tin`, `am_tin`, `ao_tin`, `ar_cuit`, `au_abn`, `au_arn`, `aw_tin`, `az_tin`, `ba_tin`, `bb_tin`, `bd_bin`, `bf_ifu`, `bg_uic`, `bh_vat`, `bj_ifu`, `bo_tin`, `br_cnpj`, `br_cpf`, `bs_tin`, `by_tin`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `cd_nif`, `ch_uid`, `ch_vat`, `cl_tin`, `cm_niu`, `cn_tin`, `co_nit`, `cr_tin`, `cv_nif`, `de_stn`, `do_rcn`, `ec_ruc`, `eg_tin`, `es_cif`, `et_tin`, `eu_oss_vat`, `eu_vat`, `fo_vat`, `gb_vat`, `ge_vat`, `gi_tin`, `gn_nif`, `hk_br`, `hr_oib`, `hu_tin`, `id_npwp`, `il_vat`, `in_gst`, `is_vat`, `it_cf`, `jp_cn`, `jp_rn`, `jp_trn`, `ke_pin`, `kg_tin`, `kh_tin`, `kr_brn`, `kz_bin`, `la_tin`, `li_uid`, `li_vat`, `lk_vat`, `ma_vat`, `md_vat`, `me_pib`, `mk_vat`, `mr_nif`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `ng_tin`, `no_vat`, `no_voec`, `np_pan`, `nz_gst`, `om_vat`, `pe_ruc`, `ph_tin`, `pl_nip`, `py_ruc`, `ro_tin`, `rs_pib`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `si_tin`, `sn_ninea`, `sr_fin`, `sv_nit`, `th_vat`, `tj_tin`, `tr_tin`, `tw_vat`, `tz_vat`, `ua_vat`, `ug_tin`, `us_ein`, `uy_ruc`, `uz_tin`, `uz_vat`, `ve_rif`, `vn_tin`, `za_vat`, `zm_tin`, or `zw_tin`",
+			ShortDescription: "Type of the tax ID, one of `ad_nrt`, `ae_trn`, `al_tin`, `am_tin`, `ao_tin`, `ar_cuit`, `au_abn`, `au_arn`, `aw_tin`, `az_tin`, `ba_tin`, `bb_tin`, `bd_bin`, `bf_ifu`, `bg_uic`, `bh_vat`, `bj_ifu`, `bo_tin`, `br_cnpj`, `br_cpf`, `bs_tin`, `by_tin`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `cd_nif`, `ch_uid`, `ch_vat`, `cl_tin`, `cm_niu`, `cn_tin`, `co_nit`, `cr_tin`, `cv_nif`, `de_stn`, `do_rcn`, `ec_ruc`, `eg_tin`, `es_cif`, `et_tin`, `eu_oss_vat`, `eu_vat`, `fo_vat`, `gb_vat`, `ge_vat`, `gi_tin`, `gn_nif`, `hk_br`, `hr_oib`, `hu_tin`, `ic_nif`, `id_npwp`, `il_vat`, `in_gst`, `is_vat`, `it_cf`, `jp_cn`, `jp_rn`, `jp_trn`, `ke_pin`, `kg_tin`, `kh_tin`, `kr_brn`, `kz_bin`, `la_tin`, `li_uid`, `li_vat`, `lk_vat`, `ma_vat`, `md_vat`, `me_pib`, `mk_vat`, `mr_nif`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `ng_tin`, `no_vat`, `no_voec`, `np_pan`, `nz_gst`, `om_vat`, `pe_ruc`, `ph_tin`, `pl_nip`, `py_ruc`, `ro_tin`, `rs_pib`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `si_tin`, `sn_ninea`, `sr_fin`, `sv_nit`, `th_vat`, `tj_tin`, `tr_tin`, `tw_vat`, `tz_vat`, `ua_vat`, `ug_tin`, `us_ein`, `uy_ruc`, `uz_tin`, `uz_vat`, `ve_rif`, `vn_tin`, `za_vat`, `zm_tin`, or `zw_tin`",
 			Required:         true,
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
@@ -31940,6 +32301,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 				{Value: "hk_br"},
 				{Value: "hr_oib"},
 				{Value: "hu_tin"},
+				{Value: "ic_nif"},
 				{Value: "id_npwp"},
 				{Value: "il_vat"},
 				{Value: "in_gst"},
@@ -32105,6 +32467,8 @@ var V1TaxRatesCreate = resource.OperationSpec{
 				{Value: "igst"},
 				{Value: "jct"},
 				{Value: "lease_tax"},
+				{Value: "mass_transit_parking_tax"},
+				{Value: "parking_tax"},
 				{Value: "pst"},
 				{Value: "qst"},
 				{Value: "retail_delivery_fee"},
@@ -32201,6 +32565,8 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 				{Value: "igst"},
 				{Value: "jct"},
 				{Value: "lease_tax"},
+				{Value: "mass_transit_parking_tax"},
+				{Value: "parking_tax"},
 				{Value: "pst"},
 				{Value: "qst"},
 				{Value: "retail_delivery_fee"},
@@ -33442,6 +33808,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction",
 		},
+		"country_options.us.mass_transit_parking_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=mass_transit_parking_tax#registration-types)",
+		},
+		"country_options.us.parking_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=parking_tax#registration-types)",
+		},
 		"country_options.us.state": {
 			Type:             "string",
 			ShortDescription: "Two-letter US state code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
@@ -33452,6 +33826,8 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "local_amusement_tax"},
 				{Value: "local_lease_tax"},
+				{Value: "mass_transit_parking_tax"},
+				{Value: "parking_tax"},
 				{Value: "state_communications_tax"},
 				{Value: "state_retail_delivery_fee"},
 				{Value: "state_sales_tax"},
@@ -35389,14 +35765,17 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 				{Value: "bank_muamalat"},
 				{Value: "bank_of_china"},
 				{Value: "bank_rakyat"},
+				{Value: "bnp_paribas"},
 				{Value: "bsn"},
 				{Value: "cimb"},
+				{Value: "citibank"},
 				{Value: "deutsche_bank"},
 				{Value: "hong_leong_bank"},
 				{Value: "hsbc"},
 				{Value: "kfh"},
 				{Value: "maybank2e"},
 				{Value: "maybank2u"},
+				{Value: "mbsb_bank"},
 				{Value: "ocbc"},
 				{Value: "pb_enterprise"},
 				{Value: "public_bank"},
@@ -35788,7 +36167,7 @@ var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
 		},
 		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -35959,7 +36338,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		},
 		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -36559,7 +36938,7 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 		},
 		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -37118,7 +37497,7 @@ var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
 		},
 		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -37603,7 +37982,7 @@ var V1TestHelpersIssuingTransactionsCreateUnlinkedRefund = resource.OperationSpe
 		},
 		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:             "string",
-			ShortDescription: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes",
+			ShortDescription: "Gross fuel amount that should equal Fuel Volume multiplied by Fuel Unit Cost, inclusive of taxes",
 			Format:           "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
@@ -38258,6 +38637,30 @@ var V1TokensCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
 		},
+		"account.company.administrative_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"account.company.administrative_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"account.company.administrative_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"account.company.administrative_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"account.company.administrative_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"account.company.administrative_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
 		"account.company.directors_provided": {
 			Type:             "boolean",
 			ShortDescription: "Whether the company's directors have been provided",
@@ -38331,6 +38734,30 @@ var V1TokensCreate = resource.OperationSpec{
 		"account.company.phone": {
 			Type:             "string",
 			ShortDescription: "The company's phone number (used for verification)",
+		},
+		"account.company.principal_place_of_business.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"account.company.principal_place_of_business.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"account.company.principal_place_of_business.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"account.company.principal_place_of_business.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"account.company.principal_place_of_business.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"account.company.principal_place_of_business.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"account.company.registration_date.day": {
 			Type:             "integer",
@@ -40704,6 +41131,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-04-22.dahlia"},
 				{Value: "2026-05-27.dahlia"},
 				{Value: "2026-06-24.dahlia"},
+				{Value: "2026-07-29.dahlia"},
 			},
 		},
 		"connect": {
