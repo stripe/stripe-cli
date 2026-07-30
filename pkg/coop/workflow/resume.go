@@ -32,16 +32,21 @@ func (s *Service) Resume(sessionID string) (coop.CommandResponse, error) {
 	}
 
 	if activeNode, nodeNumber := session.ActiveNode(); activeNode != nil {
-		if activeNode.RejectionNote != "" && activeNode.Activity == "" {
+		if isUnstartedRejection(activeNode) {
 			return rejectedResponse(session, nodeNumber, activeNode), nil
 		}
-		return nodeResponse(
+		// No next to hand back: the agent already has the context and should
+		// simply carry on. Leave advance_allowed unset rather than promising a
+		// command that is not there.
+		response := nodeResponse(
 			session.ID,
 			nodeNumber,
 			string(coop.NodeActive),
 			fmt.Sprintf("Task %d is already active. Continue the current work; no resume command is needed.", nodeNumber),
 			coop.Continuation{},
-		), nil
+		)
+		response.AdvanceAllowed = nil
+		return response, nil
 	}
 
 	nodeNumber := 0
@@ -105,4 +110,13 @@ func rejectedResponse(session *coop.Session, nodeNumber int, node *coop.SessionN
 		message,
 		coop.Continue(coop.StartWorkCommand(session.ID, nodeNumber, "Redoing: "+title)),
 	)
+}
+
+// isUnstartedRejection reports a task the developer sent back that the agent
+// has not picked up yet. RejectionNote survives until the task reaches Done, so
+// the note alone is not enough: start-work sets Activity, and a non-empty
+// Activity means the redo is already underway. Re-reporting the rejection then
+// would restart work the agent is in the middle of.
+func isUnstartedRejection(node *coop.SessionNode) bool {
+	return node != nil && node.RejectionNote != "" && node.Activity == ""
 }

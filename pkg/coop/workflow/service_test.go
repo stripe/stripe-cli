@@ -436,14 +436,12 @@ func TestAgentWorkflowRejectsInactiveSessions(t *testing.T) {
 				return service.Skip(sessionID, 1, "Not needed")
 			},
 		},
-		{
-			name: "await review",
-			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
-				return service.AwaitReview(sessionID, 1)
-			},
-		},
 	}
 
+	// AwaitReview is deliberately absent: it does not mutate, and a completed
+	// session must hand back the next-action command rather than an error. See
+	// TestAwaitReviewOnCompletedSessionPointsAtNextAction and
+	// TestAwaitReviewOnAbortedSessionStaysAnError.
 	for _, status := range []coop.SessionStatus{coop.SessionCompleted, coop.SessionAborted} {
 		t.Run(string(status), func(t *testing.T) {
 			for _, tt := range tests {

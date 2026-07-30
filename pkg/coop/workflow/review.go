@@ -65,25 +65,19 @@ func (s *Service) RequestChanges(sessionID string, nodeNumbers []int, note strin
 // nodeNumber. It returns a waiting response rather than blocking indefinitely
 // so an agent harness cannot kill it mid-wait; the agent runs it again until
 // advance_allowed is true.
-//
-// The heartbeat is cleared on every outcome except waiting. While waiting the
-// agent is still in the loop, and a previous waiting call deliberately left the
-// file behind, so any terminal outcome has to clean it up.
 func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
-	resp, err := s.awaitReview(sessionID, nodeNumber)
-	if err == nil && resp.State != "waiting" {
-		_ = s.store.RemoveHeartbeat(sessionID)
-	}
-	return resp, err
-}
-
-func (s *Service) awaitReview(sessionID string, nodeNumber int) (coop.CommandResponse, error) {
 	session, err := s.store.Read(sessionID)
 	if err != nil {
 		return sessionErrorResponse(err), nil
 	}
 	if err := requireActiveSession(session); err != nil {
-		return sessionErrorResponse(err), nil
+		// A completed session is not a failure here. The developer can confirm
+		// the final task between two await calls, and the agent is told to keep
+		// re-running await until advance_allowed is true — so the common case
+		// would otherwise be a non-zero exit with an empty stdout, which reads
+		// to an agent as a broken session. Resume turns it into the next-action
+		// command, and still reports a genuinely aborted session as an error.
+		return s.Resume(sessionID)
 	}
 	node, err := session.NodeByNumber(nodeNumber)
 	if err != nil {
@@ -102,7 +96,7 @@ func (s *Service) awaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 	// awaited while another is legitimately active from reading as a rejection.
 	if step, stepIndex, _, stepErr := session.StepByNodeNumber(nodeNumber); stepErr == nil {
 		if activeNodeNumber := session.FirstActiveNodeInStep(stepIndex); activeNodeNumber > 0 {
-			if activeNode, _ := session.NodeByNumber(activeNodeNumber); activeNode != nil && activeNode.RejectionNote != "" {
+			if activeNode, _ := session.NodeByNumber(activeNodeNumber); isUnstartedRejection(activeNode) {
 				return rejectedStepResponse(session, step.TitleText(), activeNodeNumber, activeNode), nil
 			}
 		}
@@ -149,6 +143,13 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 	if err := s.store.WriteHeartbeat(sessionID); err != nil {
 		return coop.CommandResponse{}, err
 	}
+	// Removed on every return, including waiting. Retaining it between calls
+	// would not stop the TUI reporting the agent idle anyway — that check falls
+	// through to the last session change, which is frozen for the whole review —
+	// and would leave a killed agent indistinguishable from a patient one.
+	defer func() {
+		_ = s.store.RemoveHeartbeat(sessionID)
+	}()
 
 	start := s.now()
 	deadline := start.Add(s.awaitTimeout)
@@ -168,11 +169,9 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 		}
 		if activeNodeNumber := session.FirstActiveNodeInStep(stepIndex); activeNodeNumber > 0 {
 			activeNode, _ := session.NodeByNumber(activeNodeNumber)
-			_ = s.store.RemoveHeartbeat(sessionID)
 			return rejectedStepResponse(session, stepTitle, activeNodeNumber, activeNode), nil
 		}
 		if !session.StepHasReview(stepIndex) {
-			_ = s.store.RemoveHeartbeat(sessionID)
 			return confirmedResponse(session, nodeNumber), nil
 		}
 
