@@ -38,7 +38,7 @@ func (s *Service) reportWorkResponse(session *coop.Session, node *coop.SessionNo
 	msg := fmt.Sprintf("Completed: %s", node.TitleText())
 	next := nextAfterNode(session, nodeNumber)
 	if session.IsComplete() {
-		msg += " All nodes complete. Run next-action so the developer can choose what happens next."
+		msg += " All tasks complete. Run next-action so the developer can choose what happens next."
 	}
 	return nodeResponse(session.ID, nodeNumber, string(targetState), msg, next)
 }
@@ -84,9 +84,9 @@ func nextInStepOrStatus(session *coop.Session, stepIndex, afterNode int) string 
 }
 
 func alreadyMovedResponse(session *coop.Session, nodeNumber int, state coop.NodeState) coop.CommandResponse {
-	msg := fmt.Sprintf("Node %d is already %s.", nodeNumber, state)
+	msg := fmt.Sprintf("Task %d is already %s.", nodeNumber, state)
 	if session.IsComplete() {
-		msg = fmt.Sprintf("Node %d confirmed. All nodes done. Run next-action now.", nodeNumber)
+		msg = fmt.Sprintf("Task %d confirmed. All tasks done. Run next-action now.", nodeNumber)
 	}
 	return nodeResponse(session.ID, nodeNumber, string(state), msg, nextAfterNode(session, nodeNumber))
 }
@@ -94,7 +94,7 @@ func alreadyMovedResponse(session *coop.Session, nodeNumber int, state coop.Node
 func confirmedResponse(session *coop.Session, nodeNumber int) coop.CommandResponse {
 	return nodeResponse(
 		session.ID, nodeNumber, "confirmed",
-		fmt.Sprintf("Node %d confirmed by developer. Proceed to next node.", nodeNumber),
+		fmt.Sprintf("Task %d confirmed by developer. Proceed to the next task.", nodeNumber),
 		nextAfterNode(session, nodeNumber),
 	)
 }

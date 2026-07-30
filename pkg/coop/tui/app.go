@@ -2,8 +2,12 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
+	"os"
 
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/colorprofile"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
@@ -26,10 +30,26 @@ func WithReviewDecisionNotifier(notify ReviewDecisionNotifier) Option {
 	}
 }
 
+// programOptions honors the CLI's own color setting.
+//
+// Every other command routes color through ansi.ColorsEnabled, which folds in
+// --color, CLICOLOR/CLICOLOR_FORCE and TTY detection. The TUI bypassed all of
+// it and let lipgloss auto-detect, so `stripe coop join --color off` rendered
+// in full color while `stripe customers list --color off` did not.
+//
+// Ascii drops color while keeping bold and italic, which is what a terminal
+// without color support actually shows.
+func programOptions() []tea.ProgramOption {
+	if ansi.ColorsEnabled(os.Stdout) {
+		return nil
+	}
+	return []tea.ProgramOption{tea.WithColorProfile(colorprofile.Ascii)}
+}
+
 // Run launches the fullscreen co-op TUI for a known session.
 func Run(store *coop.Store, sessionID string, opts ...Option) error {
 	model := NewModel(store, sessionID, opts...)
-	p := tea.NewProgram(model)
+	p := tea.NewProgram(model, programOptions()...)
 	_, err := p.Run()
 	return err
 }
@@ -38,7 +58,7 @@ func Run(store *coop.Store, sessionID string, opts ...Option) error {
 // to appear (ignoring the provided existing session IDs) and transitions once found.
 func RunWaiting(store *coop.Store, existingSessionIDs map[string]bool, opts ...Option) error {
 	model := NewWaitingModel(store, existingSessionIDs, opts...)
-	p := tea.NewProgram(model)
+	p := tea.NewProgram(model, programOptions()...)
 	_, err := p.Run()
 	return err
 }

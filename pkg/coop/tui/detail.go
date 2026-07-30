@@ -1,14 +1,45 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
-var detailSections = []string{"Summary", "Files", "Checks", "Reference"}
+// detailSections are the tabs a step can offer. Checks used to be one of them
+// and is gone: it restated the review prompts and commands the summary already
+// shows, differing only in printing verification text untruncated. Tabs are
+// offered only when the step has something to put in them, so an empty tab is
+// never advertised.
+var detailSections = []string{"Summary", "Files", "Reference"}
+
+// nodeDetailSections is the per-task view, reached only when a selection is not
+// resolvable to a step. It keeps its own Checks tab because there is no step
+// summary alongside it to carry that content.
+var nodeDetailSections = []string{"Summary", "Files", "Checks", "Reference"}
+
+// stepDetailSections returns the tabs this step actually has content for.
+func (m Model) stepDetailSections(ch *coop.SessionStep) []string {
+	sections := []string{"Summary"}
+	for _, node := range ch.Nodes {
+		if node.Implementation != nil && node.Implementation.File != "" {
+			sections = append(sections, "Files")
+			break
+		}
+	}
+	for _, node := range ch.Nodes {
+		if (node.NodeType == coop.NodeAsyncHandler && len(node.Events()) > 0) ||
+			(node.NodeType == coop.NodeAPIRequest && node.Request() != nil) {
+			sections = append(sections, "Reference")
+			break
+		}
+	}
+	return sections
+}
 
 func (m Model) renderDetail() string {
 	if m.session == nil {
@@ -29,7 +60,7 @@ func (m Model) renderDetail() string {
 	w, innerW := m.detailWidths()
 
 	var md strings.Builder
-	section := detailSections[m.detailTab%len(detailSections)]
+	section := nodeDetailSections[m.detailTab%len(nodeDetailSections)]
 	currentSnippet := m.sdkSnippetNode == nodeIndex && m.sdkSnippet != ""
 
 	switch section {
@@ -52,20 +83,16 @@ func (m Model) renderDetail() string {
 	}
 
 	content := strings.TrimSpace(md.String())
-	suffix := m.renderDetailSuffix(node, innerW)
-	if content == "" && suffix == "" {
+	if content == "" {
 		return ""
 	}
 
 	var parts []string
-	if header := m.renderDetailHeader(section); header != "" {
+	if header := m.renderDetailTabs(nodeDetailSections, section, innerW); header != "" {
 		parts = append(parts, header)
 	}
 	if content != "" {
 		parts = append(parts, clampLines(m.renderMarkdown(content, innerW), innerW))
-	}
-	if suffix != "" {
-		parts = append(parts, suffix)
 	}
 	body := clampLines(strings.Join(parts, "\n"), innerW)
 	box := m.theme.DetailBoxStyle.Width(w).Render(body)
@@ -79,30 +106,46 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	w, innerW := m.detailWidths()
 
 	var md strings.Builder
-	section := detailSections[m.detailTab%len(detailSections)]
 	ch := &m.session.Steps[stepIndex]
+	sections := m.stepDetailSections(ch)
+	section := sections[m.detailTab%len(sections)]
 	switch section {
 	case "Summary":
 		m.writeStepSummaryDetail(&md, ch, innerW)
 	case "Files":
 		m.writeStepFilesDetail(&md, ch)
-	case "Checks":
-		m.writeStepChecksDetail(&md, ch)
 	case "Reference":
 		m.writeStepReferenceDetail(&md, ch)
 	}
 
 	content := strings.TrimSpace(md.String())
 	suffix := ""
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "step" {
-		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm all · r request changes", innerW)
+	if _, ok := m.selectedReviewTarget(); ok {
+		if m.rejecting {
+			// The editor lives here, not in the footer: in the split workspace
+			// the footer card is suppressed, so this is the only place the user
+			// can see what they are typing.
+			m.rejectionInput.SetWidth(max(innerW-lipgloss.Width("Request changes: "), 8))
+			inputView := m.rejectionInput.View()
+			if m.rejectionInput.Value() == "" {
+				inputView = m.theme.DimmedStyle.Render(m.rejectionInput.Placeholder)
+			}
+			suffix = "\n" + m.theme.SoftErrorStyle.Render("Request changes: ") + inputView
+			if m.rejectionError != "" {
+				suffix += "\n" + m.theme.SoftErrorStyle.Render(m.rejectionError)
+			}
+		} else {
+			suffix = "\n" + m.theme.PromptStyle.Render("Waiting for you") +
+				m.theme.MutedStyle.Render("   ") + m.keyHint(m.keys.Confirm.Help().Key, "confirm step") +
+				m.theme.MutedStyle.Render(" · ") + m.keyHint(m.keys.Reject.Help().Key, "request changes")
+		}
 	}
 	if content == "" && suffix == "" {
 		return ""
 	}
 
 	var parts []string
-	if header := m.renderDetailHeader(section); header != "" {
+	if header := m.renderDetailTabs(sections, section, innerW); header != "" {
 		parts = append(parts, header)
 	}
 	if content != "" {
@@ -120,14 +163,66 @@ func (m Model) renderStepDetail(stepIndex int) string {
 	return indentBlock(box, detailIndent)
 }
 
-func (m Model) renderDetailHeader(section string) string {
-	if section == "Summary" {
+// renderDetailHeader draws the tab strip.
+//
+// The detail box has always had four sections cycled with tab, but nothing on
+// screen said so: the section you land on rendered no header at all, and the
+// others printed a bare word with no hint that it was one of several or that
+// tab moved between them. Listing all four, with the active one marked, makes
+// the control visible from the tab you start on.
+// renderDetailTabs draws the section strip as actual tabs.
+//
+// They used to be words joined by " · ", which read as a sentence fragment
+// rather than as a control — the tabs went unnoticed until someone pressed tab
+// by accident. Filled backgrounds make the strip look like something you can
+// move between: the active tab is a solid block in the selection color, the
+// others sit on the panel ground.
+func (m Model) renderDetailTabs(sections []string, section string, width int) string {
+	// A lone tab is not a choice; do not spend a row advertising it.
+	if len(sections) < 2 {
 		return ""
 	}
-	return lipgloss.NewStyle().
-		Foreground(m.theme.Purple400).
-		Bold(true).
-		Render(section)
+
+	var parts []string
+	for _, name := range sections {
+		if name == section {
+			parts = append(parts, m.theme.TabActiveStyle.Render(name))
+			continue
+		}
+		parts = append(parts, m.theme.TabInactiveStyle.Render(name))
+	}
+	strip := strings.Join(parts, m.theme.TabGapStyle.Render(" "))
+
+	// Too narrow for the full strip — say where you are and that tab moves.
+	if width > 0 && lipgloss.Width(ansi.Strip(strip)) > width {
+		position := 1
+		for i, name := range sections {
+			if name == section {
+				position = i + 1
+			}
+		}
+		return m.theme.TabActiveStyle.Render(section) + m.theme.DimmedStyle.Render(
+			fmt.Sprintf(" %d/%d · tab", position, len(sections)))
+	}
+	if width > 0 {
+		strip += "\n" + m.theme.StepRuleStyle.Render(strings.Repeat("─", width))
+	}
+	return strip
+}
+
+// visibleDetailTabCount is how many tabs the card on screen is actually
+// offering, so tab cycles through exactly those.
+func (m Model) visibleDetailTabCount() int {
+	if m.session == nil {
+		return 0
+	}
+	if stepIndex, ok := m.selectedStepIndex(); ok {
+		if stepIndex < 0 || stepIndex >= len(m.session.Steps) {
+			return 0
+		}
+		return len(m.stepDetailSections(&m.session.Steps[stepIndex]))
+	}
+	return len(nodeDetailSections)
 }
 
 func (m Model) detailWidths() (int, int) {
@@ -169,10 +264,10 @@ func (m Model) writeSummaryDetail(md *strings.Builder, node *coop.SessionNode) {
 		md.WriteString(description + "\n\n")
 	}
 	if node.ReviewPrompt != "" {
-		md.WriteString("**Confirmation steps:** " + node.ReviewPrompt + "\n\n")
+		md.WriteString("**To confirm:** " + node.ReviewPrompt + "\n\n")
 	}
 	if description == "" && node.ReviewPrompt == "" {
-		md.WriteString("*No summary available for this step.*\n\n")
+		md.WriteString("*No summary available for this task.*\n\n")
 	}
 }
 
@@ -192,35 +287,196 @@ func (m Model) writeStepSDKSnippetDetail(md *strings.Builder, node *coop.Session
 	}
 }
 
+// confirmationClause drops a prompt's opening instruction when the card has
+// already printed the exact command.
+//
+// Blueprint prompts are written to cover every way a step might be exercised —
+// "Run the relevant Stripe CLI trigger or complete the upstream flow, then
+// confirm the handler receives the expected event." With the command spelled
+// out directly above, that first clause is a vaguer restatement of it, and the
+// part worth reading is what to look for afterwards.
+func confirmationClause(prompt string, haveCommand bool) string {
+	if !haveCommand {
+		return prompt
+	}
+	idx := strings.Index(prompt, ", then ")
+	if idx < 0 {
+		return prompt
+	}
+	if !strings.Contains(strings.ToLower(prompt[:idx]), "run ") {
+		return prompt
+	}
+	rest := strings.TrimSpace(prompt[idx+len(", then "):])
+	if rest == "" {
+		return prompt
+	}
+	return capitalize(rest)
+}
+
+// recoveryHint says what to do about a failed check. The reader is holding two
+// options and the card never named either: fix it themselves, or hand it back.
+func (m Model) recoveryHint(cause string) string {
+	fix := "Fix it and re-run"
+	if name := missingConfigPattern.FindStringSubmatch(cause); name != nil {
+		for _, candidate := range name[1:] {
+			if candidate != "" {
+				fix = "Set " + candidate + " and re-run"
+				break
+			}
+		}
+	}
+	return fix + ", or press " + m.keys.Reject.Help().Key + " to send this back to the agent."
+}
+
+// writeStepSummaryDetail renders the expanded step.
+//
+// It mirrors the review card deliberately: same headings, same hues, same
+// flush-left layout. The two used to diverge — the card had structure while
+// this view emitted unstyled headings, hardcoded indents, and every task's
+// prose concatenated into one paragraph — so opening a step took you from a
+// readable summary to a wall of text.
 func (m Model) writeStepSummaryDetail(md *strings.Builder, ch *coop.SessionStep, width int) {
 	wrapWidth := width - 2
 	if wrapWidth < 20 {
 		wrapWidth = 20
 	}
-	md.WriteString("Steps\n")
+
+	if goal := strings.TrimSpace(ch.DescriptionText()); goal != "" {
+		writeWrapped(md, m.theme.MutedStyle.Render("Goal ")+m.theme.MutedStyle.Render(goal), wrapWidth)
+		md.WriteString("\n")
+	}
+
+	prompts := stepReviewPrompts(ch)
+	target, hasTarget := m.selectedReviewTarget()
+	instruction := ""
+	if hasTarget {
+		if command := m.reviewCommandLabel(target.nodeNumbers); command != "" {
+			instruction = command
+		}
+	}
+
+	// A step with nothing pending has nothing to confirm. Writing the heading
+	// unconditionally left "To confirm" standing over an empty card the moment
+	// arriving on a step opened it, which is when finished steps started being
+	// opened at all.
+	if instruction == "" && len(prompts) == 0 && !hasTarget {
+		// Hanging indent, like the small card this expands from, so the same
+		// sentence keeps the same shape whether it is trimmed or shown whole.
+		if summary := m.stepCardSummary(m.selectedStepIndexOrZero()); summary != "" {
+			for _, line := range strings.Split(wrapHanging(summary, wrapWidth, 2), "\n") {
+				md.WriteString(line + "\n")
+			}
+			md.WriteString("\n")
+		}
+		return
+	}
+
+	md.WriteString(actionLabel(m.theme, "To confirm") + "\n")
+
+	// The command comes first. The blueprint prose is written to cover every
+	// way a step might be exercised — "run the relevant Stripe CLI trigger or
+	// complete the upstream flow" — which tells a reader holding a terminal
+	// nothing they can type. The exact command was already on the card, two
+	// lines further down, phrased as an aside.
+	command := instruction
+	switch {
+	case command != "":
+		// Every command under the first, not under the "Run " label, so a step
+		// with two triggers reads as two commands rather than as a sentence
+		// that wrapped.
+		for i, line := range strings.Split(command, "\n") {
+			label := m.theme.MutedStyle.Render("Run ")
+			if i > 0 {
+				label = strings.Repeat(" ", lipgloss.Width("Run "))
+			}
+			writeWrapped(md, label+m.theme.BrandStyle.Render(line), wrapWidth)
+		}
+	case hasTarget:
+		if venue := m.reviewVenueLabel(target.nodeNumbers); venue != "" {
+			writeWrapped(md, m.theme.MutedStyle.Render("Check ")+venue, wrapWidth)
+		}
+	}
+	// Each instruction is its own paragraph. Run together, two prompts read as
+	// one wrapped sentence — the reader cannot see where the first thing to do
+	// ends and the second begins. A blank line after the command block
+	// separates what to type from what to look for once it has run.
+	for i, prompt := range prompts {
+		if i > 0 || command != "" {
+			md.WriteString("\n")
+		}
+		writeWrapped(md, m.theme.InstructionStyle.Render(confirmationClause(prompt, command != "")), wrapWidth)
+	}
+	md.WriteString("\n")
+
+	// What is blocking, and what to do about it. A count of failed checks says
+	// something is wrong without saying whether the reader is meant to fix it,
+	// re-run it, or hand it back — which was the one question the card never
+	// answered.
+	if failed, _ := stepCheckResults(ch); len(failed) > 0 {
+		cause := stepBlockingCause(ch)
+		headline := pluralChecks(len(failed)) + " could not finish"
+		if cause != "" {
+			headline += ": " + cause
+		}
+		// Hangs under its own glyph, like the small card's version of the same
+		// sentence.
+		failure := m.theme.SoftErrorStyle.Render("✗ ") +
+			highlightIdentifiers(headline, m.theme.MutedStyle, m.theme.IdentifierStyle)
+		for _, line := range strings.Split(wrapHanging(failure, wrapWidth, 2), "\n") {
+			md.WriteString(line + "\n")
+		}
+		md.WriteString("\n")
+		writeWrapped(md, m.theme.MutedStyle.Render(m.recoveryHint(cause)), wrapWidth)
+		md.WriteString("\n")
+	}
+
+	// No task list and no checks section here. Tasks render outside the card,
+	// under it, and each one carries its own check results — the two lists were
+	// the same list, with the second copy restating every title from the first.
+}
+
+// writeWrapped wraps to the available width with no indentation: hierarchy in
+// this view comes from weight and hue, as it does in the card.
+func writeWrapped(md *strings.Builder, text string, width int) {
+	for _, line := range strings.Split(wordWrap(text, width), "\n") {
+		md.WriteString(line + "\n")
+	}
+}
+
+// taskEvidence is the agent's own note about a task, condensed to one line.
+// taskEvidence is the agent's own note about a task. It is stripped of CLI
+// progress noise and flattened, but not truncated: the pane has vertical room,
+// and a leading ellipsis on text that would have fit reads as damage. The
+// character budget belongs to the card, which is height-constrained.
+func stepReviewPrompts(ch *coop.SessionStep) []string {
+	var prompts []string
+	seen := map[string]bool{}
 	for _, node := range ch.Nodes {
-		md.WriteString("  " + stepNodeStatusLabel(node) + " " + node.TitleText() + "\n")
-	}
-	md.WriteString("\n")
-	if changed := stepChangedFiles(ch); changed != "" {
-		md.WriteString("Changed\n")
-		for _, line := range strings.Split(wordWrap(changed, wrapWidth), "\n") {
-			md.WriteString("  " + line + "\n")
+		if node.ReviewPrompt == "" || seen[node.ReviewPrompt] {
+			continue
 		}
-		md.WriteString("\n")
+		seen[node.ReviewPrompt] = true
+		prompts = append(prompts, node.ReviewPrompt)
 	}
-	if checks := stepConfirmationNodes(ch); checks != "" {
-		md.WriteString("Confirmation steps\n")
-		for _, line := range strings.Split(wordWrap(checks, wrapWidth), "\n") {
-			md.WriteString("  " + line + "\n")
+	return prompts
+}
+
+// stepCheckResults names failures and counts passes, as the card does.
+func stepCheckResults(ch *coop.SessionStep) ([]string, int) {
+	var failed []string
+	passed := 0
+	for _, node := range ch.Nodes {
+		for _, verification := range node.Verifications {
+			if verification.Passed {
+				passed++
+				continue
+			}
+			if check := summarizeCheckFailure(verification.Check, failedCheckBudget); check != "" {
+				failed = append(failed, node.TitleText()+": "+check)
+			}
 		}
-		md.WriteString("\n")
 	}
-	md.WriteString("Agent help\n")
-	for _, line := range strings.Split(wordWrap("The agent should run relevant checks, keep any app or server available, share a local URL when useful, and create or identify test data.", wrapWidth), "\n") {
-		md.WriteString("  " + line + "\n")
-	}
-	md.WriteString("\n")
+	return failed, passed
 }
 
 func (m Model) writeStepFilesDetail(md *strings.Builder, ch *coop.SessionStep) {
@@ -239,33 +495,6 @@ func (m Model) writeStepFilesDetail(md *strings.Builder, ch *coop.SessionStep) {
 	md.WriteString("*No files reported for this step yet.*\n\n")
 }
 
-func (m Model) writeStepChecksDetail(md *strings.Builder, ch *coop.SessionStep) {
-	wrote := false
-	for _, node := range ch.Nodes {
-		if node.ReviewPrompt != "" {
-			md.WriteString("- " + node.TitleText() + ": " + node.ReviewPrompt + "\n")
-			wrote = true
-		}
-		for _, verification := range node.Verifications {
-			prefix := "✗"
-			if verification.Passed {
-				prefix = "✓"
-			}
-			md.WriteString("- " + prefix + " " + node.TitleText() + ": " + verification.Check + "\n")
-			wrote = true
-		}
-		if command := reviewCommandForNode(&node); command != "" {
-			md.WriteString("- `" + strings.ReplaceAll(command, "`", "'") + "`\n")
-			wrote = true
-		}
-	}
-	if wrote {
-		md.WriteString("\n")
-		return
-	}
-	md.WriteString("*No confirmation checks reported for this step yet.*\n\n")
-}
-
 func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionStep) {
 	wrote := false
 	for _, node := range ch.Nodes {
@@ -279,65 +508,34 @@ func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionSte
 			wrote = true
 		}
 	}
+	// The long-form output behind each check. --detail exists so an agent can
+	// keep its command logs and reasoning without drowning the card, and this
+	// is where that text is read: the card shows the label, the Reference tab
+	// shows what is behind it.
+	for _, node := range ch.Nodes {
+		for _, verification := range node.Verifications {
+			if !verification.HasDetail() {
+				continue
+			}
+			marker := "✗"
+			if verification.Passed {
+				marker = "✓"
+			}
+			// A heading and a paragraph, not a list item with an indented
+			// body: the renderer strips the indent that would attach the two,
+			// and pre-wrapping here fights the wrapping it does itself.
+			md.WriteString("\n**" + marker + " " +
+				summarizeCheckResult(verification.Check, 0, !verification.Passed) + "**\n\n")
+			md.WriteString(strings.TrimSpace(verification.DetailText()) + "\n")
+			wrote = true
+		}
+	}
+
 	if wrote {
 		md.WriteString("\n")
 		return
 	}
 	md.WriteString("*No reference metadata for this step yet.*\n\n")
-}
-
-func stepNodeStatusLabel(node coop.SessionNode) string {
-	switch node.State {
-	case coop.NodeDone:
-		return "✓"
-	case coop.NodeActive:
-		return "●"
-	case coop.NodeReview:
-		return "◆"
-	case coop.NodeSkipped:
-		return "–"
-	default:
-		return "○"
-	}
-}
-
-func stepChangedFiles(ch *coop.SessionStep) string {
-	var files []string
-	for _, node := range ch.Nodes {
-		if node.Implementation != nil && node.Implementation.File != "" {
-			files = append(files, implementationFileLabel(node.Implementation))
-		}
-	}
-	return strings.Join(files, ", ")
-}
-
-func stepConfirmationNodes(ch *coop.SessionStep) string {
-	var agentChecks []string
-	seenAgentCheck := map[string]bool{}
-	for _, node := range ch.Nodes {
-		for _, verification := range node.Verifications {
-			check := strings.TrimSpace(verification.Check)
-			if !verification.Passed || check == "" || seenAgentCheck[check] {
-				continue
-			}
-			seenAgentCheck[check] = true
-			if title := node.TitleText(); title != "" {
-				check = title + ": " + check
-			}
-			agentChecks = append(agentChecks, check)
-		}
-	}
-	if len(agentChecks) > 0 {
-		return strings.Join(agentChecks, " ")
-	}
-
-	var checks []string
-	for _, node := range ch.Nodes {
-		if node.ReviewPrompt != "" {
-			checks = append(checks, node.TitleText()+": "+node.ReviewPrompt)
-		}
-	}
-	return strings.Join(checks, " ")
 }
 
 func (m Model) writeAsyncHandlerCheckDetail(md *strings.Builder, node *coop.SessionNode) {
@@ -428,21 +626,8 @@ func (m Model) writeVerificationDetail(md *strings.Builder, node *coop.SessionNo
 	md.WriteString("\n")
 }
 
-func (m Model) renderDetailSuffix(node *coop.SessionNode, width int) string {
-	var suffix string
-	if target, ok := m.selectedReviewTarget(); ok && target.kind == "node" && node.State == coop.NodeReview {
-		suffix = "\n" + m.attentionWrapped("Waiting for you: c confirm · r request changes", width)
-	}
-	return suffix
-}
-
-func (m Model) attentionWrapped(text string, width int) string {
-	if width < 1 {
-		width = 1
-	}
-	lines := strings.Split(wordWrap(text, width), "\n")
-	for i, line := range lines {
-		lines[i] = m.theme.AttentionStyle.Render(line)
-	}
-	return strings.Join(lines, "\n")
+// keyHint renders a binding the way the footer's help component does, so a key
+// looks like a key wherever it appears.
+func (m Model) keyHint(key, description string) string {
+	return m.theme.KeyStyle.Render(key) + " " + m.theme.KeyDescriptionStyle.Render(description)
 }

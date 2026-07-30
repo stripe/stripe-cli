@@ -77,7 +77,7 @@ func TestUILayoutMatrix(t *testing.T) {
 		{
 			name:        "manual_navigation",
 			model:       manualNavigationLayoutModel,
-			footerToken: "f follow",
+			footerToken: "f review",
 		},
 		{
 			name:         "expanded_details",
@@ -103,11 +103,15 @@ func TestUILayoutMatrix(t *testing.T) {
 				assertLayoutFits(t, rendered, size)
 				assertHeaderIsPinned(t, rendered)
 				assertFooterIsPinned(t, rendered, scenario.footerToken)
-				if scenario.expectCursor {
-					assert.Contains(t, rendered, strings.TrimSpace(cursorMarker), "selected row should remain visible")
+				// While the feedback editor is open it takes priority over the
+				// cursor row: the user is typing into it, and the step it
+				// belongs to is still named by the pinned footer note. The card
+				// is taller than a short viewport, so both cannot be shown.
+				if scenario.expectCursor && !scenario.model().rejecting {
+					assertSelectedRowVisible(t, rendered)
 				}
 				if scenario.expectReviewCard {
-					assert.Contains(t, rendered, "Review", "review card should remain visible")
+					assertReviewAffordanceVisible(t, m, rendered)
 					assert.LessOrEqual(t, lipgloss.Height(m.renderFooter()), m.footerHeightBudget(), "review footer should stay within its budget")
 				}
 				if scenario.expectCompletion {
@@ -172,8 +176,7 @@ func TestSessionUpdateResizesAfterAutoSelectingReview(t *testing.T) {
 	assertLayoutFits(t, rendered, layoutSize{name: "narrow_acceptance", width: 56, height: 18})
 	assertHeaderIsPinned(t, rendered)
 	assertFooterIsPinned(t, rendered, "enter")
-	assert.Contains(t, rendered, "Review")
-	assert.Contains(t, rendered, "Do this")
+	assert.Contains(t, rendered, "To confirm")
 }
 
 func TestFooterActionRowStaysPinnedAcrossFooterModes(t *testing.T) {
@@ -185,7 +188,7 @@ func TestFooterActionRowStaysPinnedAcrossFooterModes(t *testing.T) {
 	}{
 		{name: "active", model: activeStepLayoutModel, token: "enter"},
 		{name: "review", model: reviewStepLongPromptLayoutModel, token: "enter"},
-		{name: "manual", model: manualNavigationLayoutModel, token: "f follow"},
+		{name: "manual", model: manualNavigationLayoutModel, token: "f review"},
 		{name: "request_changes", model: requestChangesLayoutModel, token: "esc cancel"},
 	}
 
@@ -233,6 +236,19 @@ func assertLayoutFits(t *testing.T, rendered string, size layoutSize) {
 	t.Helper()
 	assert.LessOrEqual(t, lipgloss.Height(rendered), size.height, "layout should not exceed terminal height")
 	assertLinesWithinWidth(t, rendered, size.width)
+}
+
+// assertReviewAffordanceVisible checks the reviewer can still act. What that
+// means depends on state: while typing feedback the editor is the thing that
+// must survive truncation, otherwise it is the instruction — which may have
+// collapsed to a one-line hint on a short terminal.
+func assertReviewAffordanceVisible(t *testing.T, m Model, rendered string) {
+	t.Helper()
+	if m.rejecting {
+		assert.Contains(t, ansi.Strip(rendered), "Request changes", "feedback editor should stay visible")
+		return
+	}
+	assert.Contains(t, ansi.Strip(rendered), "To confirm", "review instruction should stay visible, in full or collapsed")
 }
 
 func assertHeaderIsPinned(t *testing.T, rendered string) {
@@ -307,6 +323,27 @@ func reviewStepLongPromptLayoutModel() Model {
 	return m
 }
 
+// A failing check is the highest-stakes thing the card renders and nothing in
+// the matrix produced one, so every frame reviewed so far showed only the
+// all-passed shape.
+func failedCheckLayoutModel() Model {
+	m := reviewStepLongPromptLayoutModel()
+	m.session.Steps[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Created product and price", Passed: true},
+		{Check: "Checkout Session creates a new price on every request instead of reusing the persisted price ID", Passed: false},
+		{Check: "Ran local Checkout flow", Passed: true},
+	}
+	return m
+}
+
+// Sessions in the fixtures predate step descriptions, so no captured frame had
+// a Goal line and its spacing went unreviewed.
+func goalLayoutModel() Model {
+	m := reviewStepLongPromptLayoutModel()
+	m.session.Steps[0].Description = coop.MessageDescriptor{DefaultMessage: "Create a product and a recurring price once, and persist the price ID so later steps reuse it rather than creating a new price per request."}
+	return m
+}
+
 func stepReviewLayoutModel() Model {
 	m := testModel()
 	m.spinner = staticSpinner()
@@ -338,7 +375,6 @@ func manualNavigationLayoutModel() Model {
 
 func expandedDetailsLayoutModel() Model {
 	m := reviewStepLongPromptLayoutModel()
-	m.expanded = true
 	m.detailTab = 1
 	m.session.Steps[0].Nodes[0].Implementation.Snippet = strings.Repeat("const session = await stripe.checkout.sessions.create({ mode: 'payment' })\n", 8)
 	return m
@@ -370,4 +406,103 @@ func staticSpinner() spinner.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Spinner{Frames: []string{"●"}, FPS: 1}
 	return s
+}
+
+// The detail box in the split workspace is indented as a block. Trimming
+// whitespace rather than newlines stripped that indent from the first line
+// only, leaving the top border two columns left of its own sides.
+func TestSplitWorkspaceDetailBoxIsColumnAligned(t *testing.T) {
+	m := stepReviewLayoutModel()
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	// Only the right pane. The nav column now draws a small status card under
+	// each step header, so the frame legitimately contains more than one box;
+	// this test is about the detail box holding a single left edge.
+	const rightPaneStart = 42
+	columns := map[int]int{}
+	for _, line := range strings.Split(ansi.Strip(rendered), "\n") {
+		for col, r := range []rune(line) {
+			if col < rightPaneStart {
+				continue
+			}
+			if r == '╭' || r == '│' || r == '╰' {
+				columns[col]++
+				break
+			}
+		}
+	}
+
+	require.NotEmpty(t, columns, "expected a detail box in the split workspace")
+	assert.Len(t, columns, 1, "every row of the box should start in the same column, got %v", columns)
+}
+
+// With room the whole blueprint is listed; when the viewport cannot hold it the
+// detail view keeps its height and the list narrows to the step in play plus
+// one either side, with counts so it never looks complete when it is not.
+func TestOutlineWindowsWhenViewportIsShort(t *testing.T) {
+	m := stressManyStepsManualNavigationModel()
+	m.selectStep(3)
+
+	tall := renderLayoutScenario(&m, layoutSize{name: "tall", width: 92, height: 60})
+	assertNotContainsPlain(t, tall, "more above")
+
+	// Assert against the outline itself, not the frame. The markers live inside
+	// the scrollable outline, so the one below the selection can sit past the
+	// viewport's bottom edge; checking the frame previously only passed because
+	// the viewport's own overflow label happened to read "more below" too.
+	renderLayoutScenario(&m, layoutSize{name: "short", width: 92, height: 26})
+	short := m.renderStepOutline().content
+	assertContainsPlain(t, short, "more above")
+	assertContainsPlain(t, short, "more below")
+}
+
+// The neighbors are orientation, not content: they exist so the user knows
+// where they are in the blueprint.
+func TestOutlineWindowKeepsOneStepEitherSide(t *testing.T) {
+	m := stressManyStepsManualNavigationModel()
+	m.selectStep(3)
+	m.viewport = viewport.New(viewport.WithWidth(92), viewport.WithHeight(8))
+
+	first, last, above, below := m.outlineWindow()
+
+	assert.Equal(t, 2, first)
+	assert.Equal(t, 4, last)
+	assert.Equal(t, 2, above)
+	assert.Positive(t, below)
+}
+
+// A failed check is the one thing the card must never lose to height pressure.
+// Before this, an 80x24 terminal clipped the failure out and left a bare
+// "enter for details" — nothing on screen suggested anything was wrong.
+func TestFailedCheckSurvivesEveryHeight(t *testing.T) {
+	for _, size := range captureSizes {
+		t.Run(size.name, func(t *testing.T) {
+			m := failedCheckLayoutModel()
+			rendered := ansi.Strip(renderLayoutScenario(&m, size))
+
+			// The card scrolls now that it renders inline, so the guarantee is
+			// that the frame signals the failure somewhere the user is looking,
+			// not that the full finding fits on screen unscrolled. The step's
+			// status line carries a ✗N badge; at heights too short for any card
+			// the footer fallback counts the failures instead.
+			named := strings.Contains(rendered, "✗")
+			counted := strings.Contains(rendered, "check failed") ||
+				strings.Contains(rendered, "checks failed")
+			assert.True(t, named || counted,
+				"the failure must be signaled somewhere in the frame:\n%s", rendered)
+		})
+	}
+}
+
+// assertSelectedRowVisible checks the timeline's filled node is on screen. The
+// cursor used to be a "> " in front of the title; it is the node on the rail
+// down the left now, so a row is "selected" when a line opens with it.
+func assertSelectedRowVisible(t *testing.T, rendered string) {
+	t.Helper()
+	for _, line := range strings.Split(ansi.Strip(rendered), "\n") {
+		if strings.HasPrefix(line, timelineNodeCurrent) {
+			return
+		}
+	}
+	assert.Fail(t, "selected row should remain visible", rendered)
 }

@@ -24,24 +24,25 @@ func readyModel() Model {
 
 func TestUpdateKeyDown(t *testing.T) {
 	m := readyModel()
-	m.selectionCursor = 0
+	m.selectStep(0)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	updated := result.(Model)
 
-	assert.Equal(t, 1, updated.selectionCursor)
+	assert.Equal(t, navigationStep, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.stepIndex)
 	assert.True(t, updated.userMoved)
 }
 
 func TestUpdateKeyUp(t *testing.T) {
 	m := readyModel()
-	m.selectionCursor = 2
+	m.selectStep(1)
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	updated := result.(Model)
 
 	assert.Equal(t, navigationStep, updated.selected.kind)
-	assert.Equal(t, 1, updated.selected.stepIndex)
+	assert.Equal(t, 0, updated.selected.stepIndex)
 }
 
 func TestUpdateKeyUpAtTop(t *testing.T) {
@@ -78,29 +79,28 @@ func TestUpdatePageKeysMoveViewport(t *testing.T) {
 	assert.True(t, updated.userMoved)
 }
 
-func TestUpdateKeyExpand(t *testing.T) {
+// Arriving on a step opens its card, so enter's job is to close it again.
+func TestUpdateKeyEnterClosesAnOpenCard(t *testing.T) {
 	m := readyModel()
-	m.expanded = false
 
-	result, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
-	assert.True(t, updated.expanded)
+	assert.True(t, updated.cardCollapsed)
 }
 
-func TestUpdateKeyExpandToggle(t *testing.T) {
+func TestUpdateKeyEnterReopensAClosedCard(t *testing.T) {
 	m := readyModel()
-	m.expanded = true
+	m.cardCollapsed = true
 
-	result, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := result.(Model)
 
-	assert.False(t, updated.expanded)
+	assert.False(t, updated.cardCollapsed)
 }
 
 func TestUpdateKeyTabCyclesDetailStep(t *testing.T) {
 	m := readyModel()
-	m.expanded = true
 	m.detailTab = 0
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -111,12 +111,12 @@ func TestUpdateKeyTabCyclesDetailStep(t *testing.T) {
 
 func TestUpdateKeyEscClosesDetails(t *testing.T) {
 	m := readyModel()
-	m.expanded = true
+	require.False(t, m.cardCollapsed, "the card is open on arrival")
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	updated := result.(Model)
 
-	assert.False(t, updated.expanded)
+	assert.True(t, updated.cardCollapsed)
 }
 
 func TestUpdateKeyConfirm(t *testing.T) {
@@ -307,7 +307,6 @@ func TestSyncViewportPreservesManualScroll(t *testing.T) {
 	m.height = 12
 	m.resizeViewport()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.sdkSnippet = strings.Repeat("const product = await stripe.products.create({});\n", 20)
 	m.sdkSnippetNode = 0
 	m.syncViewport()
@@ -342,12 +341,13 @@ func TestMouseActionSelectsVisibleStep(t *testing.T) {
 	assert.True(t, updated.userMoved)
 }
 
-func TestNavigationMovesBetweenStepAndStepRows(t *testing.T) {
+// The step is the only cursor target, so navigation moves step to step and
+// never stops on the task rows in between.
+func TestNavigationMovesBetweenSteps(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeReview
 	m.selectStep(0)
-
 	m.syncViewport()
 
 	m.moveCursorUp()
@@ -355,8 +355,31 @@ func TestNavigationMovesBetweenStepAndStepRows(t *testing.T) {
 	assert.Equal(t, 0, m.selected.stepIndex)
 
 	m.moveCursorDown()
-	assert.Equal(t, navigationNode, m.selected.kind)
-	assert.Equal(t, 0, m.selectionCursor)
+	assert.Equal(t, navigationStep, m.selected.kind)
+	assert.Equal(t, 1, m.selected.stepIndex)
+}
+
+func TestNavigationOffersOnlyStepsAsTargets(t *testing.T) {
+	m := readyModel()
+
+	items := m.navigationItems()
+
+	assert.Len(t, items, len(m.session.Steps))
+	for _, item := range items {
+		assert.Equal(t, navigationStep, item.kind)
+	}
+}
+
+// Clicking a task row selects the step that owns it: mouse targets come from
+// the rendered outline, which still lists tasks.
+func TestMouseClickOnTaskSelectsOwningStep(t *testing.T) {
+	m := readyModel()
+
+	result, _ := m.Update(mouseActionMsg{action: mouseActionSelectNode, index: 2})
+	updated := result.(Model)
+
+	assert.Equal(t, navigationStep, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.stepIndex)
 }
 
 func TestMouseActionSelectsStep(t *testing.T) {
@@ -553,7 +576,6 @@ func TestSelectedReviewTargetStepRequiresReadyStep(t *testing.T) {
 	target, ok := m.selectedReviewTarget()
 
 	assert.True(t, ok)
-	assert.Equal(t, "step", target.kind)
 	assert.Equal(t, "Set up product", target.title)
 	assert.Equal(t, []int{1, 2}, target.nodeNumbers)
 	assert.True(t, m.reviewIsActionable(1))
@@ -1061,22 +1083,22 @@ func TestHandleKeyCopyReviewCommand(t *testing.T) {
 
 func TestHandleKeyQuestionMark(t *testing.T) {
 	m := readyModel()
-	m.expanded = false
+	m.cardCollapsed = true
 
 	result, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	updated := result.(Model)
-	assert.True(t, updated.expanded)
+	assert.False(t, updated.cardCollapsed, "? reopens a closed card")
 }
 
 func TestAutoScrollFocusesReviewWithoutExpanding(t *testing.T) {
 	m := readyModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.expanded = false
+	m.cardCollapsed = true
 
 	m.autoScroll()
 
-	assert.False(t, m.expanded)
+	assert.False(t, m.cardCollapsed)
 	assert.Equal(t, 0, m.selectionCursor)
 }
 
@@ -1105,7 +1127,7 @@ func TestCompletionTransitionResetsCursor(t *testing.T) {
 	updated := result.(Model)
 
 	assert.Equal(t, 0, updated.selectionCursor)
-	assert.False(t, updated.expanded)
+	assert.False(t, updated.cardCollapsed)
 	assert.Equal(t, 0, updated.viewport.YOffset())
 }
 
@@ -1290,11 +1312,11 @@ func completedReadyModel() Model {
 func TestCompletionViewGatesWorkViewKeys(t *testing.T) {
 	m := completedReadyModel()
 	require.True(t, m.session.IsComplete())
-	require.False(t, m.expanded)
+	require.False(t, m.cardCollapsed)
 
-	// 'e' (expand) must be inert in the completion view.
-	res, _ := m.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	assert.False(t, res.(Model).expanded, "expand must not toggle in completion view")
+	// The expand key must be inert in the completion view.
+	res, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+	assert.False(t, res.(Model).cardCollapsed, "expand must not toggle in completion view")
 
 	// 'r' (request changes) must not enter rejecting mode in the completion view.
 	res, _ = m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
@@ -1319,4 +1341,70 @@ func TestTopBottomKeysMoveSelection(t *testing.T) {
 	res, _ = end.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	top := res.(Model)
 	assert.True(t, top.navigationItemSelected(items[0]), "g selects the first outline item")
+}
+
+// A missing heartbeat means the agent process is gone, which is different from
+// an agent that is merely quiet. Reporting it as "not idle" left the UI
+// claiming work was in progress indefinitely.
+func TestAgentHeartbeatMissingIsDistinctFromIdle(t *testing.T) {
+	m := readyModel()
+	m.lastUpdateTime = time.Now().Add(-10 * time.Second)
+
+	m.updateAgentIdle(0, false, time.Now())
+	assert.True(t, m.agentHeartbeatMissing)
+	assert.False(t, m.agentIsIdle)
+
+	m.updateAgentIdle(time.Minute, true, time.Now().Add(3*time.Minute))
+	assert.False(t, m.agentHeartbeatMissing)
+	assert.True(t, m.agentIsIdle)
+}
+
+// Before the session has reported anything there is nothing to be missing yet,
+// so a starting session must not be labeled as a crashed one.
+func TestAgentHeartbeatMissingIgnoresUnstartedSession(t *testing.T) {
+	m := readyModel()
+	m.lastUpdateTime = time.Time{}
+
+	m.updateAgentIdle(0, false, time.Now())
+
+	assert.False(t, m.agentHeartbeatMissing)
+}
+
+// A manual toggle should not outlive the state it was made in: a step opened
+// while pending must not keep its own review box collapsed later.
+func TestCollapseOverrideExpiresWhenStepStateChanges(t *testing.T) {
+	m := readyModel()
+	m.collapseStep(1)
+	require.True(t, m.stepCollapsed(1))
+
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+
+	assert.False(t, m.stepCollapsed(1), "override should not survive the step becoming reviewable")
+}
+
+// Only the step in play spends rows on its tasks.
+func TestStepsCollapseUnlessInPlay(t *testing.T) {
+	m := readyModel()
+
+	assert.False(t, m.stepCollapsed(0), "step with an active task is in play")
+	assert.True(t, m.stepCollapsed(1), "step that has not started stays collapsed")
+
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	assert.False(t, m.stepCollapsed(1), "step awaiting review is in play")
+}
+
+// A review appearing is when the user is most likely to be away, and userMoved
+// otherwise latches until they press f.
+func TestReviewAppearingResumesFollowing(t *testing.T) {
+	m := readyModel()
+	m.userMoved = true
+
+	next := *m.session
+	next.Steps = append([]coop.SessionStep(nil), m.session.Steps...)
+	next.Steps[1].Nodes = []coop.SessionNode{m.session.Steps[1].Nodes[0]}
+	next.Steps[1].Nodes[0].State = coop.NodeReview
+
+	result, _ := m.Update(sessionUpdatedMsg{session: &next})
+
+	assert.False(t, result.(Model).userMoved)
 }

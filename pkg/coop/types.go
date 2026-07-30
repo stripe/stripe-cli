@@ -63,10 +63,36 @@ type Implementation struct {
 type NodeOutputs map[string]map[string]json.RawMessage
 
 // Verification is a single check the agent ran.
+//
+// Check is a short label — "Webhook signature verified", not a transcript.
+// Detail carries the long output the agent wants to keep: command logs, the
+// full reasoning, whatever explains the result. The TUI shows Check and reveals
+// Detail on request, so a check that pastes its whole transcript into Check
+// drowns the card. Sessions written before Detail existed have the transcript
+// in Check; SummaryText splits one back out for them.
 type Verification struct {
 	Check  string `json:"check"`
+	Detail string `json:"detail,omitempty"`
 	Passed bool   `json:"passed"`
 }
+
+// DetailText returns the long-form output behind a check. Sessions written
+// before Detail existed put everything in Check, so it falls back to that.
+func (v Verification) DetailText() string {
+	if v.Detail != "" {
+		return v.Detail
+	}
+	return v.Check
+}
+
+// HasDetail reports whether there is more to read than the label.
+func (v Verification) HasDetail() bool {
+	return v.Detail != "" || len(v.Check) > verificationLabelBudget
+}
+
+// verificationLabelBudget is the length past which a Check is treated as a
+// pasted transcript rather than as the one-line label the flag asks for.
+const verificationLabelBudget = 120
 
 type APIProcessingDetails struct {
 	OutputField      string `json:"output_field,omitempty"`
@@ -201,6 +227,12 @@ type SessionStep struct {
 
 func (s *SessionStep) TitleText() string {
 	return s.Title.DefaultMessage
+}
+
+// DescriptionText returns the step's human-readable purpose, empty when the
+// blueprint did not supply one or the session predates the field.
+func (s *SessionStep) DescriptionText() string {
+	return s.Description.DefaultMessage
 }
 
 // Session is the shared state file between agent and TUI.

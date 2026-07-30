@@ -39,7 +39,7 @@ func (s *Service) Resume(sessionID string) (coop.CommandResponse, error) {
 			session.ID,
 			nodeNumber,
 			string(coop.NodeActive),
-			fmt.Sprintf("Node %d is already active. Continue the current work; no resume command is needed.", nodeNumber),
+			fmt.Sprintf("Task %d is already active. Continue the current work; no resume command is needed.", nodeNumber),
 			coop.Continuation{},
 		), nil
 	}
@@ -85,16 +85,16 @@ func rejectedStepResponse(session *coop.Session, stepTitle string, nodeNumber in
 	if node != nil && node.RejectionNote != "" {
 		response.Message += fmt.Sprintf("\nFeedback: %s", node.RejectionNote)
 	}
-	response.Message += "\nRedo the step from the first affected node."
+	response.Message += "\nRedo the step from the first affected task."
 	return response
 }
 
 func rejectedResponse(session *coop.Session, nodeNumber int, node *coop.SessionNode) coop.CommandResponse {
-	title := "affected node"
+	title := "affected task"
 	if node != nil && node.TitleText() != "" {
 		title = node.TitleText()
 	}
-	message := fmt.Sprintf("Node %d has requested changes. Redo the affected work.", nodeNumber)
+	message := fmt.Sprintf("Task %d has requested changes. Redo the affected work.", nodeNumber)
 	if node != nil && node.RejectionNote != "" {
 		message += fmt.Sprintf("\nFeedback: %s", node.RejectionNote)
 	}
