@@ -84,7 +84,7 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 		if !session.StepReadyForReview(stepIndex) {
 			return nodeResponse(
 				session.ID, nodeNumber, string(coop.NodeReview),
-				fmt.Sprintf("Node %d is ready. Continue the step before asking for human review.", nodeNumber),
+				fmt.Sprintf("Task %d is ready. Continue the step before asking for human review.", nodeNumber),
 				coop.Continue(nextInStepOrStatus(session, stepIndex, nodeNumber)),
 			), nil
 		}
@@ -103,7 +103,7 @@ func (s *Service) autoConfirm(sessionID string, nodeNumber int) (coop.CommandRes
 	}
 	return nodeResponse(
 		session.ID, nodeNumber, "confirmed",
-		fmt.Sprintf("Node %d auto-confirmed. Proceed to next node.", nodeNumber),
+		fmt.Sprintf("Task %d auto-confirmed. Proceed to the next task.", nodeNumber),
 		nextAfterNode(session, nodeNumber),
 	), nil
 }

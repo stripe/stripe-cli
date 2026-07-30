@@ -14,7 +14,7 @@ import (
 
 func (c *coopAgentActionCmd) addSessionStepFlags() {
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID")
-	c.cmd.Flags().IntVar(&c.step, "step", 0, "1-based node number")
+	c.cmd.Flags().IntVar(&c.step, "step", 0, "1-based task number")
 }
 
 func (c *coopAgentActionCmd) validateSessionStep(action string) error {
@@ -23,7 +23,7 @@ func (c *coopAgentActionCmd) validateSessionStep(action string) error {
 	}
 	return outputCoopError(
 		"--session and a positive --step are required",
-		"Provide the Co-op session ID and 1-based node number.",
+		"Provide the Co-op session ID and 1-based task number.",
 		coop.SessionStepTemplate(action),
 	)
 }

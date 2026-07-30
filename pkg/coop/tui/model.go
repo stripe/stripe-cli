@@ -30,11 +30,20 @@ type Model struct {
 	selectionCursor int // node index in work view, completion option index in completion view
 	selected        navigationItem
 	collapsedSteps  map[int]bool
-	expanded        bool
-	detailTab       int
-	width           int
-	height          int
-	userMoved       bool
+	// stepStateSignatures records what a step looked like when the user last
+	// toggled it, so the override expires when the step changes.
+	stepStateSignatures map[int]string
+
+	// confirmedStepIndex/confirmedUntil hold the settle frame after a confirm.
+	confirmedStepIndex int
+	confirmedUntil     time.Time
+	detailTab          int
+	// cardCollapsed tracks the reader closing the selected step's card. Moving
+	// to another step clears it, so arriving on a step opens it.
+	cardCollapsed bool
+	width         int
+	height        int
+	userMoved     bool
 
 	rejecting       bool // true while the request-changes input is active
 	rejectTarget    reviewTarget
@@ -68,6 +77,11 @@ type Model struct {
 	lastUpdateTime         time.Time
 	agentIsIdle            bool
 	reviewDecisionNotifier ReviewDecisionNotifier
+
+	agentHeartbeatMissing bool
+	// consecutiveReadErrors tracks failed session polls, so a single transient
+	// one does not surface as a fatal error.
+	consecutiveReadErrors int
 
 	isDark  bool
 	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
@@ -194,6 +208,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.checkForUpdates(), tickCmd())
 
 	case noUpdateMsg:
+		m.clearReadError()
 		m.updateAgentIdle(msg.heartbeatAge, msg.heartbeatOK, time.Now())
 		return m, nil
 
@@ -213,7 +228,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadSession()
 
 	case sessionUpdatedMsg:
+		m.clearReadError()
 		wasComplete := m.session != nil && m.session.IsComplete()
+		m.resumeFollowingIfReviewAppeared(msg.session)
 		m.session = msg.session
 		m.lastVersion = msg.session.Version
 		m.lastUpdateTime = time.Now()
@@ -241,7 +258,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 
 	case errMsg:
-		m.err = msg.err
+		m.recordReadError(msg.err)
 		return m, tickCmd()
 
 	case statusMsg:
@@ -366,11 +383,29 @@ func (m Model) progressBar() *tea.ProgressBar {
 		return tea.NewProgressBar(tea.ProgressBarNone, 0)
 	}
 	value := done * 100 / total
+	// This surfaces in tmux's status line and the OS taskbar without the pane
+	// being focused, which is the only signal that reaches a user watching the
+	// agent's pane instead of this one.
 	state := tea.ProgressBarDefault
-	if m.agentIdle() {
+	if m.agentIdle() || m.agentHeartbeatMissing || m.actionableReviewCount() > 0 {
 		state = tea.ProgressBarWarning
 	}
 	return tea.NewProgressBar(state, value)
+}
+
+// resumeFollowingIfReviewAppeared clears the manual-navigation latch when a
+// step first becomes actionable. userMoved is set by any navigation key and
+// otherwise clears only with `f`, so without this a review could appear
+// off-screen with nothing bringing the user back to it — which is exactly the
+// moment they are most likely to have stepped away.
+func (m *Model) resumeFollowingIfReviewAppeared(next *coop.Session) {
+	if m.session == nil || next == nil || m.actionableReviewCount() > 0 {
+		return
+	}
+	after := Model{session: next}
+	if after.actionableReviewCount() > 0 {
+		m.userMoved = false
+	}
 }
 
 func (m Model) rejectionCursor(content string) *tea.Cursor {
@@ -412,7 +447,7 @@ func (m *Model) resetSelectionState() {
 	m.selectionCursor = 0
 	m.selected = navigationItem{}
 	m.collapsedSteps = nil
-	m.expanded = false
+	m.cardCollapsed = false
 	m.userMoved = false
 }
 
@@ -455,15 +490,13 @@ func (m *Model) resizeViewport() {
 	if !m.ready || m.height == 0 {
 		return
 	}
-	headerH := lipgloss.Height(m.renderHeader()) + 1
-	footerH := lipgloss.Height(m.renderFooter()) + 1
+	footer := m.renderFooter()
 	if m.session != nil && m.session.IsComplete() {
-		footerH = lipgloss.Height(m.renderCompletionFooter()) + 1
+		footer = m.renderCompletionFooter()
 	}
-	vpHeight := m.height - headerH - footerH - terminalScrollGuard
-	if vpHeight < minViewportHeight {
-		vpHeight = minViewportHeight
-	}
+	// Same definition the view draws with, so the viewport is never sized to
+	// more rows than actually appear on screen.
+	vpHeight := m.viewportRegionHeight(m.renderHeader(), footer)
 	m.viewport.SetWidth(m.width)
 	m.viewport.SetHeight(vpHeight)
 	m.viewport.YPosition = lipgloss.Height(m.renderHeader())
@@ -485,9 +518,44 @@ func (m *Model) syncViewport() {
 	m.ensureValidNavigationSelection()
 	content := m.renderStepList()
 	m.viewport.SetContent(content)
+	// The editor renders at the end of the step's detail, and the viewport
+	// offset is driven by the outline's selected row — which knows nothing
+	// about the textarea growing as you type, so the pane clipped the text
+	// nearest the cursor while the user was writing it. Only takes over when
+	// the editor is actually inside the viewport: in the stacked layout it
+	// lives in the footer, and the cursor still governs scrolling.
+	if m.rejecting && m.ensureEditorVisible(content) {
+		return
+	}
 	if !m.userMoved {
 		m.scrollToCursor()
 	}
+}
+
+// ensureEditorVisible scrolls the feedback editor into view, reporting whether
+// it was found in the viewport's content at all.
+func (m *Model) ensureEditorVisible(content string) bool {
+	for i, line := range strings.Split(content, "\n") {
+		if strings.Contains(ansi.Strip(line), "Request changes") {
+			// Scroll explicitly rather than through EnsureVisible: the rows the
+			// overflow indicator claims are not rows the viewport knows about,
+			// so it considered the editor visible while it sat just under the
+			// fold. Reserve them here.
+			// Two rows for the overflow indicator, and one more for the border
+			// the clipped card draws to close itself — that closing line lands
+			// on the last visible row, so without it the editor was scrolled to
+			// exactly the row the border then took.
+			visible := m.viewport.Height() - viewportIndicatorRows - 1
+			if visible < 1 {
+				visible = 1
+			}
+			if bottom := i - visible + 1; bottom > m.viewport.YOffset() {
+				m.viewport.SetYOffset(bottom)
+			}
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Model) scrollToCursor() {
@@ -568,7 +636,7 @@ func (m *Model) autoScroll() {
 	for i := range m.session.Steps {
 		if m.stepReviewReady(i) {
 			m.selectStep(i)
-			m.expanded = false
+			m.cardCollapsed = false
 			return
 		}
 	}
@@ -577,7 +645,7 @@ func (m *Model) autoScroll() {
 		for j := range m.session.Steps[i].Nodes {
 			if m.session.Steps[i].Nodes[j].State == coop.NodeReview && m.reviewIsActionable(idx+1) {
 				m.selectNode(idx)
-				m.expanded = false
+				m.cardCollapsed = false
 				return
 			}
 			idx++
@@ -654,7 +722,7 @@ func (m Model) handleNavigationKey(msg tea.KeyPressMsg) (Model, tea.Cmd, bool) {
 	case key.Matches(msg, m.keys.Left):
 		if m.collapseSelectedStep() {
 			m.userMoved = true
-			m.expanded = false
+			m.cardCollapsed = false
 			m.resizeViewport()
 			m.syncViewport()
 		}
@@ -707,32 +775,42 @@ func (m Model) handleActionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.Expand):
-		m.expanded = !m.expanded
+		m.cardCollapsed = !m.cardCollapsed
 		m.resizeViewport()
 		m.syncViewport()
-		if m.expanded {
+		if !m.cardCollapsed {
 			return m, m.fetchSnippetIfNeeded()
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Enter):
 		return m.handleEnter()
 	case key.Matches(msg, m.keys.Tab):
-		if m.expanded {
-			m.detailTab = (m.detailTab + 1) % len(detailSections)
+		// Gated on the card being explicitly opened, this stopped working the moment it began
+		// rendering in place without being opened first. It also cycled modulo
+		// a fixed list of three while a step offers only the tabs it has
+		// content for, so the count could disagree with the strip on screen.
+		if count := m.visibleDetailTabCount(); count > 1 {
+			m.detailTab = (m.detailTab + 1) % count
 			m.syncViewport()
 			return m, m.fetchSnippetIfNeeded()
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Escape):
-		if m.expanded {
-			m.expanded = false
+		if !m.cardCollapsed {
+			m.cardCollapsed = true
 			m.resizeViewport()
 			m.syncViewport()
 		}
 		return m, nil
 	case key.Matches(msg, m.keys.Follow):
+		// Jump straight to whatever is waiting on the user, rather than only
+		// resuming auto-follow: the footer advertises this as "go to it".
 		m.userMoved = false
-		m.autoScroll()
+		if stepIndex, ok := m.firstActionableReviewStep(); ok {
+			m.selectStep(stepIndex)
+		} else {
+			m.autoScroll()
+		}
 		m.setStatus("Following the current review step", 3*time.Second)
 		m.resizeViewport()
 		m.syncViewport()
@@ -832,10 +910,10 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	m.expanded = !m.expanded
+	m.cardCollapsed = !m.cardCollapsed
 	m.resizeViewport()
 	m.syncViewport()
-	if m.expanded {
+	if !m.cardCollapsed {
 		return m, m.fetchSnippetIfNeeded()
 	}
 	return m, nil
@@ -865,10 +943,13 @@ func (m *Model) handleConfirm() tea.Cmd {
 	}
 	m.session = session
 	m.lastVersion = m.session.Version
-	if target.kind == "node" && len(target.nodeNumbers) > 0 {
-		m.selectNode(target.nodeNumbers[0] - 1)
-	}
 	m.userMoved = false
+	// Hold a brief acknowledgement on the step itself. The status line sits
+	// several rows below the card the user was reading, so without this the
+	// thing they acted on simply vanished with no confirmation at the point
+	// their eyes were.
+	m.confirmedStepIndex = target.stepIndex
+	m.confirmedUntil = time.Now().Add(confirmSettleDuration)
 	m.setStatus("Confirmed. Waiting for agent...", 5*time.Second)
 	m.clearRejectionState()
 	if m.session.IsComplete() {
@@ -952,9 +1033,6 @@ func (m *Model) handleReject(note string) tea.Cmd {
 	}
 	m.session = session
 	m.lastVersion = m.session.Version
-	if target.kind == "node" && len(target.nodeNumbers) > 0 {
-		m.selectNode(target.nodeNumbers[0] - 1)
-	}
 	m.userMoved = false
 	m.clearRejectionState()
 	m.setStatus("Feedback sent. Waiting for agent...", 5*time.Second)
@@ -981,7 +1059,6 @@ func (m Model) notifyReviewDecision() tea.Cmd {
 
 type reviewTarget struct {
 	title       string
-	kind        string
 	nodeNumbers []int
 	stepIndex   int
 }
@@ -1009,7 +1086,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 		if len(nodeNumbers) == 0 {
 			return reviewTarget{}, false
 		}
-		return reviewTarget{title: ch.TitleText(), kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
+		return reviewTarget{title: ch.TitleText(), nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
 	}
 	nodeIndex, ok := m.selectedNodeIndex()
 	if !ok {
@@ -1037,7 +1114,7 @@ func (m Model) selectedReviewTarget() (reviewTarget, bool) {
 	if len(nodeNumbers) == 0 {
 		return reviewTarget{}, false
 	}
-	return reviewTarget{title: step.TitleText(), kind: "step", nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
+	return reviewTarget{title: step.TitleText(), nodeNumbers: nodeNumbers, stepIndex: stepIndex}, true
 }
 
 func (m Model) reviewIsActionable(nodeNumber int) bool {
@@ -1082,6 +1159,30 @@ func (m *Model) setStatus(message string, ttl time.Duration) {
 	m.statusExpiresAt = time.Now().Add(ttl)
 }
 
+// stepJustConfirmed reports whether a step is inside its post-confirm settle.
+// recordReadError holds a failed poll back from the view until it repeats.
+//
+// The session file is read every 500ms while the agent writes it, so a torn
+// read is routine. Treating one as fatal left the view stuck on an error string
+// forever while the poll kept succeeding underneath — worst during exactly the
+// step-away-and-return this UI is built for.
+func (m *Model) recordReadError(err error) {
+	m.consecutiveReadErrors++
+	if m.consecutiveReadErrors >= readErrorTolerance {
+		m.err = err
+	}
+}
+
+// clearReadError recovers the view after a poll succeeds again.
+func (m *Model) clearReadError() {
+	m.consecutiveReadErrors = 0
+	m.err = nil
+}
+
+func (m Model) stepJustConfirmed(stepIndex int) bool {
+	return !m.confirmedUntil.IsZero() && m.confirmedStepIndex == stepIndex && time.Now().Before(m.confirmedUntil)
+}
+
 func (m *Model) clearExpiredStatus(now time.Time) {
 	if !m.statusExpiresAt.IsZero() && now.After(m.statusExpiresAt) {
 		m.statusMessage = ""
@@ -1090,10 +1191,22 @@ func (m *Model) clearExpiredStatus(now time.Time) {
 }
 
 func (m *Model) updateAgentIdle(heartbeatAge time.Duration, heartbeatOK bool, now time.Time) {
-	if m.session == nil || m.session.IsComplete() || !heartbeatOK {
+	if m.session == nil || m.session.IsComplete() {
 		m.agentIsIdle = false
+		m.agentHeartbeatMissing = false
 		return
 	}
+	if !heartbeatOK {
+		// No heartbeat file at all, which is different from an agent that is
+		// merely quiet: the process is gone. Treating it as "not idle" left the
+		// UI claiming the agent was still working indefinitely. Only trust it
+		// once the session has reported at least once, so a session that has
+		// not started yet is not mislabeled as crashed.
+		m.agentIsIdle = false
+		m.agentHeartbeatMissing = !m.lastUpdateTime.IsZero()
+		return
+	}
+	m.agentHeartbeatMissing = false
 	if heartbeatAge >= 0 && heartbeatAge < 5*time.Second {
 		m.agentIsIdle = false
 		return

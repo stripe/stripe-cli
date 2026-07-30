@@ -22,6 +22,7 @@ type coopAgentActionCmd struct {
 	lines   string
 	snippet string
 	check   string
+	detail  string
 	passed  bool
 	outputs []string
 
@@ -61,7 +62,7 @@ func newCoopAgentStartWorkCmd() *coopAgentActionCmd {
 	c := &coopAgentActionCmd{}
 	c.cmd = &cobra.Command{
 		Use:   "start-work",
-		Short: "Mark a node as active",
+		Short: "Mark a task as active",
 		Args:  agentNoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := c.validateSessionStep("start-work"); err != nil {
@@ -137,12 +138,13 @@ func newCoopAgentReportCheckCmd() *coopAgentActionCmd {
 			if err != nil {
 				return outputAgentError(err)
 			}
-			resp, err := service.ReportCheck(c.session, c.step, c.check, c.passed)
+			resp, err := service.ReportCheck(c.session, c.step, c.check, c.detail, c.passed)
 			return outputAgentResponse(resp, err)
 		},
 	}
 	c.addSessionStepFlags()
-	c.cmd.Flags().StringVar(&c.check, "check", "", "Verification check label")
+	c.cmd.Flags().StringVar(&c.check, "check", "", "Short label for what was checked, e.g. \"Webhook signature verified\". Keep it to one line — it is what the reviewer sees")
+	c.cmd.Flags().StringVar(&c.detail, "detail", "", "Full output or reasoning behind the result. Shown only when the reviewer asks for it, so command logs and long explanations belong here rather than in --check")
 	c.cmd.Flags().BoolVar(&c.passed, "passed", false, "Whether the verification passed")
 	configureAgentCommand(c.cmd)
 	return c
@@ -152,7 +154,7 @@ func newCoopAgentSkipCmd() *coopAgentActionCmd {
 	c := &coopAgentActionCmd{}
 	c.cmd = &cobra.Command{
 		Use:   "skip",
-		Short: "Skip a node",
+		Short: "Skip a task",
 		Args:  agentNoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := c.validateSessionStep("skip"); err != nil {

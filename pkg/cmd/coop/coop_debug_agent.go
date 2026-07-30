@@ -166,7 +166,7 @@ func (a *coopDebugAgent) completeActiveStep(ctx context.Context, step int) error
 	}
 
 	service := workflow.NewService(a.store)
-	resp, err := service.ReportCheck(a.sessionID, step, "Debug agent deterministic check", true)
+	resp, err := service.ReportCheck(a.sessionID, step, "Debug agent deterministic check", "", true)
 	if err != nil {
 		return err
 	}

@@ -83,7 +83,7 @@ func SessionStepTemplate(action string) Continuation {
 	return commandTemplate(
 		fmt.Sprintf("stripe coop agent %s --session=\"<session>\" --step=<step>", action),
 		commandInput("session", "--session", "Co-op session ID."),
-		commandInput("step", "--step", "Positive 1-based node number."),
+		commandInput("step", "--step", "Positive 1-based task number."),
 	)
 }
 

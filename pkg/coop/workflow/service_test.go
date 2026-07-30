@@ -425,7 +425,7 @@ func TestAgentWorkflowRejectsInactiveSessions(t *testing.T) {
 		{
 			name: "report check",
 			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
-				return service.ReportCheck(sessionID, 1, "Manual checkout passed", true)
+				return service.ReportCheck(sessionID, 1, "Manual checkout passed", "", true)
 			},
 		},
 		{

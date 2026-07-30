@@ -19,22 +19,27 @@ func TestReviewInteractionJourney(t *testing.T) {
 	m = attachTestStore(t, m)
 	m = prepareInteractiveModel(m, 56, 18)
 
+	// The card is open on arrival now, so the journey starts with it showing.
 	assertInteractionLayout(t, m, "initial review")
-	assert.False(t, m.expanded)
+	assert.False(t, m.cardCollapsed)
 	assert.Contains(t, m.renderFooter(), "changes")
 
 	m = updateWithKey(t, m, tea.KeyEnter)
-	assert.True(t, m.expanded)
+	assert.True(t, m.cardCollapsed, "enter closes a card that is already open")
 	assert.Empty(t, m.statusMessage)
-	assertInteractionLayout(t, m, "details opened")
+	assertInteractionLayout(t, m, "details closed")
+
+	m = updateWithKey(t, m, tea.KeyEnter)
+	assert.False(t, m.cardCollapsed, "enter reopens it")
+	assertInteractionLayout(t, m, "details reopened")
 
 	m = updateWithKey(t, m, tea.KeyTab)
 	assert.Equal(t, 1, m.detailTab)
 	assertInteractionLayout(t, m, "details tabbed")
 
 	m = updateWithKey(t, m, tea.KeyEsc)
-	assert.False(t, m.expanded)
-	assertInteractionLayout(t, m, "details closed")
+	assert.True(t, m.cardCollapsed)
+	assertInteractionLayout(t, m, "details closed with esc")
 
 	m = updateWithRunes(t, m, "r")
 	assert.True(t, m.rejecting)
@@ -180,7 +185,6 @@ func TestStepReviewInteractionJourney(t *testing.T) {
 
 	target, ok := m.selectedReviewTarget()
 	require.True(t, ok)
-	assert.Equal(t, "step", target.kind)
 	assert.Equal(t, []int{1, 2}, target.nodeNumbers)
 	assertInteractionLayout(t, m, "step review")
 
@@ -266,12 +270,12 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	m = prepareInteractiveModel(m, 69, 50)
 
 	m = updateWithKey(t, m, tea.KeyEnter)
-	assert.True(t, m.expanded)
-	assertInteractionLayout(t, m, "details opened before review")
-
-	m = updateWithKey(t, m, tea.KeyEsc)
-	assert.False(t, m.expanded)
+	assert.True(t, m.cardCollapsed, "enter closes the card that opened on arrival")
 	assertInteractionLayout(t, m, "details closed before review")
+
+	m = updateWithKey(t, m, tea.KeyEnter)
+	assert.False(t, m.cardCollapsed)
+	assertInteractionLayout(t, m, "details reopened before review")
 
 	m = updateWithRunes(t, m, "j")
 	assertInteractionLayout(t, m, "moved onto step")
@@ -279,8 +283,10 @@ func TestMoveOntoReviewAfterDetailsToggleKeepsChromePinned(t *testing.T) {
 	assert.Equal(t, 2, m.selectionCursor)
 	assertInteractionLayout(t, m, "moved onto review card")
 	assert.Equal(t, m.height-1, lineIndexContaining(m.View().Content, "enter"))
-	assert.Contains(t, m.View().Content, "Review")
-	assertContainsPlain(t, m.View().Content, "f follow")
+	// The card identifies itself by sitting under its step, not by a "Review
+	// step" title, so assert on the content that matters.
+	assert.Contains(t, m.View().Content, "To confirm")
+	assertContainsPlain(t, m.View().Content, "f review")
 }
 
 func attachTestStore(t *testing.T, m Model) Model {

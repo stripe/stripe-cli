@@ -3,8 +3,10 @@ package tui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
@@ -96,8 +98,7 @@ func TestRenderHeader(t *testing.T) {
 
 	assertContainsPlain(t, header, "Co-op")
 	assertContainsPlain(t, header, "one-time-payment")
-	assertContainsPlain(t, header, "node")
-	assertContainsPlain(t, header, "1/3")
+	assertContainsPlain(t, header, "step 1/2")
 }
 
 func TestRenderHeaderWithClaimURL(t *testing.T) {
@@ -109,39 +110,53 @@ func TestRenderHeaderWithClaimURL(t *testing.T) {
 	assertContainsPlain(t, header, "claim_abc")
 }
 
+// Every step is always listed; only the step in play spends rows on its tasks.
 func TestRenderStepList(t *testing.T) {
 	m := testModel()
 	list := m.renderStepList()
 
 	assertContainsPlain(t, list, "Set up product")
+	assertContainsPlain(t, list, "Handle webhooks")
+
+	// Step 0 has an active task, so it is the step in play.
 	assertContainsPlain(t, list, "Create product")
 	assertContainsPlain(t, list, "Create checkout")
-	assertContainsPlain(t, list, "Handle webhooks")
-	assertContainsPlain(t, list, "Handle event")
+
+	// Step 1 is not the selected step, so it shows its small card and no
+	// tasks. Only the step the reader is standing on lists them.
+	assertNotContainsPlain(t, list, "Handle event")
+	assertContainsPlain(t, list, "Not started")
 }
 
-func TestRenderStepListAlignsStepTitleWithRule(t *testing.T) {
+// The rule under each step title is gone — every step draws a card, and the
+// card's own top border was drawing the same boundary a row later. What still
+// has to hold is that the title and the card beneath it share a left edge.
+func TestRenderStepTitleAlignsWithItsCard(t *testing.T) {
 	m := testModel()
 	lines := strings.Split(ansi.Strip(m.renderStepList()), "\n")
 
-	var titleLine, ruleLine string
+	var titleLine, cardLine string
 	for i, line := range lines {
 		if strings.Contains(line, "Set up product") && i+1 < len(lines) {
 			titleLine = line
-			ruleLine = lines[i+1]
+			cardLine = lines[i+1]
 			break
 		}
 	}
 
 	require.NotEmpty(t, titleLine)
-	require.NotEmpty(t, ruleLine)
-	titleDash := strings.Index(titleLine, "-")
-	ruleDash := strings.Index(ruleLine, "─")
-	require.NotEqual(t, -1, titleDash)
-	require.NotEqual(t, -1, ruleDash)
-	titlePrefix := titleLine[:titleDash]
-	rulePrefix := ruleLine[:ruleDash]
-	assert.Equal(t, lipgloss.Width(titlePrefix), lipgloss.Width(rulePrefix))
+	require.Contains(t, cardLine, "╭", "a card should follow the title")
+
+	// Both sit past the same two-column timeline gutter: the card's border and
+	// the title's block start there. The title's text is one further in, inside
+	// the padding that lets the selected title render as a filled block rather
+	// than as inverted text jammed against its own edge.
+	// Columns, not bytes: the gutter glyphs are multi-byte.
+	assert.Equal(t, rowCursorWidth, runeIndex(cardLine, '╭'),
+		"the card's border sits just past the timeline gutter")
+	titleText := len([]rune(titleLine)) - len([]rune(strings.TrimLeft(titleLine, " ○●│╎")))
+	assert.Equal(t, rowCursorWidth+1, titleText,
+		"the title's text sits one column inside its own padding")
 }
 
 func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
@@ -152,11 +167,11 @@ func TestRenderStepListShowsStepReviewUnit(t *testing.T) {
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "Awaiting review")
-	assertContainsPlain(t, list, strings.TrimSpace(cursorMarker))
-	assertContainsPlain(t, list, "Create product  Included")
-	assertContainsPlain(t, list, "Create checkout  Included")
-	assertNotContainsPlain(t, list, "Create product  Needs review")
+	assertContainsPlain(t, list, "Waiting for you")
+	assertSelectedRowVisible(t, list)
+	assertContainsPlain(t, list, "Create product  ready")
+	assertContainsPlain(t, list, "Create checkout  ready")
+	assertNotContainsPlain(t, list, "Create product  needs review")
 }
 
 func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
@@ -167,26 +182,29 @@ func TestRenderStepListShowsSingleStepStepReviewUnit(t *testing.T) {
 	list := m.renderStepList()
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, list, "Awaiting review")
-	assertContainsPlain(t, footer, "confirm all")
+	assertContainsPlain(t, list, "Waiting for you")
+	assertContainsPlain(t, footer, "confirm step")
 }
 
 func TestRenderCollapsedStepShowsStateSummary(t *testing.T) {
 	m := testModel()
 	m.collapseStep(0)
+	// Stand somewhere else: the selected step shows its full card, and this is
+	// about what a step the reader is not on says for itself.
+	m.selectStep(1)
 
 	list := m.renderStepList()
 
-	assertContainsPlain(t, list, "+ Set up product")
-	assertContainsPlain(t, list, "✓1 ●1")
-	assertNotContainsPlain(t, list, "Create product")
-	assertNotContainsPlain(t, list, "Create checkout")
+	// No disclosure marker any more; the timeline node and the card say it.
+	assertContainsPlain(t, list, "Set up product")
+	// The small card says what is happening rather than counting states.
+	assertContainsPlain(t, list, "Working on")
 }
 
 func TestRenderStepLineAnnotation(t *testing.T) {
 	m := testModel()
 	node := m.session.Steps[0].Nodes[0]
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 
 	assertContainsPlain(t, line, "server.js:5-20")
 }
@@ -194,7 +212,7 @@ func TestRenderStepLineAnnotation(t *testing.T) {
 func TestRenderStepLineActivity(t *testing.T) {
 	m := testModel()
 	node := m.session.Steps[0].Nodes[1]
-	line := m.renderNodeLine(node, 1, false, false)
+	line := m.renderNodeLine(node, 1, false)
 
 	assertContainsPlain(t, line, "Writing endpoint")
 }
@@ -203,7 +221,7 @@ func TestRenderStepLineCursor(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 1
 	node := m.session.Steps[0].Nodes[1]
-	line := m.renderNodeLine(node, 1, false, true)
+	line := m.renderNodeLine(node, 1, true)
 
 	assertContainsPlain(t, line, strings.TrimSpace(cursorMarker))
 }
@@ -212,7 +230,7 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
 	node := m.session.Steps[0].Nodes[1]
-	line := m.renderNodeLine(node, 1, false, false)
+	line := m.renderNodeLine(node, 1, false)
 
 	assertNotContainsPlain(t, line, strings.TrimSpace(cursorMarker))
 }
@@ -220,7 +238,6 @@ func TestRenderStepLineNoCursor(t *testing.T) {
 func TestRenderDetail(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 1
 	detail := m.renderDetail()
 
@@ -233,16 +250,16 @@ func TestRenderDetail(t *testing.T) {
 func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 0
 
 	detail := m.renderDetail()
 
 	assertNotContainsPlain(t, detail, "Details:")
-	assert.NotContains(t, ansi.Strip(detail), "Summary")
-	assertNotContainsPlain(t, detail, "Files  Checks  Reference")
+	// Tabs are filled blocks now, not words joined by " · ".
+	assertContainsPlain(t, detail, "Summary")
+	assertContainsPlain(t, detail, "Files")
 	assertContainsPlain(t, detail, "Confirm the saved price ID is reused")
-	assertContainsPlain(t, detail, "Confirmation steps")
+	assertContainsPlain(t, detail, "To confirm")
 	assertNotContainsPlain(t, detail, "POST /v1/products")
 	assertNotContainsPlain(t, detail, "You check")
 }
@@ -250,7 +267,6 @@ func TestRenderSummaryDetailDoesNotRepeatLabels(t *testing.T) {
 func TestRenderSummaryDetailShowsStepSDKSnippet(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 0
 	m.sdkSnippet = "const product = await stripe.products.create({name: 'Gold plan'});"
 	m.sdkSnippetNode = 0
@@ -264,26 +280,25 @@ func TestRenderSummaryDetailShowsStepSDKSnippet(t *testing.T) {
 func TestRenderStepDetailUsesStepOverview(t *testing.T) {
 	m := testModel()
 	m.selectStep(0)
-	m.expanded = true
 	m.detailTab = 0
 
 	detail := m.renderDetail()
 
-	assertContainsPlain(t, detail, "✓ Create product")
-	assertContainsPlain(t, detail, "● Create checkout")
-	assertContainsPlain(t, detail, "Confirmation steps")
-	assertContainsPlain(t, detail, "Agent help")
+	// Tasks are not in the card any more — they render underneath it, in the
+	// outline. The card carries the step-level content.
+	assertContainsPlain(t, detail, "To confirm")
+	assertNotContainsPlain(t, detail, "✓ Create product")
 	assertNotContainsPlain(t, detail, "SDK example")
 }
 
 func TestRenderDetailWebhook(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 2 // asyncHandler node
-	m.expanded = true
 	m.detailTab = 2
 	m.width = 120
 	detail := m.renderDetail()
 
+	// The per-task view keeps its own Checks tab, named plainly.
 	assertContainsPlain(t, detail, "Checks")
 	assertNotContainsPlain(t, detail, "Review command")
 	assertContainsPlain(t, detail, "How to verify")
@@ -296,7 +311,6 @@ func TestRenderDetailWebhook(t *testing.T) {
 func TestRenderDetailWithSDKSnippet(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 3
 	m.sdkSnippet = "const product = await stripe.products.create({});"
 	m.sdkSnippetNode = 0
@@ -310,7 +324,6 @@ func TestRenderDetailFitsPaneWithIndent(t *testing.T) {
 	m := testModel()
 	m.width = 69
 	m.selectionCursor = 0
-	m.expanded = true
 	m.detailTab = 1
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
@@ -326,7 +339,6 @@ func TestRenderDetailBoxMatchesOutlineWidth(t *testing.T) {
 	m := testModel()
 	m.width = 69
 	m.selectionCursor = 0
-	m.expanded = true
 
 	detail := ansi.Strip(m.renderDetail())
 	lines := strings.Split(detail, "\n")
@@ -358,18 +370,34 @@ func TestRenderFooter(t *testing.T) {
 	assertNotContainsPlain(t, footer, "confirm")
 }
 
+// reviewSurface is everything the user can see of a step's review: the card,
+// which now renders inline under its step, plus the footer keys. These tests
+// care that the content is reachable in the frame, not which of the two
+// surfaces happens to carry it — pinning that is what made them break when the
+// card moved out of the footer.
+func reviewSurface(m Model) string {
+	return m.renderStepList() + "\n" + m.renderFooter()
+}
+
 func TestRenderFooterReviewStep(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
 	m.selectionCursor = 0
-	footer := m.renderFooter()
+	m.ready = true
+	m.width, m.height = 80, 30
+	m.selectStep(0)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "confirm")
 	assertContainsPlain(t, footer, "changes")
-	assertContainsPlain(t, footer, "Review")
-	assertContainsPlain(t, footer, "Changed")
-	assertContainsPlain(t, footer, "Do this")
+	// "Review step" as a title and a separate "Changed" file list both went
+	// away with the footer card: the card now sits under the step line that
+	// names it, and each task carries its own file.
+	assertContainsPlain(t, footer, "To confirm")
+	// "Tasks" is no longer a heading inside the card; the task rows sit
+	// below it in the outline, which reviewSurface also covers.
+	assertContainsPlain(t, footer, "Create product")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -387,12 +415,12 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review")
 	assertNotContainsPlain(t, card, "Review: Create product")
-	assertContainsPlain(t, card, "Changed: ")
+	assertContainsPlain(t, card, "Changed ")
 	assertContainsPlain(t, card, "server.js:5-20")
 
 	// The reviewer's instruction leads, not the agent's narration of what it
 	// already did.
-	assertContainsPlain(t, card, "Do this")
+	assertContainsPlain(t, card, "To confirm")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 	assertNotContainsPlain(t, card, "Visit http://localhost:3000/checkout")
 
@@ -401,8 +429,8 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 	assertContainsPlain(t, card, "1 check passed")
 
 	plain := ansi.Strip(card)
-	assert.Less(t, strings.Index(plain, "Do this"), strings.Index(plain, "declined cards"))
-	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed: "))
+	assert.Less(t, strings.Index(plain, "To confirm"), strings.Index(plain, "declined cards"))
+	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed "))
 }
 
 func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
@@ -414,7 +442,7 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Do this")
+	assertContainsPlain(t, card, "To confirm")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
 }
 
@@ -426,12 +454,12 @@ func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
 		typ   coop.NodeType
 		venue string
 	}{
-		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Where: the changed files below"},
-		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Where: the changed files below"},
-		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Where: your running app"},
-		{name: "dashboard", typ: coop.NodeDashboard, venue: "Where: the Stripe Dashboard"},
-		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Where: your terminal"},
-		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Where: your webhook handler, after triggering the event"},
+		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Check the changed files below"},
+		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Check the changed files below"},
+		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Check your running app"},
+		{name: "dashboard", typ: coop.NodeDashboard, venue: "Check the Stripe Dashboard"},
+		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Check your terminal"},
+		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Check your webhook handler, after triggering the event"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := testModel()
@@ -457,8 +485,8 @@ func TestRenderReviewCardPrefersReviewCommandOverVenue(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Run: stripe trigger checkout.session.completed")
-	assertNotContainsPlain(t, card, "Where:")
+	assertContainsPlain(t, card, "Run stripe trigger checkout.session.completed")
+	assertNotContainsPlain(t, card, "Where")
 }
 
 func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
@@ -472,8 +500,8 @@ func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review step")
 	assertNotContainsPlain(t, card, "Review step (2 steps): Set up product")
-	assertContainsPlain(t, card, "Includes: Create product, Create checkout")
-	assertContainsPlain(t, footer, "confirm all")
+	assertContainsPlain(t, card, "Includes Create product, Create checkout")
+	assertContainsPlain(t, footer, "confirm step")
 	assertContainsPlain(t, footer, "changes")
 }
 
@@ -492,9 +520,12 @@ func TestRenderFooterReviewCommand(t *testing.T) {
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
 	m.session.Steps[1].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 2
-	footer := m.renderFooter()
+	m.ready = true
+	m.width, m.height = 80, 30
+	m.selectStep(1)
+	footer := reviewSurface(m)
 
-	assertContainsPlain(t, footer, "Run:")
+	assertContainsPlain(t, footer, "Run ")
 	assertContainsPlain(t, footer, "stripe trigger checkout.session.completed")
 	assertContainsPlain(t, footer, "y copy")
 }
@@ -506,7 +537,7 @@ func TestRenderFooterReviewNotice(t *testing.T) {
 	footer := m.renderFooter()
 
 	assertContainsPlain(t, footer, "Waiting for you")
-	assertContainsPlain(t, footer, "review step")
+	assertContainsPlain(t, footer, "Waiting for you: Set up product")
 }
 
 func TestRenderCompletionView(t *testing.T) {
@@ -610,7 +641,7 @@ func TestAnnotationWrapsAtNarrowWidth(t *testing.T) {
 	m.width = 40
 	node := tuiNode("", "test", "Step", coop.NodeActive)
 	node.Activity = "This is a very long activity note that should wrap"
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 
 	// Should have a newline (wrapped)
 	assert.True(t, strings.Contains(line, "\n"))
@@ -621,7 +652,7 @@ func TestAnnotationInlineAtWideWidth(t *testing.T) {
 	m.width = 120
 	node := tuiNode("", "test", "Step", coop.NodeActive)
 	node.Activity = "Short note"
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 
 	// Should contain the annotation inline (not wrapped to next line)
 	assertContainsPlain(t, line, "Short note")
@@ -663,7 +694,7 @@ func TestRenderStepLineSkipped(t *testing.T) {
 	m := testModel()
 	node := tuiNode("", "skipped", "Skipped step", coop.NodeSkipped)
 	node.Activity = "Not needed for this project"
-	line := m.renderNodeLine(node, 0, false, false)
+	line := m.renderNodeLine(node, 0, false)
 	assertContainsPlain(t, line, "Not needed")
 }
 
@@ -709,7 +740,7 @@ func TestRenderFooterShowsFollowWhenUserMoved(t *testing.T) {
 
 	footer := m.renderFooter()
 
-	assertContainsPlain(t, footer, "f follow")
+	assertContainsPlain(t, footer, "f review")
 }
 
 func TestRenderFooterRejectionInput(t *testing.T) {
@@ -720,7 +751,8 @@ func TestRenderFooterRejectionInput(t *testing.T) {
 	m.rejecting = true
 	m.rejectionInput.SetValue("Missing webhook test")
 
-	footer := m.renderFooter()
+	m.selectStep(0)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "enter newline")
 	assertContainsPlain(t, footer, "ctrl/cmd+enter send")
@@ -737,7 +769,8 @@ func TestRenderFooterRejectionPlaceholder(t *testing.T) {
 	m.rejectionInput.Placeholder = m.requestChangesPlaceholder(target)
 	m.rejectionInput.Focus()
 
-	footer := m.renderFooter()
+	m.selectStep(1)
+	footer := reviewSurface(m)
 
 	assertContainsPlain(t, footer, "Describe what should change in this step")
 }
@@ -821,7 +854,9 @@ func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {
 	assert.LessOrEqual(t, lipgloss.Height(view), m.height)
 	assertLinesWithinWidth(t, view, m.width)
 	assertContainsPlain(t, view, "Stripe Co-op")
-	assertContainsPlain(t, view, "Review step")
+	// The card no longer titles itself "Review step": it renders directly under
+	// the step line that already names the step, so the title was repeating it.
+	assertContainsPlain(t, view, "To confirm")
 	assertContainsPlain(t, view, "q quit")
 }
 
@@ -849,7 +884,7 @@ func TestViewportShowsMoreBelowIndicator(t *testing.T) {
 
 	rendered := m.renderViewportRegionWithHeight(4)
 
-	assertContainsPlain(t, rendered, "more below")
+	assertContainsPlain(t, rendered, "scroll for more")
 	assertLinesWithinWidth(t, rendered, m.width)
 }
 
@@ -857,11 +892,13 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 	m := testModel()
 	m.ready = true
 	m.width = 69
-	m.height = 12
+	// Tall enough that the card renders in place — below minInlineCardRows it
+	// falls back to a footer line and there is no box to clip. The short
+	// viewport region below is what this test is actually about.
+	m.height = 24
 	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(6))
 	m.session.Steps[0].Nodes[0].ReviewPrompt = strings.Repeat("Confirm the Checkout flow uses the saved price ID and redirects correctly. ", 5)
-	m.selectionCursor = 0
-	m.expanded = true
+	m.selectStep(0)
 	m.resizeViewport()
 	m.syncViewport()
 	m.viewport.SetHeight(6)
@@ -871,15 +908,28 @@ func TestViewportClosesClippedDetailBoxBeforeMoreBelowIndicator(t *testing.T) {
 
 	assert.Contains(t, rendered, "╰")
 	assert.Contains(t, rendered, "╯")
-	assertContainsPlain(t, rendered, "more below")
+	assertContainsPlain(t, rendered, "scroll for more")
 	assertLinesWithinWidth(t, rendered, m.width)
 }
 
 func TestViewportBoundaryDoesNotTurnTopBorderIntoBottomBorder(t *testing.T) {
 	rendered := closeOpenBoxAtViewportBoundary("before\n  ╭────────╮")
 
-	assert.Contains(t, rendered, "╭")
+	// The top border must never become a bottom border. It is also not worth
+	// keeping on its own: a card cut to just its opening line is a box with no
+	// content and no bottom, which reads as a rendering fault. It is dropped.
 	assert.NotContains(t, rendered, "╰")
+	assert.NotContains(t, rendered, "╭")
+	assert.Contains(t, rendered, "before", "content above the card must survive")
+}
+
+// A card with room for content keeps it and gains a closing border.
+func TestViewportBoundaryClosesACardWithContent(t *testing.T) {
+	rendered := closeOpenBoxAtViewportBoundary("  ╭────────╮\n  │ body   │\n  │ more   │")
+
+	assert.Contains(t, rendered, "╭")
+	assert.Contains(t, rendered, "╰")
+	assert.Contains(t, rendered, "body")
 }
 
 func assertLinesWithinWidth(t *testing.T, rendered string, width int) {
@@ -942,9 +992,12 @@ func TestSummarizeCheckKeepsTheFindingNotTheTranscript(t *testing.T) {
 			"it returned HTTP 400 because STRIPE_WEBHOOK_SECRET is not configured.",
 	}, "\n")
 
-	summary := summarizeCheck(transcript, failedCheckBudget)
+	summary := summarizeCheckFailure(transcript, failedCheckBudget)
 
 	assert.Contains(t, summary, "STRIPE_WEBHOOK_SECRET is not configured")
+	// The reason leads. The trailing narration about what did work must not be
+	// what a red ✗ line shows, and the line must not open mid-sentence.
+	assert.False(t, strings.HasPrefix(summary, "…"), "summary should not open with an ellipsis: %q", summary)
 	assert.NotContains(t, summary, "Setting up fixture for")
 	assert.NotContains(t, summary, "A newer version of the Stripe CLI")
 	assert.LessOrEqual(t, lipgloss.Width(summary), failedCheckBudget+1)
@@ -958,4 +1011,275 @@ func TestSummarizeCheckLeavesShortNotesIntact(t *testing.T) {
 
 func TestSummarizeCheckFlattensNewlines(t *testing.T) {
 	assert.Equal(t, "first second", summarizeCheck("first\n\n  second  ", failedCheckBudget))
+}
+
+// A blueprint name longer than the fixture's used to run past the terminal edge
+// in the stacked header fallback.
+func TestRenderHeaderTruncatesLongBlueprintName(t *testing.T) {
+	m := testModel()
+	m.width = 40
+	m.session.Blueprint = "accept-payment-with-payment-element"
+
+	for _, line := range strings.Split(m.renderHeader(), "\n") {
+		assert.LessOrEqual(t, lipgloss.Width(line), 40, "header line should fit: %q", ansi.Strip(line))
+	}
+}
+
+// Paths contain no spaces, so wordWrap cannot break them — they used to run
+// past the card border. Truncation keeps the filename and line range, which is
+// the part that identifies the change.
+func TestTruncatePathKeepsFilenameAndLines(t *testing.T) {
+	path := "apps/web/src/app/(external-pages)/subscription-checkout-button.tsx:1-57"
+
+	got := truncatePath(path, 48)
+
+	assert.LessOrEqual(t, lipgloss.Width(got), 48)
+	assert.Contains(t, got, "subscription-checkout-button.tsx:1-57")
+	assert.Contains(t, got, "…/")
+}
+
+func TestTruncatePathLeavesShortPathsAlone(t *testing.T) {
+	assert.Equal(t, "server.js:5-20", truncatePath("server.js:5-20", 40))
+}
+
+// When even the filename will not fit there is nothing to preserve but the tail.
+func TestTruncatePathFallsBackToFilename(t *testing.T) {
+	got := truncatePath("a/very/deep/path/extremely-long-component-name.tsx:1-99", 20)
+
+	assert.LessOrEqual(t, lipgloss.Width(got), 20)
+}
+
+// The blueprint authors a one-line purpose per step. It was parsed and then
+// dropped when a session was created, so the box had nothing to explain a step
+// with. It is imperative like the review prompt, hence the label.
+func TestRenderReviewCardShowsStepGoal(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Description = coop.MessageDescriptor{DefaultMessage: "Create a product with recurring pricing."}
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectStep(0)
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Goal Create a product with recurring pricing.")
+	plain := ansi.Strip(card)
+	assert.Less(t, strings.Index(plain, "Goal:"), strings.Index(plain, "To confirm"))
+}
+
+// Rejection notes were stored and never rendered, so by the time the agent came
+// back the reviewer had no reminder of what they had asked for.
+func TestRenderReviewCardShowsRequestedChange(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.session.Steps[0].Nodes[0].RejectionNote = "the app doesn't load"
+	m.selectStep(0)
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Requested change")
+	assertContainsPlain(t, card, "the app doesn't load")
+}
+
+// The card is flush left, so hue and weight are the only things separating a
+// heading from the sentence under it — and headings that mean different things
+// must not look the same.
+func TestSectionHeadingsAreDistinctAndColored(t *testing.T) {
+	theme := NewTheme(true)
+
+	action := actionLabel(theme, "To confirm")
+	evidence := evidenceLabel(theme, "Checks")
+	feedback := feedbackLabel(theme, "Requested change")
+
+	for _, rendered := range []string{action, evidence, feedback} {
+		assert.NotEqual(t, ansi.Strip(rendered), rendered, "headings should carry styling")
+	}
+	assert.NotEqual(t, ansi.Strip(action), ansi.Strip(evidence))
+	assert.NotContains(t, evidence, "237;103;4", "evidence should not reuse the attention hue")
+}
+
+// Confirming used to acknowledge only in the status line, several rows below
+// the card the user was reading, so the step they acted on simply vanished.
+func TestConfirmedStepShowsSettleFrame(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectStep(0)
+	m.confirmedStepIndex = 0
+	m.confirmedUntil = time.Now().Add(time.Second)
+
+	assertContainsPlain(t, m.renderStepList(), "✓ confirmed")
+}
+
+func TestSettleFrameExpires(t *testing.T) {
+	m := testModel()
+	m.confirmedStepIndex = 0
+	m.confirmedUntil = time.Now().Add(-time.Second)
+
+	assert.False(t, m.stepJustConfirmed(0))
+}
+
+// The progress signal reaches tmux and the OS taskbar without the pane being
+// focused, so it has to reflect "you are blocking progress", not just errors.
+func TestProgressBarSignalsWhenReviewIsWaiting(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+
+	require.Positive(t, m.actionableReviewCount())
+	assert.Equal(t, tea.ProgressBarWarning, m.progressBar().State)
+}
+
+// The detail box always had four tab-cycled sections, but the section you land
+// on rendered no header, so nothing on screen said the others existed.
+func TestDetailTabStripIsAlwaysVisible(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.selectStep(0)
+
+	sections := m.stepDetailSections(&m.session.Steps[0])
+	for tab, name := range sections {
+		m.detailTab = tab
+		detail := m.renderDetail()
+
+		for _, section := range sections {
+			assertContainsPlain(t, detail, section)
+		}
+		// The active tab is a filled block now, not purple text.
+		assert.Contains(t, detail, m.theme.TabActiveStyle.Render(name),
+			"the active tab should be marked")
+	}
+}
+
+// Narrow boxes cannot fit four names, so they say where you are instead of
+// dropping the affordance entirely.
+func TestDetailTabStripDegradesWhenNarrow(t *testing.T) {
+	m := testModel()
+
+	header := m.renderDetailTabs(detailSections, "Reference", 12)
+
+	assertContainsPlain(t, header, "Reference")
+	assertContainsPlain(t, header, "3/3")
+	assertContainsPlain(t, header, "tab")
+}
+
+// The Checks heading reports its own outcome, so a step with a failure reads as
+// one before you get to the list underneath.
+func TestChecksHeadingColorsByOutcome(t *testing.T) {
+	theme := NewTheme(true)
+
+	assert.NotEqual(t, checksLabel(theme, true), checksLabel(theme, false))
+	assert.Equal(t, "Agent checks", ansi.Strip(checksLabel(theme, true)))
+	assert.Equal(t, "Agent checks", ansi.Strip(checksLabel(theme, false)))
+}
+
+// The split workspace shows the step in its pane, so a second copy in the
+// footer put the same content on screen twice in two different shapes.
+func TestSplitWorkspaceDoesNotAlsoRenderFooterCard(t *testing.T) {
+	m := stepReviewLayoutModel()
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	assert.Equal(t, 1, strings.Count(ansi.Strip(rendered), "To confirm"),
+		"the step should be described in exactly one place")
+}
+
+// Suppressing the footer card in split mode removed the only home the feedback
+// editor had, so it moved into the pane.
+func TestSplitWorkspaceKeepsFeedbackEditorVisible(t *testing.T) {
+	m := stepReviewLayoutModel()
+	m.startReject()
+	rendered := renderLayoutScenario(&m, layoutSize{name: "wide", width: 120, height: 34})
+
+	assertContainsPlain(t, rendered, "Request changes")
+}
+
+// A step with many tasks pushed the instruction out of the pane.
+// The card no longer carries a task list to cap — tasks render beneath it and
+// scroll. What has to hold is that a step crowded with tasks still leads with
+// the instruction and stays inside its frame.
+func TestCrowdedStepStillLeadsWithTheInstruction(t *testing.T) {
+	m := stressCrowdedStepReviewModel()
+	size := layoutSize{name: "wide", width: 120, height: 34}
+	rendered := renderLayoutScenario(&m, size)
+
+	assertContainsPlain(t, rendered, "To confirm")
+	assertLayoutFits(t, rendered, size)
+}
+
+// The footer note is the one pinned guarantee that a review is pending, so it
+// names the step and offers a way to reach it.
+func TestFooterNamesTheWaitingStepAndOffersAJump(t *testing.T) {
+	m := testModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.width, m.height = 100, 30
+	m.ready = true
+	m.selectStep(0)
+
+	footer := m.renderFooter()
+
+	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
+	assertContainsPlain(t, footer, "review")
+}
+
+// Standing on the step already, the jump hint is noise.
+func TestFooterDropsJumpHintWhenAlreadyThere(t *testing.T) {
+	m := testModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.width, m.height = 100, 30
+	m.ready = true
+	m.selectStep(1)
+
+	footer := m.renderFooter()
+
+	assertContainsPlain(t, footer, "Waiting for you: Handle webhooks")
+	assertNotContainsPlain(t, footer, "review")
+}
+
+func TestFollowJumpsToTheWaitingStep(t *testing.T) {
+	m := readyModel()
+	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.selectStep(0)
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
+	updated := result.(Model)
+
+	assert.Equal(t, navigationStep, updated.selected.kind)
+	assert.Equal(t, 1, updated.selected.stepIndex)
+}
+
+// runeIndex is strings.IndexRune in columns rather than bytes.
+func runeIndex(s string, target rune) int {
+	for i, r := range []rune(s) {
+		if r == target {
+			return i
+		}
+	}
+	return -1
+}
+
+// --detail exists so an agent can keep its command logs without drowning the
+// card. That is only worth anything if something reads it back: the card shows
+// the label, the Reference tab shows what is behind it.
+func TestReferenceTabSurfacesCheckDetail(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Webhook signature verified", Passed: true,
+			Detail: "Ran stripe trigger checkout.session.completed and asserted constructEvent accepted the signature."},
+	}
+	m.selectStep(0)
+	sections := m.stepDetailSections(&m.session.Steps[0])
+	for i, name := range sections {
+		if name == "Reference" {
+			m.detailTab = i
+		}
+	}
+
+	detail := m.renderDetail()
+
+	assertContainsPlain(t, detail, "Webhook signature verified")
+	// A short token: the renderer rewraps the body, so a longer phrase would
+	// straddle a line break and fail for the wrong reason.
+	assertContainsPlain(t, detail, "constructEvent")
 }

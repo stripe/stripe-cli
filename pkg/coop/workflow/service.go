@@ -209,7 +209,7 @@ func (s *Service) ReportWork(sessionID string, nodeNumber int, input ReportWorkI
 	return s.reportWorkResponse(session, node, nodeNumber, targetState), nil
 }
 
-func (s *Service) ReportCheck(sessionID string, nodeNumber int, check string, passed bool) (coop.CommandResponse, error) {
+func (s *Service) ReportCheck(sessionID string, nodeNumber int, check, detail string, passed bool) (coop.CommandResponse, error) {
 	if strings.TrimSpace(check) == "" {
 		return errorResponse(
 			fmt.Errorf("--check flag is required"),
@@ -225,7 +225,11 @@ func (s *Service) ReportCheck(sessionID string, nodeNumber int, check string, pa
 		if err != nil {
 			return err
 		}
-		node.Verifications = append(node.Verifications, coop.Verification{Check: check, Passed: passed})
+		node.Verifications = append(node.Verifications, coop.Verification{
+			Check:  strings.TrimSpace(check),
+			Detail: strings.TrimSpace(detail),
+			Passed: passed,
+		})
 		return nil
 	})
 	if err != nil {
