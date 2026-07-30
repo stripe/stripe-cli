@@ -12,9 +12,16 @@ import (
 )
 
 var ErrNoSession = errors.New("no session found")
-var ErrSelectionTimeout = errors.New("timed out waiting for next-action selection")
 
-const NextActionSelectionTimeout = 10 * time.Minute
+// NextActionInterval mirrors workflow.AwaitTimeout: one next-action call waits
+// at most this long, then returns a waiting response asking the agent to run it
+// again. It must stay under an agent harness's default command timeout for the
+// same reason await-review must — a killed process hands the agent no next
+// command. (Declared here rather than imported: workflow depends on helpers.)
+const NextActionInterval = 45 * time.Second
+
+// NextActionHarnessTimeout is the shell timeout advertised to agents.
+const NextActionHarnessTimeout = 90 * time.Second
 
 type Input struct {
 	SessionID string
@@ -41,6 +48,12 @@ type Response struct {
 	Completed   string       `json:"completed"`
 	Suggestions []Suggestion `json:"suggestions"`
 	AgentPrompt string       `json:"agent_prompt"`
+
+	State          string `json:"state,omitempty"`
+	AdvanceAllowed *bool  `json:"advance_allowed,omitempty"`
+	WaitedSeconds  int    `json:"waited_seconds,omitempty"`
+	Message        string `json:"message,omitempty"`
+
 	coop.Continuation
 }
 
@@ -84,11 +97,37 @@ func Run(store Store, input Input) (Response, error) {
 		return Response{}, err
 	}
 
-	selected, err := WaitForSelection(store, session.ID)
+	selected, waited, err := waitForSelection(store, session.ID, NextActionInterval, time.Now, time.Sleep)
 	if err != nil {
 		return Response{}, err
 	}
+	if selected == "" {
+		return waitingResponse(session, suggestions, input.Completed, waited), nil
+	}
 	return BuildResponse(session, suggestions, selected), nil
+}
+
+// waitingResponse says the developer has not chosen yet. Like await-review it
+// exits successfully and repeats the invoked command, so an agent never reads a
+// still-open choice as a broken session.
+func waitingResponse(session *coop.Session, suggestions []Suggestion, completed string, waited time.Duration) Response {
+	return Response{
+		OK:             true,
+		SessionID:      session.ID,
+		Completed:      session.Blueprint,
+		Suggestions:    suggestions,
+		State:          "waiting",
+		AdvanceAllowed: advanceAllowed(false),
+		WaitedSeconds:  int(waited.Round(time.Second).Seconds()),
+		Message: "The developer has not picked what happens next yet. This is expected and nothing is wrong.\n" +
+			"Do not end the session and do not ask a question here. Run the command in \"next\" again now to keep waiting.",
+		Continuation: coop.Continue(coop.NextActionCommand(session.ID, completed)).
+			WithWaitTimeout(int(NextActionInterval.Seconds())),
+	}
+}
+
+func advanceAllowed(v bool) *bool {
+	return &v
 }
 
 func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestion, completed string) error {
@@ -135,31 +174,31 @@ func consumeSelection(store Store, session *coop.Session) error {
 	return nil
 }
 
+// WaitForSelection blocks for one interval. An empty selection with a nil error
+// means the developer simply has not chosen yet.
 func WaitForSelection(store Store, sessionID string) (string, error) {
-	return waitForSelection(store, sessionID, NextActionSelectionTimeout, time.Now, time.Sleep)
+	selected, _, err := waitForSelection(store, sessionID, NextActionInterval, time.Now, time.Sleep)
+	return selected, err
 }
 
-func waitForSelection(store Store, sessionID string, timeout time.Duration, now func() time.Time, sleep func(time.Duration)) (string, error) {
-	deadline := now().Add(timeout)
+func waitForSelection(store Store, sessionID string, timeout time.Duration, now func() time.Time, sleep func(time.Duration)) (string, time.Duration, error) {
+	start := now()
+	deadline := start.Add(timeout)
 	for {
-		if now().After(deadline) {
-			return "", ErrSelectionTimeout
-		}
+		// Poll before checking the deadline so a very short interval still
+		// performs one read: a choice can land while the process starts.
 		sleep(500 * time.Millisecond)
 		session, err := store.Read(sessionID)
-		if err != nil {
-			continue
+		if err == nil && session.NextSteps != nil && session.NextSteps.Selected != "" {
+			selected := session.NextSteps.Selected
+			if err := consumeSelection(store, session); err != nil {
+				return "", now().Sub(start), err
+			}
+			return selected, now().Sub(start), nil
 		}
-		if session.NextSteps == nil || session.NextSteps.Selected == "" {
-			continue
+		if now().After(deadline) {
+			return "", now().Sub(start), nil
 		}
-
-		selected := session.NextSteps.Selected
-		session.NextSteps.Selected = ""
-		if err := store.Write(session); err != nil {
-			return "", fmt.Errorf("clearing next-action selection: %w", err)
-		}
-		return selected, nil
 	}
 }
 

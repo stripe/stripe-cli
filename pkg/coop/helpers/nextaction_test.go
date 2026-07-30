@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,7 +136,7 @@ func TestDeployGuidedActionDoesNotReadKeyMaterialFromWhoami(t *testing.T) {
 	assert.Contains(t, prompt, "does not print key material")
 }
 
-func TestWaitForSelectionTimesOut(t *testing.T) {
+func TestWaitForSelectionReturnsWaitingInsteadOfError(t *testing.T) {
 	store := &nextActionTestStore{
 		session: &coop.Session{
 			ID:        "sess_123",
@@ -145,7 +145,7 @@ func TestWaitForSelectionTimesOut(t *testing.T) {
 	}
 	now := time.Unix(0, 0)
 
-	selected, err := waitForSelection(
+	selected, waited, err := waitForSelection(
 		store,
 		"sess_123",
 		time.Second,
@@ -153,9 +153,11 @@ func TestWaitForSelectionTimesOut(t *testing.T) {
 		func(time.Duration) { now = now.Add(500 * time.Millisecond) },
 	)
 
+	// An unmade choice is not a failure. Surfacing it as one made the command
+	// exit non-zero, which an agent reads as a broken session.
+	require.NoError(t, err)
 	assert.Empty(t, selected)
-	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrSelectionTimeout))
+	assert.GreaterOrEqual(t, waited, time.Second)
 }
 
 func TestWaitForSelectionClearsSelectedAction(t *testing.T) {
@@ -169,7 +171,7 @@ func TestWaitForSelectionClearsSelectedAction(t *testing.T) {
 	}
 	now := time.Unix(0, 0)
 
-	selected, err := waitForSelection(
+	selected, _, err := waitForSelection(
 		store,
 		"sess_123",
 		time.Second,
@@ -236,4 +238,22 @@ func TestRunDoesNotClearSelectionMadeBetweenInvocations(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, resp.Next, "stripe coop stop")
 	assert.Empty(t, store.session.NextSteps.Selected)
+}
+
+func TestWaitingResponseRepeatsTheCommandAndBlocksAdvance(t *testing.T) {
+	session := &coop.Session{ID: "sess_123", Blueprint: "one-time-payment"}
+
+	resp := waitingResponse(session, nil, "", 90*time.Second)
+
+	// Previously this path returned ErrSelectionTimeout after ten minutes,
+	// which surfaced as JSON on stderr with a non-zero exit.
+	assert.True(t, resp.OK)
+	assert.Equal(t, "waiting", resp.State)
+	require.NotNil(t, resp.AdvanceAllowed)
+	assert.False(t, *resp.AdvanceAllowed)
+	assert.Equal(t, "stripe coop agent next-action --session=sess_123", resp.Next)
+	assert.Equal(t, 90, resp.WaitedSeconds)
+	for _, banned := range []string{"timeout", "timed out", "failed", "error"} {
+		assert.NotContains(t, strings.ToLower(resp.Message), banned)
+	}
 }

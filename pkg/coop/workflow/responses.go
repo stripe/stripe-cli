@@ -77,7 +77,7 @@ func nextAfterNode(session *coop.Session, nodeNumber int) coop.Continuation {
 		} else {
 			command = coop.NextActionCommand(session.ID, "")
 		}
-		return waitFor(command, helpers.NextActionSelectionTimeout)
+		return waitFor(command, helpers.NextActionInterval)
 	}
 	return coop.Continue(coop.StatusCommand(session.ID))
 }
