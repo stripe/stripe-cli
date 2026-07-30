@@ -51,12 +51,12 @@ func agentNoArgs(cmd *cobra.Command, args []string) error {
 	)
 }
 
-func newWorkflowService() (*workflow.Service, error) {
+func newWorkflowService(opts ...workflow.Option) (*workflow.Service, error) {
 	store, err := coop.NewStore(coopConfigFolder())
 	if err != nil {
 		return nil, fmt.Errorf("creating store: %w", err)
 	}
-	return workflow.NewService(store), nil
+	return workflow.NewService(store, opts...), nil
 }
 
 func parseReportedOutputs(values []string) (coop.NodeOutputs, error) {
