@@ -144,9 +144,9 @@ $ stripe coop start one-time-payment --language=node
 #      stripe coop agent report-work --session=coop_abc123 --step=2 --file=server.js --lines=5-20 --note="Created product" --output=id=prod_123
 #      stripe coop agent await-review --session=coop_abc123 --step=2   ← blocks until developer confirms
 # 6. Developer sees progress live, presses 'c' to confirm
-# 7. TUI sends a one-shot neutral resume prompt to the agent pane; if the
-#    original await result already advanced the session, resume returns no next
-#    command. Otherwise the agent runs the exact returned command.
+# 7. The agent's own await-review call returns with the decision; no keystrokes
+#    are ever sent to the agent pane. "stripe coop agent resume" stays available
+#    as a manual, read-only recovery command.
 # 8. After all steps: agent runs "stripe coop agent next-action --session=coop_abc123"
 # 9. Developer picks what to do next from TUI suggestions
 ```
@@ -179,7 +179,7 @@ When the agent runs `stripe coop agent await-review`, it writes a `.heartbeat` f
 
 The heartbeat file is cleaned up when `await` exits. The command advertises its five-minute wait as `wait_timeout_seconds`; agent harnesses should allow at least six minutes so the structured timeout response can arrive.
 
-After a confirm or request-changes decision, a tmux-launched TUI sends one neutral prompt to the tagged agent pane. The prompt runs `stripe coop agent resume --session=<id>`, which reads the latest durable state and returns an exact `next` command when action is needed. It returns an empty `next` when another handoff already advanced the session, so duplicate delivery is safe and no permanent poller is needed.
+Co-op never types into the agent pane. A review decision reaches the agent through its own `await-review` call, which returns as soon as the decision is durable. `stripe coop agent resume --session=<id>` stays available as a manual, read-only recovery command: it reads the latest durable state and returns the exact `next` command, or an empty `next` when the session already advanced.
 
 ## Resuming
 
@@ -191,7 +191,7 @@ Use `stripe coop join --resume` to pick from recent sessions.
 |-------|------------|
 | Node is active | Rejoin the session and check the agent pane/TUI state |
 | Node or step is in review | Rejoin the session and confirm or request changes |
-| Agent appears idle | Rejoin the session. In the agent pane run `stripe coop agent resume --session=<id>` if the automatic tmux wake-up is unavailable |
+| Agent appears idle | Rejoin the session. In the agent pane run `stripe coop agent resume --session=<id>` to get its exact next command |
 | Need a specific older session | Run `stripe coop join --resume` |
 
 ## Blueprint loading
