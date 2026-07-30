@@ -368,8 +368,8 @@ func TestRenderFooterReviewStep(t *testing.T) {
 	assertContainsPlain(t, footer, "confirm")
 	assertContainsPlain(t, footer, "changes")
 	assertContainsPlain(t, footer, "Review")
-	assertContainsPlain(t, footer, "Agent changed")
-	assertContainsPlain(t, footer, "Confirmation steps")
+	assertContainsPlain(t, footer, "Changed")
+	assertContainsPlain(t, footer, "Do this")
 }
 
 func TestRenderReviewCardEvidence(t *testing.T) {
@@ -387,16 +387,22 @@ func TestRenderReviewCardEvidence(t *testing.T) {
 
 	assertContainsPlain(t, card, "Review")
 	assertNotContainsPlain(t, card, "Review: Create product")
-	assertContainsPlain(t, card, "Agent changed:")
+	assertContainsPlain(t, card, "Changed: ")
 	assertContainsPlain(t, card, "server.js:5-20")
-	assertContainsPlain(t, card, "Agent verified:")
-	assertContainsPlain(t, card, "1/2 check(s) passed")
-	assertContainsPlain(t, card, "Confirmation steps")
-	assertContainsPlain(t, card, "Visit http://localhost:3000/checkout")
-	assertNotContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
-	assertNotContainsPlain(t, card, "declined cards")
+
+	// The reviewer's instruction leads, not the agent's narration of what it
+	// already did.
+	assertContainsPlain(t, card, "Do this")
+	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
+	assertNotContainsPlain(t, card, "Visit http://localhost:3000/checkout")
+
+	// The failed check is named; passes collapse to a count.
+	assertContainsPlain(t, card, "declined cards")
+	assertContainsPlain(t, card, "1 check passed")
+
 	plain := ansi.Strip(card)
-	assert.Less(t, strings.Index(plain, "Confirmation steps"), strings.Index(plain, "Agent changed:"))
+	assert.Less(t, strings.Index(plain, "Do this"), strings.Index(plain, "declined cards"))
+	assert.Less(t, strings.Index(plain, "declined cards"), strings.Index(plain, "Changed: "))
 }
 
 func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
@@ -408,8 +414,51 @@ func TestRenderReviewCardFallsBackToBlueprintConfirmation(t *testing.T) {
 
 	card := m.renderReviewCard()
 
-	assertContainsPlain(t, card, "Confirmation steps")
+	assertContainsPlain(t, card, "Do this")
 	assertContainsPlain(t, card, "Confirm Checkout uses the saved price ID.")
+}
+
+// Blueprint prompts are shared across every node of a type and say what to
+// confirm, not where. The card derives the venue from the node type instead.
+func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		typ   coop.NodeType
+		venue string
+	}{
+		{name: "apiRequest", typ: coop.NodeAPIRequest, venue: "Where: the changed files below"},
+		{name: "testHelper", typ: coop.NodeTestHelper, venue: "Where: the changed files below"},
+		{name: "uiComponent", typ: coop.NodeUIComponent, venue: "Where: your running app"},
+		{name: "dashboard", typ: coop.NodeDashboard, venue: "Where: the Stripe Dashboard"},
+		{name: "cliCommand", typ: coop.NodeCLICommand, venue: "Where: your terminal"},
+		{name: "asyncHandler", typ: coop.NodeAsyncHandler, venue: "Where: your webhook handler, after triggering the event"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.session.Steps[0].Nodes[0].State = coop.NodeReview
+			m.session.Steps[0].Nodes[1].State = coop.NodeDone
+			m.session.Steps[0].Nodes[0].NodeType = tc.typ
+			m.selectionCursor = 0
+
+			assertContainsPlain(t, m.renderReviewCard(), tc.venue)
+		})
+	}
+}
+
+// A review command already says where to go, so it replaces the venue line
+// rather than stacking with it.
+func TestRenderReviewCardPrefersReviewCommandOverVenue(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	m.session.Steps[0].Nodes[0].NodeType = coop.NodeAsyncHandler
+	m.session.Steps[0].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
+	m.selectionCursor = 0
+
+	card := m.renderReviewCard()
+
+	assertContainsPlain(t, card, "Run: stripe trigger checkout.session.completed")
+	assertNotContainsPlain(t, card, "Where:")
 }
 
 func TestRenderStepReviewCardNamesCoveredSteps(t *testing.T) {
@@ -739,7 +788,7 @@ func TestReviewCardShowsDetailsHintWhenClipped(t *testing.T) {
 
 	assert.LessOrEqual(t, lipgloss.Height(footer), m.footerHeightBudget())
 	assertLinesWithinWidth(t, footer, m.width)
-	assertContainsPlain(t, footer, "more checks available")
+	assertContainsPlain(t, footer, "enter for details")
 }
 
 func TestReviewCardFitsCoopStartSplitWidth(t *testing.T) {
@@ -874,4 +923,39 @@ func TestContentWidthDefault(t *testing.T) {
 
 	m.width = 120
 	assert.Equal(t, 120, m.contentWidth())
+}
+
+// Agents paste CLI output into their verification notes, splicing it into the
+// middle of their own sentence, so the finding lands at the end. Keeping the
+// head returns the chatter and drops the result.
+func TestSummarizeCheckKeepsTheFindingNotTheTranscript(t *testing.T) {
+	transcript := strings.Join([]string{
+		"Ran the required Checking for new versions...",
+		"",
+		"A newer version of the Stripe CLI is available, please update to: v1.44.0",
+		"Setting up fixture for: product",
+		"Running fixture for: product",
+		"Setting up fixture for: checkout_session",
+		"Running fixture for: checkout_session",
+		"Trigger succeeded! Check dashboard for event details. successfully. " +
+			"Exercised the app route with POST http://localhost:3000/api/stripe/webhook; " +
+			"it returned HTTP 400 because STRIPE_WEBHOOK_SECRET is not configured.",
+	}, "\n")
+
+	summary := summarizeCheck(transcript, failedCheckBudget)
+
+	assert.Contains(t, summary, "STRIPE_WEBHOOK_SECRET is not configured")
+	assert.NotContains(t, summary, "Setting up fixture for")
+	assert.NotContains(t, summary, "A newer version of the Stripe CLI")
+	assert.LessOrEqual(t, lipgloss.Width(summary), failedCheckBudget+1)
+}
+
+func TestSummarizeCheckLeavesShortNotesIntact(t *testing.T) {
+	note := "pnpm --filter web lint reports 2 errors."
+
+	assert.Equal(t, note, summarizeCheck(note, failedCheckBudget))
+}
+
+func TestSummarizeCheckFlattensNewlines(t *testing.T) {
+	assert.Equal(t, "first second", summarizeCheck("first\n\n  second  ", failedCheckBudget))
 }
