@@ -149,6 +149,14 @@ func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestio
 		})
 	}
 
+	// Skip a no-op write. Republishing an identical suggestion set on every
+	// call would bump the session version each time, which churns the TUI and
+	// (because the stop hook keys its block budget on progress) would make the
+	// hook's escape hatch unreachable.
+	if suggestionsUnchanged(session, tuiSuggestions) {
+		return nil
+	}
+
 	session.NextSteps.Suggestions = tuiSuggestions
 	session.NextSteps.Selected = ""
 	session.Status = coop.SessionCompleted
@@ -156,6 +164,22 @@ func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestio
 		return fmt.Errorf("writing next-action suggestions: %w", err)
 	}
 	return nil
+}
+
+func suggestionsUnchanged(session *coop.Session, next []coop.NextStepSuggestion) bool {
+	if session.Status != coop.SessionCompleted || session.NextSteps.Selected != "" {
+		return false
+	}
+	current := session.NextSteps.Suggestions
+	if len(current) != len(next) {
+		return false
+	}
+	for i := range current {
+		if current[i] != next[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // pendingSelection reports a choice the TUI already recorded.

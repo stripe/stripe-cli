@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -19,11 +20,15 @@ import (
 // developer to rejoin.
 const maxConsecutiveStopBlocks = 3
 
+// staleSessionFallbackAge bounds the discovery-mode fallback: an untouched
+// session older than this is assumed to belong to some other run.
+const staleSessionFallbackAge = 30 * time.Minute
+
 // stopHookStore is the slice of coop.Store the hook needs, so tests can supply
 // a session without a config directory.
 type stopHookStore interface {
 	Read(id string) (*coop.Session, error)
-	LatestActiveSession() (*coop.Session, error)
+	ActiveSessions() ([]*coop.Session, error)
 	ReadStopHookState(id string) (coop.StopHookState, error)
 	WriteStopHookState(id string, state coop.StopHookState) error
 	RemoveStopHookState(id string) error
@@ -55,6 +60,11 @@ may end its turn. While the session still has an actionable next command, the
 hook blocks and hands that exact command back, so a model that would otherwise
 drift out of the Co-op lifecycle is pulled into it.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Drain first: every return path below must leave the harness's
+			// event payload consumed, or it can see a broken pipe. Nothing in
+			// the payload is needed — the session file has everything.
+			_, _ = io.Copy(io.Discard, cmd.InOrStdin())
+
 			configDir := c.configDir
 			if configDir == "" {
 				configDir = coopConfigFolder()
@@ -64,15 +74,12 @@ drift out of the Co-op lifecycle is pulled into it.`,
 				// Never fail an agent's turn over hook infrastructure.
 				return outputStopHookDecision(cmd.OutOrStdout(), stopHookDecision{})
 			}
-			// The event payload is drained but unused: everything the decision
-			// needs is in the session file. Draining keeps the harness from
-			// seeing a broken pipe.
-			_, _ = io.Copy(io.Discard, cmd.InOrStdin())
 			return runCoopStopHook(cmd.OutOrStdout(), store, workflow.NewService(store), c.session)
 		},
 	}
-	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID (defaults to the latest active session)")
+	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID (defaults to the only active session, if there is exactly one)")
 	c.cmd.Flags().StringVar(&c.configDir, "config-dir", "", "Stripe config folder holding the session store")
+	configureAgentCommand(c.cmd)
 	return c
 }
 
@@ -85,7 +92,7 @@ type stopHookResumer interface {
 }
 
 func runCoopStopHook(out io.Writer, store stopHookStore, resumer stopHookResumer, sessionID string) error {
-	session := resolveStopHookSession(store, sessionID)
+	session := resolveStopHookSession(store, sessionID, time.Now())
 	if session == nil {
 		return outputStopHookDecision(out, stopHookDecision{})
 	}
@@ -102,21 +109,29 @@ func runCoopStopHook(out io.Writer, store stopHookStore, resumer stopHookResumer
 	if err != nil {
 		state = coop.StopHookState{}
 	}
-	if state.ObservedVersion != session.Version {
-		// The session advanced since the last block, so the loop is working.
-		state = coop.StopHookState{ObservedVersion: session.Version}
+	if state.ObservedCommand != resume.Next {
+		// The lifecycle moved to a different command, so the loop is working.
+		state = coop.StopHookState{ObservedCommand: resume.Next}
 	}
 	if state.Blocks >= maxConsecutiveStopBlocks {
-		_ = store.RemoveStopHookState(session.ID)
+		// Keep the exhausted budget on disk. Clearing it here would let the very
+		// next Stop event start from zero and block three more times, so the
+		// agent could never actually stop until the lifecycle moved on.
+		_ = store.WriteStopHookState(session.ID, state)
 		return outputStopHookDecision(out, stopHookDecision{
 			SystemMessage: fmt.Sprintf(
-				"Co-op session %s is still waiting on the developer. Letting the agent stop; rejoin with %q to continue.",
-				session.ID, "stripe coop join "+session.ID),
+				"Co-op is still waiting on you for session %s, and the agent has stopped. To hand it back, run this in the agent pane:\n\n%s",
+				session.ID, coop.ResumeCommand(session.ID)),
 		})
 	}
 
 	state.Blocks++
-	_ = store.WriteStopHookState(session.ID, state)
+	if err := store.WriteStopHookState(session.ID, state); err != nil {
+		// The counter is the only thing bounding this loop. If it cannot be
+		// persisted, blocking would repeat forever with no release, so fail
+		// open rather than trapping the agent.
+		return outputStopHookDecision(out, stopHookDecision{})
+	}
 
 	return outputStopHookDecision(out, stopHookDecision{
 		Decision: "block",
@@ -126,21 +141,32 @@ func runCoopStopHook(out io.Writer, store stopHookStore, resumer stopHookResumer
 	})
 }
 
-// resolveStopHookSession falls back to the latest active session because in
+// resolveStopHookSession falls back to the single active session because in
 // discovery mode ("stripe coop start" with no blueprint) no session exists when
 // the hook is installed, so the launcher cannot bake an ID into the command.
-func resolveStopHookSession(store stopHookStore, sessionID string) *coop.Session {
+//
+// With more than one active session the fallback is ambiguous — sessions do not
+// record which directory they belong to — and guessing would let this agent's
+// hook hand back a command targeting somebody else's session, mutating it. Fail
+// open instead: no session means no block.
+func resolveStopHookSession(store stopHookStore, sessionID string, now time.Time) *coop.Session {
 	if sessionID != "" {
 		if session, err := store.Read(sessionID); err == nil {
 			return session
 		}
 		return nil
 	}
-	session, err := store.LatestActiveSession()
-	if err != nil {
+	active, err := store.ActiveSessions()
+	if err != nil || len(active) != 1 {
 		return nil
 	}
-	return session
+	// Sessions only leave "active" through an explicit stop or completion, so an
+	// abandoned run stays a candidate forever. Only adopt one this agent could
+	// plausibly have just created.
+	if now.Sub(active[0].UpdatedAt) > staleSessionFallbackAge {
+		return nil
+	}
+	return active[0]
 }
 
 func outputStopHookDecision(out io.Writer, decision stopHookDecision) error {
@@ -154,9 +180,12 @@ func outputStopHookDecision(out io.Writer, decision stopHookDecision) error {
 
 // stopHookCommand is the command an agent harness runs for the Stop event.
 //
-// The config folder is passed as an explicit flag rather than an
-// "XDG_CONFIG_HOME=... " prefix. A prefix only works when the harness runs the
-// command through a shell, and hook execution is not specified to do so.
+// The string is shell-quoted, so it assumes the harness runs hooks through a
+// shell — Claude Code documents them as shell commands. The config folder still
+// travels as an explicit flag rather than an "XDG_CONFIG_HOME=... " prefix:
+// quoting survives a plain `sh -c`, but a leading environment assignment is a
+// shell-only construct that would turn into argv[0] under any harness that
+// execs directly.
 func stopHookCommand(stripeBin, sessionID string) string {
 	cmd := fmt.Sprintf("%s coop agent stop-hook --config-dir %s",
 		shellQuote(stripeBin), shellQuote(coopConfigFolder()))

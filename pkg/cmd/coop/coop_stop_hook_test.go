@@ -6,7 +6,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -14,10 +16,12 @@ import (
 )
 
 type stopHookTestStore struct {
-	session  *coop.Session
-	state    coop.StopHookState
-	hasState bool
-	removed  int
+	session     *coop.Session
+	otherActive []*coop.Session
+	state       coop.StopHookState
+	hasState    bool
+	removed     int
+	writeErr    error
 }
 
 func (s *stopHookTestStore) Read(id string) (*coop.Session, error) {
@@ -27,11 +31,12 @@ func (s *stopHookTestStore) Read(id string) (*coop.Session, error) {
 	return s.session, nil
 }
 
-func (s *stopHookTestStore) LatestActiveSession() (*coop.Session, error) {
+func (s *stopHookTestStore) ActiveSessions() ([]*coop.Session, error) {
 	if s.session == nil {
-		return nil, errors.New("not found")
+		return nil, nil
 	}
-	return s.session, nil
+	sessions := []*coop.Session{s.session}
+	return append(sessions, s.otherActive...), nil
 }
 
 func (s *stopHookTestStore) ReadStopHookState(string) (coop.StopHookState, error) {
@@ -42,6 +47,9 @@ func (s *stopHookTestStore) ReadStopHookState(string) (coop.StopHookState, error
 }
 
 func (s *stopHookTestStore) WriteStopHookState(_ string, state coop.StopHookState) error {
+	if s.writeErr != nil {
+		return s.writeErr
+	}
 	s.state = state
 	s.hasState = true
 	return nil
@@ -79,6 +87,7 @@ func stopHookSession() *coop.Session {
 		ID:            "coop_hook",
 		Status:        coop.SessionActive,
 		Version:       3,
+		UpdatedAt:     time.Now().UTC(),
 	}
 }
 
@@ -123,7 +132,7 @@ func TestStopHookReleasesAfterConsecutiveBlocks(t *testing.T) {
 
 	decision := runStopHook(t, store, actionableResume(), "coop_hook")
 	assert.Empty(t, decision.Decision, "the agent must eventually be allowed to stop")
-	assert.Contains(t, decision.SystemMessage, "stripe coop join coop_hook")
+	assert.Contains(t, decision.SystemMessage, "stripe coop agent resume --session=coop_hook")
 }
 
 // Progress means the loop is working, so the budget resets rather than
@@ -134,16 +143,46 @@ func TestStopHookResetsCounterOnSessionProgress(t *testing.T) {
 	for i := 0; i < maxConsecutiveStopBlocks; i++ {
 		require.Equal(t, "block", runStopHook(t, store, actionableResume(), "coop_hook").Decision)
 	}
-	store.session.Version++
+	// The lifecycle moved on to a different command.
+	moved := stubResumer{response: coop.CommandResponse{
+		OK:           true,
+		Message:      "Task 3 is next.",
+		Continuation: coop.Continue("stripe coop agent start-work --session=coop_hook --step=3"),
+	}}
 
-	decision := runStopHook(t, store, actionableResume(), "coop_hook")
+	decision := runStopHook(t, store, moved, "coop_hook")
 	assert.Equal(t, "block", decision.Decision)
 	assert.Equal(t, 1, store.state.Blocks)
 }
 
+// The command the hook orders can itself bump the session version — next-action
+// republishes suggestions — so a version-keyed budget would reset every round
+// and never release.
+func TestStopHookBudgetSurvivesSessionVersionChurn(t *testing.T) {
+	store := &stopHookTestStore{session: stopHookSession()}
+
+	for i := 0; i < maxConsecutiveStopBlocks; i++ {
+		require.Equal(t, "block", runStopHook(t, store, actionableResume(), "coop_hook").Decision)
+		store.session.Version++
+	}
+
+	decision := runStopHook(t, store, actionableResume(), "coop_hook")
+	assert.Empty(t, decision.Decision, "same pending command means no real progress")
+}
+
+// The counter is the only thing bounding the loop; if it cannot be persisted,
+// blocking would repeat forever with no release.
+func TestStopHookFailsOpenWhenCounterCannotBePersisted(t *testing.T) {
+	store := &stopHookTestStore{session: stopHookSession(), writeErr: errors.New("read-only fs")}
+
+	decision := runStopHook(t, store, actionableResume(), "coop_hook")
+
+	assert.Empty(t, decision.Decision)
+}
+
 // Discovery mode has no session when the hook is installed, so the launcher
 // cannot bake an ID into the command.
-func TestStopHookFallsBackToLatestActiveSession(t *testing.T) {
+func TestStopHookFallsBackToTheOnlyActiveSession(t *testing.T) {
 	store := &stopHookTestStore{session: stopHookSession()}
 
 	decision := runStopHook(t, store, actionableResume(), "")
@@ -189,10 +228,26 @@ func TestClaudeStopHookSettingsCarryTheHookCommand(t *testing.T) {
 func TestCodexStopHookConfigUsesInlineTOML(t *testing.T) {
 	config := codexStopHookConfig("/usr/local/bin/stripe", "coop_abc")
 
-	// Verified against codex-cli 0.145.0: this exact shape parses and validates.
-	assert.True(t, strings.HasPrefix(config, `hooks.Stop=[{hooks=[{type="command",command="`))
-	assert.Contains(t, config, "coop agent stop-hook")
-	assert.Contains(t, config, "coop_abc")
+	// Codex parses the -c value as TOML, so prove it actually parses rather
+	// than string-matching the shape. Verified against codex-cli 0.145.0.
+	key, value, found := strings.Cut(config, "=")
+	require.True(t, found)
+	assert.Equal(t, "hooks.Stop", key)
+
+	var parsed struct {
+		Stop []struct {
+			Hooks []struct {
+				Type    string `toml:"type"`
+				Command string `toml:"command"`
+			} `toml:"hooks"`
+		} `toml:"Stop"`
+	}
+	require.NoError(t, toml.Unmarshal([]byte("Stop = "+value), &parsed))
+	require.Len(t, parsed.Stop, 1)
+	require.Len(t, parsed.Stop[0].Hooks, 1)
+	assert.Equal(t, "command", parsed.Stop[0].Hooks[0].Type)
+	assert.Contains(t, parsed.Stop[0].Hooks[0].Command, "coop agent stop-hook")
+	assert.Contains(t, parsed.Stop[0].Hooks[0].Command, "coop_abc")
 }
 
 // The config folder travels as a flag so the command works whether or not the
@@ -204,4 +259,70 @@ func TestStopHookCommandPassesConfigDirAsAFlag(t *testing.T) {
 	assert.Contains(t, cmd, "--config-dir")
 	assert.NotContains(t, cmd, "XDG_CONFIG_HOME=")
 	assert.Contains(t, cmd, `'/opt/my tools/stripe'`)
+}
+
+// Sessions do not record which directory they belong to, so with several active
+// at once the discovery-mode fallback cannot tell which agent it is serving.
+// Blocking on a guess would hand this agent a command targeting somebody else's
+// session and mutate it.
+func TestStopHookAllowsWhenMultipleSessionsAreActive(t *testing.T) {
+	store := &stopHookTestStore{
+		session:     stopHookSession(),
+		otherActive: []*coop.Session{{ID: "coop_other", Status: coop.SessionActive}},
+	}
+
+	decision := runStopHook(t, store, actionableResume(), "")
+
+	assert.Empty(t, decision.Decision, "ambiguous fallback must fail open")
+}
+
+// An explicit --session is unambiguous even when other sessions are active.
+func TestStopHookUsesExplicitSessionDespiteOtherActiveSessions(t *testing.T) {
+	store := &stopHookTestStore{
+		session:     stopHookSession(),
+		otherActive: []*coop.Session{{ID: "coop_other", Status: coop.SessionActive}},
+	}
+
+	decision := runStopHook(t, store, actionableResume(), "coop_hook")
+
+	assert.Equal(t, "block", decision.Decision)
+}
+
+// Sessions only leave "active" through an explicit stop or completion, so an
+// abandoned run stays a candidate forever. Adopting one would let an unrelated
+// agent mutate it.
+func TestStopHookIgnoresAStaleSessionInDiscoveryMode(t *testing.T) {
+	session := stopHookSession()
+	session.UpdatedAt = time.Now().UTC().Add(-24 * time.Hour)
+	store := &stopHookTestStore{session: session}
+
+	decision := runStopHook(t, store, actionableResume(), "")
+
+	assert.Empty(t, decision.Decision)
+}
+
+// An explicit --session is trusted regardless of age: the launcher only bakes
+// one in for a session it just created.
+func TestStopHookUsesExplicitSessionEvenWhenStale(t *testing.T) {
+	session := stopHookSession()
+	session.UpdatedAt = time.Now().UTC().Add(-24 * time.Hour)
+	store := &stopHookTestStore{session: session}
+
+	decision := runStopHook(t, store, actionableResume(), "coop_hook")
+
+	assert.Equal(t, "block", decision.Decision)
+}
+
+// Clearing the budget on release would let the next Stop event start from zero
+// and block three more times, so the agent could never actually stop.
+func TestStopHookReleaseIsDurable(t *testing.T) {
+	store := &stopHookTestStore{session: stopHookSession()}
+
+	for i := 0; i < maxConsecutiveStopBlocks; i++ {
+		require.Equal(t, "block", runStopHook(t, store, actionableResume(), "coop_hook").Decision)
+	}
+	require.Empty(t, runStopHook(t, store, actionableResume(), "coop_hook").Decision)
+
+	assert.Empty(t, runStopHook(t, store, actionableResume(), "coop_hook").Decision,
+		"the release must hold until the lifecycle moves on")
 }

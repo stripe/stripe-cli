@@ -443,6 +443,27 @@ func (s *Store) LatestSession() (*Session, error) {
 	return nil, fmt.Errorf("no readable coop sessions found")
 }
 
+// ActiveSessions returns every session with status "active", most recently
+// updated first. Callers that must not act on the wrong session use this to
+// detect ambiguity rather than silently taking the newest one.
+func (s *Store) ActiveSessions() ([]*Session, error) {
+	entries, err := s.sortedSessionEntries()
+	if err != nil {
+		return nil, err
+	}
+	var active []*Session
+	for _, e := range entries {
+		session, err := s.Read(e.id)
+		if err != nil {
+			continue
+		}
+		if session.Status == SessionActive {
+			active = append(active, session)
+		}
+	}
+	return active, nil
+}
+
 // LatestActiveSession returns the most recently updated session with status "active".
 func (s *Store) LatestActiveSession() (*Session, error) {
 	entries, err := s.sortedSessionEntries()
@@ -464,11 +485,15 @@ func (s *Store) LatestActiveSession() (*Session, error) {
 }
 
 // Delete removes a session file.
+// Delete removes the session and its sidecars. Leaving the heartbeat and
+// stop-hook files behind would accumulate them in the config directory forever.
 func (s *Store) Delete(id string) error {
 	path, err := s.sessionPath(id)
 	if err != nil {
 		return err
 	}
+	_ = s.RemoveHeartbeat(id)
+	_ = s.RemoveStopHookState(id)
 	return os.Remove(path)
 }
 
@@ -511,8 +536,13 @@ func (s *Store) HeartbeatAge(id string) (time.Duration, error) {
 // without the session advancing mean the agent is stuck waiting on a developer
 // who is not there, which is the signal to stop blocking.
 type StopHookState struct {
-	Blocks          int `json:"blocks"`
-	ObservedVersion int `json:"observed_version"`
+	Blocks int `json:"blocks"`
+	// ObservedCommand is the next command the hook last handed back. Keying the
+	// budget on the command rather than the session version matters because the
+	// very command the hook orders can itself bump the version — next-action
+	// republishes suggestions — which would reset the counter every round and
+	// make the escape hatch unreachable.
+	ObservedCommand string `json:"observed_command"`
 }
 
 func (s *Store) stopHookPath(id string) (string, error) {

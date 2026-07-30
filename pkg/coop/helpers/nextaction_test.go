@@ -186,6 +186,7 @@ func TestWaitForSelectionClearsSelectedAction(t *testing.T) {
 
 type nextActionTestStore struct {
 	session *coop.Session
+	writes  int
 }
 
 func (s *nextActionTestStore) Read(id string) (*coop.Session, error) {
@@ -198,6 +199,7 @@ func (s *nextActionTestStore) LatestSession() (*coop.Session, error) {
 
 func (s *nextActionTestStore) Write(session *coop.Session) error {
 	s.session = session
+	s.writes++
 	return nil
 }
 
@@ -256,4 +258,25 @@ func TestWaitingResponseRepeatsTheCommandAndBlocksAdvance(t *testing.T) {
 	for _, banned := range []string{"timeout", "timed out", "failed", "error"} {
 		assert.NotContains(t, strings.ToLower(resp.Message), banned)
 	}
+}
+
+// Republishing an identical suggestion set on every call would bump the session
+// version each time, churning the TUI and defeating the stop hook's
+// progress-based block budget.
+func TestShowSuggestionsSkipsNoOpRepublish(t *testing.T) {
+	store := &nextActionTestStore{
+		session: &coop.Session{
+			ID:        "sess_123",
+			Status:    coop.SessionActive,
+			NextSteps: &coop.NextStepsState{},
+		},
+	}
+	suggestions := BuildSuggestions(store.session, Environment{})
+
+	require.NoError(t, ShowSuggestions(store, store.session, suggestions, ""))
+	afterFirst := store.writes
+
+	require.NoError(t, ShowSuggestions(store, store.session, suggestions, ""))
+
+	assert.Equal(t, afterFirst, store.writes)
 }
