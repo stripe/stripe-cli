@@ -25,8 +25,50 @@ func assertNotContainsPlain(t *testing.T, s, substr string) {
 	assert.NotContains(t, ansi.Strip(s), substr)
 }
 
+func tuiNode(nodeType coop.NodeType, key, title string, state coop.NodeState) coop.SessionNode {
+	return coop.SessionNode{
+		BlueprintNode: coop.BlueprintNode{
+			NodeType: nodeType,
+			Key:      key,
+			Title:    coop.MessageDescriptor{DefaultMessage: title},
+		},
+		State: state,
+	}
+}
+
+func tuiStep(key, title string, nodes ...coop.SessionNode) coop.SessionStep {
+	return coop.SessionStep{
+		BlueprintStepDefinition: coop.BlueprintStepDefinition{
+			Key:   key,
+			Title: coop.MessageDescriptor{DefaultMessage: title},
+		},
+		Nodes: nodes,
+	}
+}
+
+func tuiReviewNode(title, prompt string, state coop.NodeState) coop.SessionNode {
+	node := tuiNode("", "", title, state)
+	node.ReviewPrompt = prompt
+	return node
+}
+
 func testModel() Model {
 	theme := NewTheme(true)
+	createProduct := tuiNode(coop.NodeAPIRequest, "n1", "Create product", coop.NodeDone)
+	createProduct.ReviewPrompt = "Confirm the saved price ID is reused by Checkout."
+	createProduct.APIRequestDetails = &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{
+		Path: "/v1/products", Method: "post", Params: map[string]any{"name": "Gold plan"},
+	}}
+	createProduct.Implementation = &coop.Implementation{File: "server.js", Lines: "5-20", Note: "Created product"}
+	createCheckout := tuiNode(coop.NodeAPIRequest, "n2", "Create checkout", coop.NodeActive)
+	createCheckout.APIRequestDetails = &coop.BlueprintAPIRequestDetails{Fixture: coop.BlueprintRequestFixture{
+		Path: "/v1/checkout/sessions", Method: "post",
+	}}
+	createCheckout.Activity = "Writing endpoint"
+	handleEvent := tuiNode(coop.NodeAsyncHandler, "n3", "Handle event", coop.NodePending)
+	handleEvent.AsyncHandlerDetails = &coop.BlueprintAsyncHandlerDetails{
+		Events: []coop.AsyncEvent{{EventType: "checkout.session.completed"}},
+	}
 	m := Model{
 		width:          80,
 		height:         30,
@@ -42,50 +84,8 @@ func testModel() Model {
 			Status:    coop.SessionActive,
 			Settings:  map[string]string{"language": "node"},
 			Steps: []coop.SessionStep{
-				{
-					StepDefinition: coop.StepDefinition{
-						Key:   "ch1",
-						Title: "Set up product",
-					},
-					Nodes: []coop.SessionNode{
-						{
-							NodeDefinition: coop.NodeDefinition{
-								Key:          "n1",
-								Title:        "Create product",
-								Type:         coop.NodeAPIRequest,
-								ReviewPrompt: "Confirm the saved price ID is reused by Checkout.",
-								Request:      &coop.APIRequest{Path: "/v1/products", Method: "post", Params: map[string]string{"name": "Gold plan"}},
-							},
-							State:          coop.NodeDone,
-							Implementation: &coop.Implementation{File: "server.js", Lines: "5-20", Note: "Created product"}},
-						{
-							NodeDefinition: coop.NodeDefinition{
-								Key:     "n2",
-								Title:   "Create checkout",
-								Type:    coop.NodeAPIRequest,
-								Request: &coop.APIRequest{Path: "/v1/checkout/sessions", Method: "post"},
-							},
-							State:    coop.NodeActive,
-							Activity: "Writing endpoint"},
-					},
-				},
-				{
-					StepDefinition: coop.StepDefinition{
-						Key:   "ch2",
-						Title: "Handle webhooks",
-					},
-					Nodes: []coop.SessionNode{
-						{
-							NodeDefinition: coop.NodeDefinition{
-								Key:    "n3",
-								Title:  "Handle event",
-								Type:   coop.NodeAsyncHandler,
-								Events: []string{"checkout.session.completed"},
-							},
-							State: coop.NodePending,
-						},
-					},
-				},
+				tuiStep("ch1", "Set up product", createProduct, createCheckout),
+				tuiStep("ch2", "Handle webhooks", handleEvent),
 			},
 		},
 	}
@@ -295,14 +295,17 @@ func TestRenderDetailWebhook(t *testing.T) {
 	m := testModel()
 	m.selectionCursor = 2 // asyncHandler node
 	m.detailTab = 2
+	m.width = 120
 	detail := m.renderDetail()
 
 	// The per-task view keeps its own Checks tab, named plainly.
 	assertContainsPlain(t, detail, "Checks")
-	assertContainsPlain(t, detail, "Review command")
+	assertNotContainsPlain(t, detail, "Review command")
 	assertContainsPlain(t, detail, "How to verify")
 	assertContainsPlain(t, detail, "stripe listen")
-	assertContainsPlain(t, detail, "stripe trigger checkout.session.completed")
+	assertContainsPlain(t, detail, "checkout.session.completed")
+	assertContainsPlain(t, detail, "Perform an API or Dashboard action")
+	assertNotContainsPlain(t, detail, "stripe trigger checkout.session.completed")
 }
 
 func TestRenderDetailWithSDKSnippet(t *testing.T) {
@@ -462,7 +465,7 @@ func TestRenderReviewCardNamesVenueByNodeType(t *testing.T) {
 			m := testModel()
 			m.session.Steps[0].Nodes[0].State = coop.NodeReview
 			m.session.Steps[0].Nodes[1].State = coop.NodeDone
-			m.session.Steps[0].Nodes[0].Type = tc.typ
+			m.session.Steps[0].Nodes[0].NodeType = tc.typ
 			m.selectionCursor = 0
 
 			assertContainsPlain(t, m.renderReviewCard(), tc.venue)
@@ -476,7 +479,7 @@ func TestRenderReviewCardPrefersReviewCommandOverVenue(t *testing.T) {
 	m := testModel()
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
-	m.session.Steps[0].Nodes[0].Type = coop.NodeAsyncHandler
+	m.session.Steps[0].Nodes[0].NodeType = coop.NodeAsyncHandler
 	m.session.Steps[0].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 0
 
@@ -515,6 +518,7 @@ func TestRenderReviewCardFallbackCheck(t *testing.T) {
 func TestRenderFooterReviewCommand(t *testing.T) {
 	m := testModel()
 	m.session.Steps[1].Nodes[0].State = coop.NodeReview
+	m.session.Steps[1].Nodes[0].ReviewCommand = "stripe trigger checkout.session.completed"
 	m.selectionCursor = 2
 	m.ready = true
 	m.width, m.height = 80, 30
@@ -567,26 +571,17 @@ func TestCompletionSummaryBoxUsesSinglePaddingSpace(t *testing.T) {
 func TestCompletionBuiltItemsFiltersContextSkippedAndIncomplete(t *testing.T) {
 	m := testModel()
 	m.session.Steps = []coop.SessionStep{
-		{
-			StepDefinition: coop.StepDefinition{Key: "context-step", Title: "Project context"},
-			Nodes: []coop.SessionNode{
-				{NodeDefinition: coop.NodeDefinition{Title: "Understand project"}, State: coop.NodeDone},
-			},
-		},
-		{
-			StepDefinition: coop.StepDefinition{Key: "built-with-skipped", Title: "Built with skipped optional work"},
-			Nodes: []coop.SessionNode{
-				{NodeDefinition: coop.NodeDefinition{Title: "Required"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Optional"}, State: coop.NodeSkipped},
-			},
-		},
-		{
-			StepDefinition: coop.StepDefinition{Key: "incomplete", Title: "Incomplete step"},
-			Nodes: []coop.SessionNode{
-				{NodeDefinition: coop.NodeDefinition{Title: "Done"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Still active"}, State: coop.NodeActive},
-			},
-		},
+		tuiStep("context-step", "Project context",
+			tuiNode("", "", "Understand project", coop.NodeDone),
+		),
+		tuiStep("built-with-skipped", "Built with skipped optional work",
+			tuiNode("", "", "Required", coop.NodeDone),
+			tuiNode("", "", "Optional", coop.NodeSkipped),
+		),
+		tuiStep("incomplete", "Incomplete step",
+			tuiNode("", "", "Done", coop.NodeDone),
+			tuiNode("", "", "Still active", coop.NodeActive),
+		),
 	}
 
 	assert.Equal(t, []string{"Built with skipped optional work"}, m.completionBuiltItems())
@@ -595,18 +590,15 @@ func TestCompletionBuiltItemsFiltersContextSkippedAndIncomplete(t *testing.T) {
 func TestCompletionImportantChecksDedupesDoneOnlyAndCaps(t *testing.T) {
 	m := testModel()
 	m.session.Steps = []coop.SessionStep{
-		{
-			StepDefinition: coop.StepDefinition{Key: "checks", Title: "Checks"},
-			Nodes: []coop.SessionNode{
-				{NodeDefinition: coop.NodeDefinition{Title: "First", ReviewPrompt: "Check one"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Duplicate", ReviewPrompt: "Check one"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Active", ReviewPrompt: "Do not include active"}, State: coop.NodeActive},
-				{NodeDefinition: coop.NodeDefinition{Title: "Second", ReviewPrompt: "Check two"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Third", ReviewPrompt: "Check three"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Fourth", ReviewPrompt: "Check four"}, State: coop.NodeDone},
-				{NodeDefinition: coop.NodeDefinition{Title: "Fifth", ReviewPrompt: "Do not include after cap"}, State: coop.NodeDone},
-			},
-		},
+		tuiStep("checks", "Checks",
+			tuiReviewNode("First", "Check one", coop.NodeDone),
+			tuiReviewNode("Duplicate", "Check one", coop.NodeDone),
+			tuiReviewNode("Active", "Do not include active", coop.NodeActive),
+			tuiReviewNode("Second", "Check two", coop.NodeDone),
+			tuiReviewNode("Third", "Check three", coop.NodeDone),
+			tuiReviewNode("Fourth", "Check four", coop.NodeDone),
+			tuiReviewNode("Fifth", "Do not include after cap", coop.NodeDone),
+		),
 	}
 
 	assert.Equal(t, []string{"Check one", "Check two"}, m.completionImportantChecks())
@@ -647,11 +639,8 @@ func TestGetCompletionSuggestionsFromSession(t *testing.T) {
 func TestAnnotationWrapsAtNarrowWidth(t *testing.T) {
 	m := testModel()
 	m.width = 40
-	node := coop.SessionNode{
-		NodeDefinition: coop.NodeDefinition{Key: "test", Title: "Step"},
-		State:          coop.NodeActive,
-		Activity:       "This is a very long activity note that should wrap",
-	}
+	node := tuiNode("", "test", "Step", coop.NodeActive)
+	node.Activity = "This is a very long activity note that should wrap"
 	line := m.renderNodeLine(node, 0, false)
 
 	// Should have a newline (wrapped)
@@ -661,11 +650,8 @@ func TestAnnotationWrapsAtNarrowWidth(t *testing.T) {
 func TestAnnotationInlineAtWideWidth(t *testing.T) {
 	m := testModel()
 	m.width = 120
-	node := coop.SessionNode{
-		NodeDefinition: coop.NodeDefinition{Key: "test", Title: "Step"},
-		State:          coop.NodeActive,
-		Activity:       "Short note",
-	}
+	node := tuiNode("", "test", "Step", coop.NodeActive)
+	node.Activity = "Short note"
 	line := m.renderNodeLine(node, 0, false)
 
 	// Should contain the annotation inline (not wrapped to next line)
@@ -706,11 +692,8 @@ func TestRenderWaitingView(t *testing.T) {
 
 func TestRenderStepLineSkipped(t *testing.T) {
 	m := testModel()
-	node := coop.SessionNode{
-		NodeDefinition: coop.NodeDefinition{Key: "skipped", Title: "Skipped step"},
-		State:          coop.NodeSkipped,
-		Activity:       "Not needed for this project",
-	}
+	node := tuiNode("", "skipped", "Skipped step", coop.NodeSkipped)
+	node.Activity = "Not needed for this project"
 	line := m.renderNodeLine(node, 0, false)
 	assertContainsPlain(t, line, "Not needed")
 }
@@ -883,17 +866,16 @@ func TestViewportShowsMoreBelowIndicator(t *testing.T) {
 	m.width = 69
 	m.height = 12
 	m.viewport = viewport.New(viewport.WithWidth(69), viewport.WithHeight(4))
-	m.session.Steps = []coop.SessionStep{{
-		StepDefinition: coop.StepDefinition{Key: "long", Title: "Long step"},
-		Nodes: []coop.SessionNode{
-			{NodeDefinition: coop.NodeDefinition{Title: "One"}, State: coop.NodeDone},
-			{NodeDefinition: coop.NodeDefinition{Title: "Two"}, State: coop.NodeDone},
-			{NodeDefinition: coop.NodeDefinition{Title: "Three"}, State: coop.NodeDone},
-			{NodeDefinition: coop.NodeDefinition{Title: "Four"}, State: coop.NodeDone},
-			{NodeDefinition: coop.NodeDefinition{Title: "Five"}, State: coop.NodeDone},
-			{NodeDefinition: coop.NodeDefinition{Title: "Six"}, State: coop.NodeDone},
-		},
-	}}
+	m.session.Steps = []coop.SessionStep{
+		tuiStep("long", "Long step",
+			tuiNode("", "", "One", coop.NodeDone),
+			tuiNode("", "", "Two", coop.NodeDone),
+			tuiNode("", "", "Three", coop.NodeDone),
+			tuiNode("", "", "Four", coop.NodeDone),
+			tuiNode("", "", "Five", coop.NodeDone),
+			tuiNode("", "", "Six", coop.NodeDone),
+		),
+	}
 	m.selectionCursor = 0
 	m.resizeViewport()
 	m.syncViewport()
@@ -1072,7 +1054,7 @@ func TestTruncatePathFallsBackToFilename(t *testing.T) {
 // with. It is imperative like the review prompt, hence the label.
 func TestRenderReviewCardShowsStepGoal(t *testing.T) {
 	m := testModel()
-	m.session.Steps[0].Description = "Create a product with recurring pricing."
+	m.session.Steps[0].Description = coop.MessageDescriptor{DefaultMessage: "Create a product with recurring pricing."}
 	m.session.Steps[0].Nodes[0].State = coop.NodeReview
 	m.session.Steps[0].Nodes[1].State = coop.NodeDone
 	m.selectStep(0)

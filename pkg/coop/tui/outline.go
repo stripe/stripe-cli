@@ -543,7 +543,7 @@ func (m Model) stepCardSummary(stepIndex int) string {
 		if node.State != coop.NodeActive {
 			continue
 		}
-		detail := node.Title
+		detail := node.TitleText()
 		if node.Activity != "" {
 			detail = node.Activity
 		}
@@ -663,7 +663,7 @@ func (m Model) renderStepLine(ch coop.SessionStep, stepIndex int, selected bool)
 	// is and the card below says what the step is doing; a "+" or "-" beside
 	// them was a third glyph competing to say the same thing.
 	disclosure := ""
-	title := ch.Title
+	title := ch.TitleText()
 	if selected {
 		// A filled title, not just a bold one behind a marker. The fill needs a
 		// column of padding on each side to read as a block rather than as
@@ -729,7 +729,7 @@ func (m Model) stepHasPendingReviewWithNoActiveWork(stepIndex int) bool {
 	}
 	hasReview := false
 	for _, node := range m.session.Steps[stepIndex].Nodes {
-		if node.AutoConfirm {
+		if node.IsInformationalNode {
 			continue
 		}
 		switch node.State {
@@ -777,7 +777,7 @@ func (m Model) renderNodeLine(node coop.SessionNode, idx int, selected bool) str
 		cursor = m.theme.BrandStyle.Render(cursorMarker) + strings.Repeat(" ", taskIndent-rowCursorWidth)
 	}
 
-	title := node.Title
+	title := node.TitleText()
 	if node.State == coop.NodeSkipped {
 		title = m.theme.DimmedStyle.Render(title)
 	} else if selected {

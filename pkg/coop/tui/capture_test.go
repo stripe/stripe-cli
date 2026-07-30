@@ -141,29 +141,59 @@ func TestCaptureFrames(t *testing.T) {
 	}
 }
 
-// TestCaptureExtremeBlueprints renders the blueprints that bound the layout:
-// the most steps, the most nodes in one step, and the longest step description.
-// These are the shapes that overflow first.
-func TestCaptureExtremeBlueprints(t *testing.T) {
-	for _, id := range []string{
-		"issuing-connect-fa", // 6 steps, the most of any blueprint
-		"credit-burndown",    // 7 nodes in one step, 18 nodes total
-		"issuing-direct",     // 453-char step description
-		"subscription-with-trial",
-	} {
-		bp, err := coop.LoadBlueprint(id)
-		require.NoError(t, err, id)
-		session := coop.NewSessionFromBlueprint(bp, "coop_capture", nil, nil)
-		require.NotNil(t, session)
+// TestCaptureExtremeShapes renders the shapes that bound the layout: the most
+// steps, the most tasks in one step, and the longest step description.
+//
+// It used to load three named blueprints by id from the embedded filesystem.
+// Blueprints come from the API now and are no longer bundled, so the shapes are
+// constructed here instead — the value was always the geometry, not those
+// particular files.
+func TestCaptureExtremeShapes(t *testing.T) {
+	longDescription := strings.Repeat(
+		"This step wires the integration end to end and has a description long "+
+			"enough to wrap several times in a narrow pane. ", 4)
 
+	manySteps := &coop.Session{Blueprint: "many-steps", Status: coop.SessionActive}
+	for i := 1; i <= 6; i++ {
+		manySteps.Steps = append(manySteps.Steps, tuiStep(
+			fmt.Sprintf("s%d", i), fmt.Sprintf("Step %d with a title that has to scan well", i),
+			tuiNode(coop.NodeAPIRequest, fmt.Sprintf("s%dn1", i), "Do the thing", coop.NodeDone),
+		))
+	}
+
+	crowded := &coop.Session{Blueprint: "crowded-step", Status: coop.SessionActive}
+	var crowdedNodes []coop.SessionNode
+	for i := 1; i <= 7; i++ {
+		crowdedNodes = append(crowdedNodes, tuiNode(
+			coop.NodeAPIRequest, fmt.Sprintf("n%d", i),
+			fmt.Sprintf("Task %d with a moderately long label", i), coop.NodeReview))
+	}
+	crowded.Steps = []coop.SessionStep{tuiStep("crowded", "One step holding every task", crowdedNodes...)}
+
+	longDesc := &coop.Session{Blueprint: "long-description", Status: coop.SessionActive}
+	step := tuiStep("long", "A step with a very long description",
+		tuiNode(coop.NodeUIComponent, "n1", "Check the flow", coop.NodeReview))
+	step.Description = coop.MessageDescriptor{DefaultMessage: longDescription}
+	longDesc.Steps = []coop.SessionStep{step}
+
+	for _, sc := range []struct {
+		name    string
+		session *coop.Session
+	}{
+		{"extreme_many_steps", manySteps},
+		{"extreme_crowded_step", crowded},
+		{"extreme_long_description", longDesc},
+	} {
 		for _, size := range captureSizes {
 			m := testModel()
-			m.session = session
+			m.session = sc.session
 			m.selectStep(0)
 			rendered := captureFrame(&m, size)
 
-			writeCapture(t, "blueprint_"+id, "color", size, rendered)
+			writeCapture(t, sc.name, "color", size, rendered)
+			writeCapture(t, sc.name, "mono", size, monochrome(rendered))
 			assertLayoutFits(t, rendered, size)
+			assertBoxesBalance(t, rendered)
 		}
 	}
 }

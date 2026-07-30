@@ -84,7 +84,7 @@ func (m Model) reviewWaitingElsewhere() bool {
 // letting the line run past the terminal.
 func (m Model) reviewWaitingNote(stepIndex int) string {
 	const prefix = "  Waiting for you: "
-	title := m.session.Steps[stepIndex].Title
+	title := m.session.Steps[stepIndex].TitleText()
 
 	// No key hint here. It only ever applied when the cursor had moved away —
 	// which is exactly when the key bar below already lists the same key — so
@@ -428,10 +428,10 @@ func (m Model) reviewNodeTitleLabel(nodeNumbers []int) string {
 	var titles []string
 	for _, nodeNumber := range nodeNumbers {
 		node, err := m.session.NodeByNumber(nodeNumber)
-		if err != nil || node.Title == "" {
+		if err != nil || node.TitleText() == "" {
 			continue
 		}
-		titles = append(titles, node.Title)
+		titles = append(titles, node.TitleText())
 	}
 	if len(titles) == 0 {
 		return ""
@@ -580,8 +580,8 @@ func (m Model) reviewFailedCheckLabels(nodeNumbers []int) []string {
 				continue
 			}
 			seen[check] = true
-			if showStepTitle && node.Title != "" {
-				check = node.Title + ": " + check
+			if showStepTitle && node.TitleText() != "" {
+				check = node.TitleText() + ": " + check
 			}
 			checks = append(checks, check)
 		}
@@ -862,7 +862,7 @@ func (m Model) reviewVenueLabel(nodeNumbers []int) string {
 }
 
 func reviewVenueForNode(node *coop.SessionNode) string {
-	switch node.Type {
+	switch node.NodeType {
 	case coop.NodeAPIRequest, coop.NodeTestHelper:
 		return "the changed files below"
 	case coop.NodeUIComponent:
@@ -917,13 +917,7 @@ func (m Model) reviewCommandLabel(nodeNumbers []int) string {
 }
 
 func reviewCommandForNode(node *coop.SessionNode) string {
-	if node.ReviewCommand != "" {
-		return node.ReviewCommand
-	}
-	if node.Type == coop.NodeAsyncHandler && len(node.Events) > 0 {
-		return "stripe trigger " + node.Events[0]
-	}
-	return ""
+	return node.ReviewCommand
 }
 
 // firstActionableReviewStep returns the step waiting on the user, so the footer

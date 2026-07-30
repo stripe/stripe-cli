@@ -1,7 +1,7 @@
 package coopcmd
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
 
@@ -11,15 +11,22 @@ import (
 )
 
 type coopRunCmd struct {
-	cmd        *cobra.Command
-	language   string
-	settings   []string
-	agent      string
-	debugAgent bool
+	cmd                   *cobra.Command
+	language              string
+	settings              []string
+	agent                 string
+	debugAgent            bool
+	ensureSkill           func() error
+	prepareSkillDiscovery func() error
 }
 
 func newCoopRunCmd() *coopRunCmd {
-	rc := &coopRunCmd{}
+	rc := &coopRunCmd{
+		ensureSkill: ensureRepoStripeBestPracticesSkill,
+		prepareSkillDiscovery: func() error {
+			return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
+		},
+	}
 	rc.cmd = &cobra.Command{
 		Use:   "start [blueprint-id]",
 		Short: "Launch a co-op session with an AI agent in split-screen",
@@ -52,25 +59,35 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	inTmux := os.Getenv("TMUX") != ""
 
 	var blueprintID string
+	var blueprint *coop.Blueprint
 	if len(args) > 0 {
 		blueprintID = args[0]
-		if _, err := coop.LoadBlueprint(blueprintID); err != nil {
-			return fmt.Errorf("%w. Run 'stripe coop recommend' to see available blueprints", err)
+		ctx := context.Background()
+		if cmd != nil {
+			ctx = cmd.Context()
 		}
+		var err error
+		blueprint, err = coop.LoadBlueprint(ctx, coopBlueprintRepository(), blueprintID)
+		if err != nil {
+			return fmt.Errorf("%w. Run 'stripe coop recommend --all' to see available blueprints", err)
+		}
+		blueprintID = blueprint.Key
 	}
-
+	if rc.debugAgent && blueprintID == "" {
+		return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
+	}
 	stripeBin, _ := os.Executable()
 	if rc.debugAgent {
-		if blueprintID == "" {
-			return fmt.Errorf("--debug-agent requires a blueprint ID, e.g. stripe coop start one-time-payment --debug-agent")
+		if err := rc.ensureStripeSkill(); err != nil {
+			warnRepoStripeBestPracticesSkill(cmd, err)
 		}
 		buildDebugPane := rc.debugAgentPaneCommandBuilder(stripeBin)
 		if inTmux {
-			return rc.runInTmuxSplitWithCommand(stripeBin, blueprintID, buildDebugPane)
+			return rc.runInTmuxSplitWithCommand(stripeBin, blueprint, buildDebugPane)
 		} else if hasTmux {
-			return rc.runInNewTmuxWithCommand(stripeBin, blueprintID, buildDebugPane)
+			return rc.runInNewTmuxWithCommand(stripeBin, blueprint, buildDebugPane)
 		}
-		return rc.runFallbackWithCommand(stripeBin, blueprintID, buildDebugPane)
+		return rc.runFallbackWithCommand(stripeBin, blueprint, buildDebugPane)
 	}
 
 	agent, err := rc.detectAgent()
@@ -82,17 +99,40 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if blueprintID != "" {
+		if err := rc.ensureStripeSkill(); err != nil {
+			warnRepoStripeBestPracticesSkill(cmd, err)
+		}
+	} else if agent.name == "claude" {
+		if err := rc.prepareAgentSkillDiscovery(); err != nil {
+			warnRepoClaudeSkillsDiscovery(cmd, err)
+		}
+	}
 	fmt.Println()
 
 	agentPrompt := rc.buildAgentPrompt(blueprintID)
 
 	if inTmux {
-		return rc.runInTmuxSplit(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
+		return rc.runInTmuxSplit(stripeBin, agent, agentPrompt, autoApprove, blueprint)
 	} else if hasTmux {
-		return rc.runInNewTmux(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
+		return rc.runInNewTmux(stripeBin, agent, agentPrompt, autoApprove, blueprint)
 	}
 
-	return rc.runFallback(stripeBin, agent, agentPrompt, autoApprove, blueprintID)
+	return rc.runFallback(stripeBin, agent, agentPrompt, autoApprove, blueprint)
+}
+
+func (rc *coopRunCmd) ensureStripeSkill() error {
+	if rc.ensureSkill != nil {
+		return rc.ensureSkill()
+	}
+	return ensureRepoStripeBestPracticesSkill()
+}
+
+func (rc *coopRunCmd) prepareAgentSkillDiscovery() error {
+	if rc.prepareSkillDiscovery != nil {
+		return rc.prepareSkillDiscovery()
+	}
+	return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
 }
 
 func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {
@@ -105,9 +145,13 @@ func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {
 		langHint = fmt.Sprintf("\nThe developer is working in %s.", rc.language)
 	}
 
-	return fmt.Sprintf(`You are helping a developer add Stripe to their project.
+	return fmt.Sprintf(`You are helping a developer build a production-grade Stripe integration.
 
 A developer is watching your progress in a live terminal UI (the other pane).%s
+
+%s
+
+Use context from the current app or codebase, if one exists, to inform your recommendations and decisions. Inspect its architecture, language, framework, conventions, dependencies, and existing Stripe code so the integration fits the project naturally.
 
 Your first job is to understand what they're building and what they need from Stripe. Do NOT assume they know Stripe product names.
 
@@ -119,44 +163,43 @@ Steps:
    IF no code exists (empty project): Ask "What are you looking to build?"
    WAIT for their response. Do NOT proceed until they answer.
    Do NOT assume what they need. Let them tell you in their own words.
-3. Based on their answer, run "stripe coop recommend --query=<description of what they need>"
+3. Based on their answer, run "stripe coop recommend --all" and pick the best blueprint from the returned summaries.
 4. Explain what you found in simple terms: "I'll set up X which lets you do Y" and confirm.
 5. Only after confirmation, run "stripe coop run <blueprint-id> --language=<lang>".
 6. Follow the instructions in the JSON response and work through each step.
 
 The developer will confirm each step in the TUI before you proceed.
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, langHint)
+Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.
+
+%s`, langHint, coopAgentCoordinationInstructions(), stripeAgentGuidanceInstructions())
 }
 
 func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string, error) {
-	bp, err := coop.LoadBlueprint(session.Blueprint)
-	if err != nil {
-		return "", err
+	title := session.Blueprint
+	if session.BlueprintPin != nil && session.BlueprintPin.Title != "" {
+		title = session.BlueprintPin.Title
 	}
-	resp := newCoopAgentRunResponse(bp, session)
-	data, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		return "", err
-	}
+	resp := newCoopAgentSessionResponse(
+		title,
+		session,
+		sessionLifecycleInstructions(fmt.Sprintf("You are building a production-grade Stripe integration: %q", title)),
+	)
 
-	return fmt.Sprintf(`You are running a Stripe co-op integration session.
-
-A developer is watching your progress in a live terminal UI (the other pane).
-
-The session is already created. Use this structured start response as the protocol source of truth:
+	return fmt.Sprintf(`You are running a Stripe co-op integration session. A developer is watching your progress in a live terminal UI.
 
 %s
 
-Start by running the "next" command exactly as written. Then follow agent_instructions and continue using the JSON responses from the typed co-op agent commands.
+The session is already created. After the authentication check above, begin by running this command exactly:
 
-Important: Run "stripe whoami" first to check auth. If not logged in OR if it shows "Test mode key: not available", run "stripe sandbox create --from-git" to provision a sandbox. The claim URL will appear automatically in the TUI.`, string(data)), nil
+%s
+
+Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
 }
 
-func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (*coop.Session, error) {
-	bp, err := coop.LoadBlueprint(blueprintID)
-	if err != nil {
-		return nil, err
+func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.Blueprint) (*coop.Session, error) {
+	if blueprint == nil {
+		return nil, fmt.Errorf("cannot start a session without a blueprint")
 	}
 
 	store, err := coop.NewStore(coopConfigFolder())
@@ -165,7 +208,7 @@ func (rc *coopRunCmd) startSessionQuietly(blueprintID string) (*coop.Session, er
 	}
 
 	sessionID := "coop_" + generateShortID()
-	session, err := newCoopSession(bp, sessionID, rc.language, rc.settings, nil, "", "")
+	session, err := newCoopSession(blueprint, sessionID, rc.language, rc.settings, nil, "", "")
 	if err != nil {
 		return nil, err
 	}
