@@ -1319,3 +1319,26 @@ func TestReviewAppearingResumesFollowing(t *testing.T) {
 
 	assert.False(t, result.(Model).userMoved)
 }
+
+// A review decision only reaches the agent through its own await-review call.
+// Nothing types into the agent pane, so when no agent is waiting the developer
+// has to be told how to hand the session back.
+func TestDecisionStatusTellsDeveloperHowToHandBackWhenAgentIsNotWaiting(t *testing.T) {
+	m := readyModel()
+	m.updateAgentIdle(30*time.Second, true, time.Now()) // stale heartbeat
+
+	assert.False(t, m.agentAwaiting)
+	status := m.decisionStatus("Confirmed")
+	assert.Contains(t, status, "Agent is not waiting")
+	assert.Contains(t, status, "stripe coop agent resume --session="+m.session.ID)
+	assert.Zero(t, m.decisionStatusTTL(), "an instruction must not expire like an acknowledgement")
+}
+
+func TestDecisionStatusStaysQuietWhileTheAgentIsWaiting(t *testing.T) {
+	m := readyModel()
+	m.updateAgentIdle(time.Second, true, time.Now()) // fresh heartbeat
+
+	assert.True(t, m.agentAwaiting)
+	assert.Equal(t, "Confirmed. Waiting for agent...", m.decisionStatus("Confirmed"))
+	assert.Positive(t, m.decisionStatusTTL())
+}

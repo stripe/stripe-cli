@@ -74,8 +74,13 @@ func (r stubResumer) Resume(string) (coop.CommandResponse, error) {
 
 func runStopHook(t *testing.T, store stopHookStore, resumer stopHookResumer, sessionID string) stopHookDecision {
 	t.Helper()
+	return runStopHookAt(t, store, resumer, sessionID, time.Now())
+}
+
+func runStopHookAt(t *testing.T, store stopHookStore, resumer stopHookResumer, sessionID string, now time.Time) stopHookDecision {
+	t.Helper()
 	var out bytes.Buffer
-	require.NoError(t, runCoopStopHook(&out, store, resumer, sessionID))
+	require.NoError(t, runCoopStopHook(&out, store, resumer, sessionID, now))
 	var decision stopHookDecision
 	require.NoError(t, json.Unmarshal(out.Bytes(), &decision))
 	return decision
@@ -325,4 +330,49 @@ func TestStopHookReleaseIsDurable(t *testing.T) {
 
 	assert.Empty(t, runStopHook(t, store, actionableResume(), "coop_hook").Decision,
 		"the release must hold until the lifecycle moves on")
+}
+
+// The real budget is wall-clock: what it detects is a developer who walked
+// away, and how many times the agent happened to try to stop is a poor proxy.
+func TestStopHookReleasesAfterTheBlockWindowElapses(t *testing.T) {
+	store := &stopHookTestStore{session: stopHookSession()}
+	start := time.Now()
+
+	require.Equal(t, "block", runStopHookAt(t, store, actionableResume(), "coop_hook", start).Decision)
+	require.Equal(t, "block", runStopHookAt(t, store, actionableResume(), "coop_hook", start.Add(time.Minute)).Decision)
+
+	decision := runStopHookAt(t, store, actionableResume(), "coop_hook", start.Add(stopBlockWindow+time.Second))
+
+	assert.Empty(t, decision.Decision)
+	assert.Contains(t, decision.SystemMessage, "stripe coop agent resume --session=coop_hook")
+}
+
+// A long review with an occasionally drifting agent must not be cut short: the
+// window, not the attempt count, is what bounds it.
+func TestStopHookKeepsBlockingAcrossALongReview(t *testing.T) {
+	store := &stopHookTestStore{session: stopHookSession()}
+	start := time.Now()
+
+	for i := 0; i < 20; i++ {
+		at := start.Add(time.Duration(i) * time.Minute)
+		require.Equal(t, "block", runStopHookAt(t, store, actionableResume(), "coop_hook", at).Decision,
+			"still inside the window at %d minutes", i)
+	}
+}
+
+// Progress restarts the window, so a healthy long session is never cut off.
+func TestStopHookWindowRestartsOnProgress(t *testing.T) {
+	store := &stopHookTestStore{session: stopHookSession()}
+	start := time.Now()
+
+	require.Equal(t, "block", runStopHookAt(t, store, actionableResume(), "coop_hook", start).Decision)
+
+	moved := stubResumer{response: coop.CommandResponse{
+		OK:           true,
+		Message:      "Task 3 is next.",
+		Continuation: coop.Continue("stripe coop agent start-work --session=coop_hook --step=3"),
+	}}
+	decision := runStopHookAt(t, store, moved, "coop_hook", start.Add(stopBlockWindow+time.Minute))
+
+	assert.Equal(t, "block", decision.Decision, "a new command starts a fresh window")
 }

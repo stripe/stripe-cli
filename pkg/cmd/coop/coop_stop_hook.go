@@ -18,7 +18,18 @@ import (
 // failure than the drift this hook prevents. After the limit the agent may
 // stop; its heartbeat goes stale and the TUI's existing idle state tells the
 // developer to rejoin.
-const maxConsecutiveStopBlocks = 3
+// stopBlockWindow is the primary bound: how long the hook keeps holding turns
+// while the lifecycle does not move. It is generous because a developer
+// genuinely verifying a step — clicking through a checkout in a browser — can
+// take many minutes, and giving up early strands them (nothing types into the
+// agent pane, so a stopped agent needs a manual hand-back).
+const stopBlockWindow = 30 * time.Minute
+
+// maxConsecutiveStopBlocks is a runaway guard, not the real budget. An agent
+// that re-stops immediately without waiting could otherwise burn turns far
+// faster than stopBlockWindow anticipates. A well-behaved agent blocks at most
+// once per await interval, so this does not bind inside the window.
+const maxConsecutiveStopBlocks = 60
 
 // staleSessionFallbackAge bounds the discovery-mode fallback: an untouched
 // session older than this is assumed to belong to some other run.
@@ -74,7 +85,7 @@ drift out of the Co-op lifecycle is pulled into it.`,
 				// Never fail an agent's turn over hook infrastructure.
 				return outputStopHookDecision(cmd.OutOrStdout(), stopHookDecision{})
 			}
-			return runCoopStopHook(cmd.OutOrStdout(), store, workflow.NewService(store), c.session)
+			return runCoopStopHook(cmd.OutOrStdout(), store, workflow.NewService(store), c.session, time.Now())
 		},
 	}
 	c.cmd.Flags().StringVar(&c.session, "session", "", "Session ID (defaults to the only active session, if there is exactly one)")
@@ -91,8 +102,8 @@ type stopHookResumer interface {
 	Resume(sessionID string) (coop.CommandResponse, error)
 }
 
-func runCoopStopHook(out io.Writer, store stopHookStore, resumer stopHookResumer, sessionID string) error {
-	session := resolveStopHookSession(store, sessionID, time.Now())
+func runCoopStopHook(out io.Writer, store stopHookStore, resumer stopHookResumer, sessionID string, now time.Time) error {
+	session := resolveStopHookSession(store, sessionID, now)
 	if session == nil {
 		return outputStopHookDecision(out, stopHookDecision{})
 	}
@@ -111,9 +122,12 @@ func runCoopStopHook(out io.Writer, store stopHookStore, resumer stopHookResumer
 	}
 	if state.ObservedCommand != resume.Next {
 		// The lifecycle moved to a different command, so the loop is working.
-		state = coop.StopHookState{ObservedCommand: resume.Next}
+		state = coop.StopHookState{ObservedCommand: resume.Next, FirstBlockedAt: now}
 	}
-	if state.Blocks >= maxConsecutiveStopBlocks {
+	if state.FirstBlockedAt.IsZero() {
+		state.FirstBlockedAt = now
+	}
+	if now.Sub(state.FirstBlockedAt) >= stopBlockWindow || state.Blocks >= maxConsecutiveStopBlocks {
 		// Keep the exhausted budget on disk. Clearing it here would let the very
 		// next Stop event start from zero and block three more times, so the
 		// agent could never actually stop until the lifecycle moved on.
