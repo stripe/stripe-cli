@@ -68,6 +68,18 @@ func Run(store Store, input Input) (Response, error) {
 		BuildSuggestions(session, DetectProjectEnvironment()),
 		completedActionIDs(session, input.Completed),
 	)
+
+	// Consume a selection made between invocations BEFORE republishing.
+	// ShowSuggestions clears NextSteps.Selected, so publishing first would erase
+	// a choice the developer made while the previous invocation was exiting,
+	// leaving the agent waiting on a selection that no longer exists.
+	if selected := pendingSelection(session); selected != "" {
+		if err := consumeSelection(store, session); err != nil {
+			return Response{}, err
+		}
+		return BuildResponse(session, suggestions, selected), nil
+	}
+
 	if err := ShowSuggestions(store, session, suggestions, input.Completed); err != nil {
 		return Response{}, err
 	}
@@ -103,6 +115,22 @@ func ShowSuggestions(store Store, session *coop.Session, suggestions []Suggestio
 	session.Status = coop.SessionCompleted
 	if err := store.Write(session); err != nil {
 		return fmt.Errorf("writing next-action suggestions: %w", err)
+	}
+	return nil
+}
+
+// pendingSelection reports a choice the TUI already recorded.
+func pendingSelection(session *coop.Session) string {
+	if session == nil || session.NextSteps == nil || len(session.NextSteps.Suggestions) == 0 {
+		return ""
+	}
+	return session.NextSteps.Selected
+}
+
+func consumeSelection(store Store, session *coop.Session) error {
+	session.NextSteps.Selected = ""
+	if err := store.Write(session); err != nil {
+		return fmt.Errorf("clearing next-action selection: %w", err)
 	}
 	return nil
 }

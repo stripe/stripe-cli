@@ -76,6 +76,21 @@ func (s *Service) AwaitReview(sessionID string, nodeNumber int) (coop.CommandRes
 	if node.IsInformationalNode && node.State == coop.NodeReview {
 		return s.autoConfirm(sessionID, nodeNumber)
 	}
+
+	// The developer can request changes between two await-review calls, which
+	// moves the node out of review and back to active with a rejection note.
+	// Falling through to alreadyMovedResponse would point the agent at the next
+	// *pending* task, silently skipping the rejected work and dropping the
+	// feedback. Requiring a rejection note keeps a step where one task is
+	// awaited while another is legitimately active from reading as a rejection.
+	if step, stepIndex, _, stepErr := session.StepByNodeNumber(nodeNumber); stepErr == nil {
+		if activeNodeNumber := session.FirstActiveNodeInStep(stepIndex); activeNodeNumber > 0 {
+			if activeNode, _ := session.NodeByNumber(activeNodeNumber); activeNode != nil && activeNode.RejectionNote != "" {
+				return rejectedStepResponse(session, step.TitleText(), activeNodeNumber, activeNode), nil
+			}
+		}
+	}
+
 	if node.State == coop.NodeReview {
 		step, stepIndex, _, err := session.StepByNodeNumber(nodeNumber)
 		if err != nil {
