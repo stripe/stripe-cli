@@ -214,3 +214,26 @@ func nextStepSuggestionIDs(suggestions []coop.NextStepSuggestion) []string {
 	}
 	return ids
 }
+
+// The developer can pick a next action in the gap between two next-action
+// invocations. ShowSuggestions clears Selected, so republishing before
+// consuming it would erase the choice and leave the agent waiting forever.
+func TestRunDoesNotClearSelectionMadeBetweenInvocations(t *testing.T) {
+	store := &nextActionTestStore{
+		session: &coop.Session{
+			ID:        "sess_123",
+			Blueprint: "one-time-payment",
+			Status:    coop.SessionCompleted,
+			NextSteps: &coop.NextStepsState{
+				Suggestions: []coop.NextStepSuggestion{{ID: "done", Title: "Finish"}},
+				Selected:    "done",
+			},
+		},
+	}
+
+	resp, err := Run(store, Input{SessionID: "sess_123"})
+
+	require.NoError(t, err)
+	assert.Contains(t, resp.Next, "stripe coop stop")
+	assert.Empty(t, store.session.NextSteps.Selected)
+}
