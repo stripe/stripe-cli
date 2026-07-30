@@ -1257,3 +1257,29 @@ func runeIndex(s string, target rune) int {
 	}
 	return -1
 }
+
+// --detail exists so an agent can keep its command logs without drowning the
+// card. That is only worth anything if something reads it back: the card shows
+// the label, the Reference tab shows what is behind it.
+func TestReferenceTabSurfacesCheckDetail(t *testing.T) {
+	m := testModel()
+	m.session.Steps[0].Nodes[0].State = coop.NodeReview
+	m.session.Steps[0].Nodes[0].Verifications = []coop.Verification{
+		{Check: "Webhook signature verified", Passed: true,
+			Detail: "Ran stripe trigger checkout.session.completed and asserted constructEvent accepted the signature."},
+	}
+	m.selectStep(0)
+	sections := m.stepDetailSections(&m.session.Steps[0])
+	for i, name := range sections {
+		if name == "Reference" {
+			m.detailTab = i
+		}
+	}
+
+	detail := m.renderDetail()
+
+	assertContainsPlain(t, detail, "Webhook signature verified")
+	// A short token: the renderer rewraps the body, so a longer phrase would
+	// straddle a line break and fail for the wrong reason.
+	assertContainsPlain(t, detail, "constructEvent")
+}

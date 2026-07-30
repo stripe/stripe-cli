@@ -508,6 +508,29 @@ func (m Model) writeStepReferenceDetail(md *strings.Builder, ch *coop.SessionSte
 			wrote = true
 		}
 	}
+	// The long-form output behind each check. --detail exists so an agent can
+	// keep its command logs and reasoning without drowning the card, and this
+	// is where that text is read: the card shows the label, the Reference tab
+	// shows what is behind it.
+	for _, node := range ch.Nodes {
+		for _, verification := range node.Verifications {
+			if !verification.HasDetail() {
+				continue
+			}
+			marker := "✗"
+			if verification.Passed {
+				marker = "✓"
+			}
+			// A heading and a paragraph, not a list item with an indented
+			// body: the renderer strips the indent that would attach the two,
+			// and pre-wrapping here fights the wrapping it does itself.
+			md.WriteString("\n**" + marker + " " +
+				summarizeCheckResult(verification.Check, 0, !verification.Passed) + "**\n\n")
+			md.WriteString(strings.TrimSpace(verification.DetailText()) + "\n")
+			wrote = true
+		}
+	}
+
 	if wrote {
 		md.WriteString("\n")
 		return
