@@ -75,7 +75,7 @@ func TestAwaitReviewWaitingResponseAvoidsFailureVocabulary(t *testing.T) {
 	}
 }
 
-func TestAwaitReviewKeepsHeartbeatWhileWaiting(t *testing.T) {
+func TestAwaitReviewClearsHeartbeatOnEveryOutcome(t *testing.T) {
 	base, _ := workflowTestStore(t)
 	store := &awaitTestStore{Store: base}
 	service, session := awaitReviewSession(t, store)
@@ -84,22 +84,21 @@ func TestAwaitReviewKeepsHeartbeatWhileWaiting(t *testing.T) {
 	_, err := service.AwaitReview(session.ID, 2)
 	require.NoError(t, err)
 
-	// Clearing it between calls would make the TUI flash "agent appears idle"
-	// during every gap of a long review.
-	assert.Zero(t, store.heartbeatRemoves)
+	// A retained heartbeat would leave a killed agent indistinguishable from a
+	// patient one, and would not prevent the TUI's idle report regardless.
+	assert.Positive(t, store.heartbeatRemoves)
 	age, err := base.HeartbeatAge(session.ID)
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, age, time.Duration(0))
+	assert.Equal(t, time.Duration(-1), age, "no heartbeat file should remain")
 }
 
-func TestAwaitReviewClearsHeartbeatOnceDecided(t *testing.T) {
+func TestAwaitReviewReturnsRejectionWithoutWaiting(t *testing.T) {
 	base, _ := workflowTestStore(t)
 	store := &awaitTestStore{Store: base}
 	service, session := awaitReviewSession(t, store)
 
 	_, err := service.RequestChanges(session.ID, []int{1}, "Reuse the saved price")
 	require.NoError(t, err)
-	store.heartbeatRemoves = 0
 
 	resp, err := service.AwaitReview(session.ID, 2)
 	require.NoError(t, err)
@@ -107,18 +106,29 @@ func TestAwaitReviewClearsHeartbeatOnceDecided(t *testing.T) {
 	assert.Equal(t, "rejected", resp.State)
 	require.NotNil(t, resp.AdvanceAllowed)
 	assert.True(t, *resp.AdvanceAllowed, "a decision is available; next is actionable")
-	assert.Positive(t, store.heartbeatRemoves)
 }
 
 func TestAwaitReviewReportsCumulativeWaitAndReviewPrompt(t *testing.T) {
 	service, session := awaitReviewSession(t, nil)
 
+	// Backdate the review entry and attach a prompt, as an earlier await call
+	// would have left them. A per-process timer could never report this.
+	earlier := time.Now().UTC().Add(-20 * time.Minute)
+	_, err := service.store.Update(session.ID, func(s *coop.Session) error {
+		for i := range s.Steps[0].Nodes {
+			s.Steps[0].Nodes[i].CompletedAt = &earlier
+			s.Steps[0].Nodes[i].ReviewPrompt = "Confirm the product appears in the Dashboard"
+		}
+		return nil
+	})
+	require.NoError(t, err)
+
 	resp, err := service.AwaitReview(session.ID, 2)
 	require.NoError(t, err)
 
-	// The step entered review before this call started, so the reported wait
-	// spans earlier calls rather than resetting each time.
-	assert.Positive(t, resp.WaitedSeconds)
+	assert.Greater(t, resp.WaitedSeconds, 600, "wait must span earlier calls, not this process")
+	assert.Equal(t, "Confirm the product appears in the Dashboard", resp.ReviewPrompt)
+	assert.Contains(t, resp.Message, "Confirm the product appears in the Dashboard")
 }
 
 func TestAwaitReviewEmitsKeepAliveProgress(t *testing.T) {

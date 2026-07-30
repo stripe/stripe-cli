@@ -83,6 +83,14 @@ func nextAfterNode(session *coop.Session, nodeNumber int) coop.Continuation {
 }
 
 func nextInStepOrStatus(session *coop.Session, stepIndex, afterNode int) string {
+	// A sibling the developer sent back is still work to do, even though it is
+	// active rather than pending. Without this, rejecting two tasks in one step
+	// leaves the agent with "stripe coop status" and nothing to run.
+	if rejected := session.FirstActiveNodeInStep(stepIndex); rejected > 0 {
+		if node, _ := session.NodeByNumber(rejected); isUnstartedRejection(node) {
+			return coop.StartWorkCommand(session.ID, rejected, "Redoing: "+node.TitleText())
+		}
+	}
 	if nextNodeNumber := helpers.NextPendingNodeInStep(session, stepIndex+1, afterNode); nextNodeNumber > 0 {
 		nextNode, _ := session.NodeByNumber(nextNodeNumber)
 		return coop.StartWorkCommand(session.ID, nextNodeNumber, "Beginning: "+nextNode.TitleText())
