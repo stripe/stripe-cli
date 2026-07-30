@@ -1,5 +1,5 @@
 * @stripe/developer-products @stripe/developer-ai
 
 # `stripe docs` ownership
-/pkg/docs/ @stripe/docs-product
-/pkg/cmd/docs/ @stripe/docs-product
+/pkg/docs/ @stripe/developer-products @stripe/docs-product
+/pkg/cmd/docs/ @stripe/developer-products @stripe/docs-product
