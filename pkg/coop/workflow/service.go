@@ -92,10 +92,18 @@ func (s *Service) StartWork(sessionID string, nodeNumber int, note string) (coop
 		if err != nil {
 			return err
 		}
-		if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
+		node, err := session.NodeByNumber(nodeNumber)
+		if err != nil {
 			return err
 		}
-		node, _ := session.NodeByNumber(nodeNumber)
+		// A review decision can reach the agent through both the original waiter
+		// and a TUI wake-up. Replaying the returned command must be harmless.
+		if node.State != coop.NodeActive {
+			if err := session.TransitionNode(nodeNumber, coop.NodeActive); err != nil {
+				return err
+			}
+			node, _ = session.NodeByNumber(nodeNumber)
+		}
 		node.Activity = note
 		return nil
 	})

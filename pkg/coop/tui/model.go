@@ -62,11 +62,12 @@ type Model struct {
 	sdkLoading     bool
 	sdkLoadingNode int
 
-	waiting            bool
-	waitingMessage     string
-	existingSessionIDs map[string]bool
-	lastUpdateTime     time.Time
-	agentIsIdle        bool
+	waiting                bool
+	waitingMessage         string
+	existingSessionIDs     map[string]bool
+	lastUpdateTime         time.Time
+	agentIsIdle            bool
+	reviewDecisionNotifier ReviewDecisionNotifier
 
 	isDark  bool
 	focused bool // true when terminal has focus (default: true, updated via FocusMsg/BlurMsg)
@@ -876,10 +877,11 @@ func (m *Model) handleConfirm() tea.Cmd {
 	}
 	m.resizeViewport()
 	m.syncViewport()
+	notify := m.notifyReviewDecision()
 	if m.session.IsComplete() && m.session.ParentSessionID != "" {
-		return m.returnToParent()
+		return tea.Batch(notify, m.returnToParent())
 	}
-	return nil
+	return notify
 }
 
 func (m *Model) startReject() tea.Cmd {
@@ -909,8 +911,7 @@ func (m Model) handleRejectionKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.syncViewport()
 		return m, nil
 	case key.Matches(msg, m.keys.Submit):
-		m.handleReject(strings.TrimSpace(m.rejectionInput.Value()))
-		return m, nil
+		return m, m.handleReject(strings.TrimSpace(m.rejectionInput.Value()))
 	}
 	return m.updateRejectionInput(msg)
 }
@@ -924,22 +925,22 @@ func (m Model) updateRejectionInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *Model) handleReject(note string) {
+func (m *Model) handleReject(note string) tea.Cmd {
 	if m.session == nil {
-		return
+		return nil
 	}
 	if note == "" {
 		m.rejectionError = "Add a short note so the agent knows what to change."
 		m.resizeViewport()
 		m.syncViewport()
-		return
+		return nil
 	}
 	if !m.reviewTargetStillValid(m.rejectTarget) {
 		m.clearRejectionState()
 		m.setStatus("Review target changed. Request changes canceled.", 4*time.Second)
 		m.resizeViewport()
 		m.syncViewport()
-		return
+		return nil
 	}
 	target := m.rejectTarget
 	session, err := workflow.NewService(m.store).RequestChanges(m.session.ID, target.nodeNumbers, note)
@@ -947,7 +948,7 @@ func (m *Model) handleReject(note string) {
 		m.rejectionError = fmt.Sprintf("failed to request changes: %v", err)
 		m.resizeViewport()
 		m.syncViewport()
-		return
+		return nil
 	}
 	m.session = session
 	m.lastVersion = m.session.Version
@@ -959,6 +960,23 @@ func (m *Model) handleReject(note string) {
 	m.setStatus("Feedback sent. Waiting for agent...", 5*time.Second)
 	m.resizeViewport()
 	m.syncViewport()
+	return m.notifyReviewDecision()
+}
+
+func (m Model) notifyReviewDecision() tea.Cmd {
+	if m.reviewDecisionNotifier == nil || m.session == nil {
+		return nil
+	}
+	sessionID := m.session.ID
+	notify := m.reviewDecisionNotifier
+	return func() tea.Msg {
+		if err := notify(sessionID); err != nil {
+			return statusMsg{
+				message: fmt.Sprintf("Agent wake-up failed. In the agent pane, run: %s", coop.ResumeCommand(sessionID)),
+			}
+		}
+		return statusMsg{message: "Human decision sent. Waiting for agent...", ttl: 5 * time.Second}
+	}
 }
 
 type reviewTarget struct {

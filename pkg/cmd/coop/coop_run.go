@@ -228,7 +228,7 @@ For each node:
 4. Report the implementation with "stripe coop agent report-work".
 5. Continue with the response's next command. If a task does not apply, use "stripe coop agent skip" with a reason.
 
-Only await human review when the next command says to. Before awaiting, run the supplied review command, keep useful servers running, and give the developer concrete actions and expected results. Co-op returns from await-review after %s; allow the shell command at least %s so the structured timeout response arrives. Re-run it if Co-op reports a timeout. If changes are requested, redo the affected node from the feedback. After the final confirmation, immediately run the returned next command.
+Only await human review when the next command says to. Before awaiting, run the supplied review command, keep useful servers running, and give the developer concrete actions and expected results. Co-op returns from await-review after %s; allow the shell command at least %s so the structured timeout response arrives. Re-run it if Co-op reports a timeout. If Co-op wakes you after later human input, run the exact stripe coop agent resume command it provides, then run a non-empty next command exactly; an empty next means another handoff already advanced the session. If changes are requested, redo the affected node from the feedback. After the final confirmation, immediately run the returned next command.
 
 Never pass full card numbers to Stripe APIs or CLI commands. Collect card details only through hosted Checkout, Payment Element, or another official client-side integration. If an API needs a test payment method, use a supported test PaymentMethod ID such as pm_card_visa.`,
 		preamble,

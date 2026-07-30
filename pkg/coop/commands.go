@@ -49,6 +49,12 @@ func AwaitReviewCommand(sessionID string, nodeNumber int) string {
 	return fmt.Sprintf("stripe coop agent await-review --session=%s --step=%d", sessionID, nodeNumber)
 }
 
+// ResumeCommand returns the exact command for reading the current lifecycle
+// continuation without mutating the session.
+func ResumeCommand(sessionID string) string {
+	return fmt.Sprintf("stripe coop agent resume --session=%s", sessionID)
+}
+
 // NextActionCommand returns the exact command for waiting on or completing a
 // post-session action.
 func NextActionCommand(sessionID, completed string) string {
@@ -85,6 +91,14 @@ func SessionStepTemplate(action string) Continuation {
 func NextActionTemplate() Continuation {
 	return commandTemplate(
 		"stripe coop agent next-action --session=\"<session>\"",
+		commandInput("session", "--session", "Co-op session ID."),
+	)
+}
+
+// ResumeTemplate returns the continuation for a missing session ID.
+func ResumeTemplate() Continuation {
+	return commandTemplate(
+		"stripe coop agent resume --session=\"<session>\"",
 		commandInput("session", "--session", "Co-op session ID."),
 	)
 }

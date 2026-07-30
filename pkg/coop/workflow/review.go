@@ -132,15 +132,7 @@ func (s *Service) awaitStepReview(sessionID, stepTitle string, stepIndex, nodeNu
 		}
 		if activeNodeNumber := session.FirstActiveNodeInStep(stepIndex); activeNodeNumber > 0 {
 			activeNode, _ := session.NodeByNumber(activeNodeNumber)
-			msg := fmt.Sprintf("Step %q requested changes.", stepTitle)
-			if activeNode != nil && activeNode.RejectionNote != "" {
-				msg += fmt.Sprintf("\nFeedback: %s", activeNode.RejectionNote)
-			}
-			msg += "\nRedo the step from the first affected node."
-			return nodeResponse(
-				session.ID, activeNodeNumber, "rejected", msg,
-				coop.Continue(coop.StartWorkCommand(session.ID, activeNodeNumber, "Redoing: "+activeNode.TitleText())),
-			), nil
+			return rejectedStepResponse(session, stepTitle, activeNodeNumber, activeNode), nil
 		}
 		if session.StepHasReview(stepIndex) {
 			continue

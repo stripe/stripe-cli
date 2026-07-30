@@ -50,6 +50,7 @@ func newCoopAgentCmd() *coopAgentCmd {
 	ac.cmd.AddCommand(newCoopAgentReportCheckCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentSkipCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentAwaitReviewCmd().cmd)
+	ac.cmd.AddCommand(newCoopAgentResumeCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentNextActionCmd().cmd)
 	ac.cmd.AddCommand(newCoopAgentStartFollowupCmd().cmd)
 	configureAgentCommand(ac.cmd)
