@@ -55,6 +55,36 @@ func TestAPICommand_FollowsRedirect(t *testing.T) {
 	assert.Contains(t, out.String(), "Returns a list of")
 }
 
+func TestAPICommand_Authenticated(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v2/docs/page", r.URL.Path)
+		assert.Equal(t, "/_endpoint/api-reference-locator?q=GET+%2Fv1%2Fproducts", r.URL.Query().Get("path"))
+		assert.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"content":"# List Products\n\nReturns a list of products."}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(
+		docs.WithAPIBaseURL(server.URL),
+		docs.WithAPIKey("sk_test_123"),
+	)
+	renderer, err := markdown.NewRenderer(markdown.WithStyle("notty"))
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"api", "GET", "/v1/products"})
+
+	err = root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Returns a list of")
+}
+
 func TestAPICommand_ResourceLookup(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
