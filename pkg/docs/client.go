@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -141,7 +142,7 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	if err != nil {
 		return Page{}, fmt.Errorf("docs: build request: %w", err)
 	}
-	req.Header.Set("Accept", "text/plain")
+	req.Header.Set("Accept", "text/plain, text/markdown")
 
 	res, err := c.do(req)
 	if err != nil {
@@ -200,8 +201,16 @@ func (c *Client) do(req *http.Request) (response, error) {
 	accept := req.Header.Get("Accept")
 	if ct := resp.Header.Get("Content-Type"); ct != "" && accept != "" {
 		mediaType, _, _ := mime.ParseMediaType(ct)
-		acceptMedia, _, _ := mime.ParseMediaType(accept)
-		if mediaType != acceptMedia {
+
+		supported := false
+		for _, acceptType := range strings.Split(accept, ",") {
+			acceptMedia, _, _ := mime.ParseMediaType(strings.TrimSpace(acceptType))
+			if mediaType == acceptMedia {
+				supported = true
+				break
+			}
+		}
+		if !supported {
 			return response{}, fmt.Errorf("docs: %s returned unsupported content type %q", req.URL, ct)
 		}
 	}
