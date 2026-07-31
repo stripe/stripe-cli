@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -669,6 +670,21 @@ func newWebSocketDialer(unixSocket string) *ws.Dialer {
 			NetDialContext:    dialFunc,
 			NetDialTLSContext: dialFunc,
 			Subprotocols:      subprotocols[:],
+		}
+	}
+
+	if unixSocket != "" && httpsProxy != "" {
+		// Both unix socket and HTTPS proxy are set. Use HTTPS_PROXY for all WebSocket
+		// connections regardless of scheme. http.ProxyFromEnvironment only returns
+		// HTTPS_PROXY for https:// (wss://) requests, so ws:// connections from
+		// --no-wss would bypass the proxy and connect directly. Force HTTPS_PROXY
+		// for both schemes so --no-wss works correctly.
+		if proxyURL, err := url.Parse(httpsProxy); err == nil {
+			return &ws.Dialer{
+				HandshakeTimeout: 10 * time.Second,
+				Proxy:            func(*http.Request) (*url.URL, error) { return proxyURL, nil },
+				Subprotocols:     subprotocols[:],
+			}
 		}
 	}
 
