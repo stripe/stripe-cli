@@ -126,6 +126,7 @@ func outputAgentResponse(resp coop.CommandResponse, err error) error {
 	if validationErr := resp.Validate(); validationErr != nil {
 		resp = protocolFailure("invalid Co-op protocol response: " + validationErr.Error())
 	}
+	resp.ProtocolVersion = coop.CurrentProtocolVersion
 	if !resp.OK {
 		if resp.Recovery == nil {
 			resp.Recovery = defaultAgentRecovery()

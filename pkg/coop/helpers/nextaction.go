@@ -36,11 +36,14 @@ type Suggestion struct {
 }
 
 type Response struct {
-	OK          bool         `json:"ok"`
-	SessionID   string       `json:"session_id"`
-	Completed   string       `json:"completed"`
-	Suggestions []Suggestion `json:"suggestions"`
-	AgentPrompt string       `json:"agent_prompt"`
+	OK bool `json:"ok"`
+	// ProtocolVersion is stamped at the output boundary, matching
+	// coop.CommandResponse.
+	ProtocolVersion int          `json:"protocol_version,omitempty"`
+	SessionID       string       `json:"session_id"`
+	Completed       string       `json:"completed"`
+	Suggestions     []Suggestion `json:"suggestions"`
+	AgentPrompt     string       `json:"agent_prompt"`
 	coop.Continuation
 }
 

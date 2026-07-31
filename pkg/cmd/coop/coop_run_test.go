@@ -230,6 +230,7 @@ func TestCoopStartPreparesOnlyTheNeededAgentSkillState(t *testing.T) {
 			rc.agent = fakeAgent
 			skillCalled := false
 			claudeRootCalled := false
+			coopSkillCalled := false
 			rc.ensureSkill = func() error {
 				skillCalled = true
 				return nil
@@ -237,6 +238,11 @@ func TestCoopStartPreparesOnlyTheNeededAgentSkillState(t *testing.T) {
 			rc.prepareSkillDiscovery = func() error {
 				claudeRootCalled = true
 				return nil
+			}
+			rc.installCoopSkill = func(adapter *harnessAdapter) (bool, error) {
+				coopSkillCalled = true
+				assert.Equal(t, tt.agent, adapter.id)
+				return true, nil
 			}
 			args := []string(nil)
 			if tt.blueprint != "" {
@@ -249,6 +255,7 @@ func TestCoopStartPreparesOnlyTheNeededAgentSkillState(t *testing.T) {
 			require.NoError(t, runErr)
 			assert.Equal(t, tt.wantSkill, skillCalled)
 			assert.Equal(t, tt.wantClaudeRoot, claudeRootCalled)
+			assert.True(t, coopSkillCalled, "coop start must install the managed stripe-coop skill")
 		})
 	}
 }

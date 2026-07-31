@@ -75,7 +75,7 @@ active ──→ completed    (all nodes done/skipped, or "stripe coop stop")
 | `stripe coop agent next-action` | Show post-completion options (blocks until selection) |
 | `stripe coop agent start-followup` | Start an internal guided follow-up session selected from next actions |
 
-Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, SDK example, and `required_outputs`. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
+Agent commands return `next` only when the value is immediately executable. Commands that still need values return `next_template` with `required_inputs`. Failures use a single `recovery` object containing a hint and one of those continuation forms. Every rendered agent response is stamped with `protocol_version` (`coop.CurrentProtocolVersion`) so agents and the bundled skill can detect contract drift. Session creation does not front-load the full blueprint: each successful `start-work` response returns an `agent_prompt` for only the current node, plus any relevant `api_request`, `test_requests`, `events`, SDK example, and `required_outputs`. The `--step` flag name is retained for the CLI, but its value is the 1-based node number across the session.
 
 `report-work` requires a concrete `--note`. Use repeatable `--output` flags for values named by `required_outputs`:
 
@@ -92,6 +92,26 @@ stripe coop agent report-work \
 Values that are valid JSON retain their type; other values are stored as strings. Co-op resolves `${node.<step>.<node>:<field>}` references from these persisted outputs before returning a later node's request.
 
 Skipping an output-producing node also skips later nodes that directly or transitively reference its outputs. Co-op refuses the skip if one of those dependent nodes is already done.
+
+## Bundled Agent Skill and Harness Support
+
+The CLI embeds a version-locked `stripe-coop` Agent Skill (`pkg/coop/skill/stripe-coop/`) that carries the stable lifecycle and safety contract. `stripe coop start` installs or refreshes it in the selected harness's user-level skill directory before launching the agent, then hands the agent a compact prompt that activates the skill and supplies only dynamic session context. `join`, `status`, `stop`, and `recommend` never install anything.
+
+Installs are atomic (staged directory + rename) and idempotent (content-hash manifest, `.stripe-cli-skill.json`). A same-name skill directory without that manifest is treated as user-authored and never overwritten; the launch falls back to the full self-contained prompt instead.
+
+Harness adapters live in `pkg/cmd/coop/coop_harness.go` and define detection, skill directory, activation syntax, launch arguments, and approval flags per harness:
+
+| Harness | Skill directory | Activation | Notes |
+|---------|-----------------|------------|-------|
+| Claude Code | `~/.claude/skills` | `/stripe-coop` | `--agents` subagent config, `--dangerously-skip-permissions` bypass |
+| Codex | `~/.agents/skills` | `$stripe-coop` | `--dangerously-bypass-approvals-and-sandbox` bypass |
+| OpenCode | `~/.agents/skills` | description match | `opencode --prompt`, `--auto` bypass |
+| Cline | `~/.cline/skills` | `/stripe-coop` | one-shot launch; no conversational discovery flow |
+| Roo Code | `~/.agents/skills` | description match | auto-approves by default; `--require-approval` in normal mode |
+| OpenHands | `~/.agents/skills` | description match | `openhands -t`, `--always-approve` bypass |
+| Goose | `~/.agents/skills` | description match | `goose run -t`, `GOOSE_MODE` env; no conversational discovery flow |
+
+Harnesses that cannot hold an interactive conversation from a prompt-seeded launch are rejected for no-blueprint discovery with instructions to pick a blueprint first (`stripe coop start <blueprint-id>`).
 
 ## TUI Keybindings
 
