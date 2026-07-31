@@ -637,25 +637,44 @@ var nullEventHandler = EventHandlerFunc(func(IncomingMessage) {})
 // Private functions
 //
 
-func newWebSocketDialer(unixSocket string) *ws.Dialer {
-	var dialer *ws.Dialer
+func expandUnixSocket(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home + path[1:]
+		}
+	}
+	return path
+}
 
-	if unixSocket != "" {
-		dialFunc := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", unixSocket)
+func newWebSocketDialer(unixSocket string) *ws.Dialer {
+	// When HTTPS_PROXY is set, use it for WebSocket regardless of STRIPE_CLI_UNIX_SOCKET.
+	// The WebSocket server may be on a different host than the API base and unreachable
+	// via the unix socket proxy (which typically only routes dev API traffic).
+	httpsProxy := os.Getenv("HTTPS_PROXY")
+	if httpsProxy == "" {
+		httpsProxy = os.Getenv("https_proxy")
+	}
+
+	if unixSocket != "" && httpsProxy == "" {
+		unixSocket = expandUnixSocket(unixSocket)
+		// NetDialTLSContext tells gorilla that TLS is already handled externally,
+		// so it skips wrapping wss:// connections with tls.Client(). This matches
+		// the HTTP transport's DialTLS behavior: both send a plain connection to
+		// the unix socket proxy and let it handle TLS termination/forwarding.
+		dialFunc := func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "unix", unixSocket)
 		}
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			NetDial:          dialFunc,
-			Subprotocols:     subprotocols[:],
-		}
-	} else {
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			Proxy:            http.ProxyFromEnvironment,
-			Subprotocols:     subprotocols[:],
+		return &ws.Dialer{
+			HandshakeTimeout:  10 * time.Second,
+			NetDialContext:    dialFunc,
+			NetDialTLSContext: dialFunc,
+			Subprotocols:      subprotocols[:],
 		}
 	}
 
-	return dialer
+	return &ws.Dialer{
+		HandshakeTimeout: 10 * time.Second,
+		Proxy:            http.ProxyFromEnvironment,
+		Subprotocols:     subprotocols[:],
+	}
 }
