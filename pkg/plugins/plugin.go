@@ -591,7 +591,8 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	var version string
 
-	if versionOverride != "" {
+	switch {
+	case versionOverride != "":
 		version = versionOverride
 		if !p.IsVersionInstalled(config, fs, version) {
 			installed := p.InstalledVersion(config, fs)
@@ -601,9 +602,9 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			}
 			return fmt.Errorf("plugin %q version %q is not installed%s", p.Shortname, version, hint)
 		}
-	} else if PluginsPath != "" {
+	case PluginsPath != "":
 		version = localDevelopmentVersion
-	} else {
+	default:
 		var err error
 		version, err = p.lookUpInstalledVersion(config, fs)
 		if err != nil {
