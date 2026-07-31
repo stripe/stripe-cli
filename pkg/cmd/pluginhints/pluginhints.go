@@ -41,6 +41,12 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		)
 		rootCmd.Annotations["projects"] = "available_plugin"
 	}
+	if !installedPluginSet["pay"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "pay", "Send money to another business with a Stripe profile.").Command,
+		)
+		rootCmd.Annotations["pay"] = "available_plugin"
+	}
 	if !installedPluginSet["directory"] {
 		directoryCmd := newPluginHintCmd(cfg, "directory", "Discover businesses on Stripe. Learn more: https://stripe.directory").Command
 		directoryCmd.Aliases = []string{
