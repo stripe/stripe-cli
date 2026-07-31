@@ -582,14 +582,26 @@ func buildAdditionalInfo(logger *log.Entry) *proto.AdditionalInfo {
 
 // Run boots up the binary and then sends the command to it via RPC.
 // cwd sets the working directory for the plugin process; an empty string uses the current directory.
-func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string) error {
+// versionOverride, when non-empty, forces the plugin to run at that specific installed version,
+// bypassing the automatic version resolution (including local.build.dev priority).
+func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
 
 	var version string
 
-	if PluginsPath != "" {
+	if versionOverride != "" {
+		version = versionOverride
+		if !p.IsVersionInstalled(config, fs, version) {
+			installed := p.InstalledVersion(config, fs)
+			hint := ""
+			if installed != "" {
+				hint = fmt.Sprintf("; installed version is %s", installed)
+			}
+			return fmt.Errorf("plugin %q version %q is not installed%s", p.Shortname, version, hint)
+		}
+	} else if PluginsPath != "" {
 		version = localDevelopmentVersion
 	} else {
 		var err error

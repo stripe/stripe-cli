@@ -787,6 +787,84 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	require.True(t, fileExists, "Did not expect the original version of the plugin to be deleted.")
 }
 
+func TestRunVersionOverrideNotInstalled(t *testing.T) {
+	fs := setUpFS()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	plugin, _ := LookUpPlugin(context.Background(), cfg, fs, "appA")
+
+	// Only local.build.dev is on disk
+	require.NoError(t, fs.MkdirAll("/plugins/appA/local.build.dev", 0755))
+	afero.WriteFile(fs, "/plugins/appA/local.build.dev/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+
+	// Temporarily clear PluginsPath so it doesn't force local.build.dev
+	origPluginsPath := PluginsPath
+	PluginsPath = ""
+	defer func() { PluginsPath = origPluginsPath }()
+
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "9.9.9")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `plugin "appA" version "9.9.9" is not installed`)
+	require.Contains(t, err.Error(), "installed version is local.build.dev")
+}
+
+func TestRunVersionOverrideSelectsSpecifiedVersion(t *testing.T) {
+	fs := setUpFS()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	plugin, _ := LookUpPlugin(context.Background(), cfg, fs, "appA")
+
+	// Both local.build.dev and 1.0.1 exist on disk
+	require.NoError(t, fs.MkdirAll("/plugins/appA/local.build.dev", 0755))
+	afero.WriteFile(fs, "/plugins/appA/local.build.dev/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+	require.NoError(t, fs.MkdirAll("/plugins/appA/1.0.1", 0755))
+	afero.WriteFile(fs, "/plugins/appA/1.0.1/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+
+	origPluginsPath := PluginsPath
+	PluginsPath = ""
+	defer func() { PluginsPath = origPluginsPath }()
+
+	// Run with override "1.0.1" — this will get past version resolution but fail
+	// at the go-plugin handshake (expected; we're testing that version resolution works).
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "1.0.1")
+	// The error should NOT be about version not installed; it should be a runtime error
+	// from trying to actually execute the fake binary.
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "is not installed")
+}
+
+func TestRunVersionOverrideBypassesLocalBuildDev(t *testing.T) {
+	fs := setUpFS()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	plugin, _ := LookUpPlugin(context.Background(), cfg, fs, "appA")
+
+	// Both exist
+	require.NoError(t, fs.MkdirAll("/plugins/appA/local.build.dev", 0755))
+	afero.WriteFile(fs, "/plugins/appA/local.build.dev/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+	afero.WriteFile(fs, "/plugins/appA/2.0.1/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+
+	origPluginsPath := PluginsPath
+	PluginsPath = ""
+	defer func() { PluginsPath = origPluginsPath }()
+
+	// Without override, lookUpInstalledVersion would return local.build.dev.
+	// With override "2.0.1", it should bypass that and use 2.0.1.
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "2.0.1")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "is not installed")
+}
+
 func TestLookUpInstalledVersionPrefersLocalDevelopmentVersion(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}

@@ -317,5 +317,5 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 	if !ok {
 		return fmt.Errorf("could not run peer plugin %q: config type mismatch", pluginName)
 	}
-	return plugin.Run(h.ctx, cfg, h.fs, args, cwd)
+	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "")
 }
