@@ -137,7 +137,7 @@ func TestFetchPage(t *testing.T) {
 			name: "success with params",
 			ref:  &url.URL{Path: "/payments", RawQuery: "api_version=2024-06-30"},
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, "text/plain", r.Header.Get("Accept"))
+				assert.Equal(t, "text/plain, text/markdown", r.Header.Get("Accept"))
 				assert.Contains(t, r.Header.Get("User-Agent"), "stripe-cli/")
 				assert.Equal(t, "/payments", r.URL.Path)
 				assert.Equal(t, "2024-06-30", r.URL.Query().Get("api_version"))
@@ -194,6 +194,17 @@ func TestFetchPage(t *testing.T) {
 			},
 			wantCheck: func(t *testing.T, got Page) {
 				assert.Equal(t, []byte("plain content"), got.Content)
+			},
+		},
+		{
+			name: "text/markdown with charset is accepted",
+			ref:  &url.URL{Path: "/markdown"},
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+				fmt.Fprint(w, "# markdown content")
+			},
+			wantCheck: func(t *testing.T, got Page) {
+				assert.Equal(t, []byte("# markdown content"), got.Content)
 			},
 		},
 	}
