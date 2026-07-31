@@ -169,10 +169,20 @@ func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
 	}
 }
 
+func expandUnixSocket(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home + path[1:]
+		}
+	}
+	return path
+}
+
 func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *http.Client {
 	var httpTransport http.RoundTripper
 
 	if unixSocket != "" {
+		unixSocket = expandUnixSocket(unixSocket)
 		dialFunc := func(network, addr string) (net.Conn, error) {
 			return net.Dial("unix", unixSocket)
 		}
