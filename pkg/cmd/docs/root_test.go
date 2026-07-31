@@ -324,6 +324,41 @@ func TestPrefsNotOverriddenByExistingQueryParam(t *testing.T) {
 	assert.NotContains(t, gotQuery, "lang=ruby")
 }
 
+func TestFetchPage_Authenticated(t *testing.T) {
+	var gotPath, gotAuth, gotVersion string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v2/docs/page", r.URL.Path)
+		gotPath = r.URL.Query().Get("path")
+		gotAuth = r.Header.Get("Authorization")
+		gotVersion = r.Header.Get("Stripe-Version")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"content":"# Payments\n\nAccept payments with Stripe."}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(
+		docs.WithAPIBaseURL(server.URL),
+		docs.WithAPIKey("sk_test_123"),
+	)
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"--non-interactive", "/payments"})
+
+	err = root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "Payments")
+	assert.Equal(t, "/payments", gotPath)
+	assert.Equal(t, "Bearer sk_test_123", gotAuth)
+	assert.Equal(t, "unsafe-development", gotVersion)
+}
+
 func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "# Payments\n\nAccept payments with Stripe.")
