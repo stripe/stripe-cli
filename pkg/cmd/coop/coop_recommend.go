@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/stripe/stripe-cli/pkg/coop"
 )
 
 type coopRecommendCmd struct {
@@ -31,15 +33,27 @@ for the developer's requested integration.`,
 
 func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) error {
 	if !rc.all {
-		return fmt.Errorf("recommend requires --all to list blueprint summaries")
+		return outputCoopError(
+			"recommend requires --all to list blueprint summaries",
+			"List every blueprint summary before choosing one.",
+			coop.Continue("stripe coop recommend --all"),
+		)
 	}
 	repository := coopBlueprintRepository()
 	if repository == nil {
-		return fmt.Errorf("loading blueprints: no blueprint repository configured")
+		return outputCoopError(
+			"loading blueprints: no blueprint repository configured",
+			"Blueprint listing is unavailable in this build; report the environment issue to the developer.",
+			coop.Continue(coop.StatusCommand("")),
+		)
 	}
 	blueprints, err := repository.List(cmd.Context())
 	if err != nil {
-		return fmt.Errorf("loading blueprints: %w", err)
+		return outputCoopError(
+			fmt.Sprintf("loading blueprints: %v", err),
+			"Retry the blueprint listing; if it keeps failing, check network access and authentication.",
+			coop.Continue("stripe coop recommend --all"),
+		)
 	}
 
 	type bpEntry struct {
@@ -73,7 +87,9 @@ func (rc *coopRecommendCmd) runRecommendCmd(cmd *cobra.Command, args []string) e
 	}
 
 	response := map[string]interface{}{
-		"blueprints": catalog,
+		"ok":               true,
+		"protocol_version": coop.CurrentProtocolVersion,
+		"blueprints":       catalog,
 		"agent_instructions": `Review every blueprint summary and pick the best match for the developer's request.
 Consider: what they're building, whether it's one-time or recurring, if it involves platforms/marketplaces.
 If multiple could fit, ask the developer to clarify between the top 2-3 options.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -130,6 +131,33 @@ func TestInstallRefusesCorruptManifest(t *testing.T) {
 
 	_, err := Install(target)
 	require.ErrorIs(t, err, ErrUnmanagedSkill)
+}
+
+func TestInstallSweepsAbandonedDebrisButKeepsFreshStaging(t *testing.T) {
+	target := skillTarget(t)
+	parent := filepath.Dir(target)
+	require.NoError(t, os.MkdirAll(parent, 0o755))
+
+	stale := filepath.Join(parent, "."+Name+".staging-dead1234")
+	retired := filepath.Join(parent, "."+Name+".retired-dead5678")
+	fresh := filepath.Join(parent, "."+Name+".staging-live1234")
+	for _, dir := range []string{stale, retired, fresh} {
+		require.NoError(t, os.MkdirAll(dir, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("debris"), 0o644))
+	}
+	old := time.Now().Add(-2 * installDebrisMaxAge)
+	require.NoError(t, os.Chtimes(stale, old, old))
+	require.NoError(t, os.Chtimes(retired, old, old))
+
+	_, err := Install(target)
+	require.NoError(t, err)
+
+	for _, gone := range []string{stale, retired} {
+		_, statErr := os.Lstat(gone)
+		assert.True(t, os.IsNotExist(statErr), "%s must be swept", gone)
+	}
+	_, statErr := os.Lstat(fresh)
+	assert.NoError(t, statErr, "a fresh staging dir (possible concurrent install) must be kept")
 }
 
 func TestInstallLeavesNoStagingDebris(t *testing.T) {

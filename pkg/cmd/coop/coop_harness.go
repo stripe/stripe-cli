@@ -304,7 +304,10 @@ func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApp
 		envPrefix = adapter.envPrefix(autoApprove)
 	}
 
-	script := fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s %s\n",
+	// The env prefix must precede the `exec` keyword: bash only treats
+	// KEY=value words as assignments before the command word, and `exec` is
+	// the command word here.
+	script := fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\n%sexec %s %s\n",
 		shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath),
 		envPrefix, shellQuote(agent.path), strings.Join(args, " "))
 

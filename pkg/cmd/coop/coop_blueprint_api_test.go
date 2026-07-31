@@ -92,9 +92,12 @@ func TestCoopRecommendRequiresAll(t *testing.T) {
 	command.SilenceErrors = true
 	command.SilenceUsage = true
 
-	err := command.Execute()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires --all")
+	var err error
+	stderr := captureStderr(t, func() { err = command.Execute() })
+	require.ErrorIs(t, err, RenderedError{})
+	assert.Contains(t, stderr, "requires --all")
+	assert.Contains(t, stderr, `"recovery"`)
+	assert.Contains(t, stderr, "stripe coop recommend --all")
 	assert.Zero(t, repository.listCalls)
 }
 

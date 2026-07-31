@@ -38,12 +38,14 @@ loss): it returns the single correct continuation for the current state.
 
 When every node is done, run
 `stripe coop agent next-action --session=<id>`. It waits up to 10 minutes per
-call for the developer to choose; on timeout, re-run it. When the developer
-selects follow-up work, the response tells you to run
+call for the developer to choose; on timeout, re-run it. The response for the
+selected action is the instruction: either an `agent_prompt` to carry out
+directly (e.g. writing a summary), or — for guided actions like deploys — a
+`next` command telling you to run
 `stripe coop agent start-followup --session=<parent> --action=<id>`, which
-creates a new guided session — work it with the same node lifecycle. After
-finishing a follow-up, record it with
-`next-action --completed=<action-id>` on the parent session.
+creates a new guided session worked with the same node lifecycle. Either way,
+record the finished action with `next-action --completed=<action-id>` on the
+parent session.
 
 ## Errors
 

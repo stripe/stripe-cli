@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -70,6 +71,7 @@ func Install(targetDir string) (InstallResult, error) {
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", fmt.Errorf("creating skills directory: %w", err)
 	}
+	sweepInstallDebris(parent)
 
 	staging, err := stageSkill(parent, files, contentHash)
 	if err != nil {
@@ -84,6 +86,34 @@ func Install(targetDir string) (InstallResult, error) {
 		return ResultUpgraded, nil
 	}
 	return ResultInstalled, nil
+}
+
+// installDebrisMaxAge guards the sweep against deleting a concurrent
+// install's live staging directory: only debris comfortably older than any
+// in-flight install is removed.
+const installDebrisMaxAge = time.Hour
+
+// sweepInstallDebris removes staging/retired directories abandoned by earlier
+// interrupted runs (hard kills between staging and the rename swap, or a
+// retired copy whose removal failed). Best effort: a directory still held open
+// elsewhere is retried on the next install.
+func sweepInstallDebris(parent string) {
+	for _, pattern := range []string{
+		fmt.Sprintf(".%s.staging-*", Name),
+		fmt.Sprintf(".%s.retired-*", Name),
+	} {
+		matches, err := filepath.Glob(filepath.Join(parent, pattern))
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			info, err := os.Lstat(match)
+			if err != nil || time.Since(info.ModTime()) < installDebrisMaxAge {
+				continue
+			}
+			_ = os.RemoveAll(match)
+		}
+	}
 }
 
 // readManifest returns the manifest at dir. os.ErrNotExist means the target

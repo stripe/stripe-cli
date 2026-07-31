@@ -3,6 +3,7 @@ package coop
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // StatusCommand returns the exact command for inspecting Co-op state.
@@ -40,8 +41,15 @@ func StartWorkCommand(sessionID string, nodeNumber int, note string) string {
 		"stripe coop agent start-work --session=%s --step=%d --note=%s",
 		sessionID,
 		nodeNumber,
-		strconv.Quote(note),
+		strconv.Quote(sanitizeCommandNote(note)),
 	)
+}
+
+// sanitizeCommandNote keeps free text (node titles) safe to embed in an exact
+// `next` command: anything matching the `<...>` placeholder syntax would make
+// response validation reject the command as an unfilled template.
+func sanitizeCommandNote(note string) string {
+	return strings.NewReplacer("<", "", ">", "").Replace(note)
 }
 
 // AwaitReviewCommand returns the exact command for waiting on a node review.

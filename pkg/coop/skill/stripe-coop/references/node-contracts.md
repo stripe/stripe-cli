@@ -54,7 +54,9 @@ only a direct CLI/API call.
 ## Outputs and `${node...}` references
 
 Later nodes reference earlier results with
-`${node.<step-key>.<node-key>[:...]:<field>}` placeholders. Co-op resolves
+`${node.<step-key>.<node-key>[.<source>]:<field>}` placeholders — the
+reference part is dot-separated (an optional source segment after the node
+key), and a single colon separates it from the field. Co-op resolves
 them from outputs you report, so:
 
 - `start-work` lists `required_outputs` for the current node — the values

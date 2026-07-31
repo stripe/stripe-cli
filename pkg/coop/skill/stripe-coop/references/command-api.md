@@ -1,8 +1,11 @@
 # Co-op command API
 
-All agent-facing commands print a single JSON object. Successful responses go
-to stdout; failures go to stderr with a non-zero exit code but still contain
-structured JSON.
+`stripe coop run`, `stripe coop recommend --all`, and every
+`stripe coop agent` command print a single JSON object. Successful responses
+go to stdout; failures go to stderr with a non-zero exit code but still
+contain structured JSON. (`stripe coop status` is the exception: it prints a
+human-readable summary, or the raw session object with `--json` — neither
+carries `ok`/`protocol_version`.)
 
 ## Response shape
 
@@ -65,7 +68,7 @@ issue, and continue with the recovery continuation.
 |---|---|
 | `stripe coop recommend --all` | List blueprint summaries for selection. Add `--include-testing` to include testing blueprints. |
 | `stripe coop run <blueprint-id>` | Create a session from a blueprint. Flags: `--language`, repeatable `--setting key=value` and `--param key=value`, `--parent-session`, `--parent-step`. |
-| `stripe coop status [--session=<id>] [--json]` | Inspect session progress. Read-only. |
+| `stripe coop status [--session=<id>] [--json]` | Inspect session progress. Read-only. `--json` prints the raw session object (including each node's recorded `outputs`), not the agent response shape. |
 | `stripe coop stop [--session=<id>]` | End a session (normally the human's decision). |
 | `stripe coop join <id>` | Human-facing live TUI. Not for agents. |
 
@@ -117,8 +120,11 @@ an `id` — that `id` is the value for `--action` on `start-followup` and later
 for `--completed`; the response's `next`/`agent_prompt` name the selected one.
 
 ### `stripe coop agent start-followup --session=<parent-id> --action=<action-id> [--target=...]`
-Starts a guided follow-up session for an action offered by `next-action`.
-This is the only way to begin follow-up work after completion.
+Starts a guided follow-up session for a guided action offered by
+`next-action` (deploy actions). Run it only when a `next-action` response
+directs you to; other selections (e.g. writing a summary) arrive as an
+`agent_prompt` in the `next-action` response itself and are done directly,
+then recorded with `next-action --completed=<action-id>`.
 
 ## Stripe documentation lookup
 

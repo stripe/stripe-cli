@@ -17,7 +17,11 @@ import (
 // Name is the skill directory and frontmatter name.
 const Name = "stripe-coop"
 
-//go:embed all:stripe-coop
+// The pattern deliberately has no `all:` prefix: dot/underscore files present
+// on the build machine (.DS_Store, editor swap files) must never be embedded
+// and shipped into user skill directories.
+//
+//go:embed stripe-coop
 var embedded embed.FS
 
 // Files returns the bundled skill files keyed by path relative to the skill

@@ -3,7 +3,9 @@ package coopcmd
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -272,6 +274,31 @@ func TestCompactDiscoveryPromptCarriesOnlyDynamicContext(t *testing.T) {
 	assert.NotContains(t, prompt, "await-review")
 	assert.NotContains(t, prompt, stripeAgentGuidanceStart)
 	assert.Less(t, len(prompt), 600)
+}
+
+// TestGooseLauncherScriptExecutesWithEnvMode runs the generated goose
+// launcher for real: the GOOSE_MODE assignment must precede `exec` or bash
+// tries to execute a program literally named "GOOSE_MODE=...".
+func TestGooseLauncherScriptExecutesWithEnvMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("launcher execution requires a POSIX shell")
+	}
+
+	fakeGoose := filepath.Join(t.TempDir(), "goose")
+	outFile := filepath.Join(t.TempDir(), "out")
+	require.NoError(t, os.WriteFile(fakeGoose, []byte("#!/bin/sh\necho \"$GOOSE_MODE|$@\" > "+shellQuote(outFile)+"\n"), 0o700))
+
+	promptPath := filepath.Join(t.TempDir(), "prompt")
+	require.NoError(t, os.WriteFile(promptPath, []byte("the prompt"), 0o600))
+
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(
+		&agentInfo{adapter: harnessByID("goose"), path: fakeGoose}, promptPath, true)
+	require.NoError(t, err)
+
+	require.NoError(t, exec.Command("bash", launcherPath).Run())
+	captured, err := os.ReadFile(outFile)
+	require.NoError(t, err)
+	assert.Equal(t, "auto|run -t the prompt\n", string(captured))
 }
 
 // TestAgentResponsesCarryProtocolVersion pins the wire-visible protocol

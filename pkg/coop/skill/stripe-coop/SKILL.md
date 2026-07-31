@@ -76,8 +76,11 @@ Full command and response reference: `references/command-api.md`.
 ## After completion
 
 When all nodes are done, run `next-action` and wait for the developer's
-choice. Any follow-up work must go through `start-followup` — do not start
-free-form work on a completed session.
+choice. Act only on what its response returns: some selections come back with
+an `agent_prompt` to carry out directly, while guided actions (deploys) tell
+you to run `start-followup`, which creates a new reviewed session. Do not
+start free-form work on a completed session outside what `next-action`
+returns.
 
 ## Safety
 
