@@ -168,7 +168,7 @@ func TestClaudeLauncherConfiguresCostEffectiveWorkerAndInteractivePrompt(t *test
 	require.NoError(t, err)
 	script := string(launcher)
 
-	assert.Contains(t, script, "--agents '")
+	assert.Contains(t, script, `'--agents' '`)
 	assert.Contains(t, script, `"model":"haiku"`)
 	assert.Contains(t, script, "Use proactively for well-bounded, self-contained")
 	assert.Contains(t, script, "--dangerously-skip-permissions")
@@ -187,7 +187,7 @@ func TestClaudeLauncherNormalModeDoesNotBypassPermissions(t *testing.T) {
 	require.NoError(t, err)
 	script := string(launcher)
 
-	assert.Contains(t, script, "--agents '")
+	assert.Contains(t, script, `'--agents' '`)
 	assert.NotContains(t, script, "--dangerously-skip-permissions")
 }
 
@@ -212,9 +212,9 @@ func TestFallbackPaneBuildFailureAbortsStartedSession(t *testing.T) {
 	rc := &coopRunCmd{language: "node"}
 	buildErr := errors.New("pane build failed")
 
-	err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
+	err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (paneCommand, func(), error) {
 		require.NotNil(t, session)
-		return "", nil, buildErr
+		return paneCommand{}, nil, buildErr
 	})
 	require.ErrorIs(t, err, buildErr)
 
@@ -236,15 +236,15 @@ func TestFallbackJoinInstructionsIncludeCoopEnv(t *testing.T) {
 
 	rc := &coopRunCmd{language: "node"}
 	output := captureStdout(t, func() {
-		err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
+		err := rc.runFallbackWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (paneCommand, func(), error) {
 			require.NotNil(t, session)
-			return "true", nil, nil
+			return paneCommand{argv: []string{"true"}}, nil, nil
 		})
 		require.NoError(t, err)
 	})
 
 	assert.Contains(t, output, "Open another terminal and run: XDG_CONFIG_HOME=")
-	assert.Contains(t, output, " stripe coop join coop_")
+	assert.Contains(t, output, `'/stripe' coop join coop_`)
 }
 
 func TestFallbackWaitInstructionsIncludeCoopEnv(t *testing.T) {
@@ -252,15 +252,15 @@ func TestFallbackWaitInstructionsIncludeCoopEnv(t *testing.T) {
 
 	rc := &coopRunCmd{language: "node"}
 	output := captureStdout(t, func() {
-		err := rc.runFallbackWithCommand("/stripe", nil, func(session *coop.Session) (string, func(), error) {
+		err := rc.runFallbackWithCommand("/stripe", nil, func(session *coop.Session) (paneCommand, func(), error) {
 			require.Nil(t, session)
-			return "true", nil, nil
+			return paneCommand{argv: []string{"true"}}, nil, nil
 		})
 		require.NoError(t, err)
 	})
 
 	assert.Contains(t, output, "Open another terminal and run: XDG_CONFIG_HOME=")
-	assert.Contains(t, output, " stripe coop join --wait")
+	assert.Contains(t, output, `'/stripe' coop join --wait`)
 }
 
 func TestCoopTUIPaneWidthFor(t *testing.T) {
@@ -321,9 +321,9 @@ func TestTmuxSplitUsesFixedTUIWidth(t *testing.T) {
 	})
 
 	rc := &coopRunCmd{language: "node"}
-	err := rc.runInTmuxSplitWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
+	err := rc.runInTmuxSplitWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (paneCommand, func(), error) {
 		require.NotNil(t, session)
-		return "agent", nil, nil
+		return paneCommand{shell: "agent"}, nil, nil
 	})
 	require.ErrorIs(t, err, splitErr)
 
@@ -352,15 +352,15 @@ func TestTmuxSplitTooNarrowFallsBackToSingleTerminal(t *testing.T) {
 
 	rc := &coopRunCmd{language: "node"}
 	output := captureStdout(t, func() {
-		err := rc.runInTmuxSplitWithCommand("/stripe", nil, func(session *coop.Session) (string, func(), error) {
+		err := rc.runInTmuxSplitWithCommand("/stripe", nil, func(session *coop.Session) (paneCommand, func(), error) {
 			require.Nil(t, session)
-			return "true", nil, nil
+			return paneCommand{argv: []string{"true"}}, nil, nil
 		})
 		require.NoError(t, err)
 	})
 
 	assert.Contains(t, output, "too narrow")
-	assert.Contains(t, output, " stripe coop join --wait")
+	assert.Contains(t, output, `'/stripe' coop join --wait`)
 	assert.Nil(t, findTmuxCall(tmuxCalls, "split-window"))
 }
 
@@ -394,9 +394,9 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 
 	cleanupCalled := false
 	rc := &coopRunCmd{language: "node"}
-	err := rc.runInNewTmuxWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
+	err := rc.runInNewTmuxWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (paneCommand, func(), error) {
 		require.NotNil(t, session)
-		return "agent", func() { cleanupCalled = true }, nil
+		return paneCommand{shell: "agent"}, func() { cleanupCalled = true }, nil
 	})
 	require.ErrorIs(t, err, splitErr)
 	assert.True(t, cleanupCalled)
@@ -498,5 +498,5 @@ func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
 
 	// The pane command must be exactly the single-quoted launcher path, so
 	// `bash -c` executes the launcher instead of parsing the path.
-	assert.Equal(t, shellQuote(matches[0]), paneCmd)
+	assert.Equal(t, shellQuote(matches[0]), paneCmd.shell)
 }

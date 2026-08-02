@@ -30,7 +30,16 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-type coopPaneCommandBuilder func(session *coop.Session) (string, func(), error)
+// paneCommand describes the agent launch in each of the two launch modes:
+// shell is interpolated into a tmux pane's command line; argv runs directly in
+// this terminal with no shell, so the fallback works where bash doesn't exist
+// (Windows, minimal containers, NixOS).
+type paneCommand struct {
+	shell string
+	argv  []string
+}
+
+type coopPaneCommandBuilder func(session *coop.Session) (paneCommand, func(), error)
 
 var (
 	selectString = helpers.Select[string]
@@ -140,31 +149,39 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 	return choice == "bypass", nil
 }
 
-func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
-	launcherPath := promptPath + ".sh"
-	var script string
-
+// agentFlags returns the per-agent CLI flags as an argv fragment. The tmux
+// launcher script and the direct-exec fallback both build from this so the two
+// launch modes cannot drift.
+func agentFlags(agent *agentInfo, autoApprove bool) []string {
 	switch agent.name {
 	case "claude":
-		flags := " --agents " + shellQuote(claudeCoopAgents)
+		flags := []string{"--agents", claudeCoopAgents}
 		if autoApprove {
-			flags += " --dangerously-skip-permissions"
+			flags = append(flags, "--dangerously-skip-permissions")
 		}
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
-
+		return flags
 	case "codex":
-		flags := ""
 		if autoApprove {
-			flags = " --dangerously-bypass-approvals-and-sandbox"
+			return []string{"--dangerously-bypass-approvals-and-sandbox"}
 		}
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
-
+		return nil
 	default:
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path))
+		return nil
 	}
+}
+
+func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
+	launcherPath := promptPath + ".sh"
+
+	flags := ""
+	for _, flag := range agentFlags(agent, autoApprove) {
+		flags += " " + shellQuote(flag)
+	}
+	// `#!/usr/bin/env bash`, not `#!/bin/bash`: the script runs inside tmux
+	// panes whose shell resolves bash from PATH, and /bin/bash does not exist
+	// on NixOS.
+	script := fmt.Sprintf("#!/usr/bin/env bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
+		shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
 
 	if err := os.WriteFile(launcherPath, []byte(script), 0700); err != nil {
 		return "", fmt.Errorf("creating agent launcher: %w", err)
@@ -208,44 +225,50 @@ func currentTmuxPaneWidth() int {
 }
 
 func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, discoveryPrompt string, autoApprove bool) coopPaneCommandBuilder {
-	return func(session *coop.Session) (string, func(), error) {
+	return func(session *coop.Session) (paneCommand, func(), error) {
 		prompt := discoveryPrompt
 		if session != nil {
 			var err error
 			prompt, err = rc.buildAgentPromptForSession(session)
 			if err != nil {
-				return "", nil, err
+				return paneCommand{}, nil, err
 			}
 		}
 		promptPath, err := writePromptFile(prompt)
 		if err != nil {
-			return "", nil, err
+			return paneCommand{}, nil, err
 		}
 
 		agentCmd, err := rc.buildAgentCmd(agent, promptPath, autoApprove)
 		if err != nil {
 			os.Remove(promptPath)
-			return "", nil, err
+			return paneCommand{}, nil, err
 		}
-		// The returned command is run via `bash -c`, so the launcher path itself
-		// must be shell-quoted — otherwise a temp dir (TMPDIR) containing a space
-		// or shell syntax would be parsed by bash before the launcher runs. The
-		// cleanup closure keeps the raw path for os.Remove.
-		return shellQuote(agentCmd), func() {
-			os.Remove(promptPath)
-			os.Remove(agentCmd)
-		}, nil
+		// The shell command is run via `bash -c`, so the launcher path itself
+		// must be shell-quoted — otherwise a temp dir (TMPDIR) containing a
+		// space or shell syntax would be parsed by bash before the launcher
+		// runs. The cleanup closure keeps the raw path for os.Remove.
+		return paneCommand{
+				shell: shellQuote(agentCmd),
+				argv:  append(append([]string{agent.path}, agentFlags(agent, autoApprove)...), prompt),
+			}, func() {
+				os.Remove(promptPath)
+				os.Remove(agentCmd)
+			}, nil
 	}
 }
 
 func (rc *coopRunCmd) debugAgentPaneCommandBuilder(stripeBin string) coopPaneCommandBuilder {
-	return func(session *coop.Session) (string, func(), error) {
+	return func(session *coop.Session) (paneCommand, func(), error) {
 		sessionID := ""
 		if session != nil {
 			sessionID = session.ID
 		}
 		cmd := fmt.Sprintf("%s coop debug-agent --session %s", shellQuote(stripeBin), shellQuote(sessionID))
-		return shellCommandWithCoopEnv(cmd), nil, nil
+		return paneCommand{
+			shell: shellCommandWithCoopEnv(cmd),
+			argv:  []string{stripeBin, "coop", "debug-agent", "--session", sessionID},
+		}, nil, nil
 	}
 }
 
@@ -291,10 +314,10 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
-	paneCmd = shellCommandWithCoopEnv(paneCmd)
+	shellCmd := shellCommandWithCoopEnv(paneCmd.shell)
 
 	agentWidth := paneWidth - tuiWidth - coopPaneDividerWidth
-	if _, err := splitCoopAgentPane("-h", "-l", strconv.Itoa(agentWidth), "bash", "-c", paneCmd); err != nil {
+	if _, err := splitCoopAgentPane("-h", "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -368,7 +391,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
-	paneCmd = shellCommandWithCoopEnv(paneCmd)
+	shellCmd := shellCommandWithCoopEnv(paneCmd.shell)
 
 	if err := runTmux("new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
 		"bash", "-c", tuiCmd); err != nil {
@@ -380,7 +403,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 	}
 
 	agentWidth := width - tuiWidth - coopPaneDividerWidth
-	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-l", strconv.Itoa(agentWidth), "bash", "-c", paneCmd)
+	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd)
 	if err != nil {
 		if cleanup != nil {
 			cleanup()
@@ -426,6 +449,13 @@ func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.B
 func (rc *coopRunCmd) runFallbackWithReason(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder, reason string) error {
 	fmt.Println(reason)
 
+	// Print the absolute binary path: the second terminal may be a login shell
+	// whose PATH doesn't carry a version-manager shim or ~/.local/bin yet.
+	joinBin := "stripe"
+	if stripeBin != "" {
+		joinBin = shellQuote(stripeBin)
+	}
+
 	var session *coop.Session
 	if blueprint != nil {
 		var err error
@@ -434,9 +464,9 @@ func (rc *coopRunCmd) runFallbackWithReason(stripeBin string, blueprint *coop.Bl
 			return err
 		}
 		fmt.Printf("Session started: %s\n", session.ID)
-		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv("stripe coop join "+session.ID))
+		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv(joinBin+" coop join "+session.ID))
 	} else {
-		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv("stripe coop join --wait"))
+		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv(joinBin+" coop join --wait"))
 	}
 	fmt.Println()
 
@@ -448,7 +478,13 @@ func (rc *coopRunCmd) runFallbackWithReason(stripeBin string, blueprint *coop.Bl
 	if cleanup != nil {
 		defer cleanup()
 	}
-	agentExec := exec.Command("bash", "-c", paneCmd)
+	if len(paneCmd.argv) == 0 {
+		rc.abortStartedSession(session, "agent command empty")
+		return fmt.Errorf("agent command is empty")
+	}
+	// Direct exec, no shell: this is the only launch path that must work
+	// everywhere, including Windows and containers without bash.
+	agentExec := exec.Command(paneCmd.argv[0], paneCmd.argv[1:]...)
 	agentExec.Stdin = os.Stdin
 	agentExec.Stdout = os.Stdout
 	agentExec.Stderr = os.Stderr
