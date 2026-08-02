@@ -480,6 +480,9 @@ func (rc *coopRunCmd) runFallbackWithReason(stripeBin string, blueprint *coop.Bl
 	} else {
 		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv(joinBin+" coop join --wait"))
 	}
+	if hint := nativeSplitHint(); hint != "" {
+		fmt.Println(hint)
+	}
 	fmt.Println()
 
 	paneCmd, cleanup, err := buildPaneCmd(session)

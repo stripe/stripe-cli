@@ -57,6 +57,9 @@ splits the current window. Otherwise creates a new tmux session.`,
 func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	hasTmux := rc.hasTmux()
 	inTmux := os.Getenv("TMUX") != ""
+	if !hasTmux && !inTmux && !rc.debugAgent {
+		hasTmux = rc.offerTmuxSetup()
+	}
 
 	var blueprintID string
 	var blueprint *coop.Blueprint
