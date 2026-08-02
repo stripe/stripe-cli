@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	"github.com/stripe/stripe-cli/pkg/coop/tui"
 )
 
 func TestNormalizeCoopTmuxSessionDimensionsUsesTerminalSize(t *testing.T) {
@@ -262,6 +263,107 @@ func TestFallbackWaitInstructionsIncludeCoopEnv(t *testing.T) {
 	assert.Contains(t, output, " stripe coop join --wait")
 }
 
+func TestCoopTUIPaneWidthFor(t *testing.T) {
+	tests := []struct {
+		name  string
+		width int
+		want  int
+	}{
+		{name: "ultrawide", width: 250, want: coopTUIPaneWidth},
+		{name: "default session width", width: defaultCoopTmuxSessionWidth, want: coopTUIPaneWidth},
+		{name: "standard tier floor", width: coopTUIPaneWidth + coopPaneDividerWidth + coopAgentPaneMinWidth, want: coopTUIPaneWidth},
+		{name: "just below standard tier", width: coopTUIPaneWidth + coopPaneDividerWidth + coopAgentPaneMinWidth - 1, want: coopTUIPaneWidthNarrow},
+		{name: "narrow tier floor", width: coopTUIPaneWidthNarrow + coopPaneDividerWidth + coopAgentPaneMinWidthNarrow, want: coopTUIPaneWidthNarrow},
+		{name: "just below narrow tier", width: coopTUIPaneWidthNarrow + coopPaneDividerWidth + coopAgentPaneMinWidthNarrow - 1, want: 0},
+		{name: "laptop 100 cols", width: 100, want: 0},
+		{name: "stock 80x24 terminal", width: 80, want: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, coopTUIPaneWidthFor(tt.width))
+		})
+	}
+}
+
+func TestCoopTUIPaneWidthsStayBelowSplitWorkspaceThreshold(t *testing.T) {
+	// The companion pane must always render the TUI's single-column layout;
+	// the two-column workspace is reserved for `coop join` in a full terminal.
+	assert.Less(t, coopTUIPaneWidth, tui.SplitWorkspaceMinWidth)
+	assert.Less(t, coopTUIPaneWidthNarrow, tui.SplitWorkspaceMinWidth)
+}
+
+func TestTmuxSplitUsesFixedTUIWidth(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	splitErr := errors.New("split failed")
+	var tmuxCalls [][]string
+	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
+	runTmux = func(args ...string) error {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		return nil
+	}
+	runTmuxOutput = func(args ...string) (string, error) {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		switch args[0] {
+		case "display-message":
+			return "200\n", nil
+		case "split-window":
+			return "", splitErr
+		default:
+			return "", nil
+		}
+	}
+	t.Cleanup(func() {
+		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
+	})
+
+	rc := &coopRunCmd{language: "node"}
+	err := rc.runInTmuxSplitWithCommand("/stripe", commandTestBlueprint(t), func(session *coop.Session) (string, func(), error) {
+		require.NotNil(t, session)
+		return "agent", nil, nil
+	})
+	require.ErrorIs(t, err, splitErr)
+
+	splitCall := findTmuxCall(tmuxCalls, "split-window")
+	require.NotNil(t, splitCall)
+	// 200-col pane → TUI keeps 48, divider takes 1, agent gets 151.
+	assert.Contains(t, strings.Join(splitCall, " "), "-l 151")
+	assert.NotContains(t, strings.Join(splitCall, " "), "-p")
+}
+
+func TestTmuxSplitTooNarrowFallsBackToSingleTerminal(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var tmuxCalls [][]string
+	originalRunTmuxOutput := runTmuxOutput
+	runTmuxOutput = func(args ...string) (string, error) {
+		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
+		if args[0] == "display-message" {
+			return "100\n", nil
+		}
+		return "", nil
+	}
+	t.Cleanup(func() {
+		runTmuxOutput = originalRunTmuxOutput
+	})
+
+	rc := &coopRunCmd{language: "node"}
+	output := captureStdout(t, func() {
+		err := rc.runInTmuxSplitWithCommand("/stripe", nil, func(session *coop.Session) (string, func(), error) {
+			require.Nil(t, session)
+			return "true", nil, nil
+		})
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, output, "too narrow")
+	assert.Contains(t, output, " stripe coop join --wait")
+	assert.Nil(t, findTmuxCall(tmuxCalls, "split-window"))
+}
+
 func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
@@ -306,6 +408,9 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	splitCall := findTmuxCall(tmuxCalls, "split-window")
 	require.NotNil(t, splitCall)
 	assert.Contains(t, splitCall[len(splitCall)-1], "XDG_CONFIG_HOME=")
+	// Non-TTY test environment falls back to the 200-col default session
+	// width: TUI keeps 48, divider takes 1, agent gets 151.
+	assert.Contains(t, strings.Join(splitCall, " "), "-l 151")
 
 	store, err := coop.NewStore(coopConfigFolder())
 	require.NoError(t, err)

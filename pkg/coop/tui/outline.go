@@ -18,8 +18,15 @@ func (m Model) renderStepList() string {
 	return m.renderStepOutline().content
 }
 
+// SplitWorkspaceMinWidth is the minimum render width for the two-column
+// workspace (nav rail + detail panel). Narrower models render the
+// single-column outline. The `coop start` launcher sizes its TUI pane below
+// this threshold on purpose, so the companion pane is always single-column;
+// the two-column workspace is for `coop join` running in a full terminal.
+const SplitWorkspaceMinWidth = 100
+
 func (m Model) useSplitWorkspace() bool {
-	return m.width >= 100 && m.session != nil && !m.session.IsComplete()
+	return m.width >= SplitWorkspaceMinWidth && m.session != nil && !m.session.IsComplete()
 }
 
 // outlineWidth returns the column width the step outline should render into.
