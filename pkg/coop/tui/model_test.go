@@ -770,6 +770,30 @@ func TestWaitingModeAdoptsExistingActiveSessionAfterDelay(t *testing.T) {
 	assert.Equal(t, "old_session", discovered.sessionID)
 }
 
+func TestReviewAlertFiresOnlyOnTransitions(t *testing.T) {
+	var alerts [][2]bool
+	m := readyModel()
+	m.focused = false
+	m.reviewAlertNotifier = func(hasReview, focused bool) {
+		alerts = append(alerts, [2]bool{hasReview, focused})
+	}
+
+	// Step 0 is ready for review once every node is done or in review.
+	m.session.Steps[0].Nodes[1].State = coop.NodeReview
+	cmd := m.reviewAlertCmd()
+	require.NotNil(t, cmd, "review appearing must fire an alert")
+	cmd()
+	assert.Equal(t, [][2]bool{{true, false}}, alerts)
+
+	assert.Nil(t, m.reviewAlertCmd(), "unchanged review state must not re-alert")
+
+	m.session.Steps[0].Nodes[1].State = coop.NodeDone
+	cmd = m.reviewAlertCmd()
+	require.NotNil(t, cmd, "review clearing must fire so callers can restore state")
+	cmd()
+	assert.Equal(t, [][2]bool{{true, false}, {false, false}}, alerts)
+}
+
 func TestNotifyReviewDecisionWithoutNotifierExplainsManualResume(t *testing.T) {
 	m := readyModel()
 	m.reviewDecisionNotifier = nil

@@ -30,6 +30,18 @@ func WithReviewDecisionNotifier(notify ReviewDecisionNotifier) Option {
 	}
 }
 
+// ReviewAlertNotifier is told when the set of steps awaiting human review
+// becomes non-empty or empty again. focused reports whether the terminal had
+// focus at that moment, so callers can ring a bell only when the user is
+// looking elsewhere.
+type ReviewAlertNotifier func(hasReview, focused bool)
+
+func WithReviewAlertNotifier(notify ReviewAlertNotifier) Option {
+	return func(m *Model) {
+		m.reviewAlertNotifier = notify
+	}
+}
+
 // programOptions honors the CLI's own color setting.
 //
 // Every other command routes color through ansi.ColorsEnabled, which folds in

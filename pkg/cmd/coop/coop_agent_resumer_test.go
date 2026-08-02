@@ -28,13 +28,38 @@ func TestSplitCoopAgentPaneTagsReturnedPane(t *testing.T) {
 		runTmuxOutput = originalRunTmuxOutput
 	})
 
-	pane, err := splitCoopAgentPane("-h", "bash", "-c", "agent")
+	pane, err := splitCoopAgentPane(nil, "-h", "bash", "-c", "agent")
 
 	require.NoError(t, err)
 	assert.Equal(t, "%7", pane)
 	require.Len(t, calls, 2)
 	assert.Equal(t, []string{"split-window", "-P", "-F", "#{pane_id}", "-h", "bash", "-c", "agent"}, calls[0])
 	assert.Equal(t, []string{"set-option", "-p", "-t", "%7", coopAgentPaneOption, "1"}, calls[1])
+}
+
+func TestSplitCoopAgentPaneTargetsRequestedServer(t *testing.T) {
+	originalRunTmux := runTmux
+	originalRunTmuxOutput := runTmuxOutput
+	var calls [][]string
+	runTmuxOutput = func(args ...string) (string, error) {
+		calls = append(calls, append([]string(nil), args...))
+		return "%3\n", nil
+	}
+	runTmux = func(args ...string) error {
+		calls = append(calls, append([]string(nil), args...))
+		return nil
+	}
+	t.Cleanup(func() {
+		runTmux = originalRunTmux
+		runTmuxOutput = originalRunTmuxOutput
+	})
+
+	_, err := splitCoopAgentPane([]string{"-L", coopTmuxSocket}, "-h", "bash", "-c", "agent")
+
+	require.NoError(t, err)
+	require.Len(t, calls, 2)
+	assert.Equal(t, []string{"-L", "stripe-coop"}, calls[0][:2], "split must land on the dedicated socket")
+	assert.Equal(t, []string{"-L", "stripe-coop"}, calls[1][:2], "tagging must target the same server")
 }
 
 func TestTmuxAgentResumerSerializesConcurrentWakeUps(t *testing.T) {

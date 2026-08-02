@@ -112,13 +112,27 @@ func coopTUIOptions() []tui.Option {
 			resumer.heartbeatAge = store.HeartbeatAge
 		}
 		options = append(options, tui.WithReviewDecisionNotifier(resumer.Notify))
+		alerter := &tmuxReviewAlerter{tuiPane: tuiPane}
+		options = append(options, tui.WithReviewAlertNotifier(alerter.Alert))
+	} else {
+		// Outside tmux the terminal still understands BEL, and bubbletea's
+		// focus reporting still works — ring only when the user is elsewhere.
+		options = append(options, tui.WithReviewAlertNotifier(func(hasReview, focused bool) {
+			if hasReview && !focused {
+				ringTerminalBell()
+			}
+		}))
 	}
 	return options
 }
 
-func splitCoopAgentPane(args ...string) (string, error) {
-	args = append([]string{"split-window", "-P", "-F", "#{pane_id}"}, args...)
-	out, err := runTmuxOutput(args...)
+// splitCoopAgentPane splits off and tags the agent pane. serverFlags select
+// the tmux server (e.g. -L stripe-coop for the dedicated launcher socket);
+// nil targets the server from $TMUX, which is correct inside an existing
+// session.
+func splitCoopAgentPane(serverFlags []string, args ...string) (string, error) {
+	splitArgs := append(withTmuxServerFlags(serverFlags, "split-window", "-P", "-F", "#{pane_id}"), args...)
+	out, err := runTmuxOutput(splitArgs...)
 	if err != nil {
 		return "", err
 	}
@@ -126,9 +140,44 @@ func splitCoopAgentPane(args ...string) (string, error) {
 	if pane == "" {
 		return "", fmt.Errorf("tmux split-window returned an empty pane ID")
 	}
-	if err := runTmux("set-option", "-p", "-t", pane, coopAgentPaneOption, "1"); err != nil {
-		_ = runTmux("kill-pane", "-t", pane)
+	if err := runTmux(withTmuxServerFlags(serverFlags, "set-option", "-p", "-t", pane, coopAgentPaneOption, "1")...); err != nil {
+		_ = runTmux(withTmuxServerFlags(serverFlags, "kill-pane", "-t", pane)...)
 		return "", fmt.Errorf("tagging Co-op agent pane: %w", err)
 	}
 	return pane, nil
+}
+
+// withTmuxServerFlags prepends tmux server-selection flags (which must come
+// before the subcommand) without aliasing the caller's slice.
+func withTmuxServerFlags(serverFlags []string, args ...string) []string {
+	return append(append([]string(nil), serverFlags...), args...)
+}
+
+// tmuxReviewAlerter surfaces "a review is waiting" through tmux itself — the
+// only channel that reaches the user regardless of which pane is active or
+// which terminal draws the status line.
+type tmuxReviewAlerter struct {
+	tuiPane string
+}
+
+// Alert renames the co-op window in tmux's status line while a review waits
+// and rings the terminal bell if the user is looking elsewhere. rename-window
+// disables automatic-rename, so clearing restores automatic naming instead of
+// renaming again.
+func (a *tmuxReviewAlerter) Alert(hasReview, focused bool) {
+	if hasReview {
+		_ = runTmux("rename-window", "-t", a.tuiPane, "coop: REVIEW")
+		if !focused {
+			ringTerminalBell()
+		}
+		return
+	}
+	_ = runTmux("set-window-option", "-t", a.tuiPane, "automatic-rename", "on")
+}
+
+// ringTerminalBell writes BEL to the controlling terminal. Harmless under the
+// TUI's alt screen; the shipped tmux config passes it through to the outer
+// terminal (bell-action any, visual-bell off).
+func ringTerminalBell() {
+	fmt.Fprint(os.Stderr, "\a")
 }

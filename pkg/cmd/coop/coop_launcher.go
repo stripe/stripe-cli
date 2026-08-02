@@ -317,7 +317,10 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 	shellCmd := shellCommandWithCoopEnv(paneCmd.shell)
 
 	agentWidth := paneWidth - tuiWidth - coopPaneDividerWidth
-	if _, err := splitCoopAgentPane("-h", "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd); err != nil {
+	// nil server flags: inside an existing session the split must land on the
+	// user's own server (resolved via $TMUX), never the dedicated socket —
+	// attaching a second server from inside a pane nests silently.
+	if _, err := splitCoopAgentPane(nil, "-h", "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -338,9 +341,10 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 
 func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	sessionName := "stripe-coop"
+	serverFlags := []string{"-L", coopTmuxSocket}
 
-	// Check for existing session
-	if err := runTmux("has-session", "-t", sessionName); err == nil {
+	// Check for existing session on the dedicated socket
+	if err := runTmux(withTmuxServerFlags(serverFlags, "has-session", "-t", sessionName)...); err == nil {
 		var choice string
 		if err := selectString("A co-op tmux session already exists. What would you like to do?",
 			[]huh.Option[string]{
@@ -353,13 +357,13 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		}
 
 		if choice == "attach" {
-			attach := exec.Command("tmux", "attach-session", "-t", sessionName)
+			attach := exec.Command("tmux", withTmuxServerFlags(serverFlags, "attach-session", "-t", sessionName)...)
 			attach.Stdin = os.Stdin
 			attach.Stdout = os.Stdout
 			attach.Stderr = os.Stderr
 			return attach.Run()
 		}
-		killTmuxSession(sessionName)
+		killTmuxSession(serverFlags, sessionName)
 	}
 
 	width, height := coopTmuxSessionDimensions()
@@ -393,8 +397,16 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 	}
 	shellCmd := shellCommandWithCoopEnv(paneCmd.shell)
 
-	if err := runTmux("new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
-		"bash", "-c", tuiCmd); err != nil {
+	// The shipped config only applies when this new-session call starts the
+	// server; -f is ignored on a running server, which can only be a co-op one
+	// on this socket. On write failure, launch with tmux defaults — degraded
+	// but working.
+	newSessionFlags := serverFlags
+	if confPath, err := writeCoopTmuxConf(); err == nil {
+		newSessionFlags = withTmuxServerFlags(serverFlags, "-f", confPath)
+	}
+	if err := runTmux(withTmuxServerFlags(newSessionFlags, "new-session", "-d", "-s", sessionName,
+		"-x", strconv.Itoa(width), "-y", strconv.Itoa(height), "bash", "-c", tuiCmd)...); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -403,27 +415,27 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 	}
 
 	agentWidth := width - tuiWidth - coopPaneDividerWidth
-	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd)
+	agentPane, err := splitCoopAgentPane(serverFlags, "-h", "-t", sessionName, "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd)
 	if err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
-		killTmuxSession(sessionName)
+		killTmuxSession(serverFlags, sessionName)
 		rc.abortStartedSession(session, "tmux split-window failed")
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	runTmux("select-pane", "-t", agentPane)
+	runTmux(withTmuxServerFlags(serverFlags, "select-pane", "-t", agentPane)...)
 
-	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
+	attach := exec.Command("tmux", withTmuxServerFlags(serverFlags, "attach-session", "-t", sessionName)...)
 	attach.Stdin = os.Stdin
 	attach.Stdout = os.Stdout
 	attach.Stderr = os.Stderr
 	return attach.Run()
 }
 
-func killTmuxSession(sessionName string) {
-	_ = runTmux("kill-session", "-t", sessionName)
+func killTmuxSession(serverFlags []string, sessionName string) {
+	_ = runTmux(withTmuxServerFlags(serverFlags, "kill-session", "-t", sessionName)...)
 }
 
 func coopTmuxSessionDimensions() (int, int) {

@@ -78,6 +78,8 @@ type Model struct {
 	lastUpdateTime         time.Time
 	agentIsIdle            bool
 	reviewDecisionNotifier ReviewDecisionNotifier
+	reviewAlertNotifier    ReviewAlertNotifier
+	reviewAlerted          bool
 
 	agentHeartbeatMissing bool
 	// consecutiveReadErrors tracks failed session polls, so a single transient
@@ -259,7 +261,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.resizeViewport()
 		m.syncViewport()
-		return m, tickCmd()
+		return m, tea.Batch(tickCmd(), m.reviewAlertCmd())
 
 	case errMsg:
 		m.recordReadError(msg.err)
@@ -395,6 +397,26 @@ func (m Model) progressBar() *tea.ProgressBar {
 		state = tea.ProgressBarWarning
 	}
 	return tea.NewProgressBar(state, value)
+}
+
+// reviewAlertCmd fires the review-alert notifier when the reviews-waiting
+// state flips in either direction. It runs off the update loop so a slow
+// notifier (a tmux shell-out) never blocks rendering.
+func (m *Model) reviewAlertCmd() tea.Cmd {
+	if m.reviewAlertNotifier == nil || m.session == nil {
+		return nil
+	}
+	hasReview := m.actionableReviewCount() > 0
+	if hasReview == m.reviewAlerted {
+		return nil
+	}
+	m.reviewAlerted = hasReview
+	notify := m.reviewAlertNotifier
+	focused := m.focused
+	return func() tea.Msg {
+		notify(hasReview, focused)
+		return nil
+	}
 }
 
 // resumeFollowingIfReviewAppeared clears the manual-navigation latch when a

@@ -373,7 +373,7 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	originalRunTmuxOutput := runTmuxOutput
 	runTmux = func(args ...string) error {
 		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
-		switch args[0] {
+		switch tmuxSubcommand(args) {
 		case "has-session":
 			return errors.New("session not found")
 		default:
@@ -382,7 +382,7 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	}
 	runTmuxOutput = func(args ...string) (string, error) {
 		tmuxCalls = append(tmuxCalls, append([]string(nil), args...))
-		if args[0] == "split-window" {
+		if tmuxSubcommand(args) == "split-window" {
 			return "", splitErr
 		}
 		return "", nil
@@ -400,9 +400,12 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	})
 	require.ErrorIs(t, err, splitErr)
 	assert.True(t, cleanupCalled)
-	assert.True(t, hasTmuxCall(tmuxCalls, "kill-session", "-t", "stripe-coop"))
+	assert.True(t, hasTmuxCall(tmuxCalls, "-L", coopTmuxSocket, "kill-session", "-t", "stripe-coop"))
 	newSessionCall := findTmuxCall(tmuxCalls, "new-session")
 	require.NotNil(t, newSessionCall)
+	// The new server must start on the dedicated socket with the shipped conf.
+	assert.Equal(t, []string{"-L", coopTmuxSocket, "-f"}, newSessionCall[:3])
+	assert.Contains(t, newSessionCall[3], "coop.tmux.conf")
 	assert.Contains(t, newSessionCall[len(newSessionCall)-1], "XDG_CONFIG_HOME=")
 	assert.Contains(t, newSessionCall[len(newSessionCall)-1], " coop join ")
 	splitCall := findTmuxCall(tmuxCalls, "split-window")
@@ -443,11 +446,25 @@ func hasTmuxCall(calls [][]string, want ...string) bool {
 
 func findTmuxCall(calls [][]string, command string) []string {
 	for _, call := range calls {
-		if len(call) > 0 && call[0] == command {
+		if tmuxSubcommand(call) == command {
 			return call
 		}
 	}
 	return nil
+}
+
+// tmuxSubcommand returns the subcommand of a tmux invocation, skipping
+// server-selection and config flags (-L <socket>, -f <path>) that precede it.
+func tmuxSubcommand(call []string) string {
+	for i := 0; i < len(call); i++ {
+		switch call[i] {
+		case "-L", "-f":
+			i++
+		default:
+			return call[i]
+		}
+	}
+	return ""
 }
 
 func TestShellQuoteNeutralizesShellMetacharacters(t *testing.T) {
