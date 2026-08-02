@@ -73,6 +73,7 @@ type Model struct {
 
 	waiting                bool
 	waitingMessage         string
+	waitingSince           time.Time
 	existingSessionIDs     map[string]bool
 	lastUpdateTime         time.Time
 	agentIsIdle            bool
@@ -165,6 +166,7 @@ func NewWaitingModel(store *coop.Store, existingSessionIDs map[string]bool, opts
 		sdkSnippetNode:     -1,
 		sdkLoadingNode:     -1,
 		waiting:            true,
+		waitingSince:       time.Now(),
 		existingSessionIDs: existingSessionIDs,
 	}
 	for _, opt := range opts {
@@ -202,9 +204,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		m.clearExpiredStatus(time.Now())
-		if !m.focused {
-			return m, tickCmd()
-		}
+		// Poll regardless of focus. An unfocused TUI is the norm, not the
+		// exception — the user works in the agent pane — and skipping the poll
+		// while blurred froze the display at exactly the moment a review
+		// appeared. Focus only gates how loudly we announce changes, never
+		// whether we see them.
 		return m, tea.Batch(m.checkForUpdates(), tickCmd())
 
 	case noUpdateMsg:
@@ -383,9 +387,9 @@ func (m Model) progressBar() *tea.ProgressBar {
 		return tea.NewProgressBar(tea.ProgressBarNone, 0)
 	}
 	value := done * 100 / total
-	// This surfaces in tmux's status line and the OS taskbar without the pane
-	// being focused, which is the only signal that reaches a user watching the
-	// agent's pane instead of this one.
+	// OSC 9;4 progress. Rendered by Windows Terminal and Ghostty (taskbar /
+	// tab); most other terminals and tmux < 3.6 ignore it silently, so this is
+	// a bonus channel, not the primary review notification.
 	state := tea.ProgressBarDefault
 	if m.agentIdle() || m.agentHeartbeatMissing || m.actionableReviewCount() > 0 {
 		state = tea.ProgressBarWarning
@@ -1042,10 +1046,22 @@ func (m *Model) handleReject(note string) tea.Cmd {
 }
 
 func (m Model) notifyReviewDecision() tea.Cmd {
-	if m.reviewDecisionNotifier == nil || m.session == nil {
+	if m.session == nil {
 		return nil
 	}
 	sessionID := m.session.ID
+	if m.reviewDecisionNotifier == nil {
+		// No wake-up channel exists outside tmux (manual-split and fallback
+		// launches). The agent polls the session file only while parked in
+		// await-review; if it has timed out, this decision sits unread until a
+		// human relays it. Say so — persistently, no ttl — instead of silently
+		// implying delivery.
+		return func() tea.Msg {
+			return statusMsg{
+				message: fmt.Sprintf("Decision saved. If the agent doesn't react shortly, run in the agent terminal: %s", coop.ResumeCommand(sessionID)),
+			}
+		}
+	}
 	notify := m.reviewDecisionNotifier
 	return func() tea.Msg {
 		if err := notify(sessionID); err != nil {

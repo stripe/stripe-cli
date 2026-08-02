@@ -741,6 +741,48 @@ func TestCheckForUpdatesNoChangeReturnsNoUpdate(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestBlurredTickStillPolls(t *testing.T) {
+	m := readyModel()
+	m.focused = false
+
+	_, cmd := m.Update(tickMsg(time.Now()))
+
+	require.NotNil(t, cmd)
+	batch, ok := cmd().(tea.BatchMsg)
+	require.True(t, ok, "blurred tick must still batch a store poll with the next tick")
+	assert.Len(t, batch, 2)
+}
+
+func TestWaitingModeAdoptsExistingActiveSessionAfterDelay(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+	require.NoError(t, store.Write(&coop.Session{ID: "old_session", Status: coop.SessionActive}))
+
+	m := NewWaitingModel(store, map[string]bool{"old_session": true})
+	m.waitingSince = time.Now().Add(-existingSessionAdoptDelay)
+
+	cmd := m.discoverNewSession()
+	require.NotNil(t, cmd)
+	msg := cmd()
+
+	discovered, ok := msg.(sessionDiscoveredMsg)
+	require.True(t, ok, "waiting mode should adopt the pre-existing active session instead of spinning forever")
+	assert.Equal(t, "old_session", discovered.sessionID)
+}
+
+func TestNotifyReviewDecisionWithoutNotifierExplainsManualResume(t *testing.T) {
+	m := readyModel()
+	m.reviewDecisionNotifier = nil
+
+	cmd := m.notifyReviewDecision()
+
+	require.NotNil(t, cmd)
+	status, ok := cmd().(statusMsg)
+	require.True(t, ok)
+	assert.Contains(t, status.message, coop.ResumeCommand(m.session.ID))
+	assert.Zero(t, status.ttl, "manual-resume guidance must not expire")
+}
+
 func TestDiscoverNewSessionNoChangeReturnsNoUpdate(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)

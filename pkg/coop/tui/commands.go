@@ -1,10 +1,18 @@
 package tui
 
 import (
+	"time"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
 )
+
+// existingSessionAdoptDelay is how long waiting mode holds out for a brand-new
+// session before adopting an already-active one. Long enough for `coop start`'s
+// agent to create its session first; short enough that a re-run `coop join
+// --wait` doesn't feel hung.
+const existingSessionAdoptDelay = 10 * time.Second
 
 func (m Model) loadSession() tea.Cmd {
 	return func() tea.Msg {
@@ -39,6 +47,7 @@ func (m Model) checkForUpdates() tea.Cmd {
 func (m Model) discoverNewSession() tea.Cmd {
 	store := m.store
 	existingSessionIDs := m.existingSessionIDs
+	adoptExisting := !m.waitingSince.IsZero() && time.Since(m.waitingSince) >= existingSessionAdoptDelay
 	return func() tea.Msg {
 		if existingSessionIDs == nil {
 			return noUpdateMsg{}
@@ -53,6 +62,15 @@ func (m Model) discoverNewSession() tea.Cmd {
 				if err == nil && session.Status == coop.SessionActive {
 					return sessionDiscoveredMsg{sessionID: id}
 				}
+			}
+		}
+		// No new session appeared. If an active one predates the baseline,
+		// adopt it rather than spinning forever: `coop join --wait` is the
+		// exact command the fallback prints, and on a re-run after a quit or
+		// crash the session it described is already in the baseline.
+		if adoptExisting {
+			if session, err := store.LatestActiveSession(); err == nil {
+				return sessionDiscoveredMsg{sessionID: session.ID}
 			}
 		}
 		return noUpdateMsg{}
