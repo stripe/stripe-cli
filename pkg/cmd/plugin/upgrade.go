@@ -33,7 +33,7 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 	uc.cfg = config
 
 	uc.Cmd = &cobra.Command{
-		Use:   "upgrade",
+		Use:   "upgrade <plugin>",
 		Args:  validators.ExactArgs(1),
 		Short: "Upgrade a Stripe CLI plugin",
 		Long:  "Upgrade a Stripe CLI plugin to the latest version available. To download a specific version, please see the `install` command",

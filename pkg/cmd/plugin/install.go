@@ -41,7 +41,7 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic.cfg = config
 
 	ic.Cmd = &cobra.Command{
-		Use:   "install",
+		Use:   "install <plugin>",
 		Args:  validators.ExactArgs(1),
 		Short: "Install a Stripe CLI plugin",
 		Long: `Install a Stripe CLI plugin. To download a specific version, run stripe install [plugin_name]@[version].
