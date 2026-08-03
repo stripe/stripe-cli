@@ -1,13 +1,14 @@
 # pkg/doctor — the migration doctor
 
-`stripe doctor`, `stripe fix`, and `stripe guide`: rule-based detection and
-remediation of Stripe API migrations, judged against live account facts.
+`stripe doctor`: rule-based detection and remediation of Stripe API
+migrations, judged against live account facts. Diagnosis is the root
+action; remediation and the agent playbook are nested beneath it.
 
 ```bash
-stripe doctor dpm .           # diagnose: findings + account verdicts (read-only)
-stripe fix dpm . --apply      # remediate: span-verified edits, disclosure before consent
-stripe guide                  # the agent playbook (--json + exit-code contract)
-stripe doctor elements .      # triage: WHICH Payment Element migration applies
+stripe doctor dpm .              # diagnose: findings + account verdicts (read-only)
+stripe doctor fix dpm . --apply  # remediate: span-verified edits, disclosure before consent
+stripe doctor guide              # the agent playbook (--json + exit-code contract)
+stripe doctor elements .         # triage: WHICH Payment Element migration applies
 ```
 
 ## Architecture
@@ -44,10 +45,11 @@ Three layers, deliberately separated:
 - Account access is read-only GETs with test-mode keys only; live keys are
   refused. `--stripe-account` scopes Connect direct-charge diagnosis to the
   connected account.
-- Binary size: the tree-sitter grammars embed all languages by default.
-  Release builds should pass
-  `-tags "grammar_subset grammar_subset_go grammar_subset_python grammar_subset_ruby grammar_subset_php grammar_subset_javascript grammar_subset_typescript grammar_subset_tsx grammar_subset_java grammar_subset_c_sharp"`
-  (+10 MB instead of +27 MB over the base CLI).
+- Binary size: `make build` and the release configs always pass the
+  `grammar_subset` build tags (see GRAMMAR_TAGS in the Makefile), embedding
+  only the grammars for the languages the doctor supports (+10 MB over the
+  base CLI). A bare `go build` without tags still works but embeds every
+  gotreesitter grammar (+27 MB) — use `make build`.
 
 ## Adding a migration
 

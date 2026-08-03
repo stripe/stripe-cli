@@ -8,6 +8,17 @@ before:
 project_name: stripe
 builds:
   - id: stripe-linux
+    tags:
+      - grammar_subset
+      - grammar_subset_go
+      - grammar_subset_python
+      - grammar_subset_ruby
+      - grammar_subset_php
+      - grammar_subset_javascript
+      - grammar_subset_typescript
+      - grammar_subset_tsx
+      - grammar_subset_java
+      - grammar_subset_c_sharp
     ldflags:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
@@ -19,6 +30,17 @@ builds:
     goarch:
       - amd64
   - id: stripe-linux-arm
+    tags:
+      - grammar_subset
+      - grammar_subset_go
+      - grammar_subset_python
+      - grammar_subset_ruby
+      - grammar_subset_php
+      - grammar_subset_javascript
+      - grammar_subset_typescript
+      - grammar_subset_tsx
+      - grammar_subset_java
+      - grammar_subset_c_sharp
     ldflags:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
