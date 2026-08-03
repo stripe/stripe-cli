@@ -72,7 +72,9 @@ func TestSandboxVisibleInHelp(t *testing.T) {
 func TestExampleCommands(t *testing.T) {
 	{
 		_, err := executeCommand(rootCmd, "foo")
-		require.Equal(t, "unknown command \"foo\" for \"stripe\"", err.Error())
+		// cobra appends a "Did you mean this?" suggestion ("fix" is within
+		// edit distance of "foo"), so match the stable prefix only.
+		require.Contains(t, err.Error(), "unknown command \"foo\" for \"stripe\"")
 	}
 	{
 		_, err := executeCommand(rootCmd, "listen", "foo")
