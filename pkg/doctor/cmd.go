@@ -5,8 +5,8 @@ package doctor
 // mirroring the architecture (generic engine, rule packs as data).
 //
 //	stripe doctor [topic] [dir]   diagnose; degrades to scan-only without creds
-//	stripe fix    [topic] [dir]   remediate; dry-run default, --apply writes
-//	stripe guide                  agent playbook
+//	stripe doctor fix    [topic] [dir]   remediate; dry-run default, --apply writes
+//	stripe doctor guide                  agent playbook
 //
 // scan/drill are no longer commands: scan is doctor's credential-less
 // degradation and the webhook drill is `doctor --live`.
@@ -111,25 +111,22 @@ func commonFlags(c *cobra.Command) {
 	c.Flags().StringVar(&flagStripeAccount, "stripe-account", "", "Connect: connected account (acct_...) whose configuration governs direct charges")
 }
 
-// NewDoctorCmd builds the `stripe doctor` command; cfg supplies profile
+// NewDoctorCmd builds the `stripe doctor` command tree: diagnosis is the
+// root action, with fix, guide, and the hidden parse-dump nested beneath it
+// — none of them make sense as top-level verbs in the CLI's namespace.
+// Topic names and subcommand names never overlap, so `doctor dpm .` and
+// `doctor fix dpm .` resolve unambiguously. cfg supplies profile
 // credentials (test-mode keys only — enforced downstream).
 func NewDoctorCmd(cfg *config.Config) *cobra.Command {
-	c := newDoctorCmd(cfg)
-	commonFlags(c)
-	return c
-}
+	root := newDoctorCmd(cfg)
+	commonFlags(root)
 
-// NewFixCmd builds the `stripe fix` command.
-func NewFixCmd(cfg *config.Config) *cobra.Command {
-	c := newFixCmd(cfg)
-	commonFlags(c)
-	c.Flags().BoolVarP(&flagYes, "yes", "y", false, "assume yes for confirmations (non-interactive)")
-	return c
-}
+	fix := newFixCmd(cfg)
+	commonFlags(fix)
+	fix.Flags().BoolVarP(&flagYes, "yes", "y", false, "assume yes for confirmations (non-interactive)")
 
-// NewParseDumpCmd exposes the hidden grammar-debugging command.
-func NewParseDumpCmd() *cobra.Command {
-	return newDumpCmd()
+	root.AddCommand(fix, newGuideCmd(), newDumpCmd())
+	return root
 }
 
 // ---------- doctor ----------
