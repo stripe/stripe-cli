@@ -9,7 +9,7 @@ package doctor
 //	2  operational error
 //
 // Agents should treat these schemas plus the exit codes as the interface;
-// `stripe guide` documents the step-by-step playbook.
+// `stripe doctor guide` documents the step-by-step playbook.
 
 // ScanReport is scan-stage data (kept for internal use and tests).
 type ScanReport struct {
@@ -114,7 +114,7 @@ type DoctorFinding struct {
 	Class   string `json:"verdict_class"` // CANDIDATE | SKIP | REVIEW | CAUTION | BLOCKED
 }
 
-// FixReport is the output of `stripe fix` (dry-run by default; --apply writes).
+// FixReport is the output of `stripe doctor fix` (dry-run by default; --apply writes).
 type FixReport struct {
 	Command  string    `json:"command"`
 	Topic    string    `json:"topic,omitempty"`

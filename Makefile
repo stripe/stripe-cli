@@ -72,9 +72,14 @@ ci: build-all-platforms test go-mod-tidy protoc-ci
 .PHONY: ci
 
 # Build a beta version of stripe
+# The migration doctor's tree-sitter grammars embed all languages unless the
+# subset tags select just the ones the doctor supports (the Stripe-supported
+# server languages) — a ~17MB difference. Canonical builds always use them.
+GRAMMAR_TAGS := grammar_subset grammar_subset_go grammar_subset_python grammar_subset_ruby grammar_subset_php grammar_subset_javascript grammar_subset_typescript grammar_subset_tsx grammar_subset_java grammar_subset_c_sharp
+
 build:
 	go generate ./...
-	go build -trimpath -o stripe cmd/stripe/main.go
+	go build -tags "$(GRAMMAR_TAGS)" -trimpath -o stripe cmd/stripe/main.go
 .PHONY: build
 
 # Build a beta version of stripe with the `dev` tag

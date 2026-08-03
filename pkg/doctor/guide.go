@@ -1,6 +1,6 @@
 package doctor
 
-// The agent playbook: `stripe guide` documents the JSON schemas and
+// The agent playbook: `stripe doctor guide` documents the JSON schemas and
 // exit-code contract as the machine interface.
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewGuideCmd builds the `stripe guide` agent-playbook command.
+// NewGuideCmd builds the `stripe doctor guide` agent-playbook command.
 func NewGuideCmd() *cobra.Command {
 	return newGuideCmd()
 }
@@ -93,7 +93,7 @@ Also in the doctor report, credentials or not:
                      them. Surface these to the human.
 
 ## 2. Preview the remediation
-    stripe fix dpm <dir> --json
+    stripe doctor fix dpm <dir> --json
 Dry-run. Per file: edits[] (byte spans + label); reparse must be "clean".
 .companion reports the version fork: mode "insert" means removals of
 payment_method_types on PaymentIntents/SetupIntents become REPLACEMENTS
@@ -138,7 +138,7 @@ The gate skips dynamic values and deliberate single-method restrictions
 after a human reviews each skipped finding.
 
 ## 3. Apply
-    stripe fix dpm <dir> --apply --yes --json
+    stripe doctor fix dpm <dir> --apply --yes --json
 Writes only reparse-clean files (.files[].written=true). A per-file write
 failure is recorded in .files[].error and does not abort the rest.
 
