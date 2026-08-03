@@ -21,6 +21,7 @@ if (!platform) {
 // If a platform package was already installed, nothing to do.
 try {
   require.resolve(`${platform.pkg}/package.json`);
+  console.log('To configure the Stripe CLI for use with AI coding agents, run: stripe agent setup');
   process.exit(0);
 } catch {}
 
@@ -44,6 +45,7 @@ async function main() {
   fs.unlinkSync(archivePath);
   fs.unlinkSync(checksumPath);
   console.log(`@stripe/cli: binary installed successfully.`);
+  console.log('To configure the Stripe CLI for use with AI coding agents, run: stripe agent setup');
   process.exit(0);
 }
 
