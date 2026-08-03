@@ -675,6 +675,9 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			if err != nil {
 				return stripe.Credentials{}, err
 			}
+			if livemode && compartmentID == "" {
+				return stripe.Credentials{}, fmt.Errorf("you're logged in to a sandbox; to access livemode, reauthenticate with 'stripe login' and select your live account")
+			}
 			return stripe.NewOAKCredentials(uat, compartmentID, livemode), nil
 		}
 	}
