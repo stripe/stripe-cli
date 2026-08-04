@@ -18,13 +18,14 @@ import (
 )
 
 var pluginTelemetryFlagsWithValues = map[string]struct{}{
-	"--api-key":      {},
-	"--color":        {},
-	"--config":       {},
-	"--device-name":  {},
-	"--log-level":    {},
-	"--project-name": {},
-	"-p":             {},
+	"--api-key":         {},
+	"--color":           {},
+	"--config":          {},
+	"--device-name":     {},
+	"--log-level":       {},
+	"--project-name":    {},
+	"--runtime-version": {},
+	"-p":                {},
 }
 
 type pluginTemplateCmd struct {
@@ -58,6 +59,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 			UnknownFlags: true,
 		},
 	}
+
+	ptc.cmd.Flags().String("runtime-version", "", "Run a specific installed plugin version (e.g. 1.5.2 or local.build.dev)")
+	ptc.cmd.Flags().MarkHidden("runtime-version") // #nosec G104 -- development-only flag
 
 	// override the CLI's help command and let the plugin supply the help text instead
 	ptc.cmd.SetHelpFunc(func(c *cobra.Command, s []string) {
@@ -113,7 +117,8 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	ptc.ParsedArgs = args
+	cleanedArgs, runtimeVersion := stripRuntimeVersionFlag(args)
+	ptc.ParsedArgs = cleanedArgs
 
 	fs := afero.NewOsFs()
 	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, ptc.cmd.Name())
@@ -126,7 +131,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "")
+	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "", runtimeVersion)
 	plugins.CleanupAllClients()
 	if err == nil {
 		dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
@@ -148,6 +153,35 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	}
 
 	return nil
+}
+
+// stripRuntimeVersionFlag removes --runtime-version and its value from args
+// so the flag is not forwarded to the plugin binary. It handles both
+// "--runtime-version <val>" and "--runtime-version=<val>" forms.
+// Args after "--" are not inspected.
+func stripRuntimeVersionFlag(args []string) (cleaned []string, version string) {
+	const flagName = "--runtime-version"
+	cleaned = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			cleaned = append(cleaned, args[i:]...)
+			break
+		}
+		if arg == flagName {
+			if i+1 < len(args) {
+				version = args[i+1]
+				i++
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, flagName+"=") {
+			version = strings.TrimPrefix(arg, flagName+"=")
+			continue
+		}
+		cleaned = append(cleaned, arg)
+	}
+	return cleaned, version
 }
 
 func commandContextOrBackground(cmd *cobra.Command) context.Context {
