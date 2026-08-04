@@ -366,33 +366,34 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 // applying OAK compartment-prefixing rules. Extracted to keep BuildDryRunOutput's
 // cyclomatic complexity within bounds.
 func applyAccountContextHeaders(headers map[string]string, params *RequestParameters, creds stripe.Credentials) {
-	switch {
-	case params.stripeAccount != "":
-		if creds.OAKContext != "" {
+	if creds.OAKContext != "" {
+		switch {
+		case params.stripeAccount != "":
 			if creds.OAKContext != params.stripeAccount {
 				headers["Stripe-Account"] = creds.OAKContext + "/" + params.stripeAccount
 			} else {
 				headers["Stripe-Account"] = params.stripeAccount
 			}
 			// Stripe-Context intentionally omitted: --stripe-account with OAK only sends Stripe-Account
-		} else {
-			headers["Stripe-Account"] = params.stripeAccount
-			if params.stripeContext != "" {
-				headers["Stripe-Context"] = params.stripeContext
-			}
-		}
-	case params.stripeContext != "":
-		if creds.OAKContext != "" {
+		case params.stripeContext != "":
 			if creds.OAKContext != params.stripeContext {
 				headers["Stripe-Context"] = creds.OAKContext + "/" + params.stripeContext
 			} else {
 				headers["Stripe-Context"] = params.stripeContext
 			}
-		} else {
+		default:
+			headers["Stripe-Context"] = creds.OAKContext
+		}
+	} else {
+		switch {
+		case params.stripeAccount != "":
+			headers["Stripe-Account"] = params.stripeAccount
+			if params.stripeContext != "" {
+				headers["Stripe-Context"] = params.stripeContext
+			}
+		case params.stripeContext != "":
 			headers["Stripe-Context"] = params.stripeContext
 		}
-	case creds.OAKContext != "":
-		headers["Stripe-Context"] = creds.OAKContext
 	}
 }
 
