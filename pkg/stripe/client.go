@@ -28,17 +28,6 @@ const (
 	V2Request     = "v2"
 )
 
-// CredentialStrategy indicates which authentication mechanism a Credentials
-// value represents.
-type CredentialStrategy int
-
-const (
-	// APIKeyStrategy is a standard Stripe API key.
-	APIKeyStrategy CredentialStrategy = iota
-	// UATStrategy is a user access token (UAT).
-	UATStrategy
-)
-
 // Credentials holds the auth credentials for a Stripe API request. For plain
 // API keys only Token is set. For OAK tokens all three fields are populated.
 type Credentials struct {
@@ -47,23 +36,13 @@ type Credentials struct {
 	OAKLivemode *bool
 }
 
-// Strategy returns UATStrategy when these credentials carry an OAK compartment
-// context, and APIKeyStrategy otherwise.
-func (c Credentials) Strategy() CredentialStrategy {
-	if c.OAKContext != "" {
-		return UATStrategy
-	}
-	return APIKeyStrategy
-}
-
 // ApplyAccountContextHeaders sets Stripe-Account and/or Stripe-Context in
 // headers from the caller-supplied account and context values. For UAT
 // credentials the OAK compartment ID is prepended as "context/value" unless
 // the value already equals the compartment ID. When account is set under UAT,
 // Stripe-Context is intentionally omitted.
 func (c Credentials) ApplyAccountContextHeaders(headers map[string]string, account, context string) {
-	switch c.Strategy() {
-	case UATStrategy:
+	if c.OAKContext != "" {
 		switch {
 		case account != "":
 			if c.OAKContext != account {
@@ -80,7 +59,7 @@ func (c Credentials) ApplyAccountContextHeaders(headers map[string]string, accou
 		default:
 			headers["Stripe-Context"] = c.OAKContext
 		}
-	default:
+	} else {
 		switch {
 		case account != "":
 			headers["Stripe-Account"] = account
