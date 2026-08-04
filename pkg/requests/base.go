@@ -362,42 +362,6 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	return body, nil
 }
 
-// applyAccountContextHeaders sets Stripe-Account and/or Stripe-Context in headers,
-// applying OAK compartment-prefixing rules. Extracted to keep BuildDryRunOutput's
-// cyclomatic complexity within bounds.
-func applyAccountContextHeaders(headers map[string]string, params *RequestParameters, creds stripe.Credentials) {
-	switch creds.Strategy() {
-	case stripe.UATStrategy:
-		switch {
-		case params.stripeAccount != "":
-			if creds.OAKContext != params.stripeAccount {
-				headers["Stripe-Account"] = creds.OAKContext + "/" + params.stripeAccount
-			} else {
-				headers["Stripe-Account"] = params.stripeAccount
-			}
-			// Stripe-Context intentionally omitted: --stripe-account with OAK only sends Stripe-Account
-		case params.stripeContext != "":
-			if creds.OAKContext != params.stripeContext {
-				headers["Stripe-Context"] = creds.OAKContext + "/" + params.stripeContext
-			} else {
-				headers["Stripe-Context"] = params.stripeContext
-			}
-		default:
-			headers["Stripe-Context"] = creds.OAKContext
-		}
-	default:
-		switch {
-		case params.stripeAccount != "":
-			headers["Stripe-Account"] = params.stripeAccount
-			if params.stripeContext != "" {
-				headers["Stripe-Context"] = params.stripeContext
-			}
-		case params.stripeContext != "":
-			headers["Stripe-Context"] = params.stripeContext
-		}
-	}
-}
-
 // BuildDryRunOutput constructs the dry-run output for a request without executing it.
 func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string, params *RequestParameters, additionalParams map[string]interface{}) (*DryRunOutput, error) {
 	isV2 := stripe.IsV2Path(path)
@@ -480,7 +444,7 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 	if params.idempotency != "" {
 		headers["Idempotency-Key"] = params.idempotency
 	}
-	applyAccountContextHeaders(headers, params, creds)
+	creds.ApplyAccountContextHeaders(headers, params.stripeAccount, params.stripeContext)
 	if creds.OAKLivemode != nil {
 		headers["Stripe-Livemode"] = strconv.FormatBool(*creds.OAKLivemode)
 	}
