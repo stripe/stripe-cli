@@ -302,8 +302,8 @@ func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.Request
 func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
-		rb.setStripeAccountHeader(req, params)
-		rb.setStripeContextHeader(req, params)
+		oakContextConsumed := rb.setStripeAccountHeader(req, params)
+		rb.setStripeContextHeader(req, params, oakContextConsumed)
 		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
@@ -445,10 +445,29 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 		headers["Idempotency-Key"] = params.idempotency
 	}
 	if params.stripeAccount != "" {
-		headers["Stripe-Account"] = params.stripeAccount
-	}
-	if params.stripeContext != "" {
-		headers["Stripe-Context"] = params.stripeContext
+		if creds.OAKContext != "" {
+			if creds.OAKContext != params.stripeAccount {
+				headers["Stripe-Account"] = creds.OAKContext + "/" + params.stripeAccount
+			} else {
+				headers["Stripe-Account"] = params.stripeAccount
+			}
+			// Stripe-Context intentionally omitted: --stripe-account with OAK only sends Stripe-Account
+		} else {
+			headers["Stripe-Account"] = params.stripeAccount
+			if params.stripeContext != "" {
+				headers["Stripe-Context"] = params.stripeContext
+			}
+		}
+	} else if params.stripeContext != "" {
+		if creds.OAKContext != "" {
+			if creds.OAKContext != params.stripeContext {
+				headers["Stripe-Context"] = creds.OAKContext + "/" + params.stripeContext
+			} else {
+				headers["Stripe-Context"] = params.stripeContext
+			}
+		} else {
+			headers["Stripe-Context"] = params.stripeContext
+		}
 	} else if creds.OAKContext != "" {
 		headers["Stripe-Context"] = creds.OAKContext
 	}
@@ -889,14 +908,37 @@ func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameter
 	}
 }
 
-func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
-	if params.stripeAccount != "" {
-		request.Header.Set("Stripe-Account", params.stripeAccount)
+// setStripeAccountHeader sets Stripe-Account. When an OAK token is in use the
+// client layer has already placed its compartment ID in Stripe-Context; this
+// function detects that, combines it into "context/account", removes the now-
+// redundant Stripe-Context, and returns true so the caller knows not to
+// re-add Stripe-Context from params.
+func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) (oakContextConsumed bool) {
+	if params.stripeAccount == "" {
+		return false
 	}
+	existingContext := request.Header.Get("Stripe-Context")
+	if existingContext != "" {
+		if existingContext != params.stripeAccount {
+			request.Header.Set("Stripe-Account", existingContext+"/"+params.stripeAccount)
+		} else {
+			request.Header.Set("Stripe-Account", params.stripeAccount)
+		}
+		request.Header.Del("Stripe-Context")
+		return true
+	}
+	request.Header.Set("Stripe-Account", params.stripeAccount)
+	return false
 }
 
-func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
-	if params.stripeContext != "" {
+func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters, oakContextConsumed bool) {
+	if params.stripeContext == "" || oakContextConsumed {
+		return
+	}
+	existingContext := request.Header.Get("Stripe-Context")
+	if existingContext != "" && existingContext != params.stripeContext {
+		request.Header.Set("Stripe-Context", existingContext+"/"+params.stripeContext)
+	} else {
 		request.Header.Set("Stripe-Context", params.stripeContext)
 	}
 }
