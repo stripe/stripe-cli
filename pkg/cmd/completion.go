@@ -54,6 +54,9 @@ Suggested next steps:
     fpath=(~/.stripe $fpath)
     autoload -Uz compinit && compinit -i
 
+   If you use Oh My Zsh, add only the ` + "`fpath`" + ` line before ` + "`source $ZSH/oh-my-zsh.sh`" + `;
+   Oh My Zsh runs ` + "`compinit`" + ` for you.
+
 3. Source your ` + "`.zshrc`" + ` or open a new terminal session:
     source ~/.zshrc`
 
