@@ -61,6 +61,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	}
 
 	ptc.cmd.Flags().String("runtime-version", "", "Run a specific installed plugin version (e.g. 1.5.2 or local.build.dev)")
+	ptc.cmd.Flags().MarkHidden("runtime-version") // #nosec G104 -- development-only flag
 
 	// override the CLI's help command and let the plugin supply the help text instead
 	ptc.cmd.SetHelpFunc(func(c *cobra.Command, s []string) {

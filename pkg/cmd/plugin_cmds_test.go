@@ -69,6 +69,14 @@ func TestPluginCommandSetsLongFromDescription(t *testing.T) {
 	assert.Equal(t, "Manage your account from the terminal and update settings like branding, checkout color and more.", ptc.cmd.Long)
 }
 
+func TestRuntimeVersionFlagIsHidden(t *testing.T) {
+	pluginCmd := createPluginCmd()
+
+	flag := pluginCmd.cmd.Flags().Lookup("runtime-version")
+	require.NotNil(t, flag)
+	assert.True(t, flag.Hidden)
+}
+
 func TestPluginCommandLongEmptyWhenNoDescription(t *testing.T) {
 	plugin := plugins.Plugin{
 		Shortname:        "simple",
