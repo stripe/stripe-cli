@@ -299,11 +299,20 @@ func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.Request
 	return rb.performRequest(ctx, client, path, params, data, errOnStatus, additionalConfigure)
 }
 
+// credentialsFromPerformer extracts Credentials from a *stripe.Client performer.
+// Returns zero Credentials (non-OAK, no token) for any other RequestPerformer.
+func credentialsFromPerformer(client stripe.RequestPerformer) stripe.Credentials {
+	if c, ok := client.(*stripe.Client); ok {
+		return c.Credentials
+	}
+	return stripe.Credentials{}
+}
+
 func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+	creds := credentialsFromPerformer(client)
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
-		rb.setStripeAccountHeader(req, params)
-		rb.setStripeContextHeader(req, params)
+		creds.ApplyAccountContextHeaders(req.Header, params.stripeAccount, params.stripeContext)
 		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
@@ -444,13 +453,12 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 	if params.idempotency != "" {
 		headers["Idempotency-Key"] = params.idempotency
 	}
-	if params.stripeAccount != "" {
-		headers["Stripe-Account"] = params.stripeAccount
-	}
-	if params.stripeContext != "" {
-		headers["Stripe-Context"] = params.stripeContext
-	} else if creds.OAKContext != "" {
-		headers["Stripe-Context"] = creds.OAKContext
+	accountContextHeaders := make(http.Header)
+	creds.ApplyAccountContextHeaders(accountContextHeaders, params.stripeAccount, params.stripeContext)
+	for key, vals := range accountContextHeaders {
+		if len(vals) > 0 {
+			headers[key] = vals[0]
+		}
 	}
 	if creds.OAKLivemode != nil {
 		headers["Stripe-Livemode"] = strconv.FormatBool(*creds.OAKLivemode)
@@ -886,18 +894,6 @@ func (rb *Base) computeVersionHeader(params *RequestParameters, path string) str
 func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
 	if v := rb.computeVersionHeader(params, path); v != "" {
 		request.Header.Set("Stripe-Version", v)
-	}
-}
-
-func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
-	if params.stripeAccount != "" {
-		request.Header.Set("Stripe-Account", params.stripeAccount)
-	}
-}
-
-func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
-	if params.stripeContext != "" {
-		request.Header.Set("Stripe-Context", params.stripeContext)
 	}
 }
 

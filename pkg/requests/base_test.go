@@ -639,6 +639,84 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 	}}, *output)
 }
 
+func TestBuildDryRunOutput_OAKStripeAccount(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{stripeAccount: "acct_b"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	output, err := rb.BuildDryRunOutput(creds, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{
+		"Content-Type":    "application/x-www-form-urlencoded",
+		"Stripe-Account":  "acct_a/acct_b",
+		"Authorization":   "Bearer oak_test_123",
+		"Stripe-Livemode": "false",
+	}, output.DryRun.Headers)
+}
+
+func TestBuildDryRunOutput_OAKStripeContext(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{stripeContext: "acct_b"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	output, err := rb.BuildDryRunOutput(creds, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{
+		"Content-Type":    "application/x-www-form-urlencoded",
+		"Stripe-Context":  "acct_a/acct_b",
+		"Authorization":   "Bearer oak_test_123",
+		"Stripe-Livemode": "false",
+	}, output.DryRun.Headers)
+}
+
+func TestBuildDryRunOutput_OAKNoFlagsUsesContext(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	output, err := rb.BuildDryRunOutput(creds, "https://api.stripe.com", "/v1/customers", &RequestParameters{}, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{
+		"Content-Type":    "application/x-www-form-urlencoded",
+		"Stripe-Context":  "acct_a",
+		"Authorization":   "Bearer oak_test_123",
+		"Stripe-Livemode": "false",
+	}, output.DryRun.Headers)
+}
+
+func TestBuildDryRunOutput_OAKStripeAccountOmitsContext(t *testing.T) {
+	// --stripe-account with OAK: Stripe-Account gets acct_a/acct_b and Stripe-Context is absent
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{stripeAccount: "acct_b", stripeContext: "ctx_c"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	output, err := rb.BuildDryRunOutput(creds, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.NotContains(t, output.DryRun.Headers, "Stripe-Context")
+	require.Equal(t, "acct_a/acct_b", output.DryRun.Headers["Stripe-Account"])
+}
+
+func TestBuildDryRunOutput_OAKStripeAccountSameValue(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{stripeAccount: "acct_a"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	output, err := rb.BuildDryRunOutput(creds, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, "acct_a", output.DryRun.Headers["Stripe-Account"])
+	require.NotContains(t, output.DryRun.Headers, "Stripe-Context")
+}
+
+func TestBuildDryRunOutput_OAKStripeContextSameValue(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{stripeContext: "acct_a"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	output, err := rb.BuildDryRunOutput(creds, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, "acct_a", output.DryRun.Headers["Stripe-Context"])
+	require.NotContains(t, output.DryRun.Headers, "Stripe-Account")
+}
+
 func TestBuildDryRunOutput_PathParamSubstitutedURL(t *testing.T) {
 	rb := Base{Method: http.MethodGet}
 
@@ -650,6 +728,102 @@ func TestBuildDryRunOutput_PathParamSubstitutedURL(t *testing.T) {
 		Params:  map[string]interface{}{},
 		Headers: map[string]string{},
 	}}, *output)
+}
+
+func TestMakeRequest_OAKStripeAccount(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "acct_a/acct_b", r.Header.Get("Stripe-Account"))
+		require.Empty(t, r.Header.Get("Stripe-Context"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost}
+	params := &RequestParameters{stripeAccount: "acct_b"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+	_, err := rb.MakeRequest(context.Background(), creds, "/v1/customers", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_OAKStripeContext(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "acct_a/acct_b", r.Header.Get("Stripe-Context"))
+		require.Empty(t, r.Header.Get("Stripe-Account"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost}
+	params := &RequestParameters{stripeContext: "acct_b"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+	_, err := rb.MakeRequest(context.Background(), creds, "/v1/customers", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_OAKNoFlagsUsesContext(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "acct_a", r.Header.Get("Stripe-Context"))
+		require.Empty(t, r.Header.Get("Stripe-Account"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+	_, err := rb.MakeRequest(context.Background(), creds, "/v1/customers", &RequestParameters{}, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_OAKStripeAccountOmitsContext(t *testing.T) {
+	// --stripe-account with OAK: combined Stripe-Account, no Stripe-Context even with --stripe-context
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "acct_a/acct_b", r.Header.Get("Stripe-Account"))
+		require.Empty(t, r.Header.Get("Stripe-Context"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost}
+	params := &RequestParameters{stripeAccount: "acct_b", stripeContext: "ctx_c"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+	_, err := rb.MakeRequest(context.Background(), creds, "/v1/customers", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_OAKStripeAccountSameValue(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "acct_a", r.Header.Get("Stripe-Account"))
+		require.Empty(t, r.Header.Get("Stripe-Context"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost}
+	params := &RequestParameters{stripeAccount: "acct_a"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+	_, err := rb.MakeRequest(context.Background(), creds, "/v1/customers", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_OAKStripeContextSameValue(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "acct_a", r.Header.Get("Stripe-Context"))
+		require.Empty(t, r.Header.Get("Stripe-Account"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost}
+	params := &RequestParameters{stripeContext: "acct_a"}
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+	_, err := rb.MakeRequest(context.Background(), creds, "/v1/customers", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
 }
 
 func captureStderr(t *testing.T, fn func()) string {

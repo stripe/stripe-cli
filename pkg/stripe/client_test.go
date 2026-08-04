@@ -12,6 +12,75 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestApplyAccountContextHeaders_APIKey(t *testing.T) {
+	creds := NewAPIKeyCredentials("sk_test_123")
+
+	t.Run("no flags", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "", "")
+		require.Empty(t, h)
+	})
+	t.Run("account only", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "acct_b", "")
+		require.Equal(t, "acct_b", h.Get("Stripe-Account"))
+		require.Empty(t, h.Get("Stripe-Context"))
+	})
+	t.Run("context only", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "", "ctx_c")
+		require.Equal(t, "ctx_c", h.Get("Stripe-Context"))
+		require.Empty(t, h.Get("Stripe-Account"))
+	})
+	t.Run("both", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "acct_b", "ctx_c")
+		require.Equal(t, "acct_b", h.Get("Stripe-Account"))
+		require.Equal(t, "ctx_c", h.Get("Stripe-Context"))
+	})
+}
+
+func TestApplyAccountContextHeaders_UAT(t *testing.T) {
+	creds := NewOAKCredentials("oak_test_123", "acct_a", false)
+
+	t.Run("no flags uses OAK context", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "", "")
+		require.Equal(t, "acct_a", h.Get("Stripe-Context"))
+		require.Empty(t, h.Get("Stripe-Account"))
+	})
+	t.Run("account different value", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "acct_b", "")
+		require.Equal(t, "acct_a/acct_b", h.Get("Stripe-Account"))
+		require.Empty(t, h.Get("Stripe-Context"))
+	})
+	t.Run("account same value skips prefix", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "acct_a", "")
+		require.Equal(t, "acct_a", h.Get("Stripe-Account"))
+		require.Empty(t, h.Get("Stripe-Context"))
+	})
+	t.Run("context different value", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "", "acct_b")
+		require.Equal(t, "acct_a/acct_b", h.Get("Stripe-Context"))
+		require.Empty(t, h.Get("Stripe-Account"))
+	})
+	t.Run("context same value skips prefix", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "", "acct_a")
+		require.Equal(t, "acct_a", h.Get("Stripe-Context"))
+		require.Empty(t, h.Get("Stripe-Account"))
+	})
+	t.Run("account set omits Stripe-Context even when context also provided", func(t *testing.T) {
+		h := make(http.Header)
+		creds.ApplyAccountContextHeaders(h, "acct_b", "ctx_c")
+		require.Equal(t, "acct_a/acct_b", h.Get("Stripe-Account"))
+		require.Empty(t, h.Get("Stripe-Context"))
+	})
+}
+
 func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/delete", r.URL.Path)

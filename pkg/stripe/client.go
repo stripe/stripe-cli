@@ -36,6 +36,43 @@ type Credentials struct {
 	OAKLivemode *bool
 }
 
+// ApplyAccountContextHeaders sets Stripe-Account and/or Stripe-Context in
+// headers from the caller-supplied account and context values. For UAT
+// credentials the OAK compartment ID is prepended as "context/value" unless
+// the value already equals the compartment ID. When account is set under UAT,
+// Stripe-Context is intentionally omitted.
+func (c Credentials) ApplyAccountContextHeaders(headers http.Header, account, context string) {
+	if c.OAKContext != "" {
+		switch {
+		case account != "":
+			if c.OAKContext != account {
+				headers.Set("Stripe-Account", c.OAKContext+"/"+account)
+			} else {
+				headers.Set("Stripe-Account", account)
+			}
+			headers.Del("Stripe-Context")
+		case context != "":
+			if c.OAKContext != context {
+				headers.Set("Stripe-Context", c.OAKContext+"/"+context)
+			} else {
+				headers.Set("Stripe-Context", context)
+			}
+		default:
+			headers.Set("Stripe-Context", c.OAKContext)
+		}
+	} else {
+		switch {
+		case account != "":
+			headers.Set("Stripe-Account", account)
+			if context != "" {
+				headers.Set("Stripe-Context", context)
+			}
+		case context != "":
+			headers.Set("Stripe-Context", context)
+		}
+	}
+}
+
 // NewAPIKeyCredentials returns Credentials using a standard Stripe API key.
 func NewAPIKeyCredentials(key string) Credentials {
 	return Credentials{Token: key}
