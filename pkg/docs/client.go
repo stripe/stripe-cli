@@ -192,7 +192,12 @@ func (c *Client) do(req *http.Request) (response, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	c.logger.WithFields(log.Fields{"url": req.URL, "status": resp.StatusCode, "duration": time.Since(start).Round(time.Millisecond)}).Debug("request complete")
+	c.logger.WithFields(log.Fields{
+		"url":          req.URL,
+		"status":       resp.StatusCode,
+		"content-type": resp.Header.Get("Content-Type"),
+		"duration":     time.Since(start).Round(time.Millisecond),
+	}).Debug("request complete")
 
 	if resp.StatusCode != http.StatusOK {
 		return response{}, fmt.Errorf("docs: %s returned %d", req.URL, resp.StatusCode)
