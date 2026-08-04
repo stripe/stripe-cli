@@ -261,6 +261,49 @@ func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
 	require.Equal(t, []byte("rk_live_0000000002"), data)
 }
 
+func TestResolveCredentialsOAKLivemodeNoCompartment(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		UATKeychainItemKey: []byte("oak_live_1234567890"),
+	})
+	t.Cleanup(func() {
+		KeyRing = nil
+		viper.Reset()
+	})
+	(&Config{LogLevel: "info", ProfilesFile: profilesFile}).InitConfig()
+
+	p := Profile{ProfileName: "default"}
+	_, err := p.ResolveCredentials(true)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "you're logged in to a sandbox")
+	require.Contains(t, err.Error(), "stripe login")
+}
+
+func TestResolveCredentialsOAKLivemodeWithCompartment(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		UATKeychainItemKey: []byte("oak_live_1234567890"),
+	})
+	t.Cleanup(func() {
+		KeyRing = nil
+		viper.Reset()
+	})
+	(&Config{LogLevel: "info", ProfilesFile: profilesFile}).InitConfig()
+	viper.Set(UserInfoName, &UserInfo{
+		Compartments: []Compartment{
+			{CompartmentID: "acct_live123", Livemode: true},
+			{CompartmentID: "acct_test456", Livemode: false},
+		},
+	})
+
+	p := Profile{ProfileName: "default"}
+	creds, err := p.ResolveCredentials(true)
+	require.NoError(t, err)
+	require.Equal(t, "oak_live_1234567890", creds.Token)
+}
+
 func helperLoadBytes(t *testing.T, name string) []byte {
 	bytes, err := os.ReadFile(name)
 	if err != nil {
