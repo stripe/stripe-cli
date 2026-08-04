@@ -366,7 +366,8 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 // applying OAK compartment-prefixing rules. Extracted to keep BuildDryRunOutput's
 // cyclomatic complexity within bounds.
 func applyAccountContextHeaders(headers map[string]string, params *RequestParameters, creds stripe.Credentials) {
-	if creds.OAKContext != "" {
+	switch creds.Strategy() {
+	case stripe.UATStrategy:
 		switch {
 		case params.stripeAccount != "":
 			if creds.OAKContext != params.stripeAccount {
@@ -384,7 +385,7 @@ func applyAccountContextHeaders(headers map[string]string, params *RequestParame
 		default:
 			headers["Stripe-Context"] = creds.OAKContext
 		}
-	} else {
+	default:
 		switch {
 		case params.stripeAccount != "":
 			headers["Stripe-Account"] = params.stripeAccount

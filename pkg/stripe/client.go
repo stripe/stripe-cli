@@ -28,12 +28,32 @@ const (
 	V2Request     = "v2"
 )
 
+// CredentialStrategy indicates which authentication mechanism a Credentials
+// value represents.
+type CredentialStrategy int
+
+const (
+	// APIKeyStrategy is a standard Stripe secret or publishable key.
+	APIKeyStrategy CredentialStrategy = iota
+	// UATStrategy is an OAK (User Access Token) with a compartment context.
+	UATStrategy
+)
+
 // Credentials holds the auth credentials for a Stripe API request. For plain
 // API keys only Token is set. For OAK tokens all three fields are populated.
 type Credentials struct {
 	Token       string
 	OAKContext  string
 	OAKLivemode *bool
+}
+
+// Strategy returns UATStrategy when these credentials carry an OAK compartment
+// context, and APIKeyStrategy otherwise.
+func (c Credentials) Strategy() CredentialStrategy {
+	if c.OAKContext != "" {
+		return UATStrategy
+	}
+	return APIKeyStrategy
 }
 
 // NewAPIKeyCredentials returns Credentials using a standard Stripe API key.
