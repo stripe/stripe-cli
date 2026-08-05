@@ -12,12 +12,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 const defaultBaseURL = "https://docs.stripe.com"
 const defaultAPIBaseURL = "https://api.stripe.com"
-const docsAPIVersion = "unsafe-development"
 
 // Page holds the content and metadata of a fetched documentation page.
 type Page struct {
@@ -200,7 +200,7 @@ func (c *Client) fetchPageViaAPI(ctx context.Context, ref *url.URL) (Page, error
 		return Page{}, fmt.Errorf("docs: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Stripe-Version", docsAPIVersion)
+	req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
 
 	res, err := c.do(req)
 	if err != nil {
@@ -335,7 +335,7 @@ func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, err
 		return nil, fmt.Errorf("search: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Stripe-Version", docsAPIVersion)
+	req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
 
 	res, err := c.do(req)
 	if err != nil {

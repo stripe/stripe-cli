@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -656,7 +657,7 @@ func TestFetchPage_Authenticated_UsesAPIEndpoint(t *testing.T) {
 		assert.Equal(t, "/v2/docs/page", r.URL.Path)
 		assert.Equal(t, "/payments?api_version=2024-06-30", r.URL.Query().Get("path"))
 		assert.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
-		assert.Equal(t, "unsafe-development", r.Header.Get("Stripe-Version"))
+		assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
 		assert.Equal(t, "application/json", r.Header.Get("Accept"))
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"content":"page content","content_type":"text/markdown"}`)
@@ -711,7 +712,7 @@ func TestSearch_Authenticated_UsesAPIEndpoint(t *testing.T) {
 		assert.Equal(t, "/v2/docs/search", r.URL.Path)
 		assert.Equal(t, "payments", r.URL.Query().Get("query"))
 		assert.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
-		assert.Equal(t, "unsafe-development", r.Header.Get("Stripe-Version"))
+		assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"hits":[{"title":"Accept a payment","url":"https://docs.stripe.com/payments/accept-a-payment"}]}`)
 	}))

@@ -17,6 +17,7 @@ import (
 	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/markdown"
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestNew(t *testing.T) {
@@ -356,7 +357,7 @@ func TestFetchPage_Authenticated(t *testing.T) {
 	assert.Contains(t, out.String(), "Payments")
 	assert.Equal(t, "/payments", gotPath)
 	assert.Equal(t, "Bearer sk_test_123", gotAuth)
-	assert.Equal(t, "unsafe-development", gotVersion)
+	assert.Equal(t, requests.StripeVersionHeaderValue, gotVersion)
 }
 
 func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
