@@ -63,11 +63,10 @@ type PluginList struct {
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string            `toml:"Arch" json:"arch"`
-	OS      string            `toml:"OS" json:"os"`
-	Version string            `toml:"Version" json:"version"`
-	Sum     string            `toml:"Sum" json:"sum,omitempty"`
-	Runtime map[string]string `toml:"Runtime,omitempty" json:"runtime,omitempty"`
+	Arch    string `toml:"Arch" json:"arch"`
+	OS      string `toml:"OS" json:"os"`
+	Version string `toml:"Version" json:"version"`
+	Sum     string `toml:"Sum" json:"sum,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -231,19 +230,6 @@ func (p *Plugin) getRelease(version, opsystem, arch string) *Release {
 	return nil
 }
 
-func copyRuntime(runtimeRequirements map[string]string) map[string]string {
-	if len(runtimeRequirements) == 0 {
-		return nil
-	}
-
-	cloned := make(map[string]string, len(runtimeRequirements))
-	for name, version := range runtimeRequirements {
-		cloned[name] = version
-	}
-
-	return cloned
-}
-
 func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
 	pluginList, err := validatePluginManifest([]byte(pluginManifest))
 	if err != nil {
@@ -257,19 +243,6 @@ func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
 
 		if len(candidate.Commands) == 0 && len(p.Commands) > 0 {
 			candidate.Commands = p.Commands
-		}
-
-		for i := range candidate.Releases {
-			if len(candidate.Releases[i].Runtime) != 0 {
-				continue
-			}
-
-			existingRelease := p.getRelease(candidate.Releases[i].Version, candidate.Releases[i].OS, candidate.Releases[i].Arch)
-			if existingRelease == nil || len(existingRelease.Runtime) == 0 {
-				continue
-			}
-
-			candidate.Releases[i].Runtime = copyRuntime(existingRelease.Runtime)
 		}
 
 		return &candidate, nil
@@ -368,18 +341,6 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
 		}
 		return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
-	}
-
-	// Check if this plugin requires a runtime and install it if needed
-	release := pluginToInstall.getReleaseForVersion(version)
-	if release != nil {
-		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
-			ansi.StopSpinner(spinner, "", os.Stdout)
-			if err := InstallNodeRuntime(ctx, cfg, fs, nodeVersion); err != nil {
-				return fmt.Errorf("failed to install required Node.js runtime: %w", err)
-			}
-			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
-		}
 	}
 
 	// Pull down bin, verify, and save to disk
@@ -636,30 +597,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
 
-	// Check if this plugin requires a runtime
-	var cmd *exec.Cmd
-	var usesRuntime bool
-	release := p.getReleaseForVersion(version)
-	if release != nil {
-		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
-			// Plugin requires Node.js runtime - execute via node
-			nodePath := GetNodeBinaryPath(config, nodeVersion)
-			if nodePath == "" {
-				return fmt.Errorf("required Node.js runtime v%s is not installed", nodeVersion)
-			}
-			logger.Debugf("Executing plugin via Node.js runtime: %s %s", nodePath, pluginBinaryPath)
-			cmd = exec.Command(nodePath, pluginBinaryPath)
-			usesRuntime = true
-		} else {
-			// No runtime required - execute binary directly
-			cmd = exec.Command(pluginBinaryPath)
-			usesRuntime = false
-		}
-	} else {
-		// Couldn't find release info, assume it's a standalone binary
-		cmd = exec.Command(pluginBinaryPath)
-		usesRuntime = false
-	}
+	cmd := exec.Command(pluginBinaryPath)
 
 	if cwd != "" {
 		cmd.Dir = cwd
@@ -687,9 +625,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		},
 	}
 
-	// Only validate checksum for standalone binaries, not when using a runtime
-	// When using a runtime, cmd.Path points to the node binary, not the plugin
-	if !usesRuntime && !isLocalDevelopmentVersion(version) {
+	if !isLocalDevelopmentVersion(version) {
 		sum, err := p.getChecksum(version)
 		if err != nil {
 			return err
