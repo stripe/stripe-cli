@@ -622,7 +622,6 @@ func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
 	require.NoError(t, err)
 }
 
-
 func TestInstallFailsIfNoAPIKeyAndMetadataReturnsNoBinaryURL(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}

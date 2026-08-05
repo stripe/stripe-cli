@@ -318,4 +318,3 @@ func TestResolvePluginTelemetryCommandPathUsesResolvedPluginStubPath(t *testing.
 		resolvePluginTelemetryCommandPath(listCmd, []string{"stripe", "projects", "billing", "list", "--json"}),
 	)
 }
-
