@@ -13,10 +13,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 const defaultBaseURL = "https://docs.stripe.com"
+const defaultAPIBaseURL = "https://api.stripe.com"
 
 // Page holds the content and metadata of a fetched documentation page.
 type Page struct {
@@ -43,6 +45,7 @@ type Hit struct {
 type Client struct {
 	http           *http.Client
 	baseURL        *url.URL
+	apiBaseURL     *url.URL
 	userAgent      string
 	apiKey         string
 	cacheKeyPrefix string
@@ -71,6 +74,12 @@ func WithLogger(logger *log.Entry) ClientOption { return func(c *Client) { c.log
 // WithAPIKey sets the Stripe API key sent as an Authorization header on every request.
 func WithAPIKey(key string) ClientOption { return func(c *Client) { c.apiKey = key } }
 
+// WithAPIBaseURL overrides the Stripe API base URL used for authenticated requests
+// (defaults to https://api.stripe.com).
+func WithAPIBaseURL(u string) ClientOption {
+	return func(c *Client) { c.apiBaseURL, _ = url.Parse(u) }
+}
+
 // WithCacheKeyPrefix scopes the FetchPage cache to a specific account by prefixing
 // all cache keys with prefix. Pass the account ID (e.g. "acct_xxx") so that cached
 // entries from one account are never served to another. An empty prefix is a no-op,
@@ -88,13 +97,15 @@ func WithPrefs(prefs map[string]string) ClientOption {
 // NewClient creates a Client configured to talk to docs.stripe.com.
 func NewClient(_ string) *Client {
 	base, _ := url.Parse(defaultBaseURL)
+	apiBase, _ := url.Parse(defaultAPIBaseURL)
 	client := http.Client{Timeout: 10 * time.Second}
 
 	return &Client{
-		http:      &client,
-		baseURL:   base,
-		userAgent: useragent.GetEncodedUserAgent(),
-		logger:    log.NewEntry(log.StandardLogger()),
+		http:       &client,
+		baseURL:    base,
+		apiBaseURL: apiBase,
+		userAgent:  useragent.GetEncodedUserAgent(),
+		logger:     log.NewEntry(log.StandardLogger()),
 	}
 }
 
@@ -106,10 +117,21 @@ func (c *Client) WithOptions(opts ...ClientOption) *Client {
 	return c
 }
 
+// retrieveDocResponse is the JSON envelope returned by the authenticated
+// /v2/docs/page endpoint.
+type retrieveDocResponse struct {
+	Content     string `json:"content"`
+	ContentType string `json:"content_type"`
+}
+
 // FetchPage retrieves a documentation page as plain text, using cache when available.
 //
 //	page, err := c.FetchPage(ctx, &url.URL{Path: "/payments/accept-a-payment", RawQuery: "api_version=2024-06-30"})
 func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
+	if c.apiKey != "" {
+		return c.fetchPageViaAPI(ctx, ref)
+	}
+
 	resolvedURL := c.baseURL.ResolveReference(ref)
 	// Merge stored prefs as query params, skipping any key already present in the ref.
 	// url.Values.Encode() sorts params, giving a consistent cache key.
@@ -163,6 +185,45 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	}, nil
 }
 
+// fetchPageViaAPI retrieves a documentation page through the authenticated
+// v2 API on api.stripe.com. The original docs.stripe.com-style ref (path plus
+// query string) is forwarded as the "path" query parameter, so both regular
+// pages and internal endpoints like the API reference locator work the same
+// way as the unauthenticated path.
+func (c *Client) fetchPageViaAPI(ctx context.Context, ref *url.URL) (Page, error) {
+	pathValue := ref.RequestURI()
+
+	u := c.apiBaseURL.JoinPath("/v2/docs/page")
+	u.RawQuery = url.Values{"path": {pathValue}}.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return Page{}, fmt.Errorf("docs: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
+
+	res, err := c.do(req)
+	if err != nil {
+		return Page{}, err
+	}
+
+	var apiResp retrieveDocResponse
+	if err := json.Unmarshal(res.body, &apiResp); err != nil {
+		return Page{}, fmt.Errorf("docs: unmarshal page response: %w", err)
+	}
+
+	// Reconstruct the original docs.stripe.com URL so callers (e.g. the TUI's
+	// "open in browser" action) have something meaningful to work with.
+	resolvedURL := (&url.URL{Scheme: "https", Host: "docs.stripe.com"}).ResolveReference(ref)
+
+	return Page{
+		Content:   []byte(apiResp.Content),
+		URL:       resolvedURL,
+		FetchedAt: time.Now(),
+	}, nil
+}
+
 type response struct {
 	body     []byte
 	finalURL *url.URL
@@ -179,6 +240,9 @@ func (c *Client) cacheKey(rawURL string) string {
 
 func (c *Client) do(req *http.Request) (response, error) {
 	req.Header.Set("User-Agent", c.userAgent)
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	start := time.Now()
 	resp, err := c.http.Do(req)
@@ -271,7 +335,13 @@ func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, err
 	if query == "" {
 		return &SearchResponse{}, nil
 	}
-	u := c.baseURL.JoinPath("/_endpoint/search")
+
+	var u *url.URL
+	if c.apiKey != "" {
+		u = c.apiBaseURL.JoinPath("/v2/docs/search")
+	} else {
+		u = c.baseURL.JoinPath("/_endpoint/search")
+	}
 	u.RawQuery = url.Values{"query": {query}}.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -279,6 +349,7 @@ func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, err
 		return nil, fmt.Errorf("search: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
 
 	res, err := c.do(req)
 	if err != nil {
