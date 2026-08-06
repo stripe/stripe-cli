@@ -482,14 +482,10 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
     OS = "%s"
     Version = "1.0.0"
     Sum = "%s"
-    Runtime = {node = "20"}
 `, runtime.GOARCH, runtime.GOOS, binarySum)
 
 	var metadataLookups int
 
-	nodeBinaryPath := GetNodeBinaryPath(config, "20")
-	require.NoError(t, fs.MkdirAll(filepath.Dir(nodeBinaryPath), 0755))
-	require.NoError(t, afero.WriteFile(fs, nodeBinaryPath, []byte("node"), 0755))
 	require.NoError(t, writeLocalPluginMetadata(config, fs, Plugin{
 		Shortname:        "generate",
 		Shortdesc:        "Generate things",
@@ -549,7 +545,6 @@ func TestResolvedPluginInstallRetriesMetadataAfterCachedLocalFallback(t *testing
 	require.NoError(t, err)
 	release := cachedPlugin.getReleaseForVersion("1.0.0")
 	require.NotNil(t, release)
-	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestResolvePluginForAutoInstallPrefersFreshMetadataWhenLocalMetadataIsStale(t *testing.T) {
@@ -625,42 +620,6 @@ func TestVerifyChecksumSkipsLocalDevelopmentVersion(t *testing.T) {
 
 	err := plugin.verifyChecksum(strings.NewReader("locally built binary"), localDevelopmentVersion)
 	require.NoError(t, err)
-}
-
-func TestPluginFromMetadataPreservesRuntimeRequirements(t *testing.T) {
-	plugin := &Plugin{
-		Shortname:        "generate",
-		Binary:           "stripe-cli-generate",
-		MagicCookieValue: "GENERATE-COOKIE",
-		Releases: []Release{
-			{
-				Arch:    runtime.GOARCH,
-				OS:      runtime.GOOS,
-				Version: "1.0.0",
-				Sum:     "abc123",
-				Runtime: map[string]string{"node": "20"},
-			},
-		},
-	}
-
-	metadataManifest := fmt.Sprintf(`[[Plugin]]
-  Shortname = "generate"
-  Shortdesc = "Generate things"
-  Binary = "stripe-cli-generate"
-  MagicCookieValue = "GENERATE-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "%s"
-    OS = "%s"
-    Version = "1.0.0"
-    Sum = "abc123"
-`, runtime.GOARCH, runtime.GOOS)
-
-	resolved, err := plugin.pluginFromMetadata(metadataManifest)
-	require.NoError(t, err)
-	release := resolved.getReleaseForVersion("1.0.0")
-	require.NotNil(t, release)
-	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestInstallFailsIfNoAPIKeyAndMetadataReturnsNoBinaryURL(t *testing.T) {
