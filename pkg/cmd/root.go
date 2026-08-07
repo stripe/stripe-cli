@@ -39,6 +39,8 @@ import (
 // Config is the cli configuration for the user
 var Config config.Config
 
+var rootAccessBaseURL string
+
 var fs = afero.NewOsFs()
 
 // rootCmd represents the base command when called without any subcommands
@@ -175,7 +177,7 @@ func Execute(ctx context.Context) {
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
-				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, login.DefaultAccessBaseURL, &Config)
+				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, rootAccessBaseURL, &Config)
 
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -250,6 +252,9 @@ func init() {
 	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
+	rootCmd.PersistentFlags().StringVar(&rootAccessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	rootCmd.PersistentFlags().MarkHidden("access-base") //nolint:errcheck
+
 	// tell viper to monitor the following flags:
 	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
 	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))

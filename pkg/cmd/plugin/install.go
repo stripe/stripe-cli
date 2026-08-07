@@ -32,6 +32,7 @@ type InstallCmd struct {
 
 	apiBaseURL       string
 	dashboardBaseURL string
+	accessBaseURL    string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -54,6 +55,8 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 	ic.Cmd.Flags().StringVar(&ic.dashboardBaseURL, "dashboard-base", "", "Sets the dashboard base URL")
 	ic.Cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
+	ic.Cmd.Flags().StringVar(&ic.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	ic.Cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	return ic
 }
@@ -106,7 +109,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 				if input != "" {
 					return fmt.Errorf("login canceled")
 				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, login.DefaultAccessBaseURL, ic.cfg); lErr != nil {
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.accessBaseURL, ic.cfg); lErr != nil {
 					return lErr
 				}
 				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
@@ -126,7 +129,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 				if input != "" {
 					return fmt.Errorf("login canceled")
 				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, login.DefaultAccessBaseURL, ic.cfg); lErr != nil {
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.accessBaseURL, ic.cfg); lErr != nil {
 					return lErr
 				}
 				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
