@@ -122,6 +122,8 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+const expiryDisplayFormat = "Jan 2, 2006 at 3:04 PM"
+
 func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	w := cmd.OutOrStdout()
 
@@ -134,6 +136,9 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		}
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 		fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		if t, err := config.GetUATExpiresAt(); err == nil {
+			fmt.Fprintf(tw, "Expires\t%s\n", t.Local().Format(expiryDisplayFormat))
+		}
 		tw.Flush()
 		fmt.Fprintln(w)
 	}

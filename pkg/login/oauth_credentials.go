@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
@@ -30,6 +31,13 @@ func UpdateOAuthTokens(cfg *config.Config, resp *OAuthTokenResponse) error {
 
 	if resp.RefreshToken != "" {
 		if err := config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte(resp.RefreshToken), "Stripe CLI OAuth refresh token"); err != nil {
+			return err
+		}
+	}
+
+	if resp.ExpiresIn > 0 {
+		expiresAt := time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
+		if err := config.SaveUATExpiresAt(expiresAt); err != nil {
 			return err
 		}
 	}
@@ -89,6 +97,10 @@ func ClearOAuthCredentials(cfg *config.Config) error {
 	}
 
 	if err := config.KeyRing.Remove(config.OAuthActiveContextKeychainKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+		return err
+	}
+
+	if err := config.KeyRing.Remove(config.OAuthUATExpiresAtKeychainKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 		return err
 	}
 

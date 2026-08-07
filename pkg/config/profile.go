@@ -85,6 +85,9 @@ const OAuthActiveContextKeychainKey = "oauth_active_context"
 // OAuthRefreshTokenKeychainKey is the keyring key for the OAuth refresh token.
 const OAuthRefreshTokenKeychainKey = "oauth_refresh_token"
 
+// OAuthUATExpiresAtKeychainKey is the keyring key for the UAT expiry time (RFC3339).
+const OAuthUATExpiresAtKeychainKey = "oauth_uat_expires_at"
+
 // ActiveContext identifies the account and mode that is currently selected.
 type ActiveContext struct {
 	AccountID string `json:"account_id"`
@@ -683,6 +686,27 @@ func SaveActiveContext(accountID string, livemode bool) error {
 		return err
 	}
 	return KeyRing.Set(OAuthActiveContextKeychainKey, data, "Stripe CLI OAuth active context")
+}
+
+// SaveUATExpiresAt persists the UAT expiry time in the keyring.
+func SaveUATExpiresAt(t time.Time) error {
+	if KeyRing == nil {
+		return nil
+	}
+	return KeyRing.Set(OAuthUATExpiresAtKeychainKey, []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI OAuth token expiry")
+}
+
+// GetUATExpiresAt retrieves the stored UAT expiry time from the keyring.
+// Returns ErrKeyNotFound (wrapped) when no expiry has been saved.
+func GetUATExpiresAt() (time.Time, error) {
+	if KeyRing == nil {
+		return time.Time{}, keyring.ErrKeyNotFound
+	}
+	data, err := KeyRing.Get(OAuthUATExpiresAtKeychainKey)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339, string(data))
 }
 
 // PrintActiveContextBanner prints the active context to stderr once per

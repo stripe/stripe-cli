@@ -439,6 +439,7 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 	deleteTopLevelLivemodeKey(UATKeychainItemKey)
 	deleteTopLevelLivemodeKey(OAuthRefreshTokenKeychainKey)
 	deleteTopLevelLivemodeKey(OAuthActiveContextKeychainKey)
+	deleteTopLevelLivemodeKey(OAuthUATExpiresAtKeychainKey)
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
@@ -464,6 +465,7 @@ func (c *Config) RemoveAllAuthFields() error {
 	deleteTopLevelLivemodeKey(UATKeychainItemKey)
 	deleteTopLevelLivemodeKey(OAuthRefreshTokenKeychainKey)
 	deleteTopLevelLivemodeKey(OAuthActiveContextKeychainKey)
+	deleteTopLevelLivemodeKey(OAuthUATExpiresAtKeychainKey)
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
