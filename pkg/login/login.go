@@ -24,13 +24,22 @@ func warnIfInsecureStorage() {
 }
 
 // Login is the main entrypoint for logging in to the CLI.
-func Login(ctx context.Context, baseURL string, config *config.Config) error {
-	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
+//
+// When the /stripecli/auth server responds with a 3xx, the machine UUID is
+// enrolled in the OAuth feature flag and the OAuth device-code flow is used
+// instead of the legacy RAK flow. accessBaseURL controls which access-srv
+// environment is used (production by default; QA via --access-base).
+func Login(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	links, useOAuth, err := GetLinks(ctx, dashboardBaseURL, cfg.Profile.DeviceName, cfg.GetMachineUUID())
 	if err != nil {
 		return err
 	}
 
-	configurer := keys.NewRAKConfigurer(config, afero.NewOsFs())
+	if useOAuth {
+		return LoginWithDeviceCode(ctx, accessBaseURL, cfg)
+	}
+
+	configurer := keys.NewRAKConfigurer(cfg, afero.NewOsFs())
 	rt := keys.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(rt)
 	return auth.Login(ctx, links)
@@ -51,9 +60,13 @@ func InitiateLogin(ctx context.Context, baseURL string, cfg *config.Config) erro
 		return err
 	}
 
-	links, err := GetLinks(ctx, baseURL, deviceName)
+	links, useOAuth, err := GetLinks(ctx, baseURL, deviceName, cfg.GetMachineUUID())
 	if err != nil {
 		return err
+	}
+
+	if useOAuth {
+		return fmt.Errorf("OAuth login required for this account; run 'stripe login' (without --non-interactive) to complete browser authorization")
 	}
 
 	out := loginSessionOutput{

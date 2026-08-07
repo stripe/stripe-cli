@@ -140,7 +140,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
 
-	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config)
+	return login.Login(cmd.Context(), lc.dashboardBaseURL, login.DefaultAccessBaseURL, &Config)
 }
 
 // TODO: we should support bash completion for account names

@@ -106,7 +106,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 				if input != "" {
 					return fmt.Errorf("login canceled")
 				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, login.DefaultAccessBaseURL, ic.cfg); lErr != nil {
 					return lErr
 				}
 				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
@@ -126,7 +126,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 				if input != "" {
 					return fmt.Errorf("login canceled")
 				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, login.DefaultAccessBaseURL, ic.cfg); lErr != nil {
 					return lErr
 				}
 				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)

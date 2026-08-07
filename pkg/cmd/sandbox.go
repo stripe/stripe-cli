@@ -267,7 +267,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	if scc.nonInteractive {
 		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, &Config)
 	}
-	return login.Login(cmd.Context(), scc.dashboardURL, &Config)
+	return login.Login(cmd.Context(), scc.dashboardURL, login.DefaultAccessBaseURL, &Config)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {

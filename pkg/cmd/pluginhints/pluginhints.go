@@ -113,7 +113,7 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 		},
 		loginFn: func(ctx context.Context) error {
-			return login.Login(ctx, dashboardBaseURL, cfg)
+			return login.Login(ctx, dashboardBaseURL, login.DefaultAccessBaseURL, cfg)
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
