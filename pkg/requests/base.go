@@ -145,6 +145,8 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	rb.Profile.PrintActiveContextBanner()
+
 	if len(args) > 1 {
 		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
 	}

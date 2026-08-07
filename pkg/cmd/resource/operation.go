@@ -50,6 +50,8 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
+	oc.Profile.PrintActiveContextBanner()
+
 	creds, credsErr := oc.ResolveCredentials()
 
 	path := formatURL(oc.Path, args)
