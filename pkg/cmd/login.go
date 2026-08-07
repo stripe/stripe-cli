@@ -22,6 +22,7 @@ type loginCmd struct {
 	accessBaseURL    string
 	nonInteractive   bool
 	completeURL      string
+	completeDevice   bool
 	newSession       bool
 }
 
@@ -93,6 +94,8 @@ For agents and scripts, use the two-step non-interactive flow:
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
 	lc.cmd.Flags().BoolVar(&lc.nonInteractive, "non-interactive", false, "Print login URL and verification code as JSON and exit; immediately run the next_step command from the output to poll while the user approves in the browser")
 	lc.cmd.Flags().StringVar(&lc.completeURL, "complete", "", "Complete a browser login by polling the given URL (from 'stripe login --non-interactive')")
+	lc.cmd.Flags().BoolVar(&lc.completeDevice, "complete-device", false, "Complete an OAuth device authorization started by 'stripe login --non-interactive'")
+	lc.cmd.Flags().MarkHidden("complete-device") // #nosec G104
 
 	// TODO: a flag to replace existing account?
 	// TODO: what happens to if already logged into that account? - profile name should be the account id
@@ -138,6 +141,10 @@ For agents and scripts, use the two-step non-interactive flow:
 func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateDashboardBaseURL(lc.dashboardBaseURL); err != nil {
 		return err
+	}
+
+	if lc.completeDevice {
+		return login.PollPendingDeviceAuth(cmd.Context(), &Config)
 	}
 
 	if lc.completeURL != "" {

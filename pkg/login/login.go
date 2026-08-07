@@ -2,11 +2,9 @@ package login
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/spf13/afero"
@@ -57,19 +55,10 @@ type loginSessionOutput struct {
 	NextStep         string `json:"next_step"`
 }
 
-// oauthContinuation holds the data needed to poll for an OAuth device token.
-// It is base64-encoded and passed to `stripe login --complete` as `oauth:<token>`.
-type oauthContinuation struct {
-	DeviceCode    string `json:"device_code"`
-	Interval      int    `json:"interval"`
-	ExpiresIn     int    `json:"expires_in"`
-	AccessBaseURL string `json:"access_base"`
-}
-
 // InitiateLogin prints JSON with browser_url, verification_code, and a
 // next_step command, then returns. Intended for non-interactive (agent/script)
-// use. For the OAuth device-code flow it calls the device authorization
-// endpoint and encodes the continuation in the next_step token.
+// use. For the OAuth device-code flow it saves pending state to disk and emits
+// `stripe login --complete-device` as the next_step.
 func InitiateLogin(ctx context.Context, baseURL, accessBaseURL string, cfg *config.Config) error {
 	deviceName, err := cfg.Profile.GetDeviceName()
 	if err != nil {
@@ -98,8 +87,8 @@ func InitiateLogin(ctx context.Context, baseURL, accessBaseURL string, cfg *conf
 	return nil
 }
 
-// initiateOAuthDeviceLogin calls the device authorization endpoint, encodes
-// the continuation as a base64 token, and prints the JSON session output.
+// initiateOAuthDeviceLogin calls the device authorization endpoint, saves the
+// pending state to disk, and prints the JSON session output.
 func initiateOAuthDeviceLogin(ctx context.Context, accessBaseURL string) error {
 	clientID := clientIDForAccessBaseURL(accessBaseURL)
 	authResp, err := RequestDeviceCode(ctx, accessBaseURL, clientID)
@@ -107,22 +96,20 @@ func initiateOAuthDeviceLogin(ctx context.Context, accessBaseURL string) error {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
 
-	cont := oauthContinuation{
+	cont := &oauthContinuation{
 		DeviceCode:    authResp.DeviceCode,
 		Interval:      authResp.Interval,
 		ExpiresIn:     authResp.ExpiresIn,
 		AccessBaseURL: accessBaseURL,
 	}
-	contJSON, err := json.Marshal(cont)
-	if err != nil {
-		return err
+	if err := savePendingDeviceAuth(cont); err != nil {
+		return fmt.Errorf("failed to save pending auth state: %w", err)
 	}
-	contToken := "oauth:" + base64.RawURLEncoding.EncodeToString(contJSON)
 
 	out := loginSessionOutput{
 		BrowserURL:       authResp.VerificationURI,
 		VerificationCode: authResp.UserCode,
-		NextStep:         fmt.Sprintf("stripe login --complete '%s'", contToken),
+		NextStep:         "stripe login --complete-device",
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -132,16 +119,10 @@ func initiateOAuthDeviceLogin(ctx context.Context, accessBaseURL string) error {
 	return nil
 }
 
-// PollForLogin polls until browser auth completes, then saves credentials.
-// Intended as the second step of a non-interactive login flow.
-//
-// For OAuth, pollURL must be of the form "oauth:<base64>" as produced by
-// InitiateLogin; for legacy it is the plain HTTPS poll URL from the dashboard.
+// PollForLogin polls the given legacy poll URL until browser auth completes,
+// then saves credentials. Intended as the second step of a non-interactive
+// legacy login flow. For OAuth, use PollPendingDeviceAuth instead.
 func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error {
-	if encoded, ok := strings.CutPrefix(pollURL, "oauth:"); ok {
-		return pollOAuthDeviceLogin(ctx, encoded, cfg)
-	}
-
 	response, account, err := keys.PollForKey(ctx, pollURL, 0, 0)
 	if err != nil {
 		return err
@@ -166,17 +147,15 @@ func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error
 	return nil
 }
 
-// pollOAuthDeviceLogin decodes the base64 continuation token and polls the
-// OAuth token endpoint until the user approves in the browser.
-func pollOAuthDeviceLogin(ctx context.Context, encoded string, cfg *config.Config) error {
-	data, err := base64.RawURLEncoding.DecodeString(encoded)
+// PollPendingDeviceAuth loads the OAuth device auth state saved by
+// InitiateLogin and polls the token endpoint until the user approves.
+func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
+	cont, err := loadPendingDeviceAuth()
 	if err != nil {
-		return fmt.Errorf("invalid OAuth continuation token: %w", err)
+		return err
 	}
-	var cont oauthContinuation
-	if err := json.Unmarshal(data, &cont); err != nil {
-		return fmt.Errorf("invalid OAuth continuation token: %w", err)
-	}
+	// Remove the pending file whether polling succeeds or fails.
+	defer clearPendingDeviceAuth()
 
 	clientID := clientIDForAccessBaseURL(cont.AccessBaseURL)
 	interval := max(time.Duration(cont.Interval)*time.Second, 5*time.Second)
@@ -188,7 +167,7 @@ func pollOAuthDeviceLogin(ctx context.Context, encoded string, cfg *config.Confi
 	tokenResp, err := PollDeviceToken(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval)
 	if err != nil {
 		if pollCtx.Err() != nil {
-			return fmt.Errorf("device code expired; please run 'stripe login' again")
+			return fmt.Errorf("device code expired; please run 'stripe login --non-interactive' again")
 		}
 		return err
 	}
