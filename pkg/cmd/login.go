@@ -168,7 +168,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		if useragent.DetectAIAgent(os.Getenv) != "" {
 			fmt.Fprintln(os.Stderr, "If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).")
 		}
-		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
+		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
 	}
 
 	if lc.interactive {

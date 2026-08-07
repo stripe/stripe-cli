@@ -268,7 +268,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	}
 
 	if scc.nonInteractive {
-		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, &Config)
+		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
 	}
 	return login.Login(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
 }
