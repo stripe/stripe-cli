@@ -250,7 +250,6 @@ func init() {
 	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
-
 	// tell viper to monitor the following flags:
 	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
 	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
@@ -275,6 +274,7 @@ func init() {
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
+	rootCmd.AddCommand(newSwitchCmd().cmd)
 	// current stripe status site is being deprecated
 	// hide status command until status site v2 is released
 	// rootCmd.AddCommand(newStatusCmd().cmd)
