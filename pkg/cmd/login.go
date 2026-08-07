@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -17,16 +18,20 @@ type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
 	dashboardBaseURL string
+	accessBaseURL    string
 	nonInteractive   bool
 	completeURL      string
 }
 
 type loginListCmd struct {
-	cmd *cobra.Command
+	cmd           *cobra.Command
+	accessBaseURL string
 }
 
 type loginSwitchCmd struct {
-	cmd *cobra.Command
+	cmd           *cobra.Command
+	livemode      bool
+	accessBaseURL string
 }
 
 func newLoginCmd() *loginCmd {
@@ -95,6 +100,8 @@ For agents and scripts, use the two-step non-interactive flow:
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.dashboardBaseURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	lc.cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
+	lc.cmd.Flags().StringVar(&lc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	lc.cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	listCmd := &loginListCmd{}
 	listCmd.cmd = &cobra.Command{
@@ -104,17 +111,22 @@ For agents and scripts, use the two-step non-interactive flow:
 		Example: `stripe login list`,
 		RunE:    listCmd.listLoggedInAccountsCmd,
 	}
+	listCmd.cmd.Flags().StringVar(&listCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	listCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	lc.cmd.AddCommand(listCmd.cmd)
 
 	switchCmd := &loginSwitchCmd{}
 	switchCmd.cmd = &cobra.Command{
-		Use:     "switch",
-		Args:    validators.ExactArgs(1),
-		Short:   "Switch to a different logged-in account",
-		Example: `stripe login switch <account_name>`,
+		Use:     "switch [account_id]",
+		Args:    validators.MaximumNArgs(1),
+		Short:   "Alias for 'stripe switch context'",
+		Example: `stripe login switch\n  stripe login switch acct_1234\n  stripe login switch acct_1234 --live`,
 		RunE:    switchCmd.switchLoggedInAccountCmd,
 	}
+	switchCmd.cmd.Flags().BoolVar(&switchCmd.livemode, "live", false, "Select livemode for the given account")
+	switchCmd.cmd.Flags().StringVar(&switchCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	switchCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	lc.cmd.AddCommand(switchCmd.cmd)
 	return lc
@@ -140,14 +152,29 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
 
-	return login.Login(cmd.Context(), lc.dashboardBaseURL, login.DefaultAccessBaseURL, &Config)
+	return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
 }
 
 // TODO: we should support bash completion for account names
 func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []string) error {
+	uat, _ := Config.Profile.GetUAT()
+	if strings.HasPrefix(uat, "oak_") {
+		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, uat)
+	}
 	return Config.ListProfiles()
 }
 
 func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []string) error {
+	uat, _ := Config.Profile.GetUAT()
+	if strings.HasPrefix(uat, "oak_") {
+		accountID := ""
+		if len(args) > 0 {
+			accountID = args[0]
+		}
+		return login.SwitchContext(cmd.Context(), lc.accessBaseURL, &Config, accountID, lc.livemode)
+	}
+	if len(args) == 0 {
+		return fmt.Errorf("account name required")
+	}
 	return Config.SwitchProfile(args[0])
 }
