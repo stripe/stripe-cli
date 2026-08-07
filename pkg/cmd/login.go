@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -21,6 +22,7 @@ type loginCmd struct {
 	accessBaseURL    string
 	nonInteractive   bool
 	completeURL      string
+	newSession       bool
 }
 
 type loginListCmd struct {
@@ -102,6 +104,7 @@ For agents and scripts, use the two-step non-interactive flow:
 	lc.cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 	lc.cmd.Flags().StringVar(&lc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	lc.cmd.Flags().MarkHidden("access-base") // #nosec G104
+	lc.cmd.Flags().BoolVar(&lc.newSession, "new-session", false, "Force a new login even if already authenticated")
 
 	listCmd := &loginListCmd{}
 	listCmd.cmd = &cobra.Command{
@@ -139,6 +142,26 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 
 	if lc.completeURL != "" {
 		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
+	}
+
+	if !lc.newSession {
+		uat, _ := Config.Profile.GetUAT()
+		if strings.HasPrefix(uat, "oak_") {
+			identity := Config.Profile.GetDisplayName()
+			if identity == "" {
+				if ac, _ := config.GetActiveContext(); ac != nil {
+					identity = ac.AccountID
+				}
+			}
+			if identity != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", identity)
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
+			fmt.Fprintln(cmd.OutOrStdout(), "To log in as a different user, run: stripe login --new-session")
+			return nil
+		}
 	}
 
 	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
