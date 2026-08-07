@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -15,9 +16,13 @@ var getLinks = login.GetLinks
 func (srv *RPCService) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginResponse, error) {
 	var err error
 
-	links, err = getLinks(ctx, stripe.DefaultDashboardBaseURL, srv.cfg.UserCfg.Profile.DeviceName)
+	var useOAuth bool
+	links, useOAuth, err = getLinks(ctx, stripe.DefaultDashboardBaseURL, srv.cfg.UserCfg.Profile.DeviceName, srv.cfg.UserCfg.GetMachineUUID())
 	if err != nil {
 		return nil, err
+	}
+	if useOAuth {
+		return nil, fmt.Errorf("OAuth login required; use 'stripe login' in a terminal to complete browser authorization")
 	}
 
 	return &rpc.LoginResponse{

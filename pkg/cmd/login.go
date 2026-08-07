@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -17,16 +19,22 @@ type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
 	dashboardBaseURL string
+	accessBaseURL    string
 	nonInteractive   bool
 	completeURL      string
+	completeDevice   bool
+	newSession       bool
 }
 
 type loginListCmd struct {
-	cmd *cobra.Command
+	cmd           *cobra.Command
+	accessBaseURL string
 }
 
 type loginSwitchCmd struct {
-	cmd *cobra.Command
+	cmd           *cobra.Command
+	livemode      bool
+	accessBaseURL string
 }
 
 func newLoginCmd() *loginCmd {
@@ -86,6 +94,8 @@ For agents and scripts, use the two-step non-interactive flow:
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
 	lc.cmd.Flags().BoolVar(&lc.nonInteractive, "non-interactive", false, "Print login URL and verification code as JSON and exit; immediately run the next_step command from the output to poll while the user approves in the browser")
 	lc.cmd.Flags().StringVar(&lc.completeURL, "complete", "", "Complete a browser login by polling the given URL (from 'stripe login --non-interactive')")
+	lc.cmd.Flags().BoolVar(&lc.completeDevice, "complete-device", false, "Complete an OAuth device authorization started by 'stripe login --non-interactive'")
+	lc.cmd.Flags().MarkHidden("complete-device") // #nosec G104
 
 	// TODO: a flag to replace existing account?
 	// TODO: what happens to if already logged into that account? - profile name should be the account id
@@ -95,6 +105,9 @@ For agents and scripts, use the two-step non-interactive flow:
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.dashboardBaseURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	lc.cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
+	lc.cmd.Flags().StringVar(&lc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	lc.cmd.Flags().MarkHidden("access-base") // #nosec G104
+	lc.cmd.Flags().BoolVar(&lc.newSession, "new-session", false, "Force a new login even if already authenticated")
 
 	listCmd := &loginListCmd{}
 	listCmd.cmd = &cobra.Command{
@@ -104,17 +117,22 @@ For agents and scripts, use the two-step non-interactive flow:
 		Example: `stripe login list`,
 		RunE:    listCmd.listLoggedInAccountsCmd,
 	}
+	listCmd.cmd.Flags().StringVar(&listCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	listCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	lc.cmd.AddCommand(listCmd.cmd)
 
 	switchCmd := &loginSwitchCmd{}
 	switchCmd.cmd = &cobra.Command{
-		Use:     "switch",
-		Args:    validators.ExactArgs(1),
-		Short:   "Switch to a different logged-in account",
-		Example: `stripe login switch <account_name>`,
+		Use:     "switch [account_id]",
+		Args:    validators.MaximumNArgs(1),
+		Short:   "Alias for 'stripe switch context'",
+		Example: `stripe login switch\n  stripe login switch acct_1234\n  stripe login switch acct_1234 --live`,
 		RunE:    switchCmd.switchLoggedInAccountCmd,
 	}
+	switchCmd.cmd.Flags().BoolVar(&switchCmd.livemode, "live", false, "Select livemode for the given account")
+	switchCmd.cmd.Flags().StringVar(&switchCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	switchCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	lc.cmd.AddCommand(switchCmd.cmd)
 	return lc
@@ -125,29 +143,68 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if lc.completeDevice {
+		return login.PollPendingDeviceAuth(cmd.Context(), &Config)
+	}
+
 	if lc.completeURL != "" {
 		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
+	}
+
+	if !lc.newSession {
+		uat, _ := Config.Profile.GetUAT()
+		if strings.HasPrefix(uat, "oak_") {
+			identity := Config.Profile.GetDisplayName()
+			if identity == "" {
+				if ac, _ := config.GetActiveContext(); ac != nil {
+					identity = ac.AccountID
+				}
+			}
+			if identity != "" {
+				fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", identity)
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
+			fmt.Fprintln(cmd.OutOrStdout(), "To log in as a different user, run: stripe login --new-session")
+			return nil
+		}
 	}
 
 	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 		if useragent.DetectAIAgent(os.Getenv) != "" {
 			fmt.Fprintln(os.Stderr, "If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).")
 		}
-		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
+		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
 	}
 
 	if lc.interactive {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
 
-	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config)
+	return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
 }
 
 // TODO: we should support bash completion for account names
 func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []string) error {
+	uat, _ := Config.Profile.GetUAT()
+	if strings.HasPrefix(uat, "oak_") {
+		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, uat)
+	}
 	return Config.ListProfiles()
 }
 
 func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []string) error {
+	uat, _ := Config.Profile.GetUAT()
+	if strings.HasPrefix(uat, "oak_") {
+		accountID := ""
+		if len(args) > 0 {
+			accountID = args[0]
+		}
+		return login.SwitchContext(cmd.Context(), lc.accessBaseURL, &Config, accountID, lc.livemode)
+	}
+	if len(args) == 0 {
+		return fmt.Errorf("account name required")
+	}
 	return Config.SwitchProfile(args[0])
 }

@@ -15,12 +15,12 @@ import (
 )
 
 func TestLoginReturnsURLAndPairingCode(t *testing.T) {
-	getLinks = func(ctx context.Context, baseURL string, deviceName string) (*login.Links, error) {
+	getLinks = func(ctx context.Context, baseURL string, deviceName string, machineUUID string) (*login.Links, bool, error) {
 		return &login.Links{
 			BrowserURL:       "foo",
 			PollURL:          "bar",
 			VerificationCode: "baz",
-		}, nil
+		}, false, nil
 	}
 
 	ctx := withAuth(context.Background())
@@ -44,8 +44,8 @@ func TestLoginReturnsURLAndPairingCode(t *testing.T) {
 }
 
 func TestLoginReturnsFailsWhenGetLinksFails(t *testing.T) {
-	getLinks = func(ctx context.Context, baseURL string, deviceName string) (*login.Links, error) {
-		return nil, errors.New("Failed to get links")
+	getLinks = func(ctx context.Context, baseURL string, deviceName string, machineUUID string) (*login.Links, bool, error) {
+		return nil, false, errors.New("Failed to get links")
 	}
 
 	ctx := withAuth(context.Background())

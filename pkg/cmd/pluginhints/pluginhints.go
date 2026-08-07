@@ -71,6 +71,7 @@ type pluginHintCmd struct {
 	name           string
 	description    string
 	privatePreview bool
+	accessBaseURL  string
 
 	lookupFn      func(ctx context.Context) error
 	installFn     func(ctx context.Context) error
@@ -99,8 +100,9 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 	}
 
 	p := &pluginHintCmd{
-		name:        name,
-		description: description,
+		name:          name,
+		description:   description,
+		accessBaseURL: login.DefaultAccessBaseURL,
 		lookupFn: func(ctx context.Context) error {
 			_, err := resolvePlugin(ctx)
 			return err
@@ -112,13 +114,13 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 			}
 			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 		},
-		loginFn: func(ctx context.Context) error {
-			return login.Login(ctx, dashboardBaseURL, cfg)
-		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
 		stdin:         os.Stdin,
 		stdout:        os.Stdout,
+	}
+	p.loginFn = func(ctx context.Context) error {
+		return login.Login(ctx, dashboardBaseURL, p.accessBaseURL, cfg)
 	}
 
 	for _, opt := range opts {
@@ -132,6 +134,8 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		RunE:               p.run,
 	}
+	p.Command.Flags().StringVar(&p.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	_ = p.Command.Flags().MarkHidden("access-base")
 
 	return p
 }

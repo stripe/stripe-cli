@@ -84,6 +84,8 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	Config.Profile.PrintActiveContextBanner()
+
 	creds, err := Config.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err

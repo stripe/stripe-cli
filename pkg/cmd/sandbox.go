@@ -41,6 +41,7 @@ type sandboxCreateCmd struct {
 	nonInteractive bool
 	baseURL        string
 	dashboardURL   string
+	accessBaseURL  string
 }
 
 func newSandboxCmd() *sandboxCmd {
@@ -102,6 +103,8 @@ work immediately.`,
 
 	scc.cmd.Flags().StringVar(&scc.dashboardURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	_ = scc.cmd.Flags().MarkHidden("dashboard-base")
+	scc.cmd.Flags().StringVar(&scc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	_ = scc.cmd.Flags().MarkHidden("access-base")
 
 	return scc
 }
@@ -265,9 +268,9 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	}
 
 	if scc.nonInteractive {
-		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, &Config)
+		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
 	}
-	return login.Login(cmd.Context(), scc.dashboardURL, &Config)
+	return login.Login(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
