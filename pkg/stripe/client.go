@@ -123,6 +123,9 @@ type Client struct {
 	// Defaults to the standard set of relevant for Stripe headers.
 	VerbosePrintableHeaders []string
 
+	// When true, 3xx responses are returned directly instead of being followed.
+	NoFollowRedirects bool
+
 	// Cached HTTP client, lazily created the first time the Client is used to
 	// send a request.
 	httpClient *http.Client
@@ -175,6 +178,11 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	if c.httpClient == nil {
 		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		if c.NoFollowRedirects {
+			c.httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+		}
 	}
 
 	if ctx != nil {
