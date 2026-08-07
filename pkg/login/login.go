@@ -35,6 +35,9 @@ func Login(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *con
 		return err
 	}
 
+	// Clear all stale credentials before saving new ones, regardless of flow.
+	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
+
 	if useOAuth {
 		return LoginWithDeviceCode(ctx, accessBaseURL, cfg)
 	}
@@ -89,6 +92,9 @@ func PollForLogin(ctx context.Context, pollURL string, cfg *config.Config) error
 	if err != nil {
 		return err
 	}
+
+	// Clear all stale credentials before saving new ones.
+	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
 
 	configurer := keys.NewRAKConfigurer(cfg, afero.NewOsFs())
 	if err := configurer.SaveLoginDetails(response); err != nil {

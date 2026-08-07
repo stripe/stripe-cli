@@ -46,6 +46,9 @@ func interactiveLoginWithParams(ctx context.Context, cfg *config.Config, input i
 		cfg.Profile.AccountID = account.ID
 	}
 
+	// Clear all stale credentials before saving new ones.
+	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
+
 	profileErr := cfg.Profile.CreateProfile()
 	if profileErr != nil {
 		return profileErr
