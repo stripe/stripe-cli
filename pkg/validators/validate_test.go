@@ -7,6 +7,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestLength(t *testing.T) {
+	validate := Length(2, 4)
+
+	require.NoError(t, validate("ab"))
+	require.NoError(t, validate("abcd"))
+	require.EqualError(t, validate("a"), "must be at least 2 characters")
+	require.EqualError(t, validate("abcde"), "must be at most 4 characters")
+}
+
+func TestOneOf(t *testing.T) {
+	validate := OneOf("red", "green", "blue")
+
+	require.NoError(t, validate("green"))
+	require.EqualError(t, validate("purple"), `"purple" is not one of the allowed values (red, green, blue)`)
+}
+
 func TestNoKey(t *testing.T) {
 	err := APIKey("")
 	require.EqualError(t, err, "you have not configured API keys yet")
