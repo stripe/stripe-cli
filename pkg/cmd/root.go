@@ -269,6 +269,7 @@ func init() {
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
+	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
