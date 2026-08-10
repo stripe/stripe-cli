@@ -72,7 +72,9 @@ Stripe account.`,
 		Example: `stripe listen
   stripe listen --all-snapshot --forward-to localhost:3000/events
   stripe listen --all-thin --forward-to localhost:3000/events
-  stripe listen --events charge.captured,v1.billing.meter.no_meter_found \
+  stripe listen --events charge.captured,customer.created \
+    --forward-to localhost:3000/events
+  stripe listen --events v1.billing.meter.no_meter_found \
     --forward-to localhost:3000/events
   stripe listen --all-thin --events-from @accounts \
     --forward-to localhost:3000/events`,
