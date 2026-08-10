@@ -59,7 +59,7 @@ func TestAuthorize(t *testing.T) {
 
 func TestUserAgent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Regexp(t, regexp.MustCompile(`^Stripe/v1 stripe-cli/\w+$`), r.Header.Get("User-Agent"))
+		require.Regexp(t, regexp.MustCompile(`^Stripe/v1 stripe-cli/\w+( AIAgent/\w+)?$`), r.Header.Get("User-Agent"))
 		w.Write([]byte(`{}`))
 	}))
 	defer ts.Close()
