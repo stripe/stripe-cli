@@ -400,6 +400,46 @@ func TestUpdateEnvRefusesSymlink(t *testing.T) {
 	require.Equal(t, "ORIGINAL=1\n", string(victimContents))
 }
 
+func TestMakeRequestRejectsPathTraversal(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	serverCalled := false
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		serverCalled = true
+	}))
+	defer ts.Close()
+
+	fxt := &Fixture{
+		Fs:          fs,
+		Credentials: stripe.NewAPIKeyCredentials("rk_test_1234"),
+		BaseURL:     ts.URL,
+		Responses:   make(map[string]gjson.Result),
+	}
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"dot-segment escape", "/v2x/../v1.41/containers/create"},
+		{"non-API prefix", "/docker/containers"},
+		{"version without slash", "/v2x/foo"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := fxt.makeRequest(context.Background(), FixtureRequest{
+				Name:   "test",
+				Path:   tt.path,
+				Method: "post",
+				Params: map[string]interface{}{},
+			}, "")
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "not a valid Stripe API path")
+		})
+	}
+
+	require.False(t, serverCalled, "no request should have been sent for invalid paths")
+}
+
 func TestExecuteReturnsRequestNames(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

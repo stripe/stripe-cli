@@ -389,19 +389,20 @@ func MatchFixtureQuery(value string) (*regexp.Regexp, bool) {
 }
 
 func getEnvVar(key string) (string, error) {
-	// Check if env variable is present
 	envValue := os.Getenv(key)
 	if envValue == "" {
-		// Try to load from .env file
+		// Read .env into a local map without modifying the process environment.
+		// godotenv.Read (unlike Load) never calls os.Setenv, preventing
+		// untrusted .env entries from polluting process-wide state.
 		dir, err := os.Getwd()
 		if err != nil {
 			dir = ""
 		}
-		err = godotenv.Load(path.Join(dir, ".env"))
+		envMap, err := godotenv.Read(path.Join(dir, ".env"))
 		if err != nil {
 			return "", nil
 		}
-		envValue = os.Getenv(key)
+		envValue = envMap[key]
 	}
 	if envValue == "" {
 		fmt.Printf("No value for env var: %s\n", key)

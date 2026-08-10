@@ -17,6 +17,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
+// unixSocketPath is captured once at package init so that later mutations to
+// the process environment (e.g. via godotenv.Load) cannot redirect the HTTP
+// transport after startup.
+var unixSocketPath = os.Getenv("STRIPE_CLI_UNIX_SOCKET")
+
 // APIVersion is API version used in CLI
 const APIVersion = "2019-03-14"
 
@@ -158,7 +163,6 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
-	// if path starts with v1
 	if IsV2Path(path) {
 		req.Header.Set("Content-Type", V2ContentType)
 	} else {
@@ -177,7 +181,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	}
 
 	if c.httpClient == nil {
-		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, unixSocketPath)
 		if c.NoFollowRedirects {
 			c.httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
@@ -259,7 +263,17 @@ func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *
 	}
 }
 
-// IsV2Path checks if the path is for V1 API
+// IsV2Path reports whether path targets the V2 API.
+// The trailing slash is required to avoid false positives on paths like /v2x/...
 func IsV2Path(path string) bool {
-	return strings.HasPrefix(path, "/"+V2Request)
+	return strings.HasPrefix(path, "/"+V2Request+"/")
+}
+
+// IsValidAPIPath reports whether the resolved URL path is under a recognized
+// Stripe API prefix. This prevents path-traversal attacks (e.g.
+// /v2x/../v1.41/containers/create) from reaching non-Stripe endpoints.
+func IsValidAPIPath(path string) bool {
+	return strings.HasPrefix(path, "/v1/") || strings.HasPrefix(path, "/v1?") ||
+		strings.HasPrefix(path, "/v2/") || strings.HasPrefix(path, "/v2?") ||
+		path == "/v1" || path == "/v2"
 }
