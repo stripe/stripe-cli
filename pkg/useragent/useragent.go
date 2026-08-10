@@ -146,12 +146,20 @@ func DetectAIAgentRaw(getEnv func(string) string) string {
 // reports one. This distinguishes a desktop or IDE-hosted agent from the same agent
 // running in a terminal, which DetectAIAgent alone cannot do.
 //
-// Values are passed through as reported rather than mapped to a fixed set, since the
-// set evolves outside this CLI. Known Claude Code values include "cli",
-// "claude-desktop", "claude-vscode", "mcp", "sdk-ts", "sdk-py", "local-agent",
-// "claude-code-github-action", and several "remote*" variants.
+// Values are not mapped to a fixed set, since the set evolves outside this CLI. Known
+// Claude Code values include "cli", "claude-desktop", "claude-vscode", "mcp",
+// "sdk-ts", "sdk-py", "local-agent", "claude-code-github-action", and several
+// "remote*" variants. Codex Desktop reports "codex-desktop".
 func DetectAgentHost(getEnv func(string) string) string {
-	return sanitizeEnvValue(getEnv("CLAUDE_CODE_ENTRYPOINT"))
+	if host := getEnv("CLAUDE_CODE_ENTRYPOINT"); host != "" {
+		return normalizeAgentHost(host)
+	}
+	// Codex Desktop sets this alongside the generic Codex signals; it is currently the
+	// only inherited value that separates Desktop from the Codex CLI.
+	if host := getEnv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE"); host != "" {
+		return normalizeAgentHost(host)
+	}
+	return ""
 }
 
 // DetectMacAppBundleID returns the bundle identifier of the macOS application that
@@ -200,6 +208,13 @@ const maxEnvValueLength = 64
 //
 // Private functions
 //
+
+// normalizeAgentHost lowercases and dash-separates a reported host so that values
+// from different vendors land in one comparable column: Claude Code reports
+// "claude-desktop" while Codex Desktop reports "Codex Desktop".
+func normalizeAgentHost(host string) string {
+	return strings.ReplaceAll(strings.ToLower(sanitizeEnvValue(host)), " ", "-")
+}
 
 // sanitizeEnvValue trims an environment value, drops anything outside printable
 // ASCII, and truncates the result to maxEnvValueLength.

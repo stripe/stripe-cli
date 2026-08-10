@@ -162,6 +162,8 @@ func TestDetectAgentHost(t *testing.T) {
 		{"desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "claude-desktop"},
 		{"cli", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "cli"},
 		{"mcp", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "mcp"}, "mcp"},
+		{"codex desktop normalized", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "codex-desktop"},
+		{"claude wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "cli"},
 		{"unset", map[string]string{}, ""},
 		{"sanitized", map[string]string{"CLAUDE_CODE_ENTRYPOINT": " claude-vscode "}, "claude-vscode"},
 	}
