@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // ArgValidator is an argument validator. It accepts a string and returns an
@@ -14,9 +16,9 @@ type ArgValidator func(string) error
 
 var (
 	// ErrAPIKeyNotConfigured is the error returned when the loaded profile is missing the api key property
-	ErrAPIKeyNotConfigured = errors.New("you have not configured API keys yet")
+	ErrAPIKeyNotConfigured = errorcategory.With(errors.New("you have not configured API keys yet"), errorcategory.Auth)
 	// ErrPubKeyNotConfigured is the error returned when the loaded profile is missing the publishable key property
-	ErrPubKeyNotConfigured = errors.New("you have not configured publishable keys yet")
+	ErrPubKeyNotConfigured = errorcategory.With(errors.New("you have not configured publishable keys yet"), errorcategory.Auth)
 	// ErrDeviceNameNotConfigured is the error returned when the loaded profile is missing the device name property
 	ErrDeviceNameNotConfigured = errors.New("you have not configured your device name yet")
 	// ErrAccountIDNotConfigured is the error returned when the loaded profile is missing the account_id property
@@ -50,21 +52,25 @@ func CallNonEmpty(validator ArgValidator, value string) error {
 	return validator(value)
 }
 
+func authError(message string) error {
+	return errorcategory.With(errors.New(message), errorcategory.Auth)
+}
+
 // APIKey validates that a string looks like an API key.
 func APIKey(input string) error {
 	if len(input) == 0 {
 		return ErrAPIKeyNotConfigured
 	} else if len(input) < 12 {
-		return errors.New("the API key provided is too short, it must be at least 12 characters long")
+		return authError("the API key provided is too short, it must be at least 12 characters long")
 	}
 
 	keyParts := strings.Split(input, "_")
 	if len(keyParts) < 3 {
-		return errors.New("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+		return authError("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
 	}
 
 	if keyParts[0] != "sk" && keyParts[0] != "rk" && keyParts[0] != "rkcs" {
-		return errors.New("the CLI only supports using a secret or restricted key")
+		return authError("the CLI only supports using a secret or restricted key")
 	}
 
 	return nil
@@ -75,16 +81,16 @@ func APIKeyNotRestricted(input string) error {
 	if len(input) == 0 {
 		return ErrAPIKeyNotConfigured
 	} else if len(input) < 12 {
-		return errors.New("the API key provided is too short, it must be at least 12 characters long")
+		return authError("the API key provided is too short, it must be at least 12 characters long")
 	}
 
 	keyParts := strings.Split(input, "_")
 	if len(keyParts) < 3 {
-		return errors.New("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+		return authError("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
 	}
 
 	if keyParts[0] != "sk" || keyParts[0] == "rk" {
-		return errors.New("this CLI command only supports using a secret key. Please re-run using the --api-key flag override with your secret API key")
+		return authError("this CLI command only supports using a secret key. Please re-run using the --api-key flag override with your secret API key")
 	}
 
 	return nil

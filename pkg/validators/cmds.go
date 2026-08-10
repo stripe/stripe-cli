@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 func getCommandPath(cmd *cobra.Command) string {
@@ -29,7 +31,7 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 	)
 
 	if len(args) > 0 {
-		return errors.New(errorMessage)
+		return errorcategory.With(errors.New(errorMessage), errorcategory.UserInput)
 	}
 
 	return nil
@@ -54,7 +56,7 @@ func ExactArgs(num int) cobra.PositionalArgs {
 		)
 
 		if len(args) != num {
-			return errors.New(errorMessage)
+			return errorcategory.With(errors.New(errorMessage), errorcategory.UserInput)
 		}
 		return nil
 	}
@@ -79,7 +81,7 @@ func MaximumNArgs(num int) cobra.PositionalArgs {
 		)
 
 		if len(args) > num {
-			return errors.New(errorMessage)
+			return errorcategory.With(errors.New(errorMessage), errorcategory.UserInput)
 		}
 		return nil
 	}
