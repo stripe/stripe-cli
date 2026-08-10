@@ -484,6 +484,8 @@ func executeDatabaseOperation(cmd *cobra.Command, opCmd *OperationCmd, args []st
 		return nil, err
 	}
 
+	opCmd.Profile.PrintActiveContextBanner()
+
 	opCmd.Parameters.SetVersion(databaseRequestVersion)
 
 	path := formatURL(opCmd.Path, args)

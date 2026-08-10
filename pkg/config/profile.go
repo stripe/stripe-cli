@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -16,7 +17,26 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-// Compartment represents a Stripe compartment from the OIDC userinfo response.
+var printActiveContextOnce sync.Once
+
+// OAuthTokenRefresher is called by ResolveCredentials when an OAK token is
+// expired or about to expire. It refreshes the token and updates p in-place.
+// Set by the login package via init().
+var OAuthTokenRefresher func(p *Profile) error
+
+// refreshMu serializes concurrent refresh attempts so only one goroutine hits
+// the token endpoint at a time; others re-use the result after the lock.
+var refreshMu sync.Mutex
+
+// AuthorizedAccount represents a Stripe account accessible to an OAuth token.
+type AuthorizedAccount struct {
+	ID    string   `json:"id"`
+	Name  string   `json:"name"`
+	Modes []string `json:"modes"`
+}
+
+// Compartment represents a Stripe workspace from the OIDC userinfo response.
+// TODO: remove with legacy RAK/OIDC flow.
 type Compartment struct {
 	CompartmentID string `json:"compartment_id" mapstructure:"compartment_id" toml:"compartment_id"`
 	Livemode      bool   `json:"livemode"        mapstructure:"livemode"        toml:"livemode"`
@@ -24,6 +44,7 @@ type Compartment struct {
 
 // UserInfo mirrors the OIDC userinfo endpoint response and is persisted as a
 // nested table in the profile config.
+// TODO: remove with legacy RAK/OIDC flow.
 type UserInfo struct {
 	Compartments []Compartment `json:"https://stripe.com/compartments" mapstructure:"compartments" toml:"compartments"`
 }
@@ -44,7 +65,11 @@ type Profile struct {
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
 	UAT                    string
-	UserInfo               *UserInfo
+	UserInfo               *UserInfo // TODO: remove with legacy RAK/OIDC flow
+
+	// OAuthAccessBaseURL is the access-srv base URL to use for token refresh
+	// and revocation. Set at startup from the --access-base flag; not persisted.
+	OAuthAccessBaseURL string
 }
 
 // config key names
@@ -62,10 +87,25 @@ const (
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 	SandboxClaimURLName        = "sandbox_claim_url"
 	SandboxExpiresAtName       = "sandbox_expires_at"
-	UserInfoName               = "user_info"
+	UserInfoName               = "user_info" // TODO: remove with legacy RAK/OIDC flow
 )
 
 const UATKeychainItemKey = "uat"
+
+// OAuthActiveContextKeychainKey is the keyring key for the active OAuth context.
+const OAuthActiveContextKeychainKey = "oauth_active_context"
+
+// OAuthRefreshTokenKeychainKey is the keyring key for the OAuth refresh token.
+const OAuthRefreshTokenKeychainKey = "oauth_refresh_token"
+
+// OAuthUATExpiresAtKeychainKey is the keyring key for the UAT expiry time (RFC3339).
+const OAuthUATExpiresAtKeychainKey = "oauth_uat_expires_at"
+
+// ActiveContext identifies the account and mode that is currently selected.
+type ActiveContext struct {
+	AccountID string `json:"account_id"`
+	Livemode  bool   `json:"livemode"`
+}
 
 const (
 	// DateStringFormat is the format for expiredAt date
@@ -116,7 +156,8 @@ func (p *Profile) CreateProfile() error {
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
 
-	// user_info is top-level; remove it before re-writing so stale data is never kept
+	// TODO: remove with legacy RAK/OIDC flow.
+	// user_info is top-level; remove it before re-writing so stale data is never kept.
 	if v.IsSet(UserInfoName) {
 		var err error
 		v, err = removeKey(v, UserInfoName)
@@ -485,6 +526,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		}
 	}
 
+	// TODO: remove with legacy RAK/OIDC flow.
 	if p.UserInfo != nil {
 		runtimeViper.Set(UserInfoName, p.UserInfo)
 	}
@@ -603,25 +645,6 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 	return err
 }
 
-// GetUserInfo reads the stored UserInfo from the profile config.
-// Returns nil, nil when no user_info has been saved yet.
-func (p *Profile) GetUserInfo() (*UserInfo, error) {
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
-	}
-
-	if !viper.IsSet(UserInfoName) {
-		return nil, nil
-	}
-
-	var ui UserInfo
-	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
-		return nil, err
-	}
-
-	return &ui, nil
-}
-
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
@@ -645,8 +668,102 @@ func (p *Profile) GetUAT() (string, error) {
 	return string(data), nil
 }
 
-// GetCompartmentID returns the compartment (workspace) ID for the given mode
-// from the stored UserInfo. Returns an empty string if none is configured.
+// GetActiveContext reads the stored OAuth active context from the keyring.
+// Returns nil, nil when no active context has been saved yet.
+func GetActiveContext() (*ActiveContext, error) {
+	if KeyRing == nil {
+		return nil, nil
+	}
+	data, err := KeyRing.Get(OAuthActiveContextKeychainKey)
+	if err != nil {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var ac ActiveContext
+	if err := json.Unmarshal(data, &ac); err != nil {
+		return nil, err
+	}
+	return &ac, nil
+}
+
+// SaveActiveContext persists the active OAuth context (account ID + livemode) in
+// the keyring so that ResolveCredentials can build the Stripe-Context header.
+func SaveActiveContext(accountID string, livemode bool) error {
+	if KeyRing == nil {
+		return nil
+	}
+	data, err := json.Marshal(ActiveContext{AccountID: accountID, Livemode: livemode})
+	if err != nil {
+		return err
+	}
+	return KeyRing.Set(OAuthActiveContextKeychainKey, data, "Stripe CLI OAuth active context")
+}
+
+// SaveUATExpiresAt persists the UAT expiry time in the keyring.
+func SaveUATExpiresAt(t time.Time) error {
+	if KeyRing == nil {
+		return nil
+	}
+	return KeyRing.Set(OAuthUATExpiresAtKeychainKey, []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI OAuth token expiry")
+}
+
+// GetUATExpiresAt retrieves the stored UAT expiry time from the keyring.
+// Returns ErrKeyNotFound (wrapped) when no expiry has been saved.
+func GetUATExpiresAt() (time.Time, error) {
+	if KeyRing == nil {
+		return time.Time{}, keyring.ErrKeyNotFound
+	}
+	data, err := KeyRing.Get(OAuthUATExpiresAtKeychainKey)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339, string(data))
+}
+
+// PrintActiveContextBanner prints the active context to stderr once per
+// process. Call this at the start of commands that make user-visible Stripe
+// API requests (resource commands, raw HTTP, fixtures, triggers).
+func (p *Profile) PrintActiveContextBanner() {
+	printActiveContextOnce.Do(func() {
+		uat, _ := p.GetUAT()
+		if !strings.HasPrefix(uat, "oak_") {
+			return
+		}
+		ac, _ := GetActiveContext()
+		if ac == nil {
+			return
+		}
+		mode := "test"
+		if ac.Livemode {
+			mode = "live"
+		}
+		color := ansi.Color(os.Stderr)
+		fmt.Fprintf(os.Stderr, "%s Running in %s · %s (%s)\n", color.Faint("▸"), p.GetDisplayName(), mode, ac.AccountID)
+	})
+}
+
+// GetUserInfo reads the stored UserInfo from the profile config.
+// Returns nil, nil when no user_info has been saved yet.
+// TODO: remove with legacy RAK/OIDC flow.
+func (p *Profile) GetUserInfo() (*UserInfo, error) {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+	if !viper.IsSet(UserInfoName) {
+		return nil, nil
+	}
+	var ui UserInfo
+	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
+		return nil, err
+	}
+	return &ui, nil
+}
+
+// GetCompartmentID returns the account ID for the given livemode from the
+// legacy OIDC UserInfo stored in the config file.
+// TODO: remove with legacy RAK/OIDC flow.
 func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
 	ui, err := p.GetUserInfo()
 	if err != nil || ui == nil {
@@ -662,8 +779,10 @@ func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
 
 // ResolveCredentials returns the credentials for the given mode. If an OAK
 // token (prefix "oak_") is stored in the keyring and no explicit override is
-// active, it is preferred over the configured API key and the compartment ID
-// and livemode flag are populated. Otherwise it falls back to GetAPIKey.
+// active, it is preferred over the configured API key. For OAK tokens the
+// active context stored in the keyring sets both Stripe-Context and
+// Stripe-Livemode; the livemode parameter is used only for the legacy OIDC
+// fallback and plain API key path.
 func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
 	if !p.HasOverrideAPIKey() {
 		uat, err := p.GetUAT()
@@ -671,6 +790,35 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			return stripe.Credentials{}, err
 		}
 		if strings.HasPrefix(uat, "oak_") {
+			if OAuthTokenRefresher != nil {
+				if t, tErr := GetUATExpiresAt(); tErr == nil && time.Until(t) < 60*time.Second {
+					refreshMu.Lock()
+					// Re-check after acquiring the lock; another goroutine may have
+					// already refreshed, bumping the expiry forward.
+					if t2, tErr2 := GetUATExpiresAt(); tErr2 == nil && time.Until(t2) < 60*time.Second {
+						if refreshErr := OAuthTokenRefresher(p); refreshErr != nil {
+							refreshMu.Unlock()
+							return stripe.Credentials{}, refreshErr
+						}
+						uat = p.UAT
+					}
+					refreshMu.Unlock()
+				}
+			}
+			ac, err := GetActiveContext()
+			if err != nil {
+				return stripe.Credentials{}, err
+			}
+			if ac != nil {
+				if ac.Livemode != livemode {
+					if livemode {
+						return stripe.Credentials{}, fmt.Errorf("your active context is test mode; to access livemode, run 'stripe switch context'")
+					}
+					return stripe.Credentials{}, fmt.Errorf("your active context is livemode; run 'stripe switch context' to select a test mode context, or add --live if you meant to use livemode")
+				}
+				return stripe.NewOAKCredentials(uat, ac.AccountID, livemode), nil
+			}
+			// TODO: remove with legacy RAK/OIDC flow.
 			compartmentID, err := p.GetCompartmentID(livemode)
 			if err != nil {
 				return stripe.Credentials{}, err

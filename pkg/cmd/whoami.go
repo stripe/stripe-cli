@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -21,9 +22,10 @@ import (
 var errNotAuthenticated = errors.New("not authenticated")
 
 type whoamiCmd struct {
-	cmd     *cobra.Command
-	profile *config.Profile
-	format  string
+	cmd           *cobra.Command
+	profile       *config.Profile
+	format        string
+	accessBaseURL string
 }
 
 type whoamiKeyInfo struct {
@@ -70,12 +72,19 @@ Exit codes:
 	}
 
 	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
+	wc.cmd.Flags().StringVar(&wc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	wc.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
 
 	return wc
 }
 
 func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	profile := wc.profile
+
+	uat, _ := profile.GetUAT()
+	if strings.HasPrefix(uat, "oak_") {
+		return wc.runWhoamiOAuth(cmd, uat)
+	}
 
 	testKey := resolveKeyInfo(profile, false)
 	liveKey := resolveKeyInfo(profile, true)
@@ -111,6 +120,30 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 		return errNotAuthenticated
 	}
 	return nil
+}
+
+const expiryDisplayFormat = "Jan 2, 2006 at 3:04 PM"
+
+func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
+	w := cmd.OutOrStdout()
+
+	ac, _ := config.GetActiveContext()
+	if ac != nil {
+		displayName := wc.profile.GetDisplayName()
+		mode := "test"
+		if ac.Livemode {
+			mode = "live"
+		}
+		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
+		fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		if t, err := config.GetUATExpiresAt(); err == nil {
+			fmt.Fprintf(tw, "Expires\t%s\n", t.Local().Format(expiryDisplayFormat))
+		}
+		tw.Flush()
+		fmt.Fprintln(w)
+	}
+
+	return login.PrintAuthorizedContexts(cmd.Context(), wc.accessBaseURL, uat)
 }
 
 func printWhoamiText(out io.Writer, data whoamiOutput) {

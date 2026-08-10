@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -283,20 +284,17 @@ func TestResolveCredentialsOAKLivemodeNoCompartment(t *testing.T) {
 func TestResolveCredentialsOAKLivemodeWithCompartment(t *testing.T) {
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
+	activeCtxJSON, err := json.Marshal(ActiveContext{AccountID: "acct_live123", Livemode: true})
+	require.NoError(t, err)
 	KeyRing = keyring.NewMemoryStore(map[string][]byte{
-		UATKeychainItemKey: []byte("oak_live_1234567890"),
+		UATKeychainItemKey:            []byte("oak_live_1234567890"),
+		OAuthActiveContextKeychainKey: activeCtxJSON,
 	})
 	t.Cleanup(func() {
 		KeyRing = nil
 		viper.Reset()
 	})
 	(&Config{LogLevel: "info", ProfilesFile: profilesFile}).InitConfig()
-	viper.Set(UserInfoName, &UserInfo{
-		Compartments: []Compartment{
-			{CompartmentID: "acct_live123", Livemode: true},
-			{CompartmentID: "acct_test456", Livemode: false},
-		},
-	})
 
 	p := Profile{ProfileName: "default"}
 	creds, err := p.ResolveCredentials(true)

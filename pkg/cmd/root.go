@@ -39,6 +39,8 @@ import (
 // Config is the cli configuration for the user
 var Config config.Config
 
+var rootAccessBaseURL string
+
 var fs = afero.NewOsFs()
 
 // rootCmd represents the base command when called without any subcommands
@@ -70,6 +72,10 @@ var rootCmd = &cobra.Command{
 		if cmd.Name() == "help" {
 			fullHelpMode = true
 		}
+
+		// Make the --access-base value available to the OAuth token refresher,
+		// which runs inside ResolveCredentials without access to cobra flags.
+		Config.Profile.OAuthAccessBaseURL = rootAccessBaseURL
 
 		reporting.SetCommandPath(cmd.CommandPath())
 
@@ -175,7 +181,7 @@ func Execute(ctx context.Context) {
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
-				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
+				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, rootAccessBaseURL, &Config)
 
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -250,6 +256,8 @@ func init() {
 	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
+	rootCmd.PersistentFlags().StringVar(&rootAccessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	rootCmd.PersistentFlags().MarkHidden("access-base") //nolint:errcheck
 
 	// tell viper to monitor the following flags:
 	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
@@ -270,11 +278,13 @@ func init() {
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
+	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
+	rootCmd.AddCommand(newSwitchCmd().cmd)
 	// current stripe status site is being deprecated
 	// hide status command until status site v2 is released
 	// rootCmd.AddCommand(newStatusCmd().cmd)

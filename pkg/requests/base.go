@@ -145,6 +145,8 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	rb.Profile.PrintActiveContextBanner()
+
 	if len(args) > 1 {
 		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
 	}
@@ -341,6 +343,28 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
+
+		// For OAK tokens, "unauthorized" means the token was manually revoked
+		// or otherwise invalidated server-side. Attempt a transparent refresh
+		// and retry the request once with the new token.
+		if resp.StatusCode == 401 && requestError.ErrorCode == "unauthorized" &&
+			rb.Profile != nil && config.OAuthTokenRefresher != nil {
+			uat, _ := rb.Profile.GetUAT()
+			if strings.HasPrefix(uat, "oak_") {
+				if refreshErr := config.OAuthTokenRefresher(rb.Profile); refreshErr != nil {
+					return []byte{}, refreshErr
+				}
+				newCreds, credErr := rb.Profile.ResolveCredentials(rb.Livemode)
+				if credErr != nil {
+					return []byte{}, credErr
+				}
+				if sc, ok := client.(*stripe.Client); ok {
+					sc.Credentials = newCreds
+				}
+				return rb.performRequest(ctx, client, path, params, data, errOnStatus, additionalConfigure)
+			}
+		}
+
 		return []byte{}, requestError
 	}
 
