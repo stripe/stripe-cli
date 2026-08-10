@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 )
 
 type failRemoveAllFs struct {
@@ -1214,6 +1215,193 @@ func TestVerifyChecksumAndSavePluginRefusesSymlink(t *testing.T) {
 	victimContents, err := os.ReadFile(victimFile)
 	require.NoError(t, err)
 	require.Equal(t, "original", string(victimContents))
+}
+
+func TestIsCompatibleWithCore(t *testing.T) {
+	tests := []struct {
+		name           string
+		minCoreVersion string
+		coreVersion    string
+		expected       bool
+	}{
+		{"empty min is always compatible", "", "1.0.0", true},
+		{"master is always compatible", "2.0.0", "master", true},
+		{"core equals min", "1.5.0", "1.5.0", true},
+		{"core greater than min", "1.5.0", "1.6.0", true},
+		{"core less than min", "2.0.0", "1.9.0", false},
+		{"unparseable min fails open", "not-a-version", "1.0.0", true},
+		{"unparseable core fails open", "1.0.0", "not-a-version", true},
+		{"both unparseable fails open", "bad", "also-bad", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Release{MinCoreVersion: tt.minCoreVersion}
+			require.Equal(t, tt.expected, r.isCompatibleWithCore(tt.coreVersion))
+		})
+	}
+}
+
+func TestLookUpLatestCompatibleVersion(t *testing.T) {
+	plugin := Plugin{
+		Shortname: "test",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", MinCoreVersion: ""},
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "2.0.0", MinCoreVersion: "1.5.0"},
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "3.0.0", MinCoreVersion: "2.0.0"},
+		},
+	}
+
+	// Core 1.5.0 can run v1.0.0 and v2.0.0, but not v3.0.0
+	require.Equal(t, "2.0.0", plugin.LookUpLatestCompatibleVersion("1.5.0"))
+
+	// Core 2.0.0 can run all
+	require.Equal(t, "3.0.0", plugin.LookUpLatestCompatibleVersion("2.0.0"))
+
+	// Core 1.0.0 can only run v1.0.0 (no min) and not v2.0.0 or v3.0.0
+	require.Equal(t, "1.0.0", plugin.LookUpLatestCompatibleVersion("1.0.0"))
+
+	// master can run all
+	require.Equal(t, "3.0.0", plugin.LookUpLatestCompatibleVersion("master"))
+}
+
+func TestLookUpLatestCompatibleVersionNoMatch(t *testing.T) {
+	plugin := Plugin{
+		Shortname: "test",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", MinCoreVersion: "99.0.0"},
+		},
+	}
+
+	require.Equal(t, "", plugin.LookUpLatestCompatibleVersion("1.0.0"))
+}
+
+func TestLookUpLatestCompatibleVersionIgnoresOtherPlatforms(t *testing.T) {
+	plugin := Plugin{
+		Shortname: "test",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", MinCoreVersion: ""},
+			{Arch: "other-arch", OS: "other-os", Version: "9.0.0", MinCoreVersion: ""},
+		},
+	}
+
+	require.Equal(t, "1.0.0", plugin.LookUpLatestCompatibleVersion("1.0.0"))
+}
+
+func TestRunRejectsIncompatiblePlugin(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	origVersion := cliversion.Version
+	cliversion.Version = "1.0.0"
+	defer func() { cliversion.Version = origVersion }()
+
+	plugin := Plugin{
+		Shortname:        "incompatible-plugin",
+		Binary:           "stripe-cli-incompatible",
+		MagicCookieValue: "COOKIE",
+		Releases: []Release{
+			{
+				Arch:           runtime.GOARCH,
+				OS:             runtime.GOOS,
+				Version:        "1.0.0",
+				Sum:            "abc123",
+				MinCoreVersion: "99.0.0",
+			},
+		},
+	}
+
+	pluginDir := "/plugins/incompatible-plugin/1.0.0"
+	require.NoError(t, fs.MkdirAll(pluginDir, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(pluginDir, "stripe-cli-incompatible"+GetBinaryExtension()), []byte("bin"), 0755))
+
+	origPluginsPath := PluginsPath
+	PluginsPath = ""
+	defer func() { PluginsPath = origPluginsPath }()
+
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "requires Stripe CLI >= 99.0.0")
+	require.Contains(t, err.Error(), "stripe upgrade")
+}
+
+func TestRunAllowsCompatiblePlugin(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	origVersion := cliversion.Version
+	cliversion.Version = "2.0.0"
+	defer func() { cliversion.Version = origVersion }()
+
+	plugin := Plugin{
+		Shortname:        "compatible-plugin",
+		Binary:           "stripe-cli-compatible",
+		MagicCookieValue: "COOKIE",
+		Releases: []Release{
+			{
+				Arch:           runtime.GOARCH,
+				OS:             runtime.GOOS,
+				Version:        "1.0.0",
+				Sum:            "abc123",
+				MinCoreVersion: "1.5.0",
+			},
+		},
+	}
+
+	pluginDir := "/plugins/compatible-plugin/1.0.0"
+	require.NoError(t, fs.MkdirAll(pluginDir, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(pluginDir, "stripe-cli-compatible"+GetBinaryExtension()), []byte("bin"), 0755))
+
+	origPluginsPath := PluginsPath
+	PluginsPath = ""
+	defer func() { PluginsPath = origPluginsPath }()
+
+	// Should pass the compatibility check and fail later at the checksum/handshake stage
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "requires Stripe CLI")
+}
+
+func TestRunSkipsCompatibilityCheckForLocalDev(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	plugin := Plugin{
+		Shortname:        "dev-plugin",
+		Binary:           "stripe-cli-dev",
+		MagicCookieValue: "COOKIE",
+		Releases: []Release{
+			{
+				Arch:           runtime.GOARCH,
+				OS:             runtime.GOOS,
+				Version:        "1.0.0",
+				Sum:            "abc123",
+				MinCoreVersion: "99.0.0",
+			},
+		},
+	}
+
+	pluginDir := "/plugins/dev-plugin/local.build.dev"
+	require.NoError(t, fs.MkdirAll(pluginDir, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(pluginDir, "stripe-cli-dev"+GetBinaryExtension()), []byte("bin"), 0755))
+
+	origPluginsPath := PluginsPath
+	PluginsPath = "/plugins"
+	defer func() { PluginsPath = origPluginsPath }()
+
+	// Should skip compatibility check for local dev and fail at handshake
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "requires Stripe CLI")
 }
 
 func TestVerifyChecksumAndSavePluginRefusesSymlinkedParent(t *testing.T) {
