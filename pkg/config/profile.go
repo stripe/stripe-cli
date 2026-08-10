@@ -786,7 +786,7 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 					if livemode {
 						return stripe.Credentials{}, fmt.Errorf("your active context is test mode; to access livemode, run 'stripe switch context'")
 					}
-					return stripe.Credentials{}, fmt.Errorf("your active context is livemode; add --live to use livemode, or run 'stripe switch context' to switch to a test mode context")
+					return stripe.Credentials{}, fmt.Errorf("your active context is livemode; run 'stripe switch context' to select a test mode context, or add --live if you meant to use livemode")
 				}
 				return stripe.NewOAKCredentials(uat, ac.AccountID, livemode), nil
 			}
