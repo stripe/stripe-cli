@@ -198,7 +198,7 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	tokenResp, err := PollDeviceToken(pollCtx, accessBaseURL, clientID, authResp.DeviceCode, interval)
 	if err != nil {
 		if pollCtx.Err() != nil {
-			return fmt.Errorf("device code expired; please run 'stripe login --oauth' again")
+			return fmt.Errorf("device code expired; please run 'stripe login' again")
 		}
 		return err
 	}
