@@ -368,13 +368,16 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 	}
 
 	path, err := parsers.ParsePath(data.Path, fxt.Responses)
+	if err != nil {
+		return make([]byte, 0), err
+	}
+
+	if !stripe.IsValidAPIPath(path) {
+		return make([]byte, 0), fmt.Errorf("fixture path %q is not a valid Stripe API path (must start with /v1/ or /v2/)", data.Path)
+	}
 
 	if fxt.unsupportedAPIKey(path) {
 		return make([]byte, 0), fmt.Errorf("this trigger must be run with a secret API key (starts with 'sk_')")
-	}
-
-	if err != nil {
-		return make([]byte, 0), err
 	}
 
 	params, err := fxt.createParams(data.Params, apiVersion, path, data.Method)

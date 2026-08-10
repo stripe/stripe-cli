@@ -408,6 +408,27 @@ func TestParseWithEnvSubstring(t *testing.T) {
 	fs.Remove(envPath)
 }
 
+func TestParseEnvFileDoesNotPolluteProcessEnv(t *testing.T) {
+	fs := afero.NewOsFs()
+	wd, _ := os.Getwd()
+	envPath := path.Join(wd, ".env")
+	afero.WriteFile(fs, envPath, []byte("REQUESTED_KEY=hello\nUNRELATED_SECRET=should_not_leak"), os.ModePerm)
+	defer fs.Remove(envPath)
+
+	data := make(map[string]interface{})
+	data["val"] = "${.env:REQUESTED_KEY}"
+	output, err := ParseToFormData(data, make(map[string]gjson.Result))
+
+	require.NoError(t, err)
+	require.Equal(t, 1, len(output))
+	require.Equal(t, "val=hello", output[0])
+
+	require.Empty(t, os.Getenv("UNRELATED_SECRET"),
+		"getEnvVar must not inject unrelated .env entries into the process environment")
+	require.Empty(t, os.Getenv("REQUESTED_KEY"),
+		"getEnvVar must not inject any .env entries into the process environment")
+}
+
 func TestParseWithTimeNow(t *testing.T) {
 	queryRespMap := map[string]gjson.Result{
 		"cust_bender": gjson.Parse(`{"id": "cust_bend123456789"}`),
