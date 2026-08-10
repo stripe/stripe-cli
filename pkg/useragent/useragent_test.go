@@ -2,6 +2,7 @@ package useragent
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -123,6 +124,71 @@ func TestDetectTerminalProgram(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := DetectTerminalProgram(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetectAIAgentRaw(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected string
+	}{
+		{"ai_agent", map[string]string{"AI_AGENT": "claude-code_2-1-222_agent"}, "claude-code_2-1-222_agent"},
+		{"agent fallback", map[string]string{"AGENT": "goose"}, "goose"},
+		{"ai_agent wins over agent", map[string]string{"AI_AGENT": "amp", "AGENT": "goose"}, "amp"},
+		{"blank ai_agent falls back", map[string]string{"AI_AGENT": "  ", "AGENT": "goose"}, "goose"},
+		{"unset", map[string]string{}, ""},
+		{"trimmed", map[string]string{"AI_AGENT": "  cursor\n"}, "cursor"},
+		{"non printable stripped", map[string]string{"AI_AGENT": "cur\x00so\tré"}, "cursor"},
+		{"truncated", map[string]string{"AI_AGENT": strings.Repeat("a", 100)}, strings.Repeat("a", 64)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectAIAgentRaw(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetectAgentHost(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected string
+	}{
+		{"desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "claude-desktop"},
+		{"cli", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "cli"},
+		{"mcp", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "mcp"}, "mcp"},
+		{"unset", map[string]string{}, ""},
+		{"sanitized", map[string]string{"CLAUDE_CODE_ENTRYPOINT": " claude-vscode "}, "claude-vscode"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectAgentHost(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetectMacAppBundleID(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected string
+	}{
+		{"claude desktop", map[string]string{"__CFBundleIdentifier": "com.anthropic.claudefordesktop"}, "com.anthropic.claudefordesktop"},
+		{"terminal", map[string]string{"__CFBundleIdentifier": "com.apple.Terminal"}, "com.apple.Terminal"},
+		{"unset elsewhere", map[string]string{}, ""},
+		{"truncated", map[string]string{"__CFBundleIdentifier": strings.Repeat("c", 100)}, strings.Repeat("c", 64)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectMacAppBundleID(mapEnv(tt.envs))
 			require.Equal(t, tt.expected, result)
 		})
 	}

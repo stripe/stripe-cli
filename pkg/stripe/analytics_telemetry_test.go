@@ -224,6 +224,63 @@ func TestSendEvent_WithAIAgent(t *testing.T) {
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
+func TestSendEvent_WithAgentHostAndBundleID(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		bodyString := string(body)
+		require.Contains(t, bodyString, "ai_agent=claude_code")
+		require.Contains(t, bodyString, "ai_agent_raw=claude-code_2-1-222_agent")
+		require.Contains(t, bodyString, "agent_host=claude-desktop")
+		require.Contains(t, bodyString, "mac_app_bundle_id=com.anthropic.claudefordesktop")
+	}))
+	defer ts.Close()
+	baseURL, _ := url.Parse(ts.URL)
+
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
+		InvocationID:   "123456",
+		UserAgent:      "Unit Test",
+		CLIVersion:     "master",
+		OS:             "darwin",
+		CommandPath:    "stripe test",
+		Merchant:       "acct_1234",
+		AIAgent:        "claude_code",
+		AIAgentRaw:     "claude-code_2-1-222_agent",
+		AgentHost:      "claude-desktop",
+		MacAppBundleID: "com.anthropic.claudefordesktop",
+	}
+
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
+func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		bodyString := string(body)
+		require.NotContains(t, bodyString, "ai_agent_raw")
+		require.NotContains(t, bodyString, "agent_host")
+		require.NotContains(t, bodyString, "mac_app_bundle_id")
+	}))
+	defer ts.Close()
+	baseURL, _ := url.Parse(ts.URL)
+
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
+		InvocationID: "123456",
+		UserAgent:    "Unit Test",
+		CLIVersion:   "master",
+		OS:           "linux",
+		CommandPath:  "stripe test",
+		Merchant:     "acct_1234",
+	}
+
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
 func TestSkipsSendEventWhenMetadataIsEmpty(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Fail(t, "Did not expect to reach sendData")
