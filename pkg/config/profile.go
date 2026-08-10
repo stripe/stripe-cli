@@ -19,6 +19,15 @@ import (
 
 var printActiveContextOnce sync.Once
 
+// OAuthTokenRefresher is called by ResolveCredentials when an OAK token is
+// expired or about to expire. It refreshes the token and updates p in-place.
+// Set by the login package via init().
+var OAuthTokenRefresher func(p *Profile) error
+
+// refreshMu serializes concurrent refresh attempts so only one goroutine hits
+// the token endpoint at a time; others re-use the result after the lock.
+var refreshMu sync.Mutex
+
 // AuthorizedAccount represents a Stripe account accessible to an OAuth token.
 type AuthorizedAccount struct {
 	ID    string   `json:"id"`
@@ -57,6 +66,10 @@ type Profile struct {
 	SandboxExpiresAt       string
 	UAT                    string
 	UserInfo               *UserInfo // TODO: remove with legacy RAK/OIDC flow
+
+	// OAuthAccessBaseURL is the access-srv base URL to use for token refresh
+	// and revocation. Set at startup from the --access-base flag; not persisted.
+	OAuthAccessBaseURL string
 }
 
 // config key names
@@ -777,6 +790,21 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			return stripe.Credentials{}, err
 		}
 		if strings.HasPrefix(uat, "oak_") {
+			if OAuthTokenRefresher != nil {
+				if t, tErr := GetUATExpiresAt(); tErr == nil && time.Until(t) < 60*time.Second {
+					refreshMu.Lock()
+					// Re-check after acquiring the lock; another goroutine may have
+					// already refreshed, bumping the expiry forward.
+					if t2, tErr2 := GetUATExpiresAt(); tErr2 == nil && time.Until(t2) < 60*time.Second {
+						if refreshErr := OAuthTokenRefresher(p); refreshErr != nil {
+							refreshMu.Unlock()
+							return stripe.Credentials{}, refreshErr
+						}
+						uat = p.UAT
+					}
+					refreshMu.Unlock()
+				}
+			}
 			ac, err := GetActiveContext()
 			if err != nil {
 				return stripe.Credentials{}, err

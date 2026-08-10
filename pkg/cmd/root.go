@@ -73,6 +73,10 @@ var rootCmd = &cobra.Command{
 			fullHelpMode = true
 		}
 
+		// Make the --access-base value available to the OAuth token refresher,
+		// which runs inside ResolveCredentials without access to cobra flags.
+		Config.Profile.OAuthAccessBaseURL = rootAccessBaseURL
+
 		reporting.SetCommandPath(cmd.CommandPath())
 
 		// if getting the config errors, don't fail running the command

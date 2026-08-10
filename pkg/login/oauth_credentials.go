@@ -106,3 +106,22 @@ func ClearOAuthCredentials(cfg *config.Config) error {
 
 	return nil
 }
+
+// clearOAuthCredentialsForProfile is like ClearOAuthCredentials but operates
+// on a *Profile directly. Used by the token refresher which has no *Config.
+func clearOAuthCredentialsForProfile(p *config.Profile) error {
+	p.UAT = ""
+	if err := p.CreateProfile(); err != nil {
+		return err
+	}
+	for _, key := range []string{
+		OAuthRefreshTokenKeychainKey,
+		config.OAuthActiveContextKeychainKey,
+		config.OAuthUATExpiresAtKeychainKey,
+	} {
+		if err := config.KeyRing.Remove(key); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+			return err
+		}
+	}
+	return nil
+}
