@@ -26,6 +26,12 @@ import (
 
 var thinEventPattern = regexp.MustCompile(`^v\d+\.`)
 
+var validEventsFromValues = map[string]bool{
+	"@self":     true,
+	"@accounts": true,
+	"all":       true,
+}
+
 const (
 	webhooksWebSocketFeature     = "webhooks"
 	destinationsWebSocketFeature = "v2_events"
@@ -141,6 +147,10 @@ Stripe account.`,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	if err := lc.checkRemovedFlags(); err != nil {
+		return err
+	}
+
+	if err := lc.validateEventsFrom(); err != nil {
 		return err
 	}
 
@@ -451,6 +461,13 @@ func splitEventsByType(events []string, allSnapshot, allThin bool) (snapshotEven
 
 func isThinEvent(eventType string) bool {
 	return thinEventPattern.MatchString(eventType)
+}
+
+func (lc *listenCmd) validateEventsFrom() error {
+	if !validEventsFromValues[lc.eventsFrom] {
+		return fmt.Errorf("invalid --events-from value %q: must be one of '@self', '@accounts', or 'all'", lc.eventsFrom)
+	}
+	return nil
 }
 
 // resolveForwardURLs determines the direct and connect forwarding URLs based on

@@ -325,6 +325,35 @@ func TestValidateForwardingConfig(t *testing.T) {
 	}
 }
 
+func TestValidateEventsFrom(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		wantErr bool
+	}{
+		{name: "@self is valid", value: "@self", wantErr: false},
+		{name: "@accounts is valid", value: "@accounts", wantErr: false},
+		{name: "all is valid", value: "all", wantErr: false},
+		{name: "@everyone is invalid", value: "@everyone", wantErr: true},
+		{name: "empty string is invalid", value: "", wantErr: true},
+		{name: "self without @ is invalid", value: "self", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lc := newListenCmd()
+			lc.eventsFrom = tt.value
+			err := lc.validateEventsFrom()
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "invalid --events-from value")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestCheckRemovedFlags(t *testing.T) {
 	tests := []struct {
 		name    string
