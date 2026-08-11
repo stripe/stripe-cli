@@ -43,6 +43,7 @@ service CoreCLIHelper {
     option deprecated = true;
   };
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
+  rpc ResolveCredentials(ResolveCredentialsRequest) returns (ResolveCredentialsResponse);
 }
 
 message EchoRequest {
@@ -104,4 +105,14 @@ message RunPeerPluginRequest {
 }
 
 message RunPeerPluginResponse {
+}
+
+message ResolveCredentialsRequest {
+  bool livemode = 1;
+}
+
+message ResolveCredentialsResponse {
+  string token = 1;
+  string stripe_context = 2;
+  bool livemode = 3;
 }
