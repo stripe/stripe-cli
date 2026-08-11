@@ -365,14 +365,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 
 	if len(cfg.ThinEvents) > 0 {
 		for _, event := range cfg.ThinEvents {
+			if event == "*" {
+				cfg.Log.Infof("--all-thin is only supported in the CLI; thin event destinations do not support selecting all event types\n")
+				continue
+			}
 			if _, found := validThinEvents[event]; !found {
-				// If not found in validThinEvents, check in validPreviewThinEvents
 				if _, foundInPreview := validPreviewThinEvents[event]; !foundInPreview {
-					if event == "*" {
-						cfg.Log.Infof("* is only supported in the CLI, thin event destinations do not support selecting all event types\n")
-					} else {
-						cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
-					}
+					cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
 				}
 			}
 		}
