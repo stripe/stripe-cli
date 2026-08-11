@@ -107,6 +107,10 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("CLINE_ACTIVE") != "" {
 		return "cline"
 	}
+	// Codex Desktop also sets the generic Codex env vars, so check its originator first.
+	if getEnv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE") == "Codex Desktop" {
+		return "codex_desktop"
+	}
 	if getEnv("CODEX_SANDBOX") != "" || getEnv("CODEX_THREAD_ID") != "" || getEnv("CODEX_SANDBOX_NETWORK_DISABLED") != "" || getEnv("CODEX_CI") != "" {
 		return "codex_cli"
 	}

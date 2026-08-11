@@ -335,15 +335,20 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 	tests := []struct {
 		name     string
 		envVar   string
+		envValue string
 		expected string
 	}{
-		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "antigravity"},
-		{"Claude Code", "CLAUDECODE", "claude_code"},
-		{"Cline", "CLINE_ACTIVE", "cline"},
-		{"Codex CLI", "CODEX_SANDBOX", "codex_cli"},
-		{"Cursor", "CURSOR_AGENT", "cursor"},
-		{"Gemini CLI", "GEMINI_CLI", "gemini_cli"},
-		{"Open Code", "OPENCODE", "open_code"},
+		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "true", "antigravity"},
+		{"Claude Code", "CLAUDECODE", "true", "claude_code"},
+		{"Cline", "CLINE_ACTIVE", "true", "cline"},
+		{"Codex Desktop", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "Codex Desktop", "codex_desktop"},
+		{"Codex CLI sandbox", "CODEX_SANDBOX", "true", "codex_cli"},
+		{"Codex CLI thread", "CODEX_THREAD_ID", "thread-id", "codex_cli"},
+		{"Codex CLI sandbox network", "CODEX_SANDBOX_NETWORK_DISABLED", "true", "codex_cli"},
+		{"Codex CLI CI", "CODEX_CI", "true", "codex_cli"},
+		{"Cursor", "CURSOR_AGENT", "true", "cursor"},
+		{"Gemini CLI", "GEMINI_CLI", "true", "gemini_cli"},
+		{"Open Code", "OPENCODE", "true", "open_code"},
 	}
 
 	for _, tt := range tests {
@@ -351,7 +356,7 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 			// Mock env getter that returns only the specific env var being tested
 			getEnv := func(key string) string {
 				if key == tt.envVar {
-					return "true"
+					return tt.envValue
 				}
 				return ""
 			}
@@ -359,6 +364,22 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestAIAgentDetection_CodexDesktopPriority(t *testing.T) {
+	getEnv := func(key string) string {
+		switch key {
+		case "CODEX_INTERNAL_ORIGINATOR_OVERRIDE":
+			return "Codex Desktop"
+		case "CODEX_THREAD_ID":
+			return "thread-id"
+		default:
+			return ""
+		}
+	}
+
+	result := useragent.DetectAIAgent(getEnv)
+	require.Equal(t, "codex_desktop", result)
 }
 
 func TestAIAgentDetection_Priority(t *testing.T) {
