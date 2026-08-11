@@ -510,10 +510,10 @@ func (lc *listenCmd) validateForwardingConfig(snapshotEvents, thinEvents []strin
 	hasThin := len(thinEvents) > 0
 	if hasSnapshot && hasThin {
 		if directURL != "" && directURL == forwardThinURL {
-			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination; use --all-snapshot or --all-thin to subscribe to only one type")
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination")
 		}
 		if connectURL != "" && connectURL == forwardThinConnectURL {
-			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination; use --all-snapshot or --all-thin to subscribe to only one type")
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination")
 		}
 	}
 
