@@ -5,26 +5,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 func TestNoKey(t *testing.T) {
 	err := APIKey("")
 	require.EqualError(t, err, "you have not configured API keys yet")
+	require.True(t, err == ErrAPIKeyNotConfigured)
+	require.ErrorIs(t, err, ErrAPIKeyNotConfigured)
+	requireErrorCategory(t, err, errorcategory.Auth)
 }
 
 func TestKeyTooShort(t *testing.T) {
 	err := APIKey("123")
 	require.EqualError(t, err, "the API key provided is too short, it must be at least 12 characters long")
+	requireErrorCategory(t, err, errorcategory.Auth)
 }
 
 func TestLegacyAPIKeys(t *testing.T) {
 	err := APIKey("sk_123457890abcdef")
 	require.EqualError(t, err, "you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+	requireErrorCategory(t, err, errorcategory.Auth)
 }
 
 func TestPublishableAPIKey(t *testing.T) {
 	err := APIKey("pk_test_12345")
 	require.EqualError(t, err, "the CLI only supports using a secret or restricted key")
+	requireErrorCategory(t, err, errorcategory.Auth)
 }
 
 func TestLivemodeAPIKey(t *testing.T) {

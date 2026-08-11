@@ -8,6 +8,8 @@ import (
 	"time"
 
 	sentry "github.com/getsentry/sentry-go"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 var accountIDProvider func() (string, error)
@@ -40,6 +42,7 @@ func Init(dsn, release string) error {
 // CaptureException reports err to the error reporting backend.
 func CaptureException(err error) {
 	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("error_category", string(classifyError(err)))
 		if accountIDProvider != nil {
 			if accountID, _ := accountIDProvider(); accountID != "" {
 				scope.SetTag("account_id", accountID)
@@ -69,7 +72,10 @@ func CaptureException(err error) {
 // RecoverAndReport captures a recovered panic value to the error reporting backend.
 // The caller is responsible for re-panicking and calling Flush before the process exits.
 func RecoverAndReport(r any) {
-	sentry.CurrentHub().Recover(r)
+	sentry.CurrentHub().WithScope(func(scope *sentry.Scope) {
+		scope.SetTag("error_category", string(errorcategory.Panic))
+		sentry.CurrentHub().Recover(r)
+	})
 }
 
 // Flush blocks until all buffered events are delivered or the timeout elapses.
