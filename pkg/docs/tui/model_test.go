@@ -108,6 +108,7 @@ func TestNew_Defaults(t *testing.T) {
 	assert.True(t, m.keys.Help.Enabled())
 	assert.True(t, m.keys.Palette.Enabled())
 	assert.True(t, m.keys.OpenInBrowser.Enabled())
+	assert.False(t, m.keys.Back.Enabled())
 }
 
 func TestNew_WithOptions(t *testing.T) {
@@ -484,6 +485,107 @@ func TestUpdate_PageReadyMsg(t *testing.T) {
 	assert.Equal(t, "New Page", model.title)
 	assert.Equal(t, newDoc, model.doc)
 	assert.NotEmpty(t, model.viewport.GetContent())
+}
+
+func TestUpdate_BackWithEmptyHistoryIsNoOp(t *testing.T) {
+	page := Page{Content: []byte("# Original"), URL: &url.URL{Path: "/original"}}
+	m := New(WithPage(page))
+
+	result, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model := result.(Model)
+
+	assert.False(t, model.keys.Back.Enabled())
+	assert.Empty(t, model.history)
+	assert.Equal(t, page, model.page)
+	assert.Equal(t, "Original", model.title)
+}
+
+func TestUpdate_BackRestoresPreviousPage(t *testing.T) {
+	r, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	originalPage := Page{Content: []byte("# Original\n\nOriginal body"), URL: &url.URL{Path: "/original"}}
+	m := New(WithRenderer(r), WithPage(originalPage))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+	originalDoc := model.doc
+	originalContent := model.viewport.GetContent()
+
+	newDoc, err := markdown.Parse([]byte("# New Page\n\nNew body"))
+	require.NoError(t, err)
+	newPage := Page{Content: []byte("# New Page\n\nNew body"), URL: &url.URL{Path: "/new"}}
+	result, _ = model.Update(pageReadyMsg{page: newPage, doc: newDoc})
+	model = result.(Model)
+
+	assert.True(t, model.keys.Back.Enabled())
+	assert.Len(t, model.history, 1)
+	assert.Equal(t, "New Page", model.title)
+	assert.NotEqual(t, originalContent, model.viewport.GetContent())
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model = result.(Model)
+
+	assert.Equal(t, originalPage, model.page)
+	assert.Same(t, originalDoc, model.doc)
+	assert.Equal(t, "Original", model.title)
+	assert.Equal(t, originalContent, model.viewport.GetContent())
+	assert.Empty(t, model.history)
+	assert.False(t, model.keys.Back.Enabled())
+}
+
+func TestUpdate_BackNavigatesMultipleHistoryEntries(t *testing.T) {
+	pageA := Page{Content: []byte("# Page A"), URL: &url.URL{Path: "/a"}}
+	m := New(WithPage(pageA))
+	docA := m.doc
+
+	docB, err := markdown.Parse([]byte("# Page B"))
+	require.NoError(t, err)
+	pageB := Page{Content: []byte("# Page B"), URL: &url.URL{Path: "/b"}}
+	result, _ := m.Update(pageReadyMsg{page: pageB, doc: docB})
+	model := result.(Model)
+
+	docC, err := markdown.Parse([]byte("# Page C"))
+	require.NoError(t, err)
+	pageC := Page{Content: []byte("# Page C"), URL: &url.URL{Path: "/c"}}
+	result, _ = model.Update(pageReadyMsg{page: pageC, doc: docC})
+	model = result.(Model)
+
+	require.Len(t, model.history, 2)
+	assert.True(t, model.keys.Back.Enabled())
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model = result.(Model)
+	assert.Equal(t, pageB, model.page)
+	assert.Same(t, docB, model.doc)
+	assert.Equal(t, "Page B", model.title)
+	assert.True(t, model.keys.Back.Enabled())
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model = result.(Model)
+	assert.Equal(t, pageA, model.page)
+	assert.Same(t, docA, model.doc)
+	assert.Equal(t, "Page A", model.title)
+	assert.Empty(t, model.history)
+	assert.False(t, model.keys.Back.Enabled())
+}
+
+func TestUpdate_NavigationFromLandingDoesNotAddHistory(t *testing.T) {
+	m := New()
+	result, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model := result.(Model)
+	require.NotNil(t, cmd)
+
+	doc, err := markdown.Parse([]byte("# Documentation"))
+	require.NoError(t, err)
+	page := Page{Content: []byte("# Documentation"), URL: &url.URL{Path: "/"}}
+
+	result, _ = model.Update(pageReadyMsg{page: page, doc: doc})
+	model = result.(Model)
+
+	assert.Equal(t, page, model.page)
+	assert.Same(t, doc, model.doc)
+	assert.Empty(t, model.history)
+	assert.False(t, model.keys.Back.Enabled())
 }
 
 func TestView_ProgressBar_IndeterminateWhenPageLoading(t *testing.T) {
