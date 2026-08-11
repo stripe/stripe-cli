@@ -232,6 +232,7 @@ func TestSendEvent_WithAgentHostAndBundleID(t *testing.T) {
 		require.Contains(t, bodyString, "ai_agent=claude_code")
 		require.Contains(t, bodyString, "ai_agent_raw=claude-code_2-1-222_agent")
 		require.Contains(t, bodyString, "agent_host=claude-desktop")
+		require.Contains(t, bodyString, "agent_host_kind=desktop")
 		require.Contains(t, bodyString, "mac_app_bundle_id=com.anthropic.claudefordesktop")
 	}))
 	defer ts.Close()
@@ -247,6 +248,7 @@ func TestSendEvent_WithAgentHostAndBundleID(t *testing.T) {
 		AIAgent:        "claude_code",
 		AIAgentRaw:     "claude-code_2-1-222_agent",
 		AgentHost:      "claude-desktop",
+		AgentHostKind:  "desktop",
 		MacAppBundleID: "com.anthropic.claudefordesktop",
 	}
 
@@ -262,6 +264,7 @@ func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
 		bodyString := string(body)
 		require.NotContains(t, bodyString, "ai_agent_raw")
 		require.NotContains(t, bodyString, "agent_host")
+		require.NotContains(t, bodyString, "agent_host_kind")
 		require.NotContains(t, bodyString, "mac_app_bundle_id")
 	}))
 	defer ts.Close()

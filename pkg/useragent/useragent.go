@@ -162,6 +162,24 @@ func DetectAgentHost(getEnv func(string) string) string {
 	return ""
 }
 
+// AgentHostKind maps a host returned by DetectAgentHost to a coarse category, or ""
+// when the host is unset or not one we recognize.
+//
+// This is the curated counterpart to the free-form agent_host value, in the same way
+// that DetectAIAgent is the curated counterpart to DetectAIAgentRaw. It exists so that
+// a question like "how many invocations came from a desktop app" is one stable
+// predicate rather than a list of per-vendor spellings that has to be extended every
+// time a vendor ships a new host or renames an existing one.
+func AgentHostKind(host string) string {
+	// Remote hosts are matched first and by prefix: "remote-desktop" is a remote
+	// session, not the desktop app, so any substring match on "desktop" would
+	// silently conflate the two.
+	if host == "remote" || strings.HasPrefix(host, "remote-") {
+		return "remote"
+	}
+	return agentHostKinds[host]
+}
+
 // DetectMacAppBundleID returns the bundle identifier of the macOS application that
 // launched the process tree, or "" on other platforms and when unset.
 //
@@ -206,14 +224,39 @@ var encodedUserAgent string
 const maxEnvValueLength = 64
 
 //
+// Private variables
+//
+
+// agentHostKinds categorizes the hosts we know about. Hosts absent from this map are
+// still reported verbatim as agent_host; only the coarse category is omitted, so an
+// unrecognized host is a gap in grouping rather than lost data. "remote*" hosts are
+// handled by prefix in AgentHostKind rather than enumerated here.
+var agentHostKinds = map[string]string{
+	"claude-code-github-action": "ci",
+	"claude-desktop":            "desktop",
+	"claude-in-slack":           "chat",
+	"claude-in-teams":           "chat",
+	"claude-vscode":             "ide",
+	"cli":                       "terminal",
+	"codex-desktop":             "desktop",
+	"mcp":                       "mcp",
+	"sdk-cli":                   "sdk",
+	"sdk-py":                    "sdk",
+	"sdk-ts":                    "sdk",
+}
+
+//
 // Private functions
 //
 
-// normalizeAgentHost lowercases and dash-separates a reported host so that values
-// from different vendors land in one comparable column: Claude Code reports
-// "claude-desktop" while Codex Desktop reports "Codex Desktop".
+// normalizeAgentHost lowercases a reported host and collapses spaces and underscores
+// to dashes, so that values from different vendors land in one comparable column.
+// Claude Code reports "claude-desktop" while Codex Desktop reports "Codex Desktop",
+// and Claude Code is itself inconsistent: it ships both "claude_in_slack" and
+// "claude-in-slack", alongside dashed values like "claude-vscode".
 func normalizeAgentHost(host string) string {
-	return strings.ReplaceAll(strings.ToLower(sanitizeEnvValue(host)), " ", "-")
+	lowered := strings.ToLower(sanitizeEnvValue(host))
+	return strings.NewReplacer(" ", "-", "_", "-").Replace(lowered)
 }
 
 // sanitizeEnvValue trims an environment value, drops anything outside printable

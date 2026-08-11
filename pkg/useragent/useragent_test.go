@@ -164,6 +164,8 @@ func TestDetectAgentHost(t *testing.T) {
 		{"mcp", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "mcp"}, "mcp"},
 		{"codex desktop normalized", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "codex-desktop"},
 		{"claude wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "cli"},
+		{"underscores collapse to dashes", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude_in_slack"}, "claude-in-slack"},
+		{"both slack spellings agree", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-in-slack"}, "claude-in-slack"},
 		{"unset", map[string]string{}, ""},
 		{"sanitized", map[string]string{"CLAUDE_CODE_ENTRYPOINT": " claude-vscode "}, "claude-vscode"},
 	}
@@ -173,6 +175,45 @@ func TestDetectAgentHost(t *testing.T) {
 			result := DetectAgentHost(mapEnv(tt.envs))
 			require.Equal(t, tt.expected, result)
 		})
+	}
+}
+
+func TestAgentHostKind(t *testing.T) {
+	tests := []struct {
+		name     string
+		host     string
+		expected string
+	}{
+		{"claude desktop", "claude-desktop", "desktop"},
+		{"codex desktop", "codex-desktop", "desktop"},
+		{"cli", "cli", "terminal"},
+		{"vscode", "claude-vscode", "ide"},
+		{"mcp", "mcp", "mcp"},
+		{"sdk", "sdk-ts", "sdk"},
+		{"github action", "claude-code-github-action", "ci"},
+		{"slack", "claude-in-slack", "chat"},
+		{"bare remote", "remote", "remote"},
+		{"remote variant", "remote-cowork", "remote"},
+		// remote-desktop is a remote session, not the desktop app. A substring match on
+		// "desktop" would report this as desktop and quietly inflate desktop counts.
+		{"remote desktop is remote", "remote-desktop", "remote"},
+		{"unknown host", "some-future-host", ""},
+		{"empty", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := AgentHostKind(tt.host)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestAgentHostKind_CoversEveryKnownHost(t *testing.T) {
+	// Every host in the map must categorize, so a typo'd key cannot sit unnoticed.
+	for host, kind := range agentHostKinds {
+		require.Equal(t, kind, AgentHostKind(host), "host %q", host)
+		require.Equal(t, host, normalizeAgentHost(host), "map key %q is not normalized", host)
 	}
 }
 

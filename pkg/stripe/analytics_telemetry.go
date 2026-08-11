@@ -51,7 +51,8 @@ type CLIAnalyticsEventMetadata struct {
 	GeneratedResource bool   `url:"generated_resource"`          // whether or not this was a generated resource
 	AIAgent           string `url:"ai_agent,omitempty"`          // the AI coding agent that invoked the CLI, if any
 	AIAgentRaw        string `url:"ai_agent_raw,omitempty"`      // the agent's self-reported AI_AGENT/AGENT value; unvalidated, prefer ai_agent for grouping
-	AgentHost         string `url:"agent_host,omitempty"`        // the application hosting the agent (desktop, IDE, SDK), when reported
+	AgentHost         string `url:"agent_host,omitempty"`        // the application hosting the agent, as reported by the agent
+	AgentHostKind     string `url:"agent_host_kind,omitempty"`   // coarse category for agent_host: desktop, terminal, ide, remote, sdk, mcp, chat, or ci
 	MacAppBundleID    string `url:"mac_app_bundle_id,omitempty"` // bundle ID of the macOS app that launched the process tree, if any
 	InstallMethod     string `url:"install_method,omitempty"`    // how the CLI was installed
 	InTmux            bool   `url:"in_tmux"`                     // whether the CLI was invoked from within tmux
@@ -82,6 +83,8 @@ type NoOpTelemetryClient struct {
 
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
 func NewEventMetadata() *CLIAnalyticsEventMetadata {
+	agentHost := useragent.DetectAgentHost(os.Getenv)
+
 	return &CLIAnalyticsEventMetadata{
 		InvocationID:   uuid.NewString(),
 		CLIVersion:     version.Version,
@@ -89,7 +92,8 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		Arch:           runtime.GOARCH,
 		AIAgent:        useragent.DetectAIAgent(os.Getenv),
 		AIAgentRaw:     useragent.DetectAIAgentRaw(os.Getenv),
-		AgentHost:      useragent.DetectAgentHost(os.Getenv),
+		AgentHost:      agentHost,
+		AgentHostKind:  useragent.AgentHostKind(agentHost),
 		MacAppBundleID: useragent.DetectMacAppBundleID(os.Getenv),
 		InstallMethod: useragent.DetectInstallMethod(
 			os.Getenv,
