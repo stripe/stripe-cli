@@ -21,6 +21,10 @@ func getCommandPath(cmd *cobra.Command) string {
 	return commandPath
 }
 
+func userInputError(message string) error {
+	return errorcategory.With(errors.New(message), errorcategory.UserInput)
+}
+
 // NoArgs is a validator for commands to print an error when an argument is provided
 func NoArgs(cmd *cobra.Command, args []string) error {
 	commandPath := getCommandPath(cmd)
@@ -31,7 +35,7 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 	)
 
 	if len(args) > 0 {
-		return errorcategory.With(errors.New(errorMessage), errorcategory.UserInput)
+		return userInputError(errorMessage)
 	}
 
 	return nil
@@ -56,7 +60,7 @@ func ExactArgs(num int) cobra.PositionalArgs {
 		)
 
 		if len(args) != num {
-			return errorcategory.With(errors.New(errorMessage), errorcategory.UserInput)
+			return userInputError(errorMessage)
 		}
 		return nil
 	}
@@ -81,7 +85,7 @@ func MaximumNArgs(num int) cobra.PositionalArgs {
 		)
 
 		if len(args) > num {
-			return errorcategory.With(errors.New(errorMessage), errorcategory.UserInput)
+			return userInputError(errorMessage)
 		}
 		return nil
 	}
