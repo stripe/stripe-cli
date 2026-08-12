@@ -217,23 +217,59 @@ func TestAgentHostKind_CoversEveryKnownHost(t *testing.T) {
 	}
 }
 
-func TestDetectMacAppBundleID(t *testing.T) {
+func TestDetectAgentHost_MacAppFallback(t *testing.T) {
 	tests := []struct {
 		name     string
 		envs     map[string]string
 		expected string
 	}{
-		{"claude desktop", map[string]string{"__CFBundleIdentifier": "com.anthropic.claudefordesktop"}, "com.anthropic.claudefordesktop"},
-		{"terminal", map[string]string{"__CFBundleIdentifier": "com.apple.Terminal"}, "com.apple.Terminal"},
-		{"unset elsewhere", map[string]string{}, ""},
-		{"truncated", map[string]string{"__CFBundleIdentifier": strings.Repeat("c", 100)}, strings.Repeat("c", 64)},
+		{
+			"claude desktop with no agent env",
+			map[string]string{"__CFBundleIdentifier": "com.anthropic.claudefordesktop"},
+			"claude-desktop",
+		},
+		{
+			"chatgpt desktop ships the codex bundle id",
+			map[string]string{"__CFBundleIdentifier": "com.openai.codex"},
+			"codex-desktop",
+		},
+		{
+			// The bundle ID is inherited by the whole process tree, so a terminal
+			// emulator in between makes this a terminal session regardless of which
+			// app sits at the root.
+			"terminal program suppresses the fallback",
+			map[string]string{"__CFBundleIdentifier": "com.anthropic.claudefordesktop", "TERM_PROGRAM": "iTerm.app"},
+			"",
+		},
+		{
+			// Reporting terminal emulators here would make agent_host mostly a list of
+			// terminals, which is the field we chose not to add.
+			"unrecognized bundle id is ignored",
+			map[string]string{"__CFBundleIdentifier": "com.apple.Terminal"},
+			"",
+		},
+		{
+			"agent env wins over bundle id",
+			map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "__CFBundleIdentifier": "com.anthropic.claudefordesktop"},
+			"cli",
+		},
+		{"unset", map[string]string{}, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := DetectMacAppBundleID(mapEnv(tt.envs))
+			result := DetectAgentHost(mapEnv(tt.envs))
 			require.Equal(t, tt.expected, result)
 		})
+	}
+}
+
+func TestMacAppHosts_AllCategorizeAsDesktop(t *testing.T) {
+	// Every app we recognize is a desktop app, so each must reach the desktop
+	// category through the same path a real invocation takes.
+	for bundleID, host := range macAppHosts {
+		require.Equal(t, host, normalizeAgentHost(host), "host %q is not normalized", host)
+		require.Equal(t, "desktop", AgentHostKind(host), "bundle %q", bundleID)
 	}
 }
 

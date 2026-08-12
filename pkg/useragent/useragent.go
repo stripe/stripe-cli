@@ -163,7 +163,7 @@ func DetectAgentHost(getEnv func(string) string) string {
 	if host := getEnv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE"); host != "" {
 		return normalizeAgentHost(host)
 	}
-	return ""
+	return detectMacAppHost(getEnv)
 }
 
 // AgentHostKind maps a host returned by DetectAgentHost to a coarse category, or ""
@@ -184,17 +184,24 @@ func AgentHostKind(host string) string {
 	return agentHostKinds[host]
 }
 
-// DetectMacAppBundleID returns the bundle identifier of the macOS application that
-// launched the process tree, or "" on other platforms and when unset.
+// detectMacAppHost identifies the host from the macOS bundle identifier of the app
+// that launched the process tree, for the case where a desktop app invokes the CLI
+// without its coding agent in between -- an MCP server that shells out, for example --
+// and so sets none of the agent environment variables.
 //
 // macOS sets __CFBundleIdentifier when an app bundle launches a process, and child
-// processes inherit it. That inheritance means it identifies the GUI application at
-// the root of the session rather than the direct parent: launching from a terminal
-// emulator reports that emulator (e.g. "com.apple.Terminal"), and it is absent
-// entirely under ssh, cron, and CI. It is therefore a signal that *some* Mac app
-// started the session, not proof of who invoked the CLI.
-func DetectMacAppBundleID(getEnv func(string) string) string {
-	return sanitizeEnvValue(getEnv("__CFBundleIdentifier"))
+// processes inherit it, so it names the GUI app at the root of the session rather than
+// the direct parent. Only bundle IDs we explicitly recognize are mapped; every other
+// value, including terminal emulators, is ignored rather than reported. That keeps this
+// a narrow positive check instead of a general "which app launched us" field, whose
+// value would be unbounded and mostly terminal emulators.
+func detectMacAppHost(getEnv func(string) string) string {
+	// A terminal emulator between the app and the CLI means the session is a terminal
+	// one, whatever app happens to sit at the root of the tree.
+	if DetectTerminalProgram(getEnv) != "" {
+		return ""
+	}
+	return macAppHosts[sanitizeEnvValue(getEnv("__CFBundleIdentifier"))]
 }
 
 //
@@ -235,6 +242,18 @@ const maxEnvValueLength = 64
 // still reported verbatim as agent_host; only the coarse category is omitted, so an
 // unrecognized host is a gap in grouping rather than lost data. "remote*" hosts are
 // handled by prefix in AgentHostKind rather than enumerated here.
+// macAppHosts maps the bundle identifiers of desktop apps that can invoke the CLI to
+// the host they correspond to. Deliberately minimal: an unlisted bundle ID reports no
+// host at all, so adding an entry is a decision rather than a default.
+//
+// com.openai.codex is what ChatGPT.app itself ships as, verified against an installed
+// 26.730.61639 build -- OpenAI uses one bundle identifier for the desktop app, so this
+// cannot separate ChatGPT from Codex, only identify the OpenAI desktop app.
+var macAppHosts = map[string]string{
+	"com.anthropic.claudefordesktop": "claude-desktop",
+	"com.openai.codex":               "codex-desktop",
+}
+
 var agentHostKinds = map[string]string{
 	"claude-code-github-action": "ci",
 	"claude-desktop":            "desktop",
