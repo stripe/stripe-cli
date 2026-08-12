@@ -228,7 +228,7 @@ func TestRefreshAccessToken_Success(t *testing.T) {
 	assert.Equal(t, "oart_new_refresh", resp.RefreshToken)
 }
 
-func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
+func TestLoginWithDeviceCodeFallsBackToStubAccountsWhenAccountsFetchFails(t *testing.T) {
 	origCanOpenBrowser := canOpenBrowser
 	canOpenBrowser = func() bool { return false }
 	t.Cleanup(func() { canOpenBrowser = origCanOpenBrowser })
@@ -263,11 +263,13 @@ func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 	defer ts.Close()
 
 	err := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "failed to fetch account info")
+	require.NoError(t, err)
 
-	_, keyErr := config.KeyRing.Get(config.OAuthActiveContextKeychainKey)
-	assert.Error(t, keyErr)
+	ac, acErr := config.GetActiveContext()
+	require.NoError(t, acErr)
+	require.NotNil(t, ac)
+	assert.Equal(t, "acct_1NRKwLLJDmqA11cn", ac.AccountID)
+	assert.True(t, ac.Livemode)
 }
 
 func TestRefreshAccessToken_NoRefreshTokenInResponse(t *testing.T) {

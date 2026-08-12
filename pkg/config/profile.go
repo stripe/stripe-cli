@@ -784,6 +784,20 @@ func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
 // Stripe-Livemode; the livemode parameter is used only for the legacy OIDC
 // fallback and plain API key path.
 func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
+	return p.resolveCredentials(livemode, true)
+}
+
+// ResolveCredentialsIgnoringActiveContext behaves like ResolveCredentials but
+// does not error out when the active context's livemode differs from the
+// requested livemode; it uses the active context's account and livemode
+// as-is instead. This is used by callers (plugin management commands,
+// `stripe logs tail`) that need a usable credential regardless of which mode
+// the user's active context happens to be in.
+func (p *Profile) ResolveCredentialsIgnoringActiveContext(livemode bool) (stripe.Credentials, error) {
+	return p.resolveCredentials(livemode, false)
+}
+
+func (p *Profile) resolveCredentials(livemode bool, enforceActiveContextLivemode bool) (stripe.Credentials, error) {
 	if !p.HasOverrideAPIKey() {
 		uat, err := p.GetUAT()
 		if err != nil {
@@ -810,6 +824,11 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 				return stripe.Credentials{}, err
 			}
 			if ac != nil {
+				if !enforceActiveContextLivemode {
+					// The Stripe-Livemode header must reflect the active
+					// context's actual mode, not the caller-requested mode.
+					return stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode), nil
+				}
 				if ac.Livemode != livemode {
 					if livemode {
 						return stripe.Credentials{}, fmt.Errorf("your active context is test mode; to access livemode, run 'stripe switch context'")

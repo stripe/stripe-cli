@@ -71,7 +71,7 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		APIBaseURL:     metadataBaseURL,
 	}
 
-	resolvedCreds, err := base.ResolveCredentials()
+	resolvedCreds, err := profile.ResolveCredentialsIgnoringActiveContext(base.Livemode)
 	if err != nil {
 		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
 	}
@@ -121,7 +121,7 @@ func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion
 		APIBaseURL:     listBaseURL,
 	}
 
-	resolvedCreds, err := base.ResolveCredentials()
+	resolvedCreds, err := profile.ResolveCredentialsIgnoringActiveContext(base.Livemode)
 	if err != nil {
 		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
 	}

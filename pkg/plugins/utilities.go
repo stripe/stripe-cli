@@ -324,7 +324,7 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 // ListPlugins fetches the live plugin list visible to the current caller for
 // the current platform using the list-plugins API endpoints.
 func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboardBaseURL string) (PluginList, error) {
-	creds, err := config.GetProfile().ResolveCredentials(false)
+	creds, err := config.GetProfile().ResolveCredentialsIgnoringActiveContext(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return PluginList{}, err
 	}
@@ -372,7 +372,7 @@ func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.I
 		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
 	}
 
-	creds, err := config.GetProfile().ResolveCredentials(false)
+	creds, err := config.GetProfile().ResolveCredentialsIgnoringActiveContext(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return err
 	}
@@ -507,7 +507,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	creds, err := config.GetProfile().ResolveCredentials(false)
+	creds, err := config.GetProfile().ResolveCredentialsIgnoringActiveContext(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}
@@ -558,7 +558,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	creds, err := config.GetProfile().ResolveCredentials(false)
+	creds, err := config.GetProfile().ResolveCredentialsIgnoringActiveContext(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}

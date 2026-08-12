@@ -172,7 +172,11 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	creds, err := tailCmd.cfg.Profile.ResolveCredentials(false)
+	if ac, acErr := config.GetActiveContext(); acErr == nil && ac != nil && ac.Livemode {
+		return fmt.Errorf("'stripe logs tail' only works in test mode, but your active context is livemode; run 'stripe switch context' to select a test mode context")
+	}
+
+	creds, err := tailCmd.cfg.Profile.ResolveCredentialsIgnoringActiveContext(false)
 	if err != nil {
 		return err
 	}

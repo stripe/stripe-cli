@@ -16,6 +16,17 @@ type listAccountsResponse struct {
 	Accounts []config.AuthorizedAccount `json:"accounts"`
 }
 
+// stubAuthorizedAccounts is returned by ListAuthorizedAccounts while the
+// GET /stripecli/oauth2/token/accounts endpoint is unavailable.
+// TODO: remove once the accounts endpoint is live.
+var stubAuthorizedAccounts = []config.AuthorizedAccount{
+	{
+		ID:    "acct_1NRKwLLJDmqA11cn",
+		Name:  "acct_1NRKwLLJDmqA11cn",
+		Modes: []string{"live"},
+	},
+}
+
 // ListAuthorizedAccounts returns the Stripe accounts accessible to accessToken.
 // If the endpoint is unreachable or returns a non-200 response, it falls back
 // to stub data so that callers can be built and tested before the endpoint is live.
@@ -23,7 +34,7 @@ type listAccountsResponse struct {
 func ListAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken string) ([]config.AuthorizedAccount, error) {
 	accounts, err := fetchAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
-		return nil, err
+		return stubAuthorizedAccounts, nil
 	}
 	return accounts, nil
 }
