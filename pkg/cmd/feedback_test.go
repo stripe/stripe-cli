@@ -260,6 +260,7 @@ func TestFeedbackSubmit(t *testing.T) {
 			// httptest's own goroutine, where require's FailNow is unsafe.
 			server := httptest.NewServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 				assert.Equal(t, "/v1/_unstable/feedback", request.URL.Path)
+				assert.Equal(t, "Bearer sk_test_123456789012", request.Header.Get("Authorization"))
 				assert.Equal(t, requests.StripePreviewVersionHeaderValue, request.Header.Get("Stripe-Version"))
 				testCase.handler(responseWriter, request)
 			}))

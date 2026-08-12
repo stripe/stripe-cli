@@ -329,8 +329,8 @@ func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (
 	}
 
 	client := &stripe.Client{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
+		BaseURL:     baseURL,
+		Credentials: stripe.NewAPIKeyCredentials(apiKey),
 	}
 
 	message := sanitizeText(feedback.message)
