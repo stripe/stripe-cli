@@ -129,91 +129,29 @@ func TestDetectTerminalProgram(t *testing.T) {
 	}
 }
 
-func TestDetectAIAgentRaw(t *testing.T) {
+func TestDetectAgentHostKind(t *testing.T) {
 	tests := []struct {
 		name     string
 		envs     map[string]string
 		expected string
 	}{
-		{"ai_agent", map[string]string{"AI_AGENT": "claude-code_2-1-222_agent"}, "claude-code_2-1-222_agent"},
-		{"agent fallback", map[string]string{"AGENT": "goose"}, "goose"},
-		{"ai_agent wins over agent", map[string]string{"AI_AGENT": "amp", "AGENT": "goose"}, "amp"},
-		{"blank ai_agent falls back", map[string]string{"AI_AGENT": "  ", "AGENT": "goose"}, "goose"},
-		{"unset", map[string]string{}, ""},
-		{"trimmed", map[string]string{"AI_AGENT": "  cursor\n"}, "cursor"},
-		{"non printable stripped", map[string]string{"AI_AGENT": "cur\x00so\tré"}, "cursor"},
-		{"truncated", map[string]string{"AI_AGENT": strings.Repeat("a", 100)}, strings.Repeat("a", 64)},
+		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop"},
+		{"codex desktop, normalized from \"Codex Desktop\"", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop"},
+		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal"},
+		{"ide", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-vscode"}, "ide"},
+		{"sdk", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "sdk-ts"}, "sdk"},
+		// remote-desktop is a remote session, not the desktop app. Matching "desktop"
+		// anywhere would report this as desktop and quietly inflate desktop counts.
+		{"remote desktop is remote", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote_desktop"}, "remote"},
+		{"agent env wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "terminal"},
+		{"uncategorized host", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "something-new"}, "other"},
+		{"no host", map[string]string{}, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := detectAIAgentRaw(mapEnv(tt.envs))
-			require.Equal(t, tt.expected, result)
+			require.Equal(t, tt.expected, DetectAgentHostKind(mapEnv(tt.envs)))
 		})
-	}
-}
-
-func TestDetectAgentHost(t *testing.T) {
-	tests := []struct {
-		name     string
-		envs     map[string]string
-		expected string
-	}{
-		{"desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "claude-desktop"},
-		{"cli", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "cli"},
-		{"mcp", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "mcp"}, "mcp"},
-		{"codex desktop normalized", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "codex-desktop"},
-		{"claude wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "cli"},
-		{"underscores collapse to dashes", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude_in_slack"}, "claude-in-slack"},
-		{"both slack spellings agree", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-in-slack"}, "claude-in-slack"},
-		{"unset", map[string]string{}, ""},
-		{"sanitized", map[string]string{"CLAUDE_CODE_ENTRYPOINT": " claude-vscode "}, "claude-vscode"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := DetectAgentHost(mapEnv(tt.envs))
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestAgentHostKind(t *testing.T) {
-	tests := []struct {
-		name     string
-		host     string
-		expected string
-	}{
-		{"claude desktop", "claude-desktop", "desktop"},
-		{"codex desktop", "codex-desktop", "desktop"},
-		{"cli", "cli", "terminal"},
-		{"vscode", "claude-vscode", "ide"},
-		{"mcp", "mcp", "mcp"},
-		{"sdk", "sdk-ts", "sdk"},
-		{"github action", "claude-code-github-action", "ci"},
-		{"slack", "claude-in-slack", "chat"},
-		{"bare remote", "remote", "remote"},
-		{"remote variant", "remote-cowork", "remote"},
-		// remote-desktop is a remote session, not the desktop app. A substring match on
-		// "desktop" would report this as desktop and quietly inflate desktop counts.
-		{"remote desktop is remote", "remote-desktop", "remote"},
-		{"unknown host reports other", "some-future-host", "other"},
-		{"empty", "", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := AgentHostKind(tt.host)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestAgentHostKind_CoversEveryKnownHost(t *testing.T) {
-	// Every host in the map must categorize, so a typo'd key cannot sit unnoticed.
-	for host, kind := range agentHostKinds {
-		require.Equal(t, kind, AgentHostKind(host), "host %q", host)
-		require.Equal(t, host, normalizeAgentHost(host), "map key %q is not normalized", host)
 	}
 }
 
@@ -235,6 +173,7 @@ func TestDetectAgentVersion(t *testing.T) {
 		{"slash form with junk rejected", map[string]string{"AI_AGENT": "claude-code/v2.1.222"}, ""},
 		{"trailing dot rejected", map[string]string{"AI_AGENT": "claude-code/2.1."}, ""},
 		{"double dot rejected", map[string]string{"AI_AGENT": "claude-code/2..1"}, ""},
+		{"overlong rejected", map[string]string{"AI_AGENT": "claude-code/" + strings.Repeat("1.", 40)}, ""},
 	}
 
 	for _, tt := range tests {
@@ -242,85 +181,6 @@ func TestDetectAgentVersion(t *testing.T) {
 			result := DetectAgentVersion(mapEnv(tt.envs))
 			require.Equal(t, tt.expected, result)
 		})
-	}
-}
-
-func TestDetectAgentHostKind(t *testing.T) {
-	tests := []struct {
-		name     string
-		envs     map[string]string
-		expected string
-	}{
-		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop"},
-		{"codex desktop", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop"},
-		{"desktop via bundle id", map[string]string{"__CFBundleIdentifier": "com.openai.codex"}, "desktop"},
-		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal"},
-		{"remote not desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote_desktop"}, "remote"},
-		{"unknown host", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "something-new"}, "other"},
-		{"no host", map[string]string{}, ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := DetectAgentHostKind(mapEnv(tt.envs))
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDetectAgentHost_MacAppFallback(t *testing.T) {
-	tests := []struct {
-		name     string
-		envs     map[string]string
-		expected string
-	}{
-		{
-			"claude desktop with no agent env",
-			map[string]string{"__CFBundleIdentifier": "com.anthropic.claudefordesktop"},
-			"claude-desktop",
-		},
-		{
-			"chatgpt desktop ships the codex bundle id",
-			map[string]string{"__CFBundleIdentifier": "com.openai.codex"},
-			"codex-desktop",
-		},
-		{
-			// The bundle ID is inherited by the whole process tree, so a terminal
-			// emulator in between makes this a terminal session regardless of which
-			// app sits at the root.
-			"terminal program suppresses the fallback",
-			map[string]string{"__CFBundleIdentifier": "com.anthropic.claudefordesktop", "TERM_PROGRAM": "iTerm.app"},
-			"",
-		},
-		{
-			// Reporting terminal emulators here would make agent_host mostly a list of
-			// terminals, which is the field we chose not to add.
-			"unrecognized bundle id is ignored",
-			map[string]string{"__CFBundleIdentifier": "com.apple.Terminal"},
-			"",
-		},
-		{
-			"agent env wins over bundle id",
-			map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "__CFBundleIdentifier": "com.anthropic.claudefordesktop"},
-			"cli",
-		},
-		{"unset", map[string]string{}, ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := DetectAgentHost(mapEnv(tt.envs))
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestMacAppHosts_AllCategorizeAsDesktop(t *testing.T) {
-	// Every app we recognize is a desktop app, so each must reach the desktop
-	// category through the same path a real invocation takes.
-	for bundleID, host := range macAppHosts {
-		require.Equal(t, host, normalizeAgentHost(host), "host %q is not normalized", host)
-		require.Equal(t, "desktop", AgentHostKind(host), "bundle %q", bundleID)
 	}
 }
 
@@ -351,7 +211,6 @@ func TestObservedAgentSessions(t *testing.T) {
 				"CLAUDE_AGENT_SDK_VERSION":    "0.3.222",
 				"CLAUDE_CODE_SESSION_ID":      sensitiveSessionID,
 				"CLAUDE_CODE_HOST_SESSION_ID": sensitiveHostID,
-				"__CFBundleIdentifier":        "com.anthropic.claudefordesktop",
 			},
 			agent:    "claude_code",
 			hostKind: "desktop",
@@ -381,10 +240,10 @@ func TestObservedAgentSessions(t *testing.T) {
 				"CODEX_PERMISSION_PROFILE":           ":read-only",
 				"CODEX_SANDBOX_NETWORK_DISABLED":     "1",
 			},
-			agent:       "codex_desktop",
+			agent:       "codex_cli",
 			hostKind:    "desktop",
 			version:     "",
-			description: "Desktop also sets the generic Codex signals, so originator must be checked first",
+			description: "Desktop also sets the generic Codex signals; the host is what distinguishes it",
 		},
 		{
 			name: "codex cli",

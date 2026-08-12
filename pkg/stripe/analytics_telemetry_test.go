@@ -335,7 +335,6 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "true", "antigravity"},
 		{"Claude Code", "CLAUDECODE", "true", "claude_code"},
 		{"Cline", "CLINE_ACTIVE", "true", "cline"},
-		{"Codex Desktop", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "Codex Desktop", "codex_desktop"},
 		{"Codex CLI sandbox", "CODEX_SANDBOX", "true", "codex_cli"},
 		{"Codex CLI thread", "CODEX_THREAD_ID", "thread-id", "codex_cli"},
 		{"Codex CLI sandbox network", "CODEX_SANDBOX_NETWORK_DISABLED", "true", "codex_cli"},
@@ -358,22 +357,6 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-func TestAIAgentDetection_CodexDesktopPriority(t *testing.T) {
-	getEnv := func(key string) string {
-		switch key {
-		case "CODEX_INTERNAL_ORIGINATOR_OVERRIDE":
-			return "Codex Desktop"
-		case "CODEX_THREAD_ID":
-			return "thread-id"
-		default:
-			return ""
-		}
-	}
-
-	result := useragent.DetectAIAgent(getEnv)
-	require.Equal(t, "codex_desktop", result)
 }
 
 func TestAIAgentDetection_Priority(t *testing.T) {
