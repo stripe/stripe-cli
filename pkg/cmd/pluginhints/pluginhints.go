@@ -43,7 +43,7 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 	}
 	if !installedPluginSet["pay"] {
 		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "pay", "Send money to another business with a Stripe profile.").Command,
+			newPluginHintCmd(cfg, "pay", "This plugin allows businesses on Stripe with a Stripe profile to send funds to another business with a Stripe profile.").Command,
 		)
 		rootCmd.Annotations["pay"] = "available_plugin"
 	}
