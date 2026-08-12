@@ -409,7 +409,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 
 	if m.palette.Visible() {
 		switch {
-		case key.Matches(msg, m.keys.Quit):
+		case key.Matches(msg, m.keys.Quit) && msg.String() != "q":
 			qm, qcmd := m.beginQuit()
 			return qm.(Model), qcmd
 		case msg.String() == "esc":

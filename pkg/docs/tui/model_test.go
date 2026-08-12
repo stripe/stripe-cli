@@ -332,6 +332,23 @@ func TestUpdate_PaletteQuitsOnCtrlC(t *testing.T) {
 	assert.NotNil(t, cmd)
 }
 
+func TestUpdate_PaletteQuitKeyDoesNotQuit(t *testing.T) {
+	m := New(WithPage(Page{Content: []byte("# Test\n\nBody")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	model := result.(Model)
+
+	// Open the palette
+	result, _ = model.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+	model = result.(Model)
+	assert.True(t, model.palette.Visible())
+
+	// Pressing q should not quit when the palette is open
+	result, _ = model.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
+	model = result.(Model)
+	assert.False(t, model.quitting)
+	assert.True(t, model.palette.Visible())
+}
+
 func TestUpdate_PaletteGatesInput(t *testing.T) {
 	r, err := markdown.NewRenderer()
 	require.NoError(t, err)
