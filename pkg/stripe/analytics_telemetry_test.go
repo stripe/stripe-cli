@@ -258,7 +258,6 @@ func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		bodyString := string(body)
-		require.NotContains(t, bodyString, "ai_agent_raw")
 		require.NotContains(t, bodyString, "agent_version")
 		require.NotContains(t, bodyString, "agent_host_kind")
 	}))
@@ -400,27 +399,16 @@ func clearAgentEnv(t *testing.T) {
 	}
 }
 
-func TestNewEventMetadata_ReportsRawAgentOnlyWhenUnrecognized(t *testing.T) {
-	t.Run("unrecognized agent is reported raw", func(t *testing.T) {
-		clearAgentEnv(t)
-		t.Setenv("AI_AGENT", "goose_9-9-9")
+func TestNewEventMetadata_FromObservedDesktopSession(t *testing.T) {
+	// Values observed in a real Claude Desktop session; see TestObservedAgentSessions
+	// in pkg/useragent for the full set and for Codex Desktop.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("AI_AGENT", "claude-code_2-1-227_agent")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "claude-desktop")
 
-		tel := stripe.NewEventMetadata()
-		require.Empty(t, tel.AIAgent)
-		require.Equal(t, "goose_9-9-9", tel.AIAgentRaw)
-		require.Equal(t, "9.9.9", tel.AgentVersion)
-	})
-
-	t.Run("recognized agent suppresses the raw value", func(t *testing.T) {
-		clearAgentEnv(t)
-		t.Setenv("CLAUDECODE", "1")
-		t.Setenv("AI_AGENT", "claude-code_2-1-222_agent")
-		t.Setenv("CLAUDE_CODE_ENTRYPOINT", "claude-desktop")
-
-		tel := stripe.NewEventMetadata()
-		require.Equal(t, "claude_code", tel.AIAgent)
-		require.Empty(t, tel.AIAgentRaw, "raw value duplicates ai_agent for a known agent")
-		require.Equal(t, "desktop", tel.AgentHostKind)
-		require.Equal(t, "2.1.222", tel.AgentVersion)
-	})
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "claude_code", tel.AIAgent)
+	require.Equal(t, "desktop", tel.AgentHostKind)
+	require.Equal(t, "2.1.227", tel.AgentVersion)
 }

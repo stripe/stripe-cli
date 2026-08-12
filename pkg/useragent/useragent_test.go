@@ -147,7 +147,7 @@ func TestDetectAIAgentRaw(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := DetectAIAgentRaw(mapEnv(tt.envs))
+			result := detectAIAgentRaw(mapEnv(tt.envs))
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -327,5 +327,125 @@ func TestMacAppHosts_AllCategorizeAsDesktop(t *testing.T) {
 func mapEnv(envs map[string]string) func(string) string {
 	return func(key string) string {
 		return envs[key]
+	}
+}
+
+// TestObservedAgentSessions pins the detectors against environments captured from real
+// agent sessions, so a vendor changing what it exports shows up here as a failure
+// rather than as a silent gap in reporting.
+func TestObservedAgentSessions(t *testing.T) {
+	tests := []struct {
+		name        string
+		envs        map[string]string
+		agent       string
+		hostKind    string
+		version     string
+		description string
+	}{
+		{
+			name: "claude code in claude desktop, macos",
+			envs: map[string]string{
+				"CLAUDECODE":                  "1",
+				"AI_AGENT":                    "claude-code_2-1-222_agent",
+				"CLAUDE_CODE_ENTRYPOINT":      "claude-desktop",
+				"CLAUDE_AGENT_SDK_VERSION":    "0.3.222",
+				"CLAUDE_CODE_SESSION_ID":      sensitiveSessionID,
+				"CLAUDE_CODE_HOST_SESSION_ID": sensitiveHostID,
+				"__CFBundleIdentifier":        "com.anthropic.claudefordesktop",
+			},
+			agent:    "claude_code",
+			hostKind: "desktop",
+			version:  "2.1.222",
+		},
+		{
+			name: "claude code in claude desktop, windows",
+			envs: map[string]string{
+				"CLAUDECODE":               "1",
+				"AI_AGENT":                 "claude-code_2-1-227_agent",
+				"CLAUDE_CODE_ENTRYPOINT":   "claude-desktop",
+				"CLAUDE_AGENT_SDK_VERSION": "0.3.227",
+				"CLAUDE_CODE_SESSION_ID":   sensitiveSessionID,
+				"CLAUDE_CODE_OAUTH_SCOPES": sensitiveScopes,
+			},
+			agent:       "claude_code",
+			hostKind:    "desktop",
+			version:     "2.1.227",
+			description: "no __CFBundleIdentifier on Windows; the env vars carry it",
+		},
+		{
+			name: "codex desktop, windows",
+			envs: map[string]string{
+				"CODEX_CI":                           "1",
+				"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop",
+				"CODEX_THREAD_ID":                    sensitiveThreadID,
+				"CODEX_PERMISSION_PROFILE":           ":read-only",
+				"CODEX_SANDBOX_NETWORK_DISABLED":     "1",
+			},
+			agent:       "codex_desktop",
+			hostKind:    "desktop",
+			version:     "",
+			description: "Desktop also sets the generic Codex signals, so originator must be checked first",
+		},
+		{
+			name: "codex cli",
+			envs: map[string]string{
+				"CODEX_THREAD_ID": sensitiveThreadID,
+				"CODEX_SANDBOX":   "1",
+			},
+			agent:    "codex_cli",
+			hostKind: "",
+			version:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			getEnv := mapEnv(tt.envs)
+			require.Equal(t, tt.agent, DetectAIAgent(getEnv), tt.description)
+			require.Equal(t, tt.hostKind, DetectAgentHostKind(getEnv), tt.description)
+			require.Equal(t, tt.version, DetectAgentVersion(getEnv), tt.description)
+		})
+	}
+}
+
+// Distinctive stand-ins for the per-session values these products export, so
+// TestObservedAgentSessions_NoSensitiveValuesReported can assert none of them reach a
+// reported field.
+const (
+	sensitiveSessionID = "SESSIONID-1111"
+	sensitiveHostID    = "HOSTID-2222"
+	sensitiveThreadID  = "THREADID-3333"
+	sensitiveScopes    = "SCOPES-4444"
+)
+
+func TestObservedAgentSessions_NoSensitiveValuesReported(t *testing.T) {
+	// Session, thread, host and scope values must never leave the machine. Several are
+	// read as presence checks during detection, so assert on what is reported rather
+	// than on what is read.
+	envs := map[string]string{
+		"CLAUDECODE":                         "1",
+		"AI_AGENT":                           "claude-code_2-1-227_agent",
+		"CLAUDE_CODE_ENTRYPOINT":             "claude-desktop",
+		"CLAUDE_CODE_SESSION_ID":             sensitiveSessionID,
+		"CLAUDE_CODE_HOST_SESSION_ID":        sensitiveHostID,
+		"CLAUDE_CODE_OAUTH_SCOPES":           sensitiveScopes,
+		"CODEX_THREAD_ID":                    sensitiveThreadID,
+		"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop",
+		"CODEX_PERMISSION_PROFILE":           ":read-only",
+	}
+	getEnv := mapEnv(envs)
+
+	reported := []string{
+		DetectAIAgent(getEnv),
+		DetectAgentHostKind(getEnv),
+		DetectAgentVersion(getEnv),
+		DetectInstallMethod(getEnv, errExe, noStat),
+		DetectTerminalProgram(getEnv),
+	}
+
+	for _, secret := range []string{sensitiveSessionID, sensitiveHostID, sensitiveThreadID, sensitiveScopes} {
+		for _, value := range reported {
+			require.NotContains(t, value, secret)
+		}
 	}
 }
