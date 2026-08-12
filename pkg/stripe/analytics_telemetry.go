@@ -50,9 +50,9 @@ type CLIAnalyticsEventMetadata struct {
 	MachineUUID       string `url:"machine_uuid,omitempty"`     // the persistent machine UUID
 	GeneratedResource bool   `url:"generated_resource"`         // whether or not this was a generated resource
 	AIAgent           string `url:"ai_agent,omitempty"`         // the AI coding agent that invoked the CLI, if any
-	AIAgentRaw        string `url:"ai_agent_raw,omitempty"`     // the agent's self-reported AI_AGENT/AGENT value; unvalidated, prefer ai_agent for grouping
-	AgentHost         string `url:"agent_host,omitempty"`       // the application hosting the agent, as reported by the agent
-	AgentHostKind     string `url:"agent_host_kind,omitempty"`  // coarse category for agent_host: desktop, terminal, ide, remote, sdk, mcp, chat, or ci
+	AIAgentRaw        string `url:"ai_agent_raw,omitempty"`     // self-reported AI_AGENT/AGENT value, only when ai_agent did not recognize the agent
+	AgentHostKind     string `url:"agent_host_kind,omitempty"`  // where the agent ran: desktop, terminal, ide, remote, sdk, mcp, chat, ci, or other
+	AgentVersion      string `url:"agent_version,omitempty"`    // the agent's own version, when it reports one
 	InstallMethod     string `url:"install_method,omitempty"`   // how the CLI was installed
 	InTmux            bool   `url:"in_tmux"`                    // whether the CLI was invoked from within tmux
 	InScreen          bool   `url:"in_screen"`                  // whether the CLI was invoked from within GNU Screen
@@ -82,17 +82,26 @@ type NoOpTelemetryClient struct {
 
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
 func NewEventMetadata() *CLIAnalyticsEventMetadata {
-	agentHost := useragent.DetectAgentHost(os.Getenv)
+	aiAgent := useragent.DetectAIAgent(os.Getenv)
+
+	// Only report the self-reported identifier when we failed to recognize the agent.
+	// For a known agent it would duplicate ai_agent; the case it exists for is an agent
+	// we have not shipped support for naming itself, which is a discovery signal rather
+	// than a column to group by.
+	aiAgentRaw := ""
+	if aiAgent == "" {
+		aiAgentRaw = useragent.DetectAIAgentRaw(os.Getenv)
+	}
 
 	return &CLIAnalyticsEventMetadata{
 		InvocationID:  uuid.NewString(),
 		CLIVersion:    version.Version,
 		OS:            runtime.GOOS,
 		Arch:          runtime.GOARCH,
-		AIAgent:       useragent.DetectAIAgent(os.Getenv),
-		AIAgentRaw:    useragent.DetectAIAgentRaw(os.Getenv),
-		AgentHost:     agentHost,
-		AgentHostKind: useragent.AgentHostKind(agentHost),
+		AIAgent:       aiAgent,
+		AIAgentRaw:    aiAgentRaw,
+		AgentHostKind: useragent.DetectAgentHostKind(os.Getenv),
+		AgentVersion:  useragent.DetectAgentVersion(os.Getenv),
 		InstallMethod: useragent.DetectInstallMethod(
 			os.Getenv,
 			os.Executable,

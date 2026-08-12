@@ -197,7 +197,7 @@ func TestAgentHostKind(t *testing.T) {
 		// remote-desktop is a remote session, not the desktop app. A substring match on
 		// "desktop" would report this as desktop and quietly inflate desktop counts.
 		{"remote desktop is remote", "remote-desktop", "remote"},
-		{"unknown host", "some-future-host", ""},
+		{"unknown host reports other", "some-future-host", "other"},
 		{"empty", "", ""},
 	}
 
@@ -214,6 +214,57 @@ func TestAgentHostKind_CoversEveryKnownHost(t *testing.T) {
 	for host, kind := range agentHostKinds {
 		require.Equal(t, kind, AgentHostKind(host), "host %q", host)
 		require.Equal(t, host, normalizeAgentHost(host), "map key %q is not normalized", host)
+	}
+}
+
+func TestDetectAgentVersion(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected string
+	}{
+		{"claude code underscore form", map[string]string{"AI_AGENT": "claude-code_2-1-222_agent"}, "2.1.222"},
+		{"claude code harness role", map[string]string{"AI_AGENT": "claude-code_2-1-222_harness"}, "2.1.222"},
+		{"claude code slash form", map[string]string{"AI_AGENT": "claude-code/2.1.222"}, "2.1.222"},
+		{"agent fallback var", map[string]string{"AGENT": "goose_1-2-3"}, "1.2.3"},
+		{"no version reported", map[string]string{"AI_AGENT": "goose"}, ""},
+		{"unset", map[string]string{}, ""},
+		// A wrong version is worse than a missing one, so anything that is not a plain
+		// dot-separated number is rejected rather than guessed at.
+		{"non numeric segment rejected", map[string]string{"AI_AGENT": "claude-code_beta_agent"}, ""},
+		{"slash form with junk rejected", map[string]string{"AI_AGENT": "claude-code/v2.1.222"}, ""},
+		{"trailing dot rejected", map[string]string{"AI_AGENT": "claude-code/2.1."}, ""},
+		{"double dot rejected", map[string]string{"AI_AGENT": "claude-code/2..1"}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectAgentVersion(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetectAgentHostKind(t *testing.T) {
+	tests := []struct {
+		name     string
+		envs     map[string]string
+		expected string
+	}{
+		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop"},
+		{"codex desktop", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop"},
+		{"desktop via bundle id", map[string]string{"__CFBundleIdentifier": "com.openai.codex"}, "desktop"},
+		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal"},
+		{"remote not desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote_desktop"}, "remote"},
+		{"unknown host", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "something-new"}, "other"},
+		{"no host", map[string]string{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectAgentHostKind(mapEnv(tt.envs))
+			require.Equal(t, tt.expected, result)
+		})
 	}
 }
 

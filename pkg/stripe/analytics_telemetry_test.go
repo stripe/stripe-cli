@@ -230,8 +230,7 @@ func TestSendEvent_WithAgentHost(t *testing.T) {
 		require.NoError(t, err)
 		bodyString := string(body)
 		require.Contains(t, bodyString, "ai_agent=claude_code")
-		require.Contains(t, bodyString, "ai_agent_raw=claude-code_2-1-222_agent")
-		require.Contains(t, bodyString, "agent_host=claude-desktop")
+		require.Contains(t, bodyString, "agent_version=2.1.222")
 		require.Contains(t, bodyString, "agent_host_kind=desktop")
 	}))
 	defer ts.Close()
@@ -245,9 +244,8 @@ func TestSendEvent_WithAgentHost(t *testing.T) {
 		CommandPath:   "stripe test",
 		Merchant:      "acct_1234",
 		AIAgent:       "claude_code",
-		AIAgentRaw:    "claude-code_2-1-222_agent",
-		AgentHost:     "claude-desktop",
 		AgentHostKind: "desktop",
+		AgentVersion:  "2.1.222",
 	}
 
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
@@ -261,7 +259,7 @@ func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
 		require.NoError(t, err)
 		bodyString := string(body)
 		require.NotContains(t, bodyString, "ai_agent_raw")
-		require.NotContains(t, bodyString, "agent_host")
+		require.NotContains(t, bodyString, "agent_version")
 		require.NotContains(t, bodyString, "agent_host_kind")
 	}))
 	defer ts.Close()
@@ -389,4 +387,40 @@ func TestAIAgentDetection_Priority(t *testing.T) {
 	}
 	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "antigravity", result)
+}
+
+func clearAgentEnv(t *testing.T) {
+	for _, key := range []string{
+		"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+		"CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI",
+		"CURSOR_AGENT", "GEMINI_CLI", "OPENCODE", "OPENCLAW_SHELL",
+		"AI_AGENT", "AGENT", "CLAUDE_CODE_ENTRYPOINT", "__CFBundleIdentifier",
+	} {
+		t.Setenv(key, "")
+	}
+}
+
+func TestNewEventMetadata_ReportsRawAgentOnlyWhenUnrecognized(t *testing.T) {
+	t.Run("unrecognized agent is reported raw", func(t *testing.T) {
+		clearAgentEnv(t)
+		t.Setenv("AI_AGENT", "goose_9-9-9")
+
+		tel := stripe.NewEventMetadata()
+		require.Empty(t, tel.AIAgent)
+		require.Equal(t, "goose_9-9-9", tel.AIAgentRaw)
+		require.Equal(t, "9.9.9", tel.AgentVersion)
+	})
+
+	t.Run("recognized agent suppresses the raw value", func(t *testing.T) {
+		clearAgentEnv(t)
+		t.Setenv("CLAUDECODE", "1")
+		t.Setenv("AI_AGENT", "claude-code_2-1-222_agent")
+		t.Setenv("CLAUDE_CODE_ENTRYPOINT", "claude-desktop")
+
+		tel := stripe.NewEventMetadata()
+		require.Equal(t, "claude_code", tel.AIAgent)
+		require.Empty(t, tel.AIAgentRaw, "raw value duplicates ai_agent for a known agent")
+		require.Equal(t, "desktop", tel.AgentHostKind)
+		require.Equal(t, "2.1.222", tel.AgentVersion)
+	})
 }

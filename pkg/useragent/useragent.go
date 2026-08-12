@@ -175,13 +175,57 @@ func DetectAgentHost(getEnv func(string) string) string {
 // predicate rather than a list of per-vendor spellings that has to be extended every
 // time a vendor ships a new host or renames an existing one.
 func AgentHostKind(host string) string {
+	if host == "" {
+		return ""
+	}
 	// Remote hosts are matched first and by prefix: "remote-desktop" is a remote
 	// session, not the desktop app, so any substring match on "desktop" would
 	// silently conflate the two.
 	if host == "remote" || strings.HasPrefix(host, "remote-") {
 		return "remote"
 	}
-	return agentHostKinds[host]
+	if kind, ok := agentHostKinds[host]; ok {
+		return kind
+	}
+	return agentHostKindOther
+}
+
+// DetectAgentHostKind reports the category of the host that invoked the CLI. This is
+// the single host signal reported in telemetry: the underlying host string is a
+// per-vendor spelling that callers would have to enumerate, whereas the category is a
+// bounded set, and the vendor is already carried by DetectAIAgent.
+func DetectAgentHostKind(getEnv func(string) string) string {
+	return AgentHostKind(DetectAgentHost(getEnv))
+}
+
+// DetectAgentVersion returns the agent's own version, parsed out of the identifier it
+// reports through the AI_AGENT convention, or "" when absent or unparseable.
+//
+// Claude Code encodes it as "claude-code_2-1-222_agent" (dots written as dashes) and
+// has also used a "claude-code/2.1.222" form. No other agent reports a version this
+// way today, so in practice this is populated for Claude Code and empty elsewhere.
+// The format is undocumented, so this validates what it extracts and reports nothing
+// rather than guessing.
+func DetectAgentVersion(getEnv func(string) string) string {
+	identifier := DetectAIAgentRaw(getEnv)
+	if identifier == "" {
+		return ""
+	}
+
+	// "claude-code/2.1.222" -- everything after the last slash.
+	if idx := strings.LastIndex(identifier, "/"); idx >= 0 {
+		return validVersion(strings.TrimSpace(identifier[idx+1:]))
+	}
+
+	// "claude-code_2-1-222_agent" -- the first underscore-delimited segment that reads
+	// as a version once dashes are treated as dots.
+	for _, segment := range strings.Split(identifier, "_") {
+		if version := validVersion(strings.ReplaceAll(segment, "-", ".")); version != "" {
+			return version
+		}
+	}
+
+	return ""
 }
 
 // detectMacAppHost identifies the host from the macOS bundle identifier of the app
@@ -234,14 +278,15 @@ var encodedUserAgent string
 // so an unexpected or hostile value cannot bloat a request.
 const maxEnvValueLength = 64
 
+// agentHostKindOther is reported when a host was detected but is not one we
+// categorize. It keeps the field bounded while still making a new or renamed host
+// visible, which reporting "" would not.
+const agentHostKindOther = "other"
+
 //
 // Private variables
 //
 
-// agentHostKinds categorizes the hosts we know about. Hosts absent from this map are
-// still reported verbatim as agent_host; only the coarse category is omitted, so an
-// unrecognized host is a gap in grouping rather than lost data. "remote*" hosts are
-// handled by prefix in AgentHostKind rather than enumerated here.
 // macAppHosts maps the bundle identifiers of desktop apps that can invoke the CLI to
 // the host they correspond to. Deliberately minimal: an unlisted bundle ID reports no
 // host at all, so adding an entry is a decision rather than a default.
@@ -254,6 +299,8 @@ var macAppHosts = map[string]string{
 	"com.openai.codex":               "codex-desktop",
 }
 
+// agentHostKinds categorizes the hosts we know about. "remote*" hosts are handled by
+// prefix in AgentHostKind rather than enumerated here.
 var agentHostKinds = map[string]string{
 	"claude-code-github-action": "ci",
 	"claude-desktop":            "desktop",
@@ -271,6 +318,32 @@ var agentHostKinds = map[string]string{
 //
 // Private functions
 //
+
+// validVersion returns the candidate if it is a dot-separated numeric version, and ""
+// otherwise. Deliberately strict: the identifier formats this parses are undocumented,
+// and a wrong version is worse than a missing one.
+func validVersion(candidate string) string {
+	if candidate == "" || strings.HasPrefix(candidate, ".") || strings.HasSuffix(candidate, ".") {
+		return ""
+	}
+
+	digits := false
+	for _, r := range candidate {
+		switch {
+		case r >= '0' && r <= '9':
+			digits = true
+		case r == '.':
+		default:
+			return ""
+		}
+	}
+
+	if !digits || strings.Contains(candidate, "..") {
+		return ""
+	}
+
+	return candidate
+}
 
 // normalizeAgentHost lowercases a reported host and collapses spaces and underscores
 // to dashes, so that values from different vendors land in one comparable column.
