@@ -1,8 +1,23 @@
 // Package errorcategory attaches stable categories to errors without changing
 // their messages or unwrapping behavior.
+//
+// Categorize errors at the boundary that knows their user-facing meaning, such
+// as validation, authentication, API or filesystem orchestration, or command
+// code. Use New or Errorf to create a categorized error, or With to classify an
+// existing error without adding context. Plain errors.New remains appropriate
+// for private implementation details and sentinel errors whose category is not
+// intrinsic. Plain fmt.Errorf with %w can add context while preserving an
+// existing category or a recognizable concrete error in the unwrap tree.
+//
+// Do not recategorize an error merely because it passes through another layer.
+// Wrapping an already categorized error with With intentionally overrides the
+// inner category.
 package errorcategory
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Category identifies the source of an error.
 type Category string
@@ -38,6 +53,17 @@ func (e categorizedError) Unwrap() error {
 
 func (e categorizedError) ErrorCategory() Category {
 	return e.category
+}
+
+// New returns a new error with an explicit category.
+func New(category Category, message string) error {
+	return With(errors.New(message), category)
+}
+
+// Errorf returns a formatted error with an explicit category. If the format
+// uses %w, the returned error preserves the wrapped error's unwrap behavior.
+func Errorf(category Category, format string, args ...any) error {
+	return With(fmt.Errorf(format, args...), category)
 }
 
 // With returns an error with an explicit category. A nil error remains nil.

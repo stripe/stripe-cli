@@ -3,6 +3,8 @@ package reporting
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"testing"
 
 	sentry "github.com/getsentry/sentry-go"
@@ -15,11 +17,20 @@ func TestCaptureExceptionSetsErrorCategory(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
 
+	validationError := errorcategory.New(errorcategory.UserInput, "a profile name is required")
+	filesystemError := fmt.Errorf("loading configuration: %w", &os.PathError{Op: "open", Path: "config.toml", Err: errors.New("failed")})
+
+	CaptureException(validationError)
+	CaptureException(filesystemError)
 	CaptureException(context.Canceled)
 
 	events := transport.Events()
-	require.Len(t, events, 1)
+	require.Len(t, events, 3)
 	require.Equal(t, string(errorcategory.UserInput), events[0].Tags["error_category"])
+	require.Equal(t, string(errorcategory.Filesystem), events[1].Tags["error_category"])
+	require.Equal(t, string(errorcategory.UserInput), events[2].Tags["error_category"])
+	require.Equal(t, validationError.Error(), events[0].Exception[0].Value)
+	require.Equal(t, filesystemError.Error(), events[1].Exception[len(events[1].Exception)-1].Value)
 }
 
 func TestRecoverAndReportSetsIsolatedPanicCategory(t *testing.T) {

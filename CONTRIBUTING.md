@@ -54,6 +54,41 @@ You can run tests with:
 $ make test
 ```
 
+### Error categories
+
+Errors reported by the CLI include a category. Add an explicit category at the boundary that knows the error's user-facing meaning, rather than at every layer through which the error passes.
+
+Use `errorcategory.New` for a categorized leaf error:
+
+```go
+return errorcategory.New(errorcategory.UserInput, "a profile name is required")
+```
+
+Use `errorcategory.Errorf` when a boundary adds context and categorizes a wrapped error:
+
+```go
+return errorcategory.Errorf(
+    errorcategory.Filesystem,
+    "reading configuration %q: %w",
+    path,
+    err,
+)
+```
+
+Use `errorcategory.With` to categorize an existing error without changing its message. Plain `fmt.Errorf("loading configuration: %w", err)` is appropriate when an intermediate layer only adds context; explicit categories and recognizable error types remain discoverable through the unwrap chain. Plain `errors.New` is also appropriate for private implementation details and sentinel errors whose category is not intrinsic.
+
+Known error types, such as `os.PathError`, are categorized automatically and do not need an explicit annotation:
+
+```go
+return &os.PathError{Op: "open", Path: path, Err: err}
+```
+
+Do not recategorize errors merely because they pass through another layer. An outer category takes precedence, so use an override only when it is intentional:
+
+```go
+return errorcategory.With(err, errorcategory.Auth)
+```
+
 ### Releasing
 
 To release a new version, checkout `master` and then run `make release`. It'll prompt you for a version and will then push a new tag.

@@ -37,8 +37,10 @@ func TestClassifyError(t *testing.T) {
 		err      error
 		expected errorcategory.Category
 	}{
-		{name: "explicit", err: errorcategory.With(errors.New("input"), errorcategory.UserInput), expected: errorcategory.UserInput},
-		{name: "explicit takes precedence", err: errorcategory.With(&os.PathError{Op: "open", Path: "file", Err: errors.New("failed")}, errorcategory.Auth), expected: errorcategory.Auth},
+		{name: "explicit", err: errorcategory.New(errorcategory.UserInput, "input"), expected: errorcategory.UserInput},
+		{name: "explicit through multiple wrappers", err: fmt.Errorf("outer: %w", fmt.Errorf("inner: %w", errorcategory.New(errorcategory.API, "request failed"))), expected: errorcategory.API},
+		{name: "explicit takes precedence over inference", err: errorcategory.With(&os.PathError{Op: "open", Path: "file", Err: errors.New("failed")}, errorcategory.Auth), expected: errorcategory.Auth},
+		{name: "outer explicit category takes precedence", err: errorcategory.With(errorcategory.New(errorcategory.Network, "connection failed"), errorcategory.API), expected: errorcategory.API},
 		{name: "unknown flag", err: unknownFlag, expected: errorcategory.UserInput},
 		{name: "missing flag value", err: missingFlagValue, expected: errorcategory.UserInput},
 		{name: "API unauthorized", err: requests.RequestError{StatusCode: 401}, expected: errorcategory.Auth},
