@@ -440,6 +440,42 @@ func TestMakeRequestRejectsPathTraversal(t *testing.T) {
 	require.False(t, serverCalled, "no request should have been sent for invalid paths")
 }
 
+func TestMakeRequestRejectsForeignAPIBase(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	var gotAuth string
+	evilCalled := false
+	evil := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		evilCalled = true
+		gotAuth = req.Header.Get("Authorization")
+	}))
+	defer evil.Close()
+
+	// The httptest listener answers on 127.0.0.1, which is allow-listed for tests.
+	// Address the very same server through the "localhost" hostname so the URL is a
+	// host the validator must reject, while still being routable if the guard fails.
+	foreignBase := strings.Replace(evil.URL, "127.0.0.1", "localhost", 1)
+
+	fxt := &Fixture{
+		Fs:          fs,
+		Credentials: stripe.NewAPIKeyCredentials("rk_test_1234"),
+		BaseURL:     "https://api.stripe.com",
+		Responses:   make(map[string]gjson.Result),
+	}
+
+	_, err := fxt.makeRequest(context.Background(), FixtureRequest{
+		Name:    "test",
+		Path:    "/v1/customers",
+		Method:  "post",
+		Params:  map[string]interface{}{},
+		APIBase: foreignBase,
+	}, "")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not an allowed Stripe API base URL")
+	require.False(t, evilCalled, "no request should have been sent to the foreign api_base")
+	require.Empty(t, gotAuth, "API key must never reach a foreign api_base")
+}
+
 func TestExecuteReturnsRequestNames(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
