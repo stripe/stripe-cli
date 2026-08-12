@@ -20,6 +20,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -173,10 +174,10 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if ac, acErr := config.GetActiveContext(); acErr == nil && ac != nil && ac.Livemode {
-		return fmt.Errorf("'stripe logs tail' only works in test mode, but your active context is livemode; run 'stripe switch context' to select a test mode context")
+		return errorcategory.UserInputErrorf("'stripe logs tail' only works in test mode, but your active context is livemode; run 'stripe switch context' to select a test mode context")
 	}
 
-	creds, err := tailCmd.cfg.Profile.ResolveCredentialsIgnoringActiveContext(false)
+	creds, err := tailCmd.cfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err
 	}
