@@ -46,6 +46,11 @@ type pageLoadedMsg struct {
 	doc  *markdown.Document
 }
 
+type historyEntry struct {
+	page Page
+	doc  *markdown.Document
+}
+
 // Model is the top-level Bubble Tea model for the docs TUI.
 type Model struct {
 	// Components
@@ -62,9 +67,10 @@ type Model struct {
 	adaptiveWordWrap bool
 
 	// Content
-	page  Page
-	doc   *markdown.Document
-	title string
+	page    Page
+	doc     *markdown.Document
+	title   string
+	history []historyEntry
 
 	// Initial palette input (set via WithPaletteInput)
 	initialQuery string
@@ -251,9 +257,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case pageLoadedMsg:
-		return m.updateWithPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready)
+		return m.updateWithPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready, true)
 	case pageReadyMsg:
-		return m.updateWithPage(msg.page, msg.doc, true)
+		return m.updateWithPage(msg.page, msg.doc, true, true)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -341,7 +347,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // updateWithPage updates the model with a newly fetched page, replacing the
 // current content, title, and link palette.
-func (m Model) updateWithPage(page Page, doc *markdown.Document, render bool) (Model, tea.Cmd) {
+func (m Model) updateWithPage(page Page, doc *markdown.Document, render, push bool) (Model, tea.Cmd) {
+	if push && !m.isLanding() {
+		m.history = append(m.history, historyEntry{page: m.page, doc: m.doc})
+		m.keys.Back.SetEnabled(true)
+	}
 	m.loading = false
 	m.page = page
 	m.doc = doc
@@ -452,8 +462,20 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		} else {
 			_ = m.page.Open(context.Background())
 		}
+	case key.Matches(msg, m.keys.Back):
+		return m.handleBack()
 	}
 	return m, nil
+}
+
+func (m Model) handleBack() (Model, tea.Cmd) {
+	if len(m.history) == 0 {
+		return m, nil
+	}
+	last := m.history[len(m.history)-1]
+	m.history = m.history[:len(m.history)-1]
+	m.keys.Back.SetEnabled(len(m.history) > 0)
+	return m.updateWithPage(last.page, last.doc, true, false)
 }
 
 // View renders the current model state to the terminal.
