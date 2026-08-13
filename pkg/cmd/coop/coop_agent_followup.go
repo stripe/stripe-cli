@@ -67,6 +67,10 @@ func runCoopNextAction(sessionID, completed string) error {
 	return runCoopNextActionWithStore(store, sessionID, completed)
 }
 
+// runCoopNextActionWithStore writes a still-waiting result to stdout with a
+// zero exit code. Only genuine failures take the stderr/non-zero path: an agent
+// that sees a non-zero exit treats the session as broken and gives up, which is
+// exactly wrong when the developer is merely still deciding.
 func runCoopNextActionWithStore(store helpers.Store, sessionID, completed string) error {
 	resp, err := helpers.Run(store, helpers.Input{SessionID: sessionID, Completed: completed})
 	if errors.Is(err, helpers.ErrNoSession) {

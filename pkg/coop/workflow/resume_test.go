@@ -158,3 +158,48 @@ func twoStepResumeTestStore(t *testing.T) (*coop.Store, *coop.Session) {
 	require.NoError(t, store.Write(session))
 	return store, session
 }
+
+// Selecting Finish hands the agent "stripe coop stop". Once it runs that, the
+// session is completed — and Resume used to answer a completed session with the
+// next-action command, so the stop hook held the turn open and the agent could
+// never exit.
+func TestResumeReportsNothingToRunAfterDeveloperFinishes(t *testing.T) {
+	store, session := workflowTestStore(t)
+	service := NewService(store)
+
+	_, err := store.Update(session.ID, func(s *coop.Session) error {
+		s.Status = coop.SessionCompleted
+		s.NextSteps = &coop.NextStepsState{Completed: []string{coop.FinishActionID}}
+		return nil
+	})
+	require.NoError(t, err)
+
+	response, err := service.Resume(session.ID)
+	require.NoError(t, err)
+
+	assert.True(t, response.OK)
+	assert.Empty(t, response.Next, "a finished session has nothing left to hand back")
+	assert.Nil(t, response.AdvanceAllowed)
+}
+
+// A completed session the developer has not closed out still owes a next action.
+func TestResumeStillOffersNextActionBeforeFinish(t *testing.T) {
+	store, session := workflowTestStore(t)
+	service := NewService(store)
+
+	_, err := store.Update(session.ID, func(s *coop.Session) error {
+		for i := range s.Steps {
+			for j := range s.Steps[i].Nodes {
+				s.Steps[i].Nodes[j].State = coop.NodeDone
+			}
+		}
+		s.Status = coop.SessionCompleted
+		return nil
+	})
+	require.NoError(t, err)
+
+	response, err := service.Resume(session.ID)
+	require.NoError(t, err)
+
+	assert.Contains(t, response.Next, "next-action")
+}

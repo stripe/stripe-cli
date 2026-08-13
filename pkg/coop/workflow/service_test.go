@@ -309,18 +309,21 @@ func TestReportWorkRoutesToAwaitReviewWhenStepReady(t *testing.T) {
 }
 
 func TestAwaitTimeoutContractLeavesHarnessHeadroom(t *testing.T) {
-	assert.Equal(t, 5*time.Minute, AwaitTimeout)
+	// The interval has to sit under an agent harness's *default* command
+	// timeout, not just under the one Co-op advertises: Claude Code's Bash tool
+	// defaults to 120s, so anything longer is killed whenever a model does not
+	// set a timeout itself.
+	assert.Less(t, AwaitTimeout, 120*time.Second)
 	assert.Greater(t, AwaitHarnessTimeout, AwaitTimeout)
 
-	resp := timeoutResponse("session_123", 4, AwaitTimeout)
+	resp := waitingResponse("session_123", 4, AwaitTimeout, 90*time.Second, "")
 	require.NoError(t, resp.Validate())
 	assert.Equal(t, int(AwaitTimeout.Seconds()), resp.WaitTimeoutSeconds)
-	assert.Contains(t, resp.Message, AwaitTimeout.String())
 }
 
 func TestConfiguredAwaitTimeoutIsAdvertised(t *testing.T) {
 	store, session := workflowTestStore(t)
-	timeout := 45 * time.Second
+	timeout := 30 * time.Second
 	service := NewService(store, WithAwaitTimeout(timeout))
 
 	_, err := service.StartWork(session.ID, 1, "First")
@@ -336,9 +339,8 @@ func TestConfiguredAwaitTimeoutIsAdvertised(t *testing.T) {
 	assert.Contains(t, resp.Next, "stripe coop agent await-review")
 	assert.Equal(t, int(timeout.Seconds()), resp.WaitTimeoutSeconds)
 
-	timedOut := timeoutResponse(session.ID, 2, timeout)
-	assert.Equal(t, int(timeout.Seconds()), timedOut.WaitTimeoutSeconds)
-	assert.Contains(t, timedOut.Message, timeout.String())
+	waiting := waitingResponse(session.ID, 2, timeout, time.Minute, "")
+	assert.Equal(t, int(timeout.Seconds()), waiting.WaitTimeoutSeconds)
 }
 
 func TestReportWorkRequiresNoteWithTemplateRecovery(t *testing.T) {
@@ -434,14 +436,12 @@ func TestAgentWorkflowRejectsInactiveSessions(t *testing.T) {
 				return service.Skip(sessionID, 1, "Not needed")
 			},
 		},
-		{
-			name: "await review",
-			run: func(service *Service, sessionID string) (coop.CommandResponse, error) {
-				return service.AwaitReview(sessionID, 1)
-			},
-		},
 	}
 
+	// AwaitReview is deliberately absent: it does not mutate, and a completed
+	// session must hand back the next-action command rather than an error. See
+	// TestAwaitReviewOnCompletedSessionPointsAtNextAction and
+	// TestAwaitReviewOnAbortedSessionStaysAnError.
 	for _, status := range []coop.SessionStatus{coop.SessionCompleted, coop.SessionAborted} {
 		t.Run(string(status), func(t *testing.T) {
 			for _, tt := range tests {
@@ -539,7 +539,7 @@ func TestCompletedParentedSessionRoutesNextActionToParent(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, resp.OK)
 	assert.Equal(t, "stripe coop agent next-action --session=parent_session --completed=add-integration", resp.Next)
-	assert.Equal(t, int(helpers.NextActionSelectionTimeout.Seconds()), resp.WaitTimeoutSeconds)
+	assert.Equal(t, int(helpers.NextActionInterval.Seconds()), resp.WaitTimeoutSeconds)
 }
 
 func workflowTestStore(t *testing.T) (*coop.Store, *coop.Session) {

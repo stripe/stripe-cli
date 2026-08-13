@@ -148,3 +148,8 @@ func recentSessionChoices(store *coop.Store) ([]sessionChoice, error) {
 
 	return entries, nil
 }
+
+// coopTUIOptions builds the TUI options shared by join and start.
+func coopTUIOptions() []tui.Option {
+	return []tui.Option{tui.WithSandboxClaimURL(coopSandboxClaimURL())}
+}
