@@ -206,7 +206,7 @@ func (p *Profile) GetColor() (string, error) {
 	case ColorOff:
 		return ColorOff, nil
 	default:
-		return "", fmt.Errorf("color value not supported: %s", color)
+		return "", errorcategory.Errorf(errorcategory.Filesystem, "color value not supported: %s", color)
 	}
 }
 
@@ -337,7 +337,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		p.redactAllLivemodeValues()
 		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
-			return "", errors.New("your live mode API key needs to be re-configured. Run `stripe login` to re-authenticate")
+			return "", errorcategory.New(errorcategory.Auth, "your live mode API key needs to be re-configured. Run `stripe login` to re-authenticate")
 		}
 	}
 
@@ -862,7 +862,7 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	data, err := KeyRing.Get(key)
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
-			return nil, errors.New("no session")
+			return nil, errorcategory.New(errorcategory.Auth, "no session")
 		}
 		return nil, err
 	}
@@ -878,7 +878,7 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	}
 
 	if creds.AccountID == "" || creds.AccountID != currentAccountID {
-		return nil, errors.New("found a session, but it doesn't match your current account")
+		return nil, errorcategory.New(errorcategory.Auth, "found a session, but it doesn't match your current account")
 	}
 
 	return &creds, nil

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/kballard/go-shellquote"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 /*
@@ -142,7 +144,7 @@ func getDefaultEditorByOS() (string, error) {
 		// comparable option to $EDITOR, so default to notepad for now
 		return "notepad", nil
 	default:
-		return "", fmt.Errorf("unsupported platform")
+		return "", errorcategory.Errorf(errorcategory.Internal, "unsupported platform")
 	}
 }
 

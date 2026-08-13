@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -195,7 +196,7 @@ func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra
 // Exactly one source must be provided.
 func (cc *reportingQueryRunsCreateCmd) resolveSQL(cmd *cobra.Command) (string, error) {
 	if cc.sql != "" && cc.sqlFile != "" {
-		return "", fmt.Errorf("--sql and --sql-file are mutually exclusive")
+		return "", errorcategory.Errorf(errorcategory.UserInput, "--sql and --sql-file are mutually exclusive")
 	}
 
 	if cc.sql != "" {
@@ -215,12 +216,12 @@ func (cc *reportingQueryRunsCreateCmd) resolveSQL(cmd *cobra.Command) (string, e
 		}
 		sql := strings.TrimSpace(string(raw))
 		if sql == "" {
-			return "", fmt.Errorf("no SQL found in %q", cc.sqlFile)
+			return "", errorcategory.Errorf(errorcategory.UserInput, "no SQL found in %q", cc.sqlFile)
 		}
 		return sql, nil
 	}
 
-	return "", fmt.Errorf("one of --sql or --sql-file is required")
+	return "", errorcategory.Errorf(errorcategory.UserInput, "one of --sql or --sql-file is required")
 }
 
 func (cc *reportingQueryRunsCreateCmd) buildRequestBody(sql string) map[string]interface{} {

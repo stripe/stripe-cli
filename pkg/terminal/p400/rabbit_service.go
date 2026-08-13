@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptrace"
 	"strings"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -101,7 +101,7 @@ func CallRabbitService(tsCtx TerminalSessionContext, method string, methodConten
 
 		json.Unmarshal(decoded, methodResponse)
 	} else {
-		return errors.New("could not decode Rabbit Service response - no content")
+		return errorcategory.New(errorcategory.API, "could not decode Rabbit Service response - no content")
 	}
 
 	return nil

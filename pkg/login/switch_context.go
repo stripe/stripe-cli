@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // SwitchContext updates the active OAuth context. If accountID is non-empty
@@ -20,7 +21,7 @@ func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config
 		return err
 	}
 	if !strings.HasPrefix(uat, "oak_") {
-		return fmt.Errorf("not logged in with OAuth; run 'stripe login' first")
+		return errorcategory.Errorf(errorcategory.Auth, "not logged in with OAuth; run 'stripe login' first")
 	}
 
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, uat)
@@ -49,11 +50,11 @@ func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, account
 			}
 		}
 		if livemode {
-			return fmt.Errorf("account %s is not authorized for livemode", accountID)
+			return errorcategory.Errorf(errorcategory.Auth, "account %s is not authorized for livemode", accountID)
 		}
-		return fmt.Errorf("account %s is not authorized for test mode; use --live to switch to livemode", accountID)
+		return errorcategory.Errorf(errorcategory.Auth, "account %s is not authorized for test mode; use --live to switch to livemode", accountID)
 	}
-	return fmt.Errorf("account %s not found in your authorized accounts", accountID)
+	return errorcategory.Errorf(errorcategory.Auth, "account %s not found in your authorized accounts", accountID)
 }
 
 func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode string) error {
@@ -249,7 +250,7 @@ func (m switchContextModel) View() tea.View {
 
 func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount) error {
 	if len(accounts) == 0 {
-		return fmt.Errorf("no authorized accounts found")
+		return errorcategory.Errorf(errorcategory.Auth, "no authorized accounts found")
 	}
 	m := newSwitchContextModel(accounts)
 
@@ -270,5 +271,5 @@ func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount
 			return applyContext(cfg, a, sel.mode)
 		}
 	}
-	return fmt.Errorf("selected account not found")
+	return errorcategory.Errorf(errorcategory.Auth, "selected account not found")
 }

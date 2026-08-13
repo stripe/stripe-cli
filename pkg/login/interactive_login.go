@@ -3,7 +3,6 @@ package login
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -79,7 +79,7 @@ func getConfigureAPIKey(input io.Reader) (string, error) {
 
 	apiKey = strings.TrimSpace(apiKey)
 	if apiKey == "" {
-		return "", errors.New("API key is required, please provide your API key")
+		return "", errorcategory.New(errorcategory.Auth, "API key is required, please provide your API key")
 	}
 
 	err = validators.APIKey(apiKey)

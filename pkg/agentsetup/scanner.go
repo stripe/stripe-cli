@@ -2,10 +2,11 @@ package agentsetup
 
 import (
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // LookPathFunc matches exec.LookPath and exists to make detection testable.
@@ -85,7 +86,7 @@ func RunCommand(ctx context.Context, name string, args ...string) error {
 		return nil
 	}
 	if msg := errorFromOutput(out); msg != "" {
-		return errors.New(msg)
+		return errorcategory.New(errorcategory.Internal, msg)
 	}
 	return err
 }

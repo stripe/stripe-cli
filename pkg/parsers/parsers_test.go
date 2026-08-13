@@ -51,7 +51,7 @@ func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
 		ansi.Bold("char"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
@@ -69,7 +69,7 @@ func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
 		ansi.Bold("foo"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
@@ -87,7 +87,7 @@ func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
 		ansi.Bold("bender"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
@@ -105,7 +105,7 @@ func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
 		ansi.Bold("foo"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParseTwoParam(t *testing.T) {

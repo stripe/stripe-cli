@@ -2,7 +2,6 @@
 package validators
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -22,7 +21,7 @@ func getCommandPath(cmd *cobra.Command) string {
 }
 
 func userInputError(message string) error {
-	return errorcategory.With(errors.New(message), errorcategory.UserInput)
+	return errorcategory.New(errorcategory.UserInput, message)
 }
 
 // NoArgs is a validator for commands to print an error when an argument is provided

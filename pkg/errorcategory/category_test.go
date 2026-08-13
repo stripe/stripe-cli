@@ -16,6 +16,26 @@ func (e *testError) Error() string {
 	return e.message
 }
 
+func TestNew(t *testing.T) {
+	err := New(UserInput, "invalid input")
+
+	require.EqualError(t, err, "invalid input")
+	category, ok := Get(err)
+	require.True(t, ok)
+	require.Equal(t, UserInput, category)
+}
+
+func TestErrorf(t *testing.T) {
+	target := &testError{message: "target"}
+	err := Errorf(Network, "request failed: %w", target)
+
+	require.EqualError(t, err, "request failed: target")
+	require.ErrorIs(t, err, target)
+	category, ok := Get(err)
+	require.True(t, ok)
+	require.Equal(t, Network, category)
+}
+
 func TestWith(t *testing.T) {
 	target := &testError{message: "unchanged message"}
 	err := With(target, Auth)

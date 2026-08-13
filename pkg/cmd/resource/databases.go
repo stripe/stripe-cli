@@ -15,6 +15,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -362,7 +363,7 @@ func runDatabaseDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, args [
 	}
 
 	if jsonOutputEnabled(cmd) && !yes {
-		return fmt.Errorf("--yes is required with --json")
+		return errorcategory.Errorf(errorcategory.UserInput, "--yes is required with --json")
 	}
 
 	confirmed, err := confirmDatabaseAction(cmd, yes, "Warning: this will permanently delete your StripeDB instance.", databaseDeleteConfirmationPhrase)
@@ -455,7 +456,7 @@ func runDatabaseUsersDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, a
 	}
 
 	if jsonOutputEnabled(cmd) && !yes {
-		return fmt.Errorf("--yes is required with --json")
+		return errorcategory.Errorf(errorcategory.UserInput, "--yes is required with --json")
 	}
 
 	prompt := fmt.Sprintf("Warning: this will permanently remove StripeDB access for user %s.", args[1])

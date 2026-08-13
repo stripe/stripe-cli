@@ -2,7 +2,6 @@
 package samples
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -127,7 +127,7 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 				fmt.Println(res.PostInstall)
 			}
 		default:
-			return errors.New("an unknown error occurred during sample creation")
+			return errorcategory.New(errorcategory.Internal, "an unknown error occurred during sample creation")
 		}
 	}
 

@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/agentskills"
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/docs/spinner"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -386,7 +387,7 @@ func (asc *agentSetupCmd) selectedProviders() (map[string]agentsetup.Provider, e
 	}
 	provider, ok := asc.providers[asc.client]
 	if !ok {
-		return nil, fmt.Errorf("unsupported agent client %q; supported clients: %s", asc.client, agentsetup.SupportedProviderIDs(asc.providers))
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "unsupported agent client %q; supported clients: %s", asc.client, agentsetup.SupportedProviderIDs(asc.providers))
 	}
 	return map[string]agentsetup.Provider{asc.client: provider}, nil
 }
@@ -451,7 +452,7 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 
 	fmt.Fprintf(out, "\n%d installed, %d updated, %d skipped, %d errors\n", installedCount, updatedCount, skipCount, errCount)
 	if errCount > 0 {
-		return fmt.Errorf("%d item(s) failed to set up", errCount)
+		return errorcategory.Errorf(errorcategory.Internal, "%d item(s) failed to set up", errCount)
 	}
 	return nil
 }
@@ -667,7 +668,7 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		return err
 	}
 	if len(result.Errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(result.Errors, "; "))
+		return errorcategory.Errorf(errorcategory.Internal, "%s", strings.Join(result.Errors, "; "))
 	}
 	return nil
 }
