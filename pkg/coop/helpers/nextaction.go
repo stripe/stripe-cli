@@ -87,7 +87,7 @@ func Run(store Store, input Input) (Response, error) {
 	// a choice the developer made while the previous invocation was exiting,
 	// leaving the agent waiting on a selection that no longer exists.
 	if selected := pendingSelection(session); selected != "" {
-		if err := consumeSelection(store, session); err != nil {
+		if err := consumeSelection(store, session, selected); err != nil {
 			return Response{}, err
 		}
 		return BuildResponse(session, suggestions, selected), nil
@@ -190,8 +190,14 @@ func pendingSelection(session *coop.Session) string {
 	return session.NextSteps.Selected
 }
 
-func consumeSelection(store Store, session *coop.Session) error {
+func consumeSelection(store Store, session *coop.Session, selected string) error {
 	session.NextSteps.Selected = ""
+	// Finish has no follow-up command to report back with --completed, so record
+	// it here. Without it the session stays "completed with a next-action owed"
+	// forever, and the stop hook keeps the agent from exiting.
+	if selected == coop.FinishActionID && !containsString(session.NextSteps.Completed, selected) {
+		session.NextSteps.Completed = append(session.NextSteps.Completed, selected)
+	}
 	if err := store.Write(session); err != nil {
 		return fmt.Errorf("clearing next-action selection: %w", err)
 	}
@@ -215,7 +221,7 @@ func waitForSelection(store Store, sessionID string, timeout time.Duration, now 
 		session, err := store.Read(sessionID)
 		if err == nil && session.NextSteps != nil && session.NextSteps.Selected != "" {
 			selected := session.NextSteps.Selected
-			if err := consumeSelection(store, session); err != nil {
+			if err := consumeSelection(store, session, selected); err != nil {
 				return "", now().Sub(start), err
 			}
 			return selected, now().Sub(start), nil
@@ -366,7 +372,7 @@ func BuildResponse(session *coop.Session, suggestions []Suggestion, selected str
 				"stripe coop recommend",
 			),
 		}
-	case "done":
+	case coop.FinishActionID:
 		return Response{
 			OK:          true,
 			SessionID:   session.ID,

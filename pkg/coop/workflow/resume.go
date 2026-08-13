@@ -21,6 +21,21 @@ func (s *Service) Resume(sessionID string) (coop.CommandResponse, error) {
 		), nil
 	}
 
+	if session.DeveloperFinished() {
+		// The developer chose Finish, so there is no next command. Continuing to
+		// offer next-action here would keep the stop hook holding the agent's
+		// turn open after it had already run the stop command it was handed.
+		response := nodeResponse(
+			session.ID,
+			session.TotalNodes(),
+			string(coop.SessionCompleted),
+			"The developer finished this session. There is nothing left to run.",
+			coop.Continuation{},
+		)
+		response.AdvanceAllowed = nil
+		return response, nil
+	}
+
 	if session.Status == coop.SessionCompleted || session.IsComplete() {
 		return nodeResponse(
 			session.ID,

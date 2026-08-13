@@ -280,3 +280,26 @@ func TestShowSuggestionsSkipsNoOpRepublish(t *testing.T) {
 
 	assert.Equal(t, afterFirst, store.writes)
 }
+
+// Finish has no follow-up that reports back with --completed, so consuming the
+// selection is the only chance to record it. Without that the session stays
+// "completed with a next action owed" and the stop hook never lets the agent go.
+func TestRunRecordsTheFinishSelection(t *testing.T) {
+	store := &nextActionTestStore{
+		session: &coop.Session{
+			ID:        "sess_123",
+			Blueprint: "one-time-payment",
+			Status:    coop.SessionCompleted,
+			NextSteps: &coop.NextStepsState{
+				Suggestions: []coop.NextStepSuggestion{{ID: coop.FinishActionID, Title: "Finish"}},
+				Selected:    coop.FinishActionID,
+			},
+		},
+	}
+
+	resp, err := Run(store, Input{SessionID: "sess_123"})
+
+	require.NoError(t, err)
+	assert.Contains(t, resp.Next, "stripe coop stop")
+	assert.True(t, store.session.DeveloperFinished(), "Finish must be durable")
+}

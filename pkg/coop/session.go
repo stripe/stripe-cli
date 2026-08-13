@@ -12,6 +12,25 @@ var validTransitions = map[NodeState][]NodeState{
 	NodeReview:  {NodeDone, NodeActive, NodeSkipped}, // active = rejected, redo
 }
 
+// FinishActionID is the post-completion choice that closes a session out.
+const FinishActionID = "done"
+
+// DeveloperFinished reports that the developer picked Finish from the
+// post-completion options. A completed session normally still owes the agent a
+// next-action command; once Finish is recorded there is nothing left to hand
+// back, and continuing to offer one would keep the agent from ever exiting.
+func (s *Session) DeveloperFinished() bool {
+	if s.NextSteps == nil {
+		return false
+	}
+	for _, id := range s.NextSteps.Completed {
+		if id == FinishActionID {
+			return true
+		}
+	}
+	return false
+}
+
 // TotalNodes returns the total number of nodes across all steps.
 func (s *Session) TotalNodes() int {
 	count := 0
