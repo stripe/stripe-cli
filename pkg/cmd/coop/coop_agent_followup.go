@@ -83,6 +83,7 @@ func runCoopNextActionWithStore(store helpers.Store, sessionID, completed string
 			coop.Continue(coop.NextActionCommand(sessionID, "")),
 		)
 	}
+	resp.ProtocolVersion = coop.CurrentProtocolVersion
 	return outputJSON(resp)
 }
 
@@ -141,7 +142,7 @@ func runCoopStartFollowup(cmd *cobra.Command, parentSessionID, actionID, target 
 		return outputAgentError(fmt.Errorf("writing guided follow-up session: %w", err))
 	}
 
-	return outputJSON(newCoopAgentGuidedActionResponse(action, session))
+	return outputAgentResponse(newCoopAgentGuidedActionResponse(action, session), nil)
 }
 
 func validateFollowupParent(parent *coop.Session, actionID string) error {

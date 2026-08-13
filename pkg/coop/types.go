@@ -17,6 +17,12 @@ type NodeState string
 
 const (
 	CurrentSessionSchemaVersion = 4
+
+	// CurrentProtocolVersion identifies the agent-facing command response
+	// contract. It is stamped onto every rendered response so agents (and the
+	// bundled stripe-coop skill) can detect contract drift. Bump it only for
+	// wire-visible changes.
+	CurrentProtocolVersion = 1
 )
 
 const (
@@ -318,11 +324,14 @@ type Recovery struct {
 
 // CommandResponse is the JSON output format for agent-facing commands.
 type CommandResponse struct {
-	OK        bool   `json:"ok"`
-	SessionID string `json:"session_id,omitempty"`
-	Node      int    `json:"node,omitempty"`
-	State     string `json:"state,omitempty"`
-	Message   string `json:"message,omitempty"`
+	OK bool `json:"ok"`
+	// ProtocolVersion is stamped at the output boundary; responses built
+	// internally leave it zero.
+	ProtocolVersion int    `json:"protocol_version,omitempty"`
+	SessionID       string `json:"session_id,omitempty"`
+	Node            int    `json:"node,omitempty"`
+	State           string `json:"state,omitempty"`
+	Message         string `json:"message,omitempty"`
 	Continuation
 	RequiredOutputs []RequiredOutput          `json:"required_outputs,omitempty"`
 	AgentPrompt     string                    `json:"agent_prompt,omitempty"`

@@ -70,10 +70,10 @@ func (sc *coopStopCmd) runStopCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	status := string(session.Status)
-	return outputJSON(coop.CommandResponse{
+	return outputAgentResponse(coop.CommandResponse{
 		OK:        true,
 		SessionID: session.ID,
 		State:     status,
 		Message:   fmt.Sprintf("Session %s: %s", status, session.ID),
-	})
+	}, nil)
 }

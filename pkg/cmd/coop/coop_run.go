@@ -96,9 +96,7 @@ func (rc *coopAgentRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 		return outputAgentError(fmt.Errorf("writing session: %w", err))
 	}
 
-	resp := newCoopAgentRunResponse(bp, session)
-
-	return outputJSON(resp)
+	return outputAgentResponse(newCoopAgentRunResponse(bp, session), nil)
 }
 
 func (rc *coopAgentRunCmd) ensureStripeSkill() error {

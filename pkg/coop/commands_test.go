@@ -20,6 +20,16 @@ func TestExactCoopCommands(t *testing.T) {
 	assert.Equal(t, `stripe coop agent start-followup --session="coop_123" --action="deploy" --target="Vercel"`, StartFollowupCommand("coop_123", "deploy", "Vercel"))
 }
 
+// TestStartWorkCommandSanitizesPlaceholderLookalikes guards node titles like
+// "<PaymentElement>" from producing an exact `next` command that response
+// validation would reject as an unfilled template.
+func TestStartWorkCommandSanitizesPlaceholderLookalikes(t *testing.T) {
+	command := StartWorkCommand("coop_123", 3, "Beginning: Mount the <PaymentElement> component")
+
+	assert.Equal(t, `stripe coop agent start-work --session=coop_123 --step=3 --note="Beginning: Mount the PaymentElement component"`, command)
+	require.NoError(t, CommandResponse{OK: true, Continuation: Continue(command)}.Validate())
+}
+
 func TestReportWorkTemplateDescribesEveryInput(t *testing.T) {
 	continuation := ReportWorkTemplate("coop_123", 2, []RequiredOutput{
 		{Field: "id"},

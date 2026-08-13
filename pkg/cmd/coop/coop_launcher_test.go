@@ -53,7 +53,7 @@ func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
 	session, err := rc.startSessionQuietly(commandTestBlueprint(t))
 	require.NoError(t, err)
 
-	prompt, err := rc.buildAgentPromptForSession(session)
+	prompt, err := rc.buildAgentPromptForSession(testAgent(t, "claude"), session)
 	require.NoError(t, err)
 	assert.Contains(t, prompt, "We will handle coordination and orchestration with you")
 	assert.Contains(t, prompt, "cheaper subagents wherever possible, using your best judgment")
@@ -81,7 +81,7 @@ func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
 }
 
 func TestDiscoveryPromptKeepsCoopAsIntegrationAuthority(t *testing.T) {
-	prompt := (&coopRunCmd{language: "go"}).buildAgentPrompt("")
+	prompt := (&coopRunCmd{language: "go"}).buildAgentPrompt(testAgent(t, "claude"), "")
 	assert.Contains(t, prompt, "We will handle coordination and orchestration with you")
 	assert.Contains(t, prompt, "cheaper subagents wherever possible, using your best judgment")
 
@@ -108,7 +108,7 @@ func TestPromptAutoApproveReturnsPromptErrors(t *testing.T) {
 		selectString = originalSelectString
 	})
 
-	autoApprove, err := (&coopRunCmd{}).promptAutoApprove(&agentInfo{name: "claude"})
+	autoApprove, err := (&coopRunCmd{}).promptAutoApprove(testAgent(t, "claude"))
 
 	require.ErrorIs(t, err, promptErr)
 	assert.False(t, autoApprove)
@@ -137,7 +137,7 @@ func TestPromptAutoApproveLabelsBypassModeAccurately(t *testing.T) {
 			}
 			t.Cleanup(func() { selectString = originalSelectString })
 
-			bypass, err := (&coopRunCmd{}).promptAutoApprove(&agentInfo{name: tt.agent})
+			bypass, err := (&coopRunCmd{}).promptAutoApprove(testAgent(t, tt.agent))
 
 			require.NoError(t, err)
 			assert.True(t, bypass)
@@ -161,7 +161,7 @@ func TestClaudeLauncherConfiguresCostEffectiveWorkerAndInteractivePrompt(t *test
 	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
 	rc := &coopRunCmd{}
 
-	launcherPath, err := rc.buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, true)
+	launcherPath, err := rc.buildAgentCmd(&agentInfo{adapter: harnessByID("claude"), path: "/usr/local/bin/claude"}, promptPath, true)
 	require.NoError(t, err)
 	launcher, err := os.ReadFile(launcherPath)
 	require.NoError(t, err)
@@ -180,7 +180,7 @@ func TestClaudeLauncherNormalModeDoesNotBypassPermissions(t *testing.T) {
 	promptPath := filepath.Join(t.TempDir(), "prompt")
 	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
 
-	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, promptPath, false)
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{adapter: harnessByID("claude"), path: "/usr/local/bin/claude"}, promptPath, false)
 	require.NoError(t, err)
 	launcher, err := os.ReadFile(launcherPath)
 	require.NoError(t, err)
@@ -194,7 +194,7 @@ func TestCodexLauncherDoesNotReceiveClaudeAgents(t *testing.T) {
 	promptPath := filepath.Join(t.TempDir(), "prompt")
 	require.NoError(t, os.WriteFile(promptPath, []byte("prompt"), 0o600))
 
-	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{name: "codex", path: "/usr/local/bin/codex"}, promptPath, true)
+	launcherPath, err := (&coopRunCmd{}).buildAgentCmd(&agentInfo{adapter: harnessByID("codex"), path: "/usr/local/bin/codex"}, promptPath, true)
 	require.NoError(t, err)
 	launcher, err := os.ReadFile(launcherPath)
 	require.NoError(t, err)
@@ -380,7 +380,7 @@ func TestAgentPaneCommandShellQuotesLauncherPath(t *testing.T) {
 	t.Setenv("TEMP", tmp)
 
 	rc := &coopRunCmd{}
-	build := rc.agentPaneCommandBuilder(&agentInfo{name: "claude", path: "/usr/local/bin/claude"}, "discovery prompt", false)
+	build := rc.agentPaneCommandBuilder(&agentInfo{adapter: harnessByID("claude"), path: "/usr/local/bin/claude"}, "discovery prompt", false)
 	paneCmd, cleanup, err := build(nil)
 	require.NoError(t, err)
 	require.NotNil(t, cleanup)

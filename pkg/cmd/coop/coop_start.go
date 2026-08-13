@@ -2,12 +2,16 @@ package coopcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/coop"
+	coopskill "github.com/stripe/stripe-cli/pkg/coop/skill"
 )
 
 type coopRunCmd struct {
@@ -18,6 +22,10 @@ type coopRunCmd struct {
 	debugAgent            bool
 	ensureSkill           func() error
 	prepareSkillDiscovery func() error
+	installCoopSkill      func(*harnessAdapter) (bool, error)
+	// coopSkillReady reports whether the managed stripe-coop skill is
+	// installed for the selected harness, so launch prompts may be compact.
+	coopSkillReady bool
 }
 
 func newCoopRunCmd() *coopRunCmd {
@@ -26,6 +34,7 @@ func newCoopRunCmd() *coopRunCmd {
 		prepareSkillDiscovery: func() error {
 			return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
 		},
+		installCoopSkill: ensureHarnessCoopSkill,
 	}
 	rc.cmd = &cobra.Command{
 		Use:   "start [blueprint-id]",
@@ -94,23 +103,37 @@ func (rc *coopRunCmd) runCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if blueprintID == "" && !agent.adapter.interactiveLaunch {
+		return fmt.Errorf(
+			"%s cannot run the conversational blueprint discovery flow (%s)\n  Pick a blueprint first: stripe coop recommend --all\n  Then run: stripe coop start <blueprint-id>",
+			agent.adapter.displayName, agent.adapter.notes,
+		)
+	}
 
 	autoApprove, err := rc.promptAutoApprove(agent)
 	if err != nil {
 		return err
 	}
+	rc.coopSkillReady = rc.ensureCoopSkillFor(cmd, agent)
 	if blueprintID != "" {
 		if err := rc.ensureStripeSkill(); err != nil {
 			warnRepoStripeBestPracticesSkill(cmd, err)
 		}
-	} else if agent.name == "claude" {
+	} else if agent.adapter.id == "claude" {
 		if err := rc.prepareAgentSkillDiscovery(); err != nil {
 			warnRepoClaudeSkillsDiscovery(cmd, err)
 		}
 	}
+	if note := agent.adapter.notes; note != "" {
+		var out io.Writer = os.Stderr
+		if cmd != nil {
+			out = cmd.ErrOrStderr()
+		}
+		fmt.Fprintf(out, "Note: %s\n", note)
+	}
 	fmt.Println()
 
-	agentPrompt := rc.buildAgentPrompt(blueprintID)
+	agentPrompt := rc.buildAgentPrompt(agent, blueprintID)
 
 	if inTmux {
 		return rc.runInTmuxSplit(stripeBin, agent, agentPrompt, autoApprove, blueprint)
@@ -135,9 +158,36 @@ func (rc *coopRunCmd) prepareAgentSkillDiscovery() error {
 	return ensureProjectSkillsDiscoveryRoot(claudeProjectDirectory)
 }
 
-func (rc *coopRunCmd) buildAgentPrompt(blueprintID string) string {
+// ensureCoopSkillFor installs the bundled stripe-coop skill for the selected
+// harness. Install failures degrade to the full self-contained launch prompt,
+// so they warn instead of blocking the session.
+func (rc *coopRunCmd) ensureCoopSkillFor(cmd *cobra.Command, agent *agentInfo) bool {
+	install := rc.installCoopSkill
+	if install == nil {
+		install = ensureHarnessCoopSkill
+	}
+	installed, err := install(agent.adapter)
+	if err != nil {
+		var out io.Writer = os.Stderr
+		if cmd != nil {
+			out = cmd.ErrOrStderr()
+		}
+		if errors.Is(err, coopskill.ErrUnmanagedSkill) {
+			fmt.Fprintf(out, "Warning: an existing %q skill not managed by the Stripe CLI was left untouched; launching with full instructions instead: %v\n", coopskill.Name, err)
+		} else {
+			fmt.Fprintf(out, "Warning: unable to install the %q skill; launching with full instructions instead: %v\n", coopskill.Name, err)
+		}
+		return false
+	}
+	return installed
+}
+
+func (rc *coopRunCmd) buildAgentPrompt(agent *agentInfo, blueprintID string) string {
 	if blueprintID != "" {
 		return ""
+	}
+	if rc.coopSkillReady {
+		return rc.buildCompactDiscoveryPrompt(agent)
 	}
 
 	langHint := ""
@@ -175,7 +225,7 @@ Important: Run "stripe whoami" first to check auth. If not logged in OR if it sh
 %s`, langHint, coopAgentCoordinationInstructions(), stripeAgentGuidanceInstructions())
 }
 
-func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string, error) {
+func (rc *coopRunCmd) buildAgentPromptForSession(agent *agentInfo, session *coop.Session) (string, error) {
 	title := session.Blueprint
 	if session.BlueprintPin != nil && session.BlueprintPin.Title != "" {
 		title = session.BlueprintPin.Title
@@ -185,6 +235,9 @@ func (rc *coopRunCmd) buildAgentPromptForSession(session *coop.Session) (string,
 		session,
 		sessionLifecycleInstructions(fmt.Sprintf("You are building a production-grade Stripe integration: %q", title)),
 	)
+	if rc.coopSkillReady && agent != nil {
+		return rc.buildCompactSessionPrompt(agent, session, title, resp.Next), nil
+	}
 
 	return fmt.Sprintf(`You are running a Stripe co-op integration session. A developer is watching your progress in a live terminal UI.
 
@@ -195,6 +248,35 @@ The session is already created. After the authentication check above, begin by r
 %s
 
 Continue using the agent_prompt and next fields returned by the typed Co-op commands.`, resp.AgentPrompt, resp.Next), nil
+}
+
+// buildCompactSessionPrompt relies on the installed stripe-coop skill for the
+// stable lifecycle and safety contract, so the launch prompt carries only the
+// skill activation and this session's dynamic context.
+func (rc *coopRunCmd) buildCompactSessionPrompt(agent *agentInfo, session *coop.Session, title, next string) string {
+	var prompt strings.Builder
+	fmt.Fprintf(&prompt, "%s\n\n", agent.adapter.activationLine)
+	fmt.Fprintf(&prompt, "Session: %s\n", session.ID)
+	fmt.Fprintf(&prompt, "Integration: %s\n", title)
+	if language := session.Settings["language"]; language != "" {
+		fmt.Fprintf(&prompt, "Language: %s\n", language)
+	}
+	prompt.WriteString("A developer reviews your work live in the Co-op TUI pane.\n\n")
+	fmt.Fprintf(&prompt, "Begin by running exactly:\n%s\n\n", next)
+	prompt.WriteString("If the stripe-coop skill is unavailable, run the command anyway and follow each response's agent_prompt, next, and recovery fields.")
+	return prompt.String()
+}
+
+// buildCompactDiscoveryPrompt is the skill-backed no-blueprint launch prompt.
+func (rc *coopRunCmd) buildCompactDiscoveryPrompt(agent *agentInfo) string {
+	var prompt strings.Builder
+	fmt.Fprintf(&prompt, "%s\n\n", agent.adapter.activationLine)
+	prompt.WriteString("No blueprint is selected. Inspect the project and gather only developer intent that cannot be inferred, then follow the skill's discovery flow starting with `stripe coop recommend --all`.\n")
+	if rc.language != "" {
+		fmt.Fprintf(&prompt, "Language hint: %s.\n", rc.language)
+	}
+	prompt.WriteString("A developer reviews your work live in the Co-op TUI pane.")
+	return prompt.String()
 }
 
 func (rc *coopRunCmd) startSessionQuietly(blueprint *coop.Blueprint) (*coop.Session, error) {
