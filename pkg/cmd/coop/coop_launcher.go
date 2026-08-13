@@ -270,11 +270,28 @@ func holdOpenPaneScript(pane coopPaneCommand) string {
 	// The agent command runs in a subshell so that an `exit` inside it ends the
 	// subshell rather than this script — the notice below must always run.
 	script.WriteString("(\n" + pane.cmd + "\n)\n")
+	// Captured before anything else runs, so the notice can report the agent's
+	// own exit status rather than the untag command's.
+	script.WriteString("__coop_agent_status=$?\n")
+	script.WriteString(untagAgentPaneScript())
 	script.WriteString(agentExitNoticeScript(pane.hints))
 	// A login shell would re-run profile scripts that may cd elsewhere; a plain
 	// interactive shell keeps the pane in the project directory.
 	script.WriteString("exec \"${SHELL:-/bin/bash}\"\n")
 	return script.String()
+}
+
+// untagAgentPaneScript drops the tmux option marking this pane as the co-op
+// agent pane. splitCoopAgentPane sets it so the TUI can wake the agent with
+// send-keys after a review decision; once the agent has exited the pane holds
+// a plain shell, and those keystrokes would run there as commands (the resume
+// prompt is backtick-quoted, so command substitution fires). Untagging makes
+// the TUI's pane lookup come up empty instead, which it already handles by
+// telling the developer to run the resume command in the agent pane — exactly
+// the shell this script leaves behind.
+func untagAgentPaneScript() string {
+	return fmt.Sprintf("[ -n \"$TMUX_PANE\" ] && tmux set-option -p -t \"$TMUX_PANE\" -u %s 2>/dev/null\n",
+		coopAgentPaneOption)
 }
 
 // agentExitNoticeScript renders the message shown in the agent pane once the
@@ -284,7 +301,6 @@ func agentExitNoticeScript(hints []paneHint) string {
 	const rule = `printf '\033[90m──────────────────────────────────────────────────────\033[0m\n'`
 
 	lines := []string{
-		`__coop_agent_status=$?`,
 		`printf '\n'`,
 		rule,
 		`printf '\033[1mThe agent exited\033[0m (status %s).\n' "$__coop_agent_status"`,

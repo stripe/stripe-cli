@@ -542,3 +542,88 @@ func TestHoldOpenPaneScriptSurvivesInterrupt(t *testing.T) {
 	require.NoError(t, err, string(out))
 	assert.Contains(t, string(out), "The agent exited")
 }
+
+// runHoldOpenScriptWithFakeTmux runs the hold-open script with a stub tmux on
+// PATH and returns everything that script asked tmux to do.
+func runHoldOpenScriptWithFakeTmux(t *testing.T, pane coopPaneCommand, tmuxPane string) string {
+	t.Helper()
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not available")
+	}
+
+	dir := t.TempDir()
+	log := filepath.Join(dir, "tmux-args.log")
+	stub := "#!/bin/bash\nprintf '%s\\n' \"$*\" >> " + shellQuote(log) + "\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "tmux"), []byte(stub), 0o700))
+
+	cmd := exec.Command("bash", "-c", holdOpenPaneScript(pane))
+	env := []string{"PATH=" + dir + string(os.PathListSeparator) + os.Getenv("PATH")}
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "PATH=") && !strings.HasPrefix(kv, "TMUX_PANE=") {
+			env = append(env, kv)
+		}
+	}
+	if tmuxPane != "" {
+		env = append(env, "TMUX_PANE="+tmuxPane)
+	}
+	cmd.Env = env
+	cmd.Stdin = strings.NewReader("")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	recorded, err := os.ReadFile(log)
+	if os.IsNotExist(err) {
+		return ""
+	}
+	require.NoError(t, err)
+	return string(recorded)
+}
+
+// TestHoldOpenPaneScriptUntagsAgentPane covers the interaction with the TUI's
+// agent resumer. splitCoopAgentPane tags the pane so a review decision can
+// send-keys a resume prompt to the agent; once the agent exits the pane holds
+// a plain shell, so the tag has to come off or those keystrokes execute there
+// as shell commands.
+func TestHoldOpenPaneScriptUntagsAgentPane(t *testing.T) {
+	calls := runHoldOpenScriptWithFakeTmux(t, coopPaneCommand{cmd: "true"}, "%42")
+
+	assert.Contains(t, calls, "set-option -p -t %42 -u "+coopAgentPaneOption)
+}
+
+// TestHoldOpenPaneScriptSkipsUntagOutsideTmux keeps the script quiet when it is
+// not running in a pane, so no stray tmux invocation reaches the terminal.
+func TestHoldOpenPaneScriptSkipsUntagOutsideTmux(t *testing.T) {
+	calls := runHoldOpenScriptWithFakeTmux(t, coopPaneCommand{cmd: "true"}, "")
+
+	assert.Empty(t, calls)
+}
+
+// TestHoldOpenPaneScriptUntagsBeforeHandingOverTheShell pins the ordering: the
+// tag must be gone before the developer's shell takes over the pane, since
+// from that point on the script no longer runs.
+func TestHoldOpenPaneScriptUntagsBeforeHandingOverTheShell(t *testing.T) {
+	script := holdOpenPaneScript(coopPaneCommand{cmd: "agent"})
+
+	untag := strings.Index(script, coopAgentPaneOption)
+	handover := strings.Index(script, `exec "${SHELL:-/bin/bash}"`)
+	require.NotEqual(t, -1, untag)
+	require.NotEqual(t, -1, handover)
+	assert.Less(t, untag, handover)
+}
+
+// TestHoldOpenPaneScriptReportsAgentStatusNotUntagStatus guards the exit status
+// shown in the notice: the untag runs between the agent exiting and the notice
+// printing, so the status has to be captured before it.
+func TestHoldOpenPaneScriptReportsAgentStatusNotUntagStatus(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("bash not available")
+	}
+
+	script := holdOpenPaneScript(coopPaneCommand{cmd: "exit 7"})
+	cmd := exec.Command("bash", "-c", script)
+	cmd.Stdin = strings.NewReader("")
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	assert.Contains(t, string(out), "(status 7)")
+}
