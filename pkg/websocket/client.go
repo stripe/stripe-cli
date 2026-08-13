@@ -2,12 +2,16 @@
 package websocket
 
 import (
+	"bufio"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -637,25 +641,110 @@ var nullEventHandler = EventHandlerFunc(func(IncomingMessage) {})
 // Private functions
 //
 
+func expandUnixSocket(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home + path[1:]
+		}
+	}
+	return path
+}
+
+// wsIsDevHost reports whether host should be routed through the unix socket
+// proxy (stripeproxy) rather than HTTPS_PROXY. Dev environment hosts on
+// *.dev.stripe.me are only reachable via stripeproxy; public hosts use the
+// HTTP proxy.
+func wsIsDevHost(host string) bool {
+	return strings.HasSuffix(host, ".dev.stripe.me")
+}
+
+// wsDialThroughProxy opens a TCP tunnel to addr through an HTTP CONNECT proxy.
+func wsDialThroughProxy(ctx context.Context, proxyURL *url.URL, addr string) (net.Conn, error) {
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", proxyURL.Host)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", addr, addr); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: "CONNECT"})
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		conn.Close()
+		return nil, fmt.Errorf("proxy CONNECT %s: %s", addr, resp.Status)
+	}
+	return conn, nil
+}
+
 func newWebSocketDialer(unixSocket string) *ws.Dialer {
-	var dialer *ws.Dialer
+	httpsProxy := os.Getenv("HTTPS_PROXY")
+	if httpsProxy == "" {
+		httpsProxy = os.Getenv("https_proxy")
+	}
 
 	if unixSocket != "" {
-		dialFunc := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", unixSocket)
+		expandedSocket := expandUnixSocket(unixSocket)
+
+		if httpsProxy == "" {
+			// Only unix socket: route all WebSocket through it. NetDialTLSContext
+			// tells gorilla TLS is handled externally (by the proxy), so it skips
+			// tls.Client() wrapping and sends a plain connection to stripeproxy.
+			dialFunc := func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "unix", expandedSocket)
+			}
+			return &ws.Dialer{
+				HandshakeTimeout:  10 * time.Second,
+				NetDialContext:    dialFunc,
+				NetDialTLSContext: dialFunc,
+				Subprotocols:      subprotocols[:],
+			}
 		}
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			NetDial:          dialFunc,
-			Subprotocols:     subprotocols[:],
-		}
-	} else {
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			Proxy:            http.ProxyFromEnvironment,
-			Subprotocols:     subprotocols[:],
+
+		// Both unix socket and HTTPS proxy are set. Route by host:
+		//   *.dev.stripe.me → unix socket (stripeproxy), no TLS wrapping
+		//   everything else → HTTPS_PROXY via HTTP CONNECT, with TLS for wss://
+		if proxyURL, err := url.Parse(httpsProxy); err == nil {
+			return &ws.Dialer{
+				HandshakeTimeout: 10 * time.Second,
+				NetDialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					host, _, _ := net.SplitHostPort(addr)
+					if wsIsDevHost(host) {
+						return (&net.Dialer{}).DialContext(ctx, "unix", expandedSocket)
+					}
+					return wsDialThroughProxy(ctx, proxyURL, addr)
+				},
+				// NetDialTLSContext is set so gorilla skips its own tls.Client() call.
+				// We do TLS ourselves for non-dev wss:// connections; dev connections
+				// get a plain unix socket and let stripeproxy handle TLS forwarding.
+				NetDialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					host, _, _ := net.SplitHostPort(addr)
+					if wsIsDevHost(host) {
+						return (&net.Dialer{}).DialContext(ctx, "unix", expandedSocket)
+					}
+					conn, err := wsDialThroughProxy(ctx, proxyURL, addr)
+					if err != nil {
+						return nil, err
+					}
+					tlsConn := tls.Client(conn, &tls.Config{ServerName: host})
+					if err := tlsConn.HandshakeContext(ctx); err != nil {
+						conn.Close()
+						return nil, err
+					}
+					return tlsConn, nil
+				},
+				Subprotocols: subprotocols[:],
+			}
 		}
 	}
 
-	return dialer
+	return &ws.Dialer{
+		HandshakeTimeout: 10 * time.Second,
+		Proxy:            http.ProxyFromEnvironment,
+		Subprotocols:     subprotocols[:],
+	}
 }
