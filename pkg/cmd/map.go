@@ -113,9 +113,17 @@ type commandNode struct {
 	Name     string        `json:"name"`
 	Desc     string        `json:"desc,omitempty"`
 	Long     string        `json:"long,omitempty"`
-	Examples []string      `json:"examples,omitempty"`
+	Examples []exampleNode `json:"examples,omitempty"`
 	Flags    []flagNode    `json:"flags,omitempty"`
 	Commands []commandNode `json:"commands,omitempty"`
+}
+
+// exampleNode is the JSON structure for a single example on a command. The
+// description carries context/annotation for the example (e.g. what it
+// demonstrates or why); command is the runnable stripe invocation.
+type exampleNode struct {
+	Description string `json:"description,omitempty"`
+	Command     string `json:"command"`
 }
 
 // splitExamples splits a cobra Command.Example string into individual
@@ -123,11 +131,11 @@ type commandNode struct {
 // applied here in a single pass:
 //   - blank lines separate one example from the next
 //   - a line starting with "#" is a comment describing the example that
-//     follows it, and is prefixed onto that example
+//     follows it, and becomes that example's Description
 //   - a line ending in "\" continues onto the next line (shell-style),
 //     joined with a space, until a line without a trailing "\" is found
-func splitExamples(example string) []string {
-	var examples []string
+func splitExamples(example string) []exampleNode {
+	var examples []exampleNode
 	var comment []string
 	var command string
 
@@ -135,11 +143,10 @@ func splitExamples(example string) []string {
 		if command == "" {
 			return
 		}
-		if len(comment) > 0 {
-			examples = append(examples, strings.Join(comment, "\n")+"\n"+command)
-		} else {
-			examples = append(examples, command)
-		}
+		examples = append(examples, exampleNode{
+			Description: strings.Join(comment, "\n"),
+			Command:     command,
+		})
 		comment = nil
 		command = ""
 	}

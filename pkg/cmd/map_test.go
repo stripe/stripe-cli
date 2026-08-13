@@ -460,9 +460,9 @@ func TestMapJSONManualModeIncludesLongExampleAndFlags(t *testing.T) {
 	require.Len(t, node.Commands, 1)
 	listen := node.Commands[0]
 	assert.Equal(t, "Watches and forwards webhook events.", listen.Long)
-	assert.Equal(t, []string{
-		"stripe listen",
-		"stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events",
+	assert.Equal(t, []exampleNode{
+		{Command: "stripe listen"},
+		{Command: "stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events"},
 	}, listen.Examples)
 	// "api-base" is hidden and must be excluded from the output.
 	require.Len(t, listen.Flags, 1)
@@ -506,7 +506,7 @@ func TestSplitExamples(t *testing.T) {
 	tests := []struct {
 		name     string
 		example  string
-		expected []string
+		expected []exampleNode
 	}{
 		{
 			name:     "empty",
@@ -516,17 +516,19 @@ func TestSplitExamples(t *testing.T) {
 		{
 			name:     "single example",
 			example:  "stripe reauth",
-			expected: []string{"stripe reauth"},
+			expected: []exampleNode{
+				{Command: "stripe reauth"},
+			},
 		},
 		{
 			name: "plain multi-line list (config.go)",
 			example: `stripe config --list
   stripe config --set color off
   stripe config --unset color`,
-			expected: []string{
-				"stripe config --list",
-				"stripe config --set color off",
-				"stripe config --unset color",
+			expected: []exampleNode{
+				{Command: "stripe config --list"},
+				{Command: "stripe config --set color off"},
+				{Command: "stripe config --unset color"},
 			},
 		},
 		{
@@ -536,10 +538,10 @@ func TestSplitExamples(t *testing.T) {
     --forward-to localhost:3000/events
   stripe listen --thin-events v1.billing.meter.no_meter_found \
     --forward-thin-to localhost:3000/thin-events`,
-			expected: []string{
-				"stripe listen",
-				"stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events",
-				"stripe listen --thin-events v1.billing.meter.no_meter_found --forward-thin-to localhost:3000/thin-events",
+			expected: []exampleNode{
+				{Command: "stripe listen"},
+				{Command: "stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events"},
+				{Command: "stripe listen --thin-events v1.billing.meter.no_meter_found --forward-thin-to localhost:3000/thin-events"},
 			},
 		},
 		{
@@ -553,9 +555,9 @@ func TestSplitExamples(t *testing.T) {
   stripe data metrics run \
     --metric revenue.mrr \
     --group-by product`,
-			expected: []string{
-				"# Query daily MRR for March 2026\nstripe data metrics run --metric revenue.mrr --granularity day",
-				"# Group by product dimension\nstripe data metrics run --metric revenue.mrr --group-by product",
+			expected: []exampleNode{
+				{Description: "# Query daily MRR for March 2026", Command: "stripe data metrics run --metric revenue.mrr --granularity day"},
+				{Description: "# Group by product dimension", Command: "stripe data metrics run --metric revenue.mrr --group-by product"},
 			},
 		},
 		{
@@ -565,9 +567,9 @@ func TestSplitExamples(t *testing.T) {
   stripe login --non-interactive
   #   Step 2 – after the user approves in the browser, complete login
   stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
-			expected: []string{
-				"# Two-step agent-driven flow:\n#   Step 1 – get the browser URL, verification code, and poll URL\nstripe login --non-interactive",
-				"#   Step 2 – after the user approves in the browser, complete login\nstripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'",
+			expected: []exampleNode{
+				{Description: "# Two-step agent-driven flow:\n#   Step 1 – get the browser URL, verification code, and poll URL", Command: "stripe login --non-interactive"},
+				{Description: "#   Step 2 – after the user approves in the browser, complete login", Command: "stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'"},
 			},
 		},
 	}
