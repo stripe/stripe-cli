@@ -625,25 +625,23 @@ func (m Model) fetchPageCmd(dest *url.URL) tea.Cmd {
 // Landing animation
 
 func (m Model) landing() string {
-	logo := m.shape.view(m.styles.LandingDotBright, m.styles.LandingDotMid, m.styles.LandingDotDim)
 	title := m.styles.LandingTitle.Render("stripe docs")
 	subtitle := m.styles.LandingSubtitle.Render("Search, browse, and read Stripe documentation from the terminal")
-
-	block := lipgloss.JoinVertical(
-		lipgloss.Center,
-		logo,
-		"",
-		title,
-		subtitle,
-	)
 
 	bodyHeight := m.height - statusBarHeight
 	if m.help.ShowAll {
 		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
 		bodyHeight -= strings.Count(helpView, "\n") + 1
 	}
+	bodyHeight = max(1, bodyHeight)
 
-	out := lipgloss.Place(m.width, max(1, bodyHeight), lipgloss.Center, lipgloss.Center, block)
+	block := lipgloss.JoinVertical(lipgloss.Center, title, subtitle)
+	if bodyHeight >= paraHeight+1+lipgloss.Height(block) {
+		logo := m.shape.view(m.styles.LandingDotBright, m.styles.LandingDotMid, m.styles.LandingDotDim)
+		block = lipgloss.JoinVertical(lipgloss.Center, logo, "", title, subtitle)
+	}
+
+	out := lipgloss.Place(m.width, bodyHeight, lipgloss.Center, lipgloss.Center, block)
 	out += "\n" + m.status()
 	if m.help.ShowAll {
 		helpView := lipgloss.NewStyle().PaddingTop(1).PaddingBottom(1).Render(m.help.View(m.keys))
