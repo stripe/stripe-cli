@@ -12,8 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestRequestDeviceCode_Success(t *testing.T) {
@@ -228,7 +226,7 @@ func TestRefreshAccessToken_Success(t *testing.T) {
 	assert.Equal(t, "oart_new_refresh", resp.RefreshToken)
 }
 
-func TestLoginWithDeviceCodeFallsBackToStubAccountsWhenAccountsFetchFails(t *testing.T) {
+func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 	origCanOpenBrowser := canOpenBrowser
 	canOpenBrowser = func() bool { return false }
 	t.Cleanup(func() { canOpenBrowser = origCanOpenBrowser })
@@ -263,13 +261,8 @@ func TestLoginWithDeviceCodeFallsBackToStubAccountsWhenAccountsFetchFails(t *tes
 	defer ts.Close()
 
 	err := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
-	require.NoError(t, err)
-
-	ac, acErr := config.GetActiveContext()
-	require.NoError(t, acErr)
-	require.NotNil(t, ac)
-	assert.Equal(t, "acct_1NRKwLLJDmqA11cn", ac.AccountID)
-	assert.True(t, ac.Livemode)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to fetch account info")
 }
 
 func TestRefreshAccessToken_NoRefreshTokenInResponse(t *testing.T) {
