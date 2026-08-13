@@ -113,9 +113,63 @@ type commandNode struct {
 	Name     string        `json:"name"`
 	Desc     string        `json:"desc,omitempty"`
 	Long     string        `json:"long,omitempty"`
-	Example  string        `json:"example,omitempty"`
+	Examples []string      `json:"examples,omitempty"`
 	Flags    []flagNode    `json:"flags,omitempty"`
 	Commands []commandNode `json:"commands,omitempty"`
+}
+
+// splitExamples splits a cobra Command.Example string into individual
+// example entries. Example strings in this repo follow three conventions,
+// applied here in a single pass:
+//   - blank lines separate one example from the next
+//   - a line starting with "#" is a comment describing the example that
+//     follows it, and is prefixed onto that example
+//   - a line ending in "\" continues onto the next line (shell-style),
+//     joined with a space, until a line without a trailing "\" is found
+func splitExamples(example string) []string {
+	var examples []string
+	var comment []string
+	var command string
+
+	flush := func() {
+		if command == "" {
+			return
+		}
+		if len(comment) > 0 {
+			examples = append(examples, strings.Join(comment, "\n")+"\n"+command)
+		} else {
+			examples = append(examples, command)
+		}
+		comment = nil
+		command = ""
+	}
+
+	for _, line := range strings.Split(example, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") && command == "" {
+			comment = append(comment, trimmed)
+			continue
+		}
+
+		continued := strings.HasSuffix(trimmed, "\\")
+		content := strings.TrimSpace(strings.TrimSuffix(trimmed, "\\"))
+		if command == "" {
+			command = content
+		} else {
+			command = command + " " + content
+		}
+		if continued {
+			continue
+		}
+
+		flush()
+	}
+	flush()
+
+	return examples
 }
 
 // flagNode is the JSON structure for a single flag defined on a command.
@@ -157,7 +211,7 @@ func buildCommandNode(cmd *cobra.Command, manual bool) commandNode {
 	}
 	if manual {
 		node.Long = cmd.Long
-		node.Example = cmd.Example
+		node.Examples = splitExamples(cmd.Example)
 		node.Flags = buildFlagNodes(cmd)
 	}
 	for _, child := range getVisibleCommands(cmd) {

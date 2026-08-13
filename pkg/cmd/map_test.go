@@ -410,7 +410,9 @@ func buildManualTestTree() *cobra.Command {
 
 	listen := newTestCommand("listen", "Listen for webhook events")
 	listen.Long = "Watches and forwards webhook events."
-	listen.Example = "stripe listen --forward-to localhost:3000"
+	listen.Example = `stripe listen
+  stripe listen --events charge.captured,charge.updated \
+    --forward-to localhost:3000/events`
 	listen.Flags().StringP("forward-to", "f", "", "The URL to forward webhook events to")
 	listen.Flags().String("api-base", "", "Sets the API base URL")
 	listen.Flags().MarkHidden("api-base") //nolint:errcheck
@@ -458,7 +460,10 @@ func TestMapJSONManualModeIncludesLongExampleAndFlags(t *testing.T) {
 	require.Len(t, node.Commands, 1)
 	listen := node.Commands[0]
 	assert.Equal(t, "Watches and forwards webhook events.", listen.Long)
-	assert.Equal(t, "stripe listen --forward-to localhost:3000", listen.Example)
+	assert.Equal(t, []string{
+		"stripe listen",
+		"stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events",
+	}, listen.Examples)
 	// "api-base" is hidden and must be excluded from the output.
 	require.Len(t, listen.Flags, 1)
 	assert.Equal(t, "forward-to", listen.Flags[0].Name)
@@ -473,10 +478,10 @@ func TestMapJSONModeOmitsLongExampleAndFlags(t *testing.T) {
 	printCommandMap(&buf, root, mapModeJSON)
 	output := buf.String()
 
-	// Plain "json" mode keeps its original shape: no long/example/flags keys,
+	// Plain "json" mode keeps its original shape: no long/examples/flags keys,
 	// and generated commands are not filtered out.
 	assert.NotContains(t, output, `"long"`)
-	assert.NotContains(t, output, `"example"`)
+	assert.NotContains(t, output, `"examples"`)
 	assert.NotContains(t, output, `"flags"`)
 	assert.Contains(t, output, `"issuing"`)
 }
@@ -495,6 +500,83 @@ func TestIsGeneratedCommand(t *testing.T) {
 	assert.True(t, isGeneratedCommand(parent, newTestCommand("op", "")))
 	assert.False(t, isGeneratedCommand(parent, newTestCommand("man", "")))
 	assert.False(t, isGeneratedCommand(parent, newTestCommand("unknown", "")))
+}
+
+func TestSplitExamples(t *testing.T) {
+	tests := []struct {
+		name     string
+		example  string
+		expected []string
+	}{
+		{
+			name:     "empty",
+			example:  "",
+			expected: nil,
+		},
+		{
+			name:     "single example",
+			example:  "stripe reauth",
+			expected: []string{"stripe reauth"},
+		},
+		{
+			name: "plain multi-line list (config.go)",
+			example: `stripe config --list
+  stripe config --set color off
+  stripe config --unset color`,
+			expected: []string{
+				"stripe config --list",
+				"stripe config --set color off",
+				"stripe config --unset color",
+			},
+		},
+		{
+			name: "backslash continuation (listen.go)",
+			example: `stripe listen
+  stripe listen --events charge.captured,charge.updated \
+    --forward-to localhost:3000/events
+  stripe listen --thin-events v1.billing.meter.no_meter_found \
+    --forward-thin-to localhost:3000/thin-events`,
+			expected: []string{
+				"stripe listen",
+				"stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events",
+				"stripe listen --thin-events v1.billing.meter.no_meter_found --forward-thin-to localhost:3000/thin-events",
+			},
+		},
+		{
+			name: "comment-headed blank-line-separated blocks (data.go)",
+			example: `  # Query daily MRR for March 2026
+  stripe data metrics run \
+    --metric revenue.mrr \
+    --granularity day
+
+  # Group by product dimension
+  stripe data metrics run \
+    --metric revenue.mrr \
+    --group-by product`,
+			expected: []string{
+				"# Query daily MRR for March 2026\nstripe data metrics run --metric revenue.mrr --granularity day",
+				"# Group by product dimension\nstripe data metrics run --metric revenue.mrr --group-by product",
+			},
+		},
+		{
+			name: "two adjacent comment+command pairs with no blank line (login.go)",
+			example: `# Two-step agent-driven flow:
+  #   Step 1 – get the browser URL, verification code, and poll URL
+  stripe login --non-interactive
+  #   Step 2 – after the user approves in the browser, complete login
+  stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
+			expected: []string{
+				"# Two-step agent-driven flow:\n#   Step 1 – get the browser URL, verification code, and poll URL\nstripe login --non-interactive",
+				"#   Step 2 – after the user approves in the browser, complete login\nstripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, splitExamples(tt.example))
+		})
+	}
 }
 
 func TestParseMapModeJSONManual(t *testing.T) {
