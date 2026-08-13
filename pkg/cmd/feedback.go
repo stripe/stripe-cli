@@ -33,31 +33,74 @@ const (
 )
 
 var feedbackFeatureAreas = []string{
-	"payments",
-	"connect",
-	"subscriptions",
-	"payouts",
-	"reporting",
-	"invoicing",
+	"apps",
+	"capital",
 	"checkout",
-	"tax",
-	"radar",
+	"cli",
+	"connect",
+	"crypto",
+	"dashboard",
+	"docs",
+	"identity",
+	"invoicing",
 	"issuing",
+	"managed-payments",
+	"other",
+	"payments",
+	"payouts",
+	"radar",
+	"reporting",
+	"skills",
+	"stablecoins",
+	"subscriptions",
+	"tax",
 	"terminal",
 	"treasury",
-	"capital",
-	"docs",
 	"webhooks",
-	"cli",
-	"dashboard",
-	"crypto",
-	"stablecoins",
-	"managed-payments",
-	"identity",
-	"other",
 }
 
 var feedbackSentiments = []string{"positive", "negative", "neutral"}
+
+func formatFeedbackFeatureAreas(areas []string) string {
+	const columnCount = 3
+
+	rowCount := (len(areas) + columnCount - 1) / columnCount
+	columnWidths := make([]int, columnCount)
+	for index, area := range areas {
+		column := index / rowCount
+		columnWidths[column] = max(columnWidths[column], len(area))
+	}
+
+	var output strings.Builder
+	for row := 0; row < rowCount; row++ {
+		output.WriteString("  ")
+		for column := 0; column < columnCount; column++ {
+			index := column*rowCount + row
+			if index >= len(areas) {
+				continue
+			}
+
+			if column < columnCount-1 {
+				fmt.Fprintf(&output, "%-*s", columnWidths[column]+2, areas[index])
+			} else {
+				output.WriteString(areas[index])
+			}
+		}
+		if row < rowCount-1 {
+			output.WriteByte('\n')
+		}
+	}
+
+	return output.String()
+}
+
+func defaultFeedbackActor(getEnv func(string) string) string {
+	if useragent.DetectAIAgent(getEnv) != "" {
+		return "agent"
+	}
+
+	return "human"
+}
 
 // feedbackResponse is the JSON body returned by the feedback API.
 type feedbackResponse struct {
@@ -122,7 +165,6 @@ func (feedback *feedbackCmd) missingRequiredFields() []string {
 		{"--sentiment", feedback.sentiment},
 		{"--message", feedback.message},
 		{"--context", feedback.context},
-		{"--actor", feedback.actor},
 	}
 
 	var missing []string
@@ -142,19 +184,27 @@ func newFeedbackCmd() *feedbackCmd {
 		Use:   "feedback",
 		Args:  validators.NoArgs,
 		Short: "Share feedback on any part of Stripe",
-		Long: `Share feedback on any part of Stripe (docs, APIs, the Dashboard, the CLI, and more) directly from your terminal.
+		Long: `
+Share feedback on any part of Stripe (docs, APIs, the Dashboard, the CLI, and more) directly from your terminal.
 
 This is not a support channel and Stripe cannot respond to feedback submitted here.
 For help with your account or integration, use https://support.stripe.com`,
 		RunE: feedback.runFeedbackCmd,
 	}
 
-	feedback.cmd.Flags().StringVar(&feedback.feature, "feature", "", fmt.Sprintf("Product area this feedback is about (%s)", strings.Join(feedbackFeatureAreas, ", ")))
-	feedback.cmd.Flags().StringVar(&feedback.sentiment, "sentiment", "", fmt.Sprintf("Sentiment of the feedback (%s)", strings.Join(feedbackSentiments, ", ")))
-	feedback.cmd.Flags().StringVar(&feedback.message, "message", "", "Your feedback message (at least 10 characters)")
-	feedback.cmd.Flags().StringVar(&feedback.context, "context", "", "What were you trying to do? (at least 10 characters)")
-	feedback.cmd.Flags().StringVar(&feedback.actor, "actor", "", "Who is submitting this feedback: human or agent")
-	feedback.cmd.Flags().BoolVar(&feedback.jsonOutput, "json", false, "Output the result as JSON")
+	defaultHelp := feedback.cmd.HelpFunc()
+	feedback.cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		defaultHelp(cmd, args)
+		fmt.Fprintf(cmd.OutOrStdout(), "\nFeature options:\n%s\n\n", formatFeedbackFeatureAreas(feedbackFeatureAreas))
+	})
+
+	feedback.cmd.Flags().SortFlags = false
+	feedback.cmd.Flags().StringVar(&feedback.sentiment, "sentiment", "", fmt.Sprintf("Sentiment of the feedback (required; one of: %s)", strings.Join(feedbackSentiments, ", ")))
+	feedback.cmd.Flags().StringVar(&feedback.message, "message", "", "Your feedback message (required; 10-2000 characters)")
+	feedback.cmd.Flags().StringVar(&feedback.context, "context", "", "What you were trying to do (required; 10-2000 characters)")
+	feedback.cmd.Flags().StringVar(&feedback.feature, "feature", "", "Product area this feedback is about (optional; see feature options below)")
+	feedback.cmd.Flags().StringVar(&feedback.actor, "actor", "", "Who is submitting this feedback: human or agent (optional; default: agent when run by a recognized coding agent, otherwise human)")
+	feedback.cmd.Flags().BoolVar(&feedback.jsonOutput, "json", false, "Output the result as JSON (optional; default: false)")
 
 	feedback.cmd.Flags().StringVar(&feedback.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	feedback.cmd.Flags().MarkHidden("api-base") // #nosec G104
@@ -171,6 +221,9 @@ func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) e
 	// --json signals a scripted invocation, so it always skips the prompt
 	// flow, even when attached to a TTY.
 	feedback.isInteractive = !feedback.jsonOutput && term.IsTerminal(int(os.Stdin.Fd()))
+	if feedback.actor == "" {
+		feedback.actor = defaultFeedbackActor(os.Getenv)
+	}
 
 	// Whatever was already supplied via flags is validated up front,
 	// regardless of interactivity, so an invalid --feature/--sentiment/
@@ -263,13 +316,6 @@ func (feedback *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
 			return err
 		}
 		feedback.context = context
-	}
-
-	if feedback.actor == "" {
-		// A human is physically present to answer the prompts, so we know
-		// who is submitting the feedback without having to ask, unless
-		// --actor was already supplied.
-		feedback.actor = "human"
 	}
 
 	// message/context are sanitized once, in submitFeedback, since that's
@@ -404,5 +450,5 @@ func (feedback *feedbackCmd) printResult(cmd *cobra.Command, resp *feedbackRespo
 		return
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Thanks — feedback recorded (id: %s)\n", resp.ID)
+	fmt.Fprintf(cmd.OutOrStdout(), "\nThanks — feedback recorded (id: %s)\n\n", resp.ID)
 }

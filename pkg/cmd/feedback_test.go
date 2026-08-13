@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -47,6 +48,58 @@ func runFeedback(feedbackCommand *feedbackCmd) error {
 	// Downstream code expects a non-nil context.
 	feedbackCommand.cmd.SetContext(context.Background())
 	return feedbackCommand.runFeedbackCmd(feedbackCommand.cmd, []string{})
+}
+
+func TestFeedbackHelpCommunicatesParametersAndFeatureOptions(t *testing.T) {
+	feedbackCommand := newFeedbackCmd()
+	outputBuffer := new(bytes.Buffer)
+	feedbackCommand.cmd.SetOut(outputBuffer)
+
+	require.NoError(t, feedbackCommand.cmd.Help())
+	output := outputBuffer.String()
+
+	assert.True(t, strings.HasPrefix(output, "\nShare feedback on"))
+	assert.True(t, strings.HasSuffix(output, "\n\n"))
+	requiredFlags := []string{"--sentiment", "--message", "--context"}
+	optionalFlags := []string{"--feature", "--actor", "--json"}
+	previousIndex := -1
+	for _, flag := range append(requiredFlags, optionalFlags...) {
+		index := strings.Index(output, flag)
+		require.Greater(t, index, previousIndex, "%s should appear after the preceding feedback parameter", flag)
+		previousIndex = index
+	}
+
+	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("sentiment").Usage, "required")
+	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("feature").Usage, "optional")
+	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("feature").Usage, "see feature options below")
+	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("actor").Usage, "default: agent when run by a recognized coding agent, otherwise human")
+	assert.Contains(t, output, "Feature options:")
+	assert.Greater(t, strings.Index(output, "Feature options:"), strings.Index(output, "Flags:"))
+	assert.Contains(t, output, "apps")
+	assert.Contains(t, output, "skills")
+	assert.Regexp(t, `(?m)^  \S+\s{2,}\S+\s{2,}\S+$`, output)
+	assert.True(t, sort.StringsAreSorted(feedbackFeatureAreas))
+}
+
+func TestFormatFeedbackFeatureAreas(t *testing.T) {
+	assert.Equal(t, "  aa  cc  ee\n  bb  dd  ff", formatFeedbackFeatureAreas([]string{"aa", "bb", "cc", "dd", "ee", "ff"}))
+}
+
+func TestDefaultFeedbackActor(t *testing.T) {
+	t.Run("recognized coding agent", func(t *testing.T) {
+		getEnv := func(key string) string {
+			if key == "CURSOR_AGENT" {
+				return "1"
+			}
+			return ""
+		}
+
+		assert.Equal(t, "agent", defaultFeedbackActor(getEnv))
+	})
+
+	t.Run("human environment", func(t *testing.T) {
+		assert.Equal(t, "human", defaultFeedbackActor(func(string) string { return "" }))
+	})
 }
 
 type feedbackCase struct {
@@ -91,7 +144,7 @@ func TestFeedbackNonInteractiveValidation(t *testing.T) {
 				feedbackInput.sentiment, feedbackInput.message, feedbackInput.context, feedbackInput.actor = "", "", "", ""
 				return feedbackInput
 			},
-			wantErrSubstrings: []string{"--sentiment", "--message", "--context", "--actor"},
+			wantErrSubstrings: []string{"--sentiment", "--message", "--context"},
 		},
 		{
 			name: "missing api key",
@@ -202,7 +255,7 @@ func TestFeedbackSubmit(t *testing.T) {
 				fmt.Fprint(responseWriter, `{"id":"pfbk_test123","success":true}`)
 			},
 			wantCheck: func(t *testing.T, output string) {
-				assert.Contains(t, output, "pfbk_test123")
+				assert.Equal(t, "\nThanks — feedback recorded (id: pfbk_test123)\n\n", output)
 			},
 		},
 		{
@@ -334,6 +387,11 @@ func TestFeedbackValidateSuppliedFields(t *testing.T) {
 	// checked separately by missingRequiredFields.
 	assert.NoError(t, feedbackCommand.validateSuppliedFields())
 
+	for _, feature := range []string{"apps", "skills"} {
+		feedbackCommand.feature = feature
+		assert.NoError(t, feedbackCommand.validateSuppliedFields())
+	}
+
 	feedbackCommand.feature = "not-a-real-area"
 	err := feedbackCommand.validateSuppliedFields()
 	require.Error(t, err)
@@ -355,6 +413,9 @@ func TestFeedbackValidateSuppliedFields(t *testing.T) {
 func TestFeedbackMissingRequiredFields(t *testing.T) {
 	feedbackCommand := &feedbackCmd{}
 	validFeedbackCase().applyTo(feedbackCommand)
+	assert.Empty(t, feedbackCommand.missingRequiredFields())
+
+	feedbackCommand.actor = ""
 	assert.Empty(t, feedbackCommand.missingRequiredFields())
 
 	feedbackCommand.context = ""
