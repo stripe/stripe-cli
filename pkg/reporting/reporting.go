@@ -41,8 +41,13 @@ func Init(dsn, release string) error {
 
 // CaptureException reports err to the error reporting backend.
 func CaptureException(err error) {
+	category := classifyError(err)
+	if !shouldCapture(category) {
+		return
+	}
+
 	sentry.WithScope(func(scope *sentry.Scope) {
-		scope.SetTag("error_category", string(classifyError(err)))
+		scope.SetTag("error_category", string(category))
 		if accountIDProvider != nil {
 			if accountID, _ := accountIDProvider(); accountID != "" {
 				scope.SetTag("account_id", accountID)
@@ -67,6 +72,13 @@ func CaptureException(err error) {
 		scope.SetFingerprint([]string{caller, fmt.Sprintf("%T", root), root.Error()})
 		sentry.CaptureException(err)
 	})
+}
+
+// shouldCapture defines the reporting policy for classified errors. Auth covers
+// expected credential or authorization outcomes, not defects in authentication code;
+// callers can explicitly categorize actionable failures as internal, network, or API.
+func shouldCapture(category errorcategory.Category) bool {
+	return category != errorcategory.UserInput && category != errorcategory.Auth
 }
 
 // RecoverAndReport captures a recovered panic value to the error reporting backend.
