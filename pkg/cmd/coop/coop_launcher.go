@@ -30,7 +30,16 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-type coopPaneCommandBuilder func(session *coop.Session) (string, func(), error)
+// paneCommand describes the agent launch in each of the two launch modes:
+// shell is interpolated into a tmux pane's command line; argv runs directly in
+// this terminal with no shell, so the fallback works where bash doesn't exist
+// (Windows, minimal containers, NixOS).
+type paneCommand struct {
+	shell string
+	argv  []string
+}
+
+type coopPaneCommandBuilder func(session *coop.Session) (paneCommand, func(), error)
 
 var (
 	selectString = helpers.Select[string]
@@ -42,7 +51,31 @@ var (
 const (
 	defaultCoopTmuxSessionWidth  = 200
 	defaultCoopTmuxSessionHeight = 50
-	claudeCoopAgents             = `{"coop-cost-effective-worker":{"description":"Use proactively for well-bounded, self-contained exploration, documentation research, test execution, log analysis, and verification tasks when delegation saves main-session context and cost.","prompt":"Work as a focused cost-effective Co-op subagent. Complete only the bounded task you receive, verify your result, and return concise evidence to the main agent. Find and honor applicable repository guidance, including AGENTS.md and CLAUDE.md, before acting. Do not choose or change the Stripe integration or run Co-op lifecycle commands.","model":"haiku"}}`
+
+	// The TUI pane gets a fixed column width and the agent pane gets everything
+	// else. Fixed (rather than a percentage) because the TUI's usefulness stops
+	// growing past its card width while the agent benefits from every extra
+	// column — and it makes the review card render identically on every
+	// terminal. Both widths sit below tui.SplitWorkspaceMinWidth so the
+	// companion pane always renders the single-column layout.
+	coopTUIPaneWidth       = 48
+	coopTUIPaneWidthNarrow = 40
+
+	// Minimum agent-pane widths paired with each TUI tier. Below the narrow
+	// tier a side-by-side split squeezes both panes past usefulness, so the
+	// launcher runs the agent full-width with manual join instructions instead.
+	coopAgentPaneMinWidth       = 80
+	coopAgentPaneMinWidthNarrow = 72
+
+	// tmux draws a one-column divider between horizontally split panes.
+	coopPaneDividerWidth = 1
+
+	// coopTUIWidthEnv carries the intended TUI pane width into the TUI
+	// process. tmux redistributes panes proportionally when the terminal is
+	// resized, so without re-pinning, the fixed width drifts back below the
+	// review card's readable floor the first time the user resizes.
+	coopTUIWidthEnv  = "STRIPE_COOP_TUI_WIDTH"
+	claudeCoopAgents = `{"coop-cost-effective-worker":{"description":"Use proactively for well-bounded, self-contained exploration, documentation research, test execution, log analysis, and verification tasks when delegation saves main-session context and cost.","prompt":"Work as a focused cost-effective Co-op subagent. Complete only the bounded task you receive, verify your result, and return concise evidence to the main agent. Find and honor applicable repository guidance, including AGENTS.md and CLAUDE.md, before acting. Do not choose or change the Stripe integration or run Co-op lifecycle commands.","model":"haiku"}}`
 )
 
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
@@ -122,31 +155,39 @@ func (rc *coopRunCmd) promptAutoApprove(agent *agentInfo) (bool, error) {
 	return choice == "bypass", nil
 }
 
-func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
-	launcherPath := promptPath + ".sh"
-	var script string
-
+// agentFlags returns the per-agent CLI flags as an argv fragment. The tmux
+// launcher script and the direct-exec fallback both build from this so the two
+// launch modes cannot drift.
+func agentFlags(agent *agentInfo, autoApprove bool) []string {
 	switch agent.name {
 	case "claude":
-		flags := " --agents " + shellQuote(claudeCoopAgents)
+		flags := []string{"--agents", claudeCoopAgents}
 		if autoApprove {
-			flags += " --dangerously-skip-permissions"
+			flags = append(flags, "--dangerously-skip-permissions")
 		}
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
-
+		return flags
 	case "codex":
-		flags := ""
 		if autoApprove {
-			flags = " --dangerously-bypass-approvals-and-sandbox"
+			return []string{"--dangerously-bypass-approvals-and-sandbox"}
 		}
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
-
+		return nil
 	default:
-		script = fmt.Sprintf("#!/bin/bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s \"$prompt\"\n",
-			shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path))
+		return nil
 	}
+}
+
+func (rc *coopRunCmd) buildAgentCmd(agent *agentInfo, promptPath string, autoApprove bool) (string, error) {
+	launcherPath := promptPath + ".sh"
+
+	flags := ""
+	for _, flag := range agentFlags(agent, autoApprove) {
+		flags += " " + shellQuote(flag)
+	}
+	// `#!/usr/bin/env bash`, not `#!/bin/bash`: the script runs inside tmux
+	// panes whose shell resolves bash from PATH, and /bin/bash does not exist
+	// on NixOS.
+	script := fmt.Sprintf("#!/usr/bin/env bash\nprompt=$(cat %s)\nrm -f %s %s\nexec %s%s \"$prompt\"\n",
+		shellQuote(promptPath), shellQuote(promptPath), shellQuote(launcherPath), shellQuote(agent.path), flags)
 
 	if err := os.WriteFile(launcherPath, []byte(script), 0700); err != nil {
 		return "", fmt.Errorf("creating agent launcher: %w", err)
@@ -159,45 +200,81 @@ func (rc *coopRunCmd) hasTmux() bool {
 	return err == nil
 }
 
+// coopTUIPaneWidthFor returns the fixed TUI pane width for a terminal (or
+// tmux pane) of totalWidth columns, or 0 when totalWidth is too narrow for a
+// side-by-side split to leave both panes usable.
+func coopTUIPaneWidthFor(totalWidth int) int {
+	switch {
+	case totalWidth >= coopTUIPaneWidth+coopPaneDividerWidth+coopAgentPaneMinWidth:
+		return coopTUIPaneWidth
+	case totalWidth >= coopTUIPaneWidthNarrow+coopPaneDividerWidth+coopAgentPaneMinWidthNarrow:
+		return coopTUIPaneWidthNarrow
+	default:
+		return 0
+	}
+}
+
+// currentTmuxPaneWidth reports the width of the tmux pane this process is
+// running in. On any failure it assumes the default session width, which
+// yields the standard TUI width; tmux clamps an oversized -l request rather
+// than failing the split.
+func currentTmuxPaneWidth() int {
+	out, err := runTmuxOutput("display-message", "-p", "#{pane_width}")
+	if err != nil {
+		return defaultCoopTmuxSessionWidth
+	}
+	width, err := strconv.Atoi(strings.TrimSpace(out))
+	if err != nil || width <= 0 {
+		return defaultCoopTmuxSessionWidth
+	}
+	return width
+}
+
 func (rc *coopRunCmd) agentPaneCommandBuilder(agent *agentInfo, discoveryPrompt string, autoApprove bool) coopPaneCommandBuilder {
-	return func(session *coop.Session) (string, func(), error) {
+	return func(session *coop.Session) (paneCommand, func(), error) {
 		prompt := discoveryPrompt
 		if session != nil {
 			var err error
 			prompt, err = rc.buildAgentPromptForSession(session)
 			if err != nil {
-				return "", nil, err
+				return paneCommand{}, nil, err
 			}
 		}
 		promptPath, err := writePromptFile(prompt)
 		if err != nil {
-			return "", nil, err
+			return paneCommand{}, nil, err
 		}
 
 		agentCmd, err := rc.buildAgentCmd(agent, promptPath, autoApprove)
 		if err != nil {
 			os.Remove(promptPath)
-			return "", nil, err
+			return paneCommand{}, nil, err
 		}
-		// The returned command is run via `bash -c`, so the launcher path itself
-		// must be shell-quoted — otherwise a temp dir (TMPDIR) containing a space
-		// or shell syntax would be parsed by bash before the launcher runs. The
-		// cleanup closure keeps the raw path for os.Remove.
-		return shellQuote(agentCmd), func() {
-			os.Remove(promptPath)
-			os.Remove(agentCmd)
-		}, nil
+		// The shell command is run via `bash -c`, so the launcher path itself
+		// must be shell-quoted — otherwise a temp dir (TMPDIR) containing a
+		// space or shell syntax would be parsed by bash before the launcher
+		// runs. The cleanup closure keeps the raw path for os.Remove.
+		return paneCommand{
+				shell: shellQuote(agentCmd),
+				argv:  append(append([]string{agent.path}, agentFlags(agent, autoApprove)...), prompt),
+			}, func() {
+				os.Remove(promptPath)
+				os.Remove(agentCmd)
+			}, nil
 	}
 }
 
 func (rc *coopRunCmd) debugAgentPaneCommandBuilder(stripeBin string) coopPaneCommandBuilder {
-	return func(session *coop.Session) (string, func(), error) {
+	return func(session *coop.Session) (paneCommand, func(), error) {
 		sessionID := ""
 		if session != nil {
 			sessionID = session.ID
 		}
 		cmd := fmt.Sprintf("%s coop debug-agent --session %s", shellQuote(stripeBin), shellQuote(sessionID))
-		return shellCommandWithCoopEnv(cmd), nil, nil
+		return paneCommand{
+			shell: shellCommandWithCoopEnv(cmd),
+			argv:  []string{stripeBin, "coop", "debug-agent", "--session", sessionID},
+		}, nil, nil
 	}
 }
 
@@ -213,6 +290,13 @@ func (rc *coopRunCmd) runInTmuxSplit(stripeBin string, agent *agentInfo, agentPr
 }
 
 func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
+	paneWidth := currentTmuxPaneWidth()
+	tuiWidth := coopTUIPaneWidthFor(paneWidth)
+	if tuiWidth == 0 {
+		return rc.runFallbackWithReason(stripeBin, blueprint, buildPaneCmd,
+			fmt.Sprintf("This tmux pane is %d columns — too narrow to split. Running the agent here.", paneWidth))
+	}
+
 	var session *coop.Session
 	if blueprint != nil {
 		var err error
@@ -236,15 +320,23 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
-	paneCmd = shellCommandWithCoopEnv(paneCmd)
+	shellCmd := shellCommandWithCoopEnv(paneCmd.shell)
 
-	if _, err := splitCoopAgentPane("-h", "-p", "60", "bash", "-c", paneCmd); err != nil {
+	agentWidth := paneWidth - tuiWidth - coopPaneDividerWidth
+	// nil server flags: inside an existing session the split must land on the
+	// user's own server (resolved via $TMUX), never the dedicated socket —
+	// attaching a second server from inside a pane nests silently.
+	if _, err := splitCoopAgentPane(nil, "-h", "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
 		rc.abortStartedSession(session, "tmux split failed")
 		return fmt.Errorf("tmux split failed: %w", err)
 	}
+
+	// The TUI runs in this process here, so publish the intended width the
+	// same way the new-session path does for its pane.
+	os.Setenv(coopTUIWidthEnv, strconv.Itoa(tuiWidth))
 
 	if blueprint != nil {
 		return tui.Run(store, session.ID, coopTUIOptions()...)
@@ -259,9 +351,10 @@ func (rc *coopRunCmd) runInNewTmux(stripeBin string, agent *agentInfo, agentProm
 
 func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
 	sessionName := "stripe-coop"
+	serverFlags := []string{"-L", coopTmuxSocket}
 
-	// Check for existing session
-	if err := runTmux("has-session", "-t", sessionName); err == nil {
+	// Check for existing session on the dedicated socket
+	if err := runTmux(withTmuxServerFlags(serverFlags, "has-session", "-t", sessionName)...); err == nil {
 		var choice string
 		if err := selectString("A co-op tmux session already exists. What would you like to do?",
 			[]huh.Option[string]{
@@ -274,13 +367,24 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		}
 
 		if choice == "attach" {
-			attach := exec.Command("tmux", "attach-session", "-t", sessionName)
+			attach := exec.Command("tmux", withTmuxServerFlags(serverFlags, "attach-session", "-t", sessionName)...)
 			attach.Stdin = os.Stdin
 			attach.Stdout = os.Stdout
 			attach.Stderr = os.Stderr
 			return attach.Run()
 		}
-		killTmuxSession(sessionName)
+		killTmuxSession(serverFlags, sessionName)
+	}
+
+	width, height, ok := coopTmuxSessionDimensions()
+	if !ok {
+		return rc.runFallbackWithReason(stripeBin, blueprint, buildPaneCmd,
+			"Could not measure this terminal — skipping the split view. Running the agent here.")
+	}
+	tuiWidth := coopTUIPaneWidthFor(width)
+	if tuiWidth == 0 {
+		return rc.runFallbackWithReason(stripeBin, blueprint, buildPaneCmd,
+			fmt.Sprintf("This terminal is %d columns — too narrow for a split view. Running the agent here.", width))
 	}
 
 	var session *coop.Session
@@ -298,18 +402,25 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 	} else {
 		tuiCmd += " " + session.ID
 	}
-	tuiCmd = shellCommandWithCoopEnv(tuiCmd)
+	tuiCmd = fmt.Sprintf("%s=%d %s", coopTUIWidthEnv, tuiWidth, shellCommandWithCoopEnv(tuiCmd))
 
 	paneCmd, cleanup, err := buildPaneCmd(session)
 	if err != nil {
 		rc.abortStartedSession(session, "agent pane command failed")
 		return err
 	}
-	paneCmd = shellCommandWithCoopEnv(paneCmd)
+	shellCmd := shellCommandWithCoopEnv(paneCmd.shell)
 
-	width, height := coopTmuxSessionDimensions()
-	if err := runTmux("new-session", "-d", "-s", sessionName, "-x", strconv.Itoa(width), "-y", strconv.Itoa(height),
-		"bash", "-c", tuiCmd); err != nil {
+	// The shipped config only applies when this new-session call starts the
+	// server; -f is ignored on a running server, which can only be a co-op one
+	// on this socket. On write failure, launch with tmux defaults — degraded
+	// but working.
+	newSessionFlags := serverFlags
+	if confPath, err := writeCoopTmuxConf(); err == nil {
+		newSessionFlags = withTmuxServerFlags(serverFlags, "-f", confPath)
+	}
+	if err := runTmux(withTmuxServerFlags(newSessionFlags, "new-session", "-d", "-s", sessionName,
+		"-x", strconv.Itoa(width), "-y", strconv.Itoa(height), "bash", "-c", tuiCmd)...); err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
@@ -317,39 +428,49 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		return fmt.Errorf("tmux new-session failed: %w", err)
 	}
 
-	agentPane, err := splitCoopAgentPane("-h", "-t", sessionName, "-p", "60", "bash", "-c", paneCmd)
+	agentWidth := width - tuiWidth - coopPaneDividerWidth
+	agentPane, err := splitCoopAgentPane(serverFlags, "-h", "-t", sessionName, "-l", strconv.Itoa(agentWidth), "bash", "-c", shellCmd)
 	if err != nil {
 		if cleanup != nil {
 			cleanup()
 		}
-		killTmuxSession(sessionName)
+		killTmuxSession(serverFlags, sessionName)
 		rc.abortStartedSession(session, "tmux split-window failed")
 		return fmt.Errorf("tmux split-window failed: %w", err)
 	}
 
-	runTmux("select-pane", "-t", agentPane)
+	runTmux(withTmuxServerFlags(serverFlags, "select-pane", "-t", agentPane)...)
 
-	attach := exec.Command("tmux", "attach-session", "-t", sessionName)
+	attach := exec.Command("tmux", withTmuxServerFlags(serverFlags, "attach-session", "-t", sessionName)...)
 	attach.Stdin = os.Stdin
 	attach.Stdout = os.Stdout
 	attach.Stderr = os.Stderr
 	return attach.Run()
 }
 
-func killTmuxSession(sessionName string) {
-	_ = runTmux("kill-session", "-t", sessionName)
+func killTmuxSession(serverFlags []string, sessionName string) {
+	_ = runTmux(withTmuxServerFlags(serverFlags, "kill-session", "-t", sessionName)...)
 }
 
-func coopTmuxSessionDimensions() (int, int) {
-	width, height, err := term.GetSize(int(os.Stdout.Fd()))
-	return normalizeCoopTmuxSessionDimensions(width, height, err)
-}
-
-func normalizeCoopTmuxSessionDimensions(width, height int, err error) (int, int) {
-	if err != nil || width <= 0 || height <= 0 {
-		return defaultCoopTmuxSessionWidth, defaultCoopTmuxSessionHeight
+// coopTmuxSessionDimensions measures the terminal co-op was launched from.
+// ok is false when no terminal could be measured at all — stdout redirected
+// AND stdin not a tty, e.g. `stripe coop start | tee log`. Guessing there
+// would size the split for a terminal that doesn't exist: tmux squeezes the
+// panes proportionally the moment a narrower client attaches, and the TUI
+// lands far below the width its review card needs.
+var coopTmuxSessionDimensions = func() (width, height int, ok bool) {
+	for _, f := range []*os.File{os.Stdout, os.Stdin, os.Stderr} {
+		if w, h, err := term.GetSize(int(f.Fd())); err == nil && w > 0 && h > 0 {
+			return w, h, true
+		}
 	}
-	return width, height
+	if tty, err := os.Open("/dev/tty"); err == nil {
+		defer tty.Close()
+		if w, h, err := term.GetSize(int(tty.Fd())); err == nil && w > 0 && h > 0 {
+			return w, h, true
+		}
+	}
+	return 0, 0, false
 }
 
 func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {
@@ -357,7 +478,18 @@ func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPromp
 }
 
 func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder) error {
-	fmt.Println("tmux not found — running agent in this terminal.")
+	return rc.runFallbackWithReason(stripeBin, blueprint, buildPaneCmd, "tmux not found — running agent in this terminal.")
+}
+
+func (rc *coopRunCmd) runFallbackWithReason(stripeBin string, blueprint *coop.Blueprint, buildPaneCmd coopPaneCommandBuilder, reason string) error {
+	fmt.Println(reason)
+
+	// Print the absolute binary path: the second terminal may be a login shell
+	// whose PATH doesn't carry a version-manager shim or ~/.local/bin yet.
+	joinBin := "stripe"
+	if stripeBin != "" {
+		joinBin = shellQuote(stripeBin)
+	}
 
 	var session *coop.Session
 	if blueprint != nil {
@@ -367,9 +499,12 @@ func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.B
 			return err
 		}
 		fmt.Printf("Session started: %s\n", session.ID)
-		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv("stripe coop join "+session.ID))
+		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv(joinBin+" coop join "+session.ID))
 	} else {
-		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv("stripe coop join --wait"))
+		fmt.Printf("Open another terminal and run: %s\n", shellCommandWithCoopEnv(joinBin+" coop join --wait"))
+	}
+	if hint := nativeSplitHint(); hint != "" {
+		fmt.Println(hint)
 	}
 	fmt.Println()
 
@@ -381,7 +516,13 @@ func (rc *coopRunCmd) runFallbackWithCommand(stripeBin string, blueprint *coop.B
 	if cleanup != nil {
 		defer cleanup()
 	}
-	agentExec := exec.Command("bash", "-c", paneCmd)
+	if len(paneCmd.argv) == 0 {
+		rc.abortStartedSession(session, "agent command empty")
+		return fmt.Errorf("agent command is empty")
+	}
+	// Direct exec, no shell: this is the only launch path that must work
+	// everywhere, including Windows and containers without bash.
+	agentExec := exec.Command(paneCmd.argv[0], paneCmd.argv[1:]...)
 	agentExec.Stdin = os.Stdin
 	agentExec.Stdout = os.Stdout
 	agentExec.Stderr = os.Stderr

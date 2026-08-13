@@ -73,10 +73,15 @@ type Model struct {
 
 	waiting                bool
 	waitingMessage         string
+	waitingSince           time.Time
 	existingSessionIDs     map[string]bool
 	lastUpdateTime         time.Time
 	agentIsIdle            bool
 	reviewDecisionNotifier ReviewDecisionNotifier
+	reviewAlertNotifier    ReviewAlertNotifier
+	reviewAlerted          bool
+	exitCleanup            []func()
+	resizeHook             func(width, height int)
 
 	agentHeartbeatMissing bool
 	// consecutiveReadErrors tracks failed session polls, so a single transient
@@ -165,6 +170,7 @@ func NewWaitingModel(store *coop.Store, existingSessionIDs map[string]bool, opts
 		sdkSnippetNode:     -1,
 		sdkLoadingNode:     -1,
 		waiting:            true,
+		waitingSince:       time.Now(),
 		existingSessionIDs: existingSessionIDs,
 	}
 	for _, opt := range opts {
@@ -198,13 +204,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.handleWindowSize(msg)
+		if m.resizeHook != nil {
+			hook, w, h := m.resizeHook, msg.Width, msg.Height
+			return m, func() tea.Msg {
+				hook(w, h)
+				return nil
+			}
+		}
 		return m, nil
 
 	case tickMsg:
 		m.clearExpiredStatus(time.Now())
-		if !m.focused {
-			return m, tickCmd()
-		}
+		// Poll regardless of focus. An unfocused TUI is the norm, not the
+		// exception — the user works in the agent pane — and skipping the poll
+		// while blurred froze the display at exactly the moment a review
+		// appeared. Focus only gates how loudly we announce changes, never
+		// whether we see them.
 		return m, tea.Batch(m.checkForUpdates(), tickCmd())
 
 	case noUpdateMsg:
@@ -255,7 +270,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.resizeViewport()
 		m.syncViewport()
-		return m, tickCmd()
+		// Sequenced deliberately: reviewAlertCmd mutates m.reviewAlerted, and
+		// Go leaves the evaluation order of a plain operand relative to a call
+		// in the same return statement unspecified. Assigning first guarantees
+		// the returned copy carries the dedup flag; without it the alert could
+		// re-fire on every poll.
+		alert := m.reviewAlertCmd()
+		return m, tea.Batch(tickCmd(), alert)
 
 	case errMsg:
 		m.recordReadError(msg.err)
@@ -383,14 +404,45 @@ func (m Model) progressBar() *tea.ProgressBar {
 		return tea.NewProgressBar(tea.ProgressBarNone, 0)
 	}
 	value := done * 100 / total
-	// This surfaces in tmux's status line and the OS taskbar without the pane
-	// being focused, which is the only signal that reaches a user watching the
-	// agent's pane instead of this one.
+	// OSC 9;4 progress. Rendered by Windows Terminal and Ghostty (taskbar /
+	// tab); most other terminals and tmux < 3.6 ignore it silently, so this is
+	// a bonus channel, not the primary review notification.
 	state := tea.ProgressBarDefault
 	if m.agentIdle() || m.agentHeartbeatMissing || m.actionableReviewCount() > 0 {
 		state = tea.ProgressBarWarning
 	}
 	return tea.NewProgressBar(state, value)
+}
+
+// reviewAlertCmd fires the review-alert notifier when the reviews-waiting
+// state flips in either direction. It runs off the update loop so a slow
+// notifier (a tmux shell-out) never blocks rendering.
+func (m *Model) reviewAlertCmd() tea.Cmd {
+	if m.reviewAlertNotifier == nil || m.session == nil {
+		return nil
+	}
+	hasReview := m.actionableReviewCount() > 0
+	if hasReview == m.reviewAlerted {
+		return nil
+	}
+	m.reviewAlerted = hasReview
+	notify := m.reviewAlertNotifier
+	focused := m.focused
+	return func() tea.Msg {
+		notify(hasReview, focused)
+		return nil
+	}
+}
+
+// runExitCleanup runs registered teardown once the program has stopped. It is
+// idempotent so callers can defer it unconditionally.
+func (m *Model) runExitCleanup() {
+	for _, cleanup := range m.exitCleanup {
+		if cleanup != nil {
+			cleanup()
+		}
+	}
+	m.exitCleanup = nil
 }
 
 // resumeFollowingIfReviewAppeared clears the manual-navigation latch when a
@@ -1042,10 +1094,22 @@ func (m *Model) handleReject(note string) tea.Cmd {
 }
 
 func (m Model) notifyReviewDecision() tea.Cmd {
-	if m.reviewDecisionNotifier == nil || m.session == nil {
+	if m.session == nil {
 		return nil
 	}
 	sessionID := m.session.ID
+	if m.reviewDecisionNotifier == nil {
+		// No wake-up channel exists outside tmux (manual-split and fallback
+		// launches). The agent polls the session file only while parked in
+		// await-review; if it has timed out, this decision sits unread until a
+		// human relays it. Say so — persistently, no ttl — instead of silently
+		// implying delivery.
+		return func() tea.Msg {
+			return statusMsg{
+				message: fmt.Sprintf("Decision saved. If the agent doesn't react shortly, run in the agent terminal: %s", coop.ResumeCommand(sessionID)),
+			}
+		}
+	}
 	notify := m.reviewDecisionNotifier
 	return func() tea.Msg {
 		if err := notify(sessionID); err != nil {
