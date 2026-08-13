@@ -3,11 +3,12 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 const (
@@ -124,7 +125,7 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 		return nil
 	}
 	if len(plan.Command) == 0 {
-		return fmt.Errorf("missing command for %s action", plan.Action)
+		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
 	runCommand := p.RunCommand
 	if runCommand == nil {
@@ -138,7 +139,7 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 	// configured), so the exit code cannot be trusted. Confirm the plugin is
 	// actually installed before reporting success.
 	if _, installed, _ := p.stripePluginStatus(ctx); !installed {
-		return fmt.Errorf("codex reported success but %s is not installed; run `%s` to see the underlying error",
+		return errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
 			TargetCodexPlugin, strings.Join(plan.Command, " "))
 	}
 	return nil

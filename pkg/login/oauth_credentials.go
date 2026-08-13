@@ -3,13 +3,13 @@ package login
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
@@ -78,7 +78,7 @@ func RevokeToken(ctx context.Context, accessBaseURL string) error {
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("token revocation failed (status %d)", resp.StatusCode)
+		return errorcategory.Errorf(errorcategory.Auth, "token revocation failed (status %d)", resp.StatusCode)
 	}
 	return nil
 }

@@ -2,7 +2,6 @@ package samples
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 type mockGit struct {
@@ -107,7 +107,10 @@ func TestInitializeFailsWithEmptyName(t *testing.T) {
 	}
 
 	err := sampleManager.Initialize(name)
-	assert.Equal(t, errors.New("sample name is empty"), err)
+	require.EqualError(t, err, "sample name is empty")
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.UserInput, category)
 }
 
 func TestInitializeFailsWithNonexistentSample(t *testing.T) {
@@ -129,7 +132,10 @@ func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 	}
 
 	err := sampleManager.Initialize(name)
-	assert.Equal(t, errors.New("sample foo does not exist"), err)
+	require.EqualError(t, err, "sample foo does not exist")
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.UserInput, category)
 }
 
 func TestCopySkipsSymlinks(t *testing.T) {

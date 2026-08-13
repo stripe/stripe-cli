@@ -2,8 +2,8 @@ package rpcservice
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
@@ -22,7 +22,7 @@ func (srv *RPCService) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.L
 		return nil, err
 	}
 	if useOAuth {
-		return nil, fmt.Errorf("OAuth login required; use 'stripe login' in a terminal to complete browser authorization")
+		return nil, errorcategory.Errorf(errorcategory.Auth, "OAuth login required; use 'stripe login' in a terminal to complete browser authorization")
 	}
 
 	return &rpc.LoginResponse{

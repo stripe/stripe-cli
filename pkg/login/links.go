@@ -3,11 +3,11 @@ package login
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -60,7 +60,7 @@ func GetLinks(ctx context.Context, baseURL string, deviceName string, machineUUI
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return nil, false, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
+		return nil, false, errorcategory.Errorf(errorcategory.Auth, "unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
 	}
 
 	var links Links

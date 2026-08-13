@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -187,12 +187,12 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	}
 
 	if expectedSum == "" {
-		return nil, fmt.Errorf("could not locate a valid checksum for %s version %s", p.Shortname, version)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "could not locate a valid checksum for %s version %s", p.Shortname, version)
 	}
 
 	decoded, err := hex.DecodeString(expectedSum)
 	if err != nil {
-		return nil, fmt.Errorf("could not decode checksum for %s version %s", p.Shortname, version)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "could not decode checksum for %s version %s", p.Shortname, version)
 	}
 
 	return decoded, nil
@@ -248,7 +248,7 @@ func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
 		return &candidate, nil
 	}
 
-	return nil, fmt.Errorf("plugin metadata response did not include plugin %s", p.Shortname)
+	return nil, errorcategory.Errorf(errorcategory.Internal, "plugin metadata response did not include plugin %s", p.Shortname)
 }
 
 // IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
@@ -340,7 +340,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		if metadataLookupErr != nil {
 			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
 		}
-		return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
+		return errorcategory.Errorf(errorcategory.Internal, "could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
 	}
 
 	// Pull down bin, verify, and save to disk
@@ -403,7 +403,7 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 	}
 
 	if pluginIdx == -1 && !dirExists && !metadataExists {
-		return errors.New("this plugin doesn't seem to be installed, canceling")
+		return errorcategory.New(errorcategory.Internal, "this plugin doesn't seem to be installed, canceling")
 	}
 
 	previousState, err := snapshotInstalledPluginState(config, fs, p.Shortname)
@@ -507,7 +507,7 @@ func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
 
 	actualSum := hash.Sum(nil)
 	if !bytes.Equal(actualSum, expectedSum) {
-		return fmt.Errorf("installed plugin '%s' could not be verified, aborting installation", p.Shortname)
+		return errorcategory.Errorf(errorcategory.Internal, "installed plugin '%s' could not be verified, aborting installation", p.Shortname)
 	}
 
 	return nil
@@ -561,7 +561,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			if installed != "" {
 				hint = fmt.Sprintf("; installed version is %s", installed)
 			}
-			return fmt.Errorf("plugin %q version %q is not installed%s", p.Shortname, version, hint)
+			return errorcategory.Errorf(errorcategory.Internal, "plugin %q version %q is not installed%s", p.Shortname, version, hint)
 		}
 	case PluginsPath != "":
 		version = localDevelopmentVersion
@@ -672,7 +672,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			return err
 		}
 	default:
-		return errors.New("dispensed an unknown plugin interface")
+		return errorcategory.New(errorcategory.Internal, "dispensed an unknown plugin interface")
 	}
 	return nil
 }

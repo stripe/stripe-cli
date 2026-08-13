@@ -27,6 +27,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -72,17 +73,17 @@ var checkLatestPluginVersionTimeout = 2 * time.Second
 func ValidatePluginShortname(pluginName string) error {
 	switch {
 	case pluginName == "":
-		return errors.New("plugin name cannot be empty")
+		return errorcategory.New(errorcategory.UserInput, "plugin name cannot be empty")
 	case pluginName == "." || pluginName == "..":
-		return fmt.Errorf("invalid plugin name %q", pluginName)
+		return errorcategory.Errorf(errorcategory.UserInput, "invalid plugin name %q", pluginName)
 	case filepath.IsAbs(pluginName):
-		return fmt.Errorf("invalid plugin name %q", pluginName)
+		return errorcategory.Errorf(errorcategory.UserInput, "invalid plugin name %q", pluginName)
 	case strings.ContainsAny(pluginName, `/\`):
-		return fmt.Errorf("invalid plugin name %q", pluginName)
+		return errorcategory.Errorf(errorcategory.UserInput, "invalid plugin name %q", pluginName)
 	case filepath.Clean(pluginName) != pluginName:
-		return fmt.Errorf("invalid plugin name %q", pluginName)
+		return errorcategory.Errorf(errorcategory.UserInput, "invalid plugin name %q", pluginName)
 	case filepath.Base(pluginName) != pluginName:
-		return fmt.Errorf("invalid plugin name %q", pluginName)
+		return errorcategory.Errorf(errorcategory.UserInput, "invalid plugin name %q", pluginName)
 	default:
 		return nil
 	}
@@ -95,11 +96,11 @@ func ValidatePluginShortname(pluginName string) error {
 func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
 	switch {
 	case r == nil:
-		return errors.New("missing resolved plugin version")
+		return errorcategory.New(errorcategory.Internal, "missing resolved plugin version")
 	case r.Plugin == nil:
-		return errors.New("missing plugin metadata")
+		return errorcategory.New(errorcategory.Internal, "missing plugin metadata")
 	case r.Version == "":
-		return errors.New("missing plugin version")
+		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
 		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "")
 	}
@@ -185,7 +186,7 @@ func rollbackInstalledPluginState(config config.IConfig, fs afero.Fs, pluginName
 	}
 
 	if len(rollbackErrors) != 0 {
-		return errors.New(strings.Join(rollbackErrors, "; "))
+		return errorcategory.New(errorcategory.Internal, strings.Join(rollbackErrors, "; "))
 	}
 
 	return nil
@@ -544,10 +545,10 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 			resolvedVersion = cachedPlugin.LookUpLatestVersion()
 		}
 		if resolvedVersion == "" {
-			return nil, fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+			return nil, errorcategory.Errorf(errorcategory.Internal, "could not determine latest version for plugin %s", pluginName)
 		}
 		if cachedPlugin.getReleaseForVersion(resolvedVersion) == nil {
-			return nil, fmt.Errorf("cached plugin metadata did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+			return nil, errorcategory.Errorf(errorcategory.Internal, "cached plugin metadata did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
 		}
 
 		return &ResolvedPluginVersion{
@@ -754,7 +755,7 @@ func findPlugin(pluginList PluginList, pluginName string) (Plugin, error) {
 		}
 	}
 
-	return Plugin{}, fmt.Errorf("could not find a plugin named %s", pluginName)
+	return Plugin{}, errorcategory.Errorf(errorcategory.Internal, "could not find a plugin named %s", pluginName)
 }
 
 func comparePluginVersions(left, right string) int {
@@ -817,10 +818,10 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		resolvedVersion = plugin.LookUpLatestVersion()
 	}
 	if resolvedVersion == "" {
-		return nil, fmt.Errorf("plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
 	}
 	if plugin.getReleaseForVersion(resolvedVersion) == nil {
-		return nil, fmt.Errorf("plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
 	}
 
 	return &ResolvedPluginVersion{
@@ -848,12 +849,12 @@ func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error)
 
 func getLatestResolvedPluginVersion(pluginName string, plugin *Plugin) (string, error) {
 	if plugin == nil {
-		return "", fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+		return "", errorcategory.Errorf(errorcategory.Internal, "could not determine latest version for plugin %s", pluginName)
 	}
 
 	version := plugin.LookUpLatestVersion()
 	if version == "" {
-		return "", fmt.Errorf("could not determine latest version for plugin %s", pluginName)
+		return "", errorcategory.Errorf(errorcategory.Internal, "could not determine latest version for plugin %s", pluginName)
 	}
 
 	return version, nil
@@ -955,7 +956,7 @@ func getLocalPluginMetadataNames(config config.IConfig, fs afero.Fs) ([]string, 
 
 func validatePluginListResponse(pluginList *PluginList) error {
 	if pluginList == nil {
-		return errors.New("received an empty plugin list response")
+		return errorcategory.New(errorcategory.Internal, "received an empty plugin list response")
 	}
 	if pluginList.Plugins == nil {
 		pluginList.Plugins = []Plugin{}
@@ -984,10 +985,10 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
 	if err := toml.Unmarshal(body, &manifestBody); err != nil {
-		return nil, fmt.Errorf("received an invalid plugin manifest: %s", err)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "received an invalid plugin manifest: %s", err)
 	}
 	if len(manifestBody.Plugins) == 0 {
-		return nil, fmt.Errorf("received an empty plugin manifest")
+		return nil, errorcategory.Errorf(errorcategory.Internal, "received an empty plugin manifest")
 	}
 	return &manifestBody, nil
 }
@@ -1081,7 +1082,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no such host") {
-			return nil, fmt.Errorf("failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+			return nil, errorcategory.Errorf(errorcategory.Internal, "failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
 		}
 		return nil, err
 	}

@@ -43,6 +43,16 @@ func (e categorizedError) ErrorCategory() Category {
 	return e.category
 }
 
+// New returns a new error with an explicit category.
+func New(category Category, message string) error {
+	return With(errors.New(message), category)
+}
+
+// Errorf formats a new error with an explicit category.
+func Errorf(category Category, format string, args ...any) error {
+	return With(fmt.Errorf(format, args...), category)
+}
+
 // With returns an error with an explicit category. A nil error remains nil.
 func With(err error, category Category) error {
 	if err == nil {
@@ -53,7 +63,7 @@ func With(err error, category Category) error {
 
 // UserInputErrorf formats an error categorized as UserInput.
 func UserInputErrorf(format string, args ...any) error {
-	return With(fmt.Errorf(format, args...), UserInput)
+	return Errorf(UserInput, format, args...)
 }
 
 // Get returns the first explicit category in err's unwrap tree.

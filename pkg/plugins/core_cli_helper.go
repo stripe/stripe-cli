@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -315,7 +316,7 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 	}
 	cfg, ok := h.config.(*config.Config)
 	if !ok {
-		return fmt.Errorf("could not run peer plugin %q: config type mismatch", pluginName)
+		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
 	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "")
 }

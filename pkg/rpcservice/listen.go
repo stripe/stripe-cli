@@ -2,7 +2,6 @@ package rpcservice
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -11,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -139,7 +139,7 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 				(*stream).Send(resp)
 				return nil
 			default:
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T", de)
+				return errorcategory.Errorf(errorcategory.Internal, "VisitData received unexpected type for DataElement, got %T", de)
 			}
 		},
 		VisitStatus: func(se websocket.StateElement) error {
@@ -181,7 +181,7 @@ func buildEndpointResponseResp(raw *proxy.EndpointResponse) (*rpc.ListenResponse
 			},
 		}, nil
 	}
-	return nil, fmt.Errorf("received unexpected endpoint response")
+	return nil, errorcategory.Errorf(errorcategory.Internal, "received unexpected endpoint response")
 }
 
 func buildEndpointResponseErrorResp(raw error) *rpc.ListenResponse {

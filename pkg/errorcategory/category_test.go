@@ -16,6 +16,34 @@ func (e *testError) Error() string {
 	return e.message
 }
 
+func TestNew(t *testing.T) {
+	err := New(Auth, "authentication failed")
+
+	require.EqualError(t, err, "authentication failed")
+	category, ok := Get(err)
+	require.True(t, ok)
+	require.Equal(t, Auth, category)
+}
+
+func TestErrorf(t *testing.T) {
+	err := Errorf(UserInput, "invalid %s: %q", "value", "foo")
+
+	require.EqualError(t, err, `invalid value: "foo"`)
+	category, ok := Get(err)
+	require.True(t, ok)
+	require.Equal(t, UserInput, category)
+}
+
+func TestErrorfPreservesWrappedError(t *testing.T) {
+	target := &testError{message: "target"}
+	err := Errorf(Filesystem, "reading file: %w", target)
+
+	require.ErrorIs(t, err, target)
+	var typed *testError
+	require.ErrorAs(t, err, &typed)
+	require.Same(t, target, typed)
+}
+
 func TestWith(t *testing.T) {
 	target := &testError{message: "unchanged message"}
 	err := With(target, Auth)

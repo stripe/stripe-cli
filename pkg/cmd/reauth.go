@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -36,7 +36,7 @@ Opens the Stripe Dashboard so you can re-consent for the current OAuth session.`
 func (rc *reauthCmd) runReauthCmd(cmd *cobra.Command, args []string) error {
 	uat, _ := Config.Profile.GetUAT()
 	if !strings.HasPrefix(uat, "oak_") {
-		return fmt.Errorf("reauth requires an OAuth session; run 'stripe login' to authenticate")
+		return errorcategory.Errorf(errorcategory.UserInput, "reauth requires an OAuth session; run 'stripe login' to authenticate")
 	}
 	return login.Reauth(cmd.Context(), rc.accessBaseURL, uat)
 }

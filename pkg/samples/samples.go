@@ -4,7 +4,6 @@ package samples
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -18,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/validators"
 
@@ -164,7 +164,7 @@ func NewSampleManager(config *config.Config) (*SampleManager, error) {
 // 5. parse the sample cli config file
 func (s *SampleManager) Initialize(app string) error {
 	if app == "" {
-		return errors.New("sample name is empty")
+		return errorcategory.New(errorcategory.UserInput, "sample name is empty")
 	}
 
 	appPath, err := s.appCacheFolder(app)
@@ -184,7 +184,7 @@ func (s *SampleManager) Initialize(app string) error {
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
 		sampleData, ok := list[app]
 		if !ok {
-			return fmt.Errorf("sample %s does not exist", app)
+			return errorcategory.Errorf(errorcategory.UserInput, "sample %s does not exist", app)
 		}
 		err = s.Git.Clone(appPath, sampleData.GitRepo())
 		if err != nil {
@@ -241,8 +241,7 @@ func (s *SampleManager) Copy(target string) error {
 	if s.SelectedConfig.Integration.hasServers() {
 		// empty string is a valid option
 		if s.SelectedConfig.Server != "" && !contains(s.SelectedConfig.Integration.Servers, s.SelectedConfig.Server) {
-			return fmt.Errorf(
-				"server %s doesn't exist for sample integration %s, available servers: %v",
+			return errorcategory.Errorf(errorcategory.UserInput, "server %s doesn't exist for sample integration %s, available servers: %v",
 				s.SelectedConfig.Server,
 				integration,
 				s.SelectedConfig.Integration.Servers,
@@ -261,8 +260,7 @@ func (s *SampleManager) Copy(target string) error {
 	if s.SelectedConfig.Integration.hasClients() {
 		// empty string is a valid option
 		if s.SelectedConfig.Client != "" && !contains(s.SelectedConfig.Integration.Clients, s.SelectedConfig.Client) {
-			return fmt.Errorf(
-				"client %s doesn't exist for sample integration %s, available clients: %v",
+			return errorcategory.Errorf(errorcategory.UserInput, "client %s doesn't exist for sample integration %s, available clients: %v",
 				s.SelectedConfig.Client,
 				integration,
 				s.SelectedConfig.Integration.Clients,
@@ -476,7 +474,7 @@ func (s *SampleManager) GetSampleConfig(sampleName string, forceRefresh bool) (*
 	if _, ok := samplesList[sampleName]; !ok {
 		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
 To see supported samples, run 'stripe samples list'`, sampleName)
-		return nil, fmt.Errorf("%s", errorMessage)
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "%s", errorMessage)
 	}
 
 	err = s.Initialize(sampleName)

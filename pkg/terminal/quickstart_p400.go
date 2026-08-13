@@ -10,6 +10,7 @@ import (
 	"github.com/manifoldco/promptui"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/terminal/p400"
 )
 
@@ -23,7 +24,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
 		} else {
-			return fmt.Errorf("%s", err.Error())
+			return errorcategory.Errorf(errorcategory.API, "%s", err.Error())
 		}
 	}
 
@@ -36,7 +37,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
 		} else {
-			return fmt.Errorf("%s", err.Error())
+			return errorcategory.Errorf(errorcategory.API, "%s", err.Error())
 		}
 	}
 
@@ -47,7 +48,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
 		} else {
-			return fmt.Errorf("%s", err.Error())
+			return errorcategory.Errorf(errorcategory.API, "%s", err.Error())
 		}
 	}
 

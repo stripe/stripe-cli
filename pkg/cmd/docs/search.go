@@ -16,6 +16,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/docs/spinner"
 	"github.com/stripe/stripe-cli/pkg/docs/tui"
 	"github.com/stripe/stripe-cli/pkg/docs/ui"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -42,7 +43,7 @@ Search by keyword or phrase:
 
 func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("search: missing search query argument")
+		return errorcategory.Errorf(errorcategory.UserInput, "search: missing search query argument")
 	}
 
 	query := strings.Join(args, " ")

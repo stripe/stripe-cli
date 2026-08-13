@@ -45,6 +45,8 @@ jobs:
       with:
         version: v2.10.1
         args: --max-issues-per-linter=0 --max-same-issues=0
+    - name: Check categorized errors
+      run: go run ./internal/lint/errorcategory/cmd ./...
     - name: Run Tests
       run: make ci
       shell: bash

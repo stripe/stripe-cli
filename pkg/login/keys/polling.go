@@ -3,13 +3,12 @@ package keys
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -70,7 +69,7 @@ func PollForKey(ctx context.Context, pollURL string, interval time.Duration, max
 		res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
-			return nil, nil, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
+			return nil, nil, errorcategory.Errorf(errorcategory.Auth, "unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
 		}
 
 		jsonErr := json.Unmarshal(bodyBytes, &response)
@@ -92,5 +91,5 @@ func PollForKey(ctx context.Context, pollURL string, interval time.Duration, max
 		time.Sleep(interval)
 	}
 
-	return nil, nil, errors.New("exceeded max attempts")
+	return nil, nil, errorcategory.New(errorcategory.Auth, "exceeded max attempts")
 }

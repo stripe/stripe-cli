@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -156,7 +157,7 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 	// namespaces, group-by/filter cardinality, limit bounds, etc.) are left to
 	// the API so we don't duplicate logic that could drift out of sync.
 	if len(c.metrics) == 0 {
-		return fmt.Errorf("at least one --metric is required")
+		return errorcategory.Errorf(errorcategory.UserInput, "at least one --metric is required")
 	}
 
 	creds, err := c.rb.ResolveCredentials()
@@ -246,7 +247,7 @@ func parseMetricFilters(filters []string) (map[string][]string, error) {
 	for _, f := range filters {
 		parts := strings.SplitN(f, "=", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return nil, fmt.Errorf("invalid filter %q: must be in key=value format (e.g. --filter \"currency=usd\")", f)
+			return nil, errorcategory.Errorf(errorcategory.UserInput, "invalid filter %q: must be in key=value format (e.g. --filter \"currency=usd\")", f)
 		}
 		result[parts[0]] = append(result[parts[0]], parts[1])
 	}

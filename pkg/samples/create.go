@@ -2,12 +2,12 @@ package samples
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/validators"
 
 	"github.com/spf13/afero"
@@ -78,7 +78,7 @@ func (s *SampleManager) Create(
 
 	exists, _ := afero.DirExists(s.Fs, destination)
 	if exists {
-		resultChan <- CreationResult{Err: fmt.Errorf("path already exists for: %s", destination)}
+		resultChan <- CreationResult{Err: errorcategory.Errorf(errorcategory.UserInput, "path already exists for: %s", destination)}
 		return
 	}
 

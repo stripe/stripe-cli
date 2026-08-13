@@ -1,11 +1,10 @@
 package resource
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/terminal"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -40,26 +39,26 @@ func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) err
 	key, err := cc.cfg.Profile.GetAPIKey(false)
 
 	if err != nil {
-		return fmt.Errorf("%s", err.Error())
+		return errorcategory.Errorf(errorcategory.UserInput, "%s", err.Error())
 	}
 
 	err = validators.APIKeyNotRestricted(key)
 
 	if err != nil {
-		return fmt.Errorf("%s", err.Error())
+		return errorcategory.Errorf(errorcategory.UserInput, "%s", err.Error())
 	}
 
 	readers := terminal.ReaderNames()
 	reader, err := terminal.ReaderTypeSelectPrompt(readers)
 
 	if err != nil {
-		return fmt.Errorf("%s", err.Error())
+		return errorcategory.Errorf(errorcategory.UserInput, "%s", err.Error())
 	}
 
 	if reader == terminal.ReaderList["verifone-p400"].Name {
 		err = terminal.QuickstartP400(cmd.Context(), cc.cfg)
 		if err != nil {
-			return fmt.Errorf("%s", err.Error())
+			return errorcategory.Errorf(errorcategory.UserInput, "%s", err.Error())
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -204,7 +205,7 @@ func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []st
 		return login.SwitchContext(cmd.Context(), lc.accessBaseURL, &Config, accountID, lc.livemode)
 	}
 	if len(args) == 0 {
-		return fmt.Errorf("account name required")
+		return errorcategory.Errorf(errorcategory.UserInput, "account name required")
 	}
 	return Config.SwitchProfile(args[0])
 }

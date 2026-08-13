@@ -13,6 +13,7 @@ import (
 	pkgdocs "github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/pager"
 	"github.com/stripe/stripe-cli/pkg/docs/ui"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 const docsPrefsConfigKey = "docs_prefs"
@@ -98,7 +99,7 @@ func (r *RootCommand) runPrefsSet(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if found == nil {
-		return fmt.Errorf("prefs: unknown preference %q", id)
+		return errorcategory.Errorf(errorcategory.UserInput, "prefs: unknown preference %q", id)
 	}
 
 	if len(found.Values) > 0 {
@@ -110,7 +111,7 @@ func (r *RootCommand) runPrefsSet(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !valid {
-			return fmt.Errorf("prefs: invalid value %q for %q; allowed: %s", value, id, strings.Join(found.Values, ", "))
+			return errorcategory.Errorf(errorcategory.UserInput, "prefs: invalid value %q for %q; allowed: %s", value, id, strings.Join(found.Values, ", "))
 		}
 	}
 
@@ -206,14 +207,14 @@ func (r *RootCommand) getDocsPref(id string) string {
 
 func (r *RootCommand) writeDocsPref(id, value string) error {
 	if r.cfg == nil {
-		return fmt.Errorf("no configuration available")
+		return errorcategory.Errorf(errorcategory.UserInput, "no configuration available")
 	}
 	return r.cfg.Profile.WriteConfigField(docsPrefsConfigKey+"."+id, value)
 }
 
 func (r *RootCommand) deleteDocsPref(id string) error {
 	if r.cfg == nil {
-		return fmt.Errorf("no configuration available")
+		return errorcategory.Errorf(errorcategory.UserInput, "no configuration available")
 	}
 	return r.cfg.Profile.DeleteConfigField(docsPrefsConfigKey + "." + id)
 }

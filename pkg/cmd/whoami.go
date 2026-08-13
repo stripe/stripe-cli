@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -19,7 +19,7 @@ import (
 // errNotAuthenticated is returned by whoami when no credentials are found.
 // root.go recognizes this sentinel to suppress duplicate error output while
 // still exiting non-zero.
-var errNotAuthenticated = errors.New("not authenticated")
+var errNotAuthenticated = errorcategory.New(errorcategory.UserInput, "not authenticated")
 
 type whoamiCmd struct {
 	cmd           *cobra.Command

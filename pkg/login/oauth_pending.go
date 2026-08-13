@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // oauthContinuation holds the data needed to poll for an OAuth device token.
@@ -39,7 +40,7 @@ func loadPendingDeviceAuth() (*oauthContinuation, error) {
 	data, err := os.ReadFile(pendingDeviceAuthPath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, errors.New("no pending OAuth login found; run 'stripe login --non-interactive' first")
+			return nil, errorcategory.New(errorcategory.Auth, "no pending OAuth login found; run 'stripe login --non-interactive' first")
 		}
 		return nil, err
 	}

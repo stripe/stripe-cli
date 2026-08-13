@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -19,14 +18,15 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 const maxIterations = 100_000_000
 
 var (
-	ErrUnsupportedAlgorithm = errors.New("unsupported algorithm: only SHA-256 is supported")
-	ErrMaxIterationsReached = errors.New("proof-of-work exceeded maximum iterations")
+	ErrUnsupportedAlgorithm = errorcategory.New(errorcategory.Internal, "unsupported algorithm: only SHA-256 is supported")
+	ErrMaxIterationsReached = errorcategory.New(errorcategory.Internal, "proof-of-work exceeded maximum iterations")
 )
 
 // HTTPError is returned when the sandbox server responds with a non-200 status.
@@ -173,7 +173,7 @@ func (c *Client) GetChallenge(ctx context.Context, email string) (*ChallengeResp
 	}
 
 	if challenge.Algorithm == "" || challenge.Challenge == "" {
-		return nil, fmt.Errorf("invalid challenge response: missing algorithm or challenge")
+		return nil, errorcategory.Errorf(errorcategory.Internal, "invalid challenge response: missing algorithm or challenge")
 	}
 
 	log.WithFields(log.Fields{

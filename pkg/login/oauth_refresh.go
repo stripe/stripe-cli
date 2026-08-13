@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
@@ -22,13 +23,13 @@ func init() {
 // the next ResolveCredentials call surfaces an actionable re-login error.
 func refreshOAuthToken(p *config.Profile) error {
 	if config.KeyRing == nil {
-		return errors.New("keyring unavailable; run 'stripe login' to re-authenticate")
+		return errorcategory.New(errorcategory.Auth, "keyring unavailable; run 'stripe login' to re-authenticate")
 	}
 
 	refreshTokenBytes, err := config.KeyRing.Get(config.OAuthRefreshTokenKeychainKey)
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
-			return errors.New("session expired; run 'stripe login' to re-authenticate")
+			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
 		}
 		return err
 	}
@@ -47,7 +48,7 @@ func refreshOAuthToken(p *config.Profile) error {
 			// clear "run stripe login" error on the next attempt rather than an
 			// opaque 401 from the Stripe API.
 			_ = clearOAuthCredentialsForProfile(p)
-			return errors.New("session expired; run 'stripe login' to re-authenticate")
+			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
 		}
 		return fmt.Errorf("failed to refresh session: %w", err)
 	}
@@ -103,7 +104,7 @@ func doRefreshToken(ctx context.Context, accessBaseURL, clientID, refreshToken s
 		if jsonErr := json.Unmarshal(body, &errResp); jsonErr == nil && errResp.Error != "" {
 			return nil, &OAuthError{Code: errResp.Error, Description: errResp.ErrorDescription, HTTPStatus: resp.StatusCode}
 		}
-		return nil, fmt.Errorf("token refresh failed (status %d)", resp.StatusCode)
+		return nil, errorcategory.Errorf(errorcategory.Auth, "token refresh failed (status %d)", resp.StatusCode)
 	}
 
 	var tokenResp OAuthTokenResponse

@@ -17,6 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 func TestParsePathDoNothing(t *testing.T) {
@@ -51,7 +52,7 @@ func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
 		ansi.Bold("char"),
 	)
 
-	assert.Equal(t, expected, err)
+	assertCategorizedError(t, err, expected.Error(), errorcategory.UserInput)
 }
 
 func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
@@ -69,7 +70,7 @@ func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
 		ansi.Bold("foo"),
 	)
 
-	assert.Equal(t, expected, err)
+	assertCategorizedError(t, err, expected.Error(), errorcategory.UserInput)
 }
 
 func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
@@ -87,7 +88,7 @@ func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
 		ansi.Bold("bender"),
 	)
 
-	assert.Equal(t, expected, err)
+	assertCategorizedError(t, err, expected.Error(), errorcategory.UserInput)
 }
 
 func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
@@ -105,7 +106,15 @@ func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
 		ansi.Bold("foo"),
 	)
 
-	assert.Equal(t, expected, err)
+	assertCategorizedError(t, err, expected.Error(), errorcategory.UserInput)
+}
+
+func assertCategorizedError(t *testing.T, err error, message string, expected errorcategory.Category) {
+	t.Helper()
+	assert.EqualError(t, err, message)
+	category, ok := errorcategory.Get(err)
+	assert.True(t, ok)
+	assert.Equal(t, expected, category)
 }
 
 func TestParseTwoParam(t *testing.T) {

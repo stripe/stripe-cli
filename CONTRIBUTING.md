@@ -46,6 +46,26 @@ To run the linter, run `make lint`.
 
 Make sure `golangci-lint` is installed: `brew install golangci/tap/golangci-lint`
 
+New errors must include a semantic category. Use `errorcategory.New` for a
+fixed message and `errorcategory.Errorf` for a formatted message:
+
+```go
+return errorcategory.New(errorcategory.UserInput, "account ID is required")
+return errorcategory.Errorf(errorcategory.Auth, "profile %q has no API key", profile)
+```
+
+Adding context to an existing error is not a new error origin. Continue to use
+`fmt.Errorf` with `%w` so the existing error and its category remain available:
+
+```go
+return fmt.Errorf("loading configuration: %w", err)
+```
+
+The categorized-error lint check ignores tests and generated files. In the rare
+case where it cannot model a valid error origin, add a nearby
+`//nolint:errorcategory` comment with a reason why no semantic category can be
+assigned.
+
 ### Tests
 
 You can run tests with:

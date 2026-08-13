@@ -9,6 +9,8 @@ import (
 	"runtime"
 
 	execabs "golang.org/x/sys/execabs"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 var execCommand = execabs.Command
@@ -30,7 +32,7 @@ func Browser(url string) error {
 	case "darwin":
 		err = execCommand("open", url).Start()
 	default:
-		err = fmt.Errorf("unsupported platform")
+		err = errorcategory.Errorf(errorcategory.Filesystem, "unsupported platform")
 	}
 
 	if err != nil {
@@ -64,10 +66,10 @@ func CanOpenBrowser() bool {
 // The URL must use the https scheme.
 func OpenURL(ctx context.Context, u *url.URL, allowedHosts map[string]bool) error {
 	if u == nil {
-		return fmt.Errorf("nil URL")
+		return errorcategory.Errorf(errorcategory.Filesystem, "nil URL")
 	}
 	if u.Scheme != "https" || (allowedHosts != nil && !allowedHosts[u.Host]) {
-		return fmt.Errorf("URL not allowed: %s", u)
+		return errorcategory.Errorf(errorcategory.Filesystem, "URL not allowed: %s", u)
 	}
 
 	cmd, err := openCommand()
@@ -92,6 +94,6 @@ func openCommand() ([]string, error) {
 	case "linux":
 		return []string{"xdg-open"}, nil
 	default:
-		return nil, fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+		return nil, errorcategory.Errorf(errorcategory.Filesystem, "unsupported platform: %s", runtime.GOOS)
 	}
 }
