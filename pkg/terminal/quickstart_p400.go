@@ -3,6 +3,7 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -20,11 +21,11 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 	tsCtx, err := p400.RegisterAndActivateReader(ctx, tsCtx)
 
 	if err != nil {
-		if err.Error() == promptui.ErrInterrupt.Error() {
+		if errors.Is(err, promptui.ErrInterrupt) {
 			os.Exit(1)
-		} else {
-			return fmt.Errorf("%s", err.Error())
 		}
+
+		return err
 	}
 
 	fmt.Println("Got it!")
@@ -33,22 +34,22 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 
 	if err != nil {
 		p400.ClearReaderDisplay(tsCtx)
-		if err.Error() == promptui.ErrInterrupt.Error() {
+		if errors.Is(err, promptui.ErrInterrupt) {
 			os.Exit(1)
-		} else {
-			return fmt.Errorf("%s", err.Error())
 		}
+
+		return err
 	}
 
 	tsCtx, err = p400.CompleteTestPayment(ctx, tsCtx)
 
 	if err != nil {
 		p400.ClearReaderDisplay(tsCtx)
-		if err.Error() == promptui.ErrInterrupt.Error() {
+		if errors.Is(err, promptui.ErrInterrupt) {
 			os.Exit(1)
-		} else {
-			return fmt.Errorf("%s", err.Error())
 		}
+
+		return err
 	}
 
 	p400.SummarizeQuickstartCompletion(tsCtx)
