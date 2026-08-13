@@ -248,11 +248,15 @@ type Session struct {
 	Steps               []SessionStep        `json:"steps"`
 	UsedSandbox         bool                 `json:"used_sandbox,omitempty"`
 	NextSteps           *NextStepsState      `json:"next_steps,omitempty"`
-	ParentSessionID     string               `json:"parent_session_id,omitempty"`
-	ParentStepID        string               `json:"parent_step_id,omitempty"` // which next-step this session fulfills
-	CreatedAt           time.Time            `json:"created_at"`
-	UpdatedAt           time.Time            `json:"updated_at"`
-	Version             int                  `json:"version"`
+	// Cwd is the directory `coop start`/`coop run` was invoked from. Sessions
+	// live in one flat global folder, so this is what distinguishes "the
+	// session for the project I am looking at" from every other one.
+	Cwd             string    `json:"cwd,omitempty"`
+	ParentSessionID string    `json:"parent_session_id,omitempty"`
+	ParentStepID    string    `json:"parent_step_id,omitempty"` // which next-step this session fulfills
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	Version         int       `json:"version"`
 }
 
 // NextStepsState tracks post-completion suggestions and selection.

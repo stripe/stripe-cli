@@ -1,8 +1,11 @@
 package tui
 
 import (
+	"encoding/json"
 	"errors"
 	"image/color"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -753,21 +756,92 @@ func TestBlurredTickStillPolls(t *testing.T) {
 	assert.Len(t, batch, 2)
 }
 
-func TestWaitingModeAdoptsExistingActiveSessionAfterDelay(t *testing.T) {
+func TestWaitingModeAdoptsLiveSessionForThisProject(t *testing.T) {
 	dir := t.TempDir()
 	store, _ := coop.NewStoreAt(dir)
-	require.NoError(t, store.Write(&coop.Session{ID: "old_session", Status: coop.SessionActive}))
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	writeSessionFile(t, dir, &coop.Session{
+		ID: "mine", Status: coop.SessionActive, Cwd: cwd, UpdatedAt: time.Now(),
+	})
 
-	m := NewWaitingModel(store, map[string]bool{"old_session": true})
+	m := NewWaitingModel(store, map[string]bool{"mine": true})
 	m.waitingSince = time.Now().Add(-existingSessionAdoptDelay)
 
-	cmd := m.discoverNewSession()
-	require.NotNil(t, cmd)
-	msg := cmd()
+	msg := m.discoverNewSession()()
 
 	discovered, ok := msg.(sessionDiscoveredMsg)
-	require.True(t, ok, "waiting mode should adopt the pre-existing active session instead of spinning forever")
-	assert.Equal(t, "old_session", discovered.sessionID)
+	require.True(t, ok, "re-running coop join --wait must reattach, not spin forever")
+	assert.Equal(t, "mine", discovered.sessionID)
+}
+
+// The bug this guards: `stripe coop start` runs the TUI as `coop join --wait`
+// while the agent spends minutes on discovery, so the adopt timer always
+// expires first. Crashed runs stay `active` forever (nothing reaps them), so
+// without these filters the TUI attaches to a zombie or another project's
+// session and never switches to the one the agent is creating.
+func TestWaitingModeRefusesUnrelatedSessions(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		session *coop.Session
+	}{
+		{
+			name:    "another project",
+			session: &coop.Session{ID: "other", Status: coop.SessionActive, Cwd: "/somewhere/else", UpdatedAt: time.Now()},
+		},
+		{
+			name:    "crashed run in this project",
+			session: &coop.Session{ID: "zombie", Status: coop.SessionActive, Cwd: cwd, UpdatedAt: time.Now().Add(-time.Hour)},
+		},
+		{
+			name:    "session predating the cwd field",
+			session: &coop.Session{ID: "legacy", Status: coop.SessionActive, UpdatedAt: time.Now()},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			store, _ := coop.NewStoreAt(dir)
+			// Written directly: Store.Write stamps UpdatedAt with the current
+			// time, which is exactly why a crashed session's timestamp stays
+			// old in the real world — and why it can't be faked through Write.
+			writeSessionFile(t, dir, tt.session)
+
+			m := NewWaitingModel(store, map[string]bool{tt.session.ID: true})
+			m.waitingSince = time.Now().Add(-existingSessionAdoptDelay)
+
+			_, adopted := m.discoverNewSession()().(sessionDiscoveredMsg)
+			assert.False(t, adopted, "must keep waiting for the session this launch is creating")
+		})
+	}
+}
+
+// writeSessionFile writes a session JSON verbatim, preserving timestamps that
+// Store.Write would otherwise overwrite.
+func writeSessionFile(t *testing.T, dir string, session *coop.Session) {
+	t.Helper()
+	session.SchemaVersion = coop.CurrentSessionSchemaVersion
+	data, err := json.Marshal(session)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, session.ID+".json"), data, 0o600))
+}
+
+func TestWaitingModeIgnoresNewSessionsFromOtherProjects(t *testing.T) {
+	dir := t.TempDir()
+	store, _ := coop.NewStoreAt(dir)
+	writeSessionFile(t, dir, &coop.Session{
+		ID: "elsewhere", Status: coop.SessionActive, Cwd: "/somewhere/else", UpdatedAt: time.Now(),
+	})
+
+	// Empty baseline: "elsewhere" looks brand new, but it is not ours.
+	m := NewWaitingModel(store, map[string]bool{})
+
+	_, adopted := m.discoverNewSession()().(sessionDiscoveredMsg)
+	assert.False(t, adopted, "a concurrent launch in another repo must not be latched")
 }
 
 func TestReviewAlertFiresOnlyOnTransitions(t *testing.T) {
@@ -1473,4 +1547,48 @@ func TestReviewAppearingResumesFollowing(t *testing.T) {
 	result, _ := m.Update(sessionUpdatedMsg{session: &next})
 
 	assert.False(t, result.(Model).userMoved)
+}
+
+func TestExitCleanupRunsOnce(t *testing.T) {
+	calls := 0
+	m := readyModel()
+	WithExitCleanup(func() { calls++ })(&m)
+
+	m.runExitCleanup()
+	m.runExitCleanup()
+
+	assert.Equal(t, 1, calls, "cleanup must be idempotent so callers can defer it unconditionally")
+}
+
+func TestReviewAlertDedupSurvivesUpdate(t *testing.T) {
+	var alerts int
+	m := readyModel()
+	m.reviewAlertNotifier = func(hasReview, focused bool) { alerts++ }
+	m.session.Steps[0].Nodes[1].State = coop.NodeReview
+
+	// Drive it through Update twice with the same session state: the dedup
+	// flag lives on the returned model copy, so a second identical update
+	// must not re-alert.
+	next, cmd := m.Update(sessionUpdatedMsg{session: m.session})
+	require.NotNil(t, cmd)
+	runBatch(cmd)
+	updated, ok := next.(Model)
+	require.True(t, ok)
+
+	_, cmd = updated.Update(sessionUpdatedMsg{session: updated.session})
+	runBatch(cmd)
+
+	assert.Equal(t, 1, alerts, "alert must fire once per transition, not once per poll")
+}
+
+// runBatch executes a tea.Cmd and any commands it batches.
+func runBatch(cmd tea.Cmd) {
+	if cmd == nil {
+		return
+	}
+	if batch, ok := cmd().(tea.BatchMsg); ok {
+		for _, c := range batch {
+			runBatch(c)
+		}
+	}
 }

@@ -69,7 +69,13 @@ const (
 
 	// tmux draws a one-column divider between horizontally split panes.
 	coopPaneDividerWidth = 1
-	claudeCoopAgents     = `{"coop-cost-effective-worker":{"description":"Use proactively for well-bounded, self-contained exploration, documentation research, test execution, log analysis, and verification tasks when delegation saves main-session context and cost.","prompt":"Work as a focused cost-effective Co-op subagent. Complete only the bounded task you receive, verify your result, and return concise evidence to the main agent. Find and honor applicable repository guidance, including AGENTS.md and CLAUDE.md, before acting. Do not choose or change the Stripe integration or run Co-op lifecycle commands.","model":"haiku"}}`
+
+	// coopTUIWidthEnv carries the intended TUI pane width into the TUI
+	// process. tmux redistributes panes proportionally when the terminal is
+	// resized, so without re-pinning, the fixed width drifts back below the
+	// review card's readable floor the first time the user resizes.
+	coopTUIWidthEnv  = "STRIPE_COOP_TUI_WIDTH"
+	claudeCoopAgents = `{"coop-cost-effective-worker":{"description":"Use proactively for well-bounded, self-contained exploration, documentation research, test execution, log analysis, and verification tasks when delegation saves main-session context and cost.","prompt":"Work as a focused cost-effective Co-op subagent. Complete only the bounded task you receive, verify your result, and return concise evidence to the main agent. Find and honor applicable repository guidance, including AGENTS.md and CLAUDE.md, before acting. Do not choose or change the Stripe integration or run Co-op lifecycle commands.","model":"haiku"}}`
 )
 
 func (rc *coopRunCmd) detectAgent() (*agentInfo, error) {
@@ -328,6 +334,10 @@ func (rc *coopRunCmd) runInTmuxSplitWithCommand(stripeBin string, blueprint *coo
 		return fmt.Errorf("tmux split failed: %w", err)
 	}
 
+	// The TUI runs in this process here, so publish the intended width the
+	// same way the new-session path does for its pane.
+	os.Setenv(coopTUIWidthEnv, strconv.Itoa(tuiWidth))
+
 	if blueprint != nil {
 		return tui.Run(store, session.ID, coopTUIOptions()...)
 	}
@@ -366,7 +376,11 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 		killTmuxSession(serverFlags, sessionName)
 	}
 
-	width, height := coopTmuxSessionDimensions()
+	width, height, ok := coopTmuxSessionDimensions()
+	if !ok {
+		return rc.runFallbackWithReason(stripeBin, blueprint, buildPaneCmd,
+			"Could not measure this terminal — skipping the split view. Running the agent here.")
+	}
 	tuiWidth := coopTUIPaneWidthFor(width)
 	if tuiWidth == 0 {
 		return rc.runFallbackWithReason(stripeBin, blueprint, buildPaneCmd,
@@ -388,7 +402,7 @@ func (rc *coopRunCmd) runInNewTmuxWithCommand(stripeBin string, blueprint *coop.
 	} else {
 		tuiCmd += " " + session.ID
 	}
-	tuiCmd = shellCommandWithCoopEnv(tuiCmd)
+	tuiCmd = fmt.Sprintf("%s=%d %s", coopTUIWidthEnv, tuiWidth, shellCommandWithCoopEnv(tuiCmd))
 
 	paneCmd, cleanup, err := buildPaneCmd(session)
 	if err != nil {
@@ -438,16 +452,25 @@ func killTmuxSession(serverFlags []string, sessionName string) {
 	_ = runTmux(withTmuxServerFlags(serverFlags, "kill-session", "-t", sessionName)...)
 }
 
-func coopTmuxSessionDimensions() (int, int) {
-	width, height, err := term.GetSize(int(os.Stdout.Fd()))
-	return normalizeCoopTmuxSessionDimensions(width, height, err)
-}
-
-func normalizeCoopTmuxSessionDimensions(width, height int, err error) (int, int) {
-	if err != nil || width <= 0 || height <= 0 {
-		return defaultCoopTmuxSessionWidth, defaultCoopTmuxSessionHeight
+// coopTmuxSessionDimensions measures the terminal co-op was launched from.
+// ok is false when no terminal could be measured at all — stdout redirected
+// AND stdin not a tty, e.g. `stripe coop start | tee log`. Guessing there
+// would size the split for a terminal that doesn't exist: tmux squeezes the
+// panes proportionally the moment a narrower client attaches, and the TUI
+// lands far below the width its review card needs.
+var coopTmuxSessionDimensions = func() (width, height int, ok bool) {
+	for _, f := range []*os.File{os.Stdout, os.Stdin, os.Stderr} {
+		if w, h, err := term.GetSize(int(f.Fd())); err == nil && w > 0 && h > 0 {
+			return w, h, true
+		}
 	}
-	return width, height
+	if tty, err := os.Open("/dev/tty"); err == nil {
+		defer tty.Close()
+		if w, h, err := term.GetSize(int(tty.Fd())); err == nil && w > 0 && h > 0 {
+			return w, h, true
+		}
+	}
+	return 0, 0, false
 }
 
 func (rc *coopRunCmd) runFallback(stripeBin string, agent *agentInfo, agentPrompt string, autoApprove bool, blueprint *coop.Blueprint) error {

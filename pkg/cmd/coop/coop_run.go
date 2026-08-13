@@ -147,6 +147,9 @@ func newCoopSession(bp *coop.Blueprint, sessionID, language string, rawSettings,
 		return nil, err
 	}
 	session.CreatedAt = time.Now().UTC()
+	if cwd, err := os.Getwd(); err == nil {
+		session.Cwd = cwd
+	}
 	session.ParentSessionID = parentSession
 	session.ParentStepID = parentStep
 	session.UsedSandbox = coopSandboxClaimURL() != ""

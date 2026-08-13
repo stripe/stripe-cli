@@ -42,6 +42,23 @@ func WithReviewAlertNotifier(notify ReviewAlertNotifier) Option {
 	}
 }
 
+// WithResizeHook is called whenever the terminal reports a new size. Used to
+// re-assert a pane width that the terminal multiplexer redistributed.
+func WithResizeHook(hook func(width, height int)) Option {
+	return func(m *Model) {
+		m.resizeHook = hook
+	}
+}
+
+// WithExitCleanup registers work to run once the TUI has stopped — used to put
+// back terminal state the TUI changed (a renamed tmux window). It runs after
+// Run returns, so it also covers quitting mid-review.
+func WithExitCleanup(cleanup func()) Option {
+	return func(m *Model) {
+		m.exitCleanup = append(m.exitCleanup, cleanup)
+	}
+}
+
 // programOptions honors the CLI's own color setting.
 //
 // Every other command routes color through ansi.ColorsEnabled, which folds in
@@ -61,6 +78,7 @@ func programOptions() []tea.ProgramOption {
 // Run launches the fullscreen co-op TUI for a known session.
 func Run(store *coop.Store, sessionID string, opts ...Option) error {
 	model := NewModel(store, sessionID, opts...)
+	defer model.runExitCleanup()
 	p := tea.NewProgram(model, programOptions()...)
 	_, err := p.Run()
 	return err
@@ -70,6 +88,7 @@ func Run(store *coop.Store, sessionID string, opts ...Option) error {
 // to appear (ignoring the provided existing session IDs) and transitions once found.
 func RunWaiting(store *coop.Store, existingSessionIDs map[string]bool, opts ...Option) error {
 	model := NewWaitingModel(store, existingSessionIDs, opts...)
+	defer model.runExitCleanup()
 	p := tea.NewProgram(model, programOptions()...)
 	_, err := p.Run()
 	return err

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"os"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -9,10 +10,48 @@ import (
 )
 
 // existingSessionAdoptDelay is how long waiting mode holds out for a brand-new
-// session before adopting an already-active one. Long enough for `coop start`'s
-// agent to create its session first; short enough that a re-run `coop join
-// --wait` doesn't feel hung.
+// session before considering an already-active one. Long enough for `coop
+// start`'s agent to create its session first; short enough that a re-run
+// `coop join --wait` doesn't feel hung.
 const existingSessionAdoptDelay = 10 * time.Second
+
+// existingSessionLivenessWindow bounds how stale a pre-existing session may be
+// and still be adopted. An agent writes to its session file constantly, so a
+// session no one has touched recently belongs to a crashed run — and crashed
+// runs stay `active` forever because nothing reaps them. Adopting one would
+// silently show the wrong work.
+const existingSessionLivenessWindow = 2 * time.Minute
+
+// adoptableExistingSession returns a pre-existing active session that plainly
+// belongs to this launch: same working directory, and updated recently enough
+// that its agent is still alive. Returns nil when nothing qualifies, which
+// keeps waiting mode waiting.
+func adoptableExistingSession(store *coop.Store, cwd string, now time.Time) *coop.Session {
+	if cwd == "" {
+		return nil
+	}
+	ids, err := store.List()
+	if err != nil {
+		return nil
+	}
+	var best *coop.Session
+	for _, id := range ids {
+		session, err := store.Read(id)
+		if err != nil || session.Status != coop.SessionActive {
+			continue
+		}
+		if session.Cwd != cwd {
+			continue
+		}
+		if now.Sub(session.UpdatedAt) > existingSessionLivenessWindow {
+			continue
+		}
+		if best == nil || session.UpdatedAt.After(best.UpdatedAt) {
+			best = session
+		}
+	}
+	return best
+}
 
 func (m Model) loadSession() tea.Cmd {
 	return func() tea.Msg {
@@ -48,6 +87,10 @@ func (m Model) discoverNewSession() tea.Cmd {
 	store := m.store
 	existingSessionIDs := m.existingSessionIDs
 	adoptExisting := !m.waitingSince.IsZero() && time.Since(m.waitingSince) >= existingSessionAdoptDelay
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = ""
+	}
 	return func() tea.Msg {
 		if existingSessionIDs == nil {
 			return noUpdateMsg{}
@@ -57,19 +100,30 @@ func (m Model) discoverNewSession() tea.Cmd {
 			return noUpdateMsg{}
 		}
 		for _, id := range ids {
-			if !existingSessionIDs[id] {
-				session, err := store.Read(id)
-				if err == nil && session.Status == coop.SessionActive {
-					return sessionDiscoveredMsg{sessionID: id}
-				}
+			if existingSessionIDs[id] {
+				continue
 			}
+			session, err := store.Read(id)
+			if err != nil || session.Status != coop.SessionActive {
+				continue
+			}
+			// Skip sessions that announce a different project. Store.List is
+			// ReadDir order over random IDs, so with two concurrent launches
+			// this loop would otherwise latch an arbitrary one. Sessions
+			// written before Cwd existed carry none; accept those.
+			if cwd != "" && session.Cwd != "" && session.Cwd != cwd {
+				continue
+			}
+			return sessionDiscoveredMsg{sessionID: id}
 		}
-		// No new session appeared. If an active one predates the baseline,
-		// adopt it rather than spinning forever: `coop join --wait` is the
-		// exact command the fallback prints, and on a re-run after a quit or
-		// crash the session it described is already in the baseline.
+		// No new session appeared. `coop join --wait` is the exact command the
+		// fallback prints, so on a re-run after a quit the session it
+		// described is already in the baseline and would never be latched.
+		// Adopt it — but only when it plainly belongs to this launch, so a
+		// stale session from another project (or a crashed earlier run) can
+		// never be picked up instead of the one the agent is creating.
 		if adoptExisting {
-			if session, err := store.LatestActiveSession(); err == nil {
+			if session := adoptableExistingSession(store, cwd, time.Now()); session != nil {
 				return sessionDiscoveredMsg{sessionID: session.ID}
 			}
 		}

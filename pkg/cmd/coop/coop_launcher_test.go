@@ -16,35 +16,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop/tui"
 )
 
-func TestNormalizeCoopTmuxSessionDimensionsUsesTerminalSize(t *testing.T) {
-	width, height := normalizeCoopTmuxSessionDimensions(260, 60, nil)
-
-	assert.Equal(t, 260, width)
-	assert.Equal(t, 60, height)
-}
-
-func TestNormalizeCoopTmuxSessionDimensionsFallsBack(t *testing.T) {
-	tests := []struct {
-		name   string
-		width  int
-		height int
-		err    error
-	}{
-		{name: "size error", width: 260, height: 60, err: errors.New("not a terminal")},
-		{name: "zero width", width: 0, height: 60},
-		{name: "zero height", width: 260, height: 0},
-		{name: "negative width", width: -1, height: 60},
-		{name: "negative height", width: 260, height: -1},
+func TestCoopTmuxSessionDimensionsReportsUnmeasurableTerminal(t *testing.T) {
+	// Tests run with stdio redirected and, in CI, with no controlling
+	// terminal. Where /dev/tty is unavailable this must report "unknown"
+	// rather than inventing a size — guessing sizes the split for a terminal
+	// that doesn't exist, and tmux squeezes both panes once a real client
+	// attaches.
+	width, height, ok := coopTmuxSessionDimensions()
+	if !ok {
+		assert.Zero(t, width)
+		assert.Zero(t, height)
+		return
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			width, height := normalizeCoopTmuxSessionDimensions(tt.width, tt.height, tt.err)
-
-			assert.Equal(t, defaultCoopTmuxSessionWidth, width)
-			assert.Equal(t, defaultCoopTmuxSessionHeight, height)
-		})
-	}
+	assert.Positive(t, width, "a measurable terminal must report a usable width")
+	assert.Positive(t, height)
 }
 
 func TestExplicitBlueprintPromptIsCompactBootstrap(t *testing.T) {
@@ -297,6 +282,9 @@ func TestTmuxSplitUsesFixedTUIWidth(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	splitErr := errors.New("split failed")
+	originalDimensions := coopTmuxSessionDimensions
+	coopTmuxSessionDimensions = func() (int, int, bool) { return 200, 50, true }
+	t.Cleanup(func() { coopTmuxSessionDimensions = originalDimensions })
 	var tmuxCalls [][]string
 	originalRunTmux := runTmux
 	originalRunTmuxOutput := runTmuxOutput
@@ -368,6 +356,9 @@ func TestNewTmuxSplitFailureKillsTmuxSessionAndAbortsStartedSession(t *testing.T
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	splitErr := errors.New("split failed")
+	originalDimensions := coopTmuxSessionDimensions
+	coopTmuxSessionDimensions = func() (int, int, bool) { return 200, 50, true }
+	t.Cleanup(func() { coopTmuxSessionDimensions = originalDimensions })
 	var tmuxCalls [][]string
 	originalRunTmux := runTmux
 	originalRunTmuxOutput := runTmuxOutput

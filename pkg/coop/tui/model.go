@@ -80,6 +80,8 @@ type Model struct {
 	reviewDecisionNotifier ReviewDecisionNotifier
 	reviewAlertNotifier    ReviewAlertNotifier
 	reviewAlerted          bool
+	exitCleanup            []func()
+	resizeHook             func(width, height int)
 
 	agentHeartbeatMissing bool
 	// consecutiveReadErrors tracks failed session polls, so a single transient
@@ -202,6 +204,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.handleWindowSize(msg)
+		if m.resizeHook != nil {
+			hook, w, h := m.resizeHook, msg.Width, msg.Height
+			return m, func() tea.Msg {
+				hook(w, h)
+				return nil
+			}
+		}
 		return m, nil
 
 	case tickMsg:
@@ -261,7 +270,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.resizeViewport()
 		m.syncViewport()
-		return m, tea.Batch(tickCmd(), m.reviewAlertCmd())
+		// Sequenced deliberately: reviewAlertCmd mutates m.reviewAlerted, and
+		// Go leaves the evaluation order of a plain operand relative to a call
+		// in the same return statement unspecified. Assigning first guarantees
+		// the returned copy carries the dedup flag; without it the alert could
+		// re-fire on every poll.
+		alert := m.reviewAlertCmd()
+		return m, tea.Batch(tickCmd(), alert)
 
 	case errMsg:
 		m.recordReadError(msg.err)
@@ -417,6 +432,17 @@ func (m *Model) reviewAlertCmd() tea.Cmd {
 		notify(hasReview, focused)
 		return nil
 	}
+}
+
+// runExitCleanup runs registered teardown once the program has stopped. It is
+// idempotent so callers can defer it unconditionally.
+func (m *Model) runExitCleanup() {
+	for _, cleanup := range m.exitCleanup {
+		if cleanup != nil {
+			cleanup()
+		}
+	}
+	m.exitCleanup = nil
 }
 
 // resumeFollowingIfReviewAppeared clears the manual-navigation latch when a
