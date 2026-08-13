@@ -17,15 +17,8 @@ type listAccountsResponse struct {
 }
 
 // ListAuthorizedAccounts returns the Stripe accounts accessible to accessToken.
-// If the endpoint is unreachable or returns a non-200 response, it falls back
-// to stub data so that callers can be built and tested before the endpoint is live.
-// TODO: remove stub fallback once GET /stripecli/oauth2/token/accounts is available.
 func ListAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken string) ([]config.AuthorizedAccount, error) {
-	accounts, err := fetchAuthorizedAccounts(ctx, accessBaseURL, accessToken)
-	if err != nil {
-		return nil, err
-	}
-	return accounts, nil
+	return fetchAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 }
 
 func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken string) ([]config.AuthorizedAccount, error) {

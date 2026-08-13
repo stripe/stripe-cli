@@ -23,6 +23,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -227,8 +228,18 @@ func (rb *Base) InitFlags() {
 }
 
 // ResolveCredentials returns Credentials for this request using the associated profile.
+// If the requested mode doesn't match the OAuth active context, it returns an
+// error explaining how to reconcile it using the --live flag these commands expose.
 func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
-	return rb.Profile.ResolveCredentials(rb.Livemode)
+	creds, err := rb.Profile.ResolveCredentials(rb.Livemode)
+	var mismatch *config.ActiveContextLivemodeMismatchError
+	if errors.As(err, &mismatch) {
+		if mismatch.ActiveLivemode {
+			return stripe.Credentials{}, errorcategory.UserInputErrorf("your active context is livemode; add --live to match it, or run 'stripe switch context' to select a test mode context")
+		}
+		return stripe.Credentials{}, errorcategory.UserInputErrorf("your active context is test mode; remove --live to match it, or run 'stripe switch context' to select a livemode context")
+	}
+	return creds, err
 }
 
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.

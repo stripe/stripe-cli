@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -138,6 +141,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	creds, err := Config.Profile.ResolveCredentials(lc.livemode)
+	var mismatch *config.ActiveContextLivemodeMismatchError
+	if errors.As(err, &mismatch) {
+		if mismatch.ActiveLivemode {
+			return errorcategory.UserInputErrorf("your active context is livemode; add --live to match it, or run 'stripe switch context' to select a test mode context")
+		}
+		return errorcategory.UserInputErrorf("your active context is test mode; remove --live to match it, or run 'stripe switch context' to select a livemode context")
+	}
 	if err != nil {
 		return err
 	}

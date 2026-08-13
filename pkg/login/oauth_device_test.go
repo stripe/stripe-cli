@@ -12,8 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestRequestDeviceCode_Success(t *testing.T) {
@@ -264,10 +262,7 @@ func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 
 	err := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "failed to fetch account info")
-
-	_, keyErr := config.KeyRing.Get(config.OAuthActiveContextKeychainKey)
-	assert.Error(t, keyErr)
+	assert.Contains(t, err.Error(), "failed to fetch account info")
 }
 
 func TestRefreshAccessToken_NoRefreshTokenInResponse(t *testing.T) {

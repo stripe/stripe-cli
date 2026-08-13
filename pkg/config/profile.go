@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -777,12 +778,31 @@ func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
 	return "", nil
 }
 
+// ActiveContextLivemodeMismatchError indicates that the requested livemode
+// does not match the OAuth active context's livemode. Callers that expose
+// their own mode selection (e.g. a --live flag) can catch this with
+// errors.As and explain how to reconcile it; callers that don't care which
+// mode is used can retry ResolveCredentials(err.ActiveLivemode) to get
+// credentials for whichever mode is actually active.
+type ActiveContextLivemodeMismatchError struct {
+	RequestedLivemode bool
+	ActiveLivemode    bool
+}
+
+func (e *ActiveContextLivemodeMismatchError) Error() string {
+	if e.ActiveLivemode {
+		return "your active context is livemode; run 'stripe switch context' to select a test mode context"
+	}
+	return "your active context is test mode; run 'stripe switch context' to select a livemode context"
+}
+
 // ResolveCredentials returns the credentials for the given mode. If an OAK
 // token (prefix "oak_") is stored in the keyring and no explicit override is
 // active, it is preferred over the configured API key. For OAK tokens the
 // active context stored in the keyring sets both Stripe-Context and
 // Stripe-Livemode; the livemode parameter is used only for the legacy OIDC
-// fallback and plain API key path.
+// fallback and plain API key path. If the active context's livemode differs
+// from the requested livemode, it returns an *ActiveContextLivemodeMismatchError.
 func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
 	if !p.HasOverrideAPIKey() {
 		uat, err := p.GetUAT()
@@ -811,10 +831,10 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			}
 			if ac != nil {
 				if ac.Livemode != livemode {
-					if livemode {
-						return stripe.Credentials{}, fmt.Errorf("your active context is test mode; to access livemode, run 'stripe switch context'")
-					}
-					return stripe.Credentials{}, fmt.Errorf("your active context is livemode; run 'stripe switch context' to select a test mode context, or add --live if you meant to use livemode")
+					return stripe.Credentials{}, errorcategory.With(&ActiveContextLivemodeMismatchError{
+						RequestedLivemode: livemode,
+						ActiveLivemode:    ac.Livemode,
+					}, errorcategory.UserInput)
 				}
 				return stripe.NewOAKCredentials(uat, ac.AccountID, livemode), nil
 			}
@@ -824,7 +844,7 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 				return stripe.Credentials{}, err
 			}
 			if livemode && compartmentID == "" {
-				return stripe.Credentials{}, fmt.Errorf("you're logged in to a sandbox; to access livemode, reauthenticate with 'stripe login' and select your live account")
+				return stripe.Credentials{}, errorcategory.UserInputErrorf("you're logged in to a sandbox; to access livemode, reauthenticate with 'stripe login' and select your live account")
 			}
 			return stripe.NewOAKCredentials(uat, compartmentID, livemode), nil
 		}

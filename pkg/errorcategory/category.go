@@ -2,7 +2,10 @@
 // their messages or unwrapping behavior.
 package errorcategory
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // Category identifies the source of an error.
 type Category string
@@ -46,6 +49,11 @@ func With(err error, category Category) error {
 		return nil
 	}
 	return categorizedError{err: err, category: category}
+}
+
+// UserInputErrorf formats an error categorized as UserInput.
+func UserInputErrorf(format string, args ...any) error {
+	return With(fmt.Errorf(format, args...), UserInput)
 }
 
 // Get returns the first explicit category in err's unwrap tree.

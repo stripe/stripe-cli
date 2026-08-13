@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
@@ -298,6 +299,40 @@ func TestResolveCredentialsOAKLivemodeWithCompartment(t *testing.T) {
 
 	p := Profile{ProfileName: "default"}
 	creds, err := p.ResolveCredentials(true)
+	require.NoError(t, err)
+	require.Equal(t, "oak_live_1234567890", creds.Token)
+}
+
+func TestResolveCredentialsOAKLivemodeMismatchReturnsTypedError(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
+	activeCtxJSON, err := json.Marshal(ActiveContext{AccountID: "acct_live123", Livemode: true})
+	require.NoError(t, err)
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		UATKeychainItemKey:            []byte("oak_live_1234567890"),
+		OAuthActiveContextKeychainKey: activeCtxJSON,
+	})
+	t.Cleanup(func() {
+		KeyRing = nil
+		viper.Reset()
+	})
+	(&Config{LogLevel: "info", ProfilesFile: profilesFile}).InitConfig()
+
+	p := Profile{ProfileName: "default"}
+	_, err = p.ResolveCredentials(false)
+	require.Error(t, err)
+
+	var mismatch *ActiveContextLivemodeMismatchError
+	require.ErrorAs(t, err, &mismatch)
+	require.False(t, mismatch.RequestedLivemode)
+	require.True(t, mismatch.ActiveLivemode)
+
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.UserInput, category)
+
+	// Retrying with the active context's actual mode succeeds.
+	creds, err := p.ResolveCredentials(mismatch.ActiveLivemode)
 	require.NoError(t, err)
 	require.Equal(t, "oak_live_1234567890", creds.Token)
 }

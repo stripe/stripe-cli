@@ -48,6 +48,16 @@ func TestGetWithoutCategory(t *testing.T) {
 	require.Empty(t, category)
 }
 
+func TestUserInputErrorf(t *testing.T) {
+	err := UserInputErrorf("invalid %s: %q", "value", "foo")
+
+	require.EqualError(t, err, `invalid value: "foo"`)
+
+	category, ok := Get(err)
+	require.True(t, ok)
+	require.Equal(t, UserInput, category)
+}
+
 func TestGetUsesOutermostCategory(t *testing.T) {
 	err := With(With(errors.New("nested"), Network), API)
 
