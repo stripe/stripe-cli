@@ -50,6 +50,8 @@ type CLIAnalyticsEventMetadata struct {
 	MachineUUID       string `url:"machine_uuid,omitempty"`     // the persistent machine UUID
 	GeneratedResource bool   `url:"generated_resource"`         // whether or not this was a generated resource
 	AIAgent           string `url:"ai_agent,omitempty"`         // the AI coding agent that invoked the CLI, if any
+	AgentHostKind     string `url:"agent_host_kind,omitempty"`  // where the agent ran: desktop, terminal, ide, remote, sdk, mcp, chat, ci, or other
+	AgentVersion      string `url:"agent_version,omitempty"`    // the agent's own version, when it reports one
 	InstallMethod     string `url:"install_method,omitempty"`   // how the CLI was installed
 	InTmux            bool   `url:"in_tmux"`                    // whether the CLI was invoked from within tmux
 	InScreen          bool   `url:"in_screen"`                  // whether the CLI was invoked from within GNU Screen
@@ -80,11 +82,13 @@ type NoOpTelemetryClient struct {
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
 func NewEventMetadata() *CLIAnalyticsEventMetadata {
 	return &CLIAnalyticsEventMetadata{
-		InvocationID: uuid.NewString(),
-		CLIVersion:   version.Version,
-		OS:           runtime.GOOS,
-		Arch:         runtime.GOARCH,
-		AIAgent:      useragent.DetectAIAgent(os.Getenv),
+		InvocationID:  uuid.NewString(),
+		CLIVersion:    version.Version,
+		OS:            runtime.GOOS,
+		Arch:          runtime.GOARCH,
+		AIAgent:       useragent.DetectAIAgent(os.Getenv),
+		AgentHostKind: useragent.DetectAgentHostKind(os.Getenv),
+		AgentVersion:  useragent.DetectAgentVersion(os.Getenv),
 		InstallMethod: useragent.DetectInstallMethod(
 			os.Getenv,
 			os.Executable,

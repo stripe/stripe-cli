@@ -125,6 +125,66 @@ func DetectAIAgent(getEnv func(string) string) string {
 	return ""
 }
 
+// DetectAgentHostKind reports where the agent ran: "desktop", "terminal", "ide",
+// "remote", "sdk", "mcp", or "other", and "" when no agent reported a host.
+//
+// Only the category is exposed. The underlying values are per-vendor spellings that
+// every consumer would otherwise have to enumerate, and the vendor is already carried
+// by DetectAIAgent.
+func DetectAgentHostKind(getEnv func(string) string) string {
+	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
+	if host == "" {
+		// Codex Desktop sets this alongside the generic Codex signals, and it is
+		// currently the only inherited value separating Desktop from the Codex CLI.
+		host = getEnv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE")
+	}
+	if host == "" {
+		return ""
+	}
+
+	// Vendors disagree on formatting, and Claude Code disagrees with itself: it ships
+	// both "claude_in_slack" and "claude-in-slack", while Codex reports "Codex Desktop".
+	host = strings.ToLower(strings.TrimSpace(host))
+	host = strings.NewReplacer(" ", "-", "_", "-").Replace(host)
+
+	// Checked first and by prefix: "remote-desktop" is a remote session, not the
+	// desktop app, so matching "desktop" anywhere would silently inflate desktop counts.
+	if host == "remote" || strings.HasPrefix(host, "remote-") {
+		return "remote"
+	}
+	if kind, ok := agentHostKinds[host]; ok {
+		return kind
+	}
+	// Reported rather than dropped, so a host we have not categorized stays
+	// distinguishable from no host at all while the field stays bounded.
+	return "other"
+}
+
+// DetectAgentVersion returns the agent's own version, parsed out of the identifier it
+// reports through the AI_AGENT convention, or "" when absent or unparseable.
+//
+// Claude Code encodes it as "claude-code_2-1-227_agent" (dots written as dashes) and
+// has also used "claude-code/2.1.227". No other agent reports a version this way today.
+// Both formats are undocumented, so this validates what it extracts and reports nothing
+// rather than guessing: a wrong version is worse than a missing one.
+func DetectAgentVersion(getEnv func(string) string) string {
+	identifier := strings.TrimSpace(getEnv("AI_AGENT"))
+	if identifier == "" {
+		// AGENT is the same convention under the name Goose, Amp and Bun use.
+		identifier = strings.TrimSpace(getEnv("AGENT"))
+	}
+
+	if idx := strings.LastIndex(identifier, "/"); idx >= 0 {
+		return validVersion(identifier[idx+1:])
+	}
+	for _, segment := range strings.Split(identifier, "_") {
+		if version := validVersion(strings.ReplaceAll(segment, "-", ".")); version != "" {
+			return version
+		}
+	}
+	return ""
+}
+
 //
 // Private types
 //
@@ -148,8 +208,52 @@ var encodedStripeUserAgent string
 var encodedUserAgent string
 
 //
+// Private constants
+//
+
+// maxVersionLength bounds a parsed version before it is reported, so an unexpected or
+// hostile value cannot bloat a request.
+const maxVersionLength = 32
+
+//
+// Private variables
+//
+
+// agentHostKinds categorizes the hosts we know about. "remote*" hosts are handled by
+// prefix in DetectAgentHostKind rather than enumerated here.
+var agentHostKinds = map[string]string{
+	"claude-desktop": "desktop",
+	"claude-vscode":  "ide",
+	"cli":            "terminal",
+	"codex-desktop":  "desktop",
+	"mcp":            "mcp",
+	"sdk-cli":        "sdk",
+	"sdk-py":         "sdk",
+	"sdk-ts":         "sdk",
+}
+
+//
 // Private functions
 //
+
+// validVersion returns the candidate if it is a dot-separated numeric version, and ""
+// otherwise. Deliberately strict: the identifier formats this parses are undocumented,
+// so anything unexpected is dropped rather than guessed at.
+func validVersion(candidate string) string {
+	if candidate == "" || len(candidate) > maxVersionLength ||
+		strings.HasPrefix(candidate, ".") || strings.HasSuffix(candidate, ".") ||
+		strings.Contains(candidate, "..") {
+		return ""
+	}
+
+	for _, r := range candidate {
+		if (r < '0' || r > '9') && r != '.' {
+			return ""
+		}
+	}
+
+	return candidate
+}
 
 func init() {
 	initUserAgent()

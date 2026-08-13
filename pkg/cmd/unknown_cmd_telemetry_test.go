@@ -35,6 +35,7 @@ func (m *mockUnknownCmdTelemetryClient) SendEvent(_ context.Context, eventName s
 func TestRecordUnknownCommand_NotInAgentEnv(t *testing.T) {
 	t.Setenv("CLAUDECODE", "")
 	t.Setenv("CURSOR_AGENT", "")
+	t.Setenv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "")
 	t.Setenv("CODEX_SANDBOX", "")
 	t.Setenv("CODEX_THREAD_ID", "")
 	t.Setenv("CODEX_SANDBOX_NETWORK_DISABLED", "")
