@@ -12,12 +12,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/coop/workflow"
 )
 
-// maxConsecutiveStopBlocks bounds how many times in a row the hook holds a turn
-// open without the session advancing. Blocking forever would burn tokens in a
-// tight loop whenever the developer walks away mid-review, which is a worse
-// failure than the drift this hook prevents. After the limit the agent may
-// stop; its heartbeat goes stale and the TUI's existing idle state tells the
-// developer to rejoin.
 // stopBlockWindow is the primary bound: how long the hook keeps holding turns
 // while the lifecycle does not move. It is generous because a developer
 // genuinely verifying a step — clicking through a checkout in a browser — can
