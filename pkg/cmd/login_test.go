@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -18,32 +16,31 @@ import (
 // TestLoginNewSessionRevokesPreviousToken verifies that `stripe login --new-session`
 // revokes the previously stored OAuth token, same as `stripe logout`, before
 // starting a new login flow.
+//
+// revokeToken and initiateLogin are stubbed rather than backed by an
+// httptest server: --access-base is validated against a hardcoded
+// production/QA allowlist before any of this logic runs (it carries OAuth
+// credentials), so a mock server URL can never be assigned to it.
 func TestLoginNewSessionRevokesPreviousToken(t *testing.T) {
-	var revokeCalled bool
+	origRevokeToken, origInitiateLogin := revokeToken, initiateLogin
+	t.Cleanup(func() {
+		revokeToken = origRevokeToken
+		initiateLogin = origInitiateLogin
+	})
 
-	accessSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/stripecli/oauth2/revoke":
-			revokeCalled = true
-			require.NoError(t, r.ParseForm())
-			assert.Equal(t, "oart_previous_refresh", r.FormValue("token"))
-			w.WriteHeader(http.StatusOK)
-		case "/stripecli/oauth2/device/authorization":
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`{"device_code":"dc","user_code":"uc","verification_uri":"https://dashboard.stripe.com/verify","expires_in":600,"interval":5}`))
-		default:
-			t.Fatalf("unexpected request to %s", r.URL.Path)
-		}
-	}))
-	defer accessSrv.Close()
-
-	dashboardSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// A 3xx response from /stripecli/auth signals that the OAuth device-code
-		// flow (rather than the legacy RAK flow) should be used.
-		w.Header().Set("Location", "https://dashboard.stripe.com/")
-		w.WriteHeader(http.StatusFound)
-	}))
-	defer dashboardSrv.Close()
+	var revokeCalled, initiateLoginCalled bool
+	revokeToken = func(ctx context.Context, accessBaseURL string) error {
+		revokeCalled = true
+		rt, err := config.KeyRing.Get(config.OAuthRefreshTokenKeychainKey)
+		require.NoError(t, err)
+		assert.Equal(t, "oart_previous_refresh", string(rt))
+		return nil
+	}
+	initiateLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		initiateLoginCalled = true
+		assert.True(t, revokeCalled, "expected the previous session to be revoked before continuing")
+		return nil
+	}
 
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	Config = config.Config{
@@ -68,10 +65,9 @@ func TestLoginNewSessionRevokesPreviousToken(t *testing.T) {
 	lc := newLoginCmd()
 	lc.newSession = true
 	lc.nonInteractive = true
-	lc.dashboardBaseURL = dashboardSrv.URL
-	lc.accessBaseURL = accessSrv.URL
 	lc.cmd.SetContext(context.Background())
 
 	require.NoError(t, lc.runLoginCmd(lc.cmd, []string{}))
 	assert.True(t, revokeCalled, "expected --new-session to revoke the previous OAuth token")
+	assert.True(t, initiateLoginCalled, "expected login to continue after revoking")
 }

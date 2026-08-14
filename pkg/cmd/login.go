@@ -16,6 +16,13 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// revokeToken and initiateLogin are package variables so tests can stub out
+// the network calls made by runLoginCmd.
+var (
+	revokeToken   = login.RevokeToken
+	initiateLogin = login.InitiateLogin
+)
+
 type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
@@ -172,7 +179,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		}
 	} else if strings.HasPrefix(uat, "oak_") {
 		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
-		if err := login.RevokeToken(cmd.Context(), lc.accessBaseURL); err != nil {
+		if err := revokeToken(cmd.Context(), lc.accessBaseURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
 		}
 	}
@@ -181,7 +188,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		if useragent.DetectAIAgent(os.Getenv) != "" {
 			fmt.Fprintln(os.Stderr, "If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).")
 		}
-		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+		return initiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
 	}
 
 	if lc.interactive {
