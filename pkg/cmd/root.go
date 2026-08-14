@@ -68,9 +68,18 @@ var rootCmd = &cobra.Command{
 %s`,
 		getLogin(&fs, &Config),
 	),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if cmd.Name() == "help" {
 			fullHelpMode = true
+		}
+
+		// --access-base is a hidden persistent flag accepted by every command, and
+		// feeds the OAuth token refresher below, which runs silently on any command
+		// using a stored OAuth session. Reject anything other than the real
+		// access-srv origins before it's used for that (or any other) purpose, so
+		// it can't be used to exfiltrate the UAT or refresh token.
+		if err := login.ValidateAccessBaseURL(rootAccessBaseURL); err != nil {
+			return err
 		}
 
 		// Make the --access-base value available to the OAuth token refresher,
@@ -104,6 +113,7 @@ var rootCmd = &cobra.Command{
 			// record command invocation
 			sendCommandInvocationEvent(cmd.Context())
 		}
+		return nil
 	},
 }
 

@@ -92,6 +92,9 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURL); err != nil {
 		return err
 	}
+	if err := login.ValidateAccessBaseURL(ic.accessBaseURL); err != nil {
+		return err
+	}
 
 	color := ansi.Color(os.Stdout)
 	pluginName, version := parseInstallArg(args[0])

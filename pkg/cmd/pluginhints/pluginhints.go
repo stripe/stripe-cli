@@ -142,6 +142,10 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 }
 
 func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(p.accessBaseURL); err != nil {
+		return err
+	}
+
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()

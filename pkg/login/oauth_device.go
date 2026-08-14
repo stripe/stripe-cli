@@ -175,6 +175,9 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	if err != nil {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
+	if err := validateBrowserURL(authResp.VerificationURI, accessBaseURL); err != nil {
+		return err
+	}
 
 	color := ansi.Color(os.Stdout)
 	fmt.Printf("Your pairing code is: %s\n", color.Bold(authResp.UserCode))
@@ -345,5 +348,5 @@ func doPostForm(ctx context.Context, endpoint string, data url.Values) (*http.Re
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	return http.DefaultClient.Do(req)
+	return accessSrvHTTPClient.Do(req)
 }

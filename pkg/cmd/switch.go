@@ -50,6 +50,9 @@ Use --live to switch to livemode instead.`,
 }
 
 func (sc *switchContextCmd) run(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(sc.accessBaseURL); err != nil {
+		return err
+	}
 	accountID := ""
 	if len(args) > 0 {
 		accountID = args[0]

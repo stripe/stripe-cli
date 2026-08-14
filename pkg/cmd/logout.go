@@ -33,6 +33,9 @@ func newLogoutCmd() *logoutCmd {
 }
 
 func (lc *logoutCmd) runLogoutCmd(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
+		return err
+	}
 	if lc.all {
 		return logout.All(cmd.Context(), lc.accessBaseURL, &Config)
 	}

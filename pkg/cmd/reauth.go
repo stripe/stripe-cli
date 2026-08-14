@@ -34,6 +34,9 @@ Opens the Stripe Dashboard so you can re-consent for the current OAuth session.`
 }
 
 func (rc *reauthCmd) runReauthCmd(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(rc.accessBaseURL); err != nil {
+		return err
+	}
 	uat, _ := Config.Profile.GetUAT()
 	if !strings.HasPrefix(uat, "oak_") {
 		return errorcategory.Errorf(errorcategory.Auth, "reauth requires an OAuth session; run 'stripe login' to authenticate")
