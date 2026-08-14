@@ -20,6 +20,7 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/keyring"
@@ -212,24 +213,24 @@ func (c *Config) EditConfig() error {
 
 func (c *Config) CopyProfile(source string, target string) error {
 	if source == "" {
-		return fmt.Errorf("source profile name cannot be empty")
+		return errorcategory.Errorf(errorcategory.UserInput, "source profile name cannot be empty")
 	}
 	if target == "" {
-		return fmt.Errorf("target profile name cannot be empty")
+		return errorcategory.Errorf(errorcategory.UserInput, "target profile name cannot be empty")
 	}
 
 	if source == target {
-		return fmt.Errorf("cannot copy profile to itself")
+		return errorcategory.Errorf(errorcategory.UserInput, "cannot copy profile to itself")
 	}
 
 	runtimeViper := viper.GetViper()
 	safeSource := strings.ReplaceAll(source, ".", " ")
 	if !runtimeViper.IsSet(safeSource) {
-		return fmt.Errorf("source profile '%s' does not exist", source)
+		return errorcategory.Errorf(errorcategory.UserInput, "source profile '%s' does not exist", source)
 	}
 	existing := runtimeViper.Get(safeSource)
 	if !isProfile(existing) {
-		return fmt.Errorf("source '%s' is not a profile", source)
+		return errorcategory.Errorf(errorcategory.UserInput, "source '%s' is not a profile", source)
 	}
 
 	safeTarget := strings.ReplaceAll(target, ".", " ")

@@ -2,7 +2,6 @@ package samples
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -107,7 +106,7 @@ func TestInitializeFailsWithEmptyName(t *testing.T) {
 	}
 
 	err := sampleManager.Initialize(name)
-	assert.Equal(t, errors.New("sample name is empty"), err)
+	assert.EqualError(t, err, "sample name is empty")
 }
 
 func TestInitializeFailsWithNonexistentSample(t *testing.T) {
@@ -129,7 +128,7 @@ func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 	}
 
 	err := sampleManager.Initialize(name)
-	assert.Equal(t, errors.New("sample foo does not exist"), err)
+	assert.EqualError(t, err, "sample foo does not exist")
 }
 
 func TestCopySkipsSymlinks(t *testing.T) {

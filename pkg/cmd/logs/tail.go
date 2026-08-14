@@ -298,7 +298,7 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 		VisitData: func(de websocket.DataElement) error {
 			log, ok := de.Data.(logtailing.EventPayload)
 			if !ok {
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
+				return errorcategory.Errorf(errorcategory.Internal, "VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
 			}
 
 			sanitizePayload(&log)

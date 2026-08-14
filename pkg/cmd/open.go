@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -177,7 +178,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("unsupported open command, given: %s", args[0])
+		return errorcategory.Errorf(errorcategory.UserInput, "unsupported open command, given: %s", args[0])
 	}
 
 	return nil

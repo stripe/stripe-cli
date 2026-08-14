@@ -13,6 +13,7 @@ import (
 	"golang.org/x/term"
 
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -245,10 +246,10 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "docs client not initialized")
 	}
 	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "markdown renderer not initialized")
 	}
 
 	ref := parseDocsRef(args)
@@ -304,10 +305,10 @@ func terminalSize(cmd *cobra.Command) (w, h int, ok bool) {
 // tui.WithPaletteInput) are forwarded to the model constructor.
 func (r *RootCommand) show(cmd *cobra.Command, page *pkgdocs.Page, extraOpts ...tui.Option) error {
 	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "docs client not initialized")
 	}
 	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "markdown renderer not initialized")
 	}
 
 	if r.useTUI(cmd) {

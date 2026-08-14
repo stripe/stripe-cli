@@ -1,12 +1,12 @@
 package plugin
 
 import (
-	"fmt"
 	"slices"
 
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -56,7 +56,7 @@ func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		scope = args[0]
 		if !slices.Contains(ac.cfg.GetInstalledPlugins(), scope) {
-			return fmt.Errorf("plugin %q is not installed", scope)
+			return errorcategory.Errorf(errorcategory.UserInput, "plugin %q is not installed", scope)
 		}
 	}
 

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -135,7 +135,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {
-			return errors.New("install failed due to API key not configured, please run `stripe login` or specify the `--api-key`")
+			return errorcategory.New(errorcategory.Auth, "install failed due to API key not configured, please run `stripe login` or specify the `--api-key`")
 		}
 
 		log.WithFields(log.Fields{

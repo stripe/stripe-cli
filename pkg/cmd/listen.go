@@ -362,7 +362,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				fmt.Println(outputStr)
 				return nil
 			default:
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T", de)
+				return errorcategory.Errorf(errorcategory.Internal, "VisitData received unexpected type for DataElement, got %T", de)
 			}
 		},
 	}

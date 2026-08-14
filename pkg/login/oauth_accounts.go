@@ -10,6 +10,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 type listAccountsResponse struct {
@@ -41,7 +42,7 @@ func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken str
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("accounts request failed (status %d): %s", resp.StatusCode, string(body))
+		return nil, errorcategory.Errorf(errorcategory.Auth, "accounts request failed (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	var result listAccountsResponse
@@ -134,7 +135,7 @@ func pickActiveContext(accounts []config.AuthorizedAccount) (accountID string, l
 // profile with the active account's display info.
 func populateProfileFromAccounts(cfg *config.Config, accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) error {
 	if len(accounts) == 0 {
-		return fmt.Errorf("no authorized accounts returned")
+		return errorcategory.Errorf(errorcategory.Auth, "no authorized accounts returned")
 	}
 
 	if err := config.SaveActiveContext(activeID, activeLivemode); err != nil {

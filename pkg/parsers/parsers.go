@@ -17,6 +17,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // FixtureQuery describes the query in fixture request
@@ -326,7 +327,7 @@ func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (strin
 			var errorStrings []string
 			color := ansi.Color(os.Stdout)
 
-			referenceError := fmt.Errorf(
+			referenceError := errorcategory.Errorf(errorcategory.UserInput,
 				"%s - an undeclared fixture name was referenced: %s",
 				color.Red("✘ Validation error").String(),
 				ansi.Bold(name),
@@ -335,7 +336,7 @@ func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (strin
 			errorStrings = append(errorStrings, referenceError)
 
 			if similar, exists := findSimilarQueryNames(queryRespMap, name); exists {
-				suggestions := fmt.Errorf(
+				suggestions := errorcategory.Errorf(errorcategory.UserInput,
 					"%s: %v",
 					ansi.Italic("Perhaps you meant one of the following"),
 					strings.Join(similar, ", "),
@@ -343,7 +344,7 @@ func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (strin
 				errorStrings = append(errorStrings, suggestions)
 			}
 
-			return "", fmt.Errorf("%s", strings.Join(errorStrings, "\n"))
+			return "", errorcategory.Errorf(errorcategory.UserInput, "%s", strings.Join(errorStrings, "\n"))
 		}
 
 		result := queryRespMap[name].Get(query.Query)

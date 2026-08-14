@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/parsers"
@@ -130,7 +131,7 @@ func NewFixtureFromFile(fs afero.Fs, creds stripe.Credentials, stripeAccount, ba
 	}
 
 	if fxt.FixtureData.Meta.Version > SupportedVersions {
-		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.FixtureData.Meta.Version))
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "Fixture version not supported: %s", fmt.Sprint(fxt.FixtureData.Meta.Version))
 	}
 
 	return &fxt, nil
@@ -153,7 +154,7 @@ func NewFixtureFromRawString(fs afero.Fs, creds stripe.Credentials, stripeAccoun
 	}
 
 	if fxt.FixtureData.Meta.Version > SupportedVersions {
-		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.FixtureData.Meta.Version))
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "Fixture version not supported: %s", fmt.Sprint(fxt.FixtureData.Meta.Version))
 	}
 
 	return &fxt, nil
@@ -373,11 +374,11 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 	}
 
 	if !stripe.IsValidAPIPath(path) {
-		return make([]byte, 0), fmt.Errorf("fixture path %q is not a valid Stripe API path (must start with /v1/ or /v2/)", data.Path)
+		return make([]byte, 0), errorcategory.Errorf(errorcategory.UserInput, "fixture path %q is not a valid Stripe API path (must start with /v1/ or /v2/)", data.Path)
 	}
 
 	if fxt.unsupportedAPIKey(path) {
-		return make([]byte, 0), fmt.Errorf("this trigger must be run with a secret API key (starts with 'sk_')")
+		return make([]byte, 0), errorcategory.Errorf(errorcategory.Auth, "this trigger must be run with a secret API key (starts with 'sk_')")
 	}
 
 	params, err := fxt.createParams(data.Params, apiVersion, path, data.Method)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -167,7 +168,7 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 	tokenResp, err := PollDeviceToken(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval)
 	if err != nil {
 		if pollCtx.Err() != nil {
-			return fmt.Errorf("device code expired; please run 'stripe login --non-interactive' again")
+			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login --non-interactive' again")
 		}
 		return err
 	}

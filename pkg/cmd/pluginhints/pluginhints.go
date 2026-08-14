@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -175,7 +176,7 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 	fmt.Fscanln(p.stdin, &input)
 
 	if input != "" {
-		return fmt.Errorf("installation canceled")
+		return errorcategory.Errorf(errorcategory.UserInput, "installation canceled")
 	}
 
 	if err := p.installFn(ctx); err != nil {
@@ -198,7 +199,7 @@ func (p *pluginHintCmd) promptLogin(ctx context.Context) error {
 	fmt.Fscanln(p.stdin, &input)
 
 	if input != "" {
-		return fmt.Errorf("login canceled")
+		return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
 	}
 
 	return p.loginFn(ctx)

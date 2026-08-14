@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -297,7 +298,7 @@ func buildEventsMap() map[string]string {
 func FixtureContents(eventName string) (string, error) {
 	path, ok := getEvents()[eventName]
 	if !ok {
-		return "", fmt.Errorf("event %q is not supported", eventName)
+		return "", errorcategory.Errorf(errorcategory.UserInput, "event %q is not supported", eventName)
 	}
 	f, err := NewFixtureFromFile(nil, stripe.Credentials{}, "", "", path, nil, nil, nil, nil, false)
 	if err != nil {
@@ -365,7 +366,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 		} else {
 			exists, _ := afero.Exists(fs, event)
 			if !exists {
-				return nil, fmt.Errorf("%s", fmt.Sprintf("The event `%s` is not supported by Stripe CLI. To trigger unsupported events, use the Stripe API or Dashboard to perform actions that lead to the event you want to trigger (for example, create a Customer to generate a `customer.created` event). You can also create a custom fixture: https://docs.stripe.com/cli/fixtures", event))
+				return nil, errorcategory.Errorf(errorcategory.UserInput, "%s", fmt.Sprintf("The event `%s` is not supported by Stripe CLI. To trigger unsupported events, use the Stripe API or Dashboard to perform actions that lead to the event you want to trigger (for example, create a Customer to generate a `customer.created` event). You can also create a custom fixture: https://docs.stripe.com/cli/fixtures", event))
 			}
 
 			fixture, err = BuildFromFixtureFile(fs, creds, stripeAccount, baseURL, event, skip, override, add, remove, edit)
@@ -382,7 +383,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 
 	requestNames, err := fixture.Execute(ctx, apiVersion)
 	if err != nil {
-		return nil, fmt.Errorf("%s", fmt.Sprintf("Trigger failed: %s\n", err))
+		return nil, fmt.Errorf("Trigger failed: %w", err)
 	}
 
 	return requestNames, nil

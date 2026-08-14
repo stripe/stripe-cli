@@ -13,6 +13,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
@@ -264,7 +265,7 @@ func (c *Client) do(req *http.Request) (response, error) {
 	}).Debug("request complete")
 
 	if resp.StatusCode != http.StatusOK {
-		return response{}, fmt.Errorf("docs: %s returned %d", req.URL, resp.StatusCode)
+		return response{}, errorcategory.Errorf(errorcategory.API, "docs: %s returned %d", req.URL, resp.StatusCode)
 	}
 
 	accept := req.Header.Get("Accept")
@@ -280,7 +281,7 @@ func (c *Client) do(req *http.Request) (response, error) {
 			}
 		}
 		if !supported {
-			return response{}, fmt.Errorf("docs: %s returned unsupported content type %q", req.URL, ct)
+			return response{}, errorcategory.Errorf(errorcategory.API, "docs: %s returned unsupported content type %q", req.URL, ct)
 		}
 	}
 

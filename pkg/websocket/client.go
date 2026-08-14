@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -20,6 +19,7 @@ import (
 	ws "github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -281,7 +281,7 @@ func readWSConnectErrorMessage(resp *http.Response) string {
 var unknownIDMessage = "Unknown WebSocket ID."
 
 // ErrUnknownID can occur when the websocket session is expired or invalid
-var ErrUnknownID = errors.New(unknownIDMessage)
+var ErrUnknownID = errorcategory.New(errorcategory.Network, unknownIDMessage)
 
 // connect makes a single attempt to connect to the websocket URL. It returns
 // the success of the attempt.
@@ -676,7 +676,7 @@ func wsDialThroughProxy(ctx context.Context, proxyURL *url.URL, addr string) (ne
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		conn.Close()
-		return nil, fmt.Errorf("proxy CONNECT %s: %s", addr, resp.Status)
+		return nil, errorcategory.Errorf(errorcategory.Network, "proxy CONNECT %s: %s", addr, resp.Status)
 	}
 	return conn, nil
 }

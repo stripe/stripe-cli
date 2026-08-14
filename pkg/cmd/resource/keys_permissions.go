@@ -11,6 +11,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -94,7 +95,7 @@ func (kpc *KeysPermissionsCmd) runKeysPermissionsCmd(cmd *cobra.Command, args []
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+		return errorcategory.Errorf(errorcategory.API, "API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	var result keysPermissionsResponse
