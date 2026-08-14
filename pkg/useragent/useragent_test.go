@@ -136,12 +136,13 @@ func TestDetectAgentHostKind(t *testing.T) {
 		expected string
 	}{
 		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop"},
+		{"claude desktop 3p", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop-3p"}, "desktop"},
 		{"codex desktop, normalized from \"Codex Desktop\"", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop"},
 		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal"},
 		{"ide", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-vscode"}, "ide"},
 		{"sdk", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "sdk-ts"}, "sdk"},
-		// remote-desktop is a remote session, not the desktop app. Matching "desktop"
-		// anywhere would report this as desktop and quietly inflate desktop counts.
+		// remote_desktop is Claude Desktop driving a remotely executing session. The CLI
+		// runs on the remote host, so it belongs to remote rather than desktop.
 		{"remote desktop is remote", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote_desktop"}, "remote"},
 		{"agent env wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "terminal"},
 		{"uncategorized host", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "something-new"}, "other"},

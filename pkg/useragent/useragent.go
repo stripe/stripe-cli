@@ -147,8 +147,10 @@ func DetectAgentHostKind(getEnv func(string) string) string {
 	host = strings.ToLower(strings.TrimSpace(host))
 	host = strings.NewReplacer(" ", "-", "_", "-").Replace(host)
 
-	// Checked first and by prefix: "remote-desktop" is a remote session, not the
-	// desktop app, so matching "desktop" anywhere would silently inflate desktop counts.
+	// Checked first and by prefix. "remote-desktop" is Claude Desktop driving a session
+	// that executes remotely -- Claude Code labels it "Claude Desktop" as a surface --
+	// but this field describes where the CLI itself ran, and that is the remote host,
+	// not the user's machine. Matching "desktop" anywhere would put it in the wrong one.
 	if host == "remote" || strings.HasPrefix(host, "remote-") {
 		return "remote"
 	}
@@ -222,14 +224,15 @@ const maxVersionLength = 32
 // agentHostKinds categorizes the hosts we know about. "remote*" hosts are handled by
 // prefix in DetectAgentHostKind rather than enumerated here.
 var agentHostKinds = map[string]string{
-	"claude-desktop": "desktop",
-	"claude-vscode":  "ide",
-	"cli":            "terminal",
-	"codex-desktop":  "desktop",
-	"mcp":            "mcp",
-	"sdk-cli":        "sdk",
-	"sdk-py":         "sdk",
-	"sdk-ts":         "sdk",
+	"claude-desktop":    "desktop",
+	"claude-desktop-3p": "desktop",
+	"claude-vscode":     "ide",
+	"cli":               "terminal",
+	"codex-desktop":     "desktop",
+	"mcp":               "mcp",
+	"sdk-cli":           "sdk",
+	"sdk-py":            "sdk",
+	"sdk-ts":            "sdk",
 }
 
 //
