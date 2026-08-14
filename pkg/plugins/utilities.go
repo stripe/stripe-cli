@@ -33,19 +33,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-// resolveCredentialsForAnyMode resolves credentials for livemode, but if that
-// doesn't match the OAuth active context, resolves credentials for whichever
-// mode is actually active instead of failing. Plugin management commands
-// don't expose their own mode selection, so any usable credential will do.
-func resolveCredentialsForAnyMode(profile *config.Profile, livemode bool) (stripe.Credentials, error) {
-	creds, err := profile.ResolveCredentials(livemode)
-	var mismatch *config.ActiveContextLivemodeMismatchError
-	if errors.As(err, &mismatch) {
-		return profile.ResolveCredentials(mismatch.ActiveLivemode)
-	}
-	return creds, err
-}
-
 type installedPluginStateSnapshot struct {
 	installedPlugins []string
 	localMetadata    []byte
@@ -338,7 +325,7 @@ func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plug
 // ListPlugins fetches the live plugin list visible to the current caller for
 // the current platform using the list-plugins API endpoints.
 func ListPlugins(ctx context.Context, config config.IConfig, apiBaseURL, dashboardBaseURL string) (PluginList, error) {
-	creds, err := resolveCredentialsForAnyMode(config.GetProfile(), false)
+	creds, err := config.GetProfile().ResolveCredentialsForAnyMode(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return PluginList{}, err
 	}
@@ -386,7 +373,7 @@ func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.I
 		dashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
 	}
 
-	creds, err := resolveCredentialsForAnyMode(config.GetProfile(), false)
+	creds, err := config.GetProfile().ResolveCredentialsForAnyMode(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return err
 	}
@@ -521,7 +508,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	creds, err := resolveCredentialsForAnyMode(config.GetProfile(), false)
+	creds, err := config.GetProfile().ResolveCredentialsForAnyMode(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}
@@ -572,7 +559,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	creds, err := resolveCredentialsForAnyMode(config.GetProfile(), false)
+	creds, err := config.GetProfile().ResolveCredentialsForAnyMode(false)
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}

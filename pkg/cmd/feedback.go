@@ -213,7 +213,7 @@ For help with your account or integration, use https://support.stripe.com`,
 }
 
 func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) error {
-	apiKey, err := Config.Profile.GetAPIKey(false)
+	creds, err := Config.Profile.ResolveCredentialsForAnyMode(false)
 	if err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) e
 		return fmt.Errorf("%s required when running non-interactively", strings.Join(missing, ", "))
 	}
 
-	resp, err := feedback.submitFeedback(cmd, apiKey)
+	resp, err := feedback.submitFeedback(cmd, creds)
 	if err != nil {
 		return err
 	}
@@ -368,7 +368,7 @@ func textPrompt(label string, validator promptui.ValidateFunc) (string, error) {
 	return result, nil
 }
 
-func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (*feedbackResponse, error) {
+func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, creds stripe.Credentials) (*feedbackResponse, error) {
 	baseURL, err := url.Parse(feedback.apiBaseURL)
 	if err != nil {
 		return nil, err
@@ -376,7 +376,7 @@ func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, apiKey string) (
 
 	client := &stripe.Client{
 		BaseURL:     baseURL,
-		Credentials: stripe.NewAPIKeyCredentials(apiKey),
+		Credentials: creds,
 	}
 
 	message := sanitizeText(feedback.message)

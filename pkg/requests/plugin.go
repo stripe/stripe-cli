@@ -3,7 +3,6 @@ package requests
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -12,24 +11,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
-
-// resolveCredentialsForAnyMode resolves credentials for livemode, but if that
-// doesn't match the OAuth active context, resolves credentials for whichever
-// mode is actually active instead of failing. Plugin metadata/list requests
-// don't expose their own mode selection, so any usable credential will do.
-func resolveCredentialsForAnyMode(profile *config.Profile, livemode bool, apiKey string) stripe.Credentials {
-	creds, err := profile.ResolveCredentials(livemode)
-	var mismatch *config.ActiveContextLivemodeMismatchError
-	if errors.As(err, &mismatch) {
-		if retried, retryErr := profile.ResolveCredentials(mismatch.ActiveLivemode); retryErr == nil {
-			return retried
-		}
-	}
-	if err != nil {
-		return stripe.NewAPIKeyCredentials(apiKey)
-	}
-	return creds
-}
 
 // PluginMetadata contains plugin-specific manifest and binary information.
 type PluginMetadata struct {
@@ -90,7 +71,10 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		APIBaseURL:     metadataBaseURL,
 	}
 
-	resolvedCreds := resolveCredentialsForAnyMode(profile, base.Livemode, apiKey)
+	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(base.Livemode)
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
 
 	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, map[string]interface{}{
 		"plugin":  pluginName,
@@ -137,7 +121,10 @@ func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion
 		APIBaseURL:     listBaseURL,
 	}
 
-	resolvedCreds := resolveCredentialsForAnyMode(profile, base.Livemode, apiKey)
+	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(base.Livemode)
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
 
 	resp, err := base.MakeRequest(ctx, resolvedCreds, listPath, params, map[string]interface{}{
 		"os":   os,
