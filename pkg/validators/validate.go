@@ -5,10 +5,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"fmt"
+	"unicode/utf8"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
-	"unicode/utf8"
 )
 
 // ArgValidator is an argument validator. It accepts a string and returns an
@@ -63,10 +62,10 @@ func Length(minLength, maxLength int) ArgValidator {
 	return func(value string) error {
 		length := utf8.RuneCountInString(value)
 		if length < minLength {
-			return fmt.Errorf("must be at least %d characters", minLength)
+			return errorcategory.Errorf(errorcategory.UserInput, "must be at least %d characters", minLength)
 		}
 		if length > maxLength {
-			return fmt.Errorf("must be at most %d characters", maxLength)
+			return errorcategory.Errorf(errorcategory.UserInput, "must be at most %d characters", maxLength)
 		}
 
 		return nil
@@ -81,7 +80,7 @@ func OneOf(allowed ...string) ArgValidator {
 			return nil
 		}
 
-		return fmt.Errorf("%q is not one of the allowed values (%s)", value, strings.Join(allowed, ", "))
+		return errorcategory.Errorf(errorcategory.UserInput, "%q is not one of the allowed values (%s)", value, strings.Join(allowed, ", "))
 	}
 }
 

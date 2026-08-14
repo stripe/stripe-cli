@@ -428,12 +428,12 @@ func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, creds stripe.Cre
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to submit feedback (status %d): %s", resp.StatusCode, string(body))
+		return nil, errorcategory.Errorf(errorcategory.API, "failed to submit feedback (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	var result feedbackResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return nil, errorcategory.Errorf(errorcategory.API, "failed to parse response: %w", err)
 	}
 
 	return &result, nil
