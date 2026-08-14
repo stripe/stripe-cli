@@ -36,27 +36,34 @@ var accessSrvHTTPClient = &http.Client{
 	},
 }
 
-// dashboardHostForAccessBaseURL returns the dashboard host that legitimately
-// issues browser URLs (verification, reauth) for the given access-srv origin.
-func dashboardHostForAccessBaseURL(accessBaseURL string) string {
+// trustedBrowserHosts returns the hosts that may legitimately appear in a
+// browser URL for the given access-srv origin: the access-srv host itself
+// (device-code verification URIs are hosted there) and the corresponding
+// dashboard host (reauthentication URIs are hosted there).
+func trustedBrowserHosts(accessBaseURL string) []string {
 	if accessBaseURL == QAAccessBaseURL {
-		return "qa-dashboard.stripe.com"
+		return []string{"qa-access.stripe.com", "qa-dashboard.stripe.com"}
 	}
-	return "dashboard.stripe.com"
+	return []string{"access.stripe.com", "dashboard.stripe.com"}
 }
 
-// validateBrowserURL returns an error unless rawURL is an https URL on the
-// dashboard host matching accessBaseURL. access-srv responses that embed a
-// browser URL (device-code verification, reauth) are checked here before the
-// CLI displays or opens them, so a compromised or misconfigured access-srv
-// can't redirect the user's browser to an arbitrary destination.
+// validateBrowserURL returns an error unless rawURL is an https URL on a host
+// trusted for accessBaseURL. access-srv responses that embed a browser URL
+// (device-code verification, reauth) are checked here before the CLI
+// displays or opens them, so a compromised or misconfigured access-srv can't
+// redirect the user's browser to an arbitrary destination.
 func validateBrowserURL(rawURL, accessBaseURL string) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Auth, "access-srv returned an unparseable URL: %s", rawURL)
 	}
-	if u.Scheme != "https" || u.Host != dashboardHostForAccessBaseURL(accessBaseURL) {
+	if u.Scheme != "https" {
 		return errorcategory.Errorf(errorcategory.Auth, "refusing to display or open untrusted URL returned by access-srv: %s", rawURL)
 	}
-	return nil
+	for _, host := range trustedBrowserHosts(accessBaseURL) {
+		if u.Host == host {
+			return nil
+		}
+	}
+	return errorcategory.Errorf(errorcategory.Auth, "refusing to display or open untrusted URL returned by access-srv: %s", rawURL)
 }

@@ -35,7 +35,11 @@ func TestValidateAccessBaseURL_RejectsArbitraryBases(t *testing.T) {
 	}
 }
 
-func TestValidateBrowserURL_AllowsMatchingDashboardHost(t *testing.T) {
+func TestValidateBrowserURL_AllowsMatchingAccessSrvOrDashboardHost(t *testing.T) {
+	// Device-code verification URIs are hosted on access-srv itself.
+	assert.NoError(t, validateBrowserURL("https://access.stripe.com/stripecli/oauth2/device", DefaultAccessBaseURL))
+	assert.NoError(t, validateBrowserURL("https://qa-access.stripe.com/stripecli/oauth2/device", QAAccessBaseURL))
+	// Reauthentication URIs are hosted on the dashboard.
 	assert.NoError(t, validateBrowserURL("https://dashboard.stripe.com/verify", DefaultAccessBaseURL))
 	assert.NoError(t, validateBrowserURL("https://qa-dashboard.stripe.com/verify", QAAccessBaseURL))
 }
@@ -47,7 +51,9 @@ func TestValidateBrowserURL_RejectsMismatchedOrUntrustedURLs(t *testing.T) {
 	}{
 		"wrong scheme":               {"http://dashboard.stripe.com/verify", DefaultAccessBaseURL},
 		"arbitrary host":             {"https://evil.example.com/verify", DefaultAccessBaseURL},
+		"qa access used for prod":    {"https://qa-access.stripe.com/verify", DefaultAccessBaseURL},
 		"qa dashboard used for prod": {"https://qa-dashboard.stripe.com/verify", DefaultAccessBaseURL},
+		"prod access used for qa":    {"https://access.stripe.com/verify", QAAccessBaseURL},
 		"prod dashboard used for qa": {"https://dashboard.stripe.com/verify", QAAccessBaseURL},
 		"unparseable URL":            {"https://[::1", DefaultAccessBaseURL},
 	}
