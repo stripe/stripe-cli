@@ -856,6 +856,18 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 	return stripe.NewAPIKeyCredentials(key), nil
 }
 
+// ResolveCredentialsForAnyMode resolves credentials for specified mode, but if that
+// doesn't match the OAuth active context, resolves credentials for whichever
+// mode is actually active instead of failing.
+func (p *Profile) ResolveCredentialsForAnyMode(livemode bool) (stripe.Credentials, error) {
+	creds, err := p.ResolveCredentials(livemode)
+	var mismatch *ActiveContextLivemodeMismatchError
+	if errors.As(err, &mismatch) {
+		return p.ResolveCredentials(mismatch.ActiveLivemode)
+	}
+	return creds, err
+}
+
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
