@@ -9,6 +9,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
+func TestRequired(t *testing.T) {
+	require.NoError(t, Required("value"))
+	require.EqualError(t, Required(""), "argument is required")
+}
+
 func TestNoArgs(t *testing.T) {
 	c := &cobra.Command{Use: "c"}
 	args := []string{}

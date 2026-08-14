@@ -2,6 +2,7 @@
 package validators
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -22,6 +23,14 @@ func getCommandPath(cmd *cobra.Command) string {
 
 func userInputError(message string) error {
 	return errorcategory.New(errorcategory.UserInput, message)
+}
+
+// Required validates that a required argument is present.
+func Required(value string) error {
+	if value == "" {
+		return errors.New("argument is required")
+	}
+	return nil
 }
 
 // NoArgs is a validator for commands to print an error when an argument is provided
