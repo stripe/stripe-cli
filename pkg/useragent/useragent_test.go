@@ -129,28 +129,41 @@ func TestDetectTerminalProgram(t *testing.T) {
 	}
 }
 
-func TestDetectAgentHostKind(t *testing.T) {
+func TestDetectAgentHost(t *testing.T) {
 	tests := []struct {
-		name     string
-		envs     map[string]string
-		expected string
+		name string
+		envs map[string]string
+		kind string
+		raw  string
 	}{
-		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop"},
-		{"codex desktop, normalized from \"Codex Desktop\"", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop"},
-		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal"},
-		{"ide", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-vscode"}, "ide"},
-		{"sdk", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "sdk-ts"}, "sdk"},
-		// remote-desktop is a remote session, not the desktop app. Matching "desktop"
-		// anywhere would report this as desktop and quietly inflate desktop counts.
-		{"remote desktop is remote", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote_desktop"}, "remote"},
-		{"agent env wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "terminal"},
-		{"uncategorized host", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "something-new"}, "other"},
-		{"no host", map[string]string{}, ""},
+		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop", "claude-desktop"},
+		// Both are desktop, and raw is the only thing that tells them apart.
+		{"claude desktop 3p", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop-3p"}, "desktop", "claude-desktop-3p"},
+		{"codex desktop, normalized from \"Codex Desktop\"", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop", "codex-desktop"},
+		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal", "cli"},
+		{"ide", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-vscode"}, "ide", "claude-vscode"},
+		{"sdk ts", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "sdk-ts"}, "sdk", "sdk-ts"},
+		{"sdk py", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "sdk-py"}, "sdk", "sdk-py"},
+		// remote_desktop is Claude Desktop driving a remotely executing session. The CLI
+		// runs on the remote host, so it belongs to remote rather than desktop.
+		{"remote desktop is remote", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote_desktop"}, "remote", "remote-desktop"},
+		{"agent env wins over codex", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "terminal", "cli"},
+		{"uncategorized claude host", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-security"}, "other", "claude-security"},
+		{"uncategorized codex host", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Web"}, "other", "codex-web"},
+		{"no host", map[string]string{}, "", ""},
+
+		// Normalization runs before reporting, so one host cannot arrive under several
+		// spellings -- including from different platforms.
+		{"raw is normalized, not verbatim", map[string]string{"CLAUDE_CODE_ENTRYPOINT": " Some_New HOST "}, "other", "some-new-host"},
+		{"raw is bounded", map[string]string{"CLAUDE_CODE_ENTRYPOINT": strings.Repeat("x", 100)}, "other", strings.Repeat("x", 32)},
+		{"unprintable stripped", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "we\x00ird\x7f"}, "other", "weird"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, DetectAgentHostKind(mapEnv(tt.envs)))
+			kind, raw := DetectAgentHost(mapEnv(tt.envs))
+			require.Equal(t, tt.kind, kind)
+			require.Equal(t, tt.raw, raw)
 		})
 	}
 }
@@ -261,7 +274,8 @@ func TestObservedAgentSessions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			getEnv := mapEnv(tt.envs)
 			require.Equal(t, tt.agent, DetectAIAgent(getEnv), tt.description)
-			require.Equal(t, tt.hostKind, DetectAgentHostKind(getEnv), tt.description)
+			kind, _ := DetectAgentHost(getEnv)
+			require.Equal(t, tt.hostKind, kind, tt.description)
 			require.Equal(t, tt.version, DetectAgentVersion(getEnv), tt.description)
 		})
 	}
@@ -294,9 +308,11 @@ func TestObservedAgentSessions_NoSensitiveValuesReported(t *testing.T) {
 	}
 	getEnv := mapEnv(envs)
 
+	hostKind, hostRaw := DetectAgentHost(getEnv)
 	reported := []string{
+		hostRaw,
 		DetectAIAgent(getEnv),
-		DetectAgentHostKind(getEnv),
+		hostKind,
 		DetectAgentVersion(getEnv),
 		DetectInstallMethod(getEnv, errExe, noStat),
 		DetectTerminalProgram(getEnv),
