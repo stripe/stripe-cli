@@ -16,6 +16,13 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// revokeToken and initiateLogin are package variables so tests can stub out
+// the network calls made by runLoginCmd.
+var (
+	revokeToken   = login.RevokeToken
+	initiateLogin = login.InitiateLogin
+)
+
 type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
@@ -152,8 +159,8 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
 	}
 
+	uat, _ := Config.Profile.GetUAT()
 	if !lc.newSession {
-		uat, _ := Config.Profile.GetUAT()
 		if strings.HasPrefix(uat, "oak_") {
 			identity := Config.Profile.GetDisplayName()
 			if identity == "" {
@@ -170,13 +177,18 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(cmd.OutOrStdout(), "To log in as a different user, run: stripe login --new-session")
 			return nil
 		}
+	} else if strings.HasPrefix(uat, "oak_") {
+		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
+		if err := revokeToken(cmd.Context(), lc.accessBaseURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
+		}
 	}
 
 	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 		if useragent.DetectAIAgent(os.Getenv) != "" {
 			fmt.Fprintln(os.Stderr, "If you do not have an account, run `stripe sandbox create` instead (provisions a claimable sandbox without a browser).")
 		}
-		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+		return initiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
 	}
 
 	if lc.interactive {
