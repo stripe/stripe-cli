@@ -140,6 +140,7 @@ func TestDetectAgentHost(t *testing.T) {
 		// Both are desktop, and raw is the only thing that tells them apart.
 		{"claude desktop 3p", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop-3p"}, "desktop", "claude-desktop-3p"},
 		{"codex desktop, normalized from \"Codex Desktop\"", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"}, "desktop", "codex-desktop"},
+		{"codex typescript sdk", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_sdk_ts"}, "sdk", "codex-sdk-ts"},
 		{"terminal", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli"}, "terminal", "cli"},
 		{"ide", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-vscode"}, "ide", "claude-vscode"},
 		{"sdk ts", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "sdk-ts"}, "sdk", "sdk-ts"},
@@ -212,6 +213,7 @@ func TestObservedAgentSessions(t *testing.T) {
 		envs        map[string]string
 		agent       string
 		hostKind    string
+		hostRaw     string
 		version     string
 		description string
 	}{
@@ -227,6 +229,7 @@ func TestObservedAgentSessions(t *testing.T) {
 			},
 			agent:    "claude_code",
 			hostKind: "desktop",
+			hostRaw:  "claude-desktop",
 			version:  "2.1.222",
 		},
 		{
@@ -241,6 +244,7 @@ func TestObservedAgentSessions(t *testing.T) {
 			},
 			agent:       "claude_code",
 			hostKind:    "desktop",
+			hostRaw:     "claude-desktop",
 			version:     "2.1.227",
 			description: "no __CFBundleIdentifier on Windows; the env vars carry it",
 		},
@@ -255,8 +259,22 @@ func TestObservedAgentSessions(t *testing.T) {
 			},
 			agent:       "codex_cli",
 			hostKind:    "desktop",
+			hostRaw:     "codex-desktop",
 			version:     "",
 			description: "Desktop also sets the generic Codex signals; the host is what distinguishes it",
+		},
+		{
+			name: "codex typescript sdk",
+			envs: map[string]string{
+				"CODEX_CI":                           "1",
+				"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_sdk_ts",
+				"CODEX_THREAD_ID":                    sensitiveThreadID,
+			},
+			agent:       "codex_cli",
+			hostKind:    "sdk",
+			hostRaw:     "codex-sdk-ts",
+			version:     "",
+			description: "The TypeScript SDK identifies itself through the Codex originator override",
 		},
 		{
 			name: "codex cli",
@@ -274,8 +292,9 @@ func TestObservedAgentSessions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			getEnv := mapEnv(tt.envs)
 			require.Equal(t, tt.agent, DetectAIAgent(getEnv), tt.description)
-			kind, _ := DetectAgentHost(getEnv)
+			kind, raw := DetectAgentHost(getEnv)
 			require.Equal(t, tt.hostKind, kind, tt.description)
+			require.Equal(t, tt.hostRaw, raw, tt.description)
 			require.Equal(t, tt.version, DetectAgentVersion(getEnv), tt.description)
 		})
 	}
