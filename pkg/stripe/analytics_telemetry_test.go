@@ -260,6 +260,7 @@ func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
 		bodyString := string(body)
 		require.NotContains(t, bodyString, "agent_version")
 		require.NotContains(t, bodyString, "agent_host_kind")
+		require.NotContains(t, bodyString, "agent_host_raw")
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
@@ -394,4 +395,17 @@ func TestNewEventMetadata_FromObservedDesktopSession(t *testing.T) {
 	require.Equal(t, "claude_code", tel.AIAgent)
 	require.Equal(t, "desktop", tel.AgentHostKind)
 	require.Equal(t, "2.1.227", tel.AgentVersion)
+	require.Equal(t, "claude-desktop", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_ReportsRawHostWhenUncategorized(t *testing.T) {
+	// The debugging case: a host neither vendor had shipped when this CLI was released.
+	// The category cannot identify it; the raw value can.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "some-future-surface")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "other", tel.AgentHostKind)
+	require.Equal(t, "some-future-surface", tel.AgentHostRaw)
 }
