@@ -16,6 +16,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -242,7 +243,7 @@ func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) e
 			return err
 		}
 	} else if missing := feedback.missingRequiredFields(); len(missing) > 0 {
-		return fmt.Errorf("%s required when running non-interactively", strings.Join(missing, ", "))
+		return errorcategory.Errorf(errorcategory.UserInput, "%s required when running non-interactively", strings.Join(missing, ", "))
 	}
 
 	resp, err := feedback.submitFeedback(cmd, creds)
@@ -267,10 +268,10 @@ func (feedback *feedbackCmd) validateSuppliedFields() error {
 		return err
 	}
 	if err := validators.CallNonEmpty(validators.OneOf(feedbackSentiments...), feedback.sentiment); err != nil {
-		return fmt.Errorf("--sentiment %w", err)
+		return errorcategory.Errorf(errorcategory.UserInput, "--sentiment %w", err)
 	}
 	if err := validators.CallNonEmpty(validators.OneOf(feedbackFeatureAreas...), feedback.feature); err != nil {
-		return fmt.Errorf("--feature %w", err)
+		return errorcategory.Errorf(errorcategory.UserInput, "--feature %w", err)
 	}
 
 	return nil
