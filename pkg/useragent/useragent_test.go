@@ -215,6 +215,7 @@ func TestObservedAgentSessions(t *testing.T) {
 		hostKind    string
 		hostRaw     string
 		version     string
+		terminal    string
 		description string
 	}{
 		{
@@ -269,12 +270,15 @@ func TestObservedAgentSessions(t *testing.T) {
 				"CODEX_CI":                           "1",
 				"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_sdk_ts",
 				"CODEX_THREAD_ID":                    sensitiveThreadID,
+				"TERM_PROGRAM":                       "vscode",
 			},
-			agent:       "codex_cli",
-			hostKind:    "sdk",
-			hostRaw:     "codex-sdk-ts",
-			version:     "",
-			description: "The TypeScript SDK identifies itself through the Codex originator override",
+			agent:    "codex_cli",
+			hostKind: "sdk",
+			hostRaw:  "codex-sdk-ts",
+			version:  "",
+			terminal: "vscode",
+			description: "The TypeScript SDK identifies itself through the Codex originator override " +
+				"and forwards inherited terminal metadata, but does not export its version",
 		},
 		{
 			name: "codex cli",
@@ -296,6 +300,7 @@ func TestObservedAgentSessions(t *testing.T) {
 			require.Equal(t, tt.hostKind, kind, tt.description)
 			require.Equal(t, tt.hostRaw, raw, tt.description)
 			require.Equal(t, tt.version, DetectAgentVersion(getEnv), tt.description)
+			require.Equal(t, tt.terminal, DetectTerminalProgram(getEnv), tt.description)
 		})
 	}
 }
