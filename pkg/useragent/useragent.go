@@ -234,6 +234,7 @@ var agentHostKinds = map[string]string{
 	"claude-vscode":     "ide",
 	"cli":               "terminal",
 	"codex-desktop":     "desktop",
+	"codex-sdk-ts":      "sdk",
 	"mcp":               "mcp",
 	"sdk-cli":           "sdk",
 	"sdk-py":            "sdk",
