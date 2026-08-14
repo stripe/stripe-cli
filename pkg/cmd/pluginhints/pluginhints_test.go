@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 )
 
 // newTestCmd builds a pluginHintCmd with all side effects mocked out.
@@ -21,12 +22,13 @@ import (
 // need to simulate an unauthenticated user.
 func newTestCmd(name string, opts ...option) *pluginHintCmd {
 	p := &pluginHintCmd{
-		name:        name,
-		description: "Test description.",
-		stdout:      &bytes.Buffer{},
-		stdin:       strings.NewReader(""),
-		accountIDFn: func() (string, error) { return "acct_test", nil },
-		loginFn:     func(ctx context.Context) error { return nil },
+		name:          name,
+		description:   "Test description.",
+		stdout:        &bytes.Buffer{},
+		stdin:         strings.NewReader(""),
+		accountIDFn:   func() (string, error) { return "acct_test", nil },
+		loginFn:       func(ctx context.Context) error { return nil },
+		accessBaseURL: login.DefaultAccessBaseURL,
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -176,6 +178,7 @@ func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
 			privatePreview: true,
 			stdout:         os.Stdout,
 			stdin:          strings.NewReader(""),
+			accessBaseURL:  login.DefaultAccessBaseURL,
 		}
 		p.Command = &cobra.Command{Use: "generate", RunE: p.run}
 		p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }

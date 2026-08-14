@@ -83,6 +83,9 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 
 	uat, _ := profile.GetUAT()
 	if strings.HasPrefix(uat, "oak_") {
+		if err := login.ValidateAccessBaseURL(wc.accessBaseURL); err != nil {
+			return err
+		}
 		return wc.runWhoamiOAuth(cmd, uat)
 	}
 

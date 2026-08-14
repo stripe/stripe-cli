@@ -26,6 +26,9 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 	if err != nil {
 		return err
 	}
+	if err := validateBrowserURL(reauthURL, accessBaseURL); err != nil {
+		return err
+	}
 
 	if !isSSH() && canOpenBrowser() {
 		fmt.Println("Opening the Stripe Dashboard to re-authorize the CLI...")
@@ -47,7 +50,7 @@ func fetchReauthURL(ctx context.Context, accessBaseURL, accessToken string) (str
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := accessSrvHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}

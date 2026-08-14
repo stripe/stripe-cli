@@ -150,6 +150,9 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateDashboardBaseURL(lc.dashboardBaseURL); err != nil {
 		return err
 	}
+	if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
+		return err
+	}
 
 	if lc.completeDevice {
 		return login.PollPendingDeviceAuth(cmd.Context(), &Config)
@@ -202,6 +205,9 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []string) error {
 	uat, _ := Config.Profile.GetUAT()
 	if strings.HasPrefix(uat, "oak_") {
+		if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
+			return err
+		}
 		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, uat)
 	}
 	return Config.ListProfiles()
@@ -210,6 +216,9 @@ func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []strin
 func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []string) error {
 	uat, _ := Config.Profile.GetUAT()
 	if strings.HasPrefix(uat, "oak_") {
+		if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
+			return err
+		}
 		accountID := ""
 		if len(args) > 0 {
 			accountID = args[0]

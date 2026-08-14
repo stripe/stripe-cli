@@ -30,7 +30,7 @@ func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken str
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := accessSrvHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

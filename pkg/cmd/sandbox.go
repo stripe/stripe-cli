@@ -111,6 +111,10 @@ work immediately.`,
 }
 
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(scc.accessBaseURL); err != nil {
+		return err
+	}
+
 	color := ansi.Color(cmd.ErrOrStderr())
 
 	existingKey, _ := Config.Profile.GetAPIKey(false)
