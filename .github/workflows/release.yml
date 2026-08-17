@@ -24,8 +24,34 @@ jobs:
     steps:
       - run: echo "Release approved, proceeding."
 
-  build-mac:
+  release-metadata:
     needs: [approve-release]
+    runs-on: ubuntu-latest
+    outputs:
+      goreleaser-config-suffix: ${{ steps.version.outputs.goreleaser-config-suffix }}
+      npm-dist-tag: ${{ steps.version.outputs.npm-dist-tag }}
+    steps:
+      - name: Determine release channel
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          major="${version%%.*}"
+          if [[ ! "${major}" =~ ^[0-9]+$ ]]; then
+            echo "Invalid release tag: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+          if [[ "${major}" == "1" ]]; then
+            echo "goreleaser-config-suffix=-maintenance" >> "${GITHUB_OUTPUT}"
+            echo "npm-dist-tag=v1" >> "${GITHUB_OUTPUT}"
+          else
+            echo "goreleaser-config-suffix=" >> "${GITHUB_OUTPUT}"
+            echo "npm-dist-tag=latest" >> "${GITHUB_OUTPUT}"
+          fi
+
+  build-mac:
+    needs: [release-metadata]
     runs-on: macos-latest
     steps:
       - name: Code checkout
@@ -52,13 +78,13 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release -f .goreleaser/mac.yml --clean
+          args: release -f .goreleaser/mac${{ needs.release-metadata.outputs.goreleaser-config-suffix }}.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build-linux:
-    needs: [approve-release]
+    needs: [release-metadata]
     runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
@@ -87,13 +113,13 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release -f .goreleaser/linux.yml --clean
+          args: release -f .goreleaser/linux${{ needs.release-metadata.outputs.goreleaser-config-suffix }}.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
-    needs: [approve-release]
+    needs: [release-metadata]
     runs-on: windows-latest
     steps:
       - name: Code checkout
@@ -120,7 +146,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release -f .goreleaser/windows.yml --clean
+          args: release -f .goreleaser/windows${{ needs.release-metadata.outputs.goreleaser-config-suffix }}.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -142,7 +168,7 @@ jobs:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
   publish-npm:
-    needs: [build-mac, build-linux, build-windows]
+    needs: [release-metadata, build-mac, build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
@@ -155,7 +181,7 @@ jobs:
           package-manager-cache: false
 
       - name: Derive version from tag
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "${GITHUB_ENV}"
 
       - name: Download and extract platform binaries from GitHub Release
         run: node npm/scripts/fetch-binaries.js
@@ -173,10 +199,14 @@ jobs:
           done
 
       - name: Publish platform packages
+        env:
+          NPM_DIST_TAG: ${{ needs.release-metadata.outputs.npm-dist-tag }}
         run: |
           for dir in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
-            npm publish ./npm/$dir
+            npm publish ./npm/$dir --tag "${NPM_DIST_TAG}"
           done
 
       - name: Publish wrapper package
-        run: npm publish ./npm/wrapper
+        env:
+          NPM_DIST_TAG: ${{ needs.release-metadata.outputs.npm-dist-tag }}
+        run: npm publish ./npm/wrapper --tag "${NPM_DIST_TAG}"
