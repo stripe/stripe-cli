@@ -50,6 +50,8 @@ release:
   make_latest: false
 snapshot:
   version_template: "{{ .Version }}-next"
+# Maintenance packages remain available as versioned release assets without
+# updating package repositories.
 nfpms:
   - id: deb
     package_name: stripe
