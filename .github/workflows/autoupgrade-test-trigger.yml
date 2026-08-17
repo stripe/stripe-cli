@@ -1,6 +1,7 @@
 on:
   schedule:
     - cron: '*/10 * * * *' # Every 10 minutes
+  workflow_dispatch:
 name: Auto-upgrade test (trigger)
 permissions:
   actions: write
@@ -8,7 +9,38 @@ permissions:
 jobs:
   dispatch:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - run: gh workflow run autoupgrade-test.yml --ref v2 --repo stripe/stripe-cli
+      # The dispatch API intermittently returns HTTP 503, which fails the run
+      # even though a retry succeeds. Retry with backoff before giving up.
+      - name: Dispatch auto-upgrade test on v2
+        run: |
+          for delay in 15 30 60 120 0; do
+            if gh workflow run autoupgrade-test.yml --ref v2 --repo stripe/stripe-cli; then
+              echo "Dispatched auto-upgrade test on v2"
+              exit 0
+            fi
+            if [ "$delay" -eq 0 ]; then
+              break
+            fi
+            echo "Dispatch failed, retrying in ${delay}s..."
+            sleep "$delay"
+          done
+          echo "Error: could not dispatch auto-upgrade test after 5 attempts"
+          exit 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL is not set; skipping Slack notification"
+            exit 0
+          fi
+          curl -sS -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \":red_circle: Could not dispatch the auto-upgrade test on v2 after 5 attempts (likely a transient GitHub API error). Logs: $RUN_URL\"}"
