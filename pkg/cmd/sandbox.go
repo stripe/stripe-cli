@@ -560,7 +560,6 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	// header; the UAT is injected per-request as a STRIPE-V2-SIG token instead.
 	client := &stripe.Client{
 		BaseURL: baseURL,
-		APIKey:  "",
 	}
 
 	// authConfigure sets the UAT auth + version headers shared by every call.
@@ -924,9 +923,16 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 		return fmt.Errorf("invalid --api-base %q: %w", slc.apiBase, err)
 	}
 
+	oauthAccounts, isOAuth, err := slc.oauthAuthorizedAccounts(cmd.Context())
+	if err != nil {
+		return err
+	}
+	if isOAuth {
+		return slc.printOAuthSandboxes(cmd, oauthAccounts, stripeAccount)
+	}
+
 	client := &stripe.Client{
 		BaseURL: baseURL,
-		APIKey:  "",
 	}
 
 	authConfigure := func(req *http.Request) error {
@@ -1036,6 +1042,90 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 	return nil
 }
 
+func (slc *sandboxListCmd) oauthAuthorizedAccounts(ctx context.Context) ([]config.AuthorizedAccount, bool, error) {
+	uat, err := Config.Profile.GetUAT()
+	if err != nil {
+		return nil, false, err
+	}
+	if !strings.HasPrefix(uat, "oak_") {
+		return nil, false, nil
+	}
+
+	livemode := true
+	activeContext, err := config.GetActiveContext()
+	if err != nil {
+		return nil, true, err
+	}
+	if activeContext != nil {
+		livemode = activeContext.Livemode
+	}
+
+	credentials, err := Config.Profile.ResolveCredentials(livemode)
+	if err != nil {
+		return nil, true, err
+	}
+	accessBaseURL := Config.Profile.OAuthAccessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+	accounts, err := login.ListAuthorizedAccounts(ctx, accessBaseURL, credentials.Token)
+	if err == nil || !login.IsAuthorizedAccountsUnauthorized(err) || config.OAuthTokenRefresher == nil {
+		return accounts, true, err
+	}
+
+	if err := config.OAuthTokenRefresher(&Config.Profile); err != nil {
+		return nil, true, err
+	}
+	credentials, err = Config.Profile.ResolveCredentials(livemode)
+	if err != nil {
+		return nil, true, err
+	}
+	accounts, err = login.ListAuthorizedAccounts(ctx, accessBaseURL, credentials.Token)
+	return accounts, true, err
+}
+
+func (slc *sandboxListCmd) printOAuthSandboxes(cmd *cobra.Command, accounts []config.AuthorizedAccount, stripeAccount string) error {
+	if stripeAccount != "" {
+		isAuthorizedLiveAccount := false
+		for _, account := range accounts {
+			if account.ID == stripeAccount && authorizedAccountHasMode(account, "live") {
+				isAuthorizedLiveAccount = true
+				break
+			}
+		}
+		if !isAuthorizedLiveAccount {
+			return fmt.Errorf("no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
+		}
+	}
+
+	var sandboxes []config.AuthorizedAccount
+	for _, account := range accounts {
+		if authorizedAccountHasMode(account, "test") && !authorizedAccountHasMode(account, "live") {
+			sandboxes = append(sandboxes, account)
+		}
+	}
+	if len(sandboxes) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No sandboxes found.")
+		return nil
+	}
+
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ACCOUNT\tNAME\tREPLICA OF")
+	for _, account := range sandboxes {
+		fmt.Fprintf(w, "%s\t%s\t\n", account.ID, account.Name)
+	}
+	return w.Flush()
+}
+
+func authorizedAccountHasMode(account config.AuthorizedAccount, mode string) bool {
+	for _, accountMode := range account.Modes {
+		if accountMode == mode {
+			return true
+		}
+	}
+	return false
+}
+
 func newSandboxDeleteCmd() *sandboxDeleteCmd {
 	sdc := &sandboxDeleteCmd{}
 	sdc.cmd = &cobra.Command{
@@ -1093,7 +1183,6 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 	// Empty APIKey so no Bearer header is set; the UAT is injected as STRIPE-V2-SIG.
 	client := &stripe.Client{
 		BaseURL: baseURL,
-		APIKey:  "",
 	}
 	authConfigure := func(req *http.Request) error {
 		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)

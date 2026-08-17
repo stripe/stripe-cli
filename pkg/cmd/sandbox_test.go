@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -14,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -1375,6 +1377,141 @@ func TestSandboxListCmd_Empty(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, output, "No sandboxes found")
+}
+
+func TestSandboxListCmd_OAuthListsOnlyTestOnlyAccounts(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_list_test"), "test uat"))
+	require.NoError(t, config.SaveActiveContext("acct_live", true))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "Bearer oak_list_test", r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"accounts": []map[string]interface{}{
+				{"id": "acct_live", "name": "Live account", "modes": []string{"live", "test"}},
+				{"id": "acct_sandbox", "name": "Authorized sandbox", "modes": []string{"test"}},
+				{"id": "acct_live_only", "name": "Live only", "modes": []string{"live"}},
+			},
+		})
+	}))
+	defer server.Close()
+
+	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
+	Config.Profile.OAuthAccessBaseURL = server.URL
+	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
+
+	cmd := newSandboxListCmd()
+	var output bytes.Buffer
+	cmd.cmd.SetOut(&output)
+	require.NoError(t, cmd.cmd.Execute())
+	assert.Contains(t, output.String(), "acct_sandbox")
+	assert.Contains(t, output.String(), "Authorized sandbox")
+	assert.NotContains(t, output.String(), "acct_live")
+	assert.NotContains(t, output.String(), "Live only")
+}
+
+func TestSandboxListCmd_OAuthValidatesExplicitLiveAccount(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_list_test"), "test uat"))
+	require.NoError(t, config.SaveActiveContext("acct_live", true))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"accounts": []map[string]interface{}{
+				{"id": "acct_live", "name": "Live account", "modes": []string{"live", "test"}},
+				{"id": "acct_sandbox", "name": "Authorized sandbox", "modes": []string{"test"}},
+			},
+		})
+	}))
+	defer server.Close()
+
+	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
+	Config.Profile.OAuthAccessBaseURL = server.URL
+	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
+
+	cmd := newSandboxListCmd()
+	cmd.stripeAccount = "acct_sandbox"
+	cmd.cmd.SetContext(context.Background())
+	err := cmd.runSandboxListCmd(cmd.cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no accessible live account matches acct_sandbox")
+}
+
+func TestSandboxListCmd_OAuthProactivelyRefreshesToken(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_expiring"), "test uat"))
+	require.NoError(t, config.SaveActiveContext("acct_live", true))
+	require.NoError(t, config.SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+
+	originalRefresher := config.OAuthTokenRefresher
+	refreshes := 0
+	config.OAuthTokenRefresher = func(profile *config.Profile) error {
+		refreshes++
+		profile.UAT = "oak_refreshed"
+		require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte(profile.UAT), "refreshed uat"))
+		return config.SaveUATExpiresAt(time.Now().Add(time.Hour))
+	}
+	t.Cleanup(func() { config.OAuthTokenRefresher = originalRefresher })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "Bearer oak_refreshed", r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"accounts": []map[string]interface{}{}})
+	}))
+	defer server.Close()
+
+	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
+	Config.Profile.OAuthAccessBaseURL = server.URL
+	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
+
+	cmd := newSandboxListCmd()
+	cmd.cmd.SetContext(context.Background())
+	require.NoError(t, cmd.runSandboxListCmd(cmd.cmd, nil))
+	assert.Equal(t, 1, refreshes)
+}
+
+func TestSandboxListCmd_OAuthRetriesUnauthorizedOnce(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_expired"), "test uat"))
+	require.NoError(t, config.SaveActiveContext("acct_live", true))
+
+	originalRefresher := config.OAuthTokenRefresher
+	refreshes := 0
+	config.OAuthTokenRefresher = func(profile *config.Profile) error {
+		refreshes++
+		profile.UAT = "oak_refreshed"
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte(profile.UAT), "refreshed uat")
+	}
+	t.Cleanup(func() { config.OAuthTokenRefresher = originalRefresher })
+
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "unauthorized"})
+	}))
+	defer server.Close()
+
+	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
+	Config.Profile.OAuthAccessBaseURL = server.URL
+	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
+
+	cmd := newSandboxListCmd()
+	cmd.cmd.SetContext(context.Background())
+	err := cmd.runSandboxListCmd(cmd.cmd, nil)
+	require.Error(t, err)
+	assert.Equal(t, 1, refreshes)
+	assert.Equal(t, 2, requests)
 }
 
 func TestSandboxListCmd_RejectsOrg(t *testing.T) {
