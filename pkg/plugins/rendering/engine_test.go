@@ -25,13 +25,23 @@ func messageBlock(msg string, level proto.MessageLevel) *proto.OutputBlock {
 	}}
 }
 
+func progressBlock(p *proto.ProgressBlock) *proto.OutputBlock {
+	return &proto.OutputBlock{Block: &proto.OutputBlock_Progress{Progress: p}}
+}
+
+// chatter builds a non-final request: incremental output sent while the command
+// is still running.
+func chatter(blocks ...*proto.OutputBlock) *proto.SendCommandOutputRequest {
+	return &proto.SendCommandOutputRequest{Blocks: blocks}
+}
+
 func dataBlock(blockType, payload string) *proto.OutputBlock {
 	return &proto.OutputBlock{Block: &proto.OutputBlock_Data{
 		Data: &proto.DataBlock{Type: blockType, Payload: payload},
 	}}
 }
 
-func TestHandleMessageRendersEachLevel(t *testing.T) {
+func TestMessageBlockRendersEachLevel(t *testing.T) {
 	tests := []struct {
 		level proto.MessageLevel
 		want  string
@@ -47,98 +57,93 @@ func TestHandleMessageRendersEachLevel(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.level.String(), func(t *testing.T) {
 			engine, stdout, stderr := newTestEngine(FormatText)
-			engine.HandleMessage(&proto.SendMessageRequest{
-				Message: &proto.MessageBlock{Message: "hello", Level: tc.level},
-			})
+			engine.HandleCommandOutput(chatter(messageBlock("hello", tc.level)))
 			require.Equal(t, tc.want, stdout.String())
 			require.Empty(t, stderr.String())
 		})
 	}
 }
 
-func TestHandleMessageIgnoresEmptyRequests(t *testing.T) {
+func TestIgnoresEmptyRequests(t *testing.T) {
 	engine, stdout, stderr := newTestEngine(FormatText)
 
-	engine.HandleMessage(nil)
-	engine.HandleMessage(&proto.SendMessageRequest{})
+	engine.HandleCommandOutput(nil)
+	engine.HandleCommandOutput(chatter())
 
 	require.Empty(t, stdout.String())
 	require.Empty(t, stderr.String())
 }
 
-func TestHandleMessageWritesToStderrInJSONMode(t *testing.T) {
+func TestMessageBlockWritesToStderrInJSONMode(t *testing.T) {
 	engine, stdout, stderr := newTestEngine(FormatJSON)
 
-	engine.HandleMessage(&proto.SendMessageRequest{
-		Message: &proto.MessageBlock{Message: "working", Level: proto.MessageLevel_INFO},
-	})
+	engine.HandleCommandOutput(chatter(messageBlock("working", proto.MessageLevel_INFO)))
 
 	// stdout is reserved for the JSON envelope.
 	require.Empty(t, stdout.String())
 	require.Equal(t, "working\n", stderr.String())
 }
 
-func TestHandleProgressRendersStepsAndSpinners(t *testing.T) {
+func TestProgressBlockRendersStepsAndSpinners(t *testing.T) {
 	engine, stdout, _ := newTestEngine(FormatText)
 
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Message: "step one", Type: proto.ProgressType_STEP,
-	}})
+	})))
 	// Non-terminal writers get plain lines instead of an animation.
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "uploading", Type: proto.ProgressType_SPINNER_START,
-	}})
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	})))
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "still uploading", Type: proto.ProgressType_SPINNER_UPDATE,
-	}})
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	})))
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "uploaded", Type: proto.ProgressType_SPINNER_STOP, Success: true,
-	}})
+	})))
 
 	require.Equal(t, "✔ step one\nuploading\nstill uploading\n✔ uploaded\n", stdout.String())
 }
 
-func TestHandleProgressFailedSpinner(t *testing.T) {
+func TestProgressBlockFailedSpinner(t *testing.T) {
 	engine, stdout, _ := newTestEngine(FormatText)
 
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "uploading", Type: proto.ProgressType_SPINNER_START,
-	}})
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	})))
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "upload failed", Type: proto.ProgressType_SPINNER_STOP, Success: false,
-	}})
+	})))
 
 	require.Equal(t, "uploading\n✗ upload failed\n", stdout.String())
 }
 
-func TestHandleProgressStopWithoutMessageReusesStartMessage(t *testing.T) {
+func TestProgressBlockStopWithoutMessageReusesStartMessage(t *testing.T) {
 	engine, stdout, _ := newTestEngine(FormatText)
 
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "uploading", Type: proto.ProgressType_SPINNER_START,
-	}})
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	})))
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Type: proto.ProgressType_SPINNER_STOP, Success: true,
-	}})
+	})))
 
 	require.Equal(t, "uploading\n✔ uploading\n", stdout.String())
 }
 
-func TestHandleProgressStopWithoutStartStillReportsOutcome(t *testing.T) {
+func TestProgressBlockStopWithoutStartStillReportsOutcome(t *testing.T) {
 	engine, stdout, _ := newTestEngine(FormatText)
 
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "unknown", Message: "done anyway", Type: proto.ProgressType_SPINNER_STOP, Success: true,
-	}})
+	})))
 
 	require.Equal(t, "✔ done anyway\n", stdout.String())
 }
 
-func TestHandleProgressIgnoresEmptyRequests(t *testing.T) {
+func TestIgnoresNilBlocks(t *testing.T) {
 	engine, stdout, stderr := newTestEngine(FormatText)
 
-	engine.HandleProgress(nil)
-	engine.HandleProgress(&proto.SendProgressRequest{})
+	engine.HandleCommandOutput(chatter(nil))
 
 	require.Empty(t, stdout.String())
 	require.Empty(t, stderr.String())
@@ -256,7 +261,7 @@ func TestHandleCommandOutputIgnoresEmptyRequests(t *testing.T) {
 
 	engine.HandleCommandOutput(nil)
 	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{})
-	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{Blocks: []*proto.OutputBlock{nil, {}}})
+	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{Blocks: []*proto.OutputBlock{nil}})
 
 	require.Empty(t, stdout.String())
 	require.Empty(t, stderr.String())
@@ -292,10 +297,11 @@ func TestHandleCommandOutputRendersInvalidPayloadsVerbatim(t *testing.T) {
 func TestHandleCommandOutputStopsSpinnersFirst(t *testing.T) {
 	engine, stdout, _ := newTestEngine(FormatText)
 
-	engine.HandleProgress(&proto.SendProgressRequest{Progress: &proto.ProgressBlock{
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
 		Id: "s1", Message: "uploading", Type: proto.ProgressType_SPINNER_START,
-	}})
+	})))
 	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
+		Final:  true,
 		Blocks: []*proto.OutputBlock{dataBlock("data", `{"app_id":"app_123"}`)},
 	})
 
@@ -308,6 +314,7 @@ func TestHandleCommandOutputJSONEnvelope(t *testing.T) {
 
 	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
 		Command: "apps upload",
+		Final:   true,
 		Blocks: []*proto.OutputBlock{
 			dataBlock("data", `{"app_id":"app_123"}`),
 			dataBlock("warning", `{"code":"C","message":"m"}`),
@@ -323,7 +330,9 @@ func TestHandleCommandOutputJSONEnvelope(t *testing.T) {
 	require.Equal(t, "data", envelope.Data[0].Type)
 	require.JSONEq(t, `{"app_id":"app_123"}`, string(envelope.Data[0].Payload))
 	require.Equal(t, "warning", envelope.Data[1].Type)
-	require.Empty(t, stderr.String())
+	// The message block is not envelope data; it goes to stderr so it cannot
+	// corrupt the document on stdout.
+	require.Equal(t, "chatter\n", stderr.String())
 }
 
 // A malformed payload must not produce an unparseable envelope.
@@ -332,6 +341,7 @@ func TestHandleCommandOutputJSONEnvelopeQuotesInvalidPayloads(t *testing.T) {
 
 	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
 		Command: "apps upload",
+		Final:   true,
 		Blocks:  []*proto.OutputBlock{dataBlock("data", `{"app_id":`)},
 	})
 
@@ -357,12 +367,9 @@ func TestConcurrentSendsProduceWholeLines(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			for j := 0; j < perSender; j++ {
-				engine.HandleMessage(&proto.SendMessageRequest{
-					Message: &proto.MessageBlock{
-						Message: fmt.Sprintf("sender-%d-line-%d", i, j),
-						Level:   proto.MessageLevel_INFO,
-					},
-				})
+				engine.HandleCommandOutput(chatter(
+					messageBlock(fmt.Sprintf("sender-%d-line-%d", i, j), proto.MessageLevel_INFO),
+				))
 			}
 		}(i)
 	}
@@ -449,4 +456,78 @@ func TestHandlePromptNilRequest(t *testing.T) {
 	engine, stdout, _ := newTestEngine(FormatText)
 	require.Empty(t, engine.HandlePrompt(nil).GetValue())
 	require.Empty(t, stdout.String())
+}
+
+// --- one-RPC semantics ---
+
+// Chatter arrives on the same RPC as the result, so it must not tear down a
+// spinner the command is still using.
+func TestNonFinalRequestLeavesSpinnersRunning(t *testing.T) {
+	engine, stdout, _ := newTestEngine(FormatText)
+
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
+		Id: "s1", Message: "uploading", Type: proto.ProgressType_SPINNER_START,
+	})))
+	engine.HandleCommandOutput(chatter(messageBlock("still going", proto.MessageLevel_INFO)))
+
+	require.Len(t, engine.spinners, 1, "a status message must not stop the command's spinner")
+	require.Equal(t, "uploading\nstill going\n", stdout.String())
+}
+
+// One command must produce exactly one JSON document however many times it
+// sends, or anything parsing our stdout breaks.
+func TestJSONEnvelopeIsEmittedOnceAcrossManySends(t *testing.T) {
+	engine, stdout, stderr := newTestEngine(FormatJSON)
+
+	engine.HandleCommandOutput(chatter(messageBlock("working", proto.MessageLevel_INFO)))
+	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{dataBlock("data", `{"app_id":"app_123"}`)},
+	})
+	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
+		Command: "apps upload",
+		Final:   true,
+		Blocks:  []*proto.OutputBlock{dataBlock("warning", `{"code":"C","message":"m"}`)},
+	})
+
+	require.True(t, json.Valid(stdout.Bytes()), "envelope must be valid JSON: %s", stdout.String())
+
+	var envelope JSONEnvelope
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &envelope))
+	require.Equal(t, "apps upload", envelope.Command)
+	require.Len(t, envelope.Data, 2, "data from every send belongs to the one envelope")
+	require.Equal(t, "data", envelope.Data[0].Type)
+	require.Equal(t, "warning", envelope.Data[1].Type)
+	// Chatter cannot go to stdout without corrupting the envelope.
+	require.Equal(t, "working\n", stderr.String())
+}
+
+// Nothing is written until the command says it is done.
+func TestJSONEnvelopeWaitsForFinal(t *testing.T) {
+	engine, stdout, _ := newTestEngine(FormatJSON)
+
+	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
+		Command: "apps upload",
+		Blocks:  []*proto.OutputBlock{dataBlock("data", `{"app_id":"app_123"}`)},
+	})
+
+	require.Empty(t, stdout.String())
+}
+
+// A block kind this build does not know decodes to an empty variant and the RPC
+// still succeeds, so the plugin cannot detect it. Saying something is the only
+// way the user learns output went missing.
+func TestUnknownBlockVariantIsReportedNotDropped(t *testing.T) {
+	engine, stdout, stderr := newTestEngine(FormatText)
+
+	engine.HandleCommandOutput(&proto.SendCommandOutputRequest{
+		Final: true,
+		Blocks: []*proto.OutputBlock{
+			dataBlock("data", `{"app_id":"app_123"}`),
+			{}, // a variant from a newer plugin
+			{},
+		},
+	})
+
+	require.Equal(t, "  app_id: app_123\n", stdout.String(), "known blocks still render")
+	require.Contains(t, stderr.String(), "2 output block(s) require a newer Stripe CLI")
 }

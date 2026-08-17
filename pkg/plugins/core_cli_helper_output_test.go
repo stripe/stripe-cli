@@ -19,22 +19,10 @@ import (
 type recordingHelper struct {
 	CoreCLIHelper
 
-	messages []*proto.SendMessageRequest
-	progress []*proto.SendProgressRequest
-	outputs  []*proto.SendCommandOutputRequest
-	prompts  []*proto.PromptRequest
+	outputs []*proto.SendCommandOutputRequest
+	prompts []*proto.PromptRequest
 
 	err error
-}
-
-func (h *recordingHelper) SendMessage(req *proto.SendMessageRequest) error {
-	h.messages = append(h.messages, req)
-	return h.err
-}
-
-func (h *recordingHelper) SendProgress(req *proto.SendProgressRequest) error {
-	h.progress = append(h.progress, req)
-	return h.err
 }
 
 func (h *recordingHelper) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
@@ -55,17 +43,17 @@ func TestCoreCLIHelperServerForwardsOutputRPCs(t *testing.T) {
 	server := &CoreCLIHelperServer{Impl: impl}
 	ctx := context.Background()
 
-	msgReq := &proto.SendMessageRequest{Message: &proto.MessageBlock{Message: "hi", Level: proto.MessageLevel_SUCCESS}}
-	msgResp, err := server.SendMessage(ctx, msgReq)
-	require.NoError(t, err)
-	require.NotNil(t, msgResp)
-
-	progressReq := &proto.SendProgressRequest{Progress: &proto.ProgressBlock{Id: "s1", Message: "working", Type: proto.ProgressType_SPINNER_START}}
-	progressResp, err := server.SendProgress(ctx, progressReq)
-	require.NoError(t, err)
-	require.NotNil(t, progressResp)
-
-	outputReq := &proto.SendCommandOutputRequest{Command: "apps upload"}
+	// One request carries a mix of block kinds, which is the whole point of
+	// routing every kind of output through a single RPC.
+	outputReq := &proto.SendCommandOutputRequest{
+		Command: "apps upload",
+		Final:   true,
+		Blocks: []*proto.OutputBlock{
+			{Block: &proto.OutputBlock_Message{Message: &proto.MessageBlock{Message: "hi", Level: proto.MessageLevel_SUCCESS}}},
+			{Block: &proto.OutputBlock_Progress{Progress: &proto.ProgressBlock{Id: "s1", Message: "working", Type: proto.ProgressType_SPINNER_START}}},
+			{Block: &proto.OutputBlock_Data{Data: &proto.DataBlock{Type: "data", Payload: `{}`}}},
+		},
+	}
 	outputResp, err := server.SendCommandOutput(ctx, outputReq)
 	require.NoError(t, err)
 	require.NotNil(t, outputResp)
@@ -74,8 +62,6 @@ func TestCoreCLIHelperServerForwardsOutputRPCs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "y", promptResp.GetValue())
 
-	require.Equal(t, []*proto.SendMessageRequest{msgReq}, impl.messages)
-	require.Equal(t, []*proto.SendProgressRequest{progressReq}, impl.progress)
 	require.Equal(t, []*proto.SendCommandOutputRequest{outputReq}, impl.outputs)
 	require.Len(t, impl.prompts, 1)
 }
@@ -85,13 +71,7 @@ func TestCoreCLIHelperServerPropagatesErrors(t *testing.T) {
 	server := &CoreCLIHelperServer{Impl: &recordingHelper{err: wantErr}}
 	ctx := context.Background()
 
-	_, err := server.SendMessage(ctx, &proto.SendMessageRequest{})
-	require.ErrorIs(t, err, wantErr)
-
-	_, err = server.SendProgress(ctx, &proto.SendProgressRequest{})
-	require.ErrorIs(t, err, wantErr)
-
-	_, err = server.SendCommandOutput(ctx, &proto.SendCommandOutputRequest{})
+	_, err := server.SendCommandOutput(ctx, &proto.SendCommandOutputRequest{})
 	require.ErrorIs(t, err, wantErr)
 
 	_, err = server.Prompt(ctx, &proto.PromptRequest{})
@@ -103,14 +83,17 @@ func TestCoreCLIHelperRendersToConfiguredWriters(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	helper := NewCoreCLIHelperWithWriters(context.Background(), nil, afero.NewMemMapFs(), rendering.FormatText, stdout, stderr)
 
-	require.NoError(t, helper.SendMessage(&proto.SendMessageRequest{
-		Message: &proto.MessageBlock{Message: "starting", Level: proto.MessageLevel_INFO},
-	}))
-	require.NoError(t, helper.SendProgress(&proto.SendProgressRequest{
-		Progress: &proto.ProgressBlock{Message: "built files", Type: proto.ProgressType_STEP},
+	// Incremental chatter first, then the command's final result — the sequence a
+	// real plugin produces across several calls.
+	require.NoError(t, helper.SendCommandOutput(&proto.SendCommandOutputRequest{
+		Blocks: []*proto.OutputBlock{
+			{Block: &proto.OutputBlock_Message{Message: &proto.MessageBlock{Message: "starting", Level: proto.MessageLevel_INFO}}},
+			{Block: &proto.OutputBlock_Progress{Progress: &proto.ProgressBlock{Message: "built files", Type: proto.ProgressType_STEP}}},
+		},
 	}))
 	require.NoError(t, helper.SendCommandOutput(&proto.SendCommandOutputRequest{
 		Command: "apps upload",
+		Final:   true,
 		Blocks: []*proto.OutputBlock{{Block: &proto.OutputBlock_Data{Data: &proto.DataBlock{
 			Type:    "data",
 			Payload: `{"app_id":"app_123"}`,

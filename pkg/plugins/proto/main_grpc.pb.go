@@ -128,8 +128,6 @@ const (
 	CoreCLIHelper_KeychainDeletePassword_FullMethodName  = "/proto.CoreCLIHelper/KeychainDeletePassword"
 	CoreCLIHelper_KeychainFindCredentials_FullMethodName = "/proto.CoreCLIHelper/KeychainFindCredentials"
 	CoreCLIHelper_RunPeerPlugin_FullMethodName           = "/proto.CoreCLIHelper/RunPeerPlugin"
-	CoreCLIHelper_SendMessage_FullMethodName             = "/proto.CoreCLIHelper/SendMessage"
-	CoreCLIHelper_SendProgress_FullMethodName            = "/proto.CoreCLIHelper/SendProgress"
 	CoreCLIHelper_SendCommandOutput_FullMethodName       = "/proto.CoreCLIHelper/SendCommandOutput"
 	CoreCLIHelper_Prompt_FullMethodName                  = "/proto.CoreCLIHelper/Prompt"
 )
@@ -149,15 +147,14 @@ type CoreCLIHelperClient interface {
 	RunPeerPlugin(ctx context.Context, in *RunPeerPluginRequest, opts ...grpc.CallOption) (*RunPeerPluginResponse, error)
 	// Centralized UI Rendering
 	//
-	// SendMessage and SendProgress carry incremental output that is rendered as
-	// soon as it arrives. SendCommandOutput carries the command's final,
-	// ordered result blocks and is sent at most once per command.
+	// Every kind of output is an OutputBlock, so this one RPC carries incremental
+	// chatter and the command's final result alike. Callers set final on the last
+	// request; see SendCommandOutputRequest.
 	//
-	// Plugins detect support per-RPC: an older core CLI returns gRPC
+	// Plugins detect support from this RPC alone: an older core CLI returns gRPC
 	// Unimplemented, which is the only transport signal that a plugin may treat
-	// as "render locally instead".
-	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
-	SendProgress(ctx context.Context, in *SendProgressRequest, opts ...grpc.CallOption) (*SendProgressResponse, error)
+	// as "render locally instead". Keeping the surface at one method keeps that
+	// signal to a single capability probe.
 	SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error)
 	Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
 }
@@ -241,26 +238,6 @@ func (c *coreCLIHelperClient) RunPeerPlugin(ctx context.Context, in *RunPeerPlug
 	return out, nil
 }
 
-func (c *coreCLIHelperClient) SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendMessageResponse)
-	err := c.cc.Invoke(ctx, CoreCLIHelper_SendMessage_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *coreCLIHelperClient) SendProgress(ctx context.Context, in *SendProgressRequest, opts ...grpc.CallOption) (*SendProgressResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SendProgressResponse)
-	err := c.cc.Invoke(ctx, CoreCLIHelper_SendProgress_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *coreCLIHelperClient) SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendCommandOutputResponse)
@@ -296,15 +273,14 @@ type CoreCLIHelperServer interface {
 	RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error)
 	// Centralized UI Rendering
 	//
-	// SendMessage and SendProgress carry incremental output that is rendered as
-	// soon as it arrives. SendCommandOutput carries the command's final,
-	// ordered result blocks and is sent at most once per command.
+	// Every kind of output is an OutputBlock, so this one RPC carries incremental
+	// chatter and the command's final result alike. Callers set final on the last
+	// request; see SendCommandOutputRequest.
 	//
-	// Plugins detect support per-RPC: an older core CLI returns gRPC
+	// Plugins detect support from this RPC alone: an older core CLI returns gRPC
 	// Unimplemented, which is the only transport signal that a plugin may treat
-	// as "render locally instead".
-	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
-	SendProgress(context.Context, *SendProgressRequest) (*SendProgressResponse, error)
+	// as "render locally instead". Keeping the surface at one method keeps that
+	// signal to a single capability probe.
 	SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error)
 	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
@@ -337,12 +313,6 @@ func (UnimplementedCoreCLIHelperServer) KeychainFindCredentials(context.Context,
 }
 func (UnimplementedCoreCLIHelperServer) RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RunPeerPlugin not implemented")
-}
-func (UnimplementedCoreCLIHelperServer) SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendMessage not implemented")
-}
-func (UnimplementedCoreCLIHelperServer) SendProgress(context.Context, *SendProgressRequest) (*SendProgressResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SendProgress not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendCommandOutput not implemented")
@@ -497,42 +467,6 @@ func _CoreCLIHelper_RunPeerPlugin_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CoreCLIHelper_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendMessageRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CoreCLIHelperServer).SendMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CoreCLIHelper_SendMessage_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CoreCLIHelperServer).SendMessage(ctx, req.(*SendMessageRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CoreCLIHelper_SendProgress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendProgressRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CoreCLIHelperServer).SendProgress(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CoreCLIHelper_SendProgress_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CoreCLIHelperServer).SendProgress(ctx, req.(*SendProgressRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _CoreCLIHelper_SendCommandOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SendCommandOutputRequest)
 	if err := dec(in); err != nil {
@@ -603,14 +537,6 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunPeerPlugin",
 			Handler:    _CoreCLIHelper_RunPeerPlugin_Handler,
-		},
-		{
-			MethodName: "SendMessage",
-			Handler:    _CoreCLIHelper_SendMessage_Handler,
-		},
-		{
-			MethodName: "SendProgress",
-			Handler:    _CoreCLIHelper_SendProgress_Handler,
 		},
 		{
 			MethodName: "SendCommandOutput",

@@ -32,11 +32,8 @@ type CoreCLIHelper interface {
 
 	// Centralized UI Rendering
 	//
-	// SendMessage and SendProgress deliver incremental output, rendered as soon
-	// as it arrives. SendCommandOutput delivers the command's final ordered
-	// blocks and is called at most once per command.
-	SendMessage(req *proto.SendMessageRequest) error
-	SendProgress(req *proto.SendProgressRequest) error
+	// SendCommandOutput carries every kind of output as an OutputBlock, so it may
+	// be called repeatedly during a command. The call with Final set is the last.
 	SendCommandOutput(req *proto.SendCommandOutputRequest) error
 	Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error)
 }
@@ -117,16 +114,6 @@ func (c *CoreCLIHelperClient) RunPeerPlugin(pluginName string, args []string, cw
 	return err
 }
 
-func (c *CoreCLIHelperClient) SendMessage(req *proto.SendMessageRequest) error {
-	_, err := c.client.SendMessage(context.Background(), req, c.outputCallOpts...)
-	return err
-}
-
-func (c *CoreCLIHelperClient) SendProgress(req *proto.SendProgressRequest) error {
-	_, err := c.client.SendProgress(context.Background(), req, c.outputCallOpts...)
-	return err
-}
-
 func (c *CoreCLIHelperClient) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
 	_, err := c.client.SendCommandOutput(context.Background(), req, c.outputCallOpts...)
 	return err
@@ -199,20 +186,6 @@ func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunP
 		return nil, err
 	}
 	return &proto.RunPeerPluginResponse{}, nil
-}
-
-func (s *CoreCLIHelperServer) SendMessage(ctx context.Context, req *proto.SendMessageRequest) (*proto.SendMessageResponse, error) {
-	if err := s.Impl.SendMessage(req); err != nil {
-		return nil, err
-	}
-	return &proto.SendMessageResponse{}, nil
-}
-
-func (s *CoreCLIHelperServer) SendProgress(ctx context.Context, req *proto.SendProgressRequest) (*proto.SendProgressResponse, error) {
-	if err := s.Impl.SendProgress(req); err != nil {
-		return nil, err
-	}
-	return &proto.SendProgressResponse{}, nil
 }
 
 func (s *CoreCLIHelperServer) SendCommandOutput(ctx context.Context, req *proto.SendCommandOutputRequest) (*proto.SendCommandOutputResponse, error) {
@@ -415,16 +388,6 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 		return fmt.Errorf("could not run peer plugin %q: config type mismatch", pluginName)
 	}
 	return plugin.Run(h.ctx, cfg, h.fs, args, cwd)
-}
-
-func (h *coreCLIHelper) SendMessage(req *proto.SendMessageRequest) error {
-	h.renderingEngine.HandleMessage(req)
-	return nil
-}
-
-func (h *coreCLIHelper) SendProgress(req *proto.SendProgressRequest) error {
-	h.renderingEngine.HandleProgress(req)
-	return nil
 }
 
 func (h *coreCLIHelper) SendCommandOutput(req *proto.SendCommandOutputRequest) error {

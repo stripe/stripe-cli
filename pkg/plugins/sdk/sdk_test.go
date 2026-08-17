@@ -22,29 +22,21 @@ import (
 )
 
 // fakeHelper records the requests the SDK builds and can fail with a chosen error.
+//
+// Every kind of output arrives on the one SendCommandOutput RPC, so requests are
+// recorded in a single slice and the accessors below pick out the blocks a test
+// cares about.
 type fakeHelper struct {
 	plugins.CoreCLIHelper
 
-	messages []*proto.SendMessageRequest
-	progress []*proto.SendProgressRequest
-	outputs  []*proto.SendCommandOutputRequest
+	requests []*proto.SendCommandOutputRequest
 	prompts  []*proto.PromptRequest
 
 	err error
 }
 
-func (h *fakeHelper) SendMessage(req *proto.SendMessageRequest) error {
-	h.messages = append(h.messages, req)
-	return h.err
-}
-
-func (h *fakeHelper) SendProgress(req *proto.SendProgressRequest) error {
-	h.progress = append(h.progress, req)
-	return h.err
-}
-
 func (h *fakeHelper) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
-	h.outputs = append(h.outputs, req)
+	h.requests = append(h.requests, req)
 	return h.err
 }
 
@@ -56,6 +48,44 @@ func (h *fakeHelper) Prompt(req *proto.PromptRequest) (*proto.PromptResponse, er
 	return &proto.PromptResponse{Value: "chosen"}, nil
 }
 
+// messages returns every MessageBlock sent, in order.
+func (h *fakeHelper) messages() []*proto.MessageBlock {
+	var out []*proto.MessageBlock
+	for _, req := range h.requests {
+		for _, b := range req.GetBlocks() {
+			if m := b.GetMessage(); m != nil {
+				out = append(out, m)
+			}
+		}
+	}
+	return out
+}
+
+// progress returns every ProgressBlock sent, in order.
+func (h *fakeHelper) progress() []*proto.ProgressBlock {
+	var out []*proto.ProgressBlock
+	for _, req := range h.requests {
+		for _, b := range req.GetBlocks() {
+			if p := b.GetProgress(); p != nil {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
+}
+
+// finals returns only the requests that end a command's output, which is what
+// the Output tests assert on.
+func (h *fakeHelper) finals() []*proto.SendCommandOutputRequest {
+	var out []*proto.SendCommandOutputRequest
+	for _, req := range h.requests {
+		if req.GetFinal() {
+			out = append(out, req)
+		}
+	}
+	return out
+}
+
 func TestMessagesCarryLevels(t *testing.T) {
 	helper := &fakeHelper{}
 	cli := New(helper)
@@ -65,12 +95,17 @@ func TestMessagesCarryLevels(t *testing.T) {
 	require.NoError(t, cli.Warn("warning"))
 	require.NoError(t, cli.Error("error"))
 
-	require.Len(t, helper.messages, 4)
-	require.Equal(t, "info", helper.messages[0].GetMessage().GetMessage())
-	require.Equal(t, proto.MessageLevel_INFO, helper.messages[0].GetMessage().GetLevel())
-	require.Equal(t, proto.MessageLevel_SUCCESS, helper.messages[1].GetMessage().GetLevel())
-	require.Equal(t, proto.MessageLevel_WARNING, helper.messages[2].GetMessage().GetLevel())
-	require.Equal(t, proto.MessageLevel_ERROR, helper.messages[3].GetMessage().GetLevel())
+	msgs := helper.messages()
+	require.Len(t, msgs, 4)
+	require.Equal(t, "info", msgs[0].GetMessage())
+	require.Equal(t, proto.MessageLevel_INFO, msgs[0].GetLevel())
+	require.Equal(t, proto.MessageLevel_SUCCESS, msgs[1].GetLevel())
+	require.Equal(t, proto.MessageLevel_WARNING, msgs[2].GetLevel())
+	require.Equal(t, proto.MessageLevel_ERROR, msgs[3].GetLevel())
+
+	// Incremental output must not be marked final, or the core would tear down
+	// spinners and close the JSON envelope mid-command.
+	require.Empty(t, helper.finals())
 }
 
 func TestProgressLifecycle(t *testing.T) {
@@ -84,10 +119,11 @@ func TestProgressLifecycle(t *testing.T) {
 	require.NoError(t, spinner.Update("still uploading"))
 	require.NoError(t, spinner.Stop("uploaded", true))
 
-	require.Len(t, helper.progress, 4)
-	require.Equal(t, proto.ProgressType_STEP, helper.progress[0].GetProgress().GetType())
+	blocks := helper.progress()
+	require.Len(t, blocks, 4)
+	require.Equal(t, proto.ProgressType_STEP, blocks[0].GetType())
 
-	start, update, stop := helper.progress[1].GetProgress(), helper.progress[2].GetProgress(), helper.progress[3].GetProgress()
+	start, update, stop := blocks[1], blocks[2], blocks[3]
 	require.Equal(t, proto.ProgressType_SPINNER_START, start.GetType())
 	require.Equal(t, proto.ProgressType_SPINNER_UPDATE, update.GetType())
 	require.Equal(t, proto.ProgressType_SPINNER_STOP, stop.GetType())
@@ -98,7 +134,7 @@ func TestProgressLifecycle(t *testing.T) {
 	// the one-shot step's.
 	require.Equal(t, start.GetId(), update.GetId())
 	require.Equal(t, start.GetId(), stop.GetId())
-	require.NotEqual(t, helper.progress[0].GetProgress().GetId(), start.GetId())
+	require.NotEqual(t, blocks[0].GetId(), start.GetId())
 }
 
 func TestConcurrentSpinnersGetDistinctIDs(t *testing.T) {
@@ -124,8 +160,9 @@ func TestOutputBuildsOrderedDataBlocks(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	require.Len(t, helper.outputs, 1)
-	req := helper.outputs[0]
+	finals := helper.finals()
+	require.Len(t, finals, 1)
+	req := finals[0]
 	require.Equal(t, "apps upload", req.GetCommand())
 	require.Len(t, req.GetBlocks(), 3)
 
@@ -149,7 +186,7 @@ func TestOutputRejectsUnencodablePayload(t *testing.T) {
 	err := cli.Output("apps upload", Data(func() {}))
 	require.Error(t, err)
 	require.False(t, Unsupported(err), "an encoding bug is not a reason to fall back")
-	require.Empty(t, helper.outputs, "nothing should be sent when a block cannot be encoded")
+	require.Empty(t, helper.requests, "nothing should be sent when a block cannot be encoded")
 }
 
 func TestPromptReturnsResponse(t *testing.T) {
@@ -204,7 +241,7 @@ func TestUnsupportedClassification(t *testing.T) {
 		{"nil", nil, false},
 		{"no helper", ErrNoHelper, true},
 		{"error whose text merely mentions no helper", errors.New("send failed: " + ErrNoHelper.Error()), false},
-		{"unimplemented", status.Error(codes.Unimplemented, "unknown method SendMessage"), true},
+		{"unimplemented", status.Error(codes.Unimplemented, "unknown method SendCommandOutput"), true},
 		// Anything else may have been rendered already; falling back would
 		// duplicate output.
 		{"unavailable", status.Error(codes.Unavailable, "connection closed"), false},
@@ -234,8 +271,8 @@ func TestTransportFailuresAreSurfacedNotSwallowed(t *testing.T) {
 
 // newHelperOverGRPC dials a CoreCLIHelper served over an in-memory connection,
 // mirroring how a plugin talks to the core CLI. When oldCore is true the server
-// only registers the RPCs that existed before centralized output, so the new
-// RPCs return Unimplemented exactly as an older core CLI would.
+// only registers the RPCs that existed before centralized output, so
+// SendCommandOutput returns Unimplemented exactly as an older core CLI would.
 func newHelperOverGRPC(t *testing.T, oldCore bool, stdout, stderr *bytes.Buffer) plugins.CoreCLIHelper {
 	t.Helper()
 
@@ -253,7 +290,7 @@ func newHelperOverGRPC(t *testing.T, oldCore bool, stdout, stderr *bytes.Buffer)
 
 	desc := proto.CoreCLIHelper_ServiceDesc
 	if oldCore {
-		desc = withoutMethods(desc, "SendMessage", "SendProgress")
+		desc = withoutMethods(desc, "SendCommandOutput")
 	}
 	server.RegisterService(&desc, impl)
 
@@ -336,22 +373,24 @@ func TestEndToEndLargeCommandOutput(t *testing.T) {
 	require.Equal(t, "  blob: "+blob+"\n", stdout.String())
 }
 
-// An older core CLI has no SendMessage/SendProgress, so those calls return
-// Unimplemented and the plugin renders them locally. SendCommandOutput is
-// unaffected, since it predates this change.
+// An older core CLI has no SendCommandOutput, so every output call returns
+// Unimplemented and the plugin knows to render locally instead. Because all
+// output rides one RPC, that answer is a single, consistent capability signal:
+// there is no host that can render some kinds of output but not others.
 func TestEndToEndAgainstOldCore(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	cli := New(newHelperOverGRPC(t, true, stdout, &bytes.Buffer{}))
 
-	err := cli.Message("starting upload")
-	require.Error(t, err)
-	require.Equal(t, codes.Unimplemented, status.Code(err))
-	require.True(t, Unsupported(err))
+	for name, err := range map[string]error{
+		"Message":  cli.Message("starting upload"),
+		"Progress": cli.Progress("uploading"),
+		"Output":   cli.Output("apps upload", Data(map[string]string{"app_id": "app_123"})),
+	} {
+		require.Error(t, err, name)
+		require.Equal(t, codes.Unimplemented, status.Code(err), name)
+		require.True(t, Unsupported(err), name)
+	}
 
-	_, err = cli.ProgressStart("uploading")
-	require.Equal(t, codes.Unimplemented, status.Code(err))
-	require.True(t, Unsupported(err))
-
-	require.NoError(t, cli.Output("apps upload", Data(map[string]string{"app_id": "app_123"})))
-	require.Equal(t, "  app_id: app_123\n", stdout.String())
+	// The core rendered nothing, which is what makes local rendering safe.
+	require.Empty(t, stdout.String())
 }

@@ -9,21 +9,47 @@ later.
 
 ## Protocol
 
-Three RPCs on `CoreCLIHelper` (`pkg/plugins/proto/main.proto`):
+Two RPCs on `CoreCLIHelper` (`pkg/plugins/proto/main.proto`):
 
 | RPC | Purpose | Frequency |
 | --- | --- | --- |
-| `SendMessage` | One incremental message with a level (info/success/warning/error) | Any number of times |
-| `SendProgress` | Step or spinner lifecycle, keyed by a caller-generated id | Any number of times |
-| `SendCommandOutput` | The command's final ordered result blocks | At most once per command |
+| `SendCommandOutput` | Every kind of output, as a list of `OutputBlock`s | Any number of times |
+| `Prompt` | Ask the user a question and read the answer | Any number of times |
+
+All output rides one RPC. `OutputBlock` is a `oneof` over the kinds:
+
+| Variant | Carries |
+| --- | --- |
+| `MessageBlock` | One message with a level (info/success/warning/error) |
+| `ProgressBlock` | Step or spinner lifecycle, keyed by a caller-generated id |
+| `DataBlock` | A typed, JSON-payload result block (`data`, `warning`, `nextstep`, `error`) |
+
+`Prompt` stays separate because it is the only call with a meaningful response.
 
 Requests carry semantic fields (typed level and progress enums, typed block
 kinds) even though milestone 1 renders them as plain text. Callers should not
 assume how a block is drawn.
 
-`SendCommandOutput` blocks are rendered in the order given. A `data` block's
-payload is JSON; object fields render in payload order, so output is
-byte-deterministic for the same input.
+Blocks are rendered in the order given. A `DataBlock` payload is JSON; object
+fields render in payload order, so output is byte-deterministic for the same
+input.
+
+### `final`
+
+`SendCommandOutputRequest.final` marks the request that ends a command's output.
+The renderer uses it to tear down spinners before printing the result, and to
+close the JSON envelope. It is explicit rather than inferred from block kinds, so
+a command that emits data mid-run is not mistaken for a finished one. `sdk` sets
+it only on `Output`.
+
+### Adding a block kind
+
+Prefer a new `DataBlock.Type`: `type` is a string, so it needs no protocol
+change and an older core forwards the payload verbatim. A new `oneof` variant is
+the fallback; note that an older core decodes it to an *empty* variant and the
+RPC still succeeds, so the plugin cannot detect the loss. The renderer therefore
+counts unrecognized variants and prints an upgrade notice to stderr rather than
+dropping them silently.
 
 ## Host side
 
@@ -33,8 +59,11 @@ plugin's stdio. Use `NewCoreCLIHelperWithWriters` to render somewhere other than
 the process's stdout/stderr (tests do this).
 
 Rendering is serialized, so a plugin sending from several goroutines cannot
-interleave partial lines. `SendCommandOutput` stops any spinner still running
-before drawing the result.
+interleave partial lines. A request with `final` set stops any spinner still
+running before drawing the result.
+
+In JSON mode stdout is reserved for one envelope per command, so message and
+progress blocks go to stderr and data blocks are buffered until `final` arrives.
 
 Colors come from `pkg/ansi` and switch off automatically for non-terminal
 writers, so piped output is plain text.
@@ -67,8 +96,9 @@ allow local rendering:
 
 - `ErrNoHelper` — the plugin ran under the v1/v2 protocol or in standalone/dev
   mode, so nothing was sent.
-- gRPC `Unimplemented` — the core CLI is older than this RPC, so nothing was
-  rendered.
+- gRPC `Unimplemented` — the core CLI is older than `SendCommandOutput`, so
+  nothing was rendered. Because all output rides one RPC, this is a single
+  capability probe: no host can render some kinds of output but not others.
 
 Every other error must be surfaced. A transport failure can arrive *after* the
 core already rendered the output; falling back there would print the result

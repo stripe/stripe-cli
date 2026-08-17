@@ -46,6 +46,12 @@ type Engine struct {
 	stderr   io.Writer
 	spinners map[string]*activeSpinner
 	mu       sync.Mutex
+
+	// JSON mode buffers data blocks across requests so that a command emits one
+	// envelope no matter how many times it sends. Text mode renders as it goes
+	// and needs neither field.
+	jsonCommand string
+	jsonBlocks  []EnvelopeBlock
 }
 
 type activeSpinner struct {
@@ -83,29 +89,10 @@ func (e *Engine) messageWriter() io.Writer {
 	return e.stdout
 }
 
-// HandleMessage renders a single incremental message.
-func (e *Engine) HandleMessage(req *proto.SendMessageRequest) {
-	if req == nil || req.GetMessage() == nil {
-		return
-	}
-
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.renderMessage(req.GetMessage())
-}
-
-// HandleProgress renders a single progress update.
-func (e *Engine) HandleProgress(req *proto.SendProgressRequest) {
-	if req == nil || req.GetProgress() == nil {
-		return
-	}
-
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.renderProgress(req.GetProgress())
-}
-
-// HandleCommandOutput renders a command's final output blocks.
+// HandleCommandOutput renders output blocks sent by a plugin.
+//
+// This is the only RPC that carries output, so a request may hold incremental
+// chatter, the command's final result, or both. req.Final marks the last one.
 func (e *Engine) HandleCommandOutput(req *proto.SendCommandOutputRequest) {
 	if req == nil {
 		return
@@ -114,15 +101,13 @@ func (e *Engine) HandleCommandOutput(req *proto.SendCommandOutputRequest) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	// A command's final output ends any progress still in flight; leaving a
-	// spinner running would keep overwriting the result line.
-	e.stopAllSpinners()
-
-	if e.format == FormatJSON {
-		e.renderJSONEnvelope(req)
-		return
+	if req.GetFinal() {
+		// Final output ends any progress still in flight; leaving a spinner
+		// running would keep overwriting the result line.
+		e.stopAllSpinners()
 	}
 
+	unknown := 0
 	for _, block := range req.GetBlocks() {
 		if block == nil {
 			continue
@@ -130,10 +115,33 @@ func (e *Engine) HandleCommandOutput(req *proto.SendCommandOutputRequest) {
 		switch b := block.Block.(type) {
 		case *proto.OutputBlock_Message:
 			e.renderMessage(b.Message)
-		case *proto.OutputBlock_Data:
-			e.renderData(b.Data)
 		case *proto.OutputBlock_Progress:
 			e.renderProgress(b.Progress)
+		case *proto.OutputBlock_Data:
+			if e.format == FormatJSON {
+				e.bufferJSONBlock(b.Data)
+				continue
+			}
+			e.renderData(b.Data)
+		default:
+			// A block kind this build does not know decodes to an empty variant.
+			// Saying so is the only way the user learns output went missing: the
+			// RPC itself succeeds, so the plugin has no way to detect this.
+			unknown++
+		}
+	}
+
+	if unknown > 0 {
+		fmt.Fprintf(e.stderr, "%s %d output block(s) require a newer Stripe CLI to display; run `stripe version` and upgrade\n",
+			ansi.Color(e.stderr).Yellow("⚠"), unknown)
+	}
+
+	if e.format == FormatJSON {
+		if req.GetCommand() != "" {
+			e.jsonCommand = req.GetCommand()
+		}
+		if req.GetFinal() {
+			e.flushJSONEnvelope()
 		}
 	}
 }
@@ -368,30 +376,33 @@ func sortedSpinnerIDs(spinners map[string]*activeSpinner) []string {
 
 // --- JSON rendering ---
 
-func (e *Engine) renderJSONEnvelope(req *proto.SendCommandOutputRequest) {
-	envelope := JSONEnvelope{Command: req.GetCommand()}
-	for _, block := range req.GetBlocks() {
-		if block == nil {
-			continue
-		}
-		db := block.GetData()
-		if db == nil {
-			continue
-		}
-		payload := json.RawMessage(db.GetPayload())
-		if !json.Valid(payload) {
-			// Keep the envelope valid JSON even if a plugin sent garbage.
-			quoted, err := json.Marshal(db.GetPayload())
-			if err != nil {
-				continue
-			}
-			payload = quoted
-		}
-		envelope.Data = append(envelope.Data, EnvelopeBlock{
-			Type:    db.GetType(),
-			Payload: payload,
-		})
+// bufferJSONBlock holds a data block until the command's final request arrives.
+// Emitting per request would put several JSON documents on stdout for one
+// command, which is exactly what callers parsing our output cannot handle.
+func (e *Engine) bufferJSONBlock(db *proto.DataBlock) {
+	if db == nil {
+		return
 	}
+
+	payload := json.RawMessage(db.GetPayload())
+	if !json.Valid(payload) {
+		// Keep the envelope valid JSON even if a plugin sent garbage.
+		quoted, err := json.Marshal(db.GetPayload())
+		if err != nil {
+			return
+		}
+		payload = quoted
+	}
+
+	e.jsonBlocks = append(e.jsonBlocks, EnvelopeBlock{
+		Type:    db.GetType(),
+		Payload: payload,
+	})
+}
+
+func (e *Engine) flushJSONEnvelope() {
+	envelope := JSONEnvelope{Command: e.jsonCommand, Data: e.jsonBlocks}
+	e.jsonBlocks = nil
 
 	enc := json.NewEncoder(e.stdout)
 	enc.SetIndent("", "  ")

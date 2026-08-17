@@ -62,20 +62,28 @@ func Unsupported(err error) bool {
 	return status.Code(err) == codes.Unimplemented
 }
 
-func (c *CLI) sendMessage(msg string, level proto.MessageLevel) error {
+// send delivers incremental blocks: anything that is not the command's final
+// output. Final stays false so the core keeps spinners alive and holds the JSON
+// envelope open.
+func (c *CLI) send(blocks ...*proto.OutputBlock) error {
 	if !c.Available() {
 		return ErrNoHelper
 	}
-	return c.helper.SendMessage(&proto.SendMessageRequest{
-		Message: &proto.MessageBlock{Message: msg, Level: level},
+	return c.helper.SendCommandOutput(&proto.SendCommandOutputRequest{Blocks: blocks})
+}
+
+func (c *CLI) sendMessage(msg string, level proto.MessageLevel) error {
+	return c.send(&proto.OutputBlock{
+		Block: &proto.OutputBlock_Message{
+			Message: &proto.MessageBlock{Message: msg, Level: level},
+		},
 	})
 }
 
 func (c *CLI) sendProgress(block *proto.ProgressBlock) error {
-	if !c.Available() {
-		return ErrNoHelper
-	}
-	return c.helper.SendProgress(&proto.SendProgressRequest{Progress: block})
+	return c.send(&proto.OutputBlock{
+		Block: &proto.OutputBlock_Progress{Progress: block},
+	})
 }
 
 // --- Messages ---
@@ -210,7 +218,9 @@ func (c *CLI) Output(command string, blocks ...OutputBlock) error {
 		return ErrNoHelper
 	}
 
-	req := &proto.SendCommandOutputRequest{Command: command}
+	// Final tells the core this is the end of the command's output: tear down
+	// spinners, then render, and close the JSON envelope.
+	req := &proto.SendCommandOutputRequest{Command: command, Final: true}
 	for _, b := range blocks {
 		payload, err := json.Marshal(b.payload)
 		if err != nil {
