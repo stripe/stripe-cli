@@ -3,9 +3,11 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -15,6 +17,21 @@ import (
 
 type listAccountsResponse struct {
 	Accounts []config.AuthorizedAccount `json:"accounts"`
+	HasMore  bool                       `json:"has_more"`
+}
+
+type accountsRequestError struct {
+	statusCode int
+	body       string
+}
+
+func (e *accountsRequestError) Error() string {
+	return fmt.Sprintf("accounts request failed (status %d): %s", e.statusCode, e.body)
+}
+
+func IsAuthorizedAccountsUnauthorized(err error) bool {
+	var requestErr *accountsRequestError
+	return errors.As(err, &requestErr) && requestErr.statusCode == http.StatusUnauthorized
 }
 
 // ListAuthorizedAccounts returns the Stripe accounts accessible to accessToken.
@@ -23,33 +40,54 @@ func ListAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken stri
 }
 
 func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken string) ([]config.AuthorizedAccount, error) {
-	endpoint := accessBaseURL + accessAPNPath + "/token/accounts"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	endpoint, err := url.Parse(accessBaseURL + accessAPNPath + "/token/accounts")
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "accounts request failed (status %d): %s", resp.StatusCode, string(body))
-	}
+	var accounts []config.AuthorizedAccount
+	startingAfter := ""
+	for {
+		query := endpoint.Query()
+		query.Set("limit", "100")
+		if startingAfter != "" {
+			query.Set("starting_after", startingAfter)
+		}
+		endpoint.RawQuery = query.Encode()
 
-	var result listAccountsResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse accounts response: %w", err)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		body, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, errorcategory.With(&accountsRequestError{statusCode: resp.StatusCode, body: string(body)}, errorcategory.Auth)
+		}
+
+		var result listAccountsResponse
+		if err := json.Unmarshal(body, &result); err != nil {
+			return nil, fmt.Errorf("failed to parse accounts response: %w", err)
+		}
+		accounts = append(accounts, result.Accounts...)
+		if !result.HasMore {
+			return accounts, nil
+		}
+		if len(result.Accounts) == 0 {
+			return nil, fmt.Errorf("accounts response indicated more results but returned an empty page")
+		}
+		startingAfter = result.Accounts[len(result.Accounts)-1].ID
 	}
-	return result.Accounts, nil
 }
 
 // PrintAuthorizedContexts fetches the authorized accounts for accessToken and
