@@ -45,6 +45,16 @@ service CoreCLIHelper {
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
 
   // Centralized UI Rendering
+  //
+  // SendMessage and SendProgress carry incremental output that is rendered as
+  // soon as it arrives. SendCommandOutput carries the command's final,
+  // ordered result blocks and is sent at most once per command.
+  //
+  // Plugins detect support per-RPC: an older core CLI returns gRPC
+  // Unimplemented, which is the only transport signal that a plugin may treat
+  // as "render locally instead".
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc SendProgress(SendProgressRequest) returns (SendProgressResponse);
   rpc SendCommandOutput(SendCommandOutputRequest) returns (SendCommandOutputResponse);
   rpc Prompt(PromptRequest) returns (PromptResponse);
 }
@@ -158,6 +168,20 @@ message ProgressBlock {
   string message = 2;
   ProgressType type = 3;
   bool success = 4;              // relevant on SPINNER_STOP only
+}
+
+message SendMessageRequest {
+  MessageBlock message = 1;
+}
+
+message SendMessageResponse {
+}
+
+message SendProgressRequest {
+  ProgressBlock progress = 1;
+}
+
+message SendProgressResponse {
 }
 
 message SendCommandOutputRequest {
