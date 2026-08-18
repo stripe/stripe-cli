@@ -41,7 +41,7 @@ func TestKeyTooShort(t *testing.T) {
 
 func TestLegacyAPIKeys(t *testing.T) {
 	err := APIKey("sk_123457890abcdef")
-	require.EqualError(t, err, "you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+	require.EqualError(t, err, "You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new sandbox API key")
 	requireErrorCategory(t, err, errorcategory.Auth)
 }
 

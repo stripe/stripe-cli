@@ -34,14 +34,14 @@ func newSwitchCmd() *switchCmd {
 Without an argument, shows an interactive list of your authorized accounts and
 modes. Navigate with ↑↓, confirm with enter, or cancel with esc.
 
-With an account ID, switches directly to that account in test mode by default.
-Use --live to switch to livemode instead.`,
+With an account ID, switches directly to that account's sandbox by default.
+Use --live to switch to live mode instead.`,
 		Example: `  stripe switch context
   stripe switch context acct_1234
   stripe switch context acct_1234 --live`,
 		RunE: ctxCmd.run,
 	}
-	ctxCmd.cmd.Flags().BoolVar(&ctxCmd.livemode, "live", false, "Select livemode for the given account")
+	ctxCmd.cmd.Flags().BoolVar(&ctxCmd.livemode, "live", false, "Select live mode for the given account")
 	ctxCmd.cmd.Flags().StringVar(&ctxCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	ctxCmd.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
 

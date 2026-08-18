@@ -387,7 +387,7 @@ func TestResolveCredentialsOAKLivemodeNoCompartment(t *testing.T) {
 	p := Profile{ProfileName: "default"}
 	_, err := p.ResolveCredentials(true)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "you're logged in to a sandbox")
+	require.Contains(t, err.Error(), "You're logged in to a sandbox")
 	require.Contains(t, err.Error(), "stripe login")
 }
 

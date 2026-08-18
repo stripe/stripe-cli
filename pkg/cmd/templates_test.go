@@ -18,7 +18,7 @@ func TestGetLogin(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	cfg := config.Config{}
 	expected := `
-Before using the CLI, you'll need to login:
+Before using the CLI, you'll need to log in:
 
   $ stripe login
 

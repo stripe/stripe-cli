@@ -834,9 +834,9 @@ type ActiveContextLivemodeMismatchError struct {
 
 func (e *ActiveContextLivemodeMismatchError) Error() string {
 	if e.ActiveLivemode {
-		return "your active context is livemode; run 'stripe switch context' to select a test mode context"
+		return "You're in live mode. Run 'stripe switch context' to select a sandbox."
 	}
-	return "your active context is test mode; run 'stripe switch context' to select a livemode context"
+	return "You're in a sandbox. Run 'stripe switch context' to select a live account."
 }
 
 // ResolveCredentials returns the credentials for the given mode. If an OAK
@@ -887,7 +887,7 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 				return stripe.Credentials{}, err
 			}
 			if livemode && compartmentID == "" {
-				return stripe.Credentials{}, errorcategory.UserInputErrorf("you're logged in to a sandbox; to access livemode, reauthenticate with 'stripe login' and select your live account")
+				return stripe.Credentials{}, errorcategory.UserInputErrorf("You're logged in to a sandbox. To access live mode, reauthenticate with 'stripe login' and select your live account.")
 			}
 			return stripe.NewOAKCredentials(uat, compartmentID, livemode), nil
 		}

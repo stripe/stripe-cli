@@ -50,11 +50,11 @@ func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, account
 			}
 		}
 		if livemode {
-			return errorcategory.Errorf(errorcategory.Auth, "account %s is not authorized for livemode", accountID)
+			return errorcategory.Errorf(errorcategory.Auth, "Account %s does not have live mode access", accountID)
 		}
-		return errorcategory.Errorf(errorcategory.Auth, "account %s is not authorized for test mode; use --live to switch to livemode", accountID)
+		return errorcategory.Errorf(errorcategory.Auth, "Account %s does not have sandbox access; use --live to switch to live mode", accountID)
 	}
-	return errorcategory.Errorf(errorcategory.Auth, "account %s not found in your authorized accounts", accountID)
+	return errorcategory.Errorf(errorcategory.Auth, "Account %s not found in your authorized accounts", accountID)
 }
 
 func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode string) error {
