@@ -175,7 +175,7 @@ func printWhoamiText(out io.Writer, data whoamiOutput) {
 		fmt.Fprintf(w, "Device name:\t%s\n", data.DeviceName)
 	}
 
-	fmt.Fprintf(w, "Test key:\t%s\n", keyAvailabilityText(data.TestModeKey))
+	fmt.Fprintf(w, "Sandbox key:\t%s\n", keyAvailabilityText(data.TestModeKey))
 	fmt.Fprintf(w, "Live mode key:\t%s\n", keyAvailabilityText(data.LiveModeKey))
 	fmt.Fprintf(w, "API version:\t%s\n", data.APIVersion)
 	fmt.Fprintf(w, "Preview API version:\t%s\n", data.PreviewAPIVersion)
