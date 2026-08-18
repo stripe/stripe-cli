@@ -88,6 +88,11 @@ var rootCmd = &cobra.Command{
 
 		reporting.SetCommandPath(cmd.CommandPath())
 
+		// Warn here rather than in InitConfig: the profile name can come from the
+		// persisted project-name key or STRIPE_PROJECT_NAME, and ReBindKeys applies
+		// both of those after InitConfig has already run.
+		Config.Profile.WarnIfLegacyProfileName()
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
