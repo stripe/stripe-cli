@@ -2,8 +2,10 @@ package config
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -12,6 +14,113 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
+
+// setupProfileConfig writes contents to a temp config file and initializes the
+// global viper from it, so tests exercise the same read path as the CLI rather
+// than viper's override layer, which nests keys by splitting on ".".
+func setupProfileConfig(t *testing.T, contents string) (*Config, string) {
+	t.Helper()
+
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte(contents), 0600))
+
+	if KeyRing == nil {
+		KeyRing = keyring.NewMemoryStore(nil)
+	}
+	t.Cleanup(func() {
+		KeyRing = nil
+		viper.Reset()
+	})
+
+	c := &Config{LogLevel: "info", ProfilesFile: profilesFile}
+	c.InitConfig()
+
+	return c, profilesFile
+}
+
+func TestWarnIfLegacyProfileName(t *testing.T) {
+	tests := []struct {
+		name        string
+		profileName string
+		contents    string
+		wantWarning bool
+	}{
+		{
+			name:        "existing dotted profile warns",
+			profileName: "example.project",
+			contents:    "[\"example.project\"]\ndisplay_name = 'Legacy'\n",
+			wantWarning: true,
+		},
+		{
+			// Nothing is broken until such a profile is actually written, so
+			// warning here would only be noise.
+			name:        "dotted profile that is not in the config file is silent",
+			profileName: "example.project",
+			contents:    "[default]\ndisplay_name = 'Default'\n",
+		},
+		{
+			name:        "valid profile is silent",
+			profileName: "default",
+			contents:    "[default]\ndisplay_name = 'Default'\n",
+		},
+		{
+			name:     "empty profile name is silent",
+			contents: "[default]\ndisplay_name = 'Default'\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setupProfileConfig(t, tt.contents)
+
+			warnLegacyProfileNameOnce = sync.Once{}
+			t.Cleanup(func() { warnLegacyProfileNameOnce = sync.Once{} })
+
+			p := Profile{ProfileName: tt.profileName}
+			stderr := captureStderr(t, p.WarnIfLegacyProfileName)
+
+			if !tt.wantWarning {
+				require.Empty(t, stderr)
+				return
+			}
+
+			require.Contains(t, stderr, `The profile "example.project" contains a period`)
+			require.Contains(t, stderr, "stripe login --project-name example-project")
+			require.Contains(t, stderr, "stripe config --remove-profile example.project")
+		})
+	}
+}
+
+// The warning is printed once per process so it does not repeat for every
+// command in a session.
+func TestWarnIfLegacyProfileNameOnlyWarnsOnce(t *testing.T) {
+	setupProfileConfig(t, "[\"example.project\"]\ndisplay_name = 'Legacy'\n")
+
+	warnLegacyProfileNameOnce = sync.Once{}
+	t.Cleanup(func() { warnLegacyProfileNameOnce = sync.Once{} })
+
+	p := Profile{ProfileName: "example.project"}
+	require.NotEmpty(t, captureStderr(t, p.WarnIfLegacyProfileName))
+	require.Empty(t, captureStderr(t, p.WarnIfLegacyProfileName))
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	original := os.Stderr
+	os.Stderr = w
+	fn()
+	os.Stderr = original
+	require.NoError(t, w.Close())
+
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	return string(out)
+}
 
 func TestWriteProfile(t *testing.T) {
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")

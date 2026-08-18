@@ -363,11 +363,50 @@ func (c *Config) SwitchProfile(profileName string) error {
 	return nil
 }
 
+// reservedTopLevelKeys are config keys that sit alongside profiles at the top
+// level of the file but are not profiles. They are excluded from profile removal
+// so that a name collision cannot destroy machine-wide settings.
+var reservedTopLevelKeys = map[string]bool{
+	"color":             true,
+	"installed_plugins": true,
+	"machine_uuid":      true,
+	"plugin_configs":    true,
+	"project-name":      true,
+	UserInfoName:        true,
+}
+
+// ErrProfileNotFound is returned when no profile matches the requested name.
+var ErrProfileNotFound = errorcategory.New(errorcategory.UserInput, "profile not found")
+
+// isReservedConfigKey reports whether name addresses machine-wide config rather
+// than a profile.
+//
+// The first path segment is what matters: a name like "plugin_configs.apps"
+// resolves to a real table, so without this it would look like a legacy profile
+// whose name contains a period and be removable as one.
+func isReservedConfigKey(name string) bool {
+	first, _, _ := strings.Cut(strings.ToLower(name), ".")
+	return reservedTopLevelKeys[first]
+}
+
 // RemoveProfile removes the profile whose name matches the provided
 // profileName from the config file.
+//
+// It returns ErrProfileNotFound when there is nothing to remove, so a caller
+// acting on a name a user typed can tell the difference between a removal and a
+// no-op. Callers that treat removal as best effort can ignore it.
 func (c *Config) RemoveProfile(profileName string) error {
+	if profileName == "" {
+		return errorcategory.Errorf(errorcategory.UserInput, "profile name cannot be empty")
+	}
+
+	if isReservedConfigKey(profileName) {
+		return errorcategory.Errorf(errorcategory.UserInput, "%q is a reserved config key, not a profile", profileName)
+	}
+
 	runtimeViper := viper.GetViper()
 	var err error
+	var matched bool
 
 	for field, value := range runtimeViper.AllSettings() {
 		if isProfile(value) {
@@ -381,6 +420,8 @@ func (c *Config) RemoveProfile(profileName string) error {
 				profileNameAttr = v["profile_name"]
 			}
 			if field == profileName || profileNameAttr == profileName {
+				matched = true
+
 				runtimeViper, err = removeKey(runtimeViper, field)
 				if err != nil {
 					return err
@@ -391,7 +432,48 @@ func (c *Config) RemoveProfile(profileName string) error {
 		}
 	}
 
+	// The enumeration above only finds tables that isProfile recognizes, which
+	// requires a display_name, and it cannot see a profile whose name contains a
+	// period at all because viper reads that back as nesting. Fall back to
+	// addressing the table by its full key path, which hits exactly that profile
+	// and leaves siblings intact.
+	if !matched && isProfileTable(runtimeViper, profileName) {
+		matched = true
+
+		runtimeViper, err = removeKey(runtimeViper, profileName)
+		if err != nil {
+			return err
+		}
+
+		deleteLivemodeKey(LiveModeAPIKeyName, profileName)
+	}
+
+	if !matched {
+		return ErrProfileNotFound
+	}
+
 	return writeConfig(runtimeViper)
+}
+
+// isProfileTable reports whether profileName addresses a table in the config
+// file. It deliberately does not require a display_name: a profile written
+// before display_name was always set, or one whose write was interrupted, still
+// needs to be removable.
+//
+// Get is used rather than AllSettings because Get returns the raw, unflattened
+// sub-map, so a name containing a period resolves to the table the user wrote
+// rather than being split into a path.
+func isProfileTable(v *viper.Viper, profileName string) bool {
+	if !v.IsSet(profileName) {
+		return false
+	}
+
+	switch v.Get(profileName).(type) {
+	case map[string]interface{}, map[string]string:
+		return true
+	}
+
+	return false
 }
 
 // RemoveAllProfiles removes all the profiles from the config file.
@@ -417,6 +499,7 @@ func (c *Config) RemoveAllProfiles() error {
 // preserving non-auth settings like color.
 func (c *Config) RemoveAuthFields(profileName string) error {
 	runtimeViper := viper.GetViper()
+	var matched bool
 
 	for field, value := range runtimeViper.AllSettings() {
 		if isProfile(value) {
@@ -430,11 +513,22 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 				profileNameAttr = v["profile_name"]
 			}
 			if field == profileName || profileNameAttr == profileName {
+				matched = true
+
 				p := &Profile{ProfileName: field}
 				runtimeViper = p.deleteAuthFields(runtimeViper)
 				deleteLivemodeKey(LiveModeAPIKeyName, field)
 			}
 		}
+	}
+
+	// Profiles with a period in the name are nested tables that the enumeration
+	// above cannot see. Clearing them by name is the only way for a user to log
+	// out of one, so handle that case explicitly.
+	if !matched && isNestedProfileName(profileName) && runtimeViper.IsSet(profileName) {
+		p := &Profile{ProfileName: profileName}
+		runtimeViper = p.deleteAuthFields(runtimeViper)
+		deleteLivemodeKey(LiveModeAPIKeyName, profileName)
 	}
 
 	deleteTopLevelLivemodeKey(UATKeychainItemKey)
@@ -491,6 +585,14 @@ func deleteTopLevelLivemodeKey(key string) error {
 		return nil
 	}
 	return err
+}
+
+// isNestedProfileName reports whether a profile name would be read back from
+// the config file as a nested table rather than a single top-level one. Such
+// profiles are skipped by every loop over AllSettings(), because viper joins and
+// splits keys on "." and so cannot distinguish ["a.b"] from [a] -> [b].
+func isNestedProfileName(profileName string) bool {
+	return profileName != "" && strings.Contains(profileName, ".")
 }
 
 // isProfile identifies whether a config entry pertains to a user profile.

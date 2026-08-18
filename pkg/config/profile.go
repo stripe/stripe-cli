@@ -149,6 +149,48 @@ var authFieldNames = []string{
 	"experimental",
 }
 
+// profileExists reports whether the config file already contains a table for
+// this profile. This checks for the table itself rather than any particular
+// field, so that a partially written profile (one with no display_name, which a
+// profile abandoned part-way through login can be) is still recognized.
+func (p *Profile) profileExists() bool {
+	return viper.IsSet(p.ProfileName)
+}
+
+// warnLegacyProfileNameOnce guards the deprecation warning so it prints at most
+// once per process.
+var warnLegacyProfileNameOnce sync.Once
+
+// WarnIfLegacyProfileName tells the user when the active profile has a period in
+// its name.
+//
+// Profile fields are addressed as <profile>.<field> keys in viper, which uses
+// "." as its path separator. A profile name containing a period is therefore
+// indistinguishable from a nested table: viper reads ["a.b"] back as a -> b, so
+// the profile becomes invisible to every operation that enumerates top-level
+// tables, even though reads against it keep working. That makes this warning the
+// only signal the user gets that the profile cannot be listed by name.
+//
+// It only fires for a profile that is actually in the config file, so that a
+// period in a name nobody is using stays silent.
+func (p *Profile) WarnIfLegacyProfileName() {
+	if !strings.Contains(p.ProfileName, ".") || !p.profileExists() {
+		return
+	}
+
+	warnLegacyProfileNameOnce.Do(func() {
+		color := ansi.Color(os.Stderr)
+		fmt.Fprintln(os.Stderr, color.Yellow(fmt.Sprintf(`
+(!) The profile %[1]q contains a period, which can cause unexpected
+behavior and will stop being accepted in a future release. We strongly
+recommend migrating it: log in under a new name and remove the old one.
+  stripe login --project-name %[2]s
+  stripe config --remove-profile %[1]s`,
+			p.ProfileName,
+			strings.ReplaceAll(p.ProfileName, ".", "-"))))
+	})
+}
+
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
 	// Remove only auth-related keys under existing profile first
@@ -438,6 +480,7 @@ func (p *Profile) RegisterAlias(alias, key string) {
 // configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.ReadInConfig()
+
 	viper.Set(p.GetConfigField(field), value)
 	return writeConfig(viper.GetViper())
 }

@@ -257,6 +257,65 @@ func TestRemoveProfile(t *testing.T) {
 	require.False(t, v.IsSet("to-remove"))
 }
 
+// setupLegacyDottedProfile writes a config file containing a dotted profile
+// alongside a normal one. Dotted names are no longer accepted for new profiles,
+// but ones written before the ban must stay manageable.
+func setupLegacyDottedProfile(t *testing.T) (*Config, string, func()) {
+	t.Helper()
+
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	contents := "[\"example.project\"]\n" +
+		"display_name = 'Legacy'\n" +
+		"test_mode_api_key = 'sk_test_legacy'\n\n" +
+		"[example]\n" +
+		"display_name = 'Sibling'\n" +
+		"test_mode_api_key = 'sk_test_sibling'\n"
+	require.NoError(t, os.WriteFile(profilesFile, []byte(contents), 0600))
+
+	c := &Config{
+		LogLevel:     "info",
+		ProfilesFile: profilesFile,
+		Profile:      Profile{ProfileName: "example.project"},
+	}
+	KeyRing = keyring.NewMemoryStore(nil)
+	c.InitConfig()
+
+	return c, profilesFile, func() {
+		KeyRing = nil
+		viper.Reset()
+	}
+}
+
+// A dotted profile is read back as a nested table, so the enumeration in
+// RemoveProfile never sees it. It must still be removable by name, and removing
+// it must not take the profile that shares its first segment with it.
+func TestRemoveProfileWithDottedName(t *testing.T) {
+	c, _, cleanup := setupLegacyDottedProfile(t)
+	defer cleanup()
+
+	require.NoError(t, c.RemoveProfile("example.project"))
+
+	c.InitConfig()
+	v := viper.GetViper()
+	require.False(t, v.IsSet("example.project.display_name"))
+	require.Equal(t, "sk_test_sibling", v.GetString("example.test_mode_api_key"))
+}
+
+// `stripe logout --project-name example.project` is the documented way out of a
+// legacy dotted profile, so it has to actually clear the credentials rather than
+// report success and leave them on disk.
+func TestRemoveAuthFieldsWithDottedName(t *testing.T) {
+	c, _, cleanup := setupLegacyDottedProfile(t)
+	defer cleanup()
+
+	require.NoError(t, c.RemoveAuthFields("example.project"))
+
+	c.InitConfig()
+	v := viper.GetViper()
+	require.Empty(t, v.GetString("example.project.test_mode_api_key"))
+	require.Equal(t, "sk_test_sibling", v.GetString("example.test_mode_api_key"))
+}
+
 func TestSwitchProfile(t *testing.T) {
 	c, _, cleanup := setupTestConfig(t)
 	defer cleanup()
