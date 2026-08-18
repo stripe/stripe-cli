@@ -1,11 +1,13 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	cliversion "github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -1325,7 +1328,65 @@ func TestRunRejectsIncompatiblePlugin(t *testing.T) {
 	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "requires Stripe CLI >= 99.0.0")
-	require.Contains(t, err.Error(), "stripe upgrade")
+	require.Contains(t, err.Error(), "https://docs.stripe.com/stripe-cli/upgrade")
+}
+
+func TestInstallRejectsIncompatiblePluginBeforeReplacingInstalledVersion(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	origVersion := cliversion.Version
+	cliversion.Version = "1.0.0"
+	defer func() { cliversion.Version = origVersion }()
+
+	plugin := Plugin{
+		Shortname: "myplugin",
+		Binary:    "stripe-cli-myplugin",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "2.0.0", Sum: "def456", MinCoreVersion: "2.0.0"},
+		},
+	}
+
+	oldBinary := filepath.Join("/plugins/myplugin/1.0.0", "stripe-cli-myplugin"+GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(oldBinary), 0755))
+	require.NoError(t, afero.WriteFile(fs, oldBinary, []byte("working"), 0755))
+
+	resolved := &ResolvedPluginVersion{
+		Plugin:    &plugin,
+		Version:   "2.0.0",
+		BinaryURL: "https://example.test/myplugin/2.0.0",
+	}
+	err := resolved.install(context.Background(), cfg, fs, stripe.DefaultAPIBaseURL, "", io.Discard)
+	require.ErrorContains(t, err, "requires Stripe CLI >= 2.0.0")
+
+	oldVersionExists, err := afero.Exists(fs, oldBinary)
+	require.NoError(t, err)
+	require.True(t, oldVersionExists)
+	require.False(t, plugin.IsVersionInstalled(cfg, fs, "2.0.0"))
+}
+
+func TestMinCoreVersionTOMLRoundTrip(t *testing.T) {
+	want := PluginList{Plugins: []Plugin{{
+		Shortname: "myplugin",
+		Binary:    "stripe-cli-myplugin",
+		Releases: []Release{{
+			Arch:           runtime.GOARCH,
+			OS:             runtime.GOOS,
+			Version:        "2.0.0",
+			Sum:            "abc123",
+			MinCoreVersion: "1.45.0",
+		}},
+	}}}
+
+	var encoded bytes.Buffer
+	require.NoError(t, toml.NewEncoder(&encoded).Encode(want))
+	require.Contains(t, encoded.String(), `MinCoreVersion = "1.45.0"`)
+
+	got, err := validatePluginManifest(encoded.Bytes())
+	require.NoError(t, err)
+	require.Equal(t, "1.45.0", got.Plugins[0].Releases[0].MinCoreVersion)
 }
 
 func TestRunAllowsCompatiblePlugin(t *testing.T) {

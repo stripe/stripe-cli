@@ -11,6 +11,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 )
 
 // ListCmd is the struct used for configuring the plugin list command.
@@ -67,7 +68,7 @@ func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) error {
 	availablePlugins := make([]plugins.Plugin, 0, len(pluginList.Plugins))
 	nameWidth := 0
 	for _, plugin := range pluginList.Plugins {
-		if plugin.Shortname == "" || plugin.LookUpLatestVersion() == "" {
+		if plugin.Shortname == "" || plugin.LookUpLatestCompatibleVersion(cliversion.Version) == "" {
 			continue
 		}
 		availablePlugins = append(availablePlugins, plugin)

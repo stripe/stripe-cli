@@ -15,9 +15,14 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 )
 
 func TestListCmdPrintsAvailablePlugins(t *testing.T) {
+	origVersion := cliversion.Version
+	cliversion.Version = "1.0.0"
+	defer func() { cliversion.Version = origVersion }()
+
 	cfg, _, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
 
@@ -78,6 +83,7 @@ func assertListOutput(t *testing.T, rendered string) {
 	} else {
 		require.NotContains(t, rendered, "windows-only")
 	}
+	require.NotContains(t, rendered, "incompatible")
 	require.Contains(t, rendered, "Run `stripe plugin install <name>` to install a plugin.")
 
 	assert.Less(t, strings.Index(rendered, "apps"), strings.Index(rendered, "projects"))
@@ -133,6 +139,19 @@ func testListPluginList() plugins.PluginList {
 						Arch:    runtime.GOARCH,
 						OS:      runtime.GOOS,
 						Version: "3.0.0",
+					},
+				},
+			},
+			{
+				Shortname: "incompatible",
+				Shortdesc: "Requires a newer Stripe CLI",
+				Binary:    "stripe-cli-incompatible",
+				Releases: []plugins.Release{
+					{
+						Arch:           runtime.GOARCH,
+						OS:             runtime.GOOS,
+						Version:        "1.0.0",
+						MinCoreVersion: "99.0.0",
 					},
 				},
 			},

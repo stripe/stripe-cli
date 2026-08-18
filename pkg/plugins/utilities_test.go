@@ -16,11 +16,13 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
 	cfgpkg "github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 )
 
 // CustomTestConfig is a test config that allows overriding the config folder path.
@@ -500,6 +502,119 @@ func TestResolvePluginForInstallPrefersFresherCachedManifestWhenEndpointFails(t 
 
 	release := resolvedPlugin.Plugin.getReleaseForVersion("1.0.0")
 	require.NotNil(t, release)
+}
+
+func TestResolvePluginForUpgradeFetchesExactLatestCompatibleVersion(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	origVersion := cliversion.Version
+	cliversion.Version = "1.5.0"
+	defer func() { cliversion.Version = origVersion }()
+
+	manifest := fmt.Sprintf(`[[Plugin]]
+  Shortname = "docs"
+  Shortdesc = "Docs plugin"
+  Binary = "stripe-cli-docs"
+  MagicCookieValue = "DOCS-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = %q
+    OS = %q
+    Version = "1.0.0"
+    Sum = "abc123"
+
+  [[Plugin.Release]]
+    Arch = %q
+    OS = %q
+    Version = "2.0.0"
+    Sum = "def456"
+    MinCoreVersion = "2.0.0"
+`, runtime.GOARCH, runtime.GOOS, runtime.GOARCH, runtime.GOOS)
+
+	requestedVersions := []string{}
+	origGetPluginMetadata := getPluginMetadata
+	getPluginMetadata = func(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *cfgpkg.Profile, pluginName, requestedVersion, opsystem, arch string) (requests.PluginMetadata, error) {
+		requestedVersions = append(requestedVersions, requestedVersion)
+
+		binaryVersion := requestedVersion
+		if binaryVersion == "" {
+			binaryVersion = "2.0.0"
+		}
+		return requests.PluginMetadata{
+			BinaryURL:      "https://example.test/docs/" + binaryVersion,
+			PluginManifest: manifest,
+		}, nil
+	}
+	defer func() { getPluginMetadata = origGetPluginMetadata }()
+
+	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "docs", "https://api.example.test", "https://dashboard.example.test")
+	require.NoError(t, err)
+	require.Equal(t, "1.0.0", resolvedPlugin.Version)
+	require.Equal(t, "https://example.test/docs/1.0.0", resolvedPlugin.BinaryURL)
+	require.Equal(t, []string{"", "1.0.0"}, requestedVersions)
+}
+
+func TestSelectPluginForUpgradePrefersSourceWithNewestCompatibleRelease(t *testing.T) {
+	origVersion := cliversion.Version
+	cliversion.Version = "1.5.0"
+	defer func() { cliversion.Version = origVersion }()
+
+	newestCompatible := &Plugin{
+		Shortname: "docs",
+		Binary:    "stripe-cli-docs",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.2.0", Sum: "abc123"},
+		},
+	}
+	// Holds the newest release overall, but this CLI can only run 1.1.0 from it.
+	newestOverall := &Plugin{
+		Shortname: "docs",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "def456"},
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "2.0.0", Sum: "ghi789", MinCoreVersion: "2.0.0"},
+		},
+	}
+
+	// mergePluginMetadata takes Releases from the primary source only, so picking
+	// the wrong source silently drops 1.2.0 and downgrades the upgrade to 1.1.0.
+	fromLocal := selectPluginForUpgrade(newestCompatible, newestOverall)
+	require.NotNil(t, fromLocal)
+	require.Equal(t, "1.2.0", fromLocal.LookUpLatestCompatibleVersion(cliversion.Version))
+
+	fromManifest := selectPluginForUpgrade(newestOverall, newestCompatible)
+	require.NotNil(t, fromManifest)
+	require.Equal(t, "1.2.0", fromManifest.LookUpLatestCompatibleVersion(cliversion.Version))
+	require.Equal(t, "stripe-cli-docs", fromManifest.Binary, "the fallback source should still backfill missing fields")
+}
+
+func TestResolvePluginForInstallReportsWhenCachedReleasesNeedNewerCLI(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	origVersion := cliversion.Version
+	cliversion.Version = "1.5.0"
+	defer func() { cliversion.Version = origVersion }()
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, Plugin{
+		Shortname:        "docs",
+		Binary:           "stripe-cli-docs",
+		MagicCookieValue: "DOCS-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "2.0.0", Sum: "abc123", MinCoreVersion: "2.0.0"},
+		},
+	}))
+
+	origGetPluginMetadata := getPluginMetadata
+	getPluginMetadata = func(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *cfgpkg.Profile, pluginName, requestedVersion, opsystem, arch string) (requests.PluginMetadata, error) {
+		return requests.PluginMetadata{}, errors.New("metadata endpoint unavailable")
+	}
+	defer func() { getPluginMetadata = origGetPluginMetadata }()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "docs", "", "https://api.example.test", "https://dashboard.example.test")
+	require.ErrorContains(t, err, "plugin docs has no release compatible with Stripe CLI 1.5.0")
 }
 
 func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) {
@@ -992,6 +1107,243 @@ func TestCheckLatestPluginVersionPrintsWhenUpgradeAvailable(t *testing.T) {
 	require.Contains(t, output, "v1.0.0")
 	require.Contains(t, output, "v1.1.0")
 	require.Contains(t, output, "stripe plugin upgrade myplugin")
+}
+
+func TestCheckLatestPluginVersionAutomaticallyUpdatesWhenEnabled(t *testing.T) {
+	viper.Reset()
+	defer viper.Reset()
+	viper.Set(cfgpkg.PluginConfigKey(cfgpkg.PluginConfigGlobalScope, cfgpkg.PluginConfigUpdatesField), "on")
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	origResolver := checkLatestPluginVersionResolver
+	origInstaller := automaticPluginInstaller
+	resolved := &ResolvedPluginVersion{
+		Plugin: &Plugin{
+			Shortname: "myplugin",
+			Releases: []Release{
+				{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "def456"},
+			},
+		},
+		Version:   "1.1.0",
+		BinaryURL: "https://example.test/myplugin/1.1.0",
+	}
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return resolved, nil
+	}
+	installed := false
+	automaticPluginInstaller = func(ctx context.Context, got *ResolvedPluginVersion, cfg cfgpkg.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+		require.Same(t, resolved, got)
+		_, hasDeadline := ctx.Deadline()
+		require.True(t, hasDeadline)
+		installed = true
+		return nil
+	}
+	defer func() {
+		checkLatestPluginVersionResolver = origResolver
+		automaticPluginInstaller = origInstaller
+	}()
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.True(t, installed)
+	require.Contains(t, output, "Automatically updated the myplugin plugin")
+	require.NotContains(t, output, "stripe plugin upgrade")
+}
+
+func TestCheckLatestPluginVersionFallsBackToHintWhenAutomaticUpdateFails(t *testing.T) {
+	viper.Reset()
+	defer viper.Reset()
+	viper.Set(cfgpkg.PluginConfigKey("myplugin", cfgpkg.PluginConfigUpdatesField), "on")
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	plugin := Plugin{Shortname: "myplugin", Binary: "stripe-cli-myplugin"}
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	origResolver := checkLatestPluginVersionResolver
+	origInstaller := automaticPluginInstaller
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return &ResolvedPluginVersion{Plugin: &plugin, Version: "1.1.0"}, nil
+	}
+	automaticPluginInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg cfgpkg.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+		return errors.New("download failed")
+	}
+	defer func() {
+		checkLatestPluginVersionResolver = origResolver
+		automaticPluginInstaller = origInstaller
+	}()
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+	require.Contains(t, output, "stripe plugin upgrade myplugin")
+}
+
+// setUpAutoUpdateTest installs myplugin v1.0.0 on an in-memory filesystem with
+// automatic updates enabled, and stubs the resolver so v1.1.0 is the latest
+// compatible release.
+func setUpAutoUpdateTest(t *testing.T) (afero.Fs, *TestConfig, Plugin) {
+	t.Helper()
+
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set(cfgpkg.PluginConfigKey(cfgpkg.PluginConfigGlobalScope, cfgpkg.PluginConfigUpdatesField), "on")
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	origResolver := checkLatestPluginVersionResolver
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "def456"},
+				},
+			},
+			Version:   "1.1.0",
+			BinaryURL: "https://example.test/myplugin/1.1.0",
+		}, nil
+	}
+	t.Cleanup(func() { checkLatestPluginVersionResolver = origResolver })
+
+	return fs, config, plugin
+}
+
+// stubAutomaticPluginInstaller makes automatic updates return installErr and
+// returns a pointer to the number of attempts made.
+func stubAutomaticPluginInstaller(t *testing.T, installErr error) *int {
+	t.Helper()
+
+	attempts := 0
+	orig := automaticPluginInstaller
+	automaticPluginInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg cfgpkg.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+		attempts++
+		return installErr
+	}
+	t.Cleanup(func() { automaticPluginInstaller = orig })
+
+	return &attempts
+}
+
+// writeAutoUpdateFailureStamp records a failed automatic update that happened
+// the given duration ago.
+func writeAutoUpdateFailureStamp(t *testing.T, config cfgpkg.IConfig, fs afero.Fs, pluginName string, age time.Duration) string {
+	t.Helper()
+
+	stampPath, err := autoUpdateFailureStampPath(config, pluginName)
+	require.NoError(t, err)
+	require.NoError(t, fs.MkdirAll(filepath.Dir(stampPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, stampPath, nil, 0644))
+
+	stamped := time.Now().Add(-age)
+	require.NoError(t, fs.Chtimes(stampPath, stamped, stamped))
+
+	return stampPath
+}
+
+func TestCheckLatestPluginVersionSkipsAutomaticUpdateDuringCooldown(t *testing.T) {
+	fs, config, plugin := setUpAutoUpdateTest(t)
+	attempts := stubAutomaticPluginInstaller(t, nil)
+	stampPath := writeAutoUpdateFailureStamp(t, config, fs, plugin.Shortname, time.Minute)
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Zero(t, *attempts, "a recent failure should suppress another download attempt")
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+	require.Contains(t, output, "stripe plugin upgrade myplugin")
+
+	_, err := fs.Stat(stampPath)
+	require.NoError(t, err, "the cooldown should survive a suppressed attempt")
+}
+
+func TestCheckLatestPluginVersionRetriesAutomaticUpdateAfterCooldown(t *testing.T) {
+	fs, config, plugin := setUpAutoUpdateTest(t)
+	attempts := stubAutomaticPluginInstaller(t, nil)
+	stampPath := writeAutoUpdateFailureStamp(t, config, fs, plugin.Shortname, 2*automaticPluginUpdateRetryInterval)
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Equal(t, 1, *attempts)
+	require.Contains(t, output, "Automatically updated the myplugin plugin")
+
+	_, err := fs.Stat(stampPath)
+	require.True(t, os.IsNotExist(err), "a successful update should clear the cooldown")
+}
+
+func TestCheckLatestPluginVersionRecordsCooldownWhenAutomaticUpdateFails(t *testing.T) {
+	fs, config, plugin := setUpAutoUpdateTest(t)
+	attempts := stubAutomaticPluginInstaller(t, errors.New("download failed"))
+
+	captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+	require.Equal(t, 1, *attempts)
+
+	stampPath, err := autoUpdateFailureStampPath(config, plugin.Shortname)
+	require.NoError(t, err)
+	_, err = fs.Stat(stampPath)
+	require.NoError(t, err, "a failed update should record a cooldown")
+
+	// The next plugin command must not spend the update timeout failing again.
+	captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+	require.Equal(t, 1, *attempts)
+}
+
+func TestCheckLatestPluginVersionSkipsCooldownWhenCommandInterrupted(t *testing.T) {
+	fs, config, plugin := setUpAutoUpdateTest(t)
+	attempts := stubAutomaticPluginInstaller(t, context.Canceled)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	captureStderr(t, func() {
+		CheckLatestPluginVersion(ctx, config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+	require.Equal(t, 1, *attempts)
+
+	stampPath, err := autoUpdateFailureStampPath(config, plugin.Shortname)
+	require.NoError(t, err)
+	_, err = fs.Stat(stampPath)
+	require.True(t, os.IsNotExist(err), "an interrupted command should not start a cooldown")
 }
 
 func TestCheckLatestPluginVersionSilentWhenUpToDate(t *testing.T) {
