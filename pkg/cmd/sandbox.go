@@ -107,6 +107,12 @@ work immediately.`,
 }
 
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
+	// Reject an invalid profile name before provisioning, so we never create a
+	// sandbox whose keys cannot be saved.
+	if err := Config.Profile.ValidateProfileNameForWrite(); err != nil {
+		return err
+	}
+
 	color := ansi.Color(cmd.ErrOrStderr())
 
 	existingKey, _ := Config.Profile.GetAPIKey(false)
