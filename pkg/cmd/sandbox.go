@@ -123,6 +123,12 @@ work immediately.`,
 }
 
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
+	// Reject an invalid profile name before provisioning, so we never create a
+	// sandbox whose keys cannot be saved.
+	if err := Config.Profile.ValidateProfileNameForWrite(); err != nil {
+		return err
+	}
+
 	if err := login.ValidateAccessBaseURL(scc.accessBaseURL); err != nil {
 		return err
 	}
