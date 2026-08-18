@@ -94,7 +94,7 @@ func APIKey(input string) error {
 
 	keyParts := strings.Split(input, "_")
 	if len(keyParts) < 3 {
-		return authError("You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new sandbox API key")
+		return authError("You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new test API key")
 	}
 
 	if keyParts[0] != "sk" && keyParts[0] != "rk" && keyParts[0] != "rkcs" {
@@ -114,7 +114,7 @@ func APIKeyNotRestricted(input string) error {
 
 	keyParts := strings.Split(input, "_")
 	if len(keyParts) < 3 {
-		return authError("You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new sandbox API key")
+		return authError("You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new test API key")
 	}
 
 	if keyParts[0] != "sk" || keyParts[0] == "rk" {

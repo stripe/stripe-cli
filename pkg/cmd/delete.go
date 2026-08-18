@@ -32,7 +32,7 @@ func newDeleteCmd(isPreview bool) *requests.Base {
 		Use:   "delete <path>",
 		Args:  validators.ExactArgs(1),
 		Short: "Make a " + verb + " request to the Stripe API",
-		Long: `Make ` + verb + ` requests to the Stripe API using your sandbox key.
+		Long: `Make ` + verb + ` requests to the Stripe API using your test key.
 ` + previewNote + `
 For a full list of supported paths, see the API reference:
 https://stripe.com/docs/api
