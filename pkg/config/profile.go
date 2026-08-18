@@ -106,8 +106,67 @@ var authFieldNames = []string{
 	"experimental",
 }
 
+// ValidateProfileName reports whether name can be used as a profile name.
+//
+// Profile fields are addressed as <profile>.<field> keys in viper, which uses
+// "." as its path separator. A profile name containing a period is therefore
+// indistinguishable from a nested table: viper reads ["a.b"] back as a -> b, so
+// the profile becomes invisible to every operation that enumerates top-level
+// tables (listing, removal, clearing credentials) even though reads still work.
+// An empty name produces a leading-period key that viper silently drops, so
+// writes to it are discarded without error.
+//
+// Every other character round-trips correctly and is allowed.
+//
+// TODO: return errorcategory.UserInputErrorf once master is merged into v2 and
+// the errorcategory package is available on this branch.
+func ValidateProfileName(name string) error {
+	if name == "" {
+		return fmt.Errorf("profile name cannot be empty")
+	}
+
+	if strings.Contains(name, ".") {
+		return fmt.Errorf("profile name %q cannot contain a period; use a hyphen or underscore instead", name)
+	}
+
+	return nil
+}
+
+// profileExists reports whether the config file already contains a table for
+// this profile. This checks for the table itself rather than any particular
+// field, so that a partially written profile (one with no display_name, which a
+// profile abandoned part-way through login can be) is still recognized.
+func (p *Profile) profileExists() bool {
+	return viper.IsSet(p.ProfileName)
+}
+
+// ValidateProfileNameForWrite validates the profile name before writing to it.
+//
+// Profiles that already exist are allowed through unchanged: reads against them
+// work correctly, and refusing to write would leave users unable to update a
+// profile they are actively using. Only the creation of new invalid names is
+// blocked.
+//
+// This grandfather clause can be dropped once the config migration renames
+// existing dotted profiles, at which point the rule becomes unconditional.
+func (p *Profile) ValidateProfileNameForWrite() error {
+	if p.profileExists() {
+		return nil
+	}
+
+	return ValidateProfileName(p.ProfileName)
+}
+
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
+	// Validate up front so a rejected name leaves both the config file and the
+	// keyring untouched: the calls below delete existing credentials before
+	// anything is written back. writeProfile revalidates as the backstop for the
+	// write paths that do not go through here.
+	if err := p.ValidateProfileNameForWrite(); err != nil {
+		return err
+	}
+
 	// Remove only auth-related keys under existing profile first
 	v := p.deleteAuthFields(viper.GetViper())
 
@@ -385,6 +444,11 @@ func (p *Profile) RegisterAlias(alias, key string) {
 // configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.ReadInConfig()
+
+	if err := p.ValidateProfileNameForWrite(); err != nil {
+		return err
+	}
+
 	viper.Set(p.GetConfigField(field), value)
 	return writeConfig(viper.GetViper())
 }
@@ -406,6 +470,14 @@ func (p *Profile) DeleteConfigField(field string) error {
 
 func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
+
+	// Validate before any mutation so a rejected name leaves the config file and
+	// the keyring untouched. This is the single funnel every profile write goes
+	// through, so commands cannot reintroduce an invalid name by bypassing the
+	// earlier checks in `stripe login` and `stripe sandbox create`.
+	if err := p.ValidateProfileNameForWrite(); err != nil {
+		return err
+	}
 
 	err := makePath(profilesFile)
 	if err != nil {
