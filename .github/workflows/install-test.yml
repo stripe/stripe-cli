@@ -16,11 +16,12 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - id: install_test
         run: bash scripts/install-test.sh homebrew
   homebrew-core:
@@ -28,11 +29,12 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - id: install_test
         run: bash scripts/install-test.sh homebrew-core
   apt:
@@ -40,16 +42,19 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - id: install_test
         run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
-    container: fedora:latest
+    # Pinned to the Fedora 44 multi-arch index. Bump this digest when moving to
+    # a newer Fedora; the RPM itself is what this job exercises, not the distro.
+    container: fedora@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898 # fedora:latest (F44)
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
@@ -63,11 +68,12 @@ jobs:
           enabled=1
           gpgcheck=0" | sudo tee /etc/yum.repos.d/stripe.repo
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - id: install_test
         run: bash scripts/install-test.sh yum
   scoop:
@@ -75,12 +81,13 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       with:
         sparse-checkout: |
           scripts/install-test.sh
         sparse-checkout-cone-mode: false
-    - uses: MinoruSekine/setup-scoop@v4
+        persist-credentials: false
+    - uses: MinoruSekine/setup-scoop@f1cc59be496ed3a1801a5f64efe5c60ba3d6bb75 # v5.0.1
     - id: install_test
       shell: powershell
       run: bash scripts/install-test.sh scoop
@@ -89,25 +96,30 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       with:
         sparse-checkout: |
           scripts/install-test.sh
         sparse-checkout-cone-mode: false
+        persist-credentials: false
     - id: install_test
       shell: powershell
       run: bash scripts/install-test.sh winget
   docker:
     runs-on: ubuntu-latest
-    container: stripe/stripe-cli:latest
+    # Deliberately unpinned: this canary exists to verify that the *currently
+    # published* image works. Pinning a digest here would mean we stop noticing
+    # when a freshly released stripe/stripe-cli:latest is broken.
+    container: stripe/stripe-cli:latest # zizmor: ignore[unpinned-images] floating tag is intentional here
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - id: install_test
         run: sh scripts/install-test.sh docker
 
@@ -119,12 +131,13 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '22'
       - id: install_test
@@ -135,12 +148,13 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '22'
       - id: install_test
@@ -151,17 +165,20 @@ jobs:
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: '22'
       # npm 10 has a bug where conflicting bin entries across a package and its
       # optional dependency silently drop the bin link, causing "stripe: not found".
-      - run: npm install -g npm@11
+      # Installing a pinned npm outside a lockfile is the whole point here, and
+      # this job installs no project dependencies.
+      - run: npm install -g npm@11 # zizmor: ignore[adhoc-packages] pinned, and no project deps here
       - id: install_test
         run: bash scripts/install-test.sh npx
 
@@ -170,11 +187,12 @@ jobs:
     needs: [homebrew, homebrew-core, apt, yum, scoop, winget, docker, npm, npm-no-optional, npx]
     if: always()
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/notify.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: ${{ contains(needs.*.outputs.install_test_result, 'failure') && 'failure' || contains(needs.*.result, 'failure') && 'skip' || 'success' }}

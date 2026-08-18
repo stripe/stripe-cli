@@ -1,0 +1,19 @@
+version: 2
+
+# Workflow actions are pinned to full commit SHAs (see .github/workflows/*.yml),
+# which means they never pick up upstream fixes on their own. Dependabot opens
+# the PRs that move those pins forward; it understands the `# vX.Y.Z` comment
+# next to each SHA and keeps it in sync.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # One PR for routine action bumps rather than a dozen.
+      actions:
+        patterns:
+          - "*"
+    labels:
+      - dependencies
+      - github-actions

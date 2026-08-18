@@ -3,13 +3,14 @@ on:
     - cron: '*/10 * * * *' # Every 10 minutes
   workflow_dispatch:
 name: Auto-upgrade test (trigger)
-permissions:
-  actions: write
-  contents: read
+permissions: {}
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      actions: write # `gh workflow run` dispatches autoupgrade-test.yml on the v2 branch
+      contents: read # `gh` resolves repo metadata
     steps:
       # The dispatch API intermittently returns HTTP 503, which fails the run
       # even though a retry succeeds. Retry with backoff before giving up.
