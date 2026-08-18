@@ -32,7 +32,7 @@ func newPostCmd(isPreview bool) *requests.Base {
 		Use:   "post <path>",
 		Args:  validators.ExactArgs(1),
 		Short: "Make a " + verb + " request to the Stripe API",
-		Long: `Make ` + verb + ` requests to the Stripe API using your test key.
+		Long: `Make ` + verb + ` requests to the Stripe API using your sandbox key.
 
 The post command supports API features like idempotency keys and expand flags.
 ` + previewNote + `
