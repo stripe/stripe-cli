@@ -34,8 +34,7 @@ func newSwitchCmd() *switchCmd {
 Without an argument, shows an interactive list of your authorized accounts and
 modes. Navigate with ↑↓, confirm with enter, or cancel with esc.
 
-With an account ID, switches directly to that account's sandbox by default.
-Use --live to switch to live mode instead.`,
+With an account ID, switches directly to that account. Add --live to switch to live mode.`,
 		Example: `  stripe switch context
   stripe switch context acct_1234
   stripe switch context acct_1234 --live`,
