@@ -86,7 +86,7 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 			rows = append(rows, row{
 				name:   a.Name,
 				id:     a.ID,
-				mode:   m,
+				mode:   displayMode(m),
 				active: a.ID == activeID && m == activeMode,
 			})
 			if len(a.Name) > nameW {
@@ -108,6 +108,14 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 		}
 	}
 	return nil
+}
+
+// displayMode maps the API's "test" mode value to the CLI's "sandbox" terminology.
+func displayMode(m string) string {
+	if m == "test" {
+		return "sandbox"
+	}
+	return m
 }
 
 // pickActiveContext selects the active account and livemode from the list of
