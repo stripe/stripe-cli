@@ -43,12 +43,22 @@ type GRPCClientV3 struct {
 	broker *hcplugin.GRPCBroker
 }
 
+// maxHelperMessageSize bounds a single CoreCLIHelper message. Command output can
+// be much larger than gRPC's 4MB default (a big result payload, or a plugin
+// forwarding subprocess output), and exceeding the default fails the RPC rather
+// than truncating, so the limit is raised on both ends of the helper channel.
+const maxHelperMessageSize = 64 * 1024 * 1024
+
 // RunCommand calls the RPC.
 func (m *GRPCClientV3) RunCommand(additionalInfo *proto.AdditionalInfo, args []string, coreCLIHelper CoreCLIHelper) error {
 	coreCLIHelperServer := &CoreCLIHelperServer{Impl: coreCLIHelper}
 
 	var s *grpc.Server
 	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
+		opts = append(opts,
+			grpc.MaxRecvMsgSize(maxHelperMessageSize),
+			grpc.MaxSendMsgSize(maxHelperMessageSize),
+		)
 		s = grpc.NewServer(opts...)
 		proto.RegisterCoreCLIHelperServer(s, coreCLIHelperServer)
 		return s
@@ -85,7 +95,7 @@ func (m *GRPCServerV3) RunCommand(ctx context.Context, req *proto.RunCommandRequ
 	}
 	defer conn.Close()
 
-	c := &CoreCLIHelperClient{client: proto.NewCoreCLIHelperClient(conn)}
+	c := NewCoreCLIHelperClient(proto.NewCoreCLIHelperClient(conn))
 
 	err = m.Impl.RunCommand(req.AdditionalInfo, req.Args, c)
 	if err != nil {

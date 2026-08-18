@@ -146,6 +146,15 @@ type CoreCLIHelperClient interface {
 	KeychainFindCredentials(ctx context.Context, in *KeychainFindCredentialsRequest, opts ...grpc.CallOption) (*KeychainFindCredentialsResponse, error)
 	RunPeerPlugin(ctx context.Context, in *RunPeerPluginRequest, opts ...grpc.CallOption) (*RunPeerPluginResponse, error)
 	// Centralized UI Rendering
+	//
+	// Every kind of output is an OutputBlock, so this one RPC carries incremental
+	// chatter and the command's final result alike. Callers set final on the last
+	// request; see SendCommandOutputRequest.
+	//
+	// Plugins detect support from this RPC alone: an older core CLI returns gRPC
+	// Unimplemented, which is the only transport signal that a plugin may treat
+	// as "render locally instead". Keeping the surface at one method keeps that
+	// signal to a single capability probe.
 	SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error)
 	Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
 }
@@ -263,6 +272,15 @@ type CoreCLIHelperServer interface {
 	KeychainFindCredentials(context.Context, *KeychainFindCredentialsRequest) (*KeychainFindCredentialsResponse, error)
 	RunPeerPlugin(context.Context, *RunPeerPluginRequest) (*RunPeerPluginResponse, error)
 	// Centralized UI Rendering
+	//
+	// Every kind of output is an OutputBlock, so this one RPC carries incremental
+	// chatter and the command's final result alike. Callers set final on the last
+	// request; see SendCommandOutputRequest.
+	//
+	// Plugins detect support from this RPC alone: an older core CLI returns gRPC
+	// Unimplemented, which is the only transport signal that a plugin may treat
+	// as "render locally instead". Keeping the surface at one method keeps that
+	// signal to a single capability probe.
 	SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error)
 	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()

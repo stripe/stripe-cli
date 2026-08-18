@@ -45,6 +45,15 @@ service CoreCLIHelper {
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
 
   // Centralized UI Rendering
+  //
+  // Every kind of output is an OutputBlock, so this one RPC carries incremental
+  // chatter and the command's final result alike. Callers set final on the last
+  // request; see SendCommandOutputRequest.
+  //
+  // Plugins detect support from this RPC alone: an older core CLI returns gRPC
+  // Unimplemented, which is the only transport signal that a plugin may treat
+  // as "render locally instead". Keeping the surface at one method keeps that
+  // signal to a single capability probe.
   rpc SendCommandOutput(SendCommandOutputRequest) returns (SendCommandOutputResponse);
   rpc Prompt(PromptRequest) returns (PromptResponse);
 }
@@ -135,6 +144,11 @@ enum PromptType {
 
 // OutputBlock is a single unit of plugin output. All output types are
 // expressed as blocks, and the rendering engine dispatches on the variant.
+//
+// A variant this core does not know decodes to an empty block rather than an
+// error, so the renderer reports unknown blocks instead of dropping them
+// silently. Prefer a new DataBlock type over a new variant: type is a string,
+// so it needs no protocol change at all.
 message OutputBlock {
   oneof block {
     MessageBlock message = 1;
@@ -163,6 +177,12 @@ message ProgressBlock {
 message SendCommandOutputRequest {
   string command = 1;
   repeated OutputBlock blocks = 2;
+
+  // final marks the request that ends the command's output. The renderer uses
+  // it to tear down spinners before printing, and to close the JSON envelope.
+  // It is explicit rather than inferred from the block kinds so that a command
+  // emitting data mid-run is not mistaken for a finished one.
+  bool final = 3;
 }
 
 message SendCommandOutputResponse {
