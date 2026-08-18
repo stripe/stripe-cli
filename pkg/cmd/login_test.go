@@ -42,7 +42,13 @@ func TestLoginValidatesProfileNameBeforeAuthentication(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Config is package state, and viper.Reset below drops the pflag
+			// binding that ReBindKeys would otherwise use to restore the
+			// default profile name. Put it back by hand so later tests in this
+			// package don't observe this test's profile.
+			origConfig := Config
 			t.Cleanup(func() {
+				Config = origConfig
 				config.KeyRing = nil
 				viper.Reset()
 			})
