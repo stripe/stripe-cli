@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/spf13/afero"
+	"google.golang.org/grpc"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
@@ -28,12 +31,30 @@ type CoreCLIHelper interface {
 	RunPeerPlugin(pluginName string, args []string, cwd string) error
 
 	// Centralized UI Rendering
+	//
+	// SendCommandOutput carries every kind of output as an OutputBlock, so it may
+	// be called repeatedly during a command. The call with Final set is the last.
 	SendCommandOutput(req *proto.SendCommandOutputRequest) error
 	Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error)
 }
 
 type CoreCLIHelperClient struct {
 	client proto.CoreCLIHelperClient
+	// outputCallOpts apply to the centralized-output RPCs, whose payloads can
+	// exceed gRPC's default per-message limit.
+	outputCallOpts []grpc.CallOption
+}
+
+// NewCoreCLIHelperClient wraps a generated gRPC client for use by a plugin,
+// raising the message-size limit on the output RPCs.
+func NewCoreCLIHelperClient(client proto.CoreCLIHelperClient) *CoreCLIHelperClient {
+	return &CoreCLIHelperClient{
+		client: client,
+		outputCallOpts: []grpc.CallOption{
+			grpc.MaxCallSendMsgSize(maxHelperMessageSize),
+			grpc.MaxCallRecvMsgSize(maxHelperMessageSize),
+		},
+	}
 }
 
 func (c *CoreCLIHelperClient) Echo(input string) (string, error) {
@@ -94,7 +115,7 @@ func (c *CoreCLIHelperClient) RunPeerPlugin(pluginName string, args []string, cw
 }
 
 func (c *CoreCLIHelperClient) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
-	_, err := c.client.SendCommandOutput(context.Background(), req)
+	_, err := c.client.SendCommandOutput(context.Background(), req, c.outputCallOpts...)
 	return err
 }
 
@@ -258,13 +279,21 @@ func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) Core
 	return NewCoreCLIHelperWithFormat(ctx, cfg, fs, rendering.FormatText)
 }
 
-// NewCoreCLIHelperWithFormat creates a CoreCLIHelper with a specific output format.
+// NewCoreCLIHelperWithFormat creates a CoreCLIHelper with a specific output
+// format, rendering to the host process's stdout and stderr.
 func NewCoreCLIHelperWithFormat(ctx context.Context, cfg config.IConfig, fs afero.Fs, format rendering.Format) CoreCLIHelper {
+	return NewCoreCLIHelperWithWriters(ctx, cfg, fs, format, os.Stdout, os.Stderr)
+}
+
+// NewCoreCLIHelperWithWriters creates a CoreCLIHelper that renders plugin output
+// to the given streams. Plugin output is always written by the host, never
+// forwarded through the plugin's own stdio.
+func NewCoreCLIHelperWithWriters(ctx context.Context, cfg config.IConfig, fs afero.Fs, format rendering.Format, stdout, stderr io.Writer) CoreCLIHelper {
 	return &coreCLIHelper{
 		ctx:             ctx,
 		config:          cfg,
 		fs:              fs,
-		renderingEngine: rendering.NewEngine(format),
+		renderingEngine: rendering.NewEngineWithWriters(format, stdout, stderr),
 	}
 }
 
