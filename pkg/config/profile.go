@@ -779,7 +779,7 @@ func (p *Profile) PrintActiveContextBanner() {
 		if ac == nil {
 			return
 		}
-		mode := "test"
+		mode := "sandbox"
 		if ac.Livemode {
 			mode = "live"
 		}
