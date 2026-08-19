@@ -220,7 +220,7 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 		return fmt.Errorf("failed to save account info: %w", err)
 	}
 
-	printLoginSuccess(accounts, activeID, activeLivemode)
+	printAuthorizedSummary(accounts, activeID, activeLivemode)
 	warnIfInsecureStorage()
 	return nil
 }
@@ -255,7 +255,9 @@ func buildContextRows(accounts []config.AuthorizedAccount, activeID string, acti
 	return rows
 }
 
-func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) {
+// printAuthorizedSummary prints the "Done! The Stripe CLI is authorized for
+// ..." banner and context table shared by login and reauth.
+func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) {
 	color := ansi.Color(os.Stdout)
 	rows := buildContextRows(accounts, activeID, activeLivemode)
 
@@ -266,7 +268,7 @@ func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, act
 
 	if len(rows) == 1 {
 		r := rows[0]
-		ctx := fmt.Sprintf("%s · %s", r.name, r.mode)
+		ctx := fmt.Sprintf("%s · %s", r.name, displayMode(r.mode))
 		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n", color.Green("✓"), ctx, r.id)
 		fmt.Printf("  Active context: %s\n\n", ctx)
 		fmt.Println("Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
@@ -280,8 +282,8 @@ func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, act
 		if len(r.name) > nameW {
 			nameW = len(r.name)
 		}
-		if len(r.mode) > modeW {
-			modeW = len(r.mode)
+		if dl := len(displayMode(r.mode)); dl > modeW {
+			modeW = dl
 		}
 		if len(r.id) > idW {
 			idW = len(r.id)
@@ -289,10 +291,11 @@ func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, act
 	}
 
 	for _, r := range rows {
+		mode := displayMode(r.mode)
 		if r.active {
-			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, r.mode, idW, r.id, color.Green("●"))
+			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, mode, idW, r.id, color.Green("●"))
 		} else {
-			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, r.mode, r.id)
+			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, mode, r.id)
 		}
 	}
 

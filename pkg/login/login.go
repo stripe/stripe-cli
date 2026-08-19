@@ -196,7 +196,7 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("failed to save account info: %w", err)
 	}
 
-	printLoginSuccess(accounts, activeID, activeLivemode)
+	printAuthorizedSummary(accounts, activeID, activeLivemode)
 	warnIfInsecureStorage()
 	return nil
 }
