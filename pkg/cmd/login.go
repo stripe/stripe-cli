@@ -51,8 +51,8 @@ func newLoginCmd() *loginCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "login",
 		Args:  validators.NoArgs,
-		Short: "Login to your Stripe account",
-		Long: `Login to your Stripe account to set up the CLI.
+		Short: "Log in to your Stripe account",
+		Long: `Log in to your Stripe account to set up the CLI.
 
 By default (when stdin is a terminal), this opens a browser-based OAuth flow: it
 prints a pairing code, launches your browser to the Stripe Dashboard, and waits for
@@ -138,7 +138,7 @@ For agents and scripts, use the two-step non-interactive flow:
 		Example: `stripe login switch\n  stripe login switch acct_1234\n  stripe login switch acct_1234 --live`,
 		RunE:    switchCmd.switchLoggedInAccountCmd,
 	}
-	switchCmd.cmd.Flags().BoolVar(&switchCmd.livemode, "live", false, "Select livemode for the given account")
+	switchCmd.cmd.Flags().BoolVar(&switchCmd.livemode, "live", false, "Select live mode for the given account")
 	switchCmd.cmd.Flags().StringVar(&switchCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	switchCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
 

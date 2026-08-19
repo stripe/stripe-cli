@@ -20,8 +20,8 @@ func newLogoutCmd() *logoutCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "logout",
 		Args:  validators.NoArgs,
-		Short: "Logout of your Stripe account",
-		Long:  `Logout of your Stripe account from the CLI`,
+		Short: "Log out of your Stripe account",
+		Long:  `Log out of your Stripe account from the CLI`,
 		RunE:  lc.runLogoutCmd,
 	}
 

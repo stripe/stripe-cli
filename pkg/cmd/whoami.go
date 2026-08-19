@@ -53,14 +53,14 @@ func newWhoamiCmd() *whoamiCmd {
 	wc.cmd = &cobra.Command{
 		Use:   "whoami",
 		Args:  validators.NoArgs,
-		Short: "Show the current Stripe auth state",
-		Long: `Display the current authentication state for the Stripe CLI.
+		Short: "Show the current Stripe auth context",
+		Long: `Display the current authentication context for the Stripe CLI.
 
 Reads credentials from the config file and keychain — no API calls are made.
 
 Use --format json for output suitable for scripting or agent consumption. The
 schema is stable: test_mode_key and live_mode_key are always present regardless
-of auth state, and authenticated: false indicates no usable credentials exist.
+of auth context, and authenticated: false indicates no usable credentials exist.
 
 Exit codes:
   0  Authenticated (at least one key is available)
@@ -133,7 +133,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	ac, _ := config.GetActiveContext()
 	if ac != nil {
 		displayName := wc.profile.GetDisplayName()
-		mode := "test"
+		mode := "sandbox"
 		if ac.Livemode {
 			mode = "live"
 		}
@@ -175,7 +175,7 @@ func printWhoamiText(out io.Writer, data whoamiOutput) {
 		fmt.Fprintf(w, "Device name:\t%s\n", data.DeviceName)
 	}
 
-	fmt.Fprintf(w, "Test mode key:\t%s\n", keyAvailabilityText(data.TestModeKey))
+	fmt.Fprintf(w, "Sandbox key:\t%s\n", keyAvailabilityText(data.TestModeKey))
 	fmt.Fprintf(w, "Live mode key:\t%s\n", keyAvailabilityText(data.LiveModeKey))
 	fmt.Fprintf(w, "API version:\t%s\n", data.APIVersion)
 	fmt.Fprintf(w, "Preview API version:\t%s\n", data.PreviewAPIVersion)

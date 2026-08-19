@@ -50,11 +50,11 @@ func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, account
 			}
 		}
 		if livemode {
-			return errorcategory.Errorf(errorcategory.Auth, "account %s is not authorized for livemode", accountID)
+			return errorcategory.Errorf(errorcategory.Auth, "Account %s does not have live mode access", accountID)
 		}
-		return errorcategory.Errorf(errorcategory.Auth, "account %s is not authorized for test mode; use --live to switch to livemode", accountID)
+		return errorcategory.Errorf(errorcategory.Auth, "Account %s does not have sandbox access; use --live to switch to live mode", accountID)
 	}
-	return errorcategory.Errorf(errorcategory.Auth, "account %s not found in your authorized accounts", accountID)
+	return errorcategory.Errorf(errorcategory.Auth, "Account %s not found in your authorized accounts", accountID)
 }
 
 func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode string) error {
@@ -70,7 +70,7 @@ func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode str
 	if err := cfg.Profile.CreateProfile(); err != nil {
 		return err
 	}
-	fmt.Printf("Active context: %s · %s (%s)\n", account.Name, mode, account.ID)
+	fmt.Printf("Active context: %s · %s (%s)\n", account.Name, displayMode(mode), account.ID)
 	return nil
 }
 
@@ -234,7 +234,7 @@ func (m switchContextModel) View() tea.View {
 			if r.active {
 				activeMarker = "  " + switchActiveStyle.Render("● active")
 			}
-			line := fmt.Sprintf("%s%-*s  %-*s  %-7s%s", pointer, m.nameW, r.name, m.idW, r.id, r.mode, activeMarker)
+			line := fmt.Sprintf("%s%-*s  %-*s  %-7s%s", pointer, m.nameW, r.name, m.idW, r.id, displayMode(r.mode), activeMarker)
 			line = strings.TrimRight(line, " ")
 			if i == m.cursor {
 				line = switchCursorStyle.Render(line)

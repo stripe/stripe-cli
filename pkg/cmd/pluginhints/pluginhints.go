@@ -218,7 +218,7 @@ func (p *pluginHintCmd) suggestNotAvailable() error {
 		return nil
 	}
 
-	fmt.Fprintf(p.stdout, "The logged-in account %s does not have access to the private preview 'generate' plugin. Log into a different account with 'stripe login', or contact Stripe support.\n", accountID)
+	fmt.Fprintf(p.stdout, "The logged-in account %s does not have access to the private preview 'generate' plugin. Log in to a different account with 'stripe login', or contact Stripe support.\n", accountID)
 	fmt.Fprintf(p.stdout, "\n")
 	fmt.Fprintf(p.stdout, "%s\n", p.description)
 	os.Exit(1)

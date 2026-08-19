@@ -333,7 +333,7 @@ func getLogin(fs *afero.Fs, cfg *config.Config) string {
 
 	if !exists {
 		return `
-Before using the CLI, you'll need to login:
+Before using the CLI, you'll need to log in:
 
   $ stripe login
 
