@@ -29,7 +29,10 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-const defaultSandboxBaseURL = "https://ai.stripe.com"
+const (
+	defaultSandboxBaseURL = "https://ai.stripe.com"
+	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to get permanent keys."
+)
 
 var openBrowserFunc = open.Browser
 var canOpenBrowserFunc = open.CanOpenBrowser
@@ -175,7 +178,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 			return err
 		}
 		if claimed {
-			fmt.Printf("\nYour sandbox is already claimed! Run `stripe login` to authenticate with your claimed account.\n")
+			fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
 			return nil
 		}
 
@@ -465,7 +468,7 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 		return err
 	}
 	if claimed {
-		fmt.Printf("Your sandbox is already claimed! Run `stripe login` to authenticate with your claimed account.\n")
+		fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
 		return nil
 	}
 
