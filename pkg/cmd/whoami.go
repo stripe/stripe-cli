@@ -145,9 +145,9 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 			mode = "live"
 		}
 
-		// Fail open: user_info is a nice-to-have, so whoami must still work if
-		// this call errors (e.g. the backend isn't deployed yet).
 		creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
+
+		// Fail open: the user's info is less important than the authorized contexts
 		info, _ := requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
 
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
