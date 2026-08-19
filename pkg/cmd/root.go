@@ -60,7 +60,7 @@ var rootCmd = &cobra.Command{
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
 			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
 			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
-			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
+			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — `stripe directory` installs itself on first use, the rest prompt when run directly, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -329,8 +329,9 @@ func init() {
 	installedPluginSet := registerInstalledPlugins(rootCmd, &Config, afero.NewOsFs())
 
 	// For known plugins not yet installed, add a hint command so users get
-	// a helpful message instead of "unknown command".
-	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
+	// a helpful message instead of "unknown command". Plugins that auto-install
+	// use runPluginByName to run the user's command once the install finishes.
+	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet, runPluginByName)
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {

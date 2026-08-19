@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -21,9 +23,23 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
+// AutoInstallOptOutEnvVar disables auto-installing plugins on first use when set
+// to a truthy value. Environments that don't want the CLI fetching binaries
+// on demand (locked-down CI, air-gapped hosts) set this and install explicitly
+// with `stripe plugin install <name>`.
+const AutoInstallOptOutEnvVar = "STRIPE_CLI_NO_PLUGIN_AUTO_INSTALL"
+
+// PluginRunner dispatches to an installed plugin binary. cmd is the command that
+// triggered the run (used for its context), name is the plugin shortname, and
+// args are the arguments to forward to the plugin process.
+type PluginRunner func(cmd *cobra.Command, name string, args []string) error
+
 // AddHintCommands registers a hint command for each known plugin that is not
-// present in installedPluginSet.
-func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPluginSet map[string]bool) {
+// present in installedPluginSet. runPlugin dispatches to a plugin binary that was
+// installed during this invocation; plugins configured with withAutoInstall use it
+// to run the user's original command once the install finishes. A nil runPlugin
+// degrades auto-install to install-then-print-next-steps.
+func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPluginSet map[string]bool, runPlugin PluginRunner) {
 	if !installedPluginSet["apps"] {
 		rootCmd.AddCommand(
 			newPluginHintCmd(cfg, "apps", "This plugin lets you build and manage Stripe Apps.").Command,
@@ -43,7 +59,17 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		rootCmd.Annotations["projects"] = "available_plugin"
 	}
 	if !installedPluginSet["directory"] {
-		directoryCmd := newPluginHintCmd(cfg, "directory", "Allow your agent to search and provision tools and services. Learn more: https://stripe.directory").Command
+		directoryCmd := newPluginHintCmd(
+			cfg,
+			"directory",
+			"Allow your agent to search and provision tools and services. Learn more: https://stripe.directory",
+			withAutoInstall(runPlugin),
+			// "search" stands in for the plugin's own subcommand rather than for the
+			// plugin name, so "stripe search <query>" has to forward as
+			// "directory search <query>". The remaining aliases are name typos and
+			// forward their arguments untouched.
+			withAliasArgPrefix(map[string][]string{"search": {"search"}}),
+		).Command
 		directoryCmd.Aliases = []string{
 			"search",
 			"directry",
@@ -74,11 +100,22 @@ type pluginHintCmd struct {
 	privatePreview bool
 	accessBaseURL  string
 
+	// autoInstall installs the plugin on first use without prompting and then runs
+	// the command the user originally typed, instead of asking for confirmation.
+	autoInstall bool
+	// aliasArgPrefix maps an alias to arguments that must be prepended when the
+	// command is invoked through it, for aliases that stand in for a plugin
+	// subcommand rather than for the plugin name itself.
+	aliasArgPrefix map[string][]string
+
 	lookupFn      func(ctx context.Context) error
 	installFn     func(ctx context.Context) error
 	loginFn       func(ctx context.Context) error
+	runPluginFn   func(cmd *cobra.Command, args []string) error
 	accountIDFn   func() (string, error)
 	openBrowserFn func(url string) error
+	argvFn        func() []string
+	lookupEnvFn   func(key string) string
 	stdin         io.Reader
 	stdout        io.Writer
 }
@@ -88,6 +125,27 @@ type option func(*pluginHintCmd)
 func withPrivatePreview() option {
 	return func(p *pluginHintCmd) {
 		p.privatePreview = true
+	}
+}
+
+// withAutoInstall installs the plugin on first use and hands off to runPlugin so
+// the user's original command runs in the same invocation. A nil runPlugin still
+// skips the confirmation prompt, but can only print next steps afterwards.
+func withAutoInstall(runPlugin PluginRunner) option {
+	return func(p *pluginHintCmd) {
+		p.autoInstall = true
+		if runPlugin == nil {
+			return
+		}
+		p.runPluginFn = func(cmd *cobra.Command, args []string) error {
+			return runPlugin(cmd, p.name, args)
+		}
+	}
+}
+
+func withAliasArgPrefix(prefixes map[string][]string) option {
+	return func(p *pluginHintCmd) {
+		p.aliasArgPrefix = prefixes
 	}
 }
 
@@ -117,6 +175,8 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
+		argvFn:        func() []string { return os.Args },
+		lookupEnvFn:   os.Getenv,
 		stdin:         os.Stdin,
 		stdout:        os.Stdout,
 	}
@@ -128,9 +188,18 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		opt(p)
 	}
 
+	p.initCommand()
+
+	return p
+}
+
+// initCommand wires up the Cobra command. It is separate from newPluginHintCmd so
+// tests can build a pluginHintCmd with mocked side effects and still exercise the
+// real flag and help handling.
+func (p *pluginHintCmd) initCommand() {
 	p.Command = &cobra.Command{
-		Use:   name,
-		Short: description,
+		Use:   p.name,
+		Short: p.description,
 		// Accept unknown flags/args so they aren't rejected before we can show the hint
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		RunE:               p.run,
@@ -138,7 +207,9 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 	p.Command.Flags().StringVar(&p.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	_ = p.Command.Flags().MarkHidden("access-base")
 
-	return p
+	if p.autoInstall {
+		p.setAutoInstallHelpFunc()
+	}
 }
 
 func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
@@ -146,13 +217,17 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx := cmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx := commandContext(cmd)
 
 	if err := p.lookupFn(ctx); err == nil {
-		return p.promptInstall(ctx)
+		switch {
+		case p.autoInstall && p.autoInstallOptedOut():
+			return p.refuseAutoInstall()
+		case p.autoInstall:
+			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs(cmd))
+		default:
+			return p.promptInstall(ctx)
+		}
 	}
 
 	if p.privatePreview {
@@ -168,6 +243,135 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 
 	fmt.Fprintf(p.stdout, "The \"%s\" plugin is not currently available. Run 'stripe plugin install %s' to try installing it manually.\n", p.name, p.name)
 	return nil
+}
+
+// setAutoInstallHelpFunc makes `stripe <plugin> --help` install the plugin and then
+// let the plugin document itself, since asking what a command does is a likely first
+// interaction and this placeholder's one-line summary barely answers it.
+func (p *pluginHintCmd) setAutoInstallHelpFunc() {
+	// Capture Cobra's renderer before overriding it, so the fallback below prints the
+	// placeholder help instead of recursing back into this hook.
+	placeholderHelp := p.HelpFunc()
+
+	p.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		// Without a runner there is nothing to hand the help request to, so installing
+		// would not produce better help than the placeholder already gives.
+		if p.runPluginFn == nil {
+			placeholderHelp(cmd, args)
+			return
+		}
+
+		if err := p.autoInstallHelp(cmd, args); err != nil {
+			// Cobra's help hook cannot report an error, and printing nothing would be
+			// worse than the placeholder, so show it and say what is missing.
+			placeholderHelp(cmd, args)
+			fmt.Fprintf(p.stdout, "\nThe %q plugin's own help is unavailable: %v\n", p.name, err)
+		}
+	})
+}
+
+// autoInstallHelp installs the plugin and forwards the help request to it. It
+// returns an error when the placeholder help should be shown instead.
+func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) error {
+	if p.autoInstallOptedOut() {
+		return errorcategory.Errorf(errorcategory.UserInput, "%s disables installing it automatically; run 'stripe plugin install %s'", AutoInstallOptOutEnvVar, p.name)
+	}
+
+	ctx := commandContext(cmd)
+
+	if err := p.lookupFn(ctx); err != nil {
+		return err
+	}
+
+	return p.autoInstallAndRun(ctx, cmd, p.helpArgs(cmd, cobraArgs))
+}
+
+// autoInstallAndRun installs the plugin without prompting and then runs the
+// command the user typed, so first use of the plugin costs a one-time download
+// rather than a canceled command the user has to retype.
+func (p *pluginHintCmd) autoInstallAndRun(ctx context.Context, cmd *cobra.Command, pluginArgs []string) error {
+	fmt.Fprintln(p.stdout, ansi.Faint(fmt.Sprintf("Installing the %q plugin (one-time setup)...", p.name)))
+
+	if err := p.installFn(ctx); err != nil {
+		return err
+	}
+
+	// Print the next steps before handing off, so this one-time guidance stays
+	// above the requested command's output instead of trailing it, where it would
+	// look like part of the result.
+	color := ansi.Color(p.stdout)
+	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
+	postinstall.PrintTips(p.stdout, p.name)
+
+	// Without a runner there is nothing to hand off to, so stop here rather than
+	// exiting on a silent success.
+	if p.runPluginFn == nil {
+		return nil
+	}
+
+	fmt.Fprintln(p.stdout)
+
+	return p.runPluginFn(cmd, pluginArgs)
+}
+
+// refuseAutoInstall reports that the plugin is missing without fetching it, so an
+// environment that opted out fails loudly instead of blocking on a prompt that
+// may have no one to answer it.
+func (p *pluginHintCmd) refuseAutoInstall() error {
+	fmt.Fprintf(p.stdout, "The %q plugin is required to run this command, but %s disables installing it automatically.\n", p.name, AutoInstallOptOutEnvVar)
+	return errorcategory.Errorf(errorcategory.UserInput, "plugin %q is not installed; run 'stripe plugin install %s'", p.name, p.name)
+}
+
+func (p *pluginHintCmd) autoInstallOptedOut() bool {
+	optedOut, err := strconv.ParseBool(p.lookupEnvFn(AutoInstallOptOutEnvVar))
+	return err == nil && optedOut
+}
+
+// pluginArgs recovers the arguments intended for the plugin from the raw process
+// arguments. Cobra has already consumed the flags and the plugin name it
+// recognizes, so read them back from argv instead:
+// "stripe [host_flags...] directory [plugin_args...]" => "[plugin_args...]".
+func (p *pluginHintCmd) pluginArgs(cmd *cobra.Command) []string {
+	// Slice after the token the user actually typed. Aliases mean that is not
+	// always the plugin's own name.
+	invokedAs := p.name
+	if cmd != nil && cmd.CalledAs() != "" {
+		invokedAs = cmd.CalledAs()
+	}
+
+	args := cmdutil.ArgsAfter(p.argvFn(), invokedAs)
+
+	if prefix, ok := p.aliasArgPrefix[invokedAs]; ok {
+		args = append(append([]string{}, prefix...), args...)
+	}
+
+	return args
+}
+
+// helpArgs builds the arguments that make the plugin print the help the user asked
+// for. Cobra passes the raw arguments through when help was requested with a flag,
+// but passes none when it came from the `help` subcommand — and in that case argv
+// holds no help flag for the plugin to act on, so one has to be added.
+func (p *pluginHintCmd) helpArgs(cmd *cobra.Command, cobraArgs []string) []string {
+	args := p.pluginArgs(cmd)
+
+	if len(cobraArgs) == 0 {
+		// "stripe help directory [plugin_subcommands...]" => "[plugin_subcommands...] --help"
+		return append(args, "--help")
+	}
+
+	// "stripe directory [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
+	return args
+}
+
+// commandContext returns the command's context, falling back to a background one
+// when Cobra never attached one — as happens for the target of `stripe help <cmd>`.
+func commandContext(cmd *cobra.Command) context.Context {
+	if cmd == nil || cmd.Context() == nil {
+		return context.Background()
+	}
+
+	return cmd.Context()
 }
 
 func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
