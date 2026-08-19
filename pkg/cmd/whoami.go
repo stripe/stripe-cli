@@ -13,6 +13,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -137,8 +138,21 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		if ac.Livemode {
 			mode = "live"
 		}
+
+		creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
+		info, err := requests.GetUserInfo(cmd.Context(), stripe.DefaultAPIBaseURL, wc.profile, creds, ac.Livemode)
+		if err != nil {
+			return err
+		}
+
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
+		if info.Email != "" {
+			fmt.Fprintf(tw, "User\t%s\n", info.Email)
+		}
 		fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		if info.Role != "" {
+			fmt.Fprintf(tw, "Role\t%s\n", info.Role)
+		}
 		if t, err := config.GetUATExpiresAt(); err == nil {
 			fmt.Fprintf(tw, "Expires\t%s\n", t.Local().Format(expiryDisplayFormat))
 		}
