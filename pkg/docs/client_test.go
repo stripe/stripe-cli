@@ -63,6 +63,28 @@ func (m *mockCache) Set(key string, data []byte) error {
 	return nil
 }
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func routeRequestsTo(serverURL string) *http.Client {
+	target, _ := url.Parse(serverURL)
+	return &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		original := req.Clone(req.Context())
+		forwarded := req.Clone(req.Context())
+		forwarded.URL.Scheme = target.Scheme
+		forwarded.URL.Host = target.Host
+
+		resp, err := http.DefaultTransport.RoundTrip(forwarded)
+		if resp != nil {
+			resp.Request = original
+		}
+		return resp, err
+	})}
+}
+
 func TestNewClient_UserAgent(t *testing.T) {
 	got := NewClient("1.2.3")
 	assert.Equal(t, useragent.GetEncodedUserAgent(), got.userAgent)
@@ -230,6 +252,35 @@ func TestFetchPage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchPage_SupportHost(t *testing.T) {
+	var gotPath, gotQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.RawQuery
+		assert.Equal(t, "text/markdown", r.Header.Get("Accept"))
+		assert.Equal(t, "text/markdown", r.Header.Get("Content-Type"))
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		fmt.Fprint(w, "# Support content")
+	}))
+	defer server.Close()
+
+	client := NewClient("0.1.0").WithOptions(WithHTTPClient(routeRequestsTo(server.URL)))
+	ref := &url.URL{
+		Scheme:   "https",
+		Host:     supportHost,
+		Path:     "/questions/search",
+		RawQuery: "topic=a+b&source=cli",
+		Fragment: "details",
+	}
+	got, err := client.FetchPage(context.Background(), ref)
+
+	require.NoError(t, err)
+	assert.Equal(t, "/questions/search", gotPath)
+	assert.Equal(t, "topic=a+b&source=cli", gotQuery)
+	assert.Equal(t, []byte("# Support content"), got.Content)
+	assert.Equal(t, "https://support.stripe.com/questions/search?topic=a+b&source=cli#details", got.URL.String())
 }
 
 func TestFetchPage_ContextCanceled(t *testing.T) {
@@ -663,6 +714,35 @@ func TestFetchPageWithPrefs(t *testing.T) {
 	}
 }
 
+func TestFetchPage_SupportHostDoesNotApplyPrefs(t *testing.T) {
+	var gotQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "text/markdown")
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	cache := newMockCache()
+	client := NewClient("test").WithOptions(
+		WithHTTPClient(routeRequestsTo(server.URL)),
+		WithCache(cache),
+		WithPrefs(map[string]string{"lang": "go", "theme": "dark"}),
+	)
+	ref := &url.URL{
+		Scheme:   "https",
+		Host:     supportHost,
+		Path:     "/questions",
+		RawQuery: "lang=ruby&topic=payments",
+	}
+	_, err := client.FetchPage(context.Background(), ref)
+
+	require.NoError(t, err)
+	assert.Equal(t, "lang=ruby&topic=payments", gotQuery)
+	require.Len(t, cache.data, 1)
+	assert.Contains(t, cache.data, "https://support.stripe.com/questions?lang=ruby&topic=payments")
+}
+
 func TestFetchPage_Authenticated_UsesAPIEndpoint(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/v2/docs/page", r.URL.Path)
@@ -685,6 +765,59 @@ func TestFetchPage_Authenticated_UsesAPIEndpoint(t *testing.T) {
 	assert.Equal(t, []byte("page content"), got.Content)
 	assert.Equal(t, "docs.stripe.com", got.URL.Host)
 	assert.Equal(t, "/payments", got.URL.Path)
+}
+
+func TestFetchPage_Authenticated_SupportHostStaysDirect(t *testing.T) {
+	apiCalls := 0
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCalls++
+		http.Error(w, "unexpected API request", http.StatusInternalServerError)
+	}))
+	defer apiServer.Close()
+
+	supportCalls := 0
+	supportServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		supportCalls++
+		assert.Equal(t, "/questions", r.URL.Path)
+		assert.Equal(t, "topic=payments", r.URL.RawQuery)
+		assert.Empty(t, r.Header.Get("Authorization"))
+		assert.Empty(t, r.Header.Get("Stripe-Version"))
+		w.Header().Set("Content-Type", "text/markdown")
+		fmt.Fprint(w, "support content")
+	}))
+	defer supportServer.Close()
+
+	target, err := url.Parse(supportServer.URL)
+	require.NoError(t, err)
+	httpClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Host != supportHost {
+			return http.DefaultTransport.RoundTrip(req)
+		}
+
+		original := req.Clone(req.Context())
+		forwarded := req.Clone(req.Context())
+		forwarded.URL.Scheme = target.Scheme
+		forwarded.URL.Host = target.Host
+		resp, err := http.DefaultTransport.RoundTrip(forwarded)
+		if resp != nil {
+			resp.Request = original
+		}
+		return resp, err
+	})}
+
+	client := NewClient("0.1.0").WithOptions(
+		WithAPIBaseURL(apiServer.URL),
+		WithAPIKey("test_key"),
+		WithHTTPClient(httpClient),
+	)
+	ref := &url.URL{Scheme: "https", Host: supportHost, Path: "/questions", RawQuery: "topic=payments"}
+	got, err := client.FetchPage(context.Background(), ref)
+
+	require.NoError(t, err)
+	assert.Equal(t, []byte("support content"), got.Content)
+	assert.Equal(t, "https://support.stripe.com/questions?topic=payments", got.URL.String())
+	assert.Equal(t, 1, supportCalls)
+	assert.Zero(t, apiCalls)
 }
 
 func TestFetchPage_Authenticated_ForwardsLocatorPath(t *testing.T) {

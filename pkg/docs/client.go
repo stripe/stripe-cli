@@ -20,6 +20,8 @@ import (
 
 const defaultBaseURL = "https://docs.stripe.com"
 const defaultAPIBaseURL = "https://api.stripe.com"
+const supportBaseURL = "https://support.stripe.com"
+const supportHost = "support.stripe.com"
 
 // Page holds the content and metadata of a fetched documentation page.
 type Page struct {
@@ -72,7 +74,7 @@ func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = ca
 // WithLogger sets a custom logger.
 func WithLogger(logger *log.Entry) ClientOption { return func(c *Client) { c.logger = logger } }
 
-// WithAPIKey sets the Stripe API key sent as an Authorization header on every request.
+// WithAPIKey sets the Stripe API key used for authenticated API requests.
 func WithAPIKey(key string) ClientOption { return func(c *Client) { c.apiKey = key } }
 
 // WithAPIBaseURL overrides the Stripe API base URL used for authenticated requests
@@ -129,20 +131,32 @@ type retrieveDocResponse struct {
 //
 //	page, err := c.FetchPage(ctx, &url.URL{Path: "/payments/accept-a-payment", RawQuery: "api_version=2024-06-30"})
 func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
-	if c.apiKey != "" {
+	isSupport := ref.Host == supportHost
+	if c.apiKey != "" && !isSupport {
 		return c.fetchPageViaAPI(ctx, ref)
 	}
 
-	resolvedURL := c.baseURL.ResolveReference(ref)
-	// Merge stored prefs as query params, skipping any key already present in the ref.
-	// url.Values.Encode() sorts params, giving a consistent cache key.
-	q := resolvedURL.Query()
-	for k, v := range c.prefs {
-		if !q.Has(k) {
-			q.Set(k, v)
+	var resolvedURL *url.URL
+	if isSupport {
+		supportURL, _ := url.Parse(supportBaseURL)
+		resolvedURL = supportURL.ResolveReference(&url.URL{
+			Path:     ref.Path,
+			RawPath:  ref.RawPath,
+			RawQuery: ref.RawQuery,
+			Fragment: ref.Fragment,
+		})
+	} else {
+		resolvedURL = c.baseURL.ResolveReference(ref)
+		// Merge stored prefs as query params, skipping any key already present in the ref.
+		// url.Values.Encode() sorts params, giving a consistent cache key.
+		q := resolvedURL.Query()
+		for k, v := range c.prefs {
+			if !q.Has(k) {
+				q.Set(k, v)
+			}
 		}
+		resolvedURL.RawQuery = q.Encode()
 	}
-	resolvedURL.RawQuery = q.Encode()
 	rawURL := resolvedURL.String()
 	cacheKey := c.cacheKey(rawURL)
 
@@ -165,7 +179,12 @@ func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
 	if err != nil {
 		return Page{}, fmt.Errorf("docs: build request: %w", err)
 	}
-	req.Header.Set("Accept", "text/plain, text/markdown")
+	if isSupport {
+		req.Header.Set("Accept", "text/markdown")
+		req.Header.Set("Content-Type", "text/markdown")
+	} else {
+		req.Header.Set("Accept", "text/plain, text/markdown")
+	}
 
 	res, err := c.do(req)
 	if err != nil {
@@ -202,6 +221,7 @@ func (c *Client) fetchPageViaAPI(ctx context.Context, ref *url.URL) (Page, error
 		return Page{}, fmt.Errorf("docs: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
 
 	res, err := c.do(req)
@@ -241,9 +261,6 @@ func (c *Client) cacheKey(rawURL string) string {
 
 func (c *Client) do(req *http.Request) (response, error) {
 	req.Header.Set("User-Agent", c.userAgent)
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
 
 	start := time.Now()
 	resp, err := c.http.Do(req)
@@ -351,6 +368,9 @@ func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
+	if c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	}
 
 	res, err := c.do(req)
 	if err != nil {

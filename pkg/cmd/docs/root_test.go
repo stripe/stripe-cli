@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -95,6 +96,94 @@ func TestRootParsesDocsURL(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantPath, gotPath)
 			assert.Equal(t, tc.wantQuery, gotQuery)
+		})
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestRootRoutesSupportURLs(t *testing.T) {
+	tests := []struct {
+		name      string
+		arg       string
+		wantHost  string
+		wantPath  string
+		wantQuery string
+	}{
+		{
+			name:     "bare support URL",
+			arg:      "support.stripe.com/questions/getting-started",
+			wantHost: "support.stripe.com",
+			wantPath: "/questions/getting-started",
+		},
+		{
+			name:      "schemed support URL with query",
+			arg:       "https://support.stripe.com/questions/search?topic=payments&source=cli",
+			wantHost:  "support.stripe.com",
+			wantPath:  "/questions/search",
+			wantQuery: "topic=payments&source=cli",
+		},
+		{
+			name:     "lookalike support subdomain is a docs path",
+			arg:      "support.stripe.com.example.com/questions",
+			wantPath: "/support.stripe.com.example.com/questions",
+		},
+		{
+			name:     "unsupported host is a docs path",
+			arg:      "https://example.com/questions",
+			wantPath: "/https://example.com/questions",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/markdown")
+				fmt.Fprint(w, "# Support")
+			}))
+			defer server.Close()
+
+			target, err := http.NewRequest(http.MethodGet, server.URL, nil)
+			require.NoError(t, err)
+
+			var gotHost, gotPath, gotQuery string
+			httpClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				gotHost = req.URL.Host
+				gotPath = req.URL.Path
+				gotQuery = req.URL.RawQuery
+
+				forwarded := req.Clone(req.Context())
+				forwarded.URL.Scheme = target.URL.Scheme
+				forwarded.URL.Host = target.URL.Host
+				return http.DefaultTransport.RoundTrip(forwarded)
+			})}
+
+			client := docs.NewClient("test").WithOptions(
+				docs.WithBaseURL(server.URL),
+				docs.WithHTTPClient(httpClient),
+			)
+			renderer, err := markdown.NewRenderer()
+			require.NoError(t, err)
+
+			root := cmd.New().WithOptions(
+				cmd.WithClient(client),
+				cmd.WithRenderer(renderer),
+			).Root()
+			root.SetOut(io.Discard)
+			root.SetArgs([]string{"--non-interactive", "--no-pager", tt.arg})
+
+			require.NoError(t, root.ExecuteContext(context.Background()))
+			wantHost := tt.wantHost
+			if wantHost == "" {
+				wantHost = target.URL.Host
+			}
+			assert.Equal(t, wantHost, gotHost)
+			assert.Equal(t, tt.wantPath, gotPath)
+			assert.Equal(t, tt.wantQuery, gotQuery)
 		})
 	}
 }
