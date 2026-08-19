@@ -121,6 +121,10 @@ type Base struct {
 
 	DryRun bool
 
+	// Verbose prints request and response headers, for callers that don't go
+	// through the --show-headers/-s flag (e.g. requests.Base built by hand).
+	Verbose bool
+
 	autoConfirm bool
 	showHeaders bool
 }
@@ -264,7 +268,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, creds stripe.Credentia
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders,
+		Verbose:     rb.showHeaders || rb.Verbose,
 	}
 
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
@@ -280,7 +284,7 @@ func (rb *Base) MakeRequest(ctx context.Context, creds stripe.Credentials, path 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders,
+		Verbose:     rb.showHeaders || rb.Verbose,
 	}
 
 	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)
