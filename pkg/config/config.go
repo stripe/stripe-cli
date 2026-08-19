@@ -25,6 +25,21 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
+// Top-level config.toml keys that belong to the CLI itself rather than to a
+// profile. A profile with one of these names is a collision, which is what
+// moving profiles under the reserved profiles table fixes.
+const (
+	// ColorName is the color setting. It is also a valid profile field, so it can
+	// appear both at the top level and inside a profile.
+	ColorName = "color"
+
+	// InstalledPluginsKey lists the locally installed plugins.
+	InstalledPluginsKey = "installed_plugins"
+
+	// MachineUUIDKey is the persistent machine identifier used for telemetry.
+	MachineUUIDKey = "machine_uuid"
+)
+
 // ColorOn represnets the on-state for colors
 const ColorOn = "on"
 
@@ -324,19 +339,19 @@ func (c *Config) PrintConfig() error {
 func (c *Config) GetInstalledPlugins() []string {
 	runtimeViper := viper.GetViper()
 
-	return runtimeViper.GetStringSlice("installed_plugins")
+	return runtimeViper.GetStringSlice(InstalledPluginsKey)
 }
 
 // GetMachineUUID returns the persistent machine UUID from config,
 // generating and saving one if it doesn't exist.
 func (c *Config) GetMachineUUID() string {
 	runtimeViper := viper.GetViper()
-	id := runtimeViper.GetString("machine_uuid")
+	id := runtimeViper.GetString(MachineUUIDKey)
 	if id != "" {
 		return id
 	}
 	id = uuid.NewString()
-	_ = c.WriteConfigField("machine_uuid", id)
+	_ = c.WriteConfigField(MachineUUIDKey, id)
 	return id
 }
 
