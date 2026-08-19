@@ -27,6 +27,7 @@ type whoamiCmd struct {
 	profile       *config.Profile
 	format        string
 	accessBaseURL string
+	apiBaseURL    string
 }
 
 type whoamiKeyInfo struct {
@@ -75,6 +76,8 @@ Exit codes:
 	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
 	wc.cmd.Flags().StringVar(&wc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	wc.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
+	wc.cmd.Flags().StringVar(&wc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	wc.cmd.Flags().MarkHidden("api-base") //nolint:errcheck
 
 	return wc
 }
@@ -85,6 +88,9 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	uat, _ := profile.GetUAT()
 	if strings.HasPrefix(uat, "oak_") {
 		if err := login.ValidateAccessBaseURL(wc.accessBaseURL); err != nil {
+			return err
+		}
+		if err := stripe.ValidateAPIBaseURL(wc.apiBaseURL); err != nil {
 			return err
 		}
 		return wc.runWhoamiOAuth(cmd, uat)
@@ -142,7 +148,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		// Fail open: user_info is a nice-to-have, so whoami must still work if
 		// this call errors (e.g. the backend isn't deployed yet).
 		creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
-		info, _ := requests.GetUserInfo(cmd.Context(), stripe.DefaultAPIBaseURL, wc.profile, creds, ac.Livemode)
+		info, _ := requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
 
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 		if info.Email != "" {
