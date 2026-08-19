@@ -74,7 +74,9 @@ const (
 
 // ConfigVersionV1 is the original layout, with each profile as a top-level table.
 // A v1 file records no config_version key at all; the constant exists so that
-// version comparisons don't have to spell out that absence.
+// version comparisons don't have to spell out that absence. Writing the version
+// out explicitly pins the file to the flat layout and opts it out of the
+// migration.
 const ConfigVersionV1 = 1
 
 // ConfigVersionV2 is the schema version in which every profile moved under the
