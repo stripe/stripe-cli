@@ -44,6 +44,10 @@ service CoreCLIHelper {
   };
   rpc RunPeerPlugin(RunPeerPluginRequest) returns (RunPeerPluginResponse);
   rpc ResolveCredentials(ResolveCredentialsRequest) returns (ResolveCredentialsResponse);
+  // Resolves credentials for the requested mode, but if that doesn't match the
+  // OAuth active context, resolves credentials for whichever mode is actually
+  // active instead of failing.
+  rpc ResolveCredentialsForAnyMode(ResolveCredentialsRequest) returns (ResolveCredentialsResponse);
 }
 
 message EchoRequest {
@@ -109,9 +113,6 @@ message RunPeerPluginResponse {
 
 message ResolveCredentialsRequest {
   bool livemode = 1;
-  // If true, resolve credentials for whichever mode is actually active,
-  // ignoring livemode, instead of failing on a mismatch.
-  bool any_mode = 2;
 }
 
 message ResolveCredentialsResponse {

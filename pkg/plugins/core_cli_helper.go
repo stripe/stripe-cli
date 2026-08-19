@@ -26,7 +26,8 @@ type CoreCLIHelper interface {
 	KeychainDeletePassword(key string) (bool, error)
 	KeychainFindCredentials() ([]string, error)
 	RunPeerPlugin(pluginName string, args []string, cwd string) error
-	ResolveCredentials(livemode bool, anyMode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
+	ResolveCredentials(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
+	ResolveCredentialsForAnyMode(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
 }
 
 type CoreCLIHelperClient struct {
@@ -90,8 +91,16 @@ func (c *CoreCLIHelperClient) RunPeerPlugin(pluginName string, args []string, cw
 	return err
 }
 
-func (c *CoreCLIHelperClient) ResolveCredentials(livemode bool, anyMode bool) (string, string, bool, error) {
-	resp, err := c.client.ResolveCredentials(context.Background(), &proto.ResolveCredentialsRequest{Livemode: livemode, AnyMode: anyMode})
+func (c *CoreCLIHelperClient) ResolveCredentials(livemode bool) (string, string, bool, error) {
+	resp, err := c.client.ResolveCredentials(context.Background(), &proto.ResolveCredentialsRequest{Livemode: livemode})
+	if err != nil {
+		return "", "", false, err
+	}
+	return resp.Token, resp.StripeContext, resp.Livemode, nil
+}
+
+func (c *CoreCLIHelperClient) ResolveCredentialsForAnyMode(livemode bool) (string, string, bool, error) {
+	resp, err := c.client.ResolveCredentialsForAnyMode(context.Background(), &proto.ResolveCredentialsRequest{Livemode: livemode})
 	if err != nil {
 		return "", "", false, err
 	}
@@ -160,7 +169,15 @@ func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunP
 }
 
 func (s *CoreCLIHelperServer) ResolveCredentials(ctx context.Context, req *proto.ResolveCredentialsRequest) (*proto.ResolveCredentialsResponse, error) {
-	token, stripeContext, livemode, err := s.Impl.ResolveCredentials(req.Livemode, req.AnyMode)
+	token, stripeContext, livemode, err := s.Impl.ResolveCredentials(req.Livemode)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.ResolveCredentialsResponse{Token: token, StripeContext: stripeContext, Livemode: livemode}, nil
+}
+
+func (s *CoreCLIHelperServer) ResolveCredentialsForAnyMode(ctx context.Context, req *proto.ResolveCredentialsRequest) (*proto.ResolveCredentialsResponse, error) {
+	token, stripeContext, livemode, err := s.Impl.ResolveCredentialsForAnyMode(req.Livemode)
 	if err != nil {
 		return nil, err
 	}
@@ -324,17 +341,23 @@ func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
 	return []string{key}, nil
 }
 
-// ResolveCredentials delegates to Profile.ResolveCredentials (or, when anyMode is true,
-// Profile.ResolveCredentialsForAnyMode) and returns the token, Stripe-Context header
-// value, and effective livemode. stripeContext is empty for plain API keys.
-func (h *coreCLIHelper) ResolveCredentials(livemode bool, anyMode bool) (string, string, bool, error) {
-	var creds stripe.Credentials
-	var err error
-	if anyMode {
-		creds, err = h.config.GetProfile().ResolveCredentialsForAnyMode(livemode)
-	} else {
-		creds, err = h.config.GetProfile().ResolveCredentials(livemode)
-	}
+// ResolveCredentials delegates to Profile.ResolveCredentials and returns the token,
+// Stripe-Context header value, and effective livemode. stripeContext is empty for plain API keys.
+func (h *coreCLIHelper) ResolveCredentials(livemode bool) (string, string, bool, error) {
+	creds, err := h.config.GetProfile().ResolveCredentials(livemode)
+	return credentialsResult(creds, err)
+}
+
+// ResolveCredentialsForAnyMode delegates to Profile.ResolveCredentialsForAnyMode and
+// returns the token, Stripe-Context header value, and effective livemode. Unlike
+// ResolveCredentials, it resolves credentials for whichever mode is actually active
+// if the requested livemode doesn't match, instead of failing.
+func (h *coreCLIHelper) ResolveCredentialsForAnyMode(livemode bool) (string, string, bool, error) {
+	creds, err := h.config.GetProfile().ResolveCredentialsForAnyMode(livemode)
+	return credentialsResult(creds, err)
+}
+
+func credentialsResult(creds stripe.Credentials, err error) (string, string, bool, error) {
 	if err != nil {
 		return "", "", false, err
 	}

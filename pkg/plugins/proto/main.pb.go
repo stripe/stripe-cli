@@ -912,11 +912,8 @@ func (*RunPeerPluginResponse) Descriptor() ([]byte, []int) {
 }
 
 type ResolveCredentialsRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Livemode bool                   `protobuf:"varint,1,opt,name=livemode,proto3" json:"livemode,omitempty"`
-	// If true, resolve credentials for whichever mode is actually active,
-	// ignoring livemode, instead of failing on a mismatch.
-	AnyMode       bool `protobuf:"varint,2,opt,name=any_mode,json=anyMode,proto3" json:"any_mode,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Livemode      bool                   `protobuf:"varint,1,opt,name=livemode,proto3" json:"livemode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -954,13 +951,6 @@ func (*ResolveCredentialsRequest) Descriptor() ([]byte, []int) {
 func (x *ResolveCredentialsRequest) GetLivemode() bool {
 	if x != nil {
 		return x.Livemode
-	}
-	return false
-}
-
-func (x *ResolveCredentialsRequest) GetAnyMode() bool {
-	if x != nil {
-		return x.AnyMode
 	}
 	return false
 }
@@ -1078,17 +1068,16 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"pluginName\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12\x10\n" +
 	"\x03cwd\x18\x03 \x01(\tR\x03cwd\"\x17\n" +
-	"\x15RunPeerPluginResponse\"R\n" +
+	"\x15RunPeerPluginResponse\"7\n" +
 	"\x19ResolveCredentialsRequest\x12\x1a\n" +
-	"\blivemode\x18\x01 \x01(\bR\blivemode\x12\x19\n" +
-	"\bany_mode\x18\x02 \x01(\bR\aanyMode\"u\n" +
+	"\blivemode\x18\x01 \x01(\bR\blivemode\"u\n" +
 	"\x1aResolveCredentialsResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12%\n" +
 	"\x0estripe_context\x18\x02 \x01(\tR\rstripeContext\x12\x1a\n" +
 	"\blivemode\x18\x03 \x01(\bR\blivemode2I\n" +
 	"\x04Main\x12A\n" +
 	"\n" +
-	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse2\xc5\x05\n" +
+	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse2\xaa\x06\n" +
 	"\rCoreCLIHelper\x12/\n" +
 	"\x04Echo\x12\x12.proto.EchoRequest\x1a\x13.proto.EchoResponse\x12J\n" +
 	"\rSendAnalytics\x12\x1b.proto.SendAnalyticsRequest\x1a\x1c.proto.SendAnalyticsResponse\x12\\\n" +
@@ -1097,7 +1086,8 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\x16KeychainDeletePassword\x12$.proto.KeychainDeletePasswordRequest\x1a%.proto.KeychainDeletePasswordResponse\x12m\n" +
 	"\x17KeychainFindCredentials\x12%.proto.KeychainFindCredentialsRequest\x1a&.proto.KeychainFindCredentialsResponse\"\x03\x88\x02\x01\x12J\n" +
 	"\rRunPeerPlugin\x12\x1b.proto.RunPeerPluginRequest\x1a\x1c.proto.RunPeerPluginResponse\x12Y\n" +
-	"\x12ResolveCredentials\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
+	"\x12ResolveCredentials\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponse\x12c\n" +
+	"\x1cResolveCredentialsForAnyMode\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
 
 var (
 	file_pkg_plugins_proto_main_proto_rawDescOnce sync.Once
@@ -1148,17 +1138,19 @@ var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	15, // 9: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
 	17, // 10: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
 	19, // 11: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
-	1,  // 12: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
-	6,  // 13: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
-	8,  // 14: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
-	10, // 15: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
-	12, // 16: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
-	14, // 17: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
-	16, // 18: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
-	18, // 19: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
-	20, // 20: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
-	12, // [12:21] is the sub-list for method output_type
-	3,  // [3:12] is the sub-list for method input_type
+	19, // 12: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
+	1,  // 13: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
+	6,  // 14: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
+	8,  // 15: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
+	10, // 16: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
+	12, // 17: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
+	14, // 18: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
+	16, // 19: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
+	18, // 20: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
+	20, // 21: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
+	20, // 22: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
+	13, // [13:23] is the sub-list for method output_type
+	3,  // [3:13] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
