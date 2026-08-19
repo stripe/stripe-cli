@@ -14,6 +14,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -49,6 +50,8 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	if err := stripe.ValidateAPIBaseURL(oc.APIBaseURL); err != nil {
 		return err
 	}
+
+	oc.Profile.PrintActiveContextBanner()
 
 	creds, credsErr := oc.ResolveCredentials()
 
@@ -483,7 +486,7 @@ func (oc *OperationCmd) addArrayRequestParams(requestParams map[string]interface
 					case reflect.Array, reflect.Slice:
 						requestParams[paramName] = append(requestParams[paramName].([]interface{}), arrayItem)
 					default:
-						return fmt.Errorf("array parameter flag %s has conflict with another non-array parameter flag", paramName)
+						return errorcategory.Errorf(errorcategory.UserInput, "array parameter flag %s has conflict with another non-array parameter flag", paramName)
 					}
 				}
 			}

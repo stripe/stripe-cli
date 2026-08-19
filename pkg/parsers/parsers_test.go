@@ -51,7 +51,7 @@ func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
 		ansi.Bold("char"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
@@ -69,7 +69,7 @@ func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
 		ansi.Bold("foo"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
@@ -87,7 +87,7 @@ func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
 		ansi.Bold("bender"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
@@ -105,7 +105,7 @@ func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
 		ansi.Bold("foo"),
 	)
 
-	assert.Equal(t, expected, err)
+	assert.EqualError(t, err, expected.Error())
 }
 
 func TestParseTwoParam(t *testing.T) {
@@ -406,6 +406,27 @@ func TestParseWithEnvSubstring(t *testing.T) {
 	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
 
 	fs.Remove(envPath)
+}
+
+func TestParseEnvFileDoesNotPolluteProcessEnv(t *testing.T) {
+	fs := afero.NewOsFs()
+	wd, _ := os.Getwd()
+	envPath := path.Join(wd, ".env")
+	afero.WriteFile(fs, envPath, []byte("REQUESTED_KEY=hello\nUNRELATED_SECRET=should_not_leak"), os.ModePerm)
+	defer fs.Remove(envPath)
+
+	data := make(map[string]interface{})
+	data["val"] = "${.env:REQUESTED_KEY}"
+	output, err := ParseToFormData(data, make(map[string]gjson.Result))
+
+	require.NoError(t, err)
+	require.Equal(t, 1, len(output))
+	require.Equal(t, "val=hello", output[0])
+
+	require.Empty(t, os.Getenv("UNRELATED_SECRET"),
+		"getEnvVar must not inject unrelated .env entries into the process environment")
+	require.Empty(t, os.Getenv("REQUESTED_KEY"),
+		"getEnvVar must not inject any .env entries into the process environment")
 }
 
 func TestParseWithTimeNow(t *testing.T) {

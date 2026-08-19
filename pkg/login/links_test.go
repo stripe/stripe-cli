@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,16 +25,50 @@ func TestGetLinks(t *testing.T) {
 
 		require.NoError(t, r.ParseForm())
 		require.Equal(t, "test", r.PostFormValue("device_name"))
+		require.Equal(t, "uuid-123", r.PostFormValue("machine_uuid"))
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(expectedLinks)
+		json.NewEncoder(w).Encode(expectedLinks) //nolint:errcheck
 	}))
 	defer ts.Close()
 
-	links, err := GetLinks(context.Background(), ts.URL, "test")
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, "test", "uuid-123")
 	require.NoError(t, err)
+	require.False(t, useOAuth)
 	require.Equal(t, expectedLinks, *links)
+}
+
+func TestGetLinksOAuthRedirect(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		require.Equal(t, "uuid-flagged", r.PostFormValue("machine_uuid"))
+
+		http.Redirect(w, r, "https://example.com/oauth", http.StatusFound)
+	}))
+	defer ts.Close()
+
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, "test", "uuid-flagged")
+	require.NoError(t, err)
+	require.True(t, useOAuth)
+	require.Nil(t, links)
+}
+
+func TestGetLinksNoMachineUUID(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		assert.Empty(t, r.PostFormValue("machine_uuid"))
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Links{BrowserURL: "https://example.com", PollURL: "https://example.com/poll", VerificationCode: "x"}) //nolint:errcheck
+	}))
+	defer ts.Close()
+
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, "test", "")
+	require.NoError(t, err)
+	require.False(t, useOAuth)
+	require.NotNil(t, links)
 }
 
 func TestGetLinksHTTPStatusError(t *testing.T) {
@@ -44,8 +79,9 @@ func TestGetLinksHTTPStatusError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := GetLinks(context.Background(), ts.URL, "test")
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, "test", "")
 	require.EqualError(t, err, "unexpected http status code: 500 ")
+	require.False(t, useOAuth)
 	require.Empty(t, links)
 }
 
@@ -62,9 +98,10 @@ func TestGetLinksRequestError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
-	links, err := GetLinks(context.Background(), ts.URL, "test")
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, "test", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errorString)
+	require.False(t, useOAuth)
 	require.Empty(t, links)
 }
 
@@ -78,11 +115,12 @@ func TestGetLinksParseError(t *testing.T) {
 
 		badLinks := make(map[string]int)
 		badLinks["browser_url"] = 10
-		json.NewEncoder(w).Encode(badLinks)
+		json.NewEncoder(w).Encode(badLinks) //nolint:errcheck
 	}))
 	defer ts.Close()
 
-	links, err := GetLinks(context.Background(), ts.URL, "test")
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, "test", "")
 	require.EqualError(t, err, "json: cannot unmarshal number into Go struct field Links.browser_url of type string")
+	require.False(t, useOAuth)
 	require.Empty(t, links)
 }

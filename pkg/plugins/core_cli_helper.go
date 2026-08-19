@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -25,6 +26,7 @@ type CoreCLIHelper interface {
 	KeychainDeletePassword(key string) (bool, error)
 	KeychainFindCredentials() ([]string, error)
 	RunPeerPlugin(pluginName string, args []string, cwd string) error
+	ResolveCredentials(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
 }
 
 type CoreCLIHelperClient struct {
@@ -88,6 +90,14 @@ func (c *CoreCLIHelperClient) RunPeerPlugin(pluginName string, args []string, cw
 	return err
 }
 
+func (c *CoreCLIHelperClient) ResolveCredentials(livemode bool) (string, string, bool, error) {
+	resp, err := c.client.ResolveCredentials(context.Background(), &proto.ResolveCredentialsRequest{Livemode: livemode})
+	if err != nil {
+		return "", "", false, err
+	}
+	return resp.Token, resp.StripeContext, resp.Livemode, nil
+}
+
 type CoreCLIHelperServer struct {
 	proto.CoreCLIHelperServer
 	Impl CoreCLIHelper
@@ -147,6 +157,14 @@ func (s *CoreCLIHelperServer) RunPeerPlugin(ctx context.Context, req *proto.RunP
 		return nil, err
 	}
 	return &proto.RunPeerPluginResponse{}, nil
+}
+
+func (s *CoreCLIHelperServer) ResolveCredentials(ctx context.Context, req *proto.ResolveCredentialsRequest) (*proto.ResolveCredentialsResponse, error) {
+	token, stripeContext, livemode, err := s.Impl.ResolveCredentials(req.Livemode)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.ResolveCredentialsResponse{Token: token, StripeContext: stripeContext, Livemode: livemode}, nil
 }
 
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
@@ -306,6 +324,20 @@ func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
 	return []string{key}, nil
 }
 
+// ResolveCredentials delegates to Profile.ResolveCredentials and returns the token,
+// Stripe-Context header value, and effective livemode. stripeContext is empty for plain API keys.
+func (h *coreCLIHelper) ResolveCredentials(livemode bool) (string, string, bool, error) {
+	creds, err := h.config.GetProfile().ResolveCredentials(livemode)
+	if err != nil {
+		return "", "", false, err
+	}
+	resolvedLivemode := false
+	if creds.OAKLivemode != nil {
+		resolvedLivemode = *creds.OAKLivemode
+	}
+	return creds.Token, creds.OAKContext, resolvedLivemode, nil
+}
+
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.
 // cwd sets the working directory for the plugin process; an empty string uses the current directory.
 func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd string) error {
@@ -315,7 +347,7 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 	}
 	cfg, ok := h.config.(*config.Config)
 	if !ok {
-		return fmt.Errorf("could not run peer plugin %q: config type mismatch", pluginName)
+		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
-	return plugin.Run(h.ctx, cfg, h.fs, args, cwd)
+	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "")
 }

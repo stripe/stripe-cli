@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -660,6 +661,98 @@ func TestFetchPageWithPrefs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchPage_Authenticated_UsesAPIEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v2/docs/page", r.URL.Path)
+		assert.Equal(t, "/payments?api_version=2024-06-30", r.URL.Query().Get("path"))
+		assert.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
+		assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"content":"page content","content_type":"text/markdown"}`)
+	}))
+	defer server.Close()
+
+	client := NewClient("0.1.0").WithOptions(
+		WithAPIBaseURL(server.URL),
+		WithAPIKey("sk_test_123"),
+	)
+
+	got, err := client.FetchPage(context.Background(), &url.URL{Path: "/payments", RawQuery: "api_version=2024-06-30"})
+	require.NoError(t, err)
+	assert.Equal(t, []byte("page content"), got.Content)
+	assert.Equal(t, "docs.stripe.com", got.URL.Host)
+	assert.Equal(t, "/payments", got.URL.Path)
+}
+
+func TestFetchPage_Authenticated_ForwardsLocatorPath(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/_endpoint/api-reference-locator?q=GET+%2Fv1%2Fproducts", r.URL.Query().Get("path"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"content":"locator content"}`)
+	}))
+	defer server.Close()
+
+	client := NewClient("0.1.0").WithOptions(WithAPIBaseURL(server.URL), WithAPIKey("sk_test_123"))
+
+	ref := &url.URL{
+		Path:     "/_endpoint/api-reference-locator",
+		RawQuery: url.Values{"q": {"GET /v1/products"}}.Encode(),
+	}
+	got, err := client.FetchPage(context.Background(), ref)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("locator content"), got.Content)
+}
+
+func TestFetchPage_Unauthenticated_DoesNotSetAuthorizationHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Empty(t, r.Header.Get("Authorization"))
+		fmt.Fprint(w, "content")
+	}))
+	defer server.Close()
+
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
+	_, err := client.FetchPage(context.Background(), &url.URL{Path: "/payments"})
+	require.NoError(t, err)
+}
+
+func TestSearch_Authenticated_UsesAPIEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v2/docs/search", r.URL.Path)
+		assert.Equal(t, "payments", r.URL.Query().Get("query"))
+		assert.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
+		assert.Equal(t, requests.StripeVersionHeaderValue, r.Header.Get("Stripe-Version"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"hits":[{"title":"Accept a payment","url":"https://docs.stripe.com/payments/accept-a-payment"}]}`)
+	}))
+	defer server.Close()
+
+	client := NewClient("0.1.0").WithOptions(
+		WithAPIBaseURL(server.URL),
+		WithAPIKey("sk_test_123"),
+	)
+
+	got, err := client.Search(context.Background(), "payments")
+	require.NoError(t, err)
+	require.Len(t, got.Hits, 1)
+	assert.Equal(t, "Accept a payment", got.Hits[0].Title)
+}
+
+func TestSearch_Unauthenticated_UsesDocsEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/_endpoint/search", r.URL.Path)
+		assert.Empty(t, r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"hits":[]}`)
+	}))
+	defer server.Close()
+
+	client := NewClient("0.1.0").WithOptions(WithBaseURL(server.URL))
+	got, err := client.Search(context.Background(), "payments")
+	require.NoError(t, err)
+	assert.Empty(t, got.Hits)
 }
 
 // evictingMockCache always returns a miss, simulating TTL expiry.

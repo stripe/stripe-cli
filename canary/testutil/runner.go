@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // DefaultTimeout is the default timeout for command execution.
@@ -77,12 +79,12 @@ func WithTimeout(timeout time.Duration) RunnerOption {
 func NewRunner(opts ...RunnerOption) (*Runner, error) {
 	binaryPath := os.Getenv("STRIPE_CLI_BINARY")
 	if binaryPath == "" {
-		return nil, fmt.Errorf("STRIPE_CLI_BINARY environment variable not set")
+		return nil, errorcategory.Errorf(errorcategory.Internal, "STRIPE_CLI_BINARY environment variable not set")
 	}
 
 	// Check if binary exists
 	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("binary not found at %s", binaryPath)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "binary not found at %s", binaryPath)
 	}
 
 	r := &Runner{
@@ -184,7 +186,7 @@ func (r *Runner) RunContext(ctx context.Context, args ...string) (*Result, error
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		} else if ctx.Err() == context.DeadlineExceeded {
-			return result, fmt.Errorf("command timed out after %v", r.Timeout)
+			return result, errorcategory.Errorf(errorcategory.Internal, "command timed out after %v", r.Timeout)
 		} else {
 			return result, fmt.Errorf("failed to execute command: %w", err)
 		}
@@ -321,7 +323,7 @@ func (bp *BackgroundProcess) WaitForOutput(contains string, timeout time.Duratio
 				bp.done <- err
 				return nil
 			}
-			return fmt.Errorf("process exited before output appeared: %v (output: %s)", err, combined)
+			return errorcategory.Errorf(errorcategory.Internal, "process exited before output appeared: %v (output: %s)", err, combined)
 		default:
 			// Process still running, continue waiting
 		}
@@ -329,7 +331,7 @@ func (bp *BackgroundProcess) WaitForOutput(contains string, timeout time.Duratio
 		time.Sleep(checkInterval)
 	}
 
-	return fmt.Errorf("timeout waiting for output containing %q", contains)
+	return errorcategory.Errorf(errorcategory.Internal, "timeout waiting for output containing %q", contains)
 }
 
 // GetOutput returns the current stdout and stderr contents.
@@ -349,7 +351,7 @@ func (bp *BackgroundProcess) Stop() (*Result, error) {
 	select {
 	case exitErr = <-bp.done:
 	case <-time.After(5 * time.Second):
-		return nil, fmt.Errorf("timeout waiting for process to stop")
+		return nil, errorcategory.Errorf(errorcategory.Internal, "timeout waiting for process to stop")
 	}
 
 	bp.mu.Lock()

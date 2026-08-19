@@ -18,6 +18,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -32,6 +33,7 @@ type InstallCmd struct {
 
 	apiBaseURL       string
 	dashboardBaseURL string
+	accessBaseURL    string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -41,7 +43,7 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic.cfg = config
 
 	ic.Cmd = &cobra.Command{
-		Use:   "install",
+		Use:   "install <plugin>",
 		Args:  validators.ExactArgs(1),
 		Short: "Install a Stripe CLI plugin",
 		Long: `Install a Stripe CLI plugin. To download a specific version, run stripe install [plugin_name]@[version].
@@ -54,6 +56,8 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 	ic.Cmd.Flags().StringVar(&ic.dashboardBaseURL, "dashboard-base", "", "Sets the dashboard base URL")
 	ic.Cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
+	ic.Cmd.Flags().StringVar(&ic.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	ic.Cmd.Flags().MarkHidden("access-base") // #nosec G104
 
 	return ic
 }
@@ -88,6 +92,9 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURL); err != nil {
 		return err
 	}
+	if err := login.ValidateAccessBaseURL(ic.accessBaseURL); err != nil {
+		return err
+	}
 
 	color := ansi.Color(os.Stdout)
 	pluginName, version := parseInstallArg(args[0])
@@ -104,17 +111,17 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 				var input string
 				fmt.Fscanln(os.Stdin, &input)
 				if input != "" {
-					return fmt.Errorf("login canceled")
+					return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
 				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.accessBaseURL, ic.cfg); lErr != nil {
 					return lErr
 				}
 				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 				if err != nil {
-					return fmt.Errorf("no plugin named %q exists", pluginName)
+					return errorcategory.Errorf(errorcategory.UserInput, "no plugin named %q exists", pluginName)
 				}
 			} else {
-				return fmt.Errorf("no plugin named %q exists", pluginName)
+				return errorcategory.Errorf(errorcategory.UserInput, "no plugin named %q exists", pluginName)
 			}
 		} else {
 			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
@@ -124,9 +131,9 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 				var input string
 				fmt.Fscanln(os.Stdin, &input)
 				if input != "" {
-					return fmt.Errorf("login canceled")
+					return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
 				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.cfg); lErr != nil {
+				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.accessBaseURL, ic.cfg); lErr != nil {
 					return lErr
 				}
 				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)

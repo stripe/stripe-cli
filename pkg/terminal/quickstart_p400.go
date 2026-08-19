@@ -23,7 +23,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
 		} else {
-			return fmt.Errorf("%s", err.Error())
+			return err
 		}
 	}
 
@@ -36,7 +36,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
 		} else {
-			return fmt.Errorf("%s", err.Error())
+			return err
 		}
 	}
 
@@ -47,7 +47,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
 		} else {
-			return fmt.Errorf("%s", err.Error())
+			return err
 		}
 	}
 

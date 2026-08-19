@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -70,7 +71,7 @@ func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPe
 // WebhookEndpointCreate creates a new webhook endpoint
 func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, url, description string, connect bool, profile *config.Profile) error {
 	if strings.TrimSpace(url) == "" {
-		return fmt.Errorf("url cannot be empty")
+		return errorcategory.Errorf(errorcategory.UserInput, "url cannot be empty")
 	}
 
 	data := []string{

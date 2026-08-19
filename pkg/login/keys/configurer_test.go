@@ -10,9 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
-func TestSaveLoginDetails(t *testing.T) {
+func newTestConfig(t *testing.T) *config.Config {
+	t.Helper()
 	profilesFile := filepath.Join(t.TempDir(), "stripe", "config.toml")
 	c := &config.Config{
 		LogLevel: "info",
@@ -22,6 +24,16 @@ func TestSaveLoginDetails(t *testing.T) {
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() {
+		config.KeyRing = nil
+		viper.Reset()
+	})
+	return c
+}
+
+func TestSaveLoginDetails(t *testing.T) {
+	c := newTestConfig(t)
 
 	configurer := NewRAKConfigurer(c, afero.NewOsFs())
 	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{
@@ -36,7 +48,7 @@ func TestSaveLoginDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	v := viper.New()
-	v.SetConfigFile(profilesFile)
+	v.SetConfigFile(c.ProfilesFile)
 
 	err = v.ReadInConfig()
 	require.NoError(t, err)
@@ -50,16 +62,9 @@ func TestSaveLoginDetails(t *testing.T) {
 	assert.Equal(t, "pk_test_1234567890000", v.GetString("tests.test_mode_pub_key"))
 }
 
+// TODO: remove with legacy RAK/OIDC flow.
 func TestSaveLoginDetails_UserInfo(t *testing.T) {
-	profilesFile := filepath.Join(t.TempDir(), "stripe", "config.toml")
-	c := &config.Config{
-		LogLevel: "info",
-		Profile: config.Profile{
-			ProfileName: "tests",
-		},
-		ProfilesFile: profilesFile,
-	}
-	c.InitConfig()
+	c := newTestConfig(t)
 
 	configurer := NewRAKConfigurer(c, afero.NewOsFs())
 	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{
@@ -87,16 +92,9 @@ func TestSaveLoginDetails_UserInfo(t *testing.T) {
 	assert.Equal(t, "acct_test_789", testComp.CompartmentID)
 }
 
+// TODO: remove with legacy RAK/OIDC flow.
 func TestSaveLoginDetails_UserInfoEmpty(t *testing.T) {
-	profilesFile := filepath.Join(t.TempDir(), "stripe", "config.toml")
-	c := &config.Config{
-		LogLevel: "info",
-		Profile: config.Profile{
-			ProfileName: "tests",
-		},
-		ProfilesFile: profilesFile,
-	}
-	c.InitConfig()
+	c := newTestConfig(t)
 
 	configurer := NewRAKConfigurer(c, afero.NewOsFs())
 	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{

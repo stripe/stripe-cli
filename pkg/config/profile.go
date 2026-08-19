@@ -6,17 +6,38 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-// Compartment represents a Stripe compartment from the OIDC userinfo response.
+var printActiveContextOnce sync.Once
+
+// OAuthTokenRefresher is called by ResolveCredentials when an OAK token is
+// expired or about to expire. It refreshes the token and updates p in-place.
+// Set by the login package via init().
+var OAuthTokenRefresher func(p *Profile) error
+
+// refreshMu serializes concurrent refresh attempts so only one goroutine hits
+// the token endpoint at a time; others re-use the result after the lock.
+var refreshMu sync.Mutex
+
+// AuthorizedAccount represents a Stripe account accessible to an OAuth token.
+type AuthorizedAccount struct {
+	ID    string   `json:"id"`
+	Name  string   `json:"name"`
+	Modes []string `json:"modes"`
+}
+
+// Compartment represents a Stripe workspace from the OIDC userinfo response.
+// TODO: remove with legacy RAK/OIDC flow.
 type Compartment struct {
 	CompartmentID string `json:"compartment_id" mapstructure:"compartment_id" toml:"compartment_id"`
 	Livemode      bool   `json:"livemode"        mapstructure:"livemode"        toml:"livemode"`
@@ -24,6 +45,7 @@ type Compartment struct {
 
 // UserInfo mirrors the OIDC userinfo endpoint response and is persisted as a
 // nested table in the profile config.
+// TODO: remove with legacy RAK/OIDC flow.
 type UserInfo struct {
 	Compartments []Compartment `json:"https://stripe.com/compartments" mapstructure:"compartments" toml:"compartments"`
 }
@@ -44,7 +66,11 @@ type Profile struct {
 	SandboxClaimURL        string
 	SandboxExpiresAt       string
 	UAT                    string
-	UserInfo               *UserInfo
+	UserInfo               *UserInfo // TODO: remove with legacy RAK/OIDC flow
+
+	// OAuthAccessBaseURL is the access-srv base URL to use for token refresh
+	// and revocation. Set at startup from the --access-base flag; not persisted.
+	OAuthAccessBaseURL string
 }
 
 // config key names
@@ -62,10 +88,25 @@ const (
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 	SandboxClaimURLName        = "sandbox_claim_url"
 	SandboxExpiresAtName       = "sandbox_expires_at"
-	UserInfoName               = "user_info"
+	UserInfoName               = "user_info" // TODO: remove with legacy RAK/OIDC flow
 )
 
 const UATKeychainItemKey = "uat"
+
+// OAuthActiveContextKeychainKey is the keyring key for the active OAuth context.
+const OAuthActiveContextKeychainKey = "oauth_active_context"
+
+// OAuthRefreshTokenKeychainKey is the keyring key for the OAuth refresh token.
+const OAuthRefreshTokenKeychainKey = "oauth_refresh_token"
+
+// OAuthUATExpiresAtKeychainKey is the keyring key for the UAT expiry time (RFC3339).
+const OAuthUATExpiresAtKeychainKey = "oauth_uat_expires_at"
+
+// ActiveContext identifies the account and mode that is currently selected.
+type ActiveContext struct {
+	AccountID string `json:"account_id"`
+	Livemode  bool   `json:"livemode"`
+}
 
 const (
 	// DateStringFormat is the format for expiredAt date
@@ -108,6 +149,48 @@ var authFieldNames = []string{
 	"experimental",
 }
 
+// profileExists reports whether the config file already contains a table for
+// this profile. This checks for the table itself rather than any particular
+// field, so that a partially written profile (one with no display_name, which a
+// profile abandoned part-way through login can be) is still recognized.
+func (p *Profile) profileExists() bool {
+	return viper.IsSet(p.ProfileName)
+}
+
+// warnLegacyProfileNameOnce guards the deprecation warning so it prints at most
+// once per process.
+var warnLegacyProfileNameOnce sync.Once
+
+// WarnIfLegacyProfileName tells the user when the active profile has a period in
+// its name.
+//
+// Profile fields are addressed as <profile>.<field> keys in viper, which uses
+// "." as its path separator. A profile name containing a period is therefore
+// indistinguishable from a nested table: viper reads ["a.b"] back as a -> b, so
+// the profile becomes invisible to every operation that enumerates top-level
+// tables, even though reads against it keep working. That makes this warning the
+// only signal the user gets that the profile cannot be listed by name.
+//
+// It only fires for a profile that is actually in the config file, so that a
+// period in a name nobody is using stays silent.
+func (p *Profile) WarnIfLegacyProfileName() {
+	if !strings.Contains(p.ProfileName, ".") || !p.profileExists() {
+		return
+	}
+
+	warnLegacyProfileNameOnce.Do(func() {
+		color := ansi.Color(os.Stderr)
+		fmt.Fprintln(os.Stderr, color.Yellow(fmt.Sprintf(`
+(!) The profile %[1]q contains a period, which can cause unexpected
+behavior and will stop being accepted in a future release. We strongly
+recommend migrating it: log in under a new name and remove the old one.
+  stripe login --project-name %[2]s
+  stripe config --remove-profile %[1]s`,
+			p.ProfileName,
+			strings.ReplaceAll(p.ProfileName, ".", "-"))))
+	})
+}
+
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
 	// Remove only auth-related keys under existing profile first
@@ -116,7 +199,8 @@ func (p *Profile) CreateProfile() error {
 	// Fail open to avoid blocking login
 	p.deleteLivemodeValue(LiveModeAPIKeyName)
 
-	// user_info is top-level; remove it before re-writing so stale data is never kept
+	// TODO: remove with legacy RAK/OIDC flow.
+	// user_info is top-level; remove it before re-writing so stale data is never kept.
 	if v.IsSet(UserInfoName) {
 		var err error
 		v, err = removeKey(v, UserInfoName)
@@ -164,7 +248,7 @@ func (p *Profile) GetColor() (string, error) {
 	case ColorOff:
 		return ColorOff, nil
 	default:
-		return "", fmt.Errorf("color value not supported: %s", color)
+		return "", errorcategory.Errorf(errorcategory.Filesystem, "color value not supported: %s", color)
 	}
 }
 
@@ -295,7 +379,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		p.redactAllLivemodeValues()
 		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
-			return "", errors.New("your live mode API key needs to be re-configured. Run `stripe login` to re-authenticate")
+			return "", errorcategory.New(errorcategory.Auth, "your live mode API key needs to be re-configured. Run `stripe login` to re-authenticate")
 		}
 	}
 
@@ -396,6 +480,7 @@ func (p *Profile) RegisterAlias(alias, key string) {
 // configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.ReadInConfig()
+
 	viper.Set(p.GetConfigField(field), value)
 	return writeConfig(viper.GetViper())
 }
@@ -485,6 +570,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		}
 	}
 
+	// TODO: remove with legacy RAK/OIDC flow.
 	if p.UserInfo != nil {
 		runtimeViper.Set(UserInfoName, p.UserInfo)
 	}
@@ -603,25 +689,6 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 	return err
 }
 
-// GetUserInfo reads the stored UserInfo from the profile config.
-// Returns nil, nil when no user_info has been saved yet.
-func (p *Profile) GetUserInfo() (*UserInfo, error) {
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
-	}
-
-	if !viper.IsSet(UserInfoName) {
-		return nil, nil
-	}
-
-	var ui UserInfo
-	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
-		return nil, err
-	}
-
-	return &ui, nil
-}
-
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
@@ -645,8 +712,102 @@ func (p *Profile) GetUAT() (string, error) {
 	return string(data), nil
 }
 
-// GetCompartmentID returns the compartment (workspace) ID for the given mode
-// from the stored UserInfo. Returns an empty string if none is configured.
+// GetActiveContext reads the stored OAuth active context from the keyring.
+// Returns nil, nil when no active context has been saved yet.
+func GetActiveContext() (*ActiveContext, error) {
+	if KeyRing == nil {
+		return nil, nil
+	}
+	data, err := KeyRing.Get(OAuthActiveContextKeychainKey)
+	if err != nil {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var ac ActiveContext
+	if err := json.Unmarshal(data, &ac); err != nil {
+		return nil, err
+	}
+	return &ac, nil
+}
+
+// SaveActiveContext persists the active OAuth context (account ID + livemode) in
+// the keyring so that ResolveCredentials can build the Stripe-Context header.
+func SaveActiveContext(accountID string, livemode bool) error {
+	if KeyRing == nil {
+		return nil
+	}
+	data, err := json.Marshal(ActiveContext{AccountID: accountID, Livemode: livemode})
+	if err != nil {
+		return err
+	}
+	return KeyRing.Set(OAuthActiveContextKeychainKey, data, "Stripe CLI OAuth active context")
+}
+
+// SaveUATExpiresAt persists the UAT expiry time in the keyring.
+func SaveUATExpiresAt(t time.Time) error {
+	if KeyRing == nil {
+		return nil
+	}
+	return KeyRing.Set(OAuthUATExpiresAtKeychainKey, []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI OAuth token expiry")
+}
+
+// GetUATExpiresAt retrieves the stored UAT expiry time from the keyring.
+// Returns ErrKeyNotFound (wrapped) when no expiry has been saved.
+func GetUATExpiresAt() (time.Time, error) {
+	if KeyRing == nil {
+		return time.Time{}, keyring.ErrKeyNotFound
+	}
+	data, err := KeyRing.Get(OAuthUATExpiresAtKeychainKey)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339, string(data))
+}
+
+// PrintActiveContextBanner prints the active context to stderr once per
+// process. Call this at the start of commands that make user-visible Stripe
+// API requests (resource commands, raw HTTP, fixtures, triggers).
+func (p *Profile) PrintActiveContextBanner() {
+	printActiveContextOnce.Do(func() {
+		uat, _ := p.GetUAT()
+		if !strings.HasPrefix(uat, "oak_") {
+			return
+		}
+		ac, _ := GetActiveContext()
+		if ac == nil {
+			return
+		}
+		mode := "sandbox"
+		if ac.Livemode {
+			mode = "live"
+		}
+		color := ansi.Color(os.Stderr)
+		fmt.Fprintf(os.Stderr, "%s Running in %s · %s (%s)\n", color.Faint("▸"), p.GetDisplayName(), mode, ac.AccountID)
+	})
+}
+
+// GetUserInfo reads the stored UserInfo from the profile config.
+// Returns nil, nil when no user_info has been saved yet.
+// TODO: remove with legacy RAK/OIDC flow.
+func (p *Profile) GetUserInfo() (*UserInfo, error) {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+	if !viper.IsSet(UserInfoName) {
+		return nil, nil
+	}
+	var ui UserInfo
+	if err := viper.UnmarshalKey(UserInfoName, &ui); err != nil {
+		return nil, err
+	}
+	return &ui, nil
+}
+
+// GetCompartmentID returns the account ID for the given livemode from the
+// legacy OIDC UserInfo stored in the config file.
+// TODO: remove with legacy RAK/OIDC flow.
 func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
 	ui, err := p.GetUserInfo()
 	if err != nil || ui == nil {
@@ -660,10 +821,31 @@ func (p *Profile) GetCompartmentID(livemode bool) (string, error) {
 	return "", nil
 }
 
+// ActiveContextLivemodeMismatchError indicates that the requested livemode
+// does not match the OAuth active context's livemode. Callers that expose
+// their own mode selection (e.g. a --live flag) can catch this with
+// errors.As and explain how to reconcile it; callers that don't care which
+// mode is used can retry ResolveCredentials(err.ActiveLivemode) to get
+// credentials for whichever mode is actually active.
+type ActiveContextLivemodeMismatchError struct {
+	RequestedLivemode bool
+	ActiveLivemode    bool
+}
+
+func (e *ActiveContextLivemodeMismatchError) Error() string {
+	if e.ActiveLivemode {
+		return "You're in live mode. Run 'stripe switch context' to select a sandbox."
+	}
+	return "You're in a sandbox. Run 'stripe switch context' to select a live account."
+}
+
 // ResolveCredentials returns the credentials for the given mode. If an OAK
 // token (prefix "oak_") is stored in the keyring and no explicit override is
-// active, it is preferred over the configured API key and the compartment ID
-// and livemode flag are populated. Otherwise it falls back to GetAPIKey.
+// active, it is preferred over the configured API key. For OAK tokens the
+// active context stored in the keyring sets both Stripe-Context and
+// Stripe-Livemode; the livemode parameter is used only for the legacy OIDC
+// fallback and plain API key path. If the active context's livemode differs
+// from the requested livemode, it returns an *ActiveContextLivemodeMismatchError.
 func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
 	if !p.HasOverrideAPIKey() {
 		uat, err := p.GetUAT()
@@ -671,9 +853,41 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			return stripe.Credentials{}, err
 		}
 		if strings.HasPrefix(uat, "oak_") {
+			if OAuthTokenRefresher != nil {
+				if t, tErr := GetUATExpiresAt(); tErr == nil && time.Until(t) < 60*time.Second {
+					refreshMu.Lock()
+					// Re-check after acquiring the lock; another goroutine may have
+					// already refreshed, bumping the expiry forward.
+					if t2, tErr2 := GetUATExpiresAt(); tErr2 == nil && time.Until(t2) < 60*time.Second {
+						if refreshErr := OAuthTokenRefresher(p); refreshErr != nil {
+							refreshMu.Unlock()
+							return stripe.Credentials{}, refreshErr
+						}
+						uat = p.UAT
+					}
+					refreshMu.Unlock()
+				}
+			}
+			ac, err := GetActiveContext()
+			if err != nil {
+				return stripe.Credentials{}, err
+			}
+			if ac != nil {
+				if ac.Livemode != livemode {
+					return stripe.Credentials{}, errorcategory.With(&ActiveContextLivemodeMismatchError{
+						RequestedLivemode: livemode,
+						ActiveLivemode:    ac.Livemode,
+					}, errorcategory.UserInput)
+				}
+				return stripe.NewOAKCredentials(uat, ac.AccountID, livemode), nil
+			}
+			// TODO: remove with legacy RAK/OIDC flow.
 			compartmentID, err := p.GetCompartmentID(livemode)
 			if err != nil {
 				return stripe.Credentials{}, err
+			}
+			if livemode && compartmentID == "" {
+				return stripe.Credentials{}, errorcategory.UserInputErrorf("You're logged in to a sandbox. To access live mode, reauthenticate with 'stripe login' and select your live account.")
 			}
 			return stripe.NewOAKCredentials(uat, compartmentID, livemode), nil
 		}
@@ -685,13 +899,25 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 	return stripe.NewAPIKeyCredentials(key), nil
 }
 
+// ResolveCredentialsForAnyMode resolves credentials for specified mode, but if that
+// doesn't match the OAuth active context, resolves credentials for whichever
+// mode is actually active instead of failing.
+func (p *Profile) ResolveCredentialsForAnyMode(livemode bool) (stripe.Credentials, error) {
+	creds, err := p.ResolveCredentials(livemode)
+	var mismatch *ActiveContextLivemodeMismatchError
+	if errors.As(err, &mismatch) {
+		return p.ResolveCredentials(mismatch.ActiveLivemode)
+	}
+	return creds, err
+}
+
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
 	data, err := KeyRing.Get(key)
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
-			return nil, errors.New("no session")
+			return nil, errorcategory.New(errorcategory.Auth, "no session")
 		}
 		return nil, err
 	}
@@ -707,7 +933,7 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	}
 
 	if creds.AccountID == "" || creds.AccountID != currentAccountID {
-		return nil, errors.New("found a session, but it doesn't match your current account")
+		return nil, errorcategory.New(errorcategory.Auth, "found a session, but it doesn't match your current account")
 	}
 
 	return &creds, nil

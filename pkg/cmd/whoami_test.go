@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -178,6 +180,32 @@ func TestWhoamiLiveModeKeyDetected(t *testing.T) {
 
 	assert.True(t, result.Authenticated)
 	assert.True(t, result.LiveModeKey.Available)
+}
+
+func TestWhoamiOAuth_RejectsArbitraryAccessBaseWithoutSendingUAT(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_live_secret_token"),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	var requestReceived bool
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
+		assert.Empty(t, r.Header.Get("Authorization"), "attacker-controlled server must never see the UAT")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer attacker.Close()
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{
+		ProfileName: "default",
+		DeviceName:  "test-device",
+	}
+	wc.accessBaseURL = attacker.URL
+
+	_, err := runWhoami(t, wc)
+	require.Error(t, err)
+	assert.False(t, requestReceived, "an arbitrary --access-base must be rejected before any request is sent")
 }
 
 func TestKeyAvailabilityText(t *testing.T) {

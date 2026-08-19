@@ -13,6 +13,8 @@ import (
 	"golang.org/x/term"
 
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 
@@ -38,6 +40,7 @@ type RootCommand struct {
 
 	noPager        bool
 	nonInteractive bool
+	apiBaseURL     string
 }
 
 // Option is a functional option for configuring RootCommand.
@@ -62,6 +65,11 @@ func WithLogger(logger *log.Entry) Option {
 // populated by cobra flag parsing at runtime (e.g. --color, --log-level).
 func WithConfig(cfg *cliconfig.Config) Option {
 	return func(r *RootCommand) { r.cfg = cfg }
+}
+
+// WithAPIBaseURL sets the Stripe API base URL used for authenticated requests.
+func WithAPIBaseURL(u string) Option {
+	return func(r *RootCommand) { r.apiBaseURL = u }
 }
 
 // New creates a new RootCommand with sensible defaults.
@@ -96,6 +104,8 @@ Read API Reference pages by their identifier:
 	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
 	r.cmd.PersistentFlags().BoolVar(&r.nonInteractive, "non-interactive", agentDetected, "Write output directly without the interactive browser")
+	r.cmd.PersistentFlags().StringVar(&r.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	_ = r.cmd.PersistentFlags().MarkHidden("api-base")
 
 	docsGroup := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
 
@@ -152,6 +162,9 @@ func (r *RootCommand) initClient() {
 			clientOpts = append(clientOpts, pkgdocs.WithAPIKey(creds.Token))
 		}
 	}
+	if r.apiBaseURL != "" {
+		clientOpts = append(clientOpts, pkgdocs.WithAPIBaseURL(r.apiBaseURL))
+	}
 	if len(clientOpts) > 0 {
 		r.client.WithOptions(clientOpts...)
 	}
@@ -196,6 +209,18 @@ func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	r.initLogger()
 	r.initRenderer()
 	if r.client != nil {
+		var credOpts []pkgdocs.ClientOption
+		if r.cfg != nil {
+			if creds, err := r.cfg.Profile.ResolveCredentials(false); err == nil {
+				credOpts = append(credOpts, pkgdocs.WithAPIKey(creds.Token))
+			}
+		}
+		if r.cmd.PersistentFlags().Changed("api-base") {
+			credOpts = append(credOpts, pkgdocs.WithAPIBaseURL(r.apiBaseURL))
+		}
+		if len(credOpts) > 0 {
+			r.client.WithOptions(credOpts...)
+		}
 		r.client.WithOptions(pkgdocs.WithPrefs(r.loadDocsPrefMap()))
 	}
 	if r.logger != nil {
@@ -221,10 +246,10 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "docs client not initialized")
 	}
 	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "markdown renderer not initialized")
 	}
 
 	ref := parseDocsRef(args)
@@ -280,10 +305,10 @@ func terminalSize(cmd *cobra.Command) (w, h int, ok bool) {
 // tui.WithPaletteInput) are forwarded to the model constructor.
 func (r *RootCommand) show(cmd *cobra.Command, page *pkgdocs.Page, extraOpts ...tui.Option) error {
 	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "docs client not initialized")
 	}
 	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "markdown renderer not initialized")
 	}
 
 	if r.useTUI(cmd) {

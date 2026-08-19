@@ -55,6 +55,7 @@ fmt:
 # Run all the linters
 lint: bin/golangci-lint
 	./bin/golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 ./...
+	go run ./internal/lint/errorcategory/cmd ./...
 .PHONY: lint
 
 bin/golangci-lint:

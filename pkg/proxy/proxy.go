@@ -3,7 +3,6 @@ package proxy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
@@ -162,7 +162,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		session, err := p.createSession(ctx)
 		if err != nil {
 			p.cfg.OutCh <- websocket.ErrorElement{
-				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
+				Error: errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %v", err),
 			}
 			return err
 		}
@@ -212,7 +212,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 					State: websocket.Reconnecting,
 				}
 			} else {
-				err := fmt.Errorf("session expired, terminating after %d failed attempts to reauthorize", nAttempts)
+				err := errorcategory.Errorf(errorcategory.Auth, "session expired, terminating after %d failed attempts to reauthorize", nAttempts)
 				p.cfg.OutCh <- websocket.ErrorElement{
 					Error: err,
 				}
@@ -288,7 +288,7 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 
 			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
 				if clientError.StatusCode == http.StatusTooManyRequests {
-					err = errors.New("you have too many `stripe listen` sessions open, please close some and try again")
+					err = errorcategory.New(errorcategory.API, "you have too many `stripe listen` sessions open, please close some and try again")
 				}
 				exitCh <- struct{}{}
 				return
@@ -340,13 +340,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	// validate forward-urls args
 	if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) > 0 {
 		if strings.HasPrefix(cfg.ForwardURL, "/") {
-			return nil, errors.New("forward_to cannot be a relative path when loading webhook endpoints from the API")
+			return nil, errorcategory.New(errorcategory.UserInput, "forward_to cannot be a relative path when loading webhook endpoints from the API")
 		}
 		if strings.HasPrefix(cfg.ForwardConnectURL, "/") {
-			return nil, errors.New("forward_connect_to cannot be a relative path when loading webhook endpoints from the API")
+			return nil, errorcategory.New(errorcategory.UserInput, "forward_connect_to cannot be a relative path when loading webhook endpoints from the API")
 		}
 	} else if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) == 0 {
-		return nil, errors.New("load_from_webhooks_api requires a location to forward to with forward_to")
+		return nil, errorcategory.New(errorcategory.UserInput, "load_from_webhooks_api requires a location to forward to with forward_to")
 	}
 
 	// if no events are passed, listen for all events
@@ -393,7 +393,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		// build from user's API config
 		endpoints := getEndpointsFromAPI(ctx, cfg.Client)
 		if len(endpoints.Data) == 0 {
-			return nil, errors.New("you have not defined any webhook endpoints on your account, go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
+			return nil, errorcategory.New(errorcategory.UserInput, "you have not defined any webhook endpoints on your account, go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
 		var err error
 		endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
@@ -493,7 +493,7 @@ func ExtractRequestData(data interface{}) (StripeRequest, error) {
 		return StripeRequest{}, nil
 	}
 
-	return StripeRequest{}, errors.New("received malformed event from Stripe")
+	return StripeRequest{}, errorcategory.New(errorcategory.API, "received malformed event from Stripe")
 }
 
 //
@@ -634,7 +634,7 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 func buildForwardURL(forwardURL string, destination *url.URL) (string, error) {
 	f, err := url.Parse(forwardURL)
 	if err != nil {
-		return "", fmt.Errorf("provided forward url cannot be parsed: %s", forwardURL)
+		return "", errorcategory.Errorf(errorcategory.UserInput, "provided forward url cannot be parsed: %s", forwardURL)
 	}
 
 	newForwardURL := fmt.Sprintf(

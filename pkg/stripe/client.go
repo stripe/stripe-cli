@@ -17,6 +17,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
+// unixSocketPath is captured once at package init so that later mutations to
+// the process environment (e.g. via godotenv.Load) cannot redirect the HTTP
+// transport after startup.
+var unixSocketPath = os.Getenv("STRIPE_CLI_UNIX_SOCKET")
+
 // APIVersion is API version used in CLI
 const APIVersion = "2019-03-14"
 
@@ -34,6 +39,43 @@ type Credentials struct {
 	Token       string
 	OAKContext  string
 	OAKLivemode *bool
+}
+
+// ApplyAccountContextHeaders sets Stripe-Account and/or Stripe-Context in
+// headers from the caller-supplied account and context values. For UAT
+// credentials the OAK compartment ID is prepended as "context/value" unless
+// the value already equals the compartment ID. When account is set under UAT,
+// Stripe-Context is intentionally omitted.
+func (c Credentials) ApplyAccountContextHeaders(headers http.Header, account, context string) {
+	if c.OAKContext != "" {
+		switch {
+		case account != "":
+			if c.OAKContext != account {
+				headers.Set("Stripe-Account", c.OAKContext+"/"+account)
+			} else {
+				headers.Set("Stripe-Account", account)
+			}
+			headers.Del("Stripe-Context")
+		case context != "":
+			if c.OAKContext != context {
+				headers.Set("Stripe-Context", c.OAKContext+"/"+context)
+			} else {
+				headers.Set("Stripe-Context", context)
+			}
+		default:
+			headers.Set("Stripe-Context", c.OAKContext)
+		}
+	} else {
+		switch {
+		case account != "":
+			headers.Set("Stripe-Account", account)
+			if context != "" {
+				headers.Set("Stripe-Context", context)
+			}
+		case context != "":
+			headers.Set("Stripe-Context", context)
+		}
+	}
 }
 
 // NewAPIKeyCredentials returns Credentials using a standard Stripe API key.
@@ -86,6 +128,9 @@ type Client struct {
 	// Defaults to the standard set of relevant for Stripe headers.
 	VerbosePrintableHeaders []string
 
+	// When true, 3xx responses are returned directly instead of being followed.
+	NoFollowRedirects bool
+
 	// Cached HTTP client, lazily created the first time the Client is used to
 	// send a request.
 	httpClient *http.Client
@@ -118,7 +163,6 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
-	// if path starts with v1
 	if IsV2Path(path) {
 		req.Header.Set("Content-Type", V2ContentType)
 	} else {
@@ -137,7 +181,12 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	}
 
 	if c.httpClient == nil {
-		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, unixSocketPath)
+		if c.NoFollowRedirects {
+			c.httpClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			}
+		}
 	}
 
 	if ctx != nil {
@@ -169,10 +218,20 @@ func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
 	}
 }
 
+func expandUnixSocket(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home + path[1:]
+		}
+	}
+	return path
+}
+
 func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *http.Client {
 	var httpTransport http.RoundTripper
 
 	if unixSocket != "" {
+		unixSocket = expandUnixSocket(unixSocket)
 		dialFunc := func(network, addr string) (net.Conn, error) {
 			return net.Dial("unix", unixSocket)
 		}
@@ -214,7 +273,17 @@ func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *
 	}
 }
 
-// IsV2Path checks if the path is for V1 API
+// IsV2Path reports whether path targets the V2 API.
+// The trailing slash is required to avoid false positives on paths like /v2x/...
 func IsV2Path(path string) bool {
-	return strings.HasPrefix(path, "/"+V2Request)
+	return strings.HasPrefix(path, "/"+V2Request+"/")
+}
+
+// IsValidAPIPath reports whether the resolved URL path is under a recognized
+// Stripe API prefix. This prevents path-traversal attacks (e.g.
+// /v2x/../v1.41/containers/create) from reaching non-Stripe endpoints.
+func IsValidAPIPath(path string) bool {
+	return strings.HasPrefix(path, "/v1/") || strings.HasPrefix(path, "/v1?") ||
+		strings.HasPrefix(path, "/v2/") || strings.HasPrefix(path, "/v2?") ||
+		path == "/v1" || path == "/v2"
 }

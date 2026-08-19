@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -63,11 +63,10 @@ type PluginList struct {
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string            `toml:"Arch" json:"arch"`
-	OS      string            `toml:"OS" json:"os"`
-	Version string            `toml:"Version" json:"version"`
-	Sum     string            `toml:"Sum" json:"sum,omitempty"`
-	Runtime map[string]string `toml:"Runtime,omitempty" json:"runtime,omitempty"`
+	Arch    string `toml:"Arch" json:"arch"`
+	OS      string `toml:"OS" json:"os"`
+	Version string `toml:"Version" json:"version"`
+	Sum     string `toml:"Sum" json:"sum,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -188,12 +187,12 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	}
 
 	if expectedSum == "" {
-		return nil, fmt.Errorf("could not locate a valid checksum for %s version %s", p.Shortname, version)
+		return nil, errorcategory.Errorf(errorcategory.API, "could not locate a valid checksum for %s version %s", p.Shortname, version)
 	}
 
 	decoded, err := hex.DecodeString(expectedSum)
 	if err != nil {
-		return nil, fmt.Errorf("could not decode checksum for %s version %s", p.Shortname, version)
+		return nil, errorcategory.Errorf(errorcategory.API, "could not decode checksum for %s version %s", p.Shortname, version)
 	}
 
 	return decoded, nil
@@ -231,19 +230,6 @@ func (p *Plugin) getRelease(version, opsystem, arch string) *Release {
 	return nil
 }
 
-func copyRuntime(runtimeRequirements map[string]string) map[string]string {
-	if len(runtimeRequirements) == 0 {
-		return nil
-	}
-
-	cloned := make(map[string]string, len(runtimeRequirements))
-	for name, version := range runtimeRequirements {
-		cloned[name] = version
-	}
-
-	return cloned
-}
-
 func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
 	pluginList, err := validatePluginManifest([]byte(pluginManifest))
 	if err != nil {
@@ -259,23 +245,10 @@ func (p *Plugin) pluginFromMetadata(pluginManifest string) (*Plugin, error) {
 			candidate.Commands = p.Commands
 		}
 
-		for i := range candidate.Releases {
-			if len(candidate.Releases[i].Runtime) != 0 {
-				continue
-			}
-
-			existingRelease := p.getRelease(candidate.Releases[i].Version, candidate.Releases[i].OS, candidate.Releases[i].Arch)
-			if existingRelease == nil || len(existingRelease.Runtime) == 0 {
-				continue
-			}
-
-			candidate.Releases[i].Runtime = copyRuntime(existingRelease.Runtime)
-		}
-
 		return &candidate, nil
 	}
 
-	return nil, fmt.Errorf("plugin metadata response did not include plugin %s", p.Shortname)
+	return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include plugin %s", p.Shortname)
 }
 
 // IsVersionInstalled returns true if the given version of the plugin is already installed on disk.
@@ -318,7 +291,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
-	creds, _ := cfg.GetProfile().ResolveCredentials(false)
+	creds, _ := cfg.GetProfile().ResolveCredentialsForAnyMode(false)
 	apiKey := creds.Token
 	pluginToInstall := p
 	pluginDownloadURL := resolvedBinaryURL
@@ -367,19 +340,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		if metadataLookupErr != nil {
 			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
 		}
-		return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
-	}
-
-	// Check if this plugin requires a runtime and install it if needed
-	release := pluginToInstall.getReleaseForVersion(version)
-	if release != nil {
-		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
-			ansi.StopSpinner(spinner, "", os.Stdout)
-			if err := InstallNodeRuntime(ctx, cfg, fs, nodeVersion); err != nil {
-				return fmt.Errorf("failed to install required Node.js runtime: %w", err)
-			}
-			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
-		}
+		return errorcategory.Errorf(errorcategory.API, "could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
 	}
 
 	// Pull down bin, verify, and save to disk
@@ -442,7 +403,7 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 	}
 
 	if pluginIdx == -1 && !dirExists && !metadataExists {
-		return errors.New("this plugin doesn't seem to be installed, canceling")
+		return errorcategory.New(errorcategory.UserInput, "this plugin doesn't seem to be installed, canceling")
 	}
 
 	previousState, err := snapshotInstalledPluginState(config, fs, p.Shortname)
@@ -546,7 +507,7 @@ func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
 
 	actualSum := hash.Sum(nil)
 	if !bytes.Equal(actualSum, expectedSum) {
-		return fmt.Errorf("installed plugin '%s' could not be verified, aborting installation", p.Shortname)
+		return errorcategory.Errorf(errorcategory.API, "installed plugin '%s' could not be verified, aborting installation", p.Shortname)
 	}
 
 	return nil
@@ -582,16 +543,29 @@ func buildAdditionalInfo(logger *log.Entry) *proto.AdditionalInfo {
 
 // Run boots up the binary and then sends the command to it via RPC.
 // cwd sets the working directory for the plugin process; an empty string uses the current directory.
-func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string) error {
+// versionOverride, when non-empty, forces the plugin to run at that specific installed version,
+// bypassing the automatic version resolution (including local.build.dev priority).
+func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
 
 	var version string
 
-	if PluginsPath != "" {
+	switch {
+	case versionOverride != "":
+		version = versionOverride
+		if !p.IsVersionInstalled(config, fs, version) {
+			installed := p.InstalledVersion(config, fs)
+			hint := ""
+			if installed != "" {
+				hint = fmt.Sprintf("; installed version is %s", installed)
+			}
+			return errorcategory.Errorf(errorcategory.UserInput, "plugin %q version %q is not installed%s", p.Shortname, version, hint)
+		}
+	case PluginsPath != "":
 		version = localDevelopmentVersion
-	} else {
+	default:
 		var err error
 		version, err = p.lookUpInstalledVersion(config, fs)
 		if err != nil {
@@ -623,30 +597,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
 
-	// Check if this plugin requires a runtime
-	var cmd *exec.Cmd
-	var usesRuntime bool
-	release := p.getReleaseForVersion(version)
-	if release != nil {
-		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
-			// Plugin requires Node.js runtime - execute via node
-			nodePath := GetNodeBinaryPath(config, nodeVersion)
-			if nodePath == "" {
-				return fmt.Errorf("required Node.js runtime v%s is not installed", nodeVersion)
-			}
-			logger.Debugf("Executing plugin via Node.js runtime: %s %s", nodePath, pluginBinaryPath)
-			cmd = exec.Command(nodePath, pluginBinaryPath)
-			usesRuntime = true
-		} else {
-			// No runtime required - execute binary directly
-			cmd = exec.Command(pluginBinaryPath)
-			usesRuntime = false
-		}
-	} else {
-		// Couldn't find release info, assume it's a standalone binary
-		cmd = exec.Command(pluginBinaryPath)
-		usesRuntime = false
-	}
+	cmd := exec.Command(pluginBinaryPath)
 
 	if cwd != "" {
 		cmd.Dir = cwd
@@ -674,9 +625,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		},
 	}
 
-	// Only validate checksum for standalone binaries, not when using a runtime
-	// When using a runtime, cmd.Path points to the node binary, not the plugin
-	if !usesRuntime && !isLocalDevelopmentVersion(version) {
+	if !isLocalDevelopmentVersion(version) {
 		sum, err := p.getChecksum(version)
 		if err != nil {
 			return err
@@ -723,7 +672,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			return err
 		}
 	default:
-		return errors.New("dispensed an unknown plugin interface")
+		return errorcategory.New(errorcategory.Internal, "dispensed an unknown plugin interface")
 	}
 	return nil
 }

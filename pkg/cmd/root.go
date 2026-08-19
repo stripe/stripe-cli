@@ -39,6 +39,8 @@ import (
 // Config is the cli configuration for the user
 var Config config.Config
 
+var rootAccessBaseURL string
+
 var fs = afero.NewOsFs()
 
 // rootCmd represents the base command when called without any subcommands
@@ -66,12 +68,30 @@ var rootCmd = &cobra.Command{
 %s`,
 		getLogin(&fs, &Config),
 	),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if cmd.Name() == "help" {
 			fullHelpMode = true
 		}
 
+		// --access-base is a hidden persistent flag accepted by every command, and
+		// feeds the OAuth token refresher below, which runs silently on any command
+		// using a stored OAuth session. Reject anything other than the real
+		// access-srv origins before it's used for that (or any other) purpose, so
+		// it can't be used to exfiltrate the UAT or refresh token.
+		if err := login.ValidateAccessBaseURL(rootAccessBaseURL); err != nil {
+			return err
+		}
+
+		// Make the --access-base value available to the OAuth token refresher,
+		// which runs inside ResolveCredentials without access to cobra flags.
+		Config.Profile.OAuthAccessBaseURL = rootAccessBaseURL
+
 		reporting.SetCommandPath(cmd.CommandPath())
+
+		// Warn here rather than in InitConfig: the profile name can come from the
+		// persisted project-name key or STRIPE_PROJECT_NAME, and ReBindKeys applies
+		// both of those after InitConfig has already run.
+		Config.Profile.WarnIfLegacyProfileName()
 
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
@@ -98,6 +118,7 @@ var rootCmd = &cobra.Command{
 			// record command invocation
 			sendCommandInvocationEvent(cmd.Context())
 		}
+		return nil
 	},
 }
 
@@ -175,7 +196,7 @@ func Execute(ctx context.Context) {
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
-				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
+				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, rootAccessBaseURL, &Config)
 
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
@@ -250,6 +271,8 @@ func init() {
 	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
 	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
+	rootCmd.PersistentFlags().StringVar(&rootAccessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	rootCmd.PersistentFlags().MarkHidden("access-base") //nolint:errcheck
 
 	// tell viper to monitor the following flags:
 	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
@@ -265,16 +288,18 @@ func init() {
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
-	rootCmd.AddCommand(newFeedbackdCmd().cmd)
+	rootCmd.AddCommand(newFeedbackCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
+	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
+	rootCmd.AddCommand(newSwitchCmd().cmd)
 	// current stripe status site is being deprecated
 	// hide status command until status site v2 is released
 	// rootCmd.AddCommand(newStatusCmd().cmd)

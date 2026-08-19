@@ -43,6 +43,31 @@ func TestValidateDashboardBaseURLWorks(t *testing.T) {
 	assert.ErrorIs(t, ValidateDashboardBaseURL("anything_else"), errInvalidDashboardBaseURL)
 }
 
+func TestIsV2PathRequiresTrailingSlash(t *testing.T) {
+	assert.True(t, IsV2Path("/v2/core/events"))
+	assert.True(t, IsV2Path("/v2/billing/meters"))
+
+	// Must not match paths that merely start with /v2 without a trailing slash.
+	// This prevents /v2x/... from being misclassified as V2.
+	assert.False(t, IsV2Path("/v2x/../v1.41/containers/create"))
+	assert.False(t, IsV2Path("/v2x"))
+	assert.False(t, IsV2Path("/v1/charges"))
+	assert.False(t, IsV2Path("/v1/customers"))
+}
+
+func TestIsValidAPIPath(t *testing.T) {
+	assert.True(t, IsValidAPIPath("/v1/charges"))
+	assert.True(t, IsValidAPIPath("/v1/customers/cust_123"))
+	assert.True(t, IsValidAPIPath("/v2/core/events"))
+	assert.True(t, IsValidAPIPath("/v2/billing/meters"))
+
+	// Path traversal attacks must be rejected
+	assert.False(t, IsValidAPIPath("/v1.41/containers/create"))
+	assert.False(t, IsValidAPIPath("/docker/containers"))
+	assert.False(t, IsValidAPIPath("/"))
+	assert.False(t, IsValidAPIPath(""))
+}
+
 func TestDashboardBaseURLForAPIBaseURLWorks(t *testing.T) {
 	assert.Equal(t, "https://dashboard.stripe.com", DashboardBaseURLForAPIBaseURL(""))
 	assert.Equal(t, "https://dashboard.stripe.com", DashboardBaseURLForAPIBaseURL("https://api.stripe.com"))

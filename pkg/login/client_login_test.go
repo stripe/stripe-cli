@@ -82,8 +82,9 @@ func TestLogin(t *testing.T) {
 
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
-	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, p.DeviceName, "")
 	require.NoError(t, err)
+	require.False(t, useOAuth)
 	configurer := keys.NewRAKConfigurer(c, afero.NewOsFs())
 	rt := keys.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(rt)
@@ -155,8 +156,9 @@ func TestLoginNoInput(t *testing.T) {
 
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
-	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
+	links, useOAuth, err := GetLinks(context.Background(), ts.URL, p.DeviceName, "")
 	require.NoError(t, err)
+	require.False(t, useOAuth)
 	configurer := keys.NewRAKConfigurer(c, afero.NewOsFs())
 	rt := keys.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(rt)

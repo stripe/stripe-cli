@@ -23,6 +23,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -145,8 +146,10 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	rb.Profile.PrintActiveContextBanner()
+
 	if len(args) > 1 {
-		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
+		return errorcategory.Errorf(errorcategory.UserInput, "this command only supports one argument. Run with the --help flag to see usage and examples")
 	}
 
 	if len(args) == 0 {
@@ -225,8 +228,18 @@ func (rb *Base) InitFlags() {
 }
 
 // ResolveCredentials returns Credentials for this request using the associated profile.
+// If the requested mode doesn't match the OAuth active context, it returns an
+// error explaining how to reconcile it using the --live flag these commands expose.
 func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
-	return rb.Profile.ResolveCredentials(rb.Livemode)
+	creds, err := rb.Profile.ResolveCredentials(rb.Livemode)
+	var mismatch *config.ActiveContextLivemodeMismatchError
+	if errors.As(err, &mismatch) {
+		if mismatch.ActiveLivemode {
+			return stripe.Credentials{}, errorcategory.UserInputErrorf("You're in live mode. Add --live to run the command, or run 'stripe switch context' to select a sandbox.")
+		}
+		return stripe.Credentials{}, errorcategory.UserInputErrorf("You're in a sandbox. Remove --live to run the command, or run 'stripe switch context' to select a live account.")
+	}
+	return creds, err
 }
 
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
@@ -299,11 +312,20 @@ func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.Request
 	return rb.performRequest(ctx, client, path, params, data, errOnStatus, additionalConfigure)
 }
 
+// credentialsFromPerformer extracts Credentials from a *stripe.Client performer.
+// Returns zero Credentials (non-OAK, no token) for any other RequestPerformer.
+func credentialsFromPerformer(client stripe.RequestPerformer) stripe.Credentials {
+	if c, ok := client.(*stripe.Client); ok {
+		return c.Credentials
+	}
+	return stripe.Credentials{}
+}
+
 func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+	creds := credentialsFromPerformer(client)
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
-		rb.setStripeAccountHeader(req, params)
-		rb.setStripeContextHeader(req, params)
+		creds.ApplyAccountContextHeaders(req.Header, params.stripeAccount, params.stripeContext)
 		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
@@ -332,6 +354,28 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
+
+		// For OAK tokens, "unauthorized" means the token was manually revoked
+		// or otherwise invalidated server-side. Attempt a transparent refresh
+		// and retry the request once with the new token.
+		if resp.StatusCode == 401 && requestError.ErrorCode == "unauthorized" &&
+			rb.Profile != nil && config.OAuthTokenRefresher != nil {
+			uat, _ := rb.Profile.GetUAT()
+			if strings.HasPrefix(uat, "oak_") {
+				if refreshErr := config.OAuthTokenRefresher(rb.Profile); refreshErr != nil {
+					return []byte{}, refreshErr
+				}
+				newCreds, credErr := rb.Profile.ResolveCredentials(rb.Livemode)
+				if credErr != nil {
+					return []byte{}, credErr
+				}
+				if sc, ok := client.(*stripe.Client); ok {
+					sc.Credentials = newCreds
+				}
+				return rb.performRequest(ctx, client, path, params, data, errOnStatus, additionalConfigure)
+			}
+		}
+
 		return []byte{}, requestError
 	}
 
@@ -444,13 +488,12 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 	if params.idempotency != "" {
 		headers["Idempotency-Key"] = params.idempotency
 	}
-	if params.stripeAccount != "" {
-		headers["Stripe-Account"] = params.stripeAccount
-	}
-	if params.stripeContext != "" {
-		headers["Stripe-Context"] = params.stripeContext
-	} else if creds.OAKContext != "" {
-		headers["Stripe-Context"] = creds.OAKContext
+	accountContextHeaders := make(http.Header)
+	creds.ApplyAccountContextHeaders(accountContextHeaders, params.stripeAccount, params.stripeContext)
+	for key, vals := range accountContextHeaders {
+		if len(vals) > 0 {
+			headers[key] = vals[0]
+		}
 	}
 	if creds.OAKLivemode != nil {
 		headers["Stripe-Livemode"] = strconv.FormatBool(*creds.OAKLivemode)
@@ -484,7 +527,7 @@ func parseV1DataForDryRun(data []string) (map[string]interface{}, error) {
 	for _, datum := range data {
 		split := strings.SplitN(datum, "=", 2)
 		if len(split) < 2 {
-			return nil, fmt.Errorf("invalid data argument: %s", datum)
+			return nil, errorcategory.Errorf(errorcategory.UserInput, "invalid data argument: %s", datum)
 		}
 		setNestedValue(result, split[0], split[1])
 	}
@@ -619,11 +662,11 @@ func createV1Params(requestParams *RequestParameters, additionalParams map[strin
 	for _, datum := range requestParams.data {
 		split := strings.SplitN(datum, "=", 2)
 		if len(split) < 2 {
-			return nil, fmt.Errorf("invalid data argument: %s", datum)
+			return nil, errorcategory.Errorf(errorcategory.UserInput, "invalid data argument: %s", datum)
 		}
 
 		if _, ok := additionalParams[split[0]]; ok {
-			return nil, fmt.Errorf("flag %q already set", split[0])
+			return nil, errorcategory.Errorf(errorcategory.UserInput, "flag %q already set", split[0])
 		}
 
 		dataFlagParams = append(dataFlagParams, datum)
@@ -665,7 +708,7 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
-				return "", fmt.Errorf("invalid data argument: %s", datum)
+				return "", errorcategory.Errorf(errorcategory.UserInput, "invalid data argument: %s", datum)
 			}
 
 			keys = append(keys, splitDatum[0])
@@ -749,7 +792,7 @@ func BuildDataForV2Request(method string, path string, data []string, additional
 	return params, nil
 }
 
-var errJSONDataFlagInvalid = errors.New("v2 API takes a single 'data' param containing a full JSON string")
+var errJSONDataFlagInvalid = errorcategory.New(errorcategory.UserInput, "v2 API takes a single 'data' param containing a full JSON string")
 
 func parseJSONDataFlag(data []string) (map[string]interface{}, error) {
 	dataFlagParams := make(map[string]interface{})
@@ -764,7 +807,7 @@ func parseJSONDataFlag(data []string) (map[string]interface{}, error) {
 	}
 
 	if err := json.Unmarshal([]byte(jsonData), &dataFlagParams); err != nil {
-		return nil, fmt.Errorf("data is invalid json: %s", data)
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "data is invalid json: %s", data)
 	}
 
 	return dataFlagParams, nil
@@ -801,7 +844,7 @@ func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer,
 		splitDatum := strings.SplitN(datum, "=", 2)
 
 		if len(splitDatum) < 2 {
-			return nil, "", fmt.Errorf("invalid data argument: %s", datum)
+			return nil, "", errorcategory.Errorf(errorcategory.UserInput, "invalid data argument: %s", datum)
 		}
 
 		key := splitDatum[0]
@@ -889,18 +932,6 @@ func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameter
 	}
 }
 
-func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
-	if params.stripeAccount != "" {
-		request.Header.Set("Stripe-Account", params.stripeAccount)
-	}
-}
-
-func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
-	if params.stripeContext != "" {
-		request.Header.Set("Stripe-Context", params.stripeContext)
-	}
-}
-
 func (rb *Base) confirmCommand() (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 	return rb.getUserConfirmation(reader)
@@ -934,7 +965,7 @@ func createOrNormalizePath(arg string) (string, error) {
 			return path + arg, nil
 		}
 
-		return "", fmt.Errorf("unrecognized object id: %s", arg)
+		return "", errorcategory.Errorf(errorcategory.UserInput, "unrecognized object id: %s", arg)
 	}
 
 	return normalizePath(arg), nil
@@ -967,6 +998,6 @@ func toString(value interface{}) (string, error) {
 	case reflect.Bool:
 		return strconv.FormatBool(val.Bool()), nil
 	default:
-		return "", fmt.Errorf("unsupported query param type: %s", val.Kind().String())
+		return "", errorcategory.Errorf(errorcategory.UserInput, "unsupported query param type: %s", val.Kind().String())
 	}
 }

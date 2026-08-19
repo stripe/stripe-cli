@@ -1,10 +1,11 @@
 package stripe
 
 import (
-	"errors"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 const (
@@ -27,8 +28,8 @@ const (
 )
 
 var (
-	errInvalidAPIBaseURL       = errors.New("invalid API base URL")
-	errInvalidDashboardBaseURL = errors.New("invalid dashboard base URL")
+	errInvalidAPIBaseURL       = errorcategory.New(errorcategory.UserInput, "invalid API base URL")
+	errInvalidDashboardBaseURL = errorcategory.New(errorcategory.UserInput, "invalid dashboard base URL")
 )
 
 func isValid(url string, exactStrings []string, regexpStrings []string) bool {

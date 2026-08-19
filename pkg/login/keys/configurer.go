@@ -43,6 +43,7 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 	c.cfg.Profile.TestModePublishableKey = response.TestModePublishableKey
 	c.cfg.Profile.UAT = response.UAT
 
+	// TODO: remove with legacy RAK/OIDC flow.
 	var compartments []config.Compartment
 	if response.LiveContext != "" {
 		compartments = append(compartments, config.Compartment{
@@ -57,9 +58,7 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		})
 	}
 	if len(compartments) > 0 {
-		c.cfg.Profile.UserInfo = &config.UserInfo{
-			Compartments: compartments,
-		}
+		c.cfg.Profile.UserInfo = &config.UserInfo{Compartments: compartments}
 	} else {
 		c.cfg.Profile.UserInfo = nil
 	}

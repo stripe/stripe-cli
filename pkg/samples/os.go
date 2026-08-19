@@ -1,13 +1,13 @@
 package samples
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/afero"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
 
@@ -50,7 +50,7 @@ func (s *SampleManager) MakeFolder(name string) (string, error) {
 			return "", err
 		}
 	} else {
-		return "", fmt.Errorf("path already exists, aborting: %s", appFolder)
+		return "", errorcategory.Errorf(errorcategory.Filesystem, "path already exists, aborting: %s", appFolder)
 	}
 
 	return appFolder, nil

@@ -17,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
@@ -41,6 +42,7 @@ type sandboxCreateCmd struct {
 	nonInteractive bool
 	baseURL        string
 	dashboardURL   string
+	accessBaseURL  string
 }
 
 func newSandboxCmd() *sandboxCmd {
@@ -102,11 +104,17 @@ work immediately.`,
 
 	scc.cmd.Flags().StringVar(&scc.dashboardURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	_ = scc.cmd.Flags().MarkHidden("dashboard-base")
+	scc.cmd.Flags().StringVar(&scc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	_ = scc.cmd.Flags().MarkHidden("access-base")
 
 	return scc
 }
 
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(scc.accessBaseURL); err != nil {
+		return err
+	}
+
 	color := ansi.Color(cmd.ErrOrStderr())
 
 	existingKey, _ := Config.Profile.GetAPIKey(false)
@@ -201,7 +209,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 // mutually exclusive; providing both is an error.
 func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 	if scc.fromGit && scc.email != "" {
-		return "", fmt.Errorf("--email and --from-git are mutually exclusive")
+		return "", errorcategory.Errorf(errorcategory.UserInput, "--email and --from-git are mutually exclusive")
 	}
 
 	var email string
@@ -209,14 +217,14 @@ func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 	case scc.fromGit:
 		gitEmail := sandbox.GitConfigFunc("user.email")
 		if gitEmail == "" {
-			return "", fmt.Errorf("--from-git requires git config user.email to be set, but it was not found")
+			return "", errorcategory.Errorf(errorcategory.UserInput, "--from-git requires git config user.email to be set, but it was not found")
 		}
 		fmt.Printf("Using email: %s (from git config)\n", gitEmail)
 		email = gitEmail
 	case scc.email != "":
 		email = scc.email
 	default:
-		return "", fmt.Errorf("email is required, pass --email your@email.com or use --from-git to infer from git config user.email")
+		return "", errorcategory.Errorf(errorcategory.UserInput, "email is required; provide it with --email or use --from-git to infer from git config user.email")
 	}
 
 	if _, err := mail.ParseAddress(email); err != nil {
@@ -261,13 +269,13 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	if isSSHSession() && !scc.nonInteractive {
 		fmt.Println("SSH session detected. Cannot open browser.")
 		fmt.Println("Use `stripe login --interactive` or set STRIPE_API_KEY instead.")
-		return fmt.Errorf("browser login unavailable in SSH session")
+		return errorcategory.Errorf(errorcategory.UserInput, "browser login unavailable in SSH session")
 	}
 
 	if scc.nonInteractive {
-		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, &Config)
+		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
 	}
-	return login.Login(cmd.Context(), scc.dashboardURL, &Config)
+	return login.Login(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
@@ -313,7 +321,7 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	secretKey := result.GetSecretKey()
 	if secretKey == "" {
-		return fmt.Errorf("no secret key in server response")
+		return errorcategory.Errorf(errorcategory.API, "no secret key in server response")
 	}
 
 	accountID := result.GetAccountID()

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -138,6 +141,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	creds, err := Config.Profile.ResolveCredentials(lc.livemode)
+	var mismatch *config.ActiveContextLivemodeMismatchError
+	if errors.As(err, &mismatch) {
+		if mismatch.ActiveLivemode {
+			return errorcategory.UserInputErrorf("You're in live mode. Add --live to run the command, or run 'stripe switch context' to select a sandbox.")
+		}
+		return errorcategory.UserInputErrorf("You're in a sandbox. Remove --live to run the command, or run 'stripe switch context' to select a live account.")
+	}
 	if err != nil {
 		return err
 	}
@@ -352,7 +362,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				fmt.Println(outputStr)
 				return nil
 			default:
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T", de)
+				return errorcategory.Errorf(errorcategory.Internal, "VisitData received unexpected type for DataElement, got %T", de)
 			}
 		},
 	}

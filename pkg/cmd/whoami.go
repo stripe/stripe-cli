@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,6 +10,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -18,12 +19,13 @@ import (
 // errNotAuthenticated is returned by whoami when no credentials are found.
 // root.go recognizes this sentinel to suppress duplicate error output while
 // still exiting non-zero.
-var errNotAuthenticated = errors.New("not authenticated")
+var errNotAuthenticated = errorcategory.New(errorcategory.Auth, "not authenticated")
 
 type whoamiCmd struct {
-	cmd     *cobra.Command
-	profile *config.Profile
-	format  string
+	cmd           *cobra.Command
+	profile       *config.Profile
+	format        string
+	accessBaseURL string
 }
 
 type whoamiKeyInfo struct {
@@ -51,14 +53,14 @@ func newWhoamiCmd() *whoamiCmd {
 	wc.cmd = &cobra.Command{
 		Use:   "whoami",
 		Args:  validators.NoArgs,
-		Short: "Show the current Stripe auth state",
-		Long: `Display the current authentication state for the Stripe CLI.
+		Short: "Show the current Stripe auth context",
+		Long: `Display the current authentication context for the Stripe CLI.
 
 Reads credentials from the config file and keychain — no API calls are made.
 
 Use --format json for output suitable for scripting or agent consumption. The
 schema is stable: test_mode_key and live_mode_key are always present regardless
-of auth state, and authenticated: false indicates no usable credentials exist.
+of auth context, and authenticated: false indicates no usable credentials exist.
 
 Exit codes:
   0  Authenticated (at least one key is available)
@@ -70,12 +72,22 @@ Exit codes:
 	}
 
 	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
+	wc.cmd.Flags().StringVar(&wc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	wc.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
 
 	return wc
 }
 
 func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	profile := wc.profile
+
+	uat, _ := profile.GetUAT()
+	if strings.HasPrefix(uat, "oak_") {
+		if err := login.ValidateAccessBaseURL(wc.accessBaseURL); err != nil {
+			return err
+		}
+		return wc.runWhoamiOAuth(cmd, uat)
+	}
 
 	testKey := resolveKeyInfo(profile, false)
 	liveKey := resolveKeyInfo(profile, true)
@@ -113,6 +125,30 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+const expiryDisplayFormat = "Jan 2, 2006 at 3:04 PM"
+
+func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
+	w := cmd.OutOrStdout()
+
+	ac, _ := config.GetActiveContext()
+	if ac != nil {
+		displayName := wc.profile.GetDisplayName()
+		mode := "sandbox"
+		if ac.Livemode {
+			mode = "live"
+		}
+		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
+		fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		if t, err := config.GetUATExpiresAt(); err == nil {
+			fmt.Fprintf(tw, "Expires\t%s\n", t.Local().Format(expiryDisplayFormat))
+		}
+		tw.Flush()
+		fmt.Fprintln(w)
+	}
+
+	return login.PrintAuthorizedContexts(cmd.Context(), wc.accessBaseURL, uat)
+}
+
 func printWhoamiText(out io.Writer, data whoamiOutput) {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	defer w.Flush()
@@ -139,7 +175,7 @@ func printWhoamiText(out io.Writer, data whoamiOutput) {
 		fmt.Fprintf(w, "Device name:\t%s\n", data.DeviceName)
 	}
 
-	fmt.Fprintf(w, "Test mode key:\t%s\n", keyAvailabilityText(data.TestModeKey))
+	fmt.Fprintf(w, "Sandbox key:\t%s\n", keyAvailabilityText(data.TestModeKey))
 	fmt.Fprintf(w, "Live mode key:\t%s\n", keyAvailabilityText(data.LiveModeKey))
 	fmt.Fprintf(w, "API version:\t%s\n", data.APIVersion)
 	fmt.Fprintf(w, "Preview API version:\t%s\n", data.PreviewAPIVersion)

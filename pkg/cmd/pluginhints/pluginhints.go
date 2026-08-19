@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -77,6 +78,7 @@ type pluginHintCmd struct {
 	name           string
 	description    string
 	privatePreview bool
+	accessBaseURL  string
 
 	lookupFn      func(ctx context.Context) error
 	installFn     func(ctx context.Context) error
@@ -105,8 +107,9 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 	}
 
 	p := &pluginHintCmd{
-		name:        name,
-		description: description,
+		name:          name,
+		description:   description,
+		accessBaseURL: login.DefaultAccessBaseURL,
 		lookupFn: func(ctx context.Context) error {
 			_, err := resolvePlugin(ctx)
 			return err
@@ -118,13 +121,13 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 			}
 			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
 		},
-		loginFn: func(ctx context.Context) error {
-			return login.Login(ctx, dashboardBaseURL, cfg)
-		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
 		stdin:         os.Stdin,
 		stdout:        os.Stdout,
+	}
+	p.loginFn = func(ctx context.Context) error {
+		return login.Login(ctx, dashboardBaseURL, p.accessBaseURL, cfg)
 	}
 
 	for _, opt := range opts {
@@ -138,11 +141,17 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
 		RunE:               p.run,
 	}
+	p.Command.Flags().StringVar(&p.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
+	_ = p.Command.Flags().MarkHidden("access-base")
 
 	return p
 }
 
 func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(p.accessBaseURL); err != nil {
+		return err
+	}
+
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
@@ -177,7 +186,7 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 	fmt.Fscanln(p.stdin, &input)
 
 	if input != "" {
-		return fmt.Errorf("installation canceled")
+		return errorcategory.Errorf(errorcategory.UserInput, "installation canceled")
 	}
 
 	if err := p.installFn(ctx); err != nil {
@@ -200,7 +209,7 @@ func (p *pluginHintCmd) promptLogin(ctx context.Context) error {
 	fmt.Fscanln(p.stdin, &input)
 
 	if input != "" {
-		return fmt.Errorf("login canceled")
+		return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
 	}
 
 	return p.loginFn(ctx)
@@ -215,7 +224,7 @@ func (p *pluginHintCmd) suggestNotAvailable() error {
 		return nil
 	}
 
-	fmt.Fprintf(p.stdout, "The logged-in account %s does not have access to the private preview 'generate' plugin. Log into a different account with 'stripe login', or contact Stripe support.\n", accountID)
+	fmt.Fprintf(p.stdout, "The logged-in account %s does not have access to the private preview 'generate' plugin. Log in to a different account with 'stripe login', or contact Stripe support.\n", accountID)
 	fmt.Fprintf(p.stdout, "\n")
 	fmt.Fprintf(p.stdout, "%s\n", p.description)
 	os.Exit(1)

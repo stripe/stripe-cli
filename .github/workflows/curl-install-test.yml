@@ -36,11 +36,12 @@ jobs:
     needs: [curl-install-macos, curl-install-linux]
     if: always()
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           sparse-checkout: |
             scripts/notify.sh
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: ${{ contains(needs.*.result, 'failure') && 'failure' || 'success' }}
