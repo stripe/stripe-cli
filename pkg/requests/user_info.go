@@ -25,7 +25,6 @@ func GetUserInfo(ctx context.Context, apiBaseURL string, profile *config.Profile
 		SuppressOutput: true,
 		APIBaseURL:     apiBaseURL,
 		Livemode:       livemode,
-		Verbose:        true,
 	}
 
 	resp, err := base.MakeRequest(ctx, creds, "/v1/stripecli/user_info", &RequestParameters{}, nil, true, nil)
