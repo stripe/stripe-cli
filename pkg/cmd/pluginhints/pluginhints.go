@@ -263,9 +263,11 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 
 		if err := p.autoInstallHelp(cmd, args); err != nil {
 			// Cobra's help hook cannot report an error, and printing nothing would be
-			// worse than the placeholder, so show it and say what is missing.
+			// worse than the placeholder, so show it, say why the plugin's own help is
+			// missing, and give the one command that fixes it.
 			placeholderHelp(cmd, args)
 			fmt.Fprintf(p.stdout, "\nThe %q plugin's own help is unavailable: %v\n", p.name, err)
+			fmt.Fprintf(p.stdout, "Run 'stripe plugin install %s' to install it and see its full help.\n", p.name)
 		}
 	})
 }
@@ -273,8 +275,10 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 // autoInstallHelp installs the plugin and forwards the help request to it. It
 // returns an error when the placeholder help should be shown instead.
 func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) error {
+	// The caller prints the install command, so this only has to say why the plugin
+	// was not fetched.
 	if p.autoInstallOptedOut() {
-		return errorcategory.Errorf(errorcategory.UserInput, "%s disables installing it automatically; run 'stripe plugin install %s'", AutoInstallOptOutEnvVar, p.name)
+		return errorcategory.Errorf(errorcategory.UserInput, "%s disables installing it automatically", AutoInstallOptOutEnvVar)
 	}
 
 	ctx := commandContext(cmd)

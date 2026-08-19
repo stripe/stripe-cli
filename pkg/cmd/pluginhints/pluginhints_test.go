@@ -531,6 +531,10 @@ func TestHelp_AutoInstall_OptedOutShowsPlaceholderHelpWithoutInstalling(t *testi
 	assert.False(t, runCalled)
 	assert.Contains(t, p.output(), "Test description.")
 	assert.Contains(t, p.output(), AutoInstallOptOutEnvVar)
+	assert.Contains(t, p.output(), "stripe plugin install directory")
+	// The env var name is the whole reason here, so it must not be repeated once the
+	// caller has added the install command.
+	assert.Equal(t, 1, strings.Count(p.output(), "stripe plugin install directory"))
 }
 
 func TestHelp_AutoInstall_LookupFailureShowsPlaceholderHelp(t *testing.T) {
@@ -560,8 +564,15 @@ func TestHelp_AutoInstall_InstallFailureShowsPlaceholderHelp(t *testing.T) {
 	// the plugin's own help is missing.
 	require.NoError(t, err)
 	assert.False(t, runCalled)
+	// Both halves have to survive: the help the user asked for, and why it is only
+	// the placeholder.
 	assert.Contains(t, p.output(), "Test description.")
+	assert.Contains(t, p.output(), "Usage:")
 	assert.Contains(t, p.output(), "install failed")
+	assert.Contains(t, p.output(), "stripe plugin install directory")
+	// The reason has to come after the help text, so it is the last thing on screen
+	// rather than scrolled off above it.
+	assert.Less(t, strings.Index(p.output(), "Usage:"), strings.Index(p.output(), "install failed"))
 }
 
 func TestHelp_AutoInstall_NoRunnerShowsPlaceholderHelpWithoutInstalling(t *testing.T) {
