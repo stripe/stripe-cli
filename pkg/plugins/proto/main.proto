@@ -109,6 +109,9 @@ message RunPeerPluginResponse {
 
 message ResolveCredentialsRequest {
   bool livemode = 1;
+  // If true, resolve credentials for whichever mode is actually active,
+  // ignoring livemode, instead of failing on a mismatch.
+  bool any_mode = 2;
 }
 
 message ResolveCredentialsResponse {
