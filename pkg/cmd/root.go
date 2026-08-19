@@ -76,6 +76,12 @@ var rootCmd = &cobra.Command{
 			fullHelpMode = true
 		}
 
+		// Move the config file to the v2 layout before the command reads anything
+		// out of it. This lives here rather than in InitConfig because Go plugins
+		// call InitConfig directly, and would otherwise rewrite the user's config
+		// file themselves at arbitrary times.
+		migrateConfigIfNeeded(cmd)
+
 		// --access-base is a hidden persistent flag accepted by every command, and
 		// feeds the OAuth token refresher below, which runs silently on any command
 		// using a stored OAuth session. Reject anything other than the real
