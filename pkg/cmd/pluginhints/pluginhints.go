@@ -219,10 +219,16 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 
 	ctx := commandContext(cmd)
 
+	// Honor the opt-out before resolving plugin metadata. Lookup can fail in the
+	// locked-down and air-gapped environments this setting is intended for, and
+	// falling through after that failure could otherwise trigger an interactive
+	// login prompt and consume stdin.
+	if p.autoInstall && p.autoInstallOptedOut() {
+		return p.refuseAutoInstall()
+	}
+
 	if err := p.lookupFn(ctx); err == nil {
 		switch {
-		case p.autoInstall && p.autoInstallOptedOut():
-			return p.refuseAutoInstall()
 		case p.autoInstall:
 			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs(cmd))
 		default:

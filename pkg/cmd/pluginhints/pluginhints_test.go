@@ -383,18 +383,33 @@ func TestRun_AutoInstall_OptedOutDoesNotInstallOrPrompt(t *testing.T) {
 				}
 				return ""
 			}
+			lookupCalled := false
+			p.lookupFn = func(ctx context.Context) error {
+				lookupCalled = true
+				return errors.New("lookup unavailable")
+			}
+			p.accountIDFn = func() (string, error) { return "", nil }
 			installCalled := false
 			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 			runCalled := false
 			p.runPluginFn = func(cmd *cobra.Command, args []string) error { runCalled = true; return nil }
+			loginCalled := false
+			p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+			stdin := strings.NewReader("unread\n")
+			p.stdin = stdin
 
 			err := p.run(p.Command, nil)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "stripe plugin install directory")
+			assert.False(t, lookupCalled)
 			assert.False(t, installCalled)
 			assert.False(t, runCalled)
+			assert.False(t, loginCalled)
 			assert.Contains(t, p.output(), AutoInstallOptOutEnvVar)
+			remaining, readErr := io.ReadAll(stdin)
+			require.NoError(t, readErr)
+			assert.Equal(t, "unread\n", string(remaining))
 		})
 	}
 }
