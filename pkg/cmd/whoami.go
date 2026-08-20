@@ -137,9 +137,13 @@ const expiryDisplayFormat = "Jan 2, 2006 at 3:04 PM"
 func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	w := cmd.OutOrStdout()
 
+	accounts, err := login.ListAuthorizedAccounts(cmd.Context(), wc.accessBaseURL, uat)
+	if err != nil {
+		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
+	}
+
 	ac, _ := config.GetActiveContext()
 	if ac != nil {
-		displayName := wc.profile.GetDisplayName()
 		mode := "sandbox"
 		if ac.Livemode {
 			mode = "live"
@@ -150,11 +154,23 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		// Fail open: the user's info is less important than the authorized contexts
 		info, _ := requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
 
+		displayName := ac.AccountID
+		for _, a := range accounts {
+			if a.ID == ac.AccountID && a.Name != "" {
+				displayName = a.Name
+				break
+			}
+		}
+
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 		if info.Email != "" {
 			fmt.Fprintf(tw, "User\t%s\n", info.Email)
 		}
-		fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		if displayName != ac.AccountID {
+			fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		} else {
+			fmt.Fprintf(tw, "Context\t%s · %s\n", displayName, mode)
+		}
 		if info.Role != "" {
 			fmt.Fprintf(tw, "Role\t%s\n", info.Role)
 		}
@@ -165,7 +181,8 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		fmt.Fprintln(w)
 	}
 
-	return login.PrintAuthorizedContexts(cmd.Context(), wc.accessBaseURL, uat)
+	login.PrintAuthorizedContextsList(accounts)
+	return nil
 }
 
 func printWhoamiText(out io.Writer, data whoamiOutput) {

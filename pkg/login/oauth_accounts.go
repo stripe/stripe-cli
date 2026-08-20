@@ -60,6 +60,13 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
+	PrintAuthorizedContextsList(accounts)
+	return nil
+}
+
+// PrintAuthorizedContextsList prints already-fetched authorized accounts as a
+// formatted list, marking the active context.
+func PrintAuthorizedContextsList(accounts []config.AuthorizedAccount) {
 	ac, _ := config.GetActiveContext()
 	activeID, activeMode := "", "test"
 	if ac != nil {
@@ -107,7 +114,6 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, idW, r.id, r.mode)
 		}
 	}
-	return nil
 }
 
 // displayMode maps the API's "test" mode value to the CLI's "sandbox" terminology.
