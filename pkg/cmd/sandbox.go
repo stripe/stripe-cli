@@ -174,12 +174,15 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 			fmt.Printf("Account ID:      %s\n", accountID)
 		}
 
-		claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, existingKey)
-		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to claim guidance")
-		} else if claimed {
-			fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
-			return nil
+		apiKey := sandboxTestModeAPIKey()
+		if apiKey != "" {
+			claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, apiKey)
+			if err != nil {
+				log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to local claim behavior")
+			} else if claimed {
+				fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
+				return nil
+			}
 		}
 
 		expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
@@ -395,6 +398,10 @@ func isClaimableSandbox() bool {
 	return viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName)) != ""
 }
 
+func sandboxTestModeAPIKey() string {
+	return viper.GetString(Config.Profile.GetConfigField(config.TestModeAPIKeyName))
+}
+
 // isExpiredSandbox returns true if the sandbox_expires_at date has passed.
 func isExpiredSandbox() bool {
 	expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
@@ -458,11 +465,11 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 		return nil
 	}
 
-	apiKey := viper.GetString(Config.Profile.GetConfigField(config.TestModeAPIKeyName))
+	apiKey := sandboxTestModeAPIKey()
 	if apiKey != "" {
 		claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, apiKey)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to claim URL")
+			log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to local claim behavior")
 		} else if claimed {
 			fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
 			return nil
