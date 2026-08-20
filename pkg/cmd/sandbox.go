@@ -31,7 +31,7 @@ import (
 
 const (
 	defaultSandboxBaseURL        = "https://ai.stripe.com"
-	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to get permanent keys."
+	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to authenticate with your claimed account."
 	sandboxExpiredMessage        = "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one."
 )
 
@@ -176,9 +176,8 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 
 		claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, existingKey)
 		if err != nil {
-			return err
-		}
-		if claimed {
+			log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to claim guidance")
+		} else if claimed {
 			fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
 			return nil
 		}
@@ -459,18 +458,15 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 		return nil
 	}
 
-	apiKey, err := Config.Profile.GetAPIKey(false)
-	if err != nil {
-		return err
-	}
-
-	claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, apiKey)
-	if err != nil {
-		return err
-	}
-	if claimed {
-		fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
-		return nil
+	apiKey := viper.GetString(Config.Profile.GetConfigField(config.TestModeAPIKeyName))
+	if apiKey != "" {
+		claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, apiKey)
+		if err != nil {
+			log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to claim URL")
+		} else if claimed {
+			fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
+			return nil
+		}
 	}
 
 	accountID, _ := Config.Profile.GetAccountID()

@@ -164,6 +164,7 @@ func setupActiveClaimableSandbox(t *testing.T, claimURL, expiresAt string) {
 	t.Helper()
 	Config.Profile.APIKey = activeClaimableSandboxAPIKey
 	Config.Profile.AccountID = "acct_sandbox_123"
+	require.NoError(t, Config.Profile.WriteConfigField(config.TestModeAPIKeyName, activeClaimableSandboxAPIKey))
 	if claimURL != "" {
 		require.NoError(t, Config.Profile.WriteConfigField(config.SandboxClaimURLName, claimURL))
 	}
@@ -721,16 +722,15 @@ func TestSandboxClaimCmd_StatusEndpointErrors(t *testing.T) {
 			output, err := captureStdout(t, func() error {
 				return cmd.cmd.Execute()
 			})
-			require.Error(t, err)
-			assert.NotContains(t, err.Error(), activeClaimableSandboxAPIKey)
-			assert.NotContains(t, output, claimURL)
-			assert.NotContains(t, output, "Claim your sandbox")
+			require.NoError(t, err)
+			assert.Contains(t, output, claimURL)
+			assert.Contains(t, output, "Claim your sandbox")
 			assert.Empty(t, openedURL)
 		})
 	}
 }
 
-func TestSandboxCreateCmd_ExistingSandboxStatusErrorOmitsClaimGuidance(t *testing.T) {
+func TestSandboxCreateCmd_ExistingSandboxStatusErrorFallsBackToClaimGuidance(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
@@ -746,7 +746,9 @@ func TestSandboxCreateCmd_ExistingSandboxStatusErrorOmitsClaimGuidance(t *testin
 	output, err := captureStdout(t, func() error {
 		return cmd.cmd.Execute()
 	})
-	require.Error(t, err)
-	assert.NotContains(t, output, "Claim it before then")
-	assert.NotContains(t, output, "stripe sandbox claim")
+	require.NoError(t, err)
+	assert.Contains(t, output, "You already have an active sandbox")
+	assert.Contains(t, output, "Claim it before then")
+	assert.Contains(t, output, "stripe sandbox claim")
+	assert.NotContains(t, output, sandboxAlreadyClaimedMessage)
 }
