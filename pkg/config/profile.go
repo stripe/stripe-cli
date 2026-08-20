@@ -72,10 +72,18 @@ const (
 	ProfilesTableName = "profiles"
 )
 
-// ConfigVersionV2 is the schema version in which every profile moved under the
-// reserved ProfilesTableName table, so that profile names can no longer collide
-// with top-level CLI settings.
-const ConfigVersionV2 = 2
+const (
+	// ConfigVersionV1 is the flat layout, in which profiles share the top-level
+	// namespace with CLI settings. A v1 file has no config_version key; writing
+	// the version out explicitly pins the file to the flat layout and opts it out
+	// of the migration.
+	ConfigVersionV1 = 1
+
+	// ConfigVersionV2 is the schema version in which every profile moved under the
+	// reserved ProfilesTableName table, so that profile names can no longer
+	// collide with top-level CLI settings.
+	ConfigVersionV2 = 2
+)
 
 const UATKeychainItemKey = "uat"
 

@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/BurntSushi/toml"
+	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
@@ -16,6 +17,11 @@ import (
 // ConfigBackupSuffix is appended to the config file name to name the backup that
 // the migration leaves behind, e.g. "config.toml.v1.bak".
 const ConfigBackupSuffix = ".v1.bak"
+
+// SkipMigrationEnvVar disables the migration when set to any non-empty value. It
+// is the kill switch if the migration misbehaves in the field; setting
+// config_version = 1 in the config file is the per-user equivalent.
+const SkipMigrationEnvVar = "STRIPE_CLI_SKIP_CONFIG_MIGRATION"
 
 // reservedTopLevelKeys are the top-level config.toml keys that belong to the CLI
 // itself. Every other top-level table in a v1 file is a candidate profile.
@@ -66,6 +72,54 @@ var profileFieldNames = map[string]bool{
 type migrationPlan struct {
 	profiles map[string]map[string]interface{}
 	settings map[string]interface{}
+}
+
+// IsMigrated reports whether the loaded config file uses the v2 layout.
+func IsMigrated() bool {
+	return isMigrated(viper.GetViper())
+}
+
+// NeedsMigration reports whether the loaded config file should be rewritten in
+// the v2 layout. It answers from the config already in memory, so it costs
+// nothing on the common path.
+//
+// It says nothing about whether migrating is *safe* — an installed plugin too old
+// to read the v2 layout, or a non-interactive session, must not migrate — and it
+// does not check that the config file exists, since a viper with no file loaded
+// looks exactly like an unmigrated one.
+func NeedsMigration() bool {
+	v := viper.GetViper()
+
+	switch {
+	case configVersion(v) == ConfigVersionV1:
+		// The user pinned the flat layout.
+		return false
+	case !isMigrated(v):
+		return true
+	default:
+		return hasFlatProfileTable(v)
+	}
+}
+
+// hasFlatProfileTable reports whether a migrated config file still holds a
+// profile at the top level. An older CLI or plugin writing the same file does not
+// know about the profiles table, so it leaves one behind; folding it back in is
+// what stops the two copies from diverging.
+//
+// This mirrors the rule planMigration applies, so that NeedsMigration and the
+// migration itself always agree on whether there is work to do.
+func hasFlatProfileTable(v *viper.Viper) bool {
+	for key, value := range v.AllSettings() {
+		if reservedTopLevelKeys[key] {
+			continue
+		}
+
+		if table, ok := toStringMap(value); ok && looksLikeProfile(table) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // MigrateConfigFile rewrites the config file at path in the v2 layout, moving
@@ -142,8 +196,8 @@ func MigrateConfigFile(path string) (bool, error) {
 }
 
 // planMigration reads a config document and returns the v2 document to write.
-// changed is false when there is nothing to do: an already-migrated file with no
-// stray top-level profiles.
+// changed is false when there is nothing to do: a file pinned to v1, or an
+// already-migrated file with no stray top-level profiles.
 func planMigration(contents []byte) (*migrationPlan, bool, error) {
 	// Decode raw TOML rather than going through viper, which lowercases every
 	// key. Round-tripping profile names through viper would rename a profile the
@@ -153,12 +207,19 @@ func planMigration(contents []byte) (*migrationPlan, bool, error) {
 		return nil, false, fmt.Errorf("could not parse config file: %w", err)
 	}
 
+	version := configVersionOf(doc)
+	if version == ConfigVersionV1 {
+		// The user pinned the flat layout, so there is nothing to do even when a
+		// caller asks for the migration directly.
+		return nil, false, nil
+	}
+
 	plan := &migrationPlan{
 		profiles: make(map[string]map[string]interface{}),
 		settings: make(map[string]interface{}),
 	}
 
-	alreadyV2 := configVersionOf(doc) >= ConfigVersionV2
+	alreadyV2 := version >= ConfigVersionV2
 
 	// Start from the profiles already in the v2 table, if there are any.
 	nested, nestedIsContainer := profilesContainer(doc, alreadyV2)
