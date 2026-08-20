@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -17,6 +18,10 @@ import (
 const dataMetricsRunPath = "/v2/data/analytics/metric_query"
 
 type dataCmd struct {
+	cmd *cobra.Command
+}
+
+type dataMetricsCmd struct {
 	cmd *cobra.Command
 }
 
@@ -38,23 +43,73 @@ func newDataCmd() *dataCmd {
 	dc := &dataCmd{}
 	dc.cmd = &cobra.Command{
 		Use:   "data",
-		Short: "Access Stripe Data APIs",
-		// Private Preview API — hidden until GA.
-		Hidden: true,
-		Args:   validators.NoArgs,
-	}
+		Short: "Access Stripe Data APIs (Private Preview)",
+		Long: `Access Stripe Data APIs.
 
-	metricsCmd := &cobra.Command{
-		Use:   "metrics",
-		Short: "Query Stripe metrics",
-		// Private Preview API — hidden until GA.
-		Hidden: true,
-		Args:   validators.NoArgs,
+Use the metrics subcommands to query time-series Stripe metric data. This
+namespace is a Private Preview API.`,
+		Args: validators.NoArgs,
 	}
-	metricsCmd.AddCommand(newDataMetricsRunCmd().cmd)
+	dc.cmd.SetUsageTemplate(dataUsageTemplate())
 
-	dc.cmd.AddCommand(metricsCmd)
+	dc.cmd.AddCommand(newDataMetricsCmd().cmd)
 	return dc
+}
+
+func newDataMetricsCmd() *dataMetricsCmd {
+	mc := &dataMetricsCmd{}
+	mc.cmd = &cobra.Command{
+		Use:   "metrics",
+		Short: "Query Stripe metrics (Private Preview)",
+		Long: `Query time-series Stripe metric data.
+
+Use the run subcommand to execute a metric query. This uses the
+/v2/data/analytics/metric_query Private Preview API — the Stripe-Version
+preview header is set automatically.
+
+Metrics are specified by namespace.metric (e.g. revenue.mrr, revenue.arr).
+See the supported metrics at https://docs.stripe.com/data/analytics/supported-metrics
+and the API reference at
+https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-version=preview`,
+		Args: validators.NoArgs,
+	}
+	mc.cmd.AddCommand(newDataMetricsRunCmd().cmd)
+	return mc
+}
+
+// dataUsageTemplate is the help template for the data command tree.
+// Usage and the trailing hint use HasSubCommands so parent --help stays
+// populated if a child is later hidden. Available commands lists only
+// non-hidden children via IsAvailableCommand.
+func dataUsageTemplate() string {
+	return fmt.Sprintf(`%s{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+%s
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+%s
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+%s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
+
+%s
+{{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+%s
+{{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`,
+		ansi.Bold("Usage:"),
+		ansi.Bold("Aliases:"),
+		ansi.Bold("Examples:"),
+		ansi.Bold("Available commands:"),
+		ansi.Bold("Flags:"),
+		ansi.Bold("Global flags:"),
+	)
 }
 
 func newDataMetricsRunCmd() *dataMetricsRunCmd {
@@ -68,13 +123,11 @@ func newDataMetricsRunCmd() *dataMetricsRunCmd {
 
 	c.cmd = &cobra.Command{
 		Use:   "run",
-		Short: "Run a Stripe metric query",
-		// Private Preview API — hidden until GA.
-		Hidden: true,
+		Short: "Run a Stripe metric query (Private Preview)",
 		Long: `Run a query for time-series Stripe metric data.
 
-Sends a POST request to /v2/data/analytics/metric_query. This is a Private
-Preview API — the Stripe-Version preview header is set automatically.
+Sends a POST request to /v2/data/analytics/metric_query. This is a
+Private Preview API — the Stripe-Version preview header is set automatically.
 
 Metrics are specified by namespace.metric (e.g. revenue.mrr, revenue.arr).
 Multiple metrics can be queried together as long as they share the same

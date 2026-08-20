@@ -44,11 +44,11 @@ func newReportingCmd() *reportingCmd {
 	rc := &reportingCmd{}
 	rc.cmd = &cobra.Command{
 		Use:   "reporting",
-		Short: "Run Stripe Sigma queries via the Data Reporting API",
+		Short: "Run Stripe Sigma queries via the Data Reporting API (Public Preview)",
 		Long: `Run ad hoc SQL queries against your Stripe data using the Data Reporting API.
 
 Use the query-runs subcommands to kick off a new query and retrieve its
-results. This uses the /v2/data/reporting/query_runs preview API.`,
+results. This uses the /v2/data/reporting/query_runs Public Preview API.`,
 		Args: validators.NoArgs,
 	}
 
@@ -60,7 +60,7 @@ func newReportingQueryRunsCmd() *reportingQueryRunsCmd {
 	qrc := &reportingQueryRunsCmd{}
 	qrc.cmd = &cobra.Command{
 		Use:   "query-runs",
-		Short: "Create and retrieve QueryRun objects",
+		Short: "Create and retrieve QueryRun objects (Public Preview)",
 		Long: `Create and retrieve QueryRun objects.
 
 A QueryRun runs a custom SQL query against your Stripe data. Create a query run
@@ -85,11 +85,11 @@ func newReportingQueryRunsCreateCmd() *reportingQueryRunsCreateCmd {
 
 	cc.cmd = &cobra.Command{
 		Use:   "create",
-		Short: "Create a query run from custom SQL",
+		Short: "Create a query run from custom SQL (Public Preview)",
 		Long: `Create a query run to execute a custom, ad hoc SQL query against your Stripe data.
 
-Sends a POST request to /v2/data/reporting/query_runs. This is a preview API —
-the Stripe-Version preview header is set automatically.
+Sends a POST request to /v2/data/reporting/query_runs. This is a Public Preview
+API — the Stripe-Version preview header is set automatically.
 
 The query runs asynchronously. The response contains the query run's id and
 status ("running", "succeeded", or "failed"); poll it with
@@ -135,11 +135,11 @@ func newReportingQueryRunsRetrieveCmd() *reportingQueryRunsRetrieveCmd {
 
 	rc.cmd = &cobra.Command{
 		Use:   "retrieve <id>",
-		Short: "Retrieve a query run",
+		Short: "Retrieve a query run (Public Preview)",
 		Long: `Retrieve a query run by its id to check its status and fetch results.
 
-Sends a GET request to /v2/data/reporting/query_runs/{id}. This is a preview
-API — the Stripe-Version preview header is set automatically.
+Sends a GET request to /v2/data/reporting/query_runs/{id}. This is a
+Public Preview API — the Stripe-Version preview header is set automatically.
 
 Once the query run's status is "succeeded", the result's download_url can be
 used to download the query output.`,
