@@ -174,15 +174,9 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 			fmt.Printf("Account ID:      %s\n", accountID)
 		}
 
-		apiKey := sandboxTestModeAPIKey()
-		if apiKey != "" {
-			claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, apiKey)
-			if err != nil {
-				log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to local claim behavior")
-			} else if claimed {
-				fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
-				return nil
-			}
+		if sandboxClaimed(cmd.Context(), scc.apiBaseURL) {
+			fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
+			return nil
 		}
 
 		expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
@@ -375,6 +369,14 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	if result.GetExpiresAt() != "" {
 		Config.Profile.WriteConfigField(config.SandboxExpiresAtName, result.GetExpiresAt())
 	}
+	Config.Profile.WriteConfigField(config.TestModeAPIKeyName, secretKey)
+	if pubKey := result.GetPublishableKey(); pubKey != "" {
+		Config.Profile.WriteConfigField(config.TestModePubKeyName, pubKey)
+	}
+	if accountID != "" {
+		Config.Profile.WriteConfigField(config.AccountIDName, accountID)
+		Config.Profile.WriteConfigField(config.DisplayNameName, accountID)
+	}
 
 	return nil
 }
@@ -402,6 +404,20 @@ func sandboxTestModeAPIKey() string {
 	return viper.GetString(Config.Profile.GetConfigField(config.TestModeAPIKeyName))
 }
 
+// sandboxClaimed reports whether the profile's claimable sandbox has already been claimed. API failures return false.
+func sandboxClaimed(ctx context.Context, apiBaseURL string) bool {
+	apiKey := sandboxTestModeAPIKey()
+	if apiKey == "" {
+		return false
+	}
+	claimed, err := fetchSandboxClaimStatus(ctx, apiBaseURL, apiKey)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to local claim behavior")
+		return false
+	}
+	return claimed
+}
+
 // isExpiredSandbox returns true if the sandbox_expires_at date has passed.
 func isExpiredSandbox() bool {
 	expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
@@ -423,12 +439,12 @@ func isExpiredSandbox() bool {
 // profile without affecting other profiles. Narrowly scoped — only clears
 // fields that sandbox create wrote.
 func clearExpiredSandboxProfile() {
-	Config.Profile.DeleteConfigField("test_mode_api_key")
-	Config.Profile.DeleteConfigField("test_mode_pub_key")
-	Config.Profile.DeleteConfigField("sandbox_claim_url")
-	Config.Profile.DeleteConfigField("sandbox_expires_at")
-	Config.Profile.DeleteConfigField("account_id")
-	Config.Profile.DeleteConfigField("display_name")
+	Config.Profile.DeleteConfigField(config.TestModeAPIKeyName)
+	Config.Profile.DeleteConfigField(config.TestModePubKeyName)
+	Config.Profile.DeleteConfigField(config.SandboxClaimURLName)
+	Config.Profile.DeleteConfigField(config.SandboxExpiresAtName)
+	Config.Profile.DeleteConfigField(config.AccountIDName)
+	Config.Profile.DeleteConfigField(config.DisplayNameName)
 }
 
 type sandboxClaimCmd struct {
@@ -465,15 +481,9 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 		return nil
 	}
 
-	apiKey := sandboxTestModeAPIKey()
-	if apiKey != "" {
-		claimed, err := fetchSandboxClaimStatus(cmd.Context(), scc.apiBaseURL, apiKey)
-		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to local claim behavior")
-		} else if claimed {
-			fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
-			return nil
-		}
+	if sandboxClaimed(cmd.Context(), scc.apiBaseURL) {
+		fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
+		return nil
 	}
 
 	accountID, _ := Config.Profile.GetAccountID()
