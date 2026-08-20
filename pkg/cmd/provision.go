@@ -33,14 +33,23 @@ const provisionPluginName = "projects"
 // `stripe provision` aliases to.
 const provisionPluginSubcommand = "add"
 
+// buildProvisionPluginArgs prepends the aliased plugin subcommand to the raw
+// args forwarded from `stripe provision`.
+func buildProvisionPluginArgs(args []string) []string {
+	return append([]string{provisionPluginSubcommand}, args...)
+}
+
 type provisionCmd struct {
 	cmd *cobra.Command
+
+	runProvisionCmdFn func(cmd *cobra.Command, args []string) error
 }
 
 // newProvisionCmd is a thin alias for `stripe projects add`: it ensures the
 // projects plugin is installed, then forwards all args/flags to it.
 func newProvisionCmd() *provisionCmd {
 	pc := &provisionCmd{}
+	pc.runProvisionCmdFn = pc.runProvisionCmd
 
 	pc.cmd = &cobra.Command{
 		Use:   "provision [service]",
@@ -48,12 +57,14 @@ func newProvisionCmd() *provisionCmd {
 		Long: `Provision a service via the projects plugin.
 
 This is an alias for 'stripe projects add' — all flags are forwarded as-is.
-If the projects plugin isn't installed yet, it must be installed via
-'stripe plugin install projects' before running.`,
+If the projects plugin isn't installed yet, it will be installed
+automatically before running.`,
 		Example: `stripe provision <provider>/<service>
   stripe provision neon/postgres --config '{"region":"iad1"}'
   stripe provision agentmail/api --json`,
-		RunE:               pc.runProvisionCmd,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return pc.runProvisionCmdFn(cmd, args)
+		},
 		DisableFlagParsing: true,
 	}
 
@@ -88,7 +99,7 @@ func (pc *provisionCmd) runProvisionCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	pluginArgs := append([]string{provisionPluginSubcommand}, args...)
+	pluginArgs := buildProvisionPluginArgs(args)
 
 	err = plugin.Run(ctx, &Config, fs, pluginArgs, "", "")
 	plugins.CleanupAllClients()
