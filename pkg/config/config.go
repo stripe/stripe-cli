@@ -225,16 +225,23 @@ func (c *Config) CopyProfile(source string, target string) error {
 
 	runtimeViper := viper.GetViper()
 	safeSource := strings.ReplaceAll(source, ".", " ")
-	if !runtimeViper.IsSet(safeSource) {
-		return errorcategory.Errorf(errorcategory.UserInput, "source profile '%s' does not exist", source)
-	}
-	existing := runtimeViper.Get(safeSource)
-	if !isProfile(existing) {
-		return errorcategory.Errorf(errorcategory.UserInput, "source '%s' is not a profile", source)
+
+	// Prefer the v2 table, where any entry is a profile, and fall back to the
+	// top level, where a profile is only recognizable by its display_name.
+	existing := runtimeViper.Get(ProfilesTableName + "." + safeSource)
+	if _, ok := toStringMap(existing); !ok {
+		if !runtimeViper.IsSet(safeSource) {
+			return errorcategory.Errorf(errorcategory.UserInput, "source profile '%s' does not exist", source)
+		}
+
+		existing = runtimeViper.Get(safeSource)
+		if !isProfile(existing) {
+			return errorcategory.Errorf(errorcategory.UserInput, "source '%s' is not a profile", source)
+		}
 	}
 
 	safeTarget := strings.ReplaceAll(target, ".", " ")
-	existingMap := existing.(map[string]interface{})
+	existingMap, _ := toStringMap(existing)
 	newProfile := make(map[string]interface{})
 	for k, v := range existingMap {
 		if isPluginConfigSection(v) {
@@ -245,7 +252,7 @@ func (c *Config) CopyProfile(source string, target string) error {
 	}
 	newProfile["profile_name"] = safeTarget
 
-	runtimeViper.Set(safeTarget, newProfile)
+	runtimeViper.Set(profileTableKeyForWrite(runtimeViper, safeTarget), newProfile)
 
 	return writeConfig(runtimeViper)
 }
@@ -254,17 +261,8 @@ func (c *Config) ListProfiles() error {
 	runtimeViper := viper.GetViper()
 	var profiles []string
 
-	for _, value := range runtimeViper.AllSettings() {
-		if !isProfile(value) {
-			continue
-		}
-		var displayName string
-		switch v := value.(type) {
-		case map[string]interface{}:
-			displayName, _ = v["display_name"].(string)
-		case map[string]string:
-			displayName = v["display_name"]
-		}
+	for _, entry := range listProfileEntries(runtimeViper) {
+		displayName, _ := entry.settings["display_name"].(string)
 		if displayName != "" && !slices.Contains(profiles, displayName) {
 			profiles = append(profiles, displayName)
 		}
@@ -303,7 +301,10 @@ func (c *Config) PrintConfig() error {
 
 		fmt.Print(string(configFile))
 	} else {
-		configs := viper.GetStringMapString(profileName)
+		configs := viper.GetStringMapString(ProfilesTableName + "." + profileName)
+		if len(configs) == 0 {
+			configs = viper.GetStringMapString(profileName)
+		}
 
 		if len(configs) > 0 {
 			fmt.Printf("[%s]\n", profileName)
@@ -408,44 +409,44 @@ func (c *Config) RemoveProfile(profileName string) error {
 	var err error
 	var matched bool
 
-	for field, value := range runtimeViper.AllSettings() {
-		if isProfile(value) {
-			var profileNameAttr string
-			switch v := value.(type) {
-			case map[string]interface{}:
-				if pn, ok := v["profile_name"].(string); ok {
-					profileNameAttr = pn
-				}
-			case map[string]string:
-				profileNameAttr = v["profile_name"]
-			}
-			if field == profileName || profileNameAttr == profileName {
-				matched = true
-
-				runtimeViper, err = removeKey(runtimeViper, field)
-				if err != nil {
-					return err
-				}
-
-				deleteLivemodeKey(LiveModeAPIKeyName, field)
-			}
+	for _, entry := range listProfileEntries(runtimeViper) {
+		if !entry.matches(profileName) {
+			continue
 		}
-	}
 
-	// The enumeration above only finds tables that isProfile recognizes, which
-	// requires a display_name, and it cannot see a profile whose name contains a
-	// period at all because viper reads that back as nesting. Fall back to
-	// addressing the table by its full key path, which hits exactly that profile
-	// and leaves siblings intact.
-	if !matched && isProfileTable(runtimeViper, profileName) {
 		matched = true
 
-		runtimeViper, err = removeKey(runtimeViper, profileName)
+		runtimeViper, err = removeKey(runtimeViper, entry.key)
 		if err != nil {
 			return err
 		}
 
-		deleteLivemodeKey(LiveModeAPIKeyName, profileName)
+		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
+	}
+
+	// A top-level profile is only found above when isProfile recognizes it, which
+	// requires a display_name, and a profile whose name contains a period is
+	// invisible to the enumeration entirely because viper reads that back as
+	// nesting. Fall back to addressing the table by its full key path, which hits
+	// exactly that profile and leaves siblings intact. The v2 path is tried first
+	// for the same reason reads prefer it.
+	if !matched {
+		for _, key := range []string{ProfilesTableName + "." + profileName, profileName} {
+			if !isProfileTable(runtimeViper, key) {
+				continue
+			}
+
+			matched = true
+
+			runtimeViper, err = removeKey(runtimeViper, key)
+			if err != nil {
+				return err
+			}
+
+			deleteLivemodeKey(LiveModeAPIKeyName, profileName)
+
+			break
+		}
 	}
 
 	if !matched {
@@ -481,15 +482,13 @@ func (c *Config) RemoveAllProfiles() error {
 	runtimeViper := viper.GetViper()
 	var err error
 
-	for field, value := range runtimeViper.AllSettings() {
-		if isProfile(value) {
-			runtimeViper, err = removeKey(runtimeViper, field)
-			if err != nil {
-				return err
-			}
-
-			deleteLivemodeKey(LiveModeAPIKeyName, field)
+	for _, entry := range listProfileEntries(runtimeViper) {
+		runtimeViper, err = removeKey(runtimeViper, entry.key)
+		if err != nil {
+			return err
 		}
+
+		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
 	}
 
 	return writeConfig(runtimeViper)
@@ -501,31 +500,24 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 	runtimeViper := viper.GetViper()
 	var matched bool
 
-	for field, value := range runtimeViper.AllSettings() {
-		if isProfile(value) {
-			var profileNameAttr string
-			switch v := value.(type) {
-			case map[string]interface{}:
-				if pn, ok := v["profile_name"].(string); ok {
-					profileNameAttr = pn
-				}
-			case map[string]string:
-				profileNameAttr = v["profile_name"]
-			}
-			if field == profileName || profileNameAttr == profileName {
-				matched = true
-
-				p := &Profile{ProfileName: field}
-				runtimeViper = p.deleteAuthFields(runtimeViper)
-				deleteLivemodeKey(LiveModeAPIKeyName, field)
-			}
+	for _, entry := range listProfileEntries(runtimeViper) {
+		if !entry.matches(profileName) {
+			continue
 		}
+
+		matched = true
+
+		p := &Profile{ProfileName: entry.name}
+		runtimeViper = p.deleteAuthFields(runtimeViper)
+		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
 	}
 
 	// Profiles with a period in the name are nested tables that the enumeration
 	// above cannot see. Clearing them by name is the only way for a user to log
-	// out of one, so handle that case explicitly.
-	if !matched && isNestedProfileName(profileName) && runtimeViper.IsSet(profileName) {
+	// out of one, so handle that case explicitly. deleteAuthFields clears both
+	// layouts, so this covers a dotted profile wherever it lives.
+	if !matched && isNestedProfileName(profileName) &&
+		(runtimeViper.IsSet(ProfilesTableName+"."+profileName) || runtimeViper.IsSet(profileName)) {
 		p := &Profile{ProfileName: profileName}
 		runtimeViper = p.deleteAuthFields(runtimeViper)
 		deleteLivemodeKey(LiveModeAPIKeyName, profileName)
@@ -549,12 +541,10 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 func (c *Config) RemoveAllAuthFields() error {
 	runtimeViper := viper.GetViper()
 
-	for field, value := range runtimeViper.AllSettings() {
-		if isProfile(value) {
-			p := &Profile{ProfileName: field}
-			runtimeViper = p.deleteAuthFields(runtimeViper)
-			deleteLivemodeKey(LiveModeAPIKeyName, field)
-		}
+	for _, entry := range listProfileEntries(runtimeViper) {
+		p := &Profile{ProfileName: entry.name}
+		runtimeViper = p.deleteAuthFields(runtimeViper)
+		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
 	}
 
 	deleteTopLevelLivemodeKey(UATKeychainItemKey)
@@ -595,8 +585,13 @@ func isNestedProfileName(profileName string) bool {
 	return profileName != "" && strings.Contains(profileName, ".")
 }
 
-// isProfile identifies whether a config entry pertains to a user profile.
-// A profile is a map that contains a display_name field.
+// isProfile identifies whether a top-level config entry pertains to a user
+// profile. At the top level a profile is indistinguishable from a settings table
+// except by its contents, so it is identified by its display_name field.
+//
+// Entries inside the v2 profiles table need no such guess: every table in there
+// is a profile by definition. Use listProfileEntries to enumerate profiles in a
+// way that covers both layouts.
 func isProfile(value interface{}) bool {
 	switch v := value.(type) {
 	case map[string]interface{}:
@@ -607,6 +602,136 @@ func isProfile(value interface{}) bool {
 		return ok
 	}
 	return false
+}
+
+// configVersion reports the schema version recorded in the config file. A v1
+// file has no config_version key, so it reports 0.
+func configVersion(v *viper.Viper) int {
+	return v.GetInt(ConfigVersionName)
+}
+
+// isMigrated reports whether the config file stores profiles in the v2 layout,
+// under the reserved profiles table. This release line never sets
+// config_version; it only recognizes a file that a v2 CLI already migrated.
+func isMigrated(v *viper.Viper) bool {
+	return configVersion(v) >= ConfigVersionV2
+}
+
+// profileTableKeyForWrite returns the key a whole profile table should be
+// written to, matching the layout the config file already uses.
+func profileTableKeyForWrite(v *viper.Viper, profileName string) string {
+	if isMigrated(v) {
+		return ProfilesTableName + "." + profileName
+	}
+
+	return profileName
+}
+
+// profileEntry is one profile found in the config file, in either layout.
+type profileEntry struct {
+	// name is the profile's name, e.g. "default". Keyring item IDs are prefixed
+	// with this name in both layouts, so it is what credential lookups need.
+	name string
+
+	// key is the viper key of the profile's table: "default" in a v1 file,
+	// "profiles.default" in a v2 file.
+	key string
+
+	// settings is the contents of the profile's table.
+	settings map[string]interface{}
+}
+
+// matches reports whether this entry is the profile the user named, either by
+// its table name or by its recorded profile_name.
+func (e profileEntry) matches(profileName string) bool {
+	if e.name == profileName {
+		return true
+	}
+
+	recorded, _ := e.settings["profile_name"].(string)
+
+	return recorded == profileName
+}
+
+// listProfileEntries returns every profile in the config file, reading both the
+// v2 profiles table and the v1 top level.
+//
+// Both layouts are scanned because a migrated file can still acquire a top-level
+// profile table: this CLI, and any plugin old enough not to know about the
+// profiles table, writes one. A v1 entry is skipped when a v2 profile of the
+// same name exists, so the migrated copy always wins, matching the read
+// precedence in ReadProfileString.
+func listProfileEntries(v *viper.Viper) []profileEntry {
+	settings := v.AllSettings()
+	entries := make([]profileEntry, 0, len(settings))
+	nestedNames := make(map[string]bool)
+
+	if nested, ok := toStringMap(settings[ProfilesTableName]); ok {
+		for name, value := range nested {
+			table, ok := toStringMap(value)
+			if !ok || !holdsProfileFields(table) {
+				continue
+			}
+
+			nestedNames[name] = true
+			entries = append(entries, profileEntry{
+				name:     name,
+				key:      ProfilesTableName + "." + name,
+				settings: table,
+			})
+		}
+	}
+
+	for name, value := range settings {
+		if name == ProfilesTableName || nestedNames[name] || !isProfile(value) {
+			continue
+		}
+
+		table, _ := toStringMap(value)
+		entries = append(entries, profileEntry{name: name, key: name, settings: table})
+	}
+
+	// AllSettings returns a map, so sort for stable output and stable ordering of
+	// the writes that follow.
+	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
+
+	return entries
+}
+
+// holdsProfileFields reports whether a table inside the profiles table is a
+// profile rather than a container of them.
+//
+// Viper splits keys on ".", so a hand-written profile whose name contains a
+// period reads back as nesting: profiles."a.b" becomes profiles -> a -> b. Every
+// profile field is a scalar, so requiring at least one keeps such a container
+// from being listed and removed as if it were a profile named "a". Migration
+// never produces one — it leaves a dotted profile at the top level, where the
+// existing by-name fallbacks handle it.
+func holdsProfileFields(table map[string]interface{}) bool {
+	for _, value := range table {
+		if _, isTable := toStringMap(value); !isTable {
+			return true
+		}
+	}
+
+	return false
+}
+
+// toStringMap normalizes the two map shapes viper hands back for a TOML table.
+func toStringMap(value interface{}) (map[string]interface{}, bool) {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		return v, true
+	case map[string]string:
+		normalized := make(map[string]interface{}, len(v))
+		for key, item := range v {
+			normalized[key] = item
+		}
+
+		return normalized, true
+	}
+
+	return nil, false
 }
 
 // WriteConfigField updates a configuration field and writes the updated
