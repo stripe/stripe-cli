@@ -499,6 +499,18 @@ func isProfile(value interface{}) bool {
 	return false
 }
 
+// configVersion reports the schema version recorded in the config file. A v1
+// file has no config_version key, so it reports 0.
+func configVersion(v *viper.Viper) int {
+	return v.GetInt(ConfigVersionName)
+}
+
+// isMigrated reports whether the config file stores profiles in the v2 layout,
+// under the reserved profiles table.
+func isMigrated(v *viper.Viper) bool {
+	return configVersion(v) >= ConfigVersionV2
+}
+
 // WriteConfigField updates a configuration field and writes the updated
 // configuration to disk.
 func (c *Config) WriteConfigField(field string, value interface{}) error {
