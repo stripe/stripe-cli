@@ -224,12 +224,12 @@ func (p *Profile) deleteAuthFields(v *viper.Viper) *viper.Viper {
 // GetColor gets the color setting for the user based on the flag or the
 // persisted color stored in the config file
 func (p *Profile) GetColor() (string, error) {
-	color := viper.GetString("color")
+	color := viper.GetString(ColorName)
 	if color != "" {
 		return color, nil
 	}
 
-	color = p.ReadProfileString("color")
+	color = p.ReadProfileString(ColorName)
 	switch color {
 	case "", ColorAuto:
 		return ColorAuto, nil
