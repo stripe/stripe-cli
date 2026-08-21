@@ -293,18 +293,6 @@ func TestRun_AutoInstall_ForwardsArgsToPlugin(t *testing.T) {
 			wantArgs: []string{"search", "x", "--limit", "5"},
 		},
 		{
-			name:     "typo alias forwards the remaining args untouched",
-			aliases:  []string{"direcotry"},                          //nolint:misspell // Intentional typo alias.
-			argv:     []string{"stripe", "direcotry", "search", "x"}, //nolint:misspell // Intentional typo alias.
-			wantArgs: []string{"search", "x"},
-		},
-		{
-			name:     "search alias restores the subcommand it stands in for",
-			aliases:  []string{"search"},
-			argv:     []string{"stripe", "search", "coffee shops"},
-			wantArgs: []string{"search", "coffee shops"},
-		},
-		{
 			name:     "bare invocation forwards no args",
 			argv:     []string{"stripe", "directory"},
 			wantArgs: []string{},
@@ -321,6 +309,59 @@ func TestRun_AutoInstall_ForwardsArgsToPlugin(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantArgs, ranWith)
+		})
+	}
+}
+
+// TestRun_AutoInstall_AliasPromptsInsteadOfInstalling pins the rule that fetching a
+// binary without asking requires the plugin's real name. An alias — a typo alias
+// especially — is too weak a signal to act on silently, so it falls back to the same
+// prompt every other not-yet-installed plugin uses.
+func TestRun_AutoInstall_AliasPromptsInsteadOfInstalling(t *testing.T) {
+	tests := []struct {
+		name        string
+		aliases     []string
+		argv        []string
+		wantInstall bool
+	}{
+		{
+			name:        "the real name installs without asking",
+			argv:        []string{"stripe", "directory", "search", "coffee shops"},
+			wantInstall: true,
+		},
+		{
+			name:    "subcommand alias asks first",
+			aliases: []string{"search"},
+			argv:    []string{"stripe", "search", "coffee shops"},
+		},
+		{
+			name:    "typo alias asks first",
+			aliases: []string{"direcotry"},                          //nolint:misspell // Intentional typo alias.
+			argv:    []string{"stripe", "direcotry", "search", "x"}, //nolint:misspell // Intentional typo alias.
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			// Declining at the prompt is how this test tells the two paths apart:
+			// auto-install never reads stdin.
+			p.stdin = strings.NewReader("no\n")
+			installed := false
+			p.installFn = func(ctx context.Context) error { installed = true; return nil }
+
+			err := runViaCobra(t, p, tt.aliases, tt.argv)
+
+			if tt.wantInstall {
+				require.NoError(t, err)
+				assert.True(t, installed)
+				assert.NotContains(t, p.output(), "press Enter")
+				return
+			}
+
+			assert.EqualError(t, err, "installation canceled")
+			assert.False(t, installed, "an alias must not install without asking")
+			assert.Contains(t, p.output(), "press Enter to install")
 		})
 	}
 }
@@ -519,20 +560,6 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 			argv:     []string{"stripe", "help", "directory", "search"},
 			wantArgs: []string{"search", "--help"},
 		},
-		{
-			name:     "alias standing in for a subcommand",
-			aliases:  []string{"search"},
-			argv:     []string{"stripe", "search", "--help"},
-			wantArgs: []string{"search", "--help"},
-		},
-		{
-			name:    "help subcommand on an alias still restores the subcommand",
-			aliases: []string{"search"},
-			argv:    []string{"stripe", "help", "search"},
-			// Cobra records CalledAs only for commands it executes, so the alias is
-			// recovered from argv instead of being lost.
-			wantArgs: []string{"search", "--help"},
-		},
 	}
 
 	for _, tt := range tests {
@@ -552,6 +579,35 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 			assert.NotContains(t, p.output(), "Test description.")
 			assert.Contains(t, p.errOutput(), "one-time setup")
 			assert.Contains(t, p.errOutput(), "directory@stripe.com")
+		})
+	}
+}
+
+// TestHelp_AutoInstall_AliasShowsPlaceholderHelpWithoutInstalling is the help-side
+// half of the rule in TestRun_AutoInstall_AliasPromptsInsteadOfInstalling: asking an
+// alias what it does must not download anything.
+func TestHelp_AutoInstall_AliasShowsPlaceholderHelpWithoutInstalling(t *testing.T) {
+	tests := []struct {
+		name string
+		argv []string
+	}{
+		{name: "help flag on an alias", argv: []string{"stripe", "search", "--help"}},
+		{name: "help subcommand on an alias", argv: []string{"stripe", "help", "search"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			installCalled := false
+			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
+			p.runPluginFn = func(cmd *cobra.Command, args []string) error { return nil }
+
+			err := runViaCobra(t, p, []string{"search"}, tt.argv)
+
+			require.NoError(t, err)
+			assert.False(t, installCalled, "help on an alias must not install the plugin")
+			assert.Contains(t, p.output(), "Test description.", "expected the placeholder help")
+			assert.Empty(t, p.errOutput())
 		})
 	}
 }

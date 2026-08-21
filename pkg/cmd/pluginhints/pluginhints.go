@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 
 	"github.com/spf13/afero"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
-	"github.com/stripe/stripe-cli/pkg/cmd/pluginalias"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -65,7 +66,15 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 			"Allow your agent to search and provision tools and services. Learn more: https://stripe.directory",
 			withAutoInstall(runPlugin),
 		).Command
-		directoryCmd.Aliases = pluginalias.For("directory").Names
+		// These aliases only make the command discoverable through a near miss; they
+		// do not auto-install. See invokedByName.
+		directoryCmd.Aliases = []string{
+			"search",
+			"directry",
+			"directary",
+			"direcotry", //nolint:misspell // Intentional typo alias.
+			"diretory",
+		}
 		rootCmd.AddCommand(
 			directoryCmd,
 		)
@@ -213,8 +222,8 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 
 	if err := p.lookupFn(ctx); err == nil {
 		switch {
-		case p.autoInstall:
-			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs(cmd))
+		case p.autoInstall && p.invokedByName(cmd):
+			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs())
 		default:
 			return p.promptInstall(ctx)
 		}
@@ -245,8 +254,10 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 
 	p.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		// Without a runner there is nothing to hand the help request to, so installing
-		// would not produce better help than the placeholder already gives.
-		if p.runPluginFn == nil {
+		// would not produce better help than the placeholder already gives. Reaching
+		// help through an alias is likewise not a clear enough signal to fetch a
+		// binary, so let the placeholder answer that too.
+		if p.runPluginFn == nil || !p.invokedByName(cmd) {
 			placeholderHelp(cmd, args)
 			return
 		}
@@ -277,7 +288,7 @@ func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) 
 		return err
 	}
 
-	return p.autoInstallAndRun(ctx, cmd, p.helpArgs(cmd, cobraArgs))
+	return p.autoInstallAndRun(ctx, cmd, p.helpArgs(cobraArgs))
 }
 
 // autoInstallAndRun installs the plugin without prompting and then runs the
@@ -329,18 +340,37 @@ func (p *pluginHintCmd) autoInstallOptedOut() bool {
 }
 
 // pluginArgs recovers the arguments intended for the plugin from the raw process
-// arguments, sharing the alias handling with the command registered once the
-// plugin is installed.
-func (p *pluginHintCmd) pluginArgs(cmd *cobra.Command) []string {
-	return pluginalias.PluginArgs(p.argvFn(), cmd, p.name)
+// arguments. Cobra has already consumed the flags and the plugin name it
+// recognizes, so read them back from argv instead:
+// "stripe [host_flags...] directory [plugin_args...]" => "[plugin_args...]".
+//
+// Only the auto-install path forwards arguments, and invokedByName gates that on
+// the plugin's own name appearing in argv, so slicing after p.name is enough.
+func (p *pluginHintCmd) pluginArgs() []string {
+	return cmdutil.ArgsAfter(p.argvFn(), p.name)
+}
+
+// invokedByName reports whether the user reached this command by the plugin's real
+// name rather than through one of its aliases. Installing a binary without asking
+// is only reasonable when there is no doubt about what was meant, and an alias —
+// a typo alias especially — leaves that doubt, so aliases fall back to the same
+// prompt every other not-yet-installed plugin uses.
+func (p *pluginHintCmd) invokedByName(cmd *cobra.Command) bool {
+	if cmd != nil && cmd.CalledAs() != "" {
+		return cmd.CalledAs() == p.name
+	}
+
+	// Cobra records no CalledAs on the target of `stripe help <cmd>`, so read the
+	// name the user typed back from argv.
+	return slices.Contains(p.argvFn(), p.name)
 }
 
 // helpArgs builds the arguments that make the plugin print the help the user asked
 // for. Cobra passes the raw arguments through when help was requested with a flag,
 // but passes none when it came from the `help` subcommand — and in that case argv
 // holds no help flag for the plugin to act on, so one has to be added.
-func (p *pluginHintCmd) helpArgs(cmd *cobra.Command, cobraArgs []string) []string {
-	args := p.pluginArgs(cmd)
+func (p *pluginHintCmd) helpArgs(cobraArgs []string) []string {
+	args := p.pluginArgs()
 
 	if len(cobraArgs) == 0 {
 		// "stripe help directory [plugin_subcommands...]" => "[plugin_subcommands...] --help"

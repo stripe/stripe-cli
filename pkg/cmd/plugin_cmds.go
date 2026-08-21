@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/cmd/pluginalias"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -49,12 +49,10 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		Use:   plugin.Shortname,
 		Short: plugin.Shortdesc,
 		Long:  plugin.Description,
-		// Answer to the same aliases the hint command does, so an alias keeps working
-		// once the plugin it stands in for is installed.
-		Aliases: pluginalias.For(plugin.Shortname).Names,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// "stripe [host_flags...] plugin_name [plugin_subcommands...] [plugin_flags...]" => "[plugin_subcommands...] [plugin_flags...]"
-			return ptc.runPluginCmdFn(cmd, pluginalias.PluginArgs(os.Args, cmd, plugin.Shortname))
+			pluginArgs := cmdutil.ArgsAfter(os.Args, cmd.Name())
+			return ptc.runPluginCmdFn(cmd, pluginArgs)
 		},
 		Annotations: map[string]string{"scope": "plugin"},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -64,14 +62,15 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 
 	// override the CLI's help command and let the plugin supply the help text instead
 	ptc.cmd.SetHelpFunc(func(c *cobra.Command, s []string) {
-		// "stripe plugin_name [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
-		args := pluginalias.PluginArgs(os.Args, c, plugin.Shortname)
+		var args []string
 		if len(s) == 0 {
-			// Cobra passes no arguments when help came from the `help` subcommand, and
-			// in that case argv holds no help flag for the plugin to act on:
 			// "stripe help plugin_name [plugin_subcommands...]" => "[plugin_subcommands...] --help"
+			args = cmdutil.ArgsAfter(os.Args, c.Name())
 			args = append(args, "--help")
 			c.SetContext(context.Background())
+		} else {
+			// "stripe plugin_name [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
+			args = cmdutil.ArgsAfter(s, c.Name())
 		}
 		ptc.runPluginCmdFn(c, args)
 	})
@@ -94,9 +93,7 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 			Use:   ci.Name,
 			Short: ci.Desc,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				// Resolve against the plugin root, not this stub, so argv is sliced
-				// after the plugin name and the stub's own name stays in the args.
-				pluginArgs := pluginalias.PluginArgs(os.Args, ptc.cmd, ptc.cmd.Name())
+				pluginArgs := cmdutil.ArgsAfter(os.Args, ptc.cmd.Name())
 				return ptc.runPluginCmdFn(cmd, pluginArgs)
 			},
 			Annotations: map[string]string{"scope": "plugin"},
@@ -195,7 +192,7 @@ func resolvePluginTelemetryCommandPath(cmd *cobra.Command, argv []string) string
 		return basePath
 	}
 
-	pluginArgs := pluginalias.PluginArgs(argv, pluginRoot, pluginRoot.Name())
+	pluginArgs := cmdutil.ArgsAfter(argv, pluginRoot.Name())
 	subcommand := firstPluginTelemetrySubcommand(pluginArgs)
 	if subcommand == "" {
 		return basePath
