@@ -263,14 +263,30 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 
 // parseDocsRef converts command-line arguments into a URL reference for FetchPage.
 //
-// If the first argument is a full docs.stripe.com URL, its path and query
-// string are extracted. Otherwise the arguments are joined as a path fragment,
-// prefixing a leading "/" if absent.
+// docs.stripe.com URLs are converted to path references, while support.stripe.com
+// URLs retain their host so FetchPage can route them directly. Other inputs are
+// treated as docs.stripe.com path fragments.
 func parseDocsRef(args []string) *url.URL {
 	first := args[0]
 	if u, err := url.Parse(first); err == nil && u.Host == "docs.stripe.com" {
 		return &url.URL{Path: u.Path, RawQuery: u.RawQuery, Fragment: u.Fragment}
 	}
+
+	supportRef, supportErr := url.Parse(first)
+	if supportErr == nil && supportRef.Host == "" {
+		supportRef, supportErr = url.Parse("//" + first)
+	}
+	if supportErr == nil && supportRef.Host == "support.stripe.com" &&
+		(supportRef.Scheme == "" || supportRef.Scheme == "http" || supportRef.Scheme == "https") {
+		return &url.URL{
+			Scheme:   "https",
+			Host:     supportRef.Host,
+			Path:     supportRef.Path,
+			RawQuery: supportRef.RawQuery,
+			Fragment: supportRef.Fragment,
+		}
+	}
+
 	path := first
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + strings.Join(args, "/")
