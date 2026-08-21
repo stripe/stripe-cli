@@ -26,10 +26,10 @@ func NewAutoUpdateCmd(cfg *config.Config) *AutoUpdateCmd {
 	ac.Cmd = &cobra.Command{
 		Use:   "auto-update [plugin]",
 		Short: "Enable or disable automatic updates for a plugin",
-		Long: `Enable or disable automatic background updates for a plugin.
+		Long: `Enable or disable automatic updates for a plugin.
 
-By default, automatic updates are disabled. When disabled, the CLI will not check
-for or download newer versions automatically.
+By default, automatic updates are disabled. When disabled, the CLI will notify you
+about newer versions but will not download them automatically.
 Omit the plugin name to apply the setting globally to all plugins.`,
 		Example: `stripe plugin auto-update --enable
   stripe plugin auto-update --disable

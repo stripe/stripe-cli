@@ -23,9 +23,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 
 	hclog "github.com/hashicorp/go-hclog"
 	hcplugin "github.com/hashicorp/go-plugin"
+	goversion "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
@@ -63,10 +65,11 @@ type PluginList struct {
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string `toml:"Arch" json:"arch"`
-	OS      string `toml:"OS" json:"os"`
-	Version string `toml:"Version" json:"version"`
-	Sum     string `toml:"Sum" json:"sum,omitempty"`
+	Arch           string `toml:"Arch" json:"arch"`
+	OS             string `toml:"OS" json:"os"`
+	Version        string `toml:"Version" json:"version"`
+	Sum            string `toml:"Sum" json:"sum,omitempty"`
+	MinCoreVersion string `toml:"MinCoreVersion,omitempty" json:"min_core_version,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -214,6 +217,61 @@ func (p *Plugin) LookUpLatestVersion() string {
 	return version
 }
 
+// isCompatibleWithCore reports whether this release can run on the given CLI core version.
+// Returns true if MinCoreVersion is empty, coreVersion is "master" (dev builds are never blocked),
+// or coreVersion >= MinCoreVersion. Fails open on parse errors.
+func (r Release) isCompatibleWithCore(coreVersion string) bool {
+	if r.MinCoreVersion == "" {
+		return true
+	}
+	if coreVersion == "master" {
+		return true
+	}
+
+	minV, err := goversion.NewVersion(r.MinCoreVersion)
+	if err != nil {
+		return true
+	}
+	coreV, err := goversion.NewVersion(coreVersion)
+	if err != nil {
+		return true
+	}
+
+	return coreV.GreaterThanOrEqual(minV)
+}
+
+// LookUpLatestCompatibleVersion returns the highest release version for the current OS/arch
+// that is compatible with the given CLI core version. Returns empty string if no compatible
+// release is found.
+func (p *Plugin) LookUpLatestCompatibleVersion(coreVersion string) string {
+	opsystem := runtime.GOOS
+	arch := runtime.GOARCH
+
+	var best string
+	for _, pkg := range p.Releases {
+		if pkg.OS == opsystem && pkg.Arch == arch && pkg.isCompatibleWithCore(coreVersion) {
+			if best == "" || comparePluginVersions(pkg.Version, best) > 0 {
+				best = pkg.Version
+			}
+		}
+	}
+
+	return best
+}
+
+func (p *Plugin) validateCoreCompatibility(version, coreVersion string) error {
+	release := p.getReleaseForVersion(version)
+	if release == nil || release.isCompatibleWithCore(coreVersion) {
+		return nil
+	}
+
+	return errorcategory.Errorf(
+		errorcategory.UserInput,
+		"plugin %s v%s requires Stripe CLI >= %s (you have %s); upgrade the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade",
+		p.Shortname, version, release.MinCoreVersion, coreVersion,
+	)
+}
+
 // getReleaseForVersion finds the release object for a specific version on the current platform
 func (p *Plugin) getReleaseForVersion(version string) *Release {
 	return p.getRelease(version, runtime.GOOS, runtime.GOARCH)
@@ -285,11 +343,11 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 
 // Install installs the plugin of the given version.
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string) error {
-	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false)
+	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false, os.Stdout)
 }
 
-func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
-	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, output io.Writer) error {
+	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), output)
 
 	creds, _ := cfg.GetProfile().ResolveCredentialsForAnyMode(false)
 	apiKey := creds.Token
@@ -326,7 +384,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		} else {
 			pluginFromMetadata, err := p.pluginFromMetadata(pluginMetadata.PluginManifest)
 			if err != nil {
-				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), output)
 				return err
 			}
 
@@ -335,8 +393,13 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		}
 	}
 
+	if err := pluginToInstall.validateCoreCompatibility(version, cliversion.Version); err != nil {
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), output)
+		return err
+	}
+
 	if pluginDownloadURL == "" {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), output)
 		if metadataLookupErr != nil {
 			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
 		}
@@ -344,8 +407,8 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Pull down bin, verify, and save to disk
-	if err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version); err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+	if err := pluginToInstall.downloadAndSavePlugin(ctx, cfg, pluginDownloadURL, fs, version); err != nil {
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), output)
 		return err
 	}
 
@@ -362,14 +425,14 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 			}).Debugf("could not clean up plugin after local metadata write failure: %s", cleanupErr)
 		}
 
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), output)
 		return err
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
 	p.cleanUpPluginPath(cfg, fs, version)
 
-	ansi.StopSpinner(spinner, "", os.Stdout)
+	ansi.StopSpinner(spinner, "", output)
 
 	return nil
 }
@@ -432,8 +495,8 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 	return nil
 }
 
-func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
-	body, err := FetchRemoteResource(pluginDownloadURL)
+func (p *Plugin) downloadAndSavePlugin(ctx context.Context, config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
+	body, err := fetchRemoteResource(ctx, pluginDownloadURL)
 	if err != nil {
 		return err
 	}
@@ -587,6 +650,12 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			if err := resolvedPlugin.Install(ctx, config, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
 				return err
 			}
+		}
+	}
+
+	if !isLocalDevelopmentVersion(version) {
+		if err := p.validateCoreCompatibility(version, cliversion.Version); err != nil {
+			return err
 		}
 	}
 

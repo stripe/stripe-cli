@@ -1,5 +1,7 @@
 package config
 
+import "github.com/spf13/viper"
+
 const (
 	// PluginConfigGlobalScope is used as the scope when a setting applies to all plugins.
 	PluginConfigGlobalScope = "__global"
@@ -26,4 +28,17 @@ func isPluginConfigSection(v interface{}) bool {
 // Example: PluginConfigKey("apps", "updates") to read or set the updates setting for the "apps" plugin
 func PluginConfigKey(scope, field string) string {
 	return "plugin_configs." + scope + "." + field
+}
+
+// PluginAutoUpdateEnabled reports whether automatic updates are enabled for a
+// plugin. A plugin-specific setting takes precedence over the global setting.
+// Automatic updates default to disabled when neither setting is present.
+func (c *Config) PluginAutoUpdateEnabled(pluginName string) bool {
+	pluginKey := PluginConfigKey(pluginName, PluginConfigUpdatesField)
+	if viper.IsSet(pluginKey) {
+		return viper.GetString(pluginKey) == "on"
+	}
+
+	globalKey := PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField)
+	return viper.GetString(globalKey) == "on"
 }

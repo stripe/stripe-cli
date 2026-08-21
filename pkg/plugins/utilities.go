@@ -31,6 +31,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 )
 
 type installedPluginStateSnapshot struct {
@@ -51,9 +52,28 @@ type ResolvedPluginVersion struct {
 // checkLatestPluginVersionResolver is swappable for test injection.
 var checkLatestPluginVersionResolver = ResolvePluginForUpgrade
 
+// getPluginMetadata is swappable for test injection.
+var getPluginMetadata = requests.GetPluginMetadata
+
+// automaticPluginInstaller is swappable for test injection.
+// Progress goes to stderr so the download is visible without disturbing the
+// stdout the plugin command already produced.
+var automaticPluginInstaller = func(ctx context.Context, resolvedPlugin *ResolvedPluginVersion, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+	return resolvedPlugin.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, os.Stderr)
+}
+
 // checkLatestPluginVersionTimeout bounds the best-effort upgrade hint lookup so
 // plugin commands do not hang on exit when the metadata endpoint is slow.
 var checkLatestPluginVersionTimeout = 2 * time.Second
+
+// automaticPluginUpdateTimeout prevents an automatic download from delaying
+// command exit indefinitely.
+var automaticPluginUpdateTimeout = 30 * time.Second
+
+// automaticPluginUpdateRetryInterval throttles automatic updates after a failed
+// attempt. Without it, an update that keeps failing (blocked CDN, bad checksum,
+// slow link) would spend automaticPluginUpdateTimeout on every plugin command.
+var automaticPluginUpdateRetryInterval = 6 * time.Hour
 
 // ValidatePluginShortname rejects names that could escape the plugin install or
 // metadata directories when joined onto local filesystem paths.
@@ -81,6 +101,10 @@ func ValidatePluginShortname(pluginName string) error {
 // metadata request. Otherwise it retries metadata during install so cached
 // local metadata can still recover fresh release details.
 func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+	return r.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, os.Stdout)
+}
+
+func (r *ResolvedPluginVersion) install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, output io.Writer) error {
 	switch {
 	case r == nil:
 		return errorcategory.New(errorcategory.Internal, "missing resolved plugin version")
@@ -89,7 +113,7 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
-		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "")
+		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", output)
 	}
 }
 
@@ -529,13 +553,16 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	if cachedErr == nil {
 		resolvedVersion := version
 		if resolvedVersion == "" {
-			resolvedVersion = cachedPlugin.LookUpLatestVersion()
+			resolvedVersion = cachedPlugin.LookUpLatestCompatibleVersion(cliversion.Version)
 		}
 		if resolvedVersion == "" {
-			return nil, errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
+			return nil, errorcategory.Errorf(errorcategory.API, "plugin %s has no release compatible with Stripe CLI %s on %s/%s", pluginName, cliversion.Version, runtime.GOOS, runtime.GOARCH)
 		}
 		if cachedPlugin.getReleaseForVersion(resolvedVersion) == nil {
 			return nil, errorcategory.Errorf(errorcategory.API, "cached plugin metadata did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+		}
+		if err := cachedPlugin.validateCoreCompatibility(resolvedVersion, cliversion.Version); err != nil {
+			return nil, err
 		}
 
 		return &ResolvedPluginVersion{
@@ -671,7 +698,14 @@ func selectPluginForUpgrade(localPlugin, manifestPlugin *Plugin) *Plugin {
 		return mergePluginMetadata(manifestPlugin, nil)
 	case manifestPlugin == nil:
 		return mergePluginMetadata(localPlugin, nil)
-	case comparePluginVersions(localPlugin.LookUpLatestVersion(), manifestPlugin.LookUpLatestVersion()) >= 0:
+	// Compare the newest *compatible* release in each source. Comparing the
+	// newest release outright can hand the merge to a source whose latest this
+	// CLI cannot run, and mergePluginMetadata takes Releases from the primary
+	// only, so the other source's compatible releases would be discarded.
+	case comparePluginVersions(
+		localPlugin.LookUpLatestCompatibleVersion(cliversion.Version),
+		manifestPlugin.LookUpLatestCompatibleVersion(cliversion.Version),
+	) >= 0:
 		return mergePluginMetadata(localPlugin, manifestPlugin)
 	default:
 		return mergePluginMetadata(manifestPlugin, localPlugin)
@@ -790,7 +824,7 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		basePlugin = &cachedPlugin
 	}
 
-	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
+	pluginMetadata, err := getPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return nil, err
 	}
@@ -800,15 +834,44 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		return nil, err
 	}
 
-	resolvedVersion := version
+	requestedVersion := version
+	resolvedVersion := requestedVersion
 	if resolvedVersion == "" {
-		resolvedVersion = plugin.LookUpLatestVersion()
+		resolvedVersion = plugin.LookUpLatestCompatibleVersion(cliversion.Version)
 	}
 	if resolvedVersion == "" {
-		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
+		return nil, errorcategory.Errorf(errorcategory.API, "plugin %s has no release compatible with Stripe CLI %s on %s/%s", pluginName, cliversion.Version, runtime.GOOS, runtime.GOARCH)
 	}
 	if plugin.getReleaseForVersion(resolvedVersion) == nil {
 		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	}
+	if err := plugin.validateCoreCompatibility(resolvedVersion, cliversion.Version); err != nil {
+		return nil, err
+	}
+
+	// An unversioned metadata request returns the binary URL for the registry's
+	// latest release. If that release is too new for this CLI, fetch the selected
+	// compatible version explicitly so the URL and checksum refer to the same
+	// artifact.
+	if requestedVersion == "" && resolvedVersion != plugin.LookUpLatestVersion() {
+		exactMetadata, err := getPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+		if err != nil {
+			return nil, err
+		}
+
+		exactPlugin, err := basePlugin.pluginFromMetadata(exactMetadata.PluginManifest)
+		if err != nil {
+			return nil, err
+		}
+		if exactPlugin.getReleaseForVersion(resolvedVersion) == nil {
+			return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+		}
+		if err := exactPlugin.validateCoreCompatibility(resolvedVersion, cliversion.Version); err != nil {
+			return nil, err
+		}
+
+		plugin = exactPlugin
+		pluginMetadata = exactMetadata
 	}
 
 	return &ResolvedPluginVersion{
@@ -839,9 +902,9 @@ func getLatestResolvedPluginVersion(pluginName string, plugin *Plugin) (string, 
 		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
 	}
 
-	version := plugin.LookUpLatestVersion()
+	version := plugin.LookUpLatestCompatibleVersion(cliversion.Version)
 	if version == "" {
-		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
+		return "", errorcategory.Errorf(errorcategory.API, "plugin %s has no release compatible with Stripe CLI %s on %s/%s", pluginName, cliversion.Version, runtime.GOOS, runtime.GOARCH)
 	}
 
 	return version, nil
@@ -1048,9 +1111,17 @@ func (e *ErrPluginNotFound) Error() string {
 
 // FetchRemoteResource returns the remote resource body
 func FetchRemoteResource(url string) ([]byte, error) {
+	return fetchRemoteResource(context.Background(), url)
+}
+
+func fetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	t := &requests.TracedTransport{}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		return nil, err
@@ -1089,8 +1160,9 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	return body, nil
 }
 
-// CheckLatestPluginVersion prints an upgrade hint to stderr if live metadata
-// has a newer version of the plugin than what is currently installed.
+// CheckLatestPluginVersion checks live metadata after a successful plugin
+// command. It installs a newer compatible release when automatic updates are
+// enabled, otherwise it prints the existing manual-upgrade hint.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
 	if PluginsPath != "" {
 		return
@@ -1109,29 +1181,142 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 		ctx = context.Background()
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, checkLatestPluginVersionTimeout)
-	defer cancel()
+	lookupCtx, cancel := context.WithTimeout(ctx, checkLatestPluginVersionTimeout)
+	resolvedPlugin, err := checkLatestPluginVersionResolver(lookupCtx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
+	cancel()
 
-	resolvedPlugin, err := checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
 	if err != nil {
+		return
+	}
+	if resolvedPlugin == nil {
 		return
 	}
 
 	latestVersion := resolvedPlugin.Version
 	if latestVersion == "" && resolvedPlugin.Plugin != nil {
-		latestVersion = resolvedPlugin.Plugin.LookUpLatestVersion()
+		latestVersion = resolvedPlugin.Plugin.LookUpLatestCompatibleVersion(cliversion.Version)
 	}
 	if latestVersion == "" {
 		return
 	}
 
-	if comparePluginVersions(installedVersion, latestVersion) < 0 {
-		c := ansi.Color(os.Stderr)
-		msg := fmt.Sprintf(
-			"A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.",
-			plugin.Shortname, installedVersion, latestVersion, plugin.Shortname,
-		)
-		fmt.Fprintln(os.Stderr, c.Yellow(msg).String())
+	if comparePluginVersions(installedVersion, latestVersion) >= 0 {
+		return
+	}
+
+	if pluginAutoUpdateEnabled(config, plugin.Shortname) && !autoUpdateOnCooldown(config, fs, plugin.Shortname) {
+		updateCtx, cancelUpdate := context.WithTimeout(ctx, automaticPluginUpdateTimeout)
+		err := automaticPluginInstaller(updateCtx, resolvedPlugin, config, fs, apiBaseURL, dashboardBaseURL)
+		cancelUpdate()
+
+		if err == nil {
+			clearAutoUpdateFailure(config, fs, plugin.Shortname)
+
+			c := ansi.Color(os.Stderr)
+			msg := fmt.Sprintf("Automatically updated the %s plugin (v%s → v%s).", plugin.Shortname, installedVersion, latestVersion)
+			fmt.Fprintln(os.Stderr, c.Green(msg).String())
+			return
+		}
+
+		// A canceled parent context means the user interrupted the command, which
+		// says nothing about whether the update would have succeeded.
+		if ctx.Err() == nil {
+			recordAutoUpdateFailure(config, fs, plugin.Shortname)
+		}
+
+		log.WithFields(log.Fields{
+			"prefix": "plugins.CheckLatestPluginVersion",
+			"plugin": plugin.Shortname,
+			"from":   installedVersion,
+			"to":     latestVersion,
+		}).Debugf("automatic plugin update failed: %s", err)
+	}
+
+	c := ansi.Color(os.Stderr)
+	msg := fmt.Sprintf(
+		"A newer version of the %s plugin is available (v%s → v%s). Run `stripe plugin upgrade %s` to update.",
+		plugin.Shortname, installedVersion, latestVersion, plugin.Shortname,
+	)
+	fmt.Fprintln(os.Stderr, c.Yellow(msg).String())
+}
+
+type pluginAutoUpdateConfig interface {
+	PluginAutoUpdateEnabled(pluginName string) bool
+}
+
+func pluginAutoUpdateEnabled(config config.IConfig, pluginName string) bool {
+	settings, ok := config.(pluginAutoUpdateConfig)
+	if !ok {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.pluginAutoUpdateEnabled",
+			"plugin": pluginName,
+		}).Debugf("config type %T cannot report automatic update settings; treating automatic updates as disabled", config)
+		return false
+	}
+
+	return settings.PluginAutoUpdateEnabled(pluginName)
+}
+
+// autoUpdateFailureStampPath is the marker file recording the last failed
+// automatic update for a plugin. Its modification time drives the retry
+// cooldown, so no contents are needed.
+func autoUpdateFailureStampPath(config config.IConfig, pluginName string) (string, error) {
+	if err := ValidatePluginShortname(pluginName); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(getLocalPluginMetadataDir(config), pluginName+".update-failed"), nil
+}
+
+// autoUpdateOnCooldown reports whether a recent failed automatic update should
+// suppress another attempt.
+func autoUpdateOnCooldown(config config.IConfig, fs afero.Fs, pluginName string) bool {
+	stampPath, err := autoUpdateFailureStampPath(config, pluginName)
+	if err != nil {
+		return false
+	}
+
+	info, err := fs.Stat(stampPath)
+	if err != nil {
+		return false
+	}
+
+	return time.Since(info.ModTime()) < automaticPluginUpdateRetryInterval
+}
+
+func recordAutoUpdateFailure(config config.IConfig, fs afero.Fs, pluginName string) {
+	logger := log.WithFields(log.Fields{
+		"prefix": "plugins.recordAutoUpdateFailure",
+		"plugin": pluginName,
+	})
+
+	stampPath, err := autoUpdateFailureStampPath(config, pluginName)
+	if err != nil {
+		logger.Debugf("could not determine automatic update cooldown path: %s", err)
+		return
+	}
+
+	if err := fs.MkdirAll(filepath.Dir(stampPath), 0755); err != nil {
+		logger.Debugf("could not create plugin metadata directory: %s", err)
+		return
+	}
+
+	if err := afero.WriteFile(fs, stampPath, nil, 0644); err != nil {
+		logger.Debugf("could not record automatic update cooldown: %s", err)
+	}
+}
+
+func clearAutoUpdateFailure(config config.IConfig, fs afero.Fs, pluginName string) {
+	stampPath, err := autoUpdateFailureStampPath(config, pluginName)
+	if err != nil {
+		return
+	}
+
+	if err := fs.Remove(stampPath); err != nil && !os.IsNotExist(err) {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.clearAutoUpdateFailure",
+			"plugin": pluginName,
+		}).Debugf("could not clear automatic update cooldown: %s", err)
 	}
 }
 
