@@ -226,28 +226,6 @@ func TestCommandContextOrBackgroundFallsBackToBackground(t *testing.T) {
 	assert.Equal(t, context.Background(), commandContextOrBackground(cmd))
 }
 
-func TestSubsliceAfter(t *testing.T) {
-	tests := []struct {
-		name     string
-		expected []string
-		sl       []string
-		str      string
-	}{
-		{"empty slice", []string{}, []string{}, "foo"},
-		{"empty string", []string{}, []string{""}, ""},
-		{"not found", []string{}, []string{"bar"}, "foo"},
-		{"found at beginning", []string{"bar"}, []string{"foo", "bar"}, "foo"},
-		{"found at middle", []string{"baz", "qux"}, []string{"foo", "bar", "baz", "qux"}, "bar"},
-		{"found at end", []string{}, []string{"foo", "bar"}, "bar"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, subsliceAfter(tt.sl, tt.str))
-		})
-	}
-}
-
 func TestResolvePluginTelemetryCommandPathAddsFirstPluginSubcommand(t *testing.T) {
 	root := &cobra.Command{Use: "stripe"}
 	pluginCmd := &cobra.Command{
