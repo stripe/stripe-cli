@@ -1,0 +1,68 @@
+version: 2
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+project_name: stripe
+builds:
+  - id: stripe-darwin
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=1
+    main: ./cmd/stripe/main.go
+    goos:
+      - darwin
+    goarch:
+      - amd64
+  - id: stripe-darwin-arm
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=1
+    main: ./cmd/stripe/main.go
+    goos:
+      - darwin
+    goarch:
+      - arm64
+archives:
+  - name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin"}}mac-os
+      {{- else }}{{ .Os }}{{end}}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - none*
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
+      ids:
+        - stripe-darwin
+        - stripe-darwin-arm
+      sign:
+        certificate: "{{.Env.MACOS_SIGN_P12}}"
+        password: "{{.Env.MACOS_SIGN_PASSWORD}}"
+      notarize:
+        issuer_id: "{{.Env.MACOS_NOTARY_ISSUER_ID}}"
+        key_id: "{{.Env.MACOS_NOTARY_KEY_ID}}"
+        key: "{{.Env.MACOS_NOTARY_KEY}}"
+        wait: true
+        timeout: 20m
+checksum:
+  name_template: "{{ .ProjectName }}-mac-checksums.txt"
+release:
+  replace_existing_artifacts: true
+  make_latest: false
+snapshot:
+  version_template: "{{ .Version }}-next"

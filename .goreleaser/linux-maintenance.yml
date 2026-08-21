@@ -1,0 +1,111 @@
+version: 2
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+project_name: stripe
+builds:
+  - id: stripe-linux
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/stripe/main.go
+    goos:
+      - linux
+    goarch:
+      - amd64
+  - id: stripe-linux-arm
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/stripe/main.go
+    goos:
+      - linux
+    goarch:
+      - arm64
+archives:
+  - name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_
+      {{- if eq .Arch "386" }}i386
+      {{- else if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - none*
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+checksum:
+  name_template: "{{ .ProjectName }}-linux-checksums.txt"
+release:
+  replace_existing_artifacts: true
+  make_latest: false
+snapshot:
+  version_template: "{{ .Version }}-next"
+# Maintenance packages remain available as versioned release assets without
+# updating package repositories.
+nfpms:
+  - id: deb
+    package_name: stripe
+    vendor: Stripe
+    homepage: https://stripe.com
+    maintainer: Stripe <support@stripe.com>
+    description: Stripe CLI utility
+    license: Apache 2.0
+    formats:
+      - deb
+  - id: rpm
+    package_name: stripe
+    vendor: Stripe
+    homepage: https://stripe.com
+    maintainer: Stripe <support@stripe.com>
+    description: Stripe CLI utility
+    license: Apache 2.0
+    formats:
+      - rpm
+dockers:
+  - use: buildx
+    goos: linux
+    goarch: amd64
+    ids:
+      - stripe-linux
+    image_templates:
+      - "stripe/stripe-cli:{{ .Tag }}-amd64"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=repository=https://github.com/stripe/stripe-cli"
+      - "--label=homepage=https://stripe.com"
+      - "--platform=linux/amd64"
+  - use: buildx
+    goos: linux
+    goarch: arm64
+    ids:
+      - stripe-linux-arm
+    image_templates:
+      - "stripe/stripe-cli:{{ .Tag }}-arm64"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=repository=https://github.com/stripe/stripe-cli"
+      - "--label=homepage=https://stripe.com"
+      - "--platform=linux/arm64/v8"
+docker_manifests:
+  - name_template: "stripe/stripe-cli:{{ .Tag }}"
+    image_templates:
+      - "stripe/stripe-cli:{{ .Tag }}-amd64"
+      - "stripe/stripe-cli:{{ .Tag }}-arm64"
