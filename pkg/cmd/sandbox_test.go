@@ -30,12 +30,14 @@ func setupSandboxTestConfig(t *testing.T) func() {
 
 	origProfilesFile := Config.ProfilesFile
 	origProfileName := Config.Profile.ProfileName
+	origAPIKey := Config.Profile.APIKey
 	origKeyRing := config.KeyRing
 
 	viper.Reset()
 	os.WriteFile(profilesFile, []byte("[default]\n"), 0600)
 	Config.ProfilesFile = profilesFile
 	Config.Profile.ProfileName = "default"
+	Config.Profile.APIKey = ""
 	Config.Profile.TestModeAPIKey = ""
 	Config.InitConfig()
 	config.KeyRing = keyring.NewMemoryStore(nil)
@@ -56,6 +58,7 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	return func() {
 		Config.ProfilesFile = origProfilesFile
 		Config.Profile.ProfileName = origProfileName
+		Config.Profile.APIKey = origAPIKey
 		config.KeyRing = origKeyRing
 		openBrowserFunc = origOpen
 		canOpenBrowserFunc = origCanOpen
@@ -131,6 +134,64 @@ func dashboardServer(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
+}
+
+const activeClaimableSandboxAPIKey = "rkcs_test_claim_status"
+
+type claimStatusRequest struct {
+	Method  string
+	Path    string
+	Auth    string
+	Version string
+}
+
+func newClaimStatusServer(t *testing.T, statusCode int, body string, recs *[]claimStatusRequest) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if recs != nil {
+			*recs = append(*recs, claimStatusRequest{
+				Method:  r.Method,
+				Path:    r.URL.Path,
+				Auth:    r.Header.Get("Authorization"),
+				Version: r.Header.Get("Stripe-Version"),
+			})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		_, _ = w.Write([]byte(body))
+	}))
+}
+
+func setupActiveClaimableSandbox(t *testing.T, claimURL, expiresAt string) {
+	t.Helper()
+	Config.Profile.APIKey = activeClaimableSandboxAPIKey
+	Config.Profile.AccountID = "acct_sandbox_123"
+	require.NoError(t, Config.Profile.WriteConfigField(config.TestModeAPIKeyName, activeClaimableSandboxAPIKey))
+	if claimURL != "" {
+		require.NoError(t, Config.Profile.WriteConfigField(config.SandboxClaimURLName, claimURL))
+	}
+	if expiresAt != "" {
+		require.NoError(t, Config.Profile.WriteConfigField(config.SandboxExpiresAtName, expiresAt))
+	}
+}
+
+func captureStdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	defer func() {
+		os.Stdout = old
+	}()
+
+	runErr := fn()
+	require.NoError(t, w.Close())
+
+	var buf bytes.Buffer
+	_, copyErr := buf.ReadFrom(r)
+	require.NoError(t, copyErr)
+	return buf.String(), runErr
 }
 
 func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
@@ -367,25 +428,27 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
-	// Simulate having an existing active sandbox key
-	Config.Profile.TestModeAPIKey = "rkcs_test_existing_sandbox"
-	Config.Profile.AccountID = "acct_old_sandbox"
-	Config.Profile.CreateProfile()
+	const claimURL = "https://dashboard.stripe.com/onboard_sandbox/existing"
+	setupActiveClaimableSandbox(t, claimURL, "2099-01-01")
+
+	var recs []claimStatusRequest
+	server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, &recs)
+	defer server.Close()
 
 	cmd := newSandboxCreateCmd()
-	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com"})
+	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--api-base", server.URL})
 
-	var stdout, stderr bytes.Buffer
-	cmd.cmd.SetOut(&stdout)
-	cmd.cmd.SetErr(&stderr)
-
-	err := cmd.cmd.Execute()
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
 	require.NoError(t, err)
-	// Should show existing sandbox info, not provision a new one
-	// Active sandbox detected — verified by no error and no server call
-	// Active sandbox detected — no server call made
-	// Should NOT redirect to dashboard
-	// Did not redirect to dashboard
+	assert.Contains(t, output, "You already have an active sandbox")
+	assert.Contains(t, output, "Claim it before then")
+	assert.Contains(t, output, "stripe sandbox claim")
+	require.Len(t, recs, 1)
+	assert.Equal(t, http.MethodGet, recs[0].Method)
+	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
+	assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
 }
 
 func TestSandboxCreateCmd_FromGitResolvesName(t *testing.T) {
@@ -518,21 +581,178 @@ func TestSandboxClaimCmd_NoActiveSandbox(t *testing.T) {
 	// No sandbox message printed
 }
 
+func TestSandboxClaimCmd_NoActiveSandboxDoesNotCallStatus(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	var recs []claimStatusRequest
+	server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, &recs)
+	defer server.Close()
+
+	cmd := newSandboxClaimCmd()
+	cmd.cmd.SetArgs([]string{"--api-base", server.URL})
+
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
+	require.NoError(t, err)
+	assert.Contains(t, output, "No active sandbox. Run `stripe sandbox create` to get started.")
+	assert.Empty(t, recs)
+}
+
 func TestSandboxClaimCmd_WithClaimURL(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
-	// Set up a profile with a claim URL
-	Config.Profile.TestModeAPIKey = "rkcs_test_claim"
-	Config.Profile.SandboxClaimURL = "https://dashboard.stripe.com/onboard_sandbox/test123"
-	Config.Profile.CreateProfile()
-	Config.Profile.WriteConfigField(config.SandboxClaimURLName, "https://dashboard.stripe.com/onboard_sandbox/test123")
+	const claimURL = "https://dashboard.stripe.com/onboard_sandbox/test123"
+	setupActiveClaimableSandbox(t, claimURL, "")
+
+	var recs []claimStatusRequest
+	server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, &recs)
+	defer server.Close()
 
 	cmd := newSandboxClaimCmd()
-	cmd.cmd.SetArgs([]string{"--non-interactive"})
+	cmd.cmd.SetArgs([]string{"--non-interactive", "--api-base", server.URL})
 
-	err := cmd.cmd.Execute()
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
 	require.NoError(t, err)
-	// In non-interactive mode, the claim URL is printed to stdout.
-	// Verified by no error — URL goes to os.Stdout which we can't capture.
+	assert.Contains(t, output, claimURL)
+	require.Len(t, recs, 1)
+	assert.Equal(t, http.MethodGet, recs[0].Method)
+	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
+	assert.Equal(t, "Bearer "+activeClaimableSandboxAPIKey, recs[0].Auth)
+	assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
+}
+
+func TestSandboxClaimCmd_ClaimedDoesNotPrintURLOrOpenBrowser(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "interactive"},
+		{name: "non-interactive", args: []string{"--non-interactive"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+
+			const claimURL = "https://dashboard.stripe.com/onboard_sandbox/already-claimed"
+			setupActiveClaimableSandbox(t, claimURL, "")
+
+			var openedURL string
+			openBrowserFunc = func(u string) error {
+				openedURL = u
+				return nil
+			}
+
+			server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":true}`, nil)
+			defer server.Close()
+
+			cmd := newSandboxClaimCmd()
+			cmd.cmd.SetArgs(append(tt.args, "--api-base", server.URL))
+
+			output, err := captureStdout(t, func() error {
+				return cmd.cmd.Execute()
+			})
+			require.NoError(t, err)
+			assert.Contains(t, output, sandboxAlreadyClaimedMessage)
+			assert.NotContains(t, output, claimURL)
+			assert.Empty(t, openedURL)
+		})
+	}
+}
+
+func TestSandboxCreateCmd_ExistingSandboxClaimedOmitsClaimGuidance(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	const claimURL = "https://dashboard.stripe.com/onboard_sandbox/existing"
+	setupActiveClaimableSandbox(t, claimURL, "2099-01-01")
+
+	server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":true}`, nil)
+	defer server.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--api-base", server.URL})
+
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
+	require.NoError(t, err)
+	assert.Contains(t, output, "You already have an active sandbox")
+	assert.Contains(t, output, sandboxAlreadyClaimedMessage)
+	assert.NotContains(t, output, "Claim it before then")
+	assert.NotContains(t, output, "stripe sandbox claim")
+}
+
+func TestSandboxClaimCmd_StatusEndpointErrors(t *testing.T) {
+	const claimURL = "https://dashboard.stripe.com/onboard_sandbox/stale"
+
+	tests := []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "http_404", statusCode: http.StatusNotFound, body: `{"error":{"code":"not_found"}}`},
+		{name: "http_500", statusCode: http.StatusInternalServerError, body: `{"error":{"message":"internal"}}`},
+		{name: "invalid_json", statusCode: http.StatusOK, body: `{not-json`},
+		{name: "missing_is_claimed", statusCode: http.StatusOK, body: `{}`},
+		{name: "unknown_status_value", statusCode: http.StatusOK, body: `{"is_claimed":"claimed"}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+
+			setupActiveClaimableSandbox(t, claimURL, "")
+
+			var openedURL string
+			openBrowserFunc = func(u string) error {
+				openedURL = u
+				return nil
+			}
+
+			server := newClaimStatusServer(t, tt.statusCode, tt.body, nil)
+			defer server.Close()
+
+			cmd := newSandboxClaimCmd()
+			cmd.cmd.SetArgs([]string{"--non-interactive", "--api-base", server.URL})
+
+			output, err := captureStdout(t, func() error {
+				return cmd.cmd.Execute()
+			})
+			require.NoError(t, err)
+			assert.Contains(t, output, claimURL)
+			assert.Contains(t, output, "Claim your sandbox")
+			assert.Empty(t, openedURL)
+		})
+	}
+}
+
+func TestSandboxCreateCmd_ExistingSandboxStatusErrorFallsBackToClaimGuidance(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	const claimURL = "https://dashboard.stripe.com/onboard_sandbox/existing"
+	setupActiveClaimableSandbox(t, claimURL, "2099-01-01")
+
+	server := newClaimStatusServer(t, http.StatusInternalServerError, `{"error":{"message":"internal"}}`, nil)
+	defer server.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--api-base", server.URL})
+
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
+	require.NoError(t, err)
+	assert.Contains(t, output, "You already have an active sandbox")
+	assert.Contains(t, output, "Claim it before then")
+	assert.Contains(t, output, "stripe sandbox claim")
+	assert.NotContains(t, output, sandboxAlreadyClaimedMessage)
 }

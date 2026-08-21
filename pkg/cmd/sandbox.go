@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -25,7 +28,13 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-const defaultSandboxBaseURL = "https://ai.stripe.com"
+const (
+	defaultSandboxBaseURL        = "https://ai.stripe.com"
+	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to authenticate with your claimed account."
+	sandboxExpiredMessage        = "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one."
+	// RetrieveClaimableSandboxStatus shipped in the 2026-08-26 snapshot.
+	sandboxClaimStatusVersion = "2026-08-26.preview"
+)
 
 var openBrowserFunc = open.Browser
 var canOpenBrowserFunc = open.CanOpenBrowser
@@ -41,6 +50,7 @@ type sandboxCreateCmd struct {
 	name           string
 	nonInteractive bool
 	baseURL        string
+	apiBaseURL     string
 	dashboardURL   string
 	accessBaseURL  string
 }
@@ -102,6 +112,9 @@ work immediately.`,
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
 
+	scc.cmd.Flags().StringVar(&scc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	_ = scc.cmd.Flags().MarkHidden("api-base")
+
 	scc.cmd.Flags().StringVar(&scc.dashboardURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	_ = scc.cmd.Flags().MarkHidden("dashboard-base")
 	scc.cmd.Flags().StringVar(&scc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
@@ -145,12 +158,12 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		// Claimable sandbox has expired. Clear the stale config so the user
 		// can provision a fresh one or login with a claimed account.
 		clearExpiredSandboxProfile()
-		fmt.Printf("Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
+		fmt.Printf("%s\n", sandboxExpiredMessage)
 		return nil
 
 	default:
 		// Active claimable sandbox that hasn't expired. Show existing keys
-		// and claim URL — one sandbox at a time.
+		// and, if still unclaimed, the claim guidance — one sandbox at a time.
 		pubKey, _ := Config.Profile.GetPublishableKey(false)
 		accountID, _ := Config.Profile.GetAccountID()
 		fmt.Printf("You already have an active sandbox.\n\n")
@@ -161,6 +174,12 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		if accountID != "" {
 			fmt.Printf("Account ID:      %s\n", accountID)
 		}
+
+		if sandboxClaimed(cmd.Context(), scc.apiBaseURL) {
+			fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
+			return nil
+		}
+
 		expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
 		if expiresAt != "" {
 			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandbox claim`.\n", expiresAt)
@@ -351,6 +370,14 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	if result.GetExpiresAt() != "" {
 		Config.Profile.WriteConfigField(config.SandboxExpiresAtName, result.GetExpiresAt())
 	}
+	Config.Profile.WriteConfigField(config.TestModeAPIKeyName, secretKey)
+	if pubKey := result.GetPublishableKey(); pubKey != "" {
+		Config.Profile.WriteConfigField(config.TestModePubKeyName, pubKey)
+	}
+	if accountID != "" {
+		Config.Profile.WriteConfigField(config.AccountIDName, accountID)
+		Config.Profile.WriteConfigField(config.DisplayNameName, accountID)
+	}
 
 	return nil
 }
@@ -374,6 +401,24 @@ func isClaimableSandbox() bool {
 	return viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName)) != ""
 }
 
+func sandboxTestModeAPIKey() string {
+	return viper.GetString(Config.Profile.GetConfigField(config.TestModeAPIKeyName))
+}
+
+// sandboxClaimed reports whether the profile's claimable sandbox has already been claimed. API failures return false.
+func sandboxClaimed(ctx context.Context, apiBaseURL string) bool {
+	apiKey := sandboxTestModeAPIKey()
+	if apiKey == "" {
+		return false
+	}
+	claimed, err := fetchSandboxClaimStatus(ctx, apiBaseURL, apiKey)
+	if err != nil {
+		log.WithFields(log.Fields{"error": err}).Debug("sandbox: claim status check failed, falling back to local claim behavior")
+		return false
+	}
+	return claimed
+}
+
 // isExpiredSandbox returns true if the sandbox_expires_at date has passed.
 func isExpiredSandbox() bool {
 	expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
@@ -395,17 +440,18 @@ func isExpiredSandbox() bool {
 // profile without affecting other profiles. Narrowly scoped — only clears
 // fields that sandbox create wrote.
 func clearExpiredSandboxProfile() {
-	Config.Profile.DeleteConfigField("test_mode_api_key")
-	Config.Profile.DeleteConfigField("test_mode_pub_key")
-	Config.Profile.DeleteConfigField("sandbox_claim_url")
-	Config.Profile.DeleteConfigField("sandbox_expires_at")
-	Config.Profile.DeleteConfigField("account_id")
-	Config.Profile.DeleteConfigField("display_name")
+	Config.Profile.DeleteConfigField(config.TestModeAPIKeyName)
+	Config.Profile.DeleteConfigField(config.TestModePubKeyName)
+	Config.Profile.DeleteConfigField(config.SandboxClaimURLName)
+	Config.Profile.DeleteConfigField(config.SandboxExpiresAtName)
+	Config.Profile.DeleteConfigField(config.AccountIDName)
+	Config.Profile.DeleteConfigField(config.DisplayNameName)
 }
 
 type sandboxClaimCmd struct {
 	cmd            *cobra.Command
 	nonInteractive bool
+	apiBaseURL     string
 }
 
 func newSandboxClaimCmd() *sandboxClaimCmd {
@@ -418,6 +464,8 @@ func newSandboxClaimCmd() *sandboxClaimCmd {
 		RunE:  scc.runSandboxClaimCmd,
 	}
 	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
+	scc.cmd.Flags().StringVar(&scc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	_ = scc.cmd.Flags().MarkHidden("api-base")
 	return scc
 }
 
@@ -430,7 +478,12 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 
 	if isExpiredSandbox() {
 		clearExpiredSandboxProfile()
-		fmt.Printf("Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one.\n")
+		fmt.Printf("%s\n", sandboxExpiredMessage)
+		return nil
+	}
+
+	if sandboxClaimed(cmd.Context(), scc.apiBaseURL) {
+		fmt.Printf("%s\n", sandboxAlreadyClaimedMessage)
 		return nil
 	}
 
@@ -455,6 +508,54 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 		fmt.Printf("Visit %s\n", claimURL)
 	}
 	return nil
+}
+
+type sandboxClaimStatusResponse struct {
+	IsClaimed *bool `json:"is_claimed"`
+}
+
+func fetchSandboxClaimStatus(ctx context.Context, apiBaseURL, apiKey string) (bool, error) {
+	if err := stripe.ValidateAPIBaseURL(apiBaseURL); err != nil {
+		return false, err
+	}
+
+	baseURL, err := url.Parse(apiBaseURL)
+	if err != nil {
+		return false, err
+	}
+
+	client := &stripe.Client{
+		BaseURL:     baseURL,
+		Credentials: stripe.NewAPIKeyCredentials(apiKey),
+	}
+
+	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/core/claimable_sandboxes/status", "", func(req *http.Request) error {
+		req.Header.Set("Stripe-Version", sandboxClaimStatusVersion)
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, errorcategory.Errorf(errorcategory.API, "failed to retrieve sandbox claim status (status %d)", resp.StatusCode)
+	}
+
+	var parsed sandboxClaimStatusResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return false, errorcategory.Errorf(errorcategory.API, "failed to parse response: %w", err)
+	}
+	if parsed.IsClaimed == nil {
+		return false, errorcategory.Errorf(errorcategory.API, "invalid sandbox claim status response: missing is_claimed")
+	}
+
+	return *parsed.IsClaimed, nil
 }
 
 func isSSHSession() bool {
