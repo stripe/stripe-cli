@@ -55,7 +55,8 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 	styles := ui.DefaultStyles()
 
 	checkmark := styles.SuccessText.Render("✓")
-	disabled := useragent.DetectAIAgent(os.Getenv) != "" || !isStdoutTTY(cmd)
+	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
+	disabled := agentDetected || !isStdoutTTY(cmd)
 
 	var response *pkgdocs.SearchResponse
 	err := spinner.New().
@@ -77,10 +78,20 @@ func (r *RootCommand) runSearch(cmd *cobra.Command, args []string) error {
 
 	w := pager.New(cmd.OutOrStdout(), !r.noPager)
 	defer func() { _ = w.Close() }()
-	return r.renderSearch(w, response)
+	return r.renderSearch(w, response, agentDetected)
 }
 
-func (r *RootCommand) renderSearch(w io.Writer, response *pkgdocs.SearchResponse) error {
+func (r *RootCommand) renderSearch(w io.Writer, response *pkgdocs.SearchResponse, agentDetected bool) error {
+	if agentDetected {
+		for _, hit := range response.Hits {
+			route := strings.TrimPrefix(hit.URL, "https://docs.stripe.com")
+			if _, err := fmt.Fprintf(w, "%s\nstripe docs %s\n", hit.Title, route); err != nil {
+				return fmt.Errorf("search: writing output: %w", err)
+			}
+		}
+		return nil
+	}
+
 	styles := ui.DefaultStyles()
 	colorOff := r.color() == colorValueOff
 
