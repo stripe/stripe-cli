@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/spec"
@@ -48,6 +49,22 @@ func FirstSentence(s string) string {
 		return s[:i]
 	}
 	return s
+}
+
+// mdLinkRe matches Markdown links like [text](url) and captures the text.
+var mdLinkRe = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+
+// CleanDescription prepares a description string for use as a CLI Short field:
+// collapses internal newlines to spaces, strips Markdown links (keeping text),
+// and removes backticks.
+func CleanDescription(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = mdLinkRe.ReplaceAllString(s, "$1")
+	s = strings.ReplaceAll(s, "`", "")
+	for strings.Contains(s, "  ") {
+		s = strings.ReplaceAll(s, "  ", " ")
+	}
+	return strings.TrimSpace(s)
 }
 
 // ResolveObjectSchema returns s if it is a plain object schema (type "object" or has

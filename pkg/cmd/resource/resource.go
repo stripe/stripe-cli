@@ -64,11 +64,15 @@ func GetResourceCmdName(name string) string {
 	}
 }
 
-// NewResourceCmd returns a new ResourceCmd.
-func NewResourceCmd(parentCmd *cobra.Command, resourceName string) *ResourceCmd {
+// NewResourceCmd returns a new ResourceCmd. An optional description can be
+// passed to set the Short help text for the command.
+func NewResourceCmd(parentCmd *cobra.Command, resourceName string, description ...string) *ResourceCmd {
 	cmd := &cobra.Command{
 		Use:         resourceName,
 		Annotations: make(map[string]string),
+	}
+	if len(description) > 0 && description[0] != "" {
+		cmd.Short = description[0]
 	}
 	cmd.SetUsageTemplate(resourceUsageTemplate())
 
