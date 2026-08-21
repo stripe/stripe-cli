@@ -179,12 +179,14 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 		return err
 	}
 
-	color := ansi.Color(os.Stdout)
-	fmt.Printf("Your pairing code is: %s\n", color.Bold(authResp.UserCode))
-	fmt.Printf("To authorize the CLI, visit: %s\n", authResp.VerificationURI)
+	fmt.Printf("To authorize, visit %s\n\n", authResp.VerificationURI)
+	fmt.Println("When prompted, enter your verification code:")
+	fmt.Println()
+	fmt.Println(ansi.Blurple(authResp.UserCode))
+	fmt.Println()
 
 	if !isSSH() && canOpenBrowser() {
-		fmt.Printf("Press Enter to open the browser (^C to quit)\n")
+		fmt.Printf("Press enter to open the browser (^C to quit)\n")
 		go func() {
 			fmt.Scanln() //nolint:errcheck
 			if err := openBrowser(authResp.VerificationURI); err != nil {
