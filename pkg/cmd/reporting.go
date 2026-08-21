@@ -97,9 +97,17 @@ status ("running", "succeeded", or "failed"); poll it with
 then use the result's download_url to fetch the output.
 
 Provide the SQL inline with --sql, from a file with --sql-file, or via stdin
-by passing --sql-file -.`,
+by passing --sql-file -.
+
+Nested API fields use bracket notation as flags (for example
+--result_options[compress_file]=true), not dotted names from the API
+reference (--result_options.compress_file). Prefer the dedicated
+--compress-file flag when one exists.`,
 		Example: `  # Run an ad hoc query
   stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10"
+
+  # Compress the result file
+  stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10" --compress-file
 
   # Read the SQL from a file
   stripe reporting query-runs create --sql-file ./query.sql
@@ -112,7 +120,13 @@ by passing --sql-file -.`,
 
 	cc.cmd.Flags().StringVar(&cc.sql, "sql", "", "The SQL query to run [required unless --sql-file is set]")
 	cc.cmd.Flags().StringVar(&cc.sqlFile, "sql-file", "", "Path to a file containing the SQL query to run. Use \"-\" to read from stdin.")
-	cc.cmd.Flags().BoolVar(&cc.compressFile, "compress-file", false, "Compress the result file (sets result_options.compress_file)")
+	cc.cmd.Flags().BoolVar(&cc.compressFile, "compress-file", false, "Compress the result file. Equivalent to the API parameter result_options.compress_file; the raw form is --result_options[compress_file]=true.")
+	// Hidden alias so the bracket form from the API docs is accepted (pflag
+	// treats --result_options[compress_file] as a flag name).
+	cc.cmd.Flags().BoolVar(&cc.compressFile, "result_options[compress_file]", false, "")
+	cc.cmd.Flags().MarkHidden("result_options[compress_file]") // #nosec G104
+
+	cc.cmd.SetFlagErrorFunc(flagErrorWithNestedAPIHint)
 
 	cc.cmd.Flags().BoolVar(&cc.rb.DryRun, "dry-run", false, "Preview the request without sending it")
 	cc.cmd.Flags().BoolVarP(&cc.rb.Livemode, "live", "", false, "Make a live request (default: test)")

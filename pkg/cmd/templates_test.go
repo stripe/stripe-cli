@@ -67,6 +67,8 @@ func TestFormatAgentGuidance(t *testing.T) {
 	assert.Contains(t, output, "STRIPE_API_KEY")
 	assert.Contains(t, output, "stripe --map")
 	assert.Contains(t, output, "stripe resources")
+	assert.Contains(t, output, "--parent[child]=value")
+	assert.Contains(t, output, "--parent.child=value")
 	assert.NotContains(t, output, "--stripe-account", "should not show --stripe-account when flag is not defined")
 	assert.NotContains(t, output, "-d", "should not show -d when data flag is not defined")
 }

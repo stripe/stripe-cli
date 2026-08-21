@@ -346,6 +346,19 @@ func TestReportingQueryRunsCreateCmd_HelpDescribesPublicPreview(t *testing.T) {
 
 	assert.Contains(t, out, "Public Preview")
 	assert.Contains(t, out, "/v2/data/reporting/query_runs")
+	assert.Contains(t, out, "--compress-file")
+	assert.Contains(t, out, "--result_options[compress_file]=true")
+	assert.NotContains(t, out, "(sets result_options.compress_file)")
+
+	cc := newReportingQueryRunsCreateCmd()
+	usage := cc.cmd.Flags().Lookup("compress-file").Usage
+	assert.Contains(t, usage, "API parameter result_options.compress_file")
+	assert.Contains(t, usage, "--result_options[compress_file]=true")
+	assert.NotContains(t, usage, "(sets ")
+
+	alias := cc.cmd.Flags().Lookup("result_options[compress_file]")
+	require.NotNil(t, alias)
+	assert.True(t, alias.Hidden, "bracket alias must be hidden so it is not listed as its own flag")
 }
 
 func TestReportingQueryRunsRetrieveCmd_HelpDescribesPublicPreview(t *testing.T) {

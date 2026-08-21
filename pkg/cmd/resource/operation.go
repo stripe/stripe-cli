@@ -216,6 +216,7 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		}
 	}
 
+	cmd.Flags().SetNormalizeFunc(normalizeBracketNestedFlag)
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
@@ -364,7 +365,7 @@ func operationUsageTemplate(urlParams []string) string {
 		args += " "
 	}
 
-	args += "[--param=value] [-d \"nested[param]=value\"]"
+	args += "[--param=value] [--parent[child]=value] [-d \"nested[param]=value\"]"
 
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}} %s{{end}}{{if .HasAvailableSubCommands}}
