@@ -1,0 +1,79 @@
+X-Received: by 2002:a05:6820:618:b0:6b0:b196: 99b4 with SMTP id 006d021491bc7-6b0d6971607mr748 7791eaf.36.1786755901476;
+        Fri, 14 Aug 2026 18:05:01 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786755901; cv=none;
+        d= google.com ; s=arc-20260327;
+        b=bXLqbvtUYCL2FJInFmsE4LfVgby0 pTcgXihviYPZV0XJlQjF8+fxUJXyUv apcCG5Py
+         nmerIPMgDefxyE59w0/BANqQkm+AD k+JATtS28iL3Cwp4vWquLJkVT6pMWU 8zJZB1Lb6
+         1VSGod0tjxkrludt89aRntf3/Lcff 0bQFMoXAKow1t0jVgi1K5QLyhtq32p QrKielZdQ
+         uXaB6xWl9wthrfO9CbOySWAD5cHLUC AgY7lJFCzgbQACmA2DdtlNNIby6dFy KL4gA/dW
+         MAjWQS49Ik2MUJJShi4VVWO+d9RG8 8+r9WLXabpE8lu4qKt/ZvJwVkuYFqK NwdtXWS8J
+         nkbQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d= google.com ; s=arc-20260327;
+        h=to:from:subject:date:message -id:references:reply-to:mime- version
+         :dkim-signature;
+        bh=3iGqpWuXnqhqbk172rbPexD73c1 CFwUhxgoRgaU1LB8=;
+        fh=ix+canEc4Tog65g9462bDve2mHw b6awnJK7h3yP6Myc=;
+        b=gJVYFCKCVt9ipyxeuPaQOwJyeexZ nr8Qj0pVh4F7m2v1YFcOMIeTT6L8uV /3IbR+Am
+         JAYzH8KTRon3th/S5VrLYAk28ML1U 2w36t1sR0/9wlrCq0d3igYIzg8tFZg xMx9V0ouS
+         L42zanoi88u6/yohfVmi7jUHM0x3o 49ILWEilMccJeG4lrHqDKGlmexqiJr BsiKnkfhR
+         7O4AuTkKR77R6MYiKdNPz5rxOPpr/ ShgRZtxTtrDygka2y99d5b45Ru5LUr U/Q13JD7h
+         A1SDPKJ+Nt9PlL2otjRJ1H3ITYZg8 9BOLgzQzwxTh+ bxEWqha9lBgrgttKGOy+AgY/o1
+         NuRQ==;
+        ดารา= google.com
+ARC-Authentication-Results: i=1; mx.google.com ;
+       dkim=pass header.i=@ gmail.com header.s=20251104 header.b=I9YDYSkt;
+       spf=pass ( google.com : domain of 3pbt_agwjcw40osa68qvo1oru0owz. q20683s5or0w16q5so7w9sq200216. 25u@doclist.bounces.google.com designates 209.85.220.69 as permitted sender) smtp.mailfrom= 3Pbt_agwJCw40osA 68qvo1oru0owz.q20683s5or0w16q5 so7w9sq200216.25u@doclist. bounces.google.com ;
+       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from= gmail.com ;
+       dara=neutral header.i=@ creativecommons.org
+Return-Path: < 3Pbt_agwJCw40osA68qvo1oru0owz .q20683s5or0w16q5so7w9sq200216 .25u@doclist.bounces.google. com >
+ได้รับ: จากmail-sor-f69.google.com ( mail-sor-f69.google.com . [209.85.220.69])
+        โดยmx.google.comด้วย SMTPS id 46e09a7af769-7f3e84d3984sor116 5973a34.5.2026.08.14.18.05.01
+        สำหรับ < superadmins@creativecommons.o rg >
+        (Google Transport Security);
+        ศุกร์, 14 ส.ค. 2026 18:05:01 -0700 (PDT)
+Received-SPF: pass ( google.com : domain of 3pbt_agwjcw40osa68qvo1oru0owz. q20683s5or0w16q5so7w9sq200216. 25u@doclist.bounces.google.com designates 209.85.220.69 as permitted sender) client-ip=209.85.220.69;
+Authentication-Results: mx.google.com ;
+       dkim=pass header.i=@ gmail.com header.s=20251104 header.b=I9YDYSkt;
+       spf=pass ( google.com : domain of 3pbt_agwjcw40osa68qvo1oru0owz. q20683s5or0w16q5so7w9sq200216. 25u@doclist.bounces.google.com designates 209.85.220.69 as permitted sender) smtp.mailfrom= 3Pbt_agwJCw40osA 68qvo1oru0owz.q20683s5or0w16q5 so7w9sq200216.25u@doclist. bounces.google.com ;
+       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from= gmail.com ;
+       dara=neutral header.i=@ creativecommons.org
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d= gmail.com ; s=20251104; t=1786755901; x=1787360701; darn= creativecommons.org ;
+        h=content-type:to:from:subject :date:message-id:references: reply-to
+         :mime-version:from:to:cc:subj ect:date:message-id:reply-to
+         :content-type;
+        bh=3iGqpWuXnqhqbk172rbPexD73c1 CFwUhxgoRgaU1LB8=;
+        b=I9YDYSkt6GqvxuAnG0A5Th4XuuuO UOGRaMc9J44K7eP7+afz7yfS7OVB3g TemF9h5Z
+         DbRZbISV7Q6zTu/K/Nk6abFOcYhAx YEW+am0iRELubfS/m2ztvS+ 2O39MjAt/n4bxsz0
+         W5yTadHBTbkarqs4G/egcodeTlKks ZXR1WkW3jtq0F2iti0wTEMF9swaBe9 wwfeCMZjV
+         z8+Dog9uzPK7N2mDRCEaxVabetRlP NGd995GJQxou7byJWDZXUCBwM5bJ5y y0ra0mFcD
+         PpjdfalaMakQLPHW/uRUZT/XXkwDP 4Fg++HEA1t0P/eMSd2d1vGkZRC6Th+ AwHr4g8s4
+         fz1A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d= 1e100.net ; s=20251104; t=1786755901; x=1787360701;
+        h=content-type:to:from:subject :date:message-id:references: reply-to
+         :mime-version:x-gm-message-state :from:to:cc:subject:date: message-id
+         :reply-to:content-type;
+        bh=3iGqpWuXnqhqbk172rbPexD73c1 CFwUhxgoRgaU1LB8=;
+        b=EoUYZsaDbCQIZXRZsToVXBne5ljG e8lo04q6cCgXCP4gwSiR6CmGSvLkep Mo5YnpWL
+         /TOWm/BTckVnWPwZYyyD99mbkLVBU e4GXhh4/B5J+ 9YBoluJNFynwioQgrIqG8+qreio
+         rj3H0rmmv+zClgmxHM5x3YOXkgtBf 1jdbUPl3Zj8BFHgF5wZDI1xVhaHoOm JXbjojB06
+         0RoYkBMuu03eQm+fg0UFZAjsocbKw fxG4VSFxElfzgKzgFA6ykx9mDeA1y0 m5RebxtsL
+         eAN/wi4EOCoVWRv2tMGA9Qda5rdDU bWWbAuFjvw96nm8unQpNDpTJAjFhnu UO8QE3+Ad
+         4V7Q==
+X-Gm-Message-State: AOJu0YwWQiq/pUN29+qZyZ3TBPpi2S UALEXdMR+qTGelVhkeyyQEhz7u
+        tUXzPhvSLbmR69LE/XzLCAb/LLAQDo zCJ7jk1xFYgL1snzHDeb3tzf7thKN3 G6edMgFFoMkctcB
+        tkBRPsYM=
+MIME-Version: 1.0
+X-Received: by 2002:a05:6830:6f86:b0:7dc:c749 :ade3 with SMTP id
+ 46e09a7af769-7f3de43b80fmr992 0999a34.3.1786755901087; ศุกร์, 14 ส.ค. 2026
+ 18:05:01 -0700 (PDT)
+ตอบกลับถึง: =?UTF-8?B?4Liq4Li44LiK4Liy4LiZ 4Liy4LiOIOC4quC4seC4h+C4guC5jO C5geC4geC5ieC4pw==?= < maewsuchanad@gmail.com >
+X-No-Auto-Attachment: 1
+อ้างอิง: < fc80914c-2820-4a82-a135-4b4c1 198e7e1@docs-share.google.com >
+รหัสข้อความ: < autogen-java-6102617a-6324-44 3a-8895-81227bb27d27@google.co m >
+วันที่: เสาร์, 15 ส.ค. 2026 01:05:01 +0000
+หัวเรื่อง: =?UTF-8?B?4LmB4LiK4Lij4LmM4Liq 4Li04LiX4LiY4Li04LmM4LmA4LiC4L mJ4Liy4LiW4Li24LiH?=
+        =?UTF-8?B?4Liq4Liz4Lir4Lij4Lix 4LiaICIxLjEgQ0MgTGljZW5zZXMi?=
+จาก: =?UTF-8?B?4Liq4Li44LiK4Liy4LiZ 4Liy4LiOIOC4quC4seC4h+C4guC5jO C5geC4geC5ieC4pyAo4Lic?=
+        =?UTF-8?B?4LmI4Liy4LiZIEdvb2ds ZSDguYDguK3guIHguKrguLLguKMp?= < maewsuchanad@gmail.com >
