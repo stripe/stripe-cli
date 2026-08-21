@@ -282,6 +282,7 @@ func init() {
 	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
 	rootCmd.AddCommand(newReportingCmd().cmd)
+	rootCmd.AddCommand(newTokenBillingCmd().cmd)
 	rootCmd.AddCommand(newAgentCmd().cmd)
 	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
