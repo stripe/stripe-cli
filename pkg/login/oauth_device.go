@@ -182,7 +182,7 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	fmt.Printf("To authorize, visit %s\n\n", authResp.VerificationURI)
 	fmt.Println("When prompted, enter your verification code:")
 	fmt.Println()
-	fmt.Println(ansi.Blurple(authResp.UserCode))
+	fmt.Println(ansi.Purple(authResp.UserCode))
 	fmt.Println()
 
 	if !isSSH() && canOpenBrowser() {

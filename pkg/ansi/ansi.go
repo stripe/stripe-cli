@@ -53,15 +53,13 @@ func Bold(text string) string {
 	return color.Sprintf(color.Bold(text))
 }
 
-// stripeBlurpleIndex is the closest 8-bit terminal color (#5f5fff) to
-// Stripe's brand blurple (#635BFF).
-const stripeBlurpleIndex = 63
+// purpleIndex is the closest 8-bit terminal color (#875fff) to #746cff.
+const purpleIndex = 99
 
-// Blurple returns text in Stripe's brand blurple color if the writer
-// supports colors.
-func Blurple(text string) string {
+// Purple returns purple text if the writer supports colors.
+func Purple(text string) string {
 	color := Color(os.Stdout)
-	return color.Sprintf(color.Index(stripeBlurpleIndex, text))
+	return color.Sprintf(color.Index(purpleIndex, text))
 }
 
 // Color returns an aurora.Aurora instance with colors enabled or disabled
