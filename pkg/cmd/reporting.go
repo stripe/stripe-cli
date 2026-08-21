@@ -107,13 +107,7 @@ reference (--result_options.compress_file). Prefer the dedicated
   stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10"
 
   # Compress the result file
-  stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10" --compress-file
-
-  # Read the SQL from a file
-  stripe reporting query-runs create --sql-file ./query.sql
-
-  # Read the SQL from stdin
-  cat query.sql | stripe reporting query-runs create --sql-file -`,
+  stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10" --compress-file`,
 		RunE: cc.runReportingQueryRunsCreateCmd,
 		Args: validators.NoArgs,
 	}
@@ -157,8 +151,8 @@ Public Preview API — the Stripe-Version preview header is set automatically.
 
 Once the query run's status is "succeeded", the result's download_url can be
 used to download the query output.`,
-		Example: `  # Retrieve a query run
-  stripe reporting query-runs retrieve qryrun_test_123`,
+		Example: `  # Retrieve a query run (replace <query_run_id> with an id from create)
+  stripe reporting query-runs retrieve <query_run_id>`,
 		Args: validators.ExactArgs(1),
 		RunE: rc.runReportingQueryRunsRetrieveCmd,
 	}

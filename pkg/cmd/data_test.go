@@ -379,11 +379,37 @@ func TestDataMetricsRunCmd_HTTPError(t *testing.T) {
 	// errOnStatus=true: 4xx responses are returned as a Go error (exit 1).
 	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid metric query parameter")
+	assert.Contains(t, err.Error(), "metric_invalid_parameter_value")
+	assert.NotContains(t, err.Error(), "try again later")
 
 	var reqErr requests.RequestError
 	require.ErrorAs(t, err, &reqErr)
 	assert.Equal(t, http.StatusBadRequest, reqErr.StatusCode)
 	assert.Equal(t, "metric_invalid_parameter_value", reqErr.ErrorCode)
+}
+
+func TestDataMetricsRunCmd_HTTPError_RewritesGenericInternalMessage(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":{"code":"metric_invalid_parameter_value","message":"An internal error occurred while running the metric query. Please try again later.","request_log_url":"https://dashboard.stripe.com/test/logs/req_test"}}`))
+	}))
+	defer ts.Close()
+
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+	c.granularity = "month"
+	c.currency = "usd"
+	c.groupBy = []string{"product"}
+
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--group-by")
+	assert.Contains(t, err.Error(), "client error")
+	assert.NotContains(t, err.Error(), "internal error")
+	assert.NotContains(t, err.Error(), "try again later")
 }
 
 func TestDataMetricsRunCmd_StripeVersionHeader(t *testing.T) {

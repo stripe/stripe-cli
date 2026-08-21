@@ -131,9 +131,9 @@ Private Preview API — the Stripe-Version preview header is set automatically.
 
 Metrics are specified by namespace.metric (e.g. revenue.mrr, revenue.arr).
 Multiple metrics can be queried together as long as they share the same
-namespace. Use --group-by to break down results by a dimension (e.g. price,
-product, customer). Use --filter to restrict results to specific dimension
-values.
+namespace. Use --group-by to break down results by a dimension (at most one;
+valid names depend on the metric, e.g. price, product, customer). Use --filter
+to restrict results to specific dimension values.
 
 Required API fields: metrics, starts_at, ends_at, granularity. Optional:
 currency, timezone, group_by, filters, limit. The API validates all parameters.
@@ -157,32 +157,31 @@ https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-ve
     --granularity month \
     --currency usd
 
-  # Group by product dimension
+  # Group by price dimension
   stripe data metrics run \
     --metric revenue.mrr \
     --starts-at 2026-01-01T00:00:00Z \
     --ends-at 2026-01-31T23:59:59Z \
     --granularity month \
     --currency usd \
-    --group-by product
+    --group-by price
 
-  # Filter results to specific prices
+  # Filter by price — replace price_<id> with a Price id from your account
   stripe data metrics run \
     --metric usage_based_billing.gross_usage_revenue \
     --starts-at 2026-01-01T00:00:00Z \
     --ends-at 2026-06-30T23:59:59Z \
     --granularity month \
-    --filter "price=price_abc123" \
-    --filter "price=price_xyz789"`,
+    --filter "price=price_<id>"`,
 		RunE: c.runDataMetricsRunCmd,
 	}
 
-	c.cmd.Flags().StringArrayVar(&c.metrics, "metric", []string{}, "Metric to query: namespace.metric name (e.g. revenue.mrr) or ID (e.g. metric_61Sud3n5oAGVCWiSr5). Repeatable.")
+	c.cmd.Flags().StringArrayVar(&c.metrics, "metric", []string{}, "Metric to query: namespace.metric name (e.g. revenue.mrr) or ID (e.g. metric_<id>). Repeatable.")
 	c.cmd.Flags().StringVar(&c.startsAt, "starts-at", "", "Start of the time range as an ISO 8601 datetime (e.g. 2026-01-01T00:00:00Z)")
 	c.cmd.Flags().StringVar(&c.endsAt, "ends-at", "", "End of the time range as an ISO 8601 datetime (e.g. 2026-01-31T23:59:59Z)")
 	c.cmd.Flags().StringVar(&c.granularity, "granularity", "day", "Time granularity: day, week, month, or year")
-	c.cmd.Flags().StringArrayVar(&c.groupBy, "group-by", []string{}, "Dimension to group results by (e.g. price, product, customer)")
-	c.cmd.Flags().StringArrayVar(&c.filters, "filter", []string{}, "Filter results by dimension values, in key=value format (repeatable). E.g. --filter \"price=price_abc123\"")
+	c.cmd.Flags().StringArrayVar(&c.groupBy, "group-by", []string{}, "Dimension to group by (at most one). Valid names depend on the metric (e.g. price, product, customer). See https://docs.stripe.com/data/analytics/supported-metrics")
+	c.cmd.Flags().StringArrayVar(&c.filters, "filter", []string{}, "Filter results by dimension values, in key=value format (repeatable). E.g. --filter \"price=price_<id>\"")
 	c.cmd.Flags().StringVar(&c.currency, "currency", "", "Currency code to convert monetary values to (e.g. usd, eur). Defaults to your account's default currency.")
 	c.cmd.Flags().StringVar(&c.timezone, "timezone", "", "Timezone for result alignment (e.g. America/New_York). Defaults to your account timezone.")
 	c.cmd.Flags().IntVar(&c.limit, "limit", 0, "Maximum number of rows to return (1–1000). Default is all rows.")
@@ -235,7 +234,7 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 	}
 
 	_, err = c.rb.MakeRequest(cmd.Context(), creds, dataMetricsRunPath, &requests.RequestParameters{}, body, true, nil)
-	return err
+	return formatMetricQueryError(err)
 }
 
 // buildRequestBody assembles the JSON body for the metric query request.
