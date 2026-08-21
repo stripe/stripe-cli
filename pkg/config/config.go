@@ -61,6 +61,12 @@ type Config struct {
 	Profile          Profile
 	ProfilesFile     string
 	InstalledPlugins []string
+
+	// warnedConfigVersion keeps the unsupported-version warning to one line per
+	// invocation. InitConfig runs more than once: root.go initializes it eagerly to
+	// register plugins before cobra parses flags, cobra.OnInitialize runs it again,
+	// and SwitchProfile reloads through it.
+	warnedConfigVersion bool
 }
 
 // GetProfile returns the Profile of the config
@@ -154,6 +160,15 @@ func (c *Config) InitConfig() {
 			"prefix": "config.Config.InitConfig",
 			"path":   viper.ConfigFileUsed(),
 		}).Debug("Using profiles file")
+
+		// Reads tolerate an unknown version: both layouts are tried, so a newer
+		// file's profiles are usually still found. Warn rather than exit, so an
+		// older pinned CLI keeps working for read-only commands. writeConfig is
+		// where an unknown version is actually refused.
+		if _, err := configVersion(viper.GetViper()); err != nil && !c.warnedConfigVersion {
+			c.warnedConfigVersion = true
+			log.Warnf("%s: %s", viper.ConfigFileUsed(), err)
+		}
 	}
 
 	if os.Getenv("STRIPE_CLI_CANARY") == "true" {
@@ -604,17 +619,50 @@ func isProfile(value interface{}) bool {
 	return false
 }
 
-// configVersion reports the schema version recorded in the config file. A v1
-// file has no config_version key, so it reports 0.
-func configVersion(v *viper.Viper) int {
-	return v.GetInt(ConfigVersionName)
+// configVersion reports the schema version recorded in the config file. A v1 file
+// records no config_version key, so an absent key reports ConfigVersionV1.
+//
+// It errors when the recorded version is one this binary cannot act on: either
+// unreadable as a version number, or newer than MaxSupportedConfigVersion. Both
+// are errors rather than a fallback to v1, because v1 means "flat layout" to every
+// caller, and a flat write into a file whose profiles are nested lands a second
+// copy that the read path then shadows — a write that reports success and is
+// invisible to the next read.
+//
+// On success the version is always >= ConfigVersionV1; 0 is returned only with an
+// error.
+func configVersion(v *viper.Viper) (int, error) {
+	raw := v.Get(ConfigVersionName)
+	if raw == nil {
+		return ConfigVersionV1, nil
+	}
+
+	// GetInt discards the cast error, so an unreadable value arrives here as 0 and
+	// is caught by the range check rather than by inspecting the error.
+	version := v.GetInt(ConfigVersionName)
+	if version < ConfigVersionV1 {
+		return 0, errorcategory.Errorf(errorcategory.Filesystem,
+			"%s is set to %v, which is not a version number", ConfigVersionName, raw)
+	}
+
+	if version > MaxSupportedConfigVersion {
+		return version, errorcategory.Errorf(errorcategory.Filesystem,
+			"%s is %d, but this Stripe CLI understands up to %d. Upgrade the CLI: https://docs.stripe.com/stripe-cli/upgrade",
+			ConfigVersionName, version, MaxSupportedConfigVersion)
+	}
+
+	return version, nil
 }
 
 // isMigrated reports whether the config file stores profiles in the v2 layout,
-// under the reserved profiles table. This release line never sets
-// config_version; it only recognizes a file that a v2 CLI already migrated.
+// under the reserved profiles table. This release line never sets config_version;
+// it only recognizes a file that a v2 CLI already migrated.
+//
+// A version this binary cannot act on is not migrated: writeConfig refuses such a
+// file outright, so no write ever reaches the layout decision this gates.
 func isMigrated(v *viper.Viper) bool {
-	return configVersion(v) >= ConfigVersionV2
+	version, err := configVersion(v)
+	return err == nil && version == ConfigVersionV2
 }
 
 // profileTableKeyForWrite returns the key a whole profile table should be
@@ -745,6 +793,16 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 
 // writeConfig writes a viper instance to the config file and syncs the global viper.
 func writeConfig(runtimeViper *viper.Viper) error {
+	// Refuse to write a file whose layout version this binary does not know. Both
+	// candidate layouts are a guess at that point, and the flat guess is silently
+	// shadowed by the nested copy, so a login would report success while leaving
+	// the credential unreadable. Checked on the global viper, not runtimeViper:
+	// writeProfile passes a scratch viper that has not merged the file yet, which
+	// is the same reason configFieldForWrite reads the global.
+	if _, err := configVersion(viper.GetViper()); err != nil {
+		return err
+	}
+
 	profilesFile := viper.ConfigFileUsed()
 	runtimeViper.SetConfigFile(profilesFile)
 	configType := strings.TrimPrefix(filepath.Ext(profilesFile), ".")

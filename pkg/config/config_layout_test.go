@@ -3,10 +3,13 @@ package config
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // The v2 layout keeps every profile under the reserved profiles table, which is
@@ -376,4 +379,97 @@ func TestDottedNameInsideProfilesTableIsNotListedAsAProfile(t *testing.T) {
 	// Addressing it by its full name still works, which is how a user removes it.
 	require.NoError(t, c.RemoveProfile("example.project"))
 	require.False(t, viper.IsSet(`profiles.example.project`))
+}
+
+// A config_version this binary does not know could only have been written by a
+// newer CLI, which is a routine situation the moment a v3 ships: a pinned CLI in
+// CI, or a synced home directory, reads the file a newer binary migrated. This
+// release line is the one most likely to meet such a file.
+const unsupportedVersionConfigFile = `config_version = 3
+
+[profiles.default]
+  device_name = 'device-v3'
+  display_name = 'V3 Account'
+  test_mode_api_key = 'sk_test_v3_key'
+`
+
+func readVersionFrom(t *testing.T, contents string) (int, error) {
+	t.Helper()
+
+	v := viper.New()
+	v.SetConfigType("toml")
+	require.NoError(t, v.ReadConfig(strings.NewReader(contents)))
+
+	return configVersion(v)
+}
+
+func TestConfigVersionTreatsAbsentKeyAsV1(t *testing.T) {
+	version, err := readVersionFrom(t, v1ConfigFile)
+	require.NoError(t, err)
+	require.Equal(t, ConfigVersionV1, version)
+}
+
+// Viper truncates a float before we ever see it, so these are rejected by the
+// range check rather than by a cast failure. A value that truncates into the
+// supported range is deliberately left alone.
+func TestConfigVersionRejectsValuesThatAreNotVersionNumbers(t *testing.T) {
+	for _, raw := range []string{"'abc'", "0", "0.3", "-1", "-1.12", "''"} {
+		t.Run(raw, func(t *testing.T) {
+			_, err := readVersionFrom(t, "config_version = "+raw+"\n")
+			require.ErrorContains(t, err, "is not a version number")
+		})
+	}
+}
+
+func TestConfigVersionRejectsVersionsNewerThanSupported(t *testing.T) {
+	_, err := readVersionFrom(t, unsupportedVersionConfigFile)
+	require.ErrorContains(t, err, "understands up to 2")
+
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.Filesystem, category)
+}
+
+// Reads stay best-effort on an unknown version: both layouts are tried, so the
+// profile a newer CLI wrote is still found and read-only commands keep working.
+func TestReadProfileStillWorksWhenVersionIsNewerThanSupported(t *testing.T) {
+	setupProfileConfig(t, unsupportedVersionConfigFile)
+
+	p := Profile{ProfileName: "default"}
+
+	deviceName, err := p.GetDeviceName()
+	require.NoError(t, err)
+	require.Equal(t, "device-v3", deviceName)
+
+	require.Equal(t, "V3 Account", p.GetDisplayName())
+}
+
+// Writes are refused instead, because both candidate layouts are a guess at that
+// point and the flat guess is silently shadowed by the nested copy.
+func TestWriteRefusedWhenVersionIsNewerThanSupported(t *testing.T) {
+	_, profilesFile := setupProfileConfig(t, unsupportedVersionConfigFile)
+
+	p := Profile{ProfileName: "default"}
+	require.ErrorContains(t, p.WriteConfigField("color", "on"), "understands up to 2")
+
+	// The refusal has to leave the file untouched, not half-written.
+	require.Equal(t, unsupportedVersionConfigFile, string(helperLoadBytes(t, profilesFile)))
+}
+
+func TestWriteRefusedWhenVersionIsNotAVersionNumber(t *testing.T) {
+	setupProfileConfig(t, `config_version = 'abc'
+
+[profiles.default]
+  display_name = 'Malformed Version'
+`)
+
+	p := Profile{ProfileName: "default"}
+	require.ErrorContains(t, p.WriteConfigField("color", "on"), "is not a version number")
+}
+
+// An unknown version is not "migrated", so nothing downstream mistakes it for the
+// v2 layout it happens to resemble.
+func TestIsMigratedOnlyAtTheSupportedVersion(t *testing.T) {
+	setupProfileConfig(t, unsupportedVersionConfigFile)
+	require.False(t, isMigrated(viper.GetViper()))
 }
