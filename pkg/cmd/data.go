@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -17,6 +18,10 @@ import (
 const dataMetricsRunPath = "/v2/data/analytics/metric_query"
 
 type dataCmd struct {
+	cmd *cobra.Command
+}
+
+type dataMetricsCmd struct {
 	cmd *cobra.Command
 }
 
@@ -38,23 +43,73 @@ func newDataCmd() *dataCmd {
 	dc := &dataCmd{}
 	dc.cmd = &cobra.Command{
 		Use:   "data",
-		Short: "Access Stripe Data APIs",
-		// Private Preview API — hidden until GA.
-		Hidden: true,
-		Args:   validators.NoArgs,
-	}
+		Short: "Access Stripe Data APIs (Private Preview)",
+		Long: `Access Stripe Data APIs.
 
-	metricsCmd := &cobra.Command{
-		Use:   "metrics",
-		Short: "Query Stripe metrics",
-		// Private Preview API — hidden until GA.
-		Hidden: true,
-		Args:   validators.NoArgs,
+Use the metrics subcommands to query time-series Stripe metric data. This
+namespace is a Private Preview API.`,
+		Args: validators.NoArgs,
 	}
-	metricsCmd.AddCommand(newDataMetricsRunCmd().cmd)
+	dc.cmd.SetUsageTemplate(dataUsageTemplate())
 
-	dc.cmd.AddCommand(metricsCmd)
+	dc.cmd.AddCommand(newDataMetricsCmd().cmd)
 	return dc
+}
+
+func newDataMetricsCmd() *dataMetricsCmd {
+	mc := &dataMetricsCmd{}
+	mc.cmd = &cobra.Command{
+		Use:   "metrics",
+		Short: "Query Stripe metrics (Private Preview)",
+		Long: `Query time-series Stripe metric data.
+
+Use the run subcommand to execute a metric query. This uses the
+/v2/data/analytics/metric_query Private Preview API — the Stripe-Version
+preview header is set automatically.
+
+Metrics are specified by namespace.metric (e.g. revenue.mrr, revenue.arr).
+See the supported metrics at https://docs.stripe.com/data/analytics/supported-metrics
+and the API reference at
+https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-version=preview`,
+		Args: validators.NoArgs,
+	}
+	mc.cmd.AddCommand(newDataMetricsRunCmd().cmd)
+	return mc
+}
+
+// dataUsageTemplate is the help template for the data command tree.
+// Usage and the trailing hint use HasSubCommands so parent --help stays
+// populated if a child is later hidden. Available commands lists only
+// non-hidden children via IsAvailableCommand.
+func dataUsageTemplate() string {
+	return fmt.Sprintf(`%s{{if .Runnable}}
+  {{.UseLine}}{{end}}{{if .HasSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+%s
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+%s
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+%s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
+
+%s
+{{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+%s
+{{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`,
+		ansi.Bold("Usage:"),
+		ansi.Bold("Aliases:"),
+		ansi.Bold("Examples:"),
+		ansi.Bold("Available commands:"),
+		ansi.Bold("Flags:"),
+		ansi.Bold("Global flags:"),
+	)
 }
 
 func newDataMetricsRunCmd() *dataMetricsRunCmd {
@@ -68,19 +123,17 @@ func newDataMetricsRunCmd() *dataMetricsRunCmd {
 
 	c.cmd = &cobra.Command{
 		Use:   "run",
-		Short: "Run a Stripe metric query",
-		// Private Preview API — hidden until GA.
-		Hidden: true,
+		Short: "Run a Stripe metric query (Private Preview)",
 		Long: `Run a query for time-series Stripe metric data.
 
-Sends a POST request to /v2/data/analytics/metric_query. This is a Private
-Preview API — the Stripe-Version preview header is set automatically.
+Sends a POST request to /v2/data/analytics/metric_query. This is a
+Private Preview API — the Stripe-Version preview header is set automatically.
 
 Metrics are specified by namespace.metric (e.g. revenue.mrr, revenue.arr).
 Multiple metrics can be queried together as long as they share the same
-namespace. Use --group-by to break down results by a dimension (e.g. price,
-product, customer). Use --filter to restrict results to specific dimension
-values.
+namespace. Use --group-by to break down results by a dimension (at most one;
+valid names depend on the metric, e.g. price, product, customer). Use --filter
+to restrict results to specific dimension values.
 
 Required API fields: metrics, starts_at, ends_at, granularity. Optional:
 currency, timezone, group_by, filters, limit. The API validates all parameters.
@@ -104,32 +157,31 @@ https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-ve
     --granularity month \
     --currency usd
 
-  # Group by product dimension
+  # Group by price dimension
   stripe data metrics run \
     --metric revenue.mrr \
     --starts-at 2026-01-01T00:00:00Z \
     --ends-at 2026-01-31T23:59:59Z \
     --granularity month \
     --currency usd \
-    --group-by product
+    --group-by price
 
-  # Filter results to specific prices
+  # Filter by price — replace price_<id> with a Price id from your account
   stripe data metrics run \
     --metric usage_based_billing.gross_usage_revenue \
     --starts-at 2026-01-01T00:00:00Z \
     --ends-at 2026-06-30T23:59:59Z \
     --granularity month \
-    --filter "price=price_abc123" \
-    --filter "price=price_xyz789"`,
+    --filter "price=price_<id>"`,
 		RunE: c.runDataMetricsRunCmd,
 	}
 
-	c.cmd.Flags().StringArrayVar(&c.metrics, "metric", []string{}, "Metric to query: namespace.metric name (e.g. revenue.mrr) or ID (e.g. metric_61Sud3n5oAGVCWiSr5). Repeatable.")
+	c.cmd.Flags().StringArrayVar(&c.metrics, "metric", []string{}, "Metric to query: namespace.metric name (e.g. revenue.mrr) or ID (e.g. metric_<id>). Repeatable.")
 	c.cmd.Flags().StringVar(&c.startsAt, "starts-at", "", "Start of the time range as an ISO 8601 datetime (e.g. 2026-01-01T00:00:00Z)")
 	c.cmd.Flags().StringVar(&c.endsAt, "ends-at", "", "End of the time range as an ISO 8601 datetime (e.g. 2026-01-31T23:59:59Z)")
 	c.cmd.Flags().StringVar(&c.granularity, "granularity", "day", "Time granularity: day, week, month, or year")
-	c.cmd.Flags().StringArrayVar(&c.groupBy, "group-by", []string{}, "Dimension to group results by (e.g. price, product, customer)")
-	c.cmd.Flags().StringArrayVar(&c.filters, "filter", []string{}, "Filter results by dimension values, in key=value format (repeatable). E.g. --filter \"price=price_abc123\"")
+	c.cmd.Flags().StringArrayVar(&c.groupBy, "group-by", []string{}, "Dimension to group by (at most one). Valid names depend on the metric (e.g. price, product, customer). See https://docs.stripe.com/data/analytics/supported-metrics")
+	c.cmd.Flags().StringArrayVar(&c.filters, "filter", []string{}, "Filter results by dimension values, in key=value format (repeatable). E.g. --filter \"price=price_<id>\"")
 	c.cmd.Flags().StringVar(&c.currency, "currency", "", "Currency code to convert monetary values to (e.g. usd, eur). Defaults to your account's default currency.")
 	c.cmd.Flags().StringVar(&c.timezone, "timezone", "", "Timezone for result alignment (e.g. America/New_York). Defaults to your account timezone.")
 	c.cmd.Flags().IntVar(&c.limit, "limit", 0, "Maximum number of rows to return (1–1000). Default is all rows.")
@@ -182,7 +234,7 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 	}
 
 	_, err = c.rb.MakeRequest(cmd.Context(), creds, dataMetricsRunPath, &requests.RequestParameters{}, body, true, nil)
-	return err
+	return formatMetricQueryError(err)
 }
 
 // buildRequestBody assembles the JSON body for the metric query request.

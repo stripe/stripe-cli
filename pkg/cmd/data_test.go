@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -378,11 +379,37 @@ func TestDataMetricsRunCmd_HTTPError(t *testing.T) {
 	// errOnStatus=true: 4xx responses are returned as a Go error (exit 1).
 	err := c.runDataMetricsRunCmd(c.cmd, []string{})
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Invalid metric query parameter")
+	assert.Contains(t, err.Error(), "metric_invalid_parameter_value")
+	assert.NotContains(t, err.Error(), "try again later")
 
 	var reqErr requests.RequestError
 	require.ErrorAs(t, err, &reqErr)
 	assert.Equal(t, http.StatusBadRequest, reqErr.StatusCode)
 	assert.Equal(t, "metric_invalid_parameter_value", reqErr.ErrorCode)
+}
+
+func TestDataMetricsRunCmd_HTTPError_RewritesGenericInternalMessage(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":{"code":"metric_invalid_parameter_value","message":"An internal error occurred while running the metric query. Please try again later.","request_log_url":"https://dashboard.stripe.com/test/logs/req_test"}}`))
+	}))
+	defer ts.Close()
+
+	c := newTestDataMetricsRunCmd(t, ts.URL)
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-01-01T00:00:00Z"
+	c.endsAt = "2026-01-31T23:59:59Z"
+	c.granularity = "month"
+	c.currency = "usd"
+	c.groupBy = []string{"product"}
+
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--group-by")
+	assert.Contains(t, err.Error(), "client error")
+	assert.NotContains(t, err.Error(), "internal error")
+	assert.NotContains(t, err.Error(), "try again later")
 }
 
 func TestDataMetricsRunCmd_StripeVersionHeader(t *testing.T) {
@@ -459,15 +486,84 @@ func TestDataMetricsRunCmd_CommandPath(t *testing.T) {
 	assert.Equal(t, "data metrics run", runCmd.CommandPath())
 }
 
-func TestNewDataCmd_HiddenForPrivatePreview(t *testing.T) {
+func TestNewDataCmd_NotHidden(t *testing.T) {
 	dc := newDataCmd()
-	assert.True(t, dc.cmd.Hidden, "data command is a Private Preview API and must be hidden")
+	assert.False(t, dc.cmd.Hidden, "data command must be listed in help")
 
 	metricsCmd, _, err := dc.cmd.Find([]string{"metrics"})
 	require.NoError(t, err)
-	assert.True(t, metricsCmd.Hidden, "metrics command is a Private Preview API and must be hidden")
+	assert.False(t, metricsCmd.Hidden, "metrics command must be listed in help")
 
 	runCmd, _, err := dc.cmd.Find([]string{"metrics", "run"})
 	require.NoError(t, err)
-	assert.True(t, runCmd.Hidden, "run command is a Private Preview API and must be hidden")
+	assert.False(t, runCmd.Hidden, "run command must be listed in help")
+}
+
+func dataHelpOutput(t *testing.T, args ...string) string {
+	t.Helper()
+	root := &cobra.Command{Use: "stripe"}
+	root.SetUsageTemplate(getUsageTemplate())
+	root.AddCommand(newDataCmd().cmd)
+	out, err := executeCommand(root, args...)
+	require.NoError(t, err)
+	return out
+}
+
+func TestDataCmd_HelpDescribesNamespace(t *testing.T) {
+	out := dataHelpOutput(t, "data", "--help")
+
+	assert.Contains(t, out, "Access Stripe Data APIs")
+	assert.Contains(t, out, "metrics subcommands")
+	assert.Contains(t, out, "Private Preview")
+	assert.Contains(t, out, "stripe data [command]")
+	assert.Contains(t, out, `Use "stripe data [command] --help" for more information about a command.`)
+	assert.Contains(t, out, "metrics")
+	assert.Contains(t, out, "Query Stripe metrics")
+}
+
+func TestDataMetricsCmd_HelpDescribesNamespace(t *testing.T) {
+	out := dataHelpOutput(t, "data", "metrics", "--help")
+
+	assert.Contains(t, out, "Query time-series Stripe metric data")
+	assert.Contains(t, out, "/v2/data/analytics/metric_query")
+	assert.Contains(t, out, "Private Preview")
+	assert.Contains(t, out, "https://docs.stripe.com/data/analytics/supported-metrics")
+	assert.Contains(t, out, "namespace.metric")
+	assert.Contains(t, out, "revenue.mrr")
+	assert.Contains(t, out, "revenue.arr")
+	assert.Contains(t, out, "stripe data metrics [command]")
+	assert.Contains(t, out, `Use "stripe data metrics [command] --help" for more information about a command.`)
+	assert.Contains(t, out, "run")
+	assert.Contains(t, out, "Run a Stripe metric query")
+}
+
+func TestDataCmd_HelpListsVisibleSubcommands(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	root.SetUsageTemplate(getUsageTemplate())
+	dc := newDataCmd()
+	dc.cmd.AddCommand(&cobra.Command{
+		Use:   "visible-example",
+		Short: "A non-hidden data command",
+		Run:   func(cmd *cobra.Command, args []string) {},
+	})
+	root.AddCommand(dc.cmd)
+
+	out, err := executeCommand(root, "data", "--help")
+	require.NoError(t, err)
+
+	assert.Contains(t, out, "stripe data [command]")
+	assert.Contains(t, out, "visible-example")
+	assert.Contains(t, out, "A non-hidden data command")
+	assert.Contains(t, out, `Use "stripe data [command] --help" for more information about a command.`)
+	assert.Contains(t, out, "Query Stripe metrics")
+}
+
+func TestDataMetricsRunCmd_HelpStillHasExamples(t *testing.T) {
+	out := dataHelpOutput(t, "data", "metrics", "run", "--help")
+
+	assert.Contains(t, out, "Run a query for time-series Stripe metric data")
+	assert.Contains(t, out, "Private Preview")
+	assert.Contains(t, out, "--metric")
+	assert.Contains(t, out, "stripe data metrics run")
+	assert.Contains(t, out, "revenue.mrr")
 }
