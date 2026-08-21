@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -26,6 +27,7 @@ func newTestCmd(name string, opts ...option) *pluginHintCmd {
 		name:          name,
 		description:   "Test description.",
 		stdout:        &bytes.Buffer{},
+		stderr:        &bytes.Buffer{},
 		stdin:         strings.NewReader(""),
 		accountIDFn:   func() (string, error) { return "acct_test", nil },
 		loginFn:       func(ctx context.Context) error { return nil },
@@ -47,6 +49,12 @@ func newTestCmd(name string, opts ...option) *pluginHintCmd {
 
 func (p *pluginHintCmd) output() string {
 	return p.stdout.(*bytes.Buffer).String()
+}
+
+// errOutput returns what the command wrote to stderr, which is where the
+// non-interactive auto-install path reports progress and next steps.
+func (p *pluginHintCmd) errOutput() string {
+	return p.stderr.(*bytes.Buffer).String()
 }
 
 func findChildCommand(rootCmd *cobra.Command, name string) *cobra.Command {
@@ -255,8 +263,8 @@ func TestRun_AutoInstall_InstallsAndRunsWithoutPrompting(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, installCalled)
 	assert.NotNil(t, ranWith, "expected the plugin to run after installing")
-	assert.Contains(t, p.output(), "one-time setup")
-	assert.NotContains(t, p.output(), "press Enter")
+	assert.Contains(t, p.errOutput(), "one-time setup")
+	assert.NotContains(t, p.output()+p.errOutput(), "press Enter")
 	remaining, readErr := io.ReadAll(stdin)
 	require.NoError(t, readErr)
 	assert.Equal(t, "unread\n", string(remaining))
@@ -305,11 +313,7 @@ func TestRun_AutoInstall_ForwardsArgsToPlugin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd(
-				"directory",
-				withAutoInstall(nil),
-				withAliasArgPrefix(map[string][]string{"search": {"search"}}),
-			)
+			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
 			var ranWith []string
 			p.runPluginFn = func(cmd *cobra.Command, args []string) error { ranWith = args; return nil }
 
@@ -344,9 +348,9 @@ func TestRun_AutoInstall_PropagatesPluginError(t *testing.T) {
 
 func TestRun_AutoInstall_PrintsNextStepsBeforeRunningPlugin(t *testing.T) {
 	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
-	var outputAtRunTime string
+	var errOutputAtRunTime string
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error {
-		outputAtRunTime = p.output()
+		errOutputAtRunTime = p.errOutput()
 		return nil
 	}
 
@@ -355,9 +359,30 @@ func TestRun_AutoInstall_PrintsNextStepsBeforeRunningPlugin(t *testing.T) {
 	require.NoError(t, err)
 	// Captured before the plugin produced any output, so the tips cannot be
 	// mistaken for part of the command's result.
-	assert.Contains(t, outputAtRunTime, "installation complete")
-	assert.Contains(t, outputAtRunTime, "stripe directory search")
-	assert.Contains(t, outputAtRunTime, "directory@stripe.com")
+	assert.Contains(t, errOutputAtRunTime, "installation complete")
+	assert.Contains(t, errOutputAtRunTime, "stripe directory search")
+	assert.Contains(t, errOutputAtRunTime, "directory@stripe.com")
+}
+
+// TestRun_AutoInstall_LeavesStdoutToThePlugin protects the first-run experience for
+// anything parsing the output: installing on demand must not prepend human-readable
+// setup chatter to the stream the plugin's own result arrives on.
+func TestRun_AutoInstall_LeavesStdoutToThePlugin(t *testing.T) {
+	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	var stdoutAtRunTime string
+	p.runPluginFn = func(cmd *cobra.Command, args []string) error {
+		stdoutAtRunTime = p.output()
+		fmt.Fprintln(p.stdout, `{"results":[]}`)
+		return nil
+	}
+
+	err := p.run(p.Command, nil)
+
+	require.NoError(t, err)
+	assert.Empty(t, stdoutAtRunTime, "stdout must be untouched when the plugin takes over")
+	assert.Equal(t, "{\"results\":[]}\n", p.output())
+	// The guidance still has to reach the user, just not on stdout.
+	assert.Contains(t, p.errOutput(), "installation complete")
 }
 
 func TestRun_AutoInstall_NoRunnerPrintsNextSteps(t *testing.T) {
@@ -369,8 +394,8 @@ func TestRun_AutoInstall_NoRunnerPrintsNextSteps(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, installCalled)
-	assert.Contains(t, p.output(), "installation complete")
-	assert.Contains(t, p.output(), "directory@stripe.com")
+	assert.Contains(t, p.errOutput(), "installation complete")
+	assert.Contains(t, p.errOutput(), "directory@stripe.com")
 }
 
 func TestRun_AutoInstall_OptedOutDoesNotInstallOrPrompt(t *testing.T) {
@@ -402,11 +427,15 @@ func TestRun_AutoInstall_OptedOutDoesNotInstallOrPrompt(t *testing.T) {
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "stripe plugin install directory")
+			assert.Contains(t, err.Error(), AutoInstallOptOutEnvVar)
 			assert.False(t, lookupCalled)
 			assert.False(t, installCalled)
 			assert.False(t, runCalled)
 			assert.False(t, loginCalled)
-			assert.Contains(t, p.output(), AutoInstallOptOutEnvVar)
+			// The host prints the error, so repeating it on either stream would say
+			// the same thing twice.
+			assert.Empty(t, p.output())
+			assert.Empty(t, p.errOutput())
 			remaining, readErr := io.ReadAll(stdin)
 			require.NoError(t, readErr)
 			assert.Equal(t, "unread\n", string(remaining))
@@ -497,22 +526,18 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 			wantArgs: []string{"search", "--help"},
 		},
 		{
-			name:    "help subcommand on an alias falls back to the plugin's own help",
+			name:    "help subcommand on an alias still restores the subcommand",
 			aliases: []string{"search"},
 			argv:    []string{"stripe", "help", "search"},
-			// Cobra only records CalledAs for commands it executes, so the alias is
-			// invisible here and the plugin gets its top-level help.
-			wantArgs: []string{"--help"},
+			// Cobra records CalledAs only for commands it executes, so the alias is
+			// recovered from argv instead of being lost.
+			wantArgs: []string{"search", "--help"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd(
-				"directory",
-				withAutoInstall(nil),
-				withAliasArgPrefix(map[string][]string{"search": {"search"}}),
-			)
+			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
 			installCalled := false
 			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 			var ranWith []string
@@ -525,8 +550,8 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 			assert.Equal(t, tt.wantArgs, ranWith)
 			// The plugin supplies the help text, so the placeholder's must not appear.
 			assert.NotContains(t, p.output(), "Test description.")
-			assert.Contains(t, p.output(), "one-time setup")
-			assert.Contains(t, p.output(), "directory@stripe.com")
+			assert.Contains(t, p.errOutput(), "one-time setup")
+			assert.Contains(t, p.errOutput(), "directory@stripe.com")
 		})
 	}
 }
@@ -614,7 +639,7 @@ func TestHelp_WithoutAutoInstall_ShowsPlaceholderHelp(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, installCalled)
 	assert.Contains(t, p.output(), "Test description.")
-	assert.NotContains(t, p.output(), "one-time setup")
+	assert.NotContains(t, p.output()+p.errOutput(), "one-time setup")
 }
 
 // --- promptInstall ---

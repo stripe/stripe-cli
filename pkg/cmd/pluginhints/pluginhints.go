@@ -14,7 +14,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
-	"github.com/stripe/stripe-cli/pkg/cmdutil"
+	"github.com/stripe/stripe-cli/pkg/cmd/pluginalias"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -64,19 +64,8 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 			"directory",
 			"Allow your agent to search and provision tools and services. Learn more: https://stripe.directory",
 			withAutoInstall(runPlugin),
-			// "search" stands in for the plugin's own subcommand rather than for the
-			// plugin name, so "stripe search <query>" has to forward as
-			// "directory search <query>". The remaining aliases are name typos and
-			// forward their arguments untouched.
-			withAliasArgPrefix(map[string][]string{"search": {"search"}}),
 		).Command
-		directoryCmd.Aliases = []string{
-			"search",
-			"directry",
-			"directary",
-			"direcotry", //nolint:misspell // Intentional typo alias.
-			"diretory",
-		}
+		directoryCmd.Aliases = pluginalias.For("directory").Names
 		rootCmd.AddCommand(
 			directoryCmd,
 		)
@@ -103,10 +92,6 @@ type pluginHintCmd struct {
 	// autoInstall installs the plugin on first use without prompting and then runs
 	// the command the user originally typed, instead of asking for confirmation.
 	autoInstall bool
-	// aliasArgPrefix maps an alias to arguments that must be prepended when the
-	// command is invoked through it, for aliases that stand in for a plugin
-	// subcommand rather than for the plugin name itself.
-	aliasArgPrefix map[string][]string
 
 	lookupFn      func(ctx context.Context) error
 	installFn     func(ctx context.Context) error
@@ -118,6 +103,10 @@ type pluginHintCmd struct {
 	lookupEnvFn   func(key string) string
 	stdin         io.Reader
 	stdout        io.Writer
+	// stderr carries progress and next steps for the non-interactive auto-install
+	// path, so a first run leaves stdout holding only the plugin's own output and
+	// stays parseable by whatever asked for it.
+	stderr io.Writer
 }
 
 type option func(*pluginHintCmd)
@@ -140,12 +129,6 @@ func withAutoInstall(runPlugin PluginRunner) option {
 		p.runPluginFn = func(cmd *cobra.Command, args []string) error {
 			return runPlugin(cmd, p.name, args)
 		}
-	}
-}
-
-func withAliasArgPrefix(prefixes map[string][]string) option {
-	return func(p *pluginHintCmd) {
-		p.aliasArgPrefix = prefixes
 	}
 }
 
@@ -179,6 +162,7 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		lookupEnvFn:   os.Getenv,
 		stdin:         os.Stdin,
 		stdout:        os.Stdout,
+		stderr:        os.Stderr,
 	}
 	p.loginFn = func(ctx context.Context) error {
 		return login.Login(ctx, dashboardBaseURL, p.accessBaseURL, cfg)
@@ -300,7 +284,10 @@ func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) 
 // command the user typed, so first use of the plugin costs a one-time download
 // rather than a canceled command the user has to retype.
 func (p *pluginHintCmd) autoInstallAndRun(ctx context.Context, cmd *cobra.Command, pluginArgs []string) error {
-	fmt.Fprintln(p.stdout, ansi.Faint(fmt.Sprintf("Installing the %q plugin (one-time setup)...", p.name)))
+	// This is progress, not output the caller asked for, so it goes to stderr. A
+	// first run then leaves stdout holding only what the plugin itself printed,
+	// which keeps `--format json` and friends parseable.
+	fmt.Fprintln(p.stderr, ansi.Faint(fmt.Sprintf("Installing the %q plugin (one-time setup)...", p.name)))
 
 	if err := p.installFn(ctx); err != nil {
 		return err
@@ -309,9 +296,9 @@ func (p *pluginHintCmd) autoInstallAndRun(ctx context.Context, cmd *cobra.Comman
 	// Print the next steps before handing off, so this one-time guidance stays
 	// above the requested command's output instead of trailing it, where it would
 	// look like part of the result.
-	color := ansi.Color(p.stdout)
-	fmt.Fprintln(p.stdout, color.Green("✔ installation complete."))
-	postinstall.PrintTips(p.stdout, p.name)
+	color := ansi.Color(p.stderr)
+	fmt.Fprintln(p.stderr, color.Green("✔ installation complete."))
+	postinstall.PrintTips(p.stderr, p.name)
 
 	// Without a runner there is nothing to hand off to, so stop here rather than
 	// exiting on a silent success.
@@ -319,17 +306,21 @@ func (p *pluginHintCmd) autoInstallAndRun(ctx context.Context, cmd *cobra.Comman
 		return nil
 	}
 
-	fmt.Fprintln(p.stdout)
+	fmt.Fprintln(p.stderr)
 
 	return p.runPluginFn(cmd, pluginArgs)
 }
 
 // refuseAutoInstall reports that the plugin is missing without fetching it, so an
 // environment that opted out fails loudly instead of blocking on a prompt that
-// may have no one to answer it.
+// may have no one to answer it. The whole explanation lives in the error because
+// the host already prints that to stderr and exits non-zero.
 func (p *pluginHintCmd) refuseAutoInstall() error {
-	fmt.Fprintf(p.stdout, "The %q plugin is required to run this command, but %s disables installing it automatically.\n", p.name, AutoInstallOptOutEnvVar)
-	return errorcategory.Errorf(errorcategory.UserInput, "plugin %q is not installed; run 'stripe plugin install %s'", p.name, p.name)
+	return errorcategory.Errorf(
+		errorcategory.UserInput,
+		"the %q plugin is required to run this command, but %s disables installing it automatically; run 'stripe plugin install %s'",
+		p.name, AutoInstallOptOutEnvVar, p.name,
+	)
 }
 
 func (p *pluginHintCmd) autoInstallOptedOut() bool {
@@ -338,24 +329,10 @@ func (p *pluginHintCmd) autoInstallOptedOut() bool {
 }
 
 // pluginArgs recovers the arguments intended for the plugin from the raw process
-// arguments. Cobra has already consumed the flags and the plugin name it
-// recognizes, so read them back from argv instead:
-// "stripe [host_flags...] directory [plugin_args...]" => "[plugin_args...]".
+// arguments, sharing the alias handling with the command registered once the
+// plugin is installed.
 func (p *pluginHintCmd) pluginArgs(cmd *cobra.Command) []string {
-	// Slice after the token the user actually typed. Aliases mean that is not
-	// always the plugin's own name.
-	invokedAs := p.name
-	if cmd != nil && cmd.CalledAs() != "" {
-		invokedAs = cmd.CalledAs()
-	}
-
-	args := cmdutil.ArgsAfter(p.argvFn(), invokedAs)
-
-	if prefix, ok := p.aliasArgPrefix[invokedAs]; ok {
-		args = append(append([]string{}, prefix...), args...)
-	}
-
-	return args
+	return pluginalias.PluginArgs(p.argvFn(), cmd, p.name)
 }
 
 // helpArgs builds the arguments that make the plugin print the help the user asked

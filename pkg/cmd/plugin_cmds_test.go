@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/cmd/pluginalias"
+	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
@@ -207,6 +209,94 @@ func TestGeneratedPluginSubcommandStubUsesExecutingCommand(t *testing.T) {
 	assert.Equal(t, "catalog", capturedCmd.Name())
 	assert.Equal(t, []string{"catalog"}, capturedArgs)
 	assert.Equal(t, "sentinel", capturedCmd.Context().Value(ctxKey{}))
+}
+
+// TestPluginAliasesResolveWhetherOrNotInstalled protects against an alias that works
+// only until the plugin it stands in for is installed: the hint command and the
+// installed plugin command have to answer to the same names.
+func TestPluginAliasesResolveWhetherOrNotInstalled(t *testing.T) {
+	aliases := pluginalias.For("directory").Names
+	require.NotEmpty(t, aliases)
+
+	states := map[string]func() *cobra.Command{
+		"not installed": func() *cobra.Command {
+			root := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
+			pluginhints.AddHintCommands(root, &Config, map[string]bool{}, nil)
+			return root
+		},
+		"installed": func() *cobra.Command {
+			root := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
+			plugin := plugins.Plugin{Shortname: "directory", Shortdesc: "Directory plugin", Binary: "stripe-cli-directory"}
+			root.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
+			return root
+		},
+	}
+
+	for state, newRoot := range states {
+		t.Run(state, func(t *testing.T) {
+			root := newRoot()
+
+			for _, name := range append([]string{"directory"}, aliases...) {
+				t.Run(name, func(t *testing.T) {
+					resolved, _, err := root.Find([]string{name})
+
+					require.NoError(t, err)
+					assert.Equal(t, "directory", resolved.Name())
+				})
+			}
+		})
+	}
+}
+
+// TestInstalledPluginForwardsAliasArgs is the other half of the invariant above: an
+// alias that stands in for a subcommand has to keep restoring it after installation,
+// or the same command line means two different things before and after.
+func TestInstalledPluginForwardsAliasArgs(t *testing.T) {
+	tests := []struct {
+		name string
+		argv []string
+		want []string
+	}{
+		{
+			name: "subcommand alias",
+			argv: []string{"stripe", "search", "coffee shops"},
+			want: []string{"search", "coffee shops"},
+		},
+		{
+			name: "typo alias",
+			argv: []string{"stripe", "diretory", "search", "coffee shops"},
+			want: []string{"search", "coffee shops"},
+		},
+		{
+			name: "canonical name",
+			argv: []string{"stripe", "directory", "search", "coffee shops"},
+			want: []string{"search", "coffee shops"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plugin := plugins.Plugin{Shortname: "directory", Shortdesc: "Directory plugin", Binary: "stripe-cli-directory"}
+			ptc := newPluginTemplateCmd(&Config, &plugin)
+
+			var ranWith []string
+			ptc.runPluginCmdFn = func(cmd *cobra.Command, args []string) error {
+				ranWith = append([]string(nil), args...)
+				return nil
+			}
+
+			root := &cobra.Command{Use: "stripe", SilenceUsage: true, SilenceErrors: true}
+			root.AddCommand(ptc.cmd)
+			root.SetArgs(tt.argv[1:])
+
+			oldArgs := os.Args
+			os.Args = tt.argv
+			defer func() { os.Args = oldArgs }()
+
+			require.NoError(t, root.Execute())
+			assert.Equal(t, tt.want, ranWith)
+		})
+	}
 }
 
 func TestCommandContextOrBackgroundUsesCommandContext(t *testing.T) {
