@@ -1250,3 +1250,52 @@ func TestVerifyChecksumAndSavePluginRefusesSymlinkedParent(t *testing.T) {
 	_, err = os.Stat(filepath.Join(victimDir, "plugins", "appA", "2.0.1", "stripe-cli-app-a"+GetBinaryExtension()))
 	require.ErrorIs(t, err, os.ErrNotExist)
 }
+
+func TestVerifyChecksumAndSavePluginRejectsTraversalBinary(t *testing.T) {
+	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
+	require.NoError(t, err)
+
+	var pluginList PluginList
+	_, err = toml.Decode(string(manifestContent), &pluginList)
+	require.NoError(t, err)
+
+	var plugin Plugin
+	for _, candidate := range pluginList.Plugins {
+		if candidate.Shortname == "appA" {
+			plugin = candidate
+			break
+		}
+	}
+	require.Equal(t, "appA", plugin.Shortname)
+
+	tempDir := t.TempDir()
+	config := &CustomTestConfig{customConfigPath: tempDir}
+	fs := afero.NewOsFs()
+
+	// A hostile manifest sets the binary name to a path that climbs out of the
+	// plugin install directory (<config>/plugins/appA/2.0.1).
+	plugin.Binary = filepath.Join("..", "..", "..", "escaped-binary")
+	escapedPath := filepath.Join(tempDir, "escaped-binary"+GetBinaryExtension())
+
+	err = plugin.verifychecksumAndSavePlugin([]byte("hello, I am appA_2.0.1"), config, fs, "2.0.1")
+	require.ErrorContains(t, err, "invalid plugin binary name")
+
+	_, statErr := os.Stat(escapedPath)
+	require.ErrorIs(t, statErr, os.ErrNotExist, "binary must not be written outside the plugin directory")
+}
+
+func TestValidatePluginBinaryName(t *testing.T) {
+	require.NoError(t, ValidatePluginBinaryName("stripe-cli-app-a"))
+
+	for _, name := range []string{
+		"",
+		".",
+		"..",
+		"../../../../tmp/x",
+		`..\..\x`,
+		"sub/binary",
+		"/abs/binary",
+	} {
+		require.Error(t, ValidatePluginBinaryName(name), "expected %q to be rejected", name)
+	}
+}
