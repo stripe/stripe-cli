@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v72/github"
+	goversion "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -16,7 +17,7 @@ import (
 // Version of the CLI.
 // This is set to the actual version by GoReleaser, identify by the
 // git tag assigned to the release. Versions built from source will
-// always show master.
+// show master or the commit SHA.
 var Version = "master"
 
 // Template for the version string.
@@ -25,8 +26,7 @@ var Template = fmt.Sprintf("stripe version %s\n", Version)
 // CheckLatestVersion makes a request to the GitHub API to pull the latest
 // release of the CLI
 func CheckLatestVersion() {
-	// master is the dev version, we don't want to check against that every time
-	if Version != "master" {
+	if _, err := goversion.NewSemver(Version); err == nil {
 		s := ansi.StartNewSpinner("Checking for new versions...", os.Stdout)
 		latest := getLatestVersion()
 
