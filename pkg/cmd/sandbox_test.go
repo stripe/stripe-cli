@@ -139,9 +139,10 @@ func dashboardServer(t *testing.T) *httptest.Server {
 const activeClaimableSandboxAPIKey = "rkcs_test_claim_status"
 
 type claimStatusRequest struct {
-	Method string
-	Path   string
-	Auth   string
+	Method  string
+	Path    string
+	Auth    string
+	Version string
 }
 
 func newClaimStatusServer(t *testing.T, statusCode int, body string, recs *[]claimStatusRequest) *httptest.Server {
@@ -149,9 +150,10 @@ func newClaimStatusServer(t *testing.T, statusCode int, body string, recs *[]cla
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if recs != nil {
 			*recs = append(*recs, claimStatusRequest{
-				Method: r.Method,
-				Path:   r.URL.Path,
-				Auth:   r.Header.Get("Authorization"),
+				Method:  r.Method,
+				Path:    r.URL.Path,
+				Auth:    r.Header.Get("Authorization"),
+				Version: r.Header.Get("Stripe-Version"),
 			})
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -446,6 +448,7 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 	require.Len(t, recs, 1)
 	assert.Equal(t, http.MethodGet, recs[0].Method)
 	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
+	assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
 }
 
 func TestSandboxCreateCmd_FromGitResolvesName(t *testing.T) {
@@ -620,6 +623,7 @@ func TestSandboxClaimCmd_WithClaimURL(t *testing.T) {
 	assert.Equal(t, http.MethodGet, recs[0].Method)
 	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
 	assert.Equal(t, "Bearer "+activeClaimableSandboxAPIKey, recs[0].Auth)
+	assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
 }
 
 func TestSandboxClaimCmd_ClaimedDoesNotPrintURLOrOpenBrowser(t *testing.T) {

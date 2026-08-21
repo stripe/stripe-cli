@@ -23,7 +23,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/open"
-	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -33,6 +32,8 @@ const (
 	defaultSandboxBaseURL        = "https://ai.stripe.com"
 	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to authenticate with your claimed account."
 	sandboxExpiredMessage        = "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one."
+	// RetrieveClaimableSandboxStatus shipped in the 2026-08-26 snapshot.
+	sandboxClaimStatusVersion = "2026-08-26.preview"
 )
 
 var openBrowserFunc = open.Browser
@@ -529,7 +530,7 @@ func fetchSandboxClaimStatus(ctx context.Context, apiBaseURL, apiKey string) (bo
 	}
 
 	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/core/claimable_sandboxes/status", "", func(req *http.Request) error {
-		req.Header.Set("Stripe-Version", requests.StripeVersionHeaderValue)
+		req.Header.Set("Stripe-Version", sandboxClaimStatusVersion)
 		return nil
 	})
 	if err != nil {
