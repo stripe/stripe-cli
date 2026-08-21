@@ -153,6 +153,28 @@ func TestDetectAgentHost(t *testing.T) {
 		{"uncategorized codex host", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Web"}, "other", "codex-web"},
 		{"no host", map[string]string{}, "", ""},
 
+		// The originators Codex enumerates, normalized. The VS Code extension is the one
+		// with observed traffic; it reported "other" until it was mapped here.
+		{"codex vscode", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_vscode"}, "ide", "codex-vscode"},
+		{"codex tui", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex-tui"}, "terminal", "codex-tui"},
+		{"codex cli rs", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_cli_rs"}, "terminal", "codex-cli-rs"},
+		{"codex exec", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_exec"}, "terminal", "codex-exec"},
+		{"codex mcp server", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex_mcp_server"}, "mcp", "codex-mcp-server"},
+		{"codex app server", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex-app-server"}, "sdk", "codex-app-server"},
+		{"codex app server sdk", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "codex-app-server-sdk"}, "sdk", "codex-app-server-sdk"},
+		// "none" means Codex reported no originator, so it stays uncategorized rather
+		// than being mapped to a surface it does not name.
+		{"codex none stays uncategorized", map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "none"}, "other", "none"},
+
+		// Codex names every surface except the terminal, so a detected Codex agent with no
+		// originator is a terminal one. This is the only inferred host.
+		{"codex terminal inferred from sandbox signal", map[string]string{"CODEX_SANDBOX": "1"}, "terminal", "codex-cli"},
+		{"codex terminal inferred from thread signal", map[string]string{"CODEX_THREAD_ID": "thread-abc"}, "terminal", "codex-cli"},
+		// The inference is gated on the agent, so it does not fire for anyone else. Claude
+		// Code without an entrypoint has no host, rather than a guessed terminal.
+		{"claude code without entrypoint stays hostless", map[string]string{"CLAUDECODE": "1"}, "", ""},
+		{"cursor stays hostless", map[string]string{"CURSOR_AGENT": "1"}, "", ""},
+
 		// Normalization runs before reporting, so one host cannot arrive under several
 		// spellings -- including from different platforms.
 		{"raw is normalized, not verbatim", map[string]string{"CLAUDE_CODE_ENTRYPOINT": " Some_New HOST "}, "other", "some-new-host"},
@@ -165,6 +187,52 @@ func TestDetectAgentHost(t *testing.T) {
 			kind, raw := DetectAgentHost(mapEnv(tt.envs))
 			require.Equal(t, tt.kind, kind)
 			require.Equal(t, tt.raw, raw)
+		})
+	}
+}
+
+// TestDetectAIAgent_InferredFromHost covers the surfaces that name a host without setting
+// the agent variable that normally identifies them, which previously reported a host with
+// no agent attached.
+func TestDetectAIAgent_InferredFromHost(t *testing.T) {
+	tests := []struct {
+		name        string
+		envs        map[string]string
+		expected    string
+		description string
+	}{
+		{
+			name:        "claude code entrypoint without CLAUDECODE",
+			envs:        map[string]string{"CLAUDE_CODE_ENTRYPOINT": "remote-trigger"},
+			expected:    "claude_code",
+			description: "hosted and SDK entrypoints do not always set CLAUDECODE",
+		},
+		{
+			name:        "codex originator without the generic codex signals",
+			envs:        map[string]string{"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop"},
+			expected:    "codex_cli",
+			description: "the generic signals are sandbox-, permission- and CI-dependent",
+		},
+		{
+			name:        "uncategorized host still identifies the agent",
+			envs:        map[string]string{"CLAUDE_CODE_ENTRYPOINT": "some-future-surface"},
+			expected:    "claude_code",
+			description: "the fallback keys off presence, not off the host being mapped",
+		},
+		// The fallback is last, so a real agent variable still wins and the reported agent
+		// stays the process that set it rather than the surface it inherited.
+		{
+			name:        "agent variable wins over inherited host",
+			envs:        map[string]string{"CURSOR_AGENT": "1", "CLAUDE_CODE_ENTRYPOINT": "claude-vscode"},
+			expected:    "cursor",
+			description: "nested agents inherit an entrypoint from the session that launched them",
+		},
+		{"no agent and no host", map[string]string{}, "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, DetectAIAgent(mapEnv(tt.envs)), tt.description)
 		})
 	}
 }
@@ -287,8 +355,11 @@ func TestObservedAgentSessions(t *testing.T) {
 				"CODEX_SANDBOX":   "1",
 			},
 			agent:    "codex_cli",
-			hostKind: "",
+			hostKind: "terminal",
+			hostRaw:  "codex-cli",
 			version:  "",
+			description: "Codex sets no originator from a terminal, so the terminal host is " +
+				"inferred from its absence; every other Codex surface names itself",
 		},
 	}
 
