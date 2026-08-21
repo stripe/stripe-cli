@@ -3,6 +3,9 @@ package markdown
 import (
 	"bytes"
 	"net/url"
+	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -36,6 +39,69 @@ type Reference struct {
 type Document struct {
 	Node   ast.Node
 	Source []byte
+}
+
+// Heading describes a document heading and its URL fragment.
+type Heading struct {
+	Level    int
+	Text     string
+	Fragment string
+}
+
+// Headings returns the document headings in source order. Repeated fragments
+// receive the same numeric suffixes used by documentation URLs.
+func (d *Document) Headings() []Heading {
+	var headings []Heading
+	used := make(map[string]bool)
+	_ = ast.Walk(d.Node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		h, ok := n.(*ast.Heading)
+		if !ok {
+			return ast.WalkContinue, nil
+		}
+		text := string(nodeText(h, d.Source))
+		baseFragment := NormalizeFragment(text)
+		fragment := baseFragment
+		for suffix := 1; used[fragment]; suffix++ {
+			fragment = baseFragment + "-" + strconv.Itoa(suffix)
+		}
+		used[fragment] = true
+		headings = append(headings, Heading{Level: h.Level, Text: text, Fragment: fragment})
+		return ast.WalkContinue, nil
+	})
+	return headings
+}
+
+// HeadingForFragment returns the heading matching fragment.
+func (d *Document) HeadingForFragment(fragment string) (Heading, bool) {
+	fragment = strings.TrimPrefix(fragment, "#")
+	for _, heading := range d.Headings() {
+		if heading.Fragment == fragment {
+			return heading, true
+		}
+	}
+	return Heading{}, false
+}
+
+// NormalizeFragment converts heading text to the fragment format used by docs URLs.
+func NormalizeFragment(s string) string {
+	var b strings.Builder
+	separator := false
+	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
+		switch {
+		case unicode.IsLetter(r), unicode.IsNumber(r), r == '_':
+			if separator && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			separator = false
+			b.WriteRune(r)
+		case unicode.IsSpace(r), r == '-':
+			separator = true
+		}
+	}
+	return strings.TrimSuffix(b.String(), "-")
 }
 
 // Title returns the text of the first h1 heading in the document, or an empty

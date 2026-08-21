@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,6 +87,28 @@ func TestRendererRenderShowcase(t *testing.T) {
 			assert.Equal(t, string(want), out)
 		})
 	}
+}
+
+func TestRenderWithHeadingOffsets(t *testing.T) {
+	src := "# Title\n\n" + strings.Repeat("A paragraph with enough words to wrap. ", 8) + "\n\n## Formatted **heading**\n\nBody.\n\n## Formatted **heading**\n\nBody.\n\n## Formatted heading 1"
+	doc, err := markdown.Parse([]byte(src))
+	require.NoError(t, err)
+
+	r, err := markdown.NewRenderer(markdown.WithStyle("notty"), markdown.WithWordWrap(30))
+	require.NoError(t, err)
+	result, err := markdown.RenderWithHeadingOffsets(r, doc)
+	require.NoError(t, err)
+
+	first, ok := result.HeadingOffsets["formatted-heading"]
+	require.True(t, ok)
+	second, ok := result.HeadingOffsets["formatted-heading-1"]
+	require.True(t, ok)
+	naturallySuffixed, ok := result.HeadingOffsets["formatted-heading-1-1"]
+	require.True(t, ok)
+	assert.Greater(t, first, result.HeadingOffsets["title"])
+	assert.Greater(t, second, first)
+	assert.Greater(t, naturallySuffixed, second)
+	assert.Contains(t, result.Content, "Formatted **heading**")
 }
 
 func TestRendererRender(t *testing.T) {
