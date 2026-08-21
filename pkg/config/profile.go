@@ -72,10 +72,20 @@ const (
 	ProfilesTableName = "profiles"
 )
 
+// ConfigVersionV1 is the original layout, with each profile as a top-level table.
+// A v1 file records no config_version key at all; the constant exists so that
+// version comparisons don't have to spell out that absence.
+const ConfigVersionV1 = 1
+
 // ConfigVersionV2 is the schema version in which every profile moved under the
 // reserved ProfilesTableName table, so that profile names can no longer collide
 // with top-level CLI settings.
 const ConfigVersionV2 = 2
+
+// MaxSupportedConfigVersion is the newest config.toml layout this binary can act
+// on. A file recording a higher version was written by a newer CLI, whose layout
+// this build has no way to know.
+const MaxSupportedConfigVersion = ConfigVersionV2
 
 const UATKeychainItemKey = "uat"
 
