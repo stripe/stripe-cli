@@ -273,6 +273,7 @@ func init() {
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 	rootCmd.PersistentFlags().StringVar(&rootAccessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	rootCmd.PersistentFlags().MarkHidden("access-base") //nolint:errcheck
+	rootCmd.SetFlagErrorFunc(flagErrorWithNestedAPIHint)
 
 	// tell viper to monitor the following flags:
 	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)

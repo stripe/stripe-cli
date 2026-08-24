@@ -418,6 +418,46 @@ func TestConstructParamFromDot(t *testing.T) {
 	require.Equal(t, "shipping[address][line1]", param)
 }
 
+func TestBracketFlagToGeneratedName(t *testing.T) {
+	require.Equal(t, "result-options.compress-file", bracketFlagToGeneratedName("result_options[compress_file]"))
+	require.Equal(t, "shipping.address.line1", bracketFlagToGeneratedName("shipping[address][line1]"))
+}
+
+func TestNewOperationCmd_AcceptsBracketNestedFlag(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v2/data/reporting/query_runs",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"result_options.compress_file": {Type: "boolean", ShortDescription: "Compress the result file"},
+			"sql":                          {Type: "string", ShortDescription: "The SQL to execute"},
+		},
+	}, &config.Config{})
+
+	err := oc.Cmd.ParseFlags([]string{"--result_options[compress_file]=true"})
+	require.NoError(t, err)
+	require.True(t, oc.Cmd.Flags().Changed("result-options.compress-file"))
+	require.NotNil(t, oc.boolFlags["result-options.compress-file"])
+	require.True(t, *oc.boolFlags["result-options.compress-file"])
+}
+
+func TestNewOperationCmd_DottedNestedFlagIsUnknown(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v2/data/reporting/query_runs",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"result_options.compress_file": {Type: "boolean", ShortDescription: "Compress the result file"},
+		},
+	}, &config.Config{})
+
+	err := oc.Cmd.ParseFlags([]string{"--result_options.compress_file=true"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown flag: --result_options.compress_file")
+}
+
 func TestNewOperationCmd_FlagUsageFromDescription(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 

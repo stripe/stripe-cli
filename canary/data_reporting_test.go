@@ -26,8 +26,9 @@ import (
 //   - stripe reporting query-runs create   -> POST /v2/data/reporting/query_runs
 //   - stripe reporting query-runs retrieve -> GET  /v2/data/reporting/query_runs/{id}
 //
-// These are preview APIs: metric_query (data metrics) is Private Preview and
-// its command is hidden; query_runs (reporting) is Public Preview. Coverage is
+// These are preview APIs: metric_query (data metrics) is Private Preview;
+// query_runs (reporting) is Public Preview. Both command trees are visible in
+// help. Coverage is
 // layered:
 //   - Offline tests verify command registration and help output (no key).
 //   - Dry-run tests exercise the full request-building path without a network
@@ -54,8 +55,7 @@ type dryRunOutput struct {
 func TestOfflineDataMetricsRunHelp(t *testing.T) {
 	runner := getRunner(t)
 
-	// "data" is a hidden Private Preview command, but --help still works when
-	// the command path is invoked directly.
+	// data metrics run is a visible Private Preview command.
 	result, err := runner.Run("data", "metrics", "run", "--help")
 	if err != nil {
 		fatalf(t, "Failed to run 'stripe data metrics run --help': %v", err)
@@ -139,6 +139,7 @@ func TestAPIDataMetricsRunDryRun(t *testing.T) {
 		"--starts-at", "2026-01-01T00:00:00Z",
 		"--ends-at", "2026-01-31T23:59:59Z",
 		"--granularity", "day",
+		"--group-by", "price",
 		"--dry-run",
 	)
 	if err != nil {
@@ -160,7 +161,7 @@ func TestAPIDataMetricsRunDryRun(t *testing.T) {
 	if !strings.HasSuffix(out.DryRun.URL, "/v2/data/analytics/metric_query") {
 		errorf(t, "Expected dry-run URL to target /v2/data/analytics/metric_query, got %q", out.DryRun.URL)
 	}
-	for _, key := range []string{"metrics", "starts_at", "ends_at", "granularity"} {
+	for _, key := range []string{"metrics", "starts_at", "ends_at", "granularity", "group_by"} {
 		if _, ok := out.DryRun.Params[key]; !ok {
 			errorf(t, "Expected dry-run params to include %q, got: %s", key, result.Stdout)
 		}
@@ -217,6 +218,8 @@ func TestAPIDataMetricsRunLive(t *testing.T) {
 		"--starts-at", "2026-01-01T00:00:00Z",
 		"--ends-at", "2026-01-31T23:59:59Z",
 		"--granularity", "month",
+		"--currency", "usd",
+		"--group-by", "price",
 	)
 	if err != nil {
 		fatalf(t, "Failed to run 'stripe data metrics run': %v", err)

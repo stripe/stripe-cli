@@ -109,7 +109,7 @@ These commands wrap preview APIs (`metric_query` is Private Preview; `query_runs
 
 | Test | Command | Validates |
 |------|---------|-----------|
-| `TestOfflineDataMetricsRunHelp` | `stripe data metrics run --help` | Hidden preview command help renders |
+| `TestOfflineDataMetricsRunHelp` | `stripe data metrics run --help` | Private Preview command help renders |
 | `TestOfflineReportingHelp` | `stripe reporting --help` | Reporting command lists `query-runs` |
 | `TestOfflineReportingQueryRunsHelp` | `stripe reporting query-runs --help` | `create`/`retrieve` subcommands listed |
 | `TestOfflineReportingQueryRunsRetrieveHelp` | `stripe reporting query-runs retrieve --help` | Retrieve command help renders |
