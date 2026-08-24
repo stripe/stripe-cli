@@ -78,7 +78,7 @@ type migrationPlan struct {
 // is never left behind.
 //
 // A file whose config_version is newer than this binary understands is left
-// untouched and returns an error. 
+// untouched and returns an error.
 //
 // This function does not decide *whether* to migrate. Callers own that: an
 // installed plugin too old to read the v2 layout, or a non-interactive session,
