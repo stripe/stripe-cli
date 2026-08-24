@@ -97,6 +97,9 @@ func DetectTerminalProgram(getEnv func(string) string) string {
 
 // DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
 // It accepts an environment getter function to allow testing without modifying the actual environment.
+//
+// Agent-specific variables are checked first. When none match it falls back to the two host
+// variables DetectAgentHost reads, which identify an agent surface and so imply the agent.
 func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
 		return "antigravity"
@@ -122,11 +125,29 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("OPENCLAW_SHELL") != "" {
 		return "openclaw"
 	}
+
+	// No agent-specific variable matched. The two host variables below are set by these
+	// agents to name their own surface, so their presence is itself evidence of an agent.
+	//
+	// Some surfaces set a host without the matching agent variable. The four generic Codex
+	// signals above are sandbox-, permission- and CI-dependent, so a Codex Desktop session
+	// configured with full access can set none of them while still naming itself through
+	// the originator override. Claude Code's hosted and SDK entrypoints likewise do not
+	// always set CLAUDECODE. Without this fallback those sessions report a host and no
+	// agent, which also means the CLI treats them as interactive and tries to open a
+	// browser to log in.
+	if getEnv("CLAUDE_CODE_ENTRYPOINT") != "" {
+		return "claude_code"
+	}
+	if getEnv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE") != "" {
+		return "codex_cli"
+	}
+
 	return ""
 }
 
 // DetectAgentHost reports where the agent ran, as a bounded category and as the host
-// value itself. Both are empty when no agent reported a host.
+// value itself. Both are empty when no agent reported a host and none can be inferred.
 //
 // kind is what to group by: "desktop", "terminal", "ide", "remote", "sdk", "mcp", or
 // "other" for a host we have not categorized. raw is the normalized host underneath it,
@@ -137,6 +158,9 @@ func DetectAIAgent(getEnv func(string) string) string {
 // Reporting raw also means an unmapped host can be identified from the data rather than
 // from a vendor's source, which matters because mapping one otherwise costs a code
 // change, a release, and users upgrading before it is even visible.
+//
+// One host is inferred rather than reported: Codex names every surface except the terminal,
+// so a detected Codex agent with no host is a terminal one. See the empty-host branch below.
 func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
 	if host == "" {
@@ -147,6 +171,21 @@ func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 
 	host = normalizeAgentHost(host)
 	if host == "" {
+		// Codex reports no host from a terminal. The override read above is set only by
+		// non-default surfaces -- Desktop, the SDKs, the VS Code extension -- so a plain
+		// `codex` run leaves it unset, and absence is the only signal the terminal case
+		// has. Inferring it here is what separates terminal Codex from a CLI too old to
+		// report a host at all, which otherwise arrives identically empty.
+		//
+		// Gated on the detected agent rather than on the Codex variables directly, so an
+		// inferred host cannot contradict the agent reported alongside it. This cannot
+		// recurse: DetectAIAgent reads only environment variables.
+		//
+		// Claude Code needs no equivalent because it names its terminal case "cli".
+		if DetectAIAgent(getEnv) == "codex_cli" {
+			return "terminal", "codex-cli"
+		}
+
 		return "", ""
 	}
 
@@ -228,17 +267,31 @@ const (
 
 // agentHostKinds categorizes the hosts we know about. "remote*" hosts are handled by
 // prefix in DetectAgentHost rather than enumerated here.
+//
+// The codex-* entries are the originators Codex itself enumerates in
+// KNOWN_ORIGINATOR_TAG_VALUES (codex-rs/otel/src/metrics/tags.rs), normalized. Mapping the
+// whole set rather than only the values we have observed costs nothing and keeps a surface
+// out of "other" the first time it appears. Codex's "none" is deliberately absent: it means
+// no originator, so reporting it as an uncategorized host is the honest answer.
 var agentHostKinds = map[string]string{
-	"claude-desktop":    "desktop",
-	"claude-desktop-3p": "desktop",
-	"claude-vscode":     "ide",
-	"cli":               "terminal",
-	"codex-desktop":     "desktop",
-	"codex-sdk-ts":      "sdk",
-	"mcp":               "mcp",
-	"sdk-cli":           "sdk",
-	"sdk-py":            "sdk",
-	"sdk-ts":            "sdk",
+	"claude-desktop":       "desktop",
+	"claude-desktop-3p":    "desktop",
+	"claude-vscode":        "ide",
+	"cli":                  "terminal",
+	"codex-app-server":     "sdk",
+	"codex-app-server-sdk": "sdk",
+	"codex-cli":            "terminal",
+	"codex-cli-rs":         "terminal",
+	"codex-desktop":        "desktop",
+	"codex-exec":           "terminal",
+	"codex-mcp-server":     "mcp",
+	"codex-sdk-ts":         "sdk",
+	"codex-tui":            "terminal",
+	"codex-vscode":         "ide",
+	"mcp":                  "mcp",
+	"sdk-cli":              "sdk",
+	"sdk-py":               "sdk",
+	"sdk-ts":               "sdk",
 }
 
 //

@@ -47,8 +47,9 @@ type pageLoadedMsg struct {
 }
 
 type historyEntry struct {
-	page Page
-	doc  *markdown.Document
+	page    Page
+	doc     *markdown.Document
+	yOffset int
 }
 
 // Model is the top-level Bubble Tea model for the docs TUI.
@@ -67,10 +68,12 @@ type Model struct {
 	adaptiveWordWrap bool
 
 	// Content
-	page    Page
-	doc     *markdown.Document
-	title   string
-	history []historyEntry
+	page           Page
+	doc            *markdown.Document
+	title          string
+	headingOffsets map[string]int
+	activeFragment string
+	history        []historyEntry
 
 	// Initial palette input (set via WithPaletteInput)
 	initialQuery string
@@ -236,8 +239,8 @@ func (m Model) initViewport(msg tea.WindowSizeMsg) Model {
 	m.viewport.KeyMap = viewport.KeyMap{}
 	m.help.SetWidth(msg.Width)
 	if m.doc != nil && m.renderer != nil {
-		if out, err := m.renderer.Render(m.doc); err == nil {
-			m.viewport.SetContent(out)
+		if rendered, err := markdown.RenderWithHeadingOffsets(m.renderer, m.doc); err == nil {
+			m.setRenderedContent(rendered, fragmentFromURL(m.page.URL), 0)
 		}
 	}
 	m.ready = true
@@ -257,9 +260,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case pageLoadedMsg:
-		return m.updateWithPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready, true)
+		return m.updateWithPage(Page{Content: msg.page.Content, URL: msg.page.URL}, msg.doc, m.ready, true, nil)
 	case pageReadyMsg:
-		return m.updateWithPage(msg.page, msg.doc, true, true)
+		return m.updateWithPage(msg.page, msg.doc, true, true, nil)
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -277,8 +280,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case rerenderMsg:
-		if msg.forWidth == m.width {
-			m.viewport.SetContent(msg.content)
+		if msg.forWidth == m.width && msg.doc == m.doc {
+			offset := m.viewport.YOffset()
+			m.setRenderedContent(msg.rendered, m.activeFragment, offset)
 		}
 		return m, nil
 
@@ -346,10 +350,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // updateWithPage updates the model with a newly fetched page, replacing the
-// current content, title, and link palette.
-func (m Model) updateWithPage(page Page, doc *markdown.Document, render, push bool) (Model, tea.Cmd) {
+// current content, title, and link palette. A restored offset takes precedence
+// over the destination URL fragment.
+func (m Model) updateWithPage(page Page, doc *markdown.Document, render, push bool, restoredOffset *int) (Model, tea.Cmd) {
 	if push && !m.isLanding() {
-		m.history = append(m.history, historyEntry{page: m.page, doc: m.doc})
+		m.history = append(m.history, historyEntry{
+			page:    m.page,
+			doc:     m.doc,
+			yOffset: m.viewport.YOffset(),
+		})
 		m.keys.Back.SetEnabled(true)
 	}
 	m.loading = false
@@ -358,12 +367,40 @@ func (m Model) updateWithPage(page Page, doc *markdown.Document, render, push bo
 	m.title = doc.Title()
 	m.palette = newPalette(m.page, m.doc, m.client)
 	m.setScrollEnabled(true)
+	m.activeFragment = ""
+	m.headingOffsets = nil
 	if render && m.renderer != nil {
-		if out, err := m.renderer.Render(doc); err == nil {
-			m.viewport.SetContent(out)
+		if rendered, err := markdown.RenderWithHeadingOffsets(m.renderer, doc); err == nil {
+			offset := 0
+			fragment := fragmentFromURL(page.URL)
+			if restoredOffset != nil {
+				offset = *restoredOffset
+				fragment = ""
+			}
+			m.setRenderedContent(rendered, fragment, offset)
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) setRenderedContent(rendered markdown.RenderedDocument, fragment string, fallbackOffset int) {
+	m.viewport.SetContent(rendered.Content)
+	m.viewport.SetYOffset(0)
+	m.headingOffsets = rendered.HeadingOffsets
+	m.activeFragment = ""
+	if offset, ok := rendered.HeadingOffsets[fragment]; ok && fragment != "" {
+		m.viewport.SetYOffset(offset)
+		m.activeFragment = fragment
+		return
+	}
+	m.viewport.SetYOffset(fallbackOffset)
+}
+
+func fragmentFromURL(u *url.URL) string {
+	if u == nil {
+		return ""
+	}
+	return u.Fragment
 }
 
 // handleSelected processes a palette item selection.
@@ -380,6 +417,9 @@ func (m Model) handleSelected(msg palette.SelectedMsg) (Model, tea.Cmd) {
 			fetched, err := client.FetchPage(context.Background(), u)
 			if err != nil {
 				return statusMsg("Failed to load page")
+			}
+			if fetched.URL != nil {
+				fetched.URL.Fragment = u.Fragment
 			}
 			doc, err := markdown.Parse(fetched.Content, markdown.WithRelativeURLs("https://docs.stripe.com"))
 			if err != nil {
@@ -475,7 +515,7 @@ func (m Model) handleBack() (Model, tea.Cmd) {
 	last := m.history[len(m.history)-1]
 	m.history = m.history[:len(m.history)-1]
 	m.keys.Back.SetEnabled(len(m.history) > 0)
-	return m.updateWithPage(last.page, last.doc, true, false)
+	return m.updateWithPage(last.page, last.doc, true, false, &last.yOffset)
 }
 
 // View renders the current model state to the terminal.
@@ -572,7 +612,8 @@ func (m Model) status() string {
 
 // rerenderMsg carries the result of an out-of-band word-wrap re-render.
 type rerenderMsg struct {
-	content  string
+	doc      *markdown.Document
+	rendered markdown.RenderedDocument
 	forWidth int
 }
 
@@ -588,11 +629,11 @@ func (m Model) rerenderCmd() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		out, err := r.Render(doc)
+		rendered, err := markdown.RenderWithHeadingOffsets(r, doc)
 		if err != nil {
 			return nil
 		}
-		return rerenderMsg{content: out, forWidth: width}
+		return rerenderMsg{doc: doc, rendered: rendered, forWidth: width}
 	}
 }
 
@@ -610,6 +651,9 @@ func (m Model) fetchPageCmd(dest *url.URL) tea.Cmd {
 		fetched, err := client.FetchPage(context.Background(), u)
 		if err != nil {
 			return statusMsg("Failed to load page")
+		}
+		if fetched.URL != nil {
+			fetched.URL.Fragment = u.Fragment
 		}
 		doc, err := markdown.Parse(fetched.Content, markdown.WithRelativeURLs("https://docs.stripe.com"))
 		if err != nil {

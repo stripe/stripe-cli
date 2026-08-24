@@ -87,6 +87,33 @@ func TestTitle(t *testing.T) {
 	}
 }
 
+func TestHeadings(t *testing.T) {
+	doc, err := markdown.Parse([]byte("# Getting started!\n\n## Use **formatted** headings\n\n## Repeat\n\n## Repeat\n\n## Repeat 1\n\n## Repeat"))
+	require.NoError(t, err)
+
+	assert.Equal(t, []markdown.Heading{
+		{Level: 1, Text: "Getting started!", Fragment: "getting-started"},
+		{Level: 2, Text: "Use formatted headings", Fragment: "use-formatted-headings"},
+		{Level: 2, Text: "Repeat", Fragment: "repeat"},
+		{Level: 2, Text: "Repeat", Fragment: "repeat-1"},
+		{Level: 2, Text: "Repeat 1", Fragment: "repeat-1-1"},
+		{Level: 2, Text: "Repeat", Fragment: "repeat-2"},
+	}, doc.Headings())
+
+	heading, ok := doc.HeadingForFragment("#use-formatted-headings")
+	require.True(t, ok)
+	assert.Equal(t, "Use formatted headings", heading.Text)
+
+	_, ok = doc.HeadingForFragment("missing")
+	assert.False(t, ok)
+}
+
+func TestNormalizeFragment(t *testing.T) {
+	assert.Equal(t, "create-a-payment", markdown.NormalizeFragment(" Create a payment! "))
+	assert.Equal(t, "api_reference", markdown.NormalizeFragment("API_reference"))
+	assert.Equal(t, "café-options", markdown.NormalizeFragment("Café — options"))
+}
+
 func TestReferences(t *testing.T) {
 	mustURL := func(raw string) *url.URL {
 		u, err := url.Parse(raw)

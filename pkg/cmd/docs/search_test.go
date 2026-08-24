@@ -61,6 +61,34 @@ func TestSearchCommand(t *testing.T) {
 	assert.Less(t, paymentIdx, routeIdx)
 }
 
+func TestSearchCommand_AgentOutputIsPlain(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"hits":[{"title":"Accept a payment","url":"https://docs.stripe.com/payments/accept-a-payment"},{"title":"Payment Element","url":"https://docs.stripe.com/payments/elements"}]}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithConfig(&cliconfig.Config{Color: "on"}),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"search", "payment methods"})
+
+	err := root.ExecuteContext(context.Background())
+	require.NoError(t, err)
+
+	output := out.String()
+	assert.Equal(t, "Accept a payment\nstripe docs /payments/accept-a-payment\nPayment Element\nstripe docs /payments/elements\n", output)
+	assert.NotContains(t, output, "\x1b[")
+	assert.NotContains(t, output, "•")
+}
+
 func TestSearchCommand_ColorOff(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
