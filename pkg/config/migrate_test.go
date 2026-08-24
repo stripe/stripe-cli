@@ -257,6 +257,29 @@ func TestMigrateConfigFileStampsVersionOnFileWithNoProfiles(t *testing.T) {
 	require.Contains(t, contents, "installed_plugins")
 }
 
+// Stop migrating if the file's version is greater than the maximum this CLI
+// understands (currently 2).
+func TestMigrateConfigFileRefusesNewerThanSupportedVersion(t *testing.T) {
+	contents := `config_version = 3
+
+[profiles.default]
+  display_name = 'V3 Account'
+  test_mode_api_key = 'sk_test_v3_key'
+
+[default]
+  display_name = 'Shadow'
+  test_mode_api_key = 'sk_test_shadow'
+`
+	path := writeConfigFileForMigration(t, contents)
+
+	changed, err := MigrateConfigFile(path)
+	require.ErrorContains(t, err, "understands up to 2")
+	require.False(t, changed)
+
+	require.Equal(t, contents, string(helperLoadBytes(t, path)))
+	require.NoFileExists(t, path+ConfigBackupSuffix)
+}
+
 func TestMigrateConfigFileMissingFile(t *testing.T) {
 	changed, err := MigrateConfigFile(filepath.Join(t.TempDir(), "config.toml"))
 	require.NoError(t, err)

@@ -87,6 +87,13 @@ const ConfigVersionV2 = 2
 // this build has no way to know.
 const MaxSupportedConfigVersion = ConfigVersionV2
 
+func unsupportedConfigVersionError(version int) error {
+	return fmt.Errorf(
+		"%s is %d, but this Stripe CLI understands up to %d. Upgrade the CLI: https://docs.stripe.com/stripe-cli/upgrade",
+		ConfigVersionName, version, MaxSupportedConfigVersion,
+	)
+}
+
 const UATKeychainItemKey = "uat"
 
 const (

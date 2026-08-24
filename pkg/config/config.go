@@ -541,10 +541,7 @@ func configVersion(v *viper.Viper) (int, error) {
 	}
 
 	if version > MaxSupportedConfigVersion {
-		return version, fmt.Errorf(
-			"%s is %d, but this Stripe CLI understands up to %d. Upgrade the CLI: https://docs.stripe.com/stripe-cli/upgrade",
-			ConfigVersionName, version, MaxSupportedConfigVersion,
-		)
+		return version, unsupportedConfigVersionError(version)
 	}
 
 	return version, nil

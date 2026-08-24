@@ -77,6 +77,9 @@ type migrationPlan struct {
 // point restores the backup and returns an error, so a partial or mangled file
 // is never left behind.
 //
+// A file whose config_version is newer than this binary understands is left
+// untouched and returns an error. 
+//
 // This function does not decide *whether* to migrate. Callers own that: an
 // installed plugin too old to read the v2 layout, or a non-interactive session,
 // must not migrate.
@@ -143,7 +146,8 @@ func MigrateConfigFile(path string) (bool, error) {
 
 // planMigration reads a config document and returns the v2 document to write.
 // changed is false when there is nothing to do: an already-migrated file with no
-// stray top-level profiles.
+// stray top-level profiles. A config_version newer than this binary understands
+// returns an error.
 func planMigration(contents []byte) (*migrationPlan, bool, error) {
 	// Decode raw TOML rather than going through viper, which lowercases every
 	// key. Round-tripping profile names through viper would rename a profile the
@@ -153,12 +157,17 @@ func planMigration(contents []byte) (*migrationPlan, bool, error) {
 		return nil, false, fmt.Errorf("could not parse config file: %w", err)
 	}
 
+	version := configVersionOf(doc)
+	if version > MaxSupportedConfigVersion {
+		return nil, false, unsupportedConfigVersionError(version)
+	}
+
 	plan := &migrationPlan{
 		profiles: make(map[string]map[string]interface{}),
 		settings: make(map[string]interface{}),
 	}
 
-	alreadyV2 := configVersionOf(doc) >= ConfigVersionV2
+	alreadyV2 := version == ConfigVersionV2
 
 	// Start from the profiles already in the v2 table, if there are any.
 	nested, nestedIsContainer := profilesContainer(doc, alreadyV2)
