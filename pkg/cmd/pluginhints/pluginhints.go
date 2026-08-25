@@ -9,6 +9,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"sync"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -34,6 +35,32 @@ const AutoInstallOptOutEnvVar = "STRIPE_CLI_NO_PLUGIN_AUTO_INSTALL"
 // triggered the run (used for its context), name is the plugin shortname, and
 // args are the arguments to forward to the plugin process.
 type PluginRunner func(cmd *cobra.Command, name string, args []string) error
+
+// pluginResolver resolves the plugin version a hint command would install.
+type pluginResolver func(ctx context.Context) (*plugins.ResolvedPluginVersion, error)
+
+// resolveOnce answers the resolution once and hands the same answer to every later
+// caller. One invocation needs it twice — first to decide whether to install, then
+// to install — and asking the metadata endpoint again for a question it just
+// answered only adds a round trip to every first use of a plugin. A hint command is
+// built once per process invocation, so there is nothing to invalidate, and the
+// binary URL in the answer is a static artifact path rather than a signed one, so
+// reusing it across a confirmation prompt cannot go stale.
+func resolveOnce(resolve pluginResolver) pluginResolver {
+	var (
+		once     sync.Once
+		resolved *plugins.ResolvedPluginVersion
+		err      error
+	)
+
+	return func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
+		once.Do(func() {
+			resolved, err = resolve(ctx)
+		})
+
+		return resolved, err
+	}
+}
 
 // AddHintCommands registers a hint command for each known plugin that is not
 // present in installedPluginSet. runPlugin dispatches to a plugin binary that was
@@ -103,7 +130,7 @@ type pluginHintCmd struct {
 	// still has the final say per machine; see autoInstallEnabled.
 	autoInstall bool
 
-	lookupFn      func(ctx context.Context) (*plugins.ResolvedPluginVersion, error)
+	lookupFn      pluginResolver
 	installFn     func(ctx context.Context) error
 	loginFn       func(ctx context.Context) error
 	runPluginFn   func(cmd *cobra.Command, args []string) error
@@ -145,11 +172,11 @@ func withAutoInstall(runPlugin PluginRunner) option {
 func newPluginHintCmd(cfg *config.Config, name, description string, opts ...option) *pluginHintCmd {
 	fs := afero.NewOsFs()
 	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
-	resolvePlugin := func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
+	resolvePlugin := resolveOnce(func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
 		// Reuse the main install resolution path so metadata-first lookup and
 		// backward-compatible manifest fallback stay centralized in plugins.
 		return plugins.ResolvePluginForInstall(ctx, cfg, fs, name, "", stripe.DefaultAPIBaseURL, dashboardBaseURL)
-	}
+	})
 
 	p := &pluginHintCmd{
 		name:          name,

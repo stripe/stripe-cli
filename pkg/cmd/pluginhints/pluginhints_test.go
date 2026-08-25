@@ -33,7 +33,7 @@ func pluginAutoInstallable(context.Context) (*plugins.ResolvedPluginVersion, err
 }
 
 // pluginLookupFails stands in for a lookup that could not reach an answer at all.
-func pluginLookupFails(message string) func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+func pluginLookupFails(message string) pluginResolver {
 	return func(context.Context) (*plugins.ResolvedPluginVersion, error) {
 		return nil, errors.New(message)
 	}
@@ -148,6 +148,50 @@ func TestAddHintCommands_NoAnnotationWhenPluginInstalled(t *testing.T) {
 	assert.Equal(t, "available_plugin", rootCmd.Annotations["generate"])
 	assert.Equal(t, "available_plugin", rootCmd.Annotations["projects"])
 	assert.Equal(t, "available_plugin", rootCmd.Annotations["directory"])
+}
+
+// --- resolveOnce ---
+
+// TestResolveOnce_AsksTheEndpointOncePerInvocation pins the reason resolveOnce
+// exists: deciding whether to install and then installing both need the resolution,
+// and each extra call would be another metadata request on a user's first use of a
+// plugin.
+func TestResolveOnce_AsksTheEndpointOncePerInvocation(t *testing.T) {
+	calls := 0
+	want := &plugins.ResolvedPluginVersion{Version: "1.2.3", AutoInstall: true}
+	resolve := resolveOnce(func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+		calls++
+		return want, nil
+	})
+
+	first, err := resolve(context.Background())
+	require.NoError(t, err)
+	second, err := resolve(context.Background())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, calls)
+	// The same resolution, not an equal copy: the install path acts on what the
+	// decision was made about.
+	assert.Same(t, want, first)
+	assert.Same(t, want, second)
+}
+
+// TestResolveOnce_ReusesFailures keeps a failed lookup from silently turning into a
+// retry, which would put a second request back on the path this removed it from.
+func TestResolveOnce_ReusesFailures(t *testing.T) {
+	calls := 0
+	resolve := resolveOnce(func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+		calls++
+		return nil, errors.New("no metadata")
+	})
+
+	_, firstErr := resolve(context.Background())
+	resolved, secondErr := resolve(context.Background())
+
+	assert.Equal(t, 1, calls)
+	assert.EqualError(t, firstErr, "no metadata")
+	assert.EqualError(t, secondErr, "no metadata")
+	assert.Nil(t, resolved)
 }
 
 // --- run ---
@@ -545,7 +589,7 @@ func TestRun_AutoInstall_LookupFailureStillFallsBackToHints(t *testing.T) {
 func TestRun_AutoInstall_ServerDecisionGatesInstalling(t *testing.T) {
 	tests := []struct {
 		name        string
-		lookupFn    func(context.Context) (*plugins.ResolvedPluginVersion, error)
+		lookupFn    pluginResolver
 		wantInstall bool
 	}{
 		{
