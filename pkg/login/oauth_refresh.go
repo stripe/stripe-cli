@@ -54,6 +54,7 @@ func refreshOAuthToken(p *config.Profile) error {
 	}
 
 	p.UAT = tokenResp.AccessToken
+	preserveProfileMetadata(p)
 	if err := p.CreateProfile(); err != nil {
 		return err
 	}
@@ -77,6 +78,32 @@ func refreshOAuthToken(p *config.Profile) error {
 	}
 
 	return nil
+}
+
+// preserveProfileMetadata carries forward the display name, account ID, user
+// ID, and device name already persisted for this profile. CreateProfile
+// deletes those fields before rewriting them from p, so unless they're
+// populated here first, a refresh (which only knows the new UAT) would wipe
+// them from the config file.
+func preserveProfileMetadata(p *config.Profile) {
+	if p.DisplayName == "" {
+		p.DisplayName = p.GetDisplayName()
+	}
+	if p.AccountID == "" {
+		if accountID, err := p.GetAccountID(); err == nil {
+			p.AccountID = accountID
+		}
+	}
+	if p.UserID == "" {
+		if userID, err := p.GetUserID(); err == nil {
+			p.UserID = userID
+		}
+	}
+	if p.DeviceName == "" {
+		if deviceName, err := p.GetDeviceName(); err == nil {
+			p.DeviceName = deviceName
+		}
+	}
 }
 
 // doRefreshToken calls the token endpoint with grant_type=refresh_token.
