@@ -687,9 +687,20 @@ func writeConfig(runtimeViper *viper.Viper) error {
 		return err
 	}
 
-	// Reset global viper and re-read from file.
-	// We must reset because ReadInConfig merges with existing values rather than
-	// replacing them - so deleted keys would persist without this reset.
+	return ReloadConfigFile()
+}
+
+// ReloadConfigFile re-reads the config file into the global viper, replacing what
+// is already loaded rather than merging into it. Anything that rewrites the file
+// behind viper's back — the config migration, for one — needs this to see its own
+// changes.
+//
+// The reset matters: ReadInConfig merges with existing values, so keys the
+// rewrite removed would otherwise linger in memory.
+func ReloadConfigFile() error {
+	profilesFile := viper.ConfigFileUsed()
+	configType := strings.TrimPrefix(filepath.Ext(profilesFile), ".")
+
 	viper.Reset()
 	viper.SetConfigFile(profilesFile)
 	viper.SetConfigType(configType)

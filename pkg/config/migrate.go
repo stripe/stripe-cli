@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"github.com/BurntSushi/toml"
+	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
@@ -68,6 +69,55 @@ type migrationPlan struct {
 	settings map[string]interface{}
 }
 
+// IsMigrated reports whether the loaded config file uses the v2 layout.
+func IsMigrated() bool {
+	return isMigrated(viper.GetViper())
+}
+
+// NeedsMigration reports whether the loaded config file should be rewritten in
+// the v2 layout. It answers from the config already in memory, so it costs
+// nothing on the common path.
+//
+// It does not check that migrating is safe for plugins, and it does not check
+// that the config file exists: a viper with no file loaded looks exactly like an
+// unmigrated one.
+func NeedsMigration() bool {
+	v := viper.GetViper()
+
+	if _, err := configVersion(v); err != nil {
+		// A version this binary cannot act on. writeConfig refuses such a file
+		// outright, so rewriting its layout is not on the table either.
+		return false
+	}
+
+	if !isMigrated(v) {
+		return true
+	}
+
+	return hasFlatProfileTable(v)
+}
+
+// hasFlatProfileTable reports whether a migrated config file still holds a
+// profile at the top level. An older CLI or plugin writing the same file does not
+// know about the profiles table, so it leaves one behind; folding it back in is
+// what stops the two copies from diverging.
+//
+// This mirrors the rule planMigration applies, so that NeedsMigration and the
+// migration itself always agree on whether there is work to do.
+func hasFlatProfileTable(v *viper.Viper) bool {
+	for key, value := range v.AllSettings() {
+		if reservedTopLevelKeys[key] {
+			continue
+		}
+
+		if table, ok := toStringMap(value); ok && looksLikeProfile(table) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // MigrateConfigFile rewrites the config file at path in the v2 layout, moving
 // every profile under the reserved profiles table and recording
 // config_version = 2. It reports whether the file changed.
@@ -80,9 +130,7 @@ type migrationPlan struct {
 // A file whose config_version is newer than this binary understands is left
 // untouched and returns an error.
 //
-// This function does not decide *whether* to migrate. Callers own that: an
-// installed plugin too old to read the v2 layout, or a non-interactive session,
-// must not migrate.
+// This function does not decide *whether* to migrate. Callers own that.
 func MigrateConfigFile(path string) (bool, error) {
 	if err := fsutil.RefuseWriteThroughSymlinkOS(path, filepath.Dir(filepath.Dir(path)), filepath.Base(path)); err != nil {
 		return false, err
