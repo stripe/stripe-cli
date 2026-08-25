@@ -98,11 +98,12 @@ type pluginHintCmd struct {
 	privatePreview bool
 	accessBaseURL  string
 
-	// autoInstall installs the plugin on first use without prompting and then runs
-	// the command the user originally typed, instead of asking for confirmation.
+	// autoInstall opts this plugin into installing on first use without prompting
+	// and then running the command the user originally typed. The metadata endpoint
+	// still has the final say per machine; see autoInstallEnabled.
 	autoInstall bool
 
-	lookupFn      func(ctx context.Context) error
+	lookupFn      func(ctx context.Context) (*plugins.ResolvedPluginVersion, error)
 	installFn     func(ctx context.Context) error
 	loginFn       func(ctx context.Context) error
 	runPluginFn   func(cmd *cobra.Command, args []string) error
@@ -154,10 +155,7 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		name:          name,
 		description:   description,
 		accessBaseURL: login.DefaultAccessBaseURL,
-		lookupFn: func(ctx context.Context) error {
-			_, err := resolvePlugin(ctx)
-			return err
-		},
+		lookupFn:      resolvePlugin,
 		installFn: func(ctx context.Context) error {
 			resolvedPlugin, err := resolvePlugin(ctx)
 			if err != nil {
@@ -220,9 +218,9 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return p.refuseAutoInstall()
 	}
 
-	if err := p.lookupFn(ctx); err == nil {
+	if resolved, err := p.lookupFn(ctx); err == nil {
 		switch {
-		case p.autoInstall && p.invokedByName(cmd):
+		case p.autoInstallEnabled(resolved) && p.invokedByName(cmd):
 			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs())
 		default:
 			return p.promptInstall(ctx)
@@ -262,11 +260,17 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 			return
 		}
 
-		if err := p.autoInstallHelp(cmd, args); err != nil {
+		handedOff, err := p.autoInstallHelp(cmd, args)
+		if handedOff {
+			return
+		}
+
+		placeholderHelp(cmd, args)
+
+		if err != nil {
 			// Cobra's help hook cannot report an error, and printing nothing would be
-			// worse than the placeholder, so show it, say why the plugin's own help is
-			// missing, and give the one command that fixes it.
-			placeholderHelp(cmd, args)
+			// worse than the placeholder, so say why the plugin's own help is missing
+			// and give the one command that fixes it.
 			fmt.Fprintf(p.stdout, "\nThe %q plugin's own help is unavailable: %v\n", p.name, err)
 			fmt.Fprintf(p.stdout, "Run 'stripe plugin install %s' to install it and see its full help.\n", p.name)
 		}
@@ -274,21 +278,35 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 }
 
 // autoInstallHelp installs the plugin and forwards the help request to it. It
-// returns an error when the placeholder help should be shown instead.
-func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) error {
+// reports whether the plugin answered the help request; when it did not, a
+// non-nil error means the caller should explain why, and a nil error means the
+// placeholder help is the whole answer and nothing needs explaining.
+func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) (bool, error) {
 	// The caller prints the install command, so this only has to say why the plugin
 	// was not fetched.
 	if p.autoInstallOptedOut() {
-		return errorcategory.Errorf(errorcategory.UserInput, "%s disables installing it automatically", AutoInstallOptOutEnvVar)
+		return false, errorcategory.Errorf(errorcategory.UserInput, "%s disables installing it automatically", AutoInstallOptOutEnvVar)
 	}
 
 	ctx := commandContext(cmd)
 
-	if err := p.lookupFn(ctx); err != nil {
-		return err
+	resolved, err := p.lookupFn(ctx)
+	if err != nil {
+		return false, err
 	}
 
-	return p.autoInstallAndRun(ctx, cmd, p.helpArgs(cobraArgs))
+	// A machine the auto-install rollout has not reached gets the placeholder help
+	// with no commentary, exactly like every other not-yet-installed plugin. The
+	// rollout is not the user's business, so there is nothing to explain.
+	if !p.autoInstallEnabled(resolved) {
+		return false, nil
+	}
+
+	if err := p.autoInstallAndRun(ctx, cmd, p.helpArgs(cobraArgs)); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // autoInstallAndRun installs the plugin without prompting and then runs the
@@ -332,6 +350,15 @@ func (p *pluginHintCmd) refuseAutoInstall() error {
 		"the %q plugin is required to run this command, but %s disables installing it automatically; run 'stripe plugin install %s'",
 		p.name, AutoInstallOptOutEnvVar, p.name,
 	)
+}
+
+// autoInstallEnabled reports whether this invocation may install the plugin
+// without asking. Both halves have to agree: the CLI has to opt the plugin in,
+// and the metadata endpoint has to say the auto-install rollout has reached this
+// machine. Anything else — an older server, a machine outside the rollout, a
+// resolution that fell back to cached metadata — keeps today's prompt.
+func (p *pluginHintCmd) autoInstallEnabled(resolved *plugins.ResolvedPluginVersion) bool {
+	return p.autoInstall && resolved != nil && resolved.AutoInstall
 }
 
 func (p *pluginHintCmd) autoInstallOptedOut() bool {

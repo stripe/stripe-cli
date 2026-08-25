@@ -17,7 +17,27 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/plugins"
 )
+
+// pluginFound and pluginAutoInstallable stand in for the metadata lookup. The
+// resolved version carries the server's answer to whether the auto-install
+// rollout has reached this machine, so a test picks which side of that rollout it
+// is running on by picking between these two.
+func pluginFound(context.Context) (*plugins.ResolvedPluginVersion, error) {
+	return &plugins.ResolvedPluginVersion{}, nil
+}
+
+func pluginAutoInstallable(context.Context) (*plugins.ResolvedPluginVersion, error) {
+	return &plugins.ResolvedPluginVersion{AutoInstall: true}, nil
+}
+
+// pluginLookupFails stands in for a lookup that could not reach an answer at all.
+func pluginLookupFails(message string) func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+	return func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+		return nil, errors.New(message)
+	}
+}
 
 // newTestCmd builds a pluginHintCmd with all side effects mocked out.
 // By default accountIDFn reports a logged-in account; override in tests that
@@ -135,7 +155,7 @@ func TestAddHintCommands_NoAnnotationWhenPluginInstalled(t *testing.T) {
 func TestRun_PluginFound_CallsPromptInstall(t *testing.T) {
 	p := newTestCmd("generate", withPrivatePreview())
 	installCalled := false
-	p.lookupFn = func(ctx context.Context) error { return nil }
+	p.lookupFn = pluginFound
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 
 	err := p.run(p.Command, nil)
@@ -147,7 +167,7 @@ func TestRun_PluginFound_CallsPromptInstall(t *testing.T) {
 
 func TestRun_PluginNotFound_PrivatePreviewFalse_LoggedIn_PrintsInstallHint(t *testing.T) {
 	p := newTestCmd("apps") // accountIDFn returns "acct_test" by default
-	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.lookupFn = pluginLookupFails("not found")
 
 	err := p.run(p.Command, nil)
 
@@ -157,7 +177,7 @@ func TestRun_PluginNotFound_PrivatePreviewFalse_LoggedIn_PrintsInstallHint(t *te
 
 func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PromptsLogin(t *testing.T) {
 	p := newTestCmd("docs")
-	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.lookupFn = pluginLookupFails("not found")
 	p.accountIDFn = func() (string, error) { return "", nil }
 	loginCalled := false
 	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
@@ -172,7 +192,7 @@ func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PromptsLogin(t *test
 
 func TestRun_PluginNotFound_PrivatePreviewFalse_AccountIDError_PromptsLogin(t *testing.T) {
 	p := newTestCmd("docs")
-	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.lookupFn = pluginLookupFails("not found")
 	p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
 	loginCalled := false
 	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
@@ -197,7 +217,7 @@ func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
 			accessBaseURL:  login.DefaultAccessBaseURL,
 		}
 		p.Command = &cobra.Command{Use: "generate", RunE: p.run}
-		p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+		p.lookupFn = pluginLookupFails("not found")
 		p.accountIDFn = func() (string, error) { return "acct_123", nil }
 		p.run(p.Command, nil) //nolint:errcheck
 		return
@@ -241,9 +261,12 @@ func runViaCobra(t *testing.T, p *pluginHintCmd, aliases []string, argv []string
 	return root.Execute()
 }
 
+// newAutoInstallTestCmd builds a command whose metadata lookup reports that the
+// auto-install rollout has reached this machine, which is what makes the
+// auto-install paths below reachable at all.
 func newAutoInstallTestCmd(name string, opts ...option) *pluginHintCmd {
 	p := newTestCmd(name, opts...)
-	p.lookupFn = func(ctx context.Context) error { return nil }
+	p.lookupFn = pluginAutoInstallable
 	p.installFn = func(ctx context.Context) error { return nil }
 	return p
 }
@@ -450,9 +473,9 @@ func TestRun_AutoInstall_OptedOutDoesNotInstallOrPrompt(t *testing.T) {
 				return ""
 			}
 			lookupCalled := false
-			p.lookupFn = func(ctx context.Context) error {
+			p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
 				lookupCalled = true
-				return errors.New("lookup unavailable")
+				return nil, errors.New("lookup unavailable")
 			}
 			p.accountIDFn = func() (string, error) { return "", nil }
 			installCalled := false
@@ -504,7 +527,7 @@ func TestRun_AutoInstall_UnsetOrFalsyOptOutStillInstalls(t *testing.T) {
 func TestRun_AutoInstall_LookupFailureStillFallsBackToHints(t *testing.T) {
 	// Auto-install must not mask the not-available and login paths.
 	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
-	p.lookupFn = func(ctx context.Context) error { return errors.New("not found") }
+	p.lookupFn = pluginLookupFails("not found")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 
@@ -513,6 +536,65 @@ func TestRun_AutoInstall_LookupFailureStillFallsBackToHints(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, installCalled)
 	assert.Contains(t, p.output(), "stripe plugin install directory")
+}
+
+// TestRun_AutoInstall_ServerDecisionGatesInstalling pins that opting a plugin into
+// auto-install only makes it eligible: the metadata endpoint decides per machine,
+// so a machine the rollout has not reached gets the same prompt as every other
+// not-yet-installed plugin.
+func TestRun_AutoInstall_ServerDecisionGatesInstalling(t *testing.T) {
+	tests := []struct {
+		name        string
+		lookupFn    func(context.Context) (*plugins.ResolvedPluginVersion, error)
+		wantInstall bool
+	}{
+		{
+			name:        "rollout reached this machine",
+			lookupFn:    pluginAutoInstallable,
+			wantInstall: true,
+		},
+		{
+			name:     "rollout has not reached this machine",
+			lookupFn: pluginFound,
+		},
+		{
+			// An older server sends no auto_install field at all, which decodes to the
+			// prompting behavior the CLI has always had.
+			name: "server did not answer",
+			lookupFn: func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+				return &plugins.ResolvedPluginVersion{Version: "1.2.3"}, nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p.lookupFn = tt.lookupFn
+			// Declining at the prompt is how this test tells the two paths apart:
+			// auto-install never reads stdin.
+			p.stdin = strings.NewReader("no\n")
+			installed := false
+			p.installFn = func(ctx context.Context) error { installed = true; return nil }
+			ran := false
+			p.runPluginFn = func(cmd *cobra.Command, args []string) error { ran = true; return nil }
+
+			err := runViaCobra(t, p, nil, []string{"stripe", "directory", "search", "x"})
+
+			if tt.wantInstall {
+				require.NoError(t, err)
+				assert.True(t, installed)
+				assert.True(t, ran)
+				assert.NotContains(t, p.output(), "press Enter")
+				return
+			}
+
+			assert.EqualError(t, err, "installation canceled")
+			assert.False(t, installed, "the server did not opt this machine in")
+			assert.False(t, ran)
+			assert.Contains(t, p.output(), "press Enter to install")
+		})
+	}
 }
 
 func TestRun_WithoutAutoInstall_StillPrompts(t *testing.T) {
@@ -635,7 +717,7 @@ func TestHelp_AutoInstall_OptedOutShowsPlaceholderHelpWithoutInstalling(t *testi
 
 func TestHelp_AutoInstall_LookupFailureShowsPlaceholderHelp(t *testing.T) {
 	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
-	p.lookupFn = func(ctx context.Context) error { return errors.New("no metadata") }
+	p.lookupFn = pluginLookupFails("no metadata")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error { return nil }
@@ -683,6 +765,29 @@ func TestHelp_AutoInstall_NoRunnerShowsPlaceholderHelpWithoutInstalling(t *testi
 	assert.Contains(t, p.output(), "Test description.")
 	// Nothing was attempted, so there is no gap to explain.
 	assert.NotContains(t, p.output(), "unavailable")
+}
+
+// TestHelp_AutoInstall_ServerOptOutShowsPlaceholderHelpQuietly is the help-side half
+// of TestRun_AutoInstall_ServerDecisionGatesInstalling. The rollout is not the user's
+// business, so a machine it has not reached sees the plain placeholder help with no
+// explanation of why the plugin did not document itself.
+func TestHelp_AutoInstall_ServerOptOutShowsPlaceholderHelpQuietly(t *testing.T) {
+	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p.lookupFn = pluginFound
+	installCalled := false
+	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
+	runCalled := false
+	p.runPluginFn = func(cmd *cobra.Command, args []string) error { runCalled = true; return nil }
+
+	err := runViaCobra(t, p, nil, []string{"stripe", "directory", "--help"})
+
+	require.NoError(t, err)
+	assert.False(t, installCalled)
+	assert.False(t, runCalled)
+	assert.Contains(t, p.output(), "Test description.")
+	assert.NotContains(t, p.output(), "unavailable")
+	assert.NotContains(t, p.output(), "stripe plugin install directory")
+	assert.Empty(t, p.errOutput())
 }
 
 func TestHelp_WithoutAutoInstall_ShowsPlaceholderHelp(t *testing.T) {

@@ -46,6 +46,12 @@ type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
+	// AutoInstall carries the metadata endpoint's answer to "may this machine
+	// install this plugin without being asked?". It is only ever true for a
+	// resolution that came from a live metadata response: a resolution that fell
+	// back to cached metadata leaves it false, so a machine that cannot reach the
+	// endpoint keeps prompting rather than installing on a stale answer.
+	AutoInstall bool
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -708,6 +714,10 @@ func mergePluginMetadata(primary, fallback *Plugin) *Plugin {
 	return &pluginCopy
 }
 
+// resolvePluginForAutoInstall resolves the version to re-download for a plugin
+// that is already installed but whose binary is missing. This repairs a broken
+// install rather than adding a plugin the user never asked for, so it is
+// deliberately not gated on the metadata endpoint's auto_install answer.
 func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	resolvedPlugin, err := ResolvePluginForInstall(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL)
 	if err == nil {
@@ -790,7 +800,7 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		basePlugin = &cachedPlugin
 	}
 
-	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, config.GetMachineUUID())
 	if err != nil {
 		return nil, err
 	}
@@ -812,9 +822,10 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 	}
 
 	return &ResolvedPluginVersion{
-		Plugin:    plugin,
-		Version:   resolvedVersion,
-		BinaryURL: pluginMetadata.BinaryURL,
+		Plugin:      plugin,
+		Version:     resolvedVersion,
+		BinaryURL:   pluginMetadata.BinaryURL,
+		AutoInstall: pluginMetadata.AutoInstall,
 	}, nil
 }
 
