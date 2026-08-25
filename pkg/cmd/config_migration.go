@@ -1,18 +1,19 @@
 package cmd
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
-	"strings"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // configMigration is the policy around config.MigrateConfigFile: whether the
@@ -20,19 +21,23 @@ import (
 // about it. Every dependency is a field so the policy can be tested without a
 // terminal or an installed plugin.
 type configMigration struct {
-	profilesFile      string
-	needsMigration    func() bool
-	pluginsReady      func() bool
-	incompatibilities func() ([]plugins.ConfigV2Incompatibility, error)
-	migrate           func(path string) (bool, error)
-	reload            func() error
-	getEnv            func(string) string
-	interactive       bool
-	in                io.Reader
-	out               io.Writer
+	profilesFile         string
+	needsMigration       func() bool
+	pluginsReady         func() bool
+	incompatibilities    func() ([]plugins.ConfigV2Incompatibility, error)
+	installedPluginCount func() int
+	upgradePlugin        func(plugins.ConfigV2Incompatibility) (string, error)
+	migrate              func(path string) (bool, error)
+	reload               func() error
+	getEnv               func(string) string
+	out                  io.Writer
 }
 
-func newConfigMigration(cfg *config.Config) configMigration {
+func newConfigMigration(cfg *config.Config, ctx context.Context) configMigration {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	return configMigration{
 		profilesFile:   cfg.ProfilesFile,
 		needsMigration: config.NeedsMigration,
@@ -40,29 +45,39 @@ func newConfigMigration(cfg *config.Config) configMigration {
 		incompatibilities: func() ([]plugins.ConfigV2Incompatibility, error) {
 			return plugins.ConfigV2Incompatibilities(cfg, fs)
 		},
-		migrate:     config.MigrateConfigFile,
-		reload:      config.ReloadConfigFile,
-		getEnv:      os.Getenv,
-		interactive: interactiveHuman(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))),
-		in:          os.Stdin,
-		out:         os.Stderr,
+		installedPluginCount: func() int {
+			names, err := plugins.GetInstalledPluginNames(cfg, fs)
+			if err != nil {
+				return 0
+			}
+
+			return len(names)
+		},
+		upgradePlugin: func(incompatibility plugins.ConfigV2Incompatibility) (string, error) {
+			return upgradePluginForConfigV2(ctx, cfg, fs, incompatibility)
+		},
+		migrate: config.MigrateConfigFile,
+		reload:  config.ReloadConfigFile,
+		getEnv:  os.Getenv,
+		out:     os.Stderr,
 	}
 }
 
-// migrateConfigIfNeeded offers the one-time move to the v2 config layout, before
-// the command the user asked for runs.
+// migrateConfigIfNeeded rewrites the config file to the v2 layout before the
+// command the user asked for runs. It does not ask: plugins that are too old
+// are upgraded, then the file is migrated.
 func migrateConfigIfNeeded(cmd *cobra.Command) {
 	if !migrationSafeCommand(cmd) {
 		return
 	}
 
-	newConfigMigration(&Config).run()
+	newConfigMigration(&Config, cmd.Context()).run()
 }
 
-// migrationSafeCommand reports whether it is acceptable to write to the terminal
-// and to the config file while running this command. Help and shell completion
-// output gets read by other programs, and a prompt in the middle of it would be
-// worse than a config file left in the old layout.
+// migrationSafeCommand reports whether it is acceptable to write status lines
+// and to rewrite the config file while running this command. Help and shell
+// completion output gets read by other programs, and a status line in the
+// middle of it would be worse than a config file left in the old layout.
 func migrationSafeCommand(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		switch c.Name() {
@@ -105,28 +120,83 @@ func (m configMigration) run() {
 		return
 	}
 
-	// A prompt nobody answers would hang, and migrating unasked in a script is
-	// worse than not migrating at all.
-	if !m.interactive {
-		logger.Debug("Skipping the config migration: not an interactive session")
+	if !m.ensurePluginsCompatible(logger) {
 		return
 	}
+
+	m.migrateAndReload()
+}
+
+// ensurePluginsCompatible upgrades any installed plugin that cannot read the v2
+// layout. It returns false when an upgrade fails, in which case the config file
+// is left alone.
+func (m configMigration) ensurePluginsCompatible(logger *log.Entry) bool {
+	fmt.Fprint(m.out, "checking installed plugins...")
 
 	incompatibilities, err := m.incompatibilities()
 	if err != nil {
+		fmt.Fprintln(m.out)
 		logger.Debugf("Skipping the config migration: could not check installed plugins: %s", err)
-		return
+		return false
 	}
 
-	if len(incompatibilities) > 0 {
-		m.reportIncompatiblePlugins(incompatibilities)
-		return
+	if len(incompatibilities) == 0 {
+		switch n := m.pluginCount(); {
+		case n == 0:
+			fmt.Fprintln(m.out, " none installed.")
+		case n == 1:
+			fmt.Fprintln(m.out, " 1 is compatible.")
+		default:
+			fmt.Fprintf(m.out, " all %d are compatible.\n", n)
+		}
+
+		return true
 	}
 
-	if !m.confirm() {
-		return
+	fmt.Fprintln(m.out)
+
+	for _, incompatibility := range incompatibilities {
+		newVersion, err := m.upgradeOne(incompatibility)
+		if err != nil {
+			logger.Debugf("could not upgrade %s: %s", incompatibility.Plugin, err)
+			m.reportUpgradeFailure(incompatibility)
+			return false
+		}
+
+		fmt.Fprintf(m.out, "✔ upgraded %s from v%s to v%s.\n", incompatibility.Plugin, incompatibility.InstalledVersion, newVersion)
 	}
 
+	return true
+}
+
+func (m configMigration) pluginCount() int {
+	if m.installedPluginCount == nil {
+		return 0
+	}
+
+	return m.installedPluginCount()
+}
+
+func (m configMigration) upgradeOne(incompatibility plugins.ConfigV2Incompatibility) (string, error) {
+	if m.upgradePlugin == nil {
+		return "", fmt.Errorf("plugin upgrade is not configured")
+	}
+
+	return m.upgradePlugin(incompatibility)
+}
+
+func (m configMigration) reportUpgradeFailure(incompatibility plugins.ConfigV2Incompatibility) {
+	if incompatibility.MinimumVersion != "" {
+		fmt.Fprintf(m.out, "! could not upgrade %s to the minimum required version (%s).\n", incompatibility.Plugin, incompatibility.MinimumVersion)
+	} else {
+		fmt.Fprintf(m.out, "! could not upgrade %s to a version that reads the new config format.\n", incompatibility.Plugin)
+	}
+
+	fmt.Fprintf(m.out, "  run `%s`, then try again.\n", incompatibility.UpgradeCommand())
+	fmt.Fprintln(m.out, "your config file was not changed.")
+}
+
+func (m configMigration) migrateAndReload() {
 	changed, err := m.migrate(m.profilesFile)
 	if err != nil {
 		fmt.Fprintf(m.out, "Could not update %s to the new config format: %s\n", m.profilesFile, err)
@@ -144,36 +214,28 @@ func (m configMigration) run() {
 		return
 	}
 
-	fmt.Fprintf(m.out, "Updated %s to the new config format. The previous version is saved as %s.\n", m.profilesFile, m.profilesFile+config.ConfigBackupSuffix)
+	fmt.Fprintf(m.out, "✔ updated %s (backup saved to %s)\n", m.profilesFile, filepath.Base(m.profilesFile+config.ConfigBackupSuffix))
 }
 
-func (m configMigration) reportIncompatiblePlugins(incompatibilities []plugins.ConfigV2Incompatibility) {
-	fmt.Fprintf(m.out, "%s uses an older config format. Updating it needs newer versions of these plugins:\n", m.profilesFile)
+// upgradePluginForConfigV2 installs the latest release of a plugin that is too
+// old to read the v2 layout. If that latest release is still below the minimum,
+// it does not install anything.
+func upgradePluginForConfigV2(ctx context.Context, cfg *config.Config, fs afero.Fs, incompatibility plugins.ConfigV2Incompatibility) (string, error) {
+	apiBaseURL := stripe.DefaultAPIBaseURL
+	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
 
-	for _, incompatibility := range incompatibilities {
-		fmt.Fprintf(m.out, "  %s %s — run `%s`\n", incompatibility.Plugin, incompatibility.InstalledVersion, incompatibility.UpgradeCommand())
+	resolved, err := plugins.ResolvePluginForUpgrade(ctx, cfg, fs, incompatibility.Plugin, apiBaseURL, dashboardBaseURL)
+	if err != nil {
+		return "", err
 	}
 
-	fmt.Fprintln(m.out, "Until then the file is left alone, and everything keeps working: this CLI reads both formats.")
-}
-
-// confirm asks whether to rewrite the config file. It defaults to yes, since the
-// migration keeps a backup and the CLI reads either layout afterwards.
-func (m configMigration) confirm() bool {
-	fmt.Fprintf(m.out, "%s uses an older config format, in which a profile name can collide with a CLI setting.\n", m.profilesFile)
-	fmt.Fprintf(m.out, "Update it now? The previous version is saved as %s. [Y/n]: ", m.profilesFile+config.ConfigBackupSuffix)
-
-	answer, err := bufio.NewReader(m.in).ReadString('\n')
-	if err != nil && answer == "" {
-		fmt.Fprintln(m.out)
-		return false
+	if !plugins.ReadsConfigV2(incompatibility.Plugin, resolved.Version) {
+		return "", fmt.Errorf("latest %s version %s cannot read the v2 config format (need %s)", incompatibility.Plugin, resolved.Version, incompatibility.MinimumVersion)
 	}
 
-	switch strings.ToLower(strings.TrimSpace(answer)) {
-	case "", "y", "yes":
-		return true
-	default:
-		fmt.Fprintf(m.out, "Leaving %s as it is. This CLI reads both formats.\n", m.profilesFile)
-		return false
+	if err := resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL); err != nil {
+		return "", err
 	}
+
+	return resolved.Version, nil
 }
