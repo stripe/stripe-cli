@@ -97,9 +97,12 @@ func ConfigV2Incompatibilities(cfg config.IConfig, fs afero.Fs) ([]ConfigV2Incom
 	return incompatibilities, nil
 }
 
-// readsConfigV2 reports whether a specific installed version of a plugin reads the
-// v2 config layout. It fails closed: a plugin the CLI has no minimum version for,
-// or a version it cannot parse, is treated as unable to.
+// ReadsConfigV2 reports whether a specific plugin version can read the v2 config
+// layout. Returns false when we could not determine.
+func ReadsConfigV2(pluginName, installedVersion string) bool {
+	return readsConfigV2(pluginName, installedVersion)
+}
+
 func readsConfigV2(pluginName, installedVersion string) bool {
 	if isLocalDevelopmentVersion(installedVersion) {
 		// A locally built plugin belongs to whoever built it, and its version says
