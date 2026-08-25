@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -45,6 +46,20 @@ type whoamiOutput struct {
 	LiveModeKey       whoamiKeyInfo `json:"live_mode_key"`
 	APIVersion        string        `json:"api_version"`
 	PreviewAPIVersion string        `json:"preview_api_version"`
+}
+
+// whoamiOAuthOutput mirrors exactly what the OAuth text output shows: the
+// active context (account, mode, email, role, expiry) and the list of
+// authorized accounts. Fields not surfaced in the text output (e.g. profile
+// name, API version) are intentionally omitted here.
+type whoamiOAuthOutput struct {
+	DisplayName        string                     `json:"display_name,omitempty"`
+	AccountID          string                     `json:"account_id,omitempty"`
+	Mode               string                     `json:"mode,omitempty"`
+	Email              string                     `json:"email,omitempty"`
+	Role               string                     `json:"role,omitempty"`
+	ExpiresAt          *int64                     `json:"expires_at,omitempty"`
+	AuthorizedAccounts []config.AuthorizedAccount `json:"authorized_accounts,omitempty"`
 }
 
 func newWhoamiCmd() *whoamiCmd {
@@ -143,39 +158,41 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	}
 
 	ac, _ := config.GetActiveContext()
+
+	var info requests.UserInfo
 	if ac != nil {
-		mode := "sandbox"
-		if ac.Livemode {
-			mode = "live"
-		}
-
 		creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
-
 		// Fail open: the user's info is less important than the authorized contexts
-		info, _ := requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
+		info, _ = requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
+	}
+	expiresAt, expiresAtErr := config.GetUATExpiresAt()
 
-		displayName := ac.AccountID
-		for _, a := range accounts {
-			if a.ID == ac.AccountID && a.Name != "" {
-				displayName = a.Name
-				break
-			}
+	out := buildOAuthWhoamiOutput(accounts, ac, info, expiresAt, expiresAtErr == nil)
+
+	if strings.EqualFold(wc.format, "json") {
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return err
 		}
+		fmt.Fprintln(w, string(b))
+		return nil
+	}
 
+	if ac != nil {
 		tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
-		if info.Email != "" {
-			fmt.Fprintf(tw, "User\t%s\n", info.Email)
+		if out.Email != "" {
+			fmt.Fprintf(tw, "User\t%s\n", out.Email)
 		}
-		if displayName != ac.AccountID {
-			fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", displayName, mode, ac.AccountID)
+		if out.DisplayName != ac.AccountID {
+			fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", out.DisplayName, displayModeText(out.Mode), ac.AccountID)
 		} else {
-			fmt.Fprintf(tw, "Context\t%s · %s\n", displayName, mode)
+			fmt.Fprintf(tw, "Context\t%s · %s\n", out.DisplayName, displayModeText(out.Mode))
 		}
-		if info.Role != "" {
-			fmt.Fprintf(tw, "Role\t%s\n", info.Role)
+		if out.Role != "" {
+			fmt.Fprintf(tw, "Role\t%s\n", out.Role)
 		}
-		if t, err := config.GetUATExpiresAt(); err == nil {
-			fmt.Fprintf(tw, "Expires\t%s\n", t.Local().Format(expiryDisplayFormat))
+		if expiresAtErr == nil {
+			fmt.Fprintf(tw, "Expires\t%s\n", expiresAt.Local().Format(expiryDisplayFormat))
 		}
 		tw.Flush()
 		fmt.Fprintln(w)
@@ -183,6 +200,52 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 
 	login.PrintAuthorizedContextsList(accounts)
 	return nil
+}
+
+// buildOAuthWhoamiOutput assembles the OAuth whoami JSON output. It's a pure
+// function so the mapping can be unit tested without making network calls.
+func buildOAuthWhoamiOutput(accounts []config.AuthorizedAccount, ac *config.ActiveContext, info requests.UserInfo, expiresAt time.Time, hasExpiry bool) whoamiOAuthOutput {
+	out := whoamiOAuthOutput{
+		AuthorizedAccounts: accounts,
+	}
+
+	if ac == nil {
+		return out
+	}
+
+	out.AccountID = ac.AccountID
+	out.DisplayName = ac.AccountID
+	for _, a := range accounts {
+		if a.ID == ac.AccountID && a.Name != "" {
+			out.DisplayName = a.Name
+			break
+		}
+	}
+
+	out.Email = info.Email
+	out.Role = info.Role
+
+	if ac.Livemode {
+		out.Mode = "live"
+	} else {
+		out.Mode = "test"
+	}
+
+	if hasExpiry {
+		ts := expiresAt.Unix()
+		out.ExpiresAt = &ts
+	}
+
+	return out
+}
+
+// displayModeText maps the internal "test"/"live" mode value to the CLI's
+// sandbox-oriented display terminology.
+func displayModeText(mode string) string {
+	if mode == "test" {
+		return "sandbox"
+	}
+	return mode
 }
 
 func printWhoamiText(out io.Writer, data whoamiOutput) {
