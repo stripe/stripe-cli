@@ -52,8 +52,7 @@ func newMigrationHarness(t *testing.T) *migrationHarness {
 
 			return nil
 		},
-		getEnv: func(string) string { return "" },
-		out:    h.out,
+		out: h.out,
 	}
 
 	return h
@@ -68,7 +67,7 @@ func TestConfigMigrationRunsWhenNeeded(t *testing.T) {
 	require.True(t, h.reloaded)
 	require.Equal(t, h.migration.profilesFile, h.migratedPath)
 	require.Contains(t, h.out.String(), "checking installed plugins... all 3 are compatible.")
-	require.Contains(t, h.out.String(), "✔ updated "+h.migration.profilesFile)
+	require.Contains(t, h.out.String(), "✔ updated "+h.migration.profilesFile+" to the new config format")
 	require.Contains(t, h.out.String(), "backup saved to config.toml"+config.ConfigBackupSuffix)
 }
 
@@ -82,22 +81,6 @@ func TestConfigMigrationDoesNotAsk(t *testing.T) {
 	require.True(t, h.migrated)
 	require.NotContains(t, h.out.String(), "Update it now")
 	require.NotContains(t, h.out.String(), "[Y/n]")
-}
-
-func TestConfigMigrationHonorsKillSwitch(t *testing.T) {
-	h := newMigrationHarness(t)
-	h.migration.getEnv = func(name string) string {
-		if name == config.SkipMigrationEnvVar {
-			return "1"
-		}
-
-		return ""
-	}
-
-	h.migration.run()
-
-	require.False(t, h.migrated)
-	require.Empty(t, h.out.String())
 }
 
 func TestConfigMigrationSkipsAlreadyMigratedConfig(t *testing.T) {
@@ -136,7 +119,7 @@ func TestConfigMigrationUpgradesAPluginThatIsTooOld(t *testing.T) {
 	require.True(t, h.migrated)
 	require.Contains(t, h.out.String(), "checking installed plugins...")
 	require.Contains(t, h.out.String(), "✔ upgraded projects from v0.8.2 to v1.2.0.")
-	require.Contains(t, h.out.String(), "✔ updated "+h.migration.profilesFile)
+	require.Contains(t, h.out.String(), "✔ updated "+h.migration.profilesFile+" to the new config format")
 }
 
 func TestConfigMigrationDoesNotMigrateWhenPluginUpgradeFails(t *testing.T) {

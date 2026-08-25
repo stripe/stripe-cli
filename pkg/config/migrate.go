@@ -18,11 +18,6 @@ import (
 // the migration leaves behind, e.g. "config.toml.v1.bak".
 const ConfigBackupSuffix = ".v1.bak"
 
-// SkipMigrationEnvVar disables the migration when set to any non-empty value. It
-// is the kill switch if the migration misbehaves in the field; setting
-// config_version = 1 in the config file is the per-user equivalent.
-const SkipMigrationEnvVar = "STRIPE_CLI_SKIP_CONFIG_MIGRATION"
-
 // reservedTopLevelKeys are the top-level config.toml keys that belong to the CLI
 // itself. Every other top-level table in a v1 file is a candidate profile.
 //
@@ -83,31 +78,23 @@ func IsMigrated() bool {
 // the v2 layout. It answers from the config already in memory, so it costs
 // nothing on the common path.
 //
-// It says nothing about whether migrating is *safe* — an installed plugin too old
-// to read the v2 layout, or a non-interactive session, must not migrate — and it
-// does not check that the config file exists, since a viper with no file loaded
-// looks exactly like an unmigrated one.
+// It does not check that migrating is safe for plugins, and it does not check
+// that the config file exists: a viper with no file loaded looks exactly like an
+// unmigrated one.
 func NeedsMigration() bool {
 	v := viper.GetViper()
 
-	version, err := configVersion(v)
-	if err != nil {
+	if _, err := configVersion(v); err != nil {
 		// A version this binary cannot act on. writeConfig refuses such a file
 		// outright, so rewriting its layout is not on the table either.
 		return false
 	}
 
-	switch {
-	// configVersion reports an absent key as v1, so the raw key has to be
-	// consulted as well: only a config_version written out explicitly is a pin.
-	case version == ConfigVersionV1 && v.Get(ConfigVersionName) != nil:
-		// The user pinned the flat layout.
-		return false
-	case !isMigrated(v):
+	if !isMigrated(v) {
 		return true
-	default:
-		return hasFlatProfileTable(v)
 	}
+
+	return hasFlatProfileTable(v)
 }
 
 // hasFlatProfileTable reports whether a migrated config file still holds a
@@ -143,9 +130,7 @@ func hasFlatProfileTable(v *viper.Viper) bool {
 // A file whose config_version is newer than this binary understands is left
 // untouched and returns an error.
 //
-// This function does not decide *whether* to migrate. Callers own that: an
-// installed plugin too old to read the v2 layout, or a non-interactive session,
-// must not migrate.
+// This function does not decide *whether* to migrate. Callers own that.
 func MigrateConfigFile(path string) (bool, error) {
 	if err := fsutil.RefuseWriteThroughSymlinkOS(path, filepath.Dir(filepath.Dir(path)), filepath.Base(path)); err != nil {
 		return false, err
@@ -208,9 +193,9 @@ func MigrateConfigFile(path string) (bool, error) {
 }
 
 // planMigration reads a config document and returns the v2 document to write.
-// changed is false when there is nothing to do: a file pinned to v1, or an
-// already-migrated file with no stray top-level profiles. A config_version newer
-// than this binary understands returns an error.
+// changed is false when there is nothing to do: an already-migrated file with no
+// stray top-level profiles. A config_version newer than this binary understands
+// returns an error.
 func planMigration(contents []byte) (*migrationPlan, bool, error) {
 	// Decode raw TOML rather than going through viper, which lowercases every
 	// key. Round-tripping profile names through viper would rename a profile the
@@ -223,13 +208,6 @@ func planMigration(contents []byte) (*migrationPlan, bool, error) {
 	version := configVersionOf(doc)
 	if version > MaxSupportedConfigVersion {
 		return nil, false, unsupportedConfigVersionError(version)
-	}
-
-	// configVersionOf reports an absent key as 0, so this is only true of a file
-	// that spells the version out: the user pinned the flat layout, and there is
-	// nothing to do even when a caller asks for the migration directly.
-	if version == ConfigVersionV1 {
-		return nil, false, nil
 	}
 
 	plan := &migrationPlan{

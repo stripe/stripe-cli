@@ -341,26 +341,6 @@ func TestNeedsMigrationIgnoresSettingTables(t *testing.T) {
 	require.False(t, NeedsMigration())
 }
 
-// Writing the version out explicitly is how a user opts out for good.
-func TestConfigPinnedToV1IsLeftAlone(t *testing.T) {
-	pinned := `config_version = 1
-
-[default]
-  display_name = 'Pinned Account'
-  test_mode_api_key = 'sk_test_pinned_key'
-`
-	_, profilesFile := setupProfileConfig(t, pinned)
-
-	require.False(t, NeedsMigration())
-
-	changed, err := MigrateConfigFile(profilesFile)
-	require.NoError(t, err)
-	require.False(t, changed)
-	require.Equal(t, pinned, string(helperLoadBytes(t, profilesFile)))
-}
-
-// The migration rewrites the config file, so it has to refuse the same symlinked
-// destinations the normal write path refuses.
 func TestMigrateConfigFileRefusesSymlink(t *testing.T) {
 	profilesFile, victimFile := setupSymlinkedProfilesFile(t)
 
