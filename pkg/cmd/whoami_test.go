@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -206,6 +207,51 @@ func TestWhoamiOAuth_RejectsArbitraryAccessBaseWithoutSendingUAT(t *testing.T) {
 	_, err := runWhoami(t, wc)
 	require.Error(t, err)
 	assert.False(t, requestReceived, "an arbitrary --access-base must be rejected before any request is sent")
+}
+
+func TestBuildOAuthWhoamiOutput_NoActiveContext(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_123", Name: "Acme", Modes: []string{"test", "live"}}}
+
+	out := buildOAuthWhoamiOutput(accounts, nil, requests.UserInfo{}, time.Time{}, false)
+
+	assert.Empty(t, out.AccountID)
+	assert.Empty(t, out.Mode)
+	assert.Nil(t, out.ExpiresAt)
+	assert.Equal(t, accounts, out.AuthorizedAccounts)
+}
+
+func TestBuildOAuthWhoamiOutput_TestModeActiveContext(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_123", Name: "Acme", Modes: []string{"test", "live"}}}
+	ac := &config.ActiveContext{AccountID: "acct_123", Livemode: false}
+	info := requests.UserInfo{Email: "user@example.com", Role: "admin"}
+	expiresAt := time.Date(2026, 5, 1, 0, 0, 0, 0, time.FixedZone("PDT", -7*60*60))
+
+	out := buildOAuthWhoamiOutput(accounts, ac, info, expiresAt, true)
+
+	assert.Equal(t, "acct_123", out.AccountID)
+	assert.Equal(t, "Acme", out.DisplayName)
+	assert.Equal(t, "user@example.com", out.Email)
+	assert.Equal(t, "admin", out.Role)
+	assert.Equal(t, "test", out.Mode)
+	require.NotNil(t, out.ExpiresAt)
+	assert.Equal(t, expiresAt.Unix(), *out.ExpiresAt, "expires_at is rendered as a unix timestamp")
+}
+
+func TestBuildOAuthWhoamiOutput_LiveModeActiveContextUnknownAccount(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_123", Name: "Acme", Modes: []string{"test", "live"}}}
+	ac := &config.ActiveContext{AccountID: "acct_999", Livemode: true}
+
+	out := buildOAuthWhoamiOutput(accounts, ac, requests.UserInfo{}, time.Time{}, false)
+
+	assert.Equal(t, "acct_999", out.AccountID)
+	assert.Equal(t, "acct_999", out.DisplayName, "falls back to account ID when not found among authorized accounts")
+	assert.Equal(t, "live", out.Mode)
+	assert.Nil(t, out.ExpiresAt)
+}
+
+func TestDisplayModeText(t *testing.T) {
+	assert.Equal(t, "sandbox", displayModeText("test"))
+	assert.Equal(t, "live", displayModeText("live"))
 }
 
 func TestKeyAvailabilityText(t *testing.T) {
