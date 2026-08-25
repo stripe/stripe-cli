@@ -134,10 +134,10 @@ func (m configMigration) ensurePluginsCompatible(logger *log.Entry) bool {
 	}
 
 	if len(incompatibilities) == 0 {
-		switch n := m.pluginCount(); {
-		case n == 0:
+		switch n := m.pluginCount(); n {
+		case 0:
 			fmt.Fprintln(m.out, " none installed.")
-		case n == 1:
+		case 1:
 			fmt.Fprintln(m.out, " 1 is compatible.")
 		default:
 			fmt.Fprintf(m.out, " all %d are compatible.\n", n)
