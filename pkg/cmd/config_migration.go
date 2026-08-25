@@ -29,7 +29,6 @@ type configMigration struct {
 	upgradePlugin        func(plugins.ConfigV2Incompatibility) (string, error)
 	migrate              func(path string) (bool, error)
 	reload               func() error
-	getEnv               func(string) string
 	out                  io.Writer
 }
 
@@ -58,7 +57,6 @@ func newConfigMigration(cfg *config.Config, ctx context.Context) configMigration
 		},
 		migrate: config.MigrateConfigFile,
 		reload:  config.ReloadConfigFile,
-		getEnv:  os.Getenv,
 		out:     os.Stderr,
 	}
 }
@@ -100,11 +98,6 @@ func (m configMigration) run() {
 	})
 
 	if !m.needsMigration() {
-		return
-	}
-
-	if m.getEnv(config.SkipMigrationEnvVar) != "" {
-		logger.Debugf("Skipping the config migration because %s is set", config.SkipMigrationEnvVar)
 		return
 	}
 
@@ -214,7 +207,7 @@ func (m configMigration) migrateAndReload() {
 		return
 	}
 
-	fmt.Fprintf(m.out, "✔ updated %s (backup saved to %s)\n", m.profilesFile, filepath.Base(m.profilesFile+config.ConfigBackupSuffix))
+	fmt.Fprintf(m.out, "✔ updated %s to the new config format (backup saved to %s)\n", m.profilesFile, filepath.Base(m.profilesFile+config.ConfigBackupSuffix))
 }
 
 // upgradePluginForConfigV2 installs the latest release of a plugin that is too
