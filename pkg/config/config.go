@@ -381,13 +381,15 @@ func (c *Config) SwitchProfile(profileName string) error {
 
 // reservedTopLevelKeys are config keys that sit alongside profiles at the top
 // level of the file but are not profiles. They are excluded from profile removal
-// so that a name collision cannot destroy machine-wide settings.
+// so that a name collision cannot destroy machine-wide settings — or, for
+// "profiles", the entire v2 profile table.
 var reservedTopLevelKeys = map[string]bool{
 	"color":             true,
 	"installed_plugins": true,
 	"machine_uuid":      true,
 	"plugin_configs":    true,
 	"project-name":      true,
+	ProfilesTableName:   true,
 	UserInfoName:        true,
 }
 

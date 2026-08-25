@@ -296,6 +296,16 @@ func TestRemoveProfileStillRefusesAReservedName(t *testing.T) {
 	require.Equal(t, []string{"apps"}, viper.GetStringSlice("installed_plugins"))
 }
 
+// Without this, --remove-profile profiles matches the v2 [profiles] table and
+// deletes every profile.
+func TestRemoveProfileRefusesTheProfilesTable(t *testing.T) {
+	c, _ := setupProfileConfig(t, v2ConfigFile)
+
+	require.ErrorContains(t, c.RemoveProfile(ProfilesTableName), "reserved config key")
+	require.True(t, viper.IsSet("profiles.default"))
+	require.True(t, viper.IsSet("profiles.installed_plugins"))
+}
+
 func TestRemoveProfileReportsNotFoundInV2Layout(t *testing.T) {
 	c, _ := setupProfileConfig(t, v2ConfigFile)
 
