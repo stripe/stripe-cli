@@ -71,6 +71,15 @@ func TestConfigMigrationRunsWhenNeeded(t *testing.T) {
 	require.Contains(t, h.out.String(), "backup saved to config.toml"+config.ConfigBackupSuffix)
 }
 
+func TestNewConfigMigrationUsesEffectiveConfigPath(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "custom.toml")
+	cfg := &config.Config{ProfilesFile: customPath}
+
+	migration := newConfigMigration(cfg, t.Context())
+
+	require.Equal(t, customPath, migration.profilesFile)
+}
+
 // There is no confirm prompt, so CI and AI agents migrate the same way a person
 // at a terminal does.
 func TestConfigMigrationDoesNotAsk(t *testing.T) {
