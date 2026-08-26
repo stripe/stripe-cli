@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // configV2MinimumVersions maps a plugin shortname to the lowest released version
@@ -147,5 +148,5 @@ func (p *Plugin) refuseIfConfigTooNew(installedVersion string) error {
 		MinimumVersion:   configV2MinimumVersions[p.Shortname],
 	}
 
-	return fmt.Errorf("%s. Run `%s` to update it", incompatibility.Error(), incompatibility.UpgradeCommand())
+	return errorcategory.Errorf(errorcategory.UserInput, "%s. Run `%s` to update it", incompatibility.Error(), incompatibility.UpgradeCommand())
 }

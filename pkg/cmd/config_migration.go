@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -172,7 +173,7 @@ func (m configMigration) pluginCount() int {
 
 func (m configMigration) upgradeOne(incompatibility plugins.ConfigV2Incompatibility) (string, error) {
 	if m.upgradePlugin == nil {
-		return "", fmt.Errorf("plugin upgrade is not configured")
+		return "", errorcategory.New(errorcategory.Internal, "plugin upgrade is not configured")
 	}
 
 	return m.upgradePlugin(incompatibility)
@@ -223,7 +224,7 @@ func upgradePluginForConfigV2(ctx context.Context, cfg *config.Config, fs afero.
 	}
 
 	if !plugins.ReadsConfigV2(incompatibility.Plugin, resolved.Version) {
-		return "", fmt.Errorf("latest %s version %s cannot read the v2 config format (need %s)", incompatibility.Plugin, resolved.Version, incompatibility.MinimumVersion)
+		return "", errorcategory.Errorf(errorcategory.Internal, "latest %s version %s cannot read the v2 config format (need %s)", incompatibility.Plugin, resolved.Version, incompatibility.MinimumVersion)
 	}
 
 	if err := resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL); err != nil {
