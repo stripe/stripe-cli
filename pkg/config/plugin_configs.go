@@ -6,6 +6,10 @@ const (
 
 	// PluginConfigUpdatesField is the config field name controlling automatic updates.
 	PluginConfigUpdatesField = "updates"
+
+	// PluginConfigsKey is the top-level table holding every plugin config
+	// section. It is a CLI setting, not a profile.
+	PluginConfigsKey = "plugin_configs"
 )
 
 // isPluginConfigSection reports whether v is a plugin config section,
@@ -25,5 +29,5 @@ func isPluginConfigSection(v interface{}) bool {
 // Example: PluginConfigKey("__global", "updates") to read or set the global updates setting
 // Example: PluginConfigKey("apps", "updates") to read or set the updates setting for the "apps" plugin
 func PluginConfigKey(scope, field string) string {
-	return "plugin_configs." + scope + "." + field
+	return PluginConfigsKey + "." + scope + "." + field
 }

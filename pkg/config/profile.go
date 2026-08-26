@@ -108,17 +108,19 @@ const ConfigVersionV1 = 1
 // ConfigVersionV2 is the schema version in which every profile moved under the
 // reserved ProfilesTableName table, so that profile names can no longer collide
 // with top-level CLI settings.
-//
-// This release line never writes a v2 file and never migrates one. It only reads
-// and updates a file that a v2 CLI already migrated, so that downgrading needs no
-// action from the user.
 const ConfigVersionV2 = 2
 
 // MaxSupportedConfigVersion is the newest config.toml layout this binary can act
 // on. A file recording a higher version was written by a newer CLI, whose layout
-// this build has no way to know. This line does not write v2, but it does read and
-// update one, so v2 is still the ceiling rather than v1.
+// this build has no way to know.
 const MaxSupportedConfigVersion = ConfigVersionV2
+
+func unsupportedConfigVersionError(version int) error {
+	return errorcategory.Errorf(errorcategory.Filesystem,
+		"%s is %d, but this Stripe CLI understands up to %d. Upgrade the CLI: https://docs.stripe.com/stripe-cli/upgrade",
+		ConfigVersionName, version, MaxSupportedConfigVersion,
+	)
+}
 
 const UATKeychainItemKey = "uat"
 
@@ -306,12 +308,12 @@ func (p *Profile) deleteAuthFields(v *viper.Viper) *viper.Viper {
 // GetColor gets the color setting for the user based on the flag or the
 // persisted color stored in the config file
 func (p *Profile) GetColor() (string, error) {
-	color := viper.GetString("color")
+	color := viper.GetString(ColorName)
 	if color != "" {
 		return color, nil
 	}
 
-	color = p.ReadProfileString("color")
+	color = p.ReadProfileString(ColorName)
 	switch color {
 	case "", ColorAuto:
 		return ColorAuto, nil

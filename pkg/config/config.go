@@ -26,6 +26,21 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
+// Top-level config.toml keys that belong to the CLI itself rather than to a
+// profile. A profile with one of these names is a collision, which is what
+// moving profiles under the reserved profiles table fixes.
+const (
+	// ColorName is the color setting. It is also a valid profile field, so it can
+	// appear both at the top level and inside a profile.
+	ColorName = "color"
+
+	// InstalledPluginsKey lists the locally installed plugins.
+	InstalledPluginsKey = "installed_plugins"
+
+	// MachineUUIDKey is the persistent machine identifier used for telemetry.
+	MachineUUIDKey = "machine_uuid"
+)
+
 // ColorOn represnets the on-state for colors
 const ColorOn = "on"
 
@@ -337,19 +352,19 @@ func (c *Config) PrintConfig() error {
 func (c *Config) GetInstalledPlugins() []string {
 	runtimeViper := viper.GetViper()
 
-	return runtimeViper.GetStringSlice("installed_plugins")
+	return runtimeViper.GetStringSlice(InstalledPluginsKey)
 }
 
 // GetMachineUUID returns the persistent machine UUID from config,
 // generating and saving one if it doesn't exist.
 func (c *Config) GetMachineUUID() string {
 	runtimeViper := viper.GetViper()
-	id := runtimeViper.GetString("machine_uuid")
+	id := runtimeViper.GetString(MachineUUIDKey)
 	if id != "" {
 		return id
 	}
 	id = uuid.NewString()
-	_ = c.WriteConfigField("machine_uuid", id)
+	_ = c.WriteConfigField(MachineUUIDKey, id)
 	return id
 }
 
@@ -384,12 +399,13 @@ func (c *Config) SwitchProfile(profileName string) error {
 // so that a name collision cannot destroy machine-wide settings — or, for
 // "profiles", the entire v2 profile table.
 var reservedTopLevelKeys = map[string]bool{
-	"color":             true,
-	"installed_plugins": true,
-	"machine_uuid":      true,
-	"plugin_configs":    true,
-	"project-name":      true,
+	ConfigVersionName:   true,
 	ProfilesTableName:   true,
+	ColorName:           true,
+	InstalledPluginsKey: true,
+	MachineUUIDKey:      true,
+	PluginConfigsKey:    true,
+	"project-name":      true,
 	UserInfoName:        true,
 }
 
@@ -648,23 +664,17 @@ func configVersion(v *viper.Viper) (int, error) {
 	}
 
 	if version > MaxSupportedConfigVersion {
-		return version, errorcategory.Errorf(errorcategory.Filesystem,
-			"%s is %d, but this Stripe CLI understands up to %d. Upgrade the CLI: https://docs.stripe.com/stripe-cli/upgrade",
-			ConfigVersionName, version, MaxSupportedConfigVersion)
+		return version, unsupportedConfigVersionError(version)
 	}
 
 	return version, nil
 }
 
 // isMigrated reports whether the config file stores profiles in the v2 layout,
-// under the reserved profiles table. This release line never sets config_version;
-// it only recognizes a file that a v2 CLI already migrated.
-//
-// A version this binary cannot act on is not migrated: writeConfig refuses such a
-// file outright, so no write ever reaches the layout decision this gates.
+// under the reserved profiles table.
 func isMigrated(v *viper.Viper) bool {
 	version, err := configVersion(v)
-	return err == nil && version == ConfigVersionV2
+	return err == nil && version >= ConfigVersionV2
 }
 
 // profileTableKeyForWrite returns the key a whole profile table should be
