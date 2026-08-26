@@ -299,8 +299,48 @@ func TestMigrateConfigFileRejectsUnparseableFile(t *testing.T) {
 	require.NoFileExists(t, path+ConfigBackupSuffix)
 }
 
-// The migration rewrites the config file, so it has to refuse the same symlinked
-// destinations the normal write path refuses.
+func TestNeedsMigrationForV1Config(t *testing.T) {
+	setupProfileConfig(t, v1ConfigFile)
+
+	require.True(t, NeedsMigration())
+	require.False(t, IsMigrated())
+}
+
+func TestNeedsMigrationForV2Config(t *testing.T) {
+	setupProfileConfig(t, v2ConfigFile)
+
+	require.False(t, NeedsMigration())
+	require.True(t, IsMigrated())
+}
+
+// A migrated file that has picked up a top-level profile still has work to do:
+// folding the stray copy back in is what stops the two from diverging.
+func TestNeedsMigrationForV2ConfigWithShadowTable(t *testing.T) {
+	setupProfileConfig(t, v2ConfigFile+`
+[legacy]
+  display_name = 'Written By An Old Plugin'
+`)
+
+	require.True(t, NeedsMigration())
+}
+
+// A setting that happens to be a table is not a profile, so it is not work.
+func TestNeedsMigrationIgnoresSettingTables(t *testing.T) {
+	setupProfileConfig(t, `config_version = 2
+
+[profiles.default]
+  display_name = 'V2 Account'
+
+[plugin_configs.__global]
+  updates = 'off'
+
+[user_info]
+  compartments = []
+`)
+
+	require.False(t, NeedsMigration())
+}
+
 func TestMigrateConfigFileRefusesSymlink(t *testing.T) {
 	profilesFile, victimFile := setupSymlinkedProfilesFile(t)
 
