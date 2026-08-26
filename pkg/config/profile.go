@@ -89,7 +89,36 @@ const (
 	SandboxClaimURLName        = "sandbox_claim_url"
 	SandboxExpiresAtName       = "sandbox_expires_at"
 	UserInfoName               = "user_info" // TODO: remove with legacy RAK/OIDC flow
+
+	// ConfigVersionName is the top-level key recording the config file's schema
+	// version. It is absent from v1 files, which is how an unmigrated file is
+	// recognized.
+	ConfigVersionName = "config_version"
+
+	// ProfilesTableName is the reserved top-level table that holds every profile
+	// in a v2 config file.
+	ProfilesTableName = "profiles"
 )
+
+// ConfigVersionV1 is the original layout, with each profile as a top-level table.
+// A v1 file records no config_version key at all; the constant exists so that
+// version comparisons don't have to spell out that absence.
+const ConfigVersionV1 = 1
+
+// ConfigVersionV2 is the schema version in which every profile moved under the
+// reserved ProfilesTableName table, so that profile names can no longer collide
+// with top-level CLI settings.
+//
+// This release line never writes a v2 file and never migrates one. It only reads
+// and updates a file that a v2 CLI already migrated, so that downgrading needs no
+// action from the user.
+const ConfigVersionV2 = 2
+
+// MaxSupportedConfigVersion is the newest config.toml layout this binary can act
+// on. A file recording a higher version was written by a newer CLI, whose layout
+// this build has no way to know. This line does not write v2, but it does read and
+// update one, so v2 is still the ceiling rather than v1.
+const MaxSupportedConfigVersion = ConfigVersionV2
 
 const UATKeychainItemKey = "uat"
 
@@ -154,7 +183,7 @@ var authFieldNames = []string{
 // field, so that a partially written profile (one with no display_name, which a
 // profile abandoned part-way through login can be) is still recognized.
 func (p *Profile) profileExists() bool {
-	return viper.IsSet(p.ProfileName)
+	return viper.IsSet(p.nestedProfileTable()) || viper.IsSet(p.ProfileName)
 }
 
 // warnLegacyProfileNameOnce guards the deprecation warning so it prints at most
@@ -219,14 +248,11 @@ func (p *Profile) CreateProfile() error {
 
 func (p *Profile) deleteAuthFields(v *viper.Viper) *viper.Viper {
 	for _, field := range authFieldNames {
-		key := p.GetConfigField(field)
-		if v.IsSet(key) {
-			newViper, err := removeKey(v, key)
-			if err == nil {
-				// failure to remove a key should not break the login flow
-				v = newViper
-			}
-		}
+		// safeRemove clears the field from whichever layouts it appears in, so a
+		// file that a v2 CLI migrated (or that this CLI wrote a shadow copy into)
+		// is fully cleared rather than half-cleared. Failure to remove a key
+		// should not break the login flow.
+		v = p.safeRemove(v, field)
 	}
 	return v
 }
@@ -239,7 +265,7 @@ func (p *Profile) GetColor() (string, error) {
 		return color, nil
 	}
 
-	color = viper.GetString(p.GetConfigField("color"))
+	color = p.ReadProfileString("color")
 	switch color {
 	case "", ColorAuto:
 		return ColorAuto, nil
@@ -263,7 +289,7 @@ func (p *Profile) GetDeviceName() (string, error) {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField(DeviceNameName)), nil
+		return p.ReadProfileString(DeviceNameName), nil
 	}
 
 	return "", validators.ErrDeviceNameNotConfigured
@@ -276,7 +302,7 @@ func (p *Profile) GetAccountID() (string, error) {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField(AccountIDName)), nil
+		return p.ReadProfileString(AccountIDName), nil
 	}
 
 	return "", validators.ErrAccountIDNotConfigured
@@ -289,7 +315,7 @@ func (p *Profile) GetUserID() (string, error) {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField(UserIDName)), nil
+		return p.ReadProfileString(UserIDName), nil
 	}
 
 	return "", nil
@@ -323,12 +349,12 @@ func (p *Profile) HasAPIKey(livemode bool) bool {
 		if err := viper.ReadInConfig(); err != nil {
 			return false
 		}
-		if viper.IsSet(p.GetConfigField("secret_key")) {
+		if p.profileFieldIsSet("secret_key") {
 			p.RegisterAlias(TestModeAPIKeyName, "secret_key")
-		} else if viper.IsSet(p.GetConfigField("api_key")) {
+		} else if p.profileFieldIsSet("api_key") {
 			p.RegisterAlias(TestModeAPIKeyName, "api_key")
 		}
-		return viper.GetString(p.GetConfigField(TestModeAPIKeyName)) != ""
+		return p.ReadProfileString(TestModeAPIKeyName) != ""
 	}
 
 	if KeyRing == nil {
@@ -366,14 +392,14 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	if !livemode {
 		// If the user doesn't have an api_key field set, they might be using an
 		// old configuration so try to read from secret_key
-		if viper.IsSet(p.GetConfigField("secret_key")) {
+		if p.profileFieldIsSet("secret_key") {
 			p.RegisterAlias(TestModeAPIKeyName, "secret_key")
-		} else if viper.IsSet(p.GetConfigField("api_key")) {
+		} else if p.profileFieldIsSet("api_key") {
 			p.RegisterAlias(TestModeAPIKeyName, "api_key")
 		}
 
 		if err := viper.ReadInConfig(); err == nil {
-			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
+			key = p.ReadProfileString(TestModeAPIKeyName)
 		}
 	} else {
 		p.redactAllLivemodeValues()
@@ -399,9 +425,9 @@ func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 	var timeString string
 
 	if livemode {
-		timeString = viper.GetString(p.GetConfigField(LiveModeKeyExpiresAtName))
+		timeString = p.ReadProfileString(LiveModeKeyExpiresAtName)
 	} else {
-		timeString = viper.GetString(p.GetConfigField(TestModeKeyExpiresAtName))
+		timeString = p.ReadProfileString(TestModeKeyExpiresAtName)
 	}
 
 	if timeString != "" {
@@ -425,12 +451,12 @@ func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
 	} else {
 		fieldID = TestModePubKeyName
 
-		if viper.IsSet(p.GetConfigField("publishable_key")) {
+		if p.profileFieldIsSet("publishable_key") {
 			p.RegisterAlias(TestModePubKeyName, "publishable_key")
 		}
 		// there is a bug with viper.GetStringMapString when the key name is too long, which makes
 		// `config --list --project-name <project_name>` unable to read the project specific config
-		if viper.IsSet(p.GetConfigField("test_mode_publishable_key")) {
+		if p.profileFieldIsSet("test_mode_publishable_key") {
 			p.RegisterAlias(TestModePubKeyName, "test_mode_publishable_key")
 		}
 	}
@@ -440,7 +466,7 @@ func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
 		return "", err
 	}
 
-	key = viper.GetString(p.GetConfigField(fieldID))
+	key = p.ReadProfileString(fieldID)
 	if key != "" {
 		return key, nil
 	}
@@ -451,7 +477,7 @@ func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
 // GetDisplayName returns the account display name of the user
 func (p *Profile) GetDisplayName() string {
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField(DisplayNameName))
+		return p.ReadProfileString(DisplayNameName)
 	}
 
 	return ""
@@ -460,20 +486,113 @@ func (p *Profile) GetDisplayName() string {
 // GetTerminalPOSDeviceID returns the device id from the config for Terminal quickstart to use
 func (p *Profile) GetTerminalPOSDeviceID() string {
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("terminal_pos_device_id"))
+		return p.ReadProfileString("terminal_pos_device_id")
 	}
 
 	return ""
 }
 
-// GetConfigField returns the configuration field for the specific profile
+// GetConfigField returns the flat (v1) configuration path for a profile field,
+// e.g. "default.account_id".
+//
+// This same string is used verbatim as the keyring item ID for livemode
+// secrets, so it must not gain the v2 "profiles." prefix: changing it would
+// orphan every credential already stored in the OS keychain. To read a config
+// value, use ReadProfileString or profileFieldIsSet, which understand both the
+// v1 and v2 layouts. To write one, use configFieldForWrite.
 func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field
 }
 
-// RegisterAlias registers an alias for a given key.
+// nestedProfileTable returns the v2 key of this profile's table, e.g.
+// "profiles.default". In v2, profiles live under a reserved top-level "profiles"
+// table so that profile names can no longer collide with CLI settings.
+func (p *Profile) nestedProfileTable() string {
+	return ProfilesTableName + "." + p.ProfileName
+}
+
+// nestedConfigField returns the v2 configuration path for a profile field,
+// e.g. "profiles.default.account_id".
+func (p *Profile) nestedConfigField(field string) string {
+	return p.nestedProfileTable() + "." + field
+}
+
+// ReadProfileString reads a profile field from the config file, preferring the
+// v2 nested layout and falling back to the v1 flat layout.
+//
+// Both layouts are supported indefinitely. A config file that has never been
+// migrated stays fully readable, and one that a v2 CLI migrated is readable from
+// this release line without the user having to undo anything.
+func (p *Profile) ReadProfileString(field string) string {
+	if value := viper.GetString(p.nestedConfigField(field)); value != "" {
+		return value
+	}
+
+	return viper.GetString(p.GetConfigField(field))
+}
+
+// ReadProfileStringMap reads a nested table inside a profile, such as the docs
+// preferences, from whichever layout holds it.
+func (p *Profile) ReadProfileStringMap(field string) map[string]string {
+	if value := viper.GetStringMapString(p.nestedConfigField(field)); len(value) > 0 {
+		return value
+	}
+
+	return viper.GetStringMapString(p.GetConfigField(field))
+}
+
+// profileFieldIsSet reports whether a profile field is present in either layout.
+func (p *Profile) profileFieldIsSet(field string) bool {
+	return viper.IsSet(p.nestedConfigField(field)) || viper.IsSet(p.GetConfigField(field))
+}
+
+// configFieldForWrite returns the path a profile field should be written to,
+// matching the layout the config file already uses.
+//
+// Reads tolerate either layout, but a write has to pick one. Writing a flat
+// field into a migrated file would create a second, shadow copy of the profile
+// at the top level, which the read above would then shadow in turn — so the
+// user's own write would be invisible to the CLI that just made it. An
+// unmigrated file has no config_version key, so GetInt returns 0 and writes stay
+// flat. Nothing here ever sets config_version: this release line follows the
+// layout it finds and never migrates.
+func (p *Profile) configFieldForWrite(field string) string {
+	// The layout is read from the global viper, which is the instance that has
+	// the config file loaded. writeProfile is handed a scratch viper that has not
+	// merged the file in yet at the point the fields are set.
+	if isMigrated(viper.GetViper()) {
+		return p.nestedConfigField(field)
+	}
+
+	return p.GetConfigField(field)
+}
+
+// deleteProfileField removes a profile field from both the v2 nested layout and
+// the v1 flat layout, so a delete cannot leave a stale copy of the field behind
+// in a file that happens to contain both.
+func (p *Profile) deleteProfileField(v *viper.Viper, field string) (*viper.Viper, error) {
+	for _, path := range []string{p.nestedConfigField(field), p.GetConfigField(field)} {
+		if !v.IsSet(path) {
+			continue
+		}
+
+		newViper, err := removeKey(v, path)
+		if err != nil {
+			return nil, err
+		}
+
+		v = newViper
+	}
+
+	return v, nil
+}
+
+// RegisterAlias registers an alias for a given key in both layouts, so that
+// legacy field names (secret_key, api_key, publishable_key) keep resolving in a
+// migrated config file as well as an unmigrated one.
 func (p *Profile) RegisterAlias(alias, key string) {
 	viper.RegisterAlias(p.GetConfigField(alias), p.GetConfigField(key))
+	viper.RegisterAlias(p.nestedConfigField(alias), p.nestedConfigField(key))
 }
 
 // WriteConfigField updates a configuration field and writes the updated
@@ -481,13 +600,13 @@ func (p *Profile) RegisterAlias(alias, key string) {
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.ReadInConfig()
 
-	viper.Set(p.GetConfigField(field), value)
+	viper.Set(p.configFieldForWrite(field), value)
 	return writeConfig(viper.GetViper())
 }
 
 // DeleteConfigField deletes a configuration field.
 func (p *Profile) DeleteConfigField(field string) error {
-	v, err := removeKey(viper.GetViper(), p.GetConfigField(field))
+	v, err := p.deleteProfileField(viper.GetViper(), field)
 	if err != nil {
 		return err
 	}
@@ -509,15 +628,15 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.DeviceName != "" {
-		runtimeViper.Set(p.GetConfigField(DeviceNameName), strings.TrimSpace(p.DeviceName))
+		runtimeViper.Set(p.configFieldForWrite(DeviceNameName), strings.TrimSpace(p.DeviceName))
 	}
 
 	if p.LiveModeAPIKey != "" {
 		expiresAt := getKeyExpiresAt()
-		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
+		runtimeViper.Set(p.configFieldForWrite(LiveModeKeyExpiresAtName), expiresAt)
 
 		// // store redacted key in config
-		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
+		runtimeViper.Set(p.configFieldForWrite(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
 
 		// // store actual key in secure keyring
 		if err := p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key"); err != nil {
@@ -526,36 +645,36 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.LiveModePublishableKey != "" {
-		runtimeViper.Set(p.GetConfigField(LiveModePubKeyName), strings.TrimSpace(p.LiveModePublishableKey))
+		runtimeViper.Set(p.configFieldForWrite(LiveModePubKeyName), strings.TrimSpace(p.LiveModePublishableKey))
 	}
 
 	if p.TestModeAPIKey != "" {
-		runtimeViper.Set(p.GetConfigField(TestModeAPIKeyName), strings.TrimSpace(p.TestModeAPIKey))
-		runtimeViper.Set(p.GetConfigField(TestModeKeyExpiresAtName), getKeyExpiresAt())
+		runtimeViper.Set(p.configFieldForWrite(TestModeAPIKeyName), strings.TrimSpace(p.TestModeAPIKey))
+		runtimeViper.Set(p.configFieldForWrite(TestModeKeyExpiresAtName), getKeyExpiresAt())
 	}
 
 	if p.TestModePublishableKey != "" {
-		runtimeViper.Set(p.GetConfigField(TestModePubKeyName), strings.TrimSpace(p.TestModePublishableKey))
+		runtimeViper.Set(p.configFieldForWrite(TestModePubKeyName), strings.TrimSpace(p.TestModePublishableKey))
 	}
 
 	if p.DisplayName != "" {
-		runtimeViper.Set(p.GetConfigField(DisplayNameName), strings.TrimSpace(p.DisplayName))
+		runtimeViper.Set(p.configFieldForWrite(DisplayNameName), strings.TrimSpace(p.DisplayName))
 	}
 
 	if p.AccountID != "" {
-		runtimeViper.Set(p.GetConfigField(AccountIDName), strings.TrimSpace(p.AccountID))
+		runtimeViper.Set(p.configFieldForWrite(AccountIDName), strings.TrimSpace(p.AccountID))
 	}
 
 	if p.UserID != "" {
-		runtimeViper.Set(p.GetConfigField(UserIDName), strings.TrimSpace(p.UserID))
+		runtimeViper.Set(p.configFieldForWrite(UserIDName), strings.TrimSpace(p.UserID))
 	}
 
 	if p.SandboxClaimURL != "" {
-		runtimeViper.Set(p.GetConfigField(SandboxClaimURLName), strings.TrimSpace(p.SandboxClaimURL))
+		runtimeViper.Set(p.configFieldForWrite(SandboxClaimURLName), strings.TrimSpace(p.SandboxClaimURL))
 	}
 
 	if p.SandboxExpiresAt != "" {
-		runtimeViper.Set(p.GetConfigField(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
+		runtimeViper.Set(p.configFieldForWrite(SandboxExpiresAtName), strings.TrimSpace(p.SandboxExpiresAt))
 	}
 
 	if KeyRing != nil {
@@ -591,16 +710,14 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 }
 
 func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
-	if v.IsSet(p.GetConfigField(key)) {
-		newViper, err := removeKey(v, p.GetConfigField(key))
-		if err == nil {
-			// I don't want to fail the entire login process on not being able to remove
-			// the old secret_key field so if there's no error
-			return newViper
-		}
+	newViper, err := p.deleteProfileField(v, key)
+	if err != nil {
+		// I don't want to fail the entire login process on not being able to remove
+		// the old secret_key field, so keep the viper we already have.
+		return v
 	}
 
-	return v
+	return newViper
 }
 
 // redactAllLivemodeValues redacts all livemode values in the local config file
@@ -609,8 +726,8 @@ func (p *Profile) redactAllLivemodeValues() {
 
 	if err := viper.ReadInConfig(); err == nil {
 		// if the config file has expires at date, then it is using the new livemode key storage
-		if viper.IsSet(p.GetConfigField(LiveModeAPIKeyName)) {
-			key := viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
+		if p.profileFieldIsSet(LiveModeAPIKeyName) {
+			key := p.ReadProfileString(LiveModeAPIKeyName)
 			if key == "" || len(key) < 12 {
 				p.DeleteConfigField(LiveModeAPIKeyName)
 				return

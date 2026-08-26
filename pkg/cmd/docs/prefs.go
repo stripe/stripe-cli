@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/list"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	pkgdocs "github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/pager"
@@ -191,7 +190,7 @@ func (r *RootCommand) loadDocsPrefMap() map[string]string {
 	if r.cfg == nil {
 		return nil
 	}
-	raw := viper.GetStringMapString(r.cfg.Profile.GetConfigField(docsPrefsConfigKey))
+	raw := r.cfg.Profile.ReadProfileStringMap(docsPrefsConfigKey)
 	if len(raw) == 0 {
 		return nil
 	}
@@ -202,7 +201,7 @@ func (r *RootCommand) getDocsPref(id string) string {
 	if r.cfg == nil {
 		return ""
 	}
-	return viper.GetString(r.cfg.Profile.GetConfigField(docsPrefsConfigKey + "." + id))
+	return r.cfg.Profile.ReadProfileString(docsPrefsConfigKey + "." + id)
 }
 
 func (r *RootCommand) writeDocsPref(id, value string) error {

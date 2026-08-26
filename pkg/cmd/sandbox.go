@@ -16,7 +16,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -174,13 +173,12 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 		if accountID != "" {
 			fmt.Printf("Account ID:      %s\n", accountID)
 		}
-
 		if sandboxClaimed(cmd.Context(), scc.apiBaseURL) {
 			fmt.Printf("\n%s\n", sandboxAlreadyClaimedMessage)
 			return nil
 		}
 
-		expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
+		expiresAt := Config.Profile.ReadProfileString(config.SandboxExpiresAtName)
 		if expiresAt != "" {
 			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandbox claim`.\n", expiresAt)
 		} else {
@@ -395,14 +393,14 @@ func isClaimableSandbox() bool {
 		return true
 	}
 	// No key — check metadata for partially-cleared sandbox state
-	if viper.GetString(Config.Profile.GetConfigField(config.SandboxClaimURLName)) != "" {
+	if Config.Profile.ReadProfileString(config.SandboxClaimURLName) != "" {
 		return true
 	}
-	return viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName)) != ""
+	return Config.Profile.ReadProfileString(config.SandboxExpiresAtName) != ""
 }
 
 func sandboxTestModeAPIKey() string {
-	return viper.GetString(Config.Profile.GetConfigField(config.TestModeAPIKeyName))
+	return Config.Profile.ReadProfileString(config.TestModeAPIKeyName)
 }
 
 // sandboxClaimed reports whether the profile's claimable sandbox has already been claimed. API failures return false.
@@ -421,7 +419,7 @@ func sandboxClaimed(ctx context.Context, apiBaseURL string) bool {
 
 // isExpiredSandbox returns true if the sandbox_expires_at date has passed.
 func isExpiredSandbox() bool {
-	expiresAt := viper.GetString(Config.Profile.GetConfigField(config.SandboxExpiresAtName))
+	expiresAt := Config.Profile.ReadProfileString(config.SandboxExpiresAtName)
 	if expiresAt == "" {
 		return false
 	}
@@ -470,7 +468,7 @@ func newSandboxClaimCmd() *sandboxClaimCmd {
 }
 
 func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string) error {
-	claimURL := viper.GetString(Config.Profile.GetConfigField(config.SandboxClaimURLName))
+	claimURL := Config.Profile.ReadProfileString(config.SandboxClaimURLName)
 	if claimURL == "" {
 		fmt.Printf("No active sandbox. Run `stripe sandbox create` to get started.\n")
 		return nil
