@@ -194,6 +194,35 @@ func captureStdout(t *testing.T, fn func() error) (string, error) {
 	return buf.String(), runErr
 }
 
+// A sandbox provisioned under an invalid profile name would have nowhere to save
+// its keys, so the name is checked before any request is made.
+func TestSandboxCreateCmd_RejectsNewDottedProfileBeforeProvisioning(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	Config.Profile.ProfileName = "example.project"
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	browserOpened := false
+	openBrowserFunc = func(string) error {
+		browserOpened = true
+		return nil
+	}
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "unused", "--base-url", server.URL})
+	err := cmd.cmd.Execute()
+
+	require.EqualError(t, err, `profile name "example.project" cannot contain a period; use a hyphen or underscore instead`)
+	assert.Zero(t, requestCount)
+	assert.False(t, browserOpened)
+}
+
 func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
