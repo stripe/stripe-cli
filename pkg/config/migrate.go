@@ -10,6 +10,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
 
@@ -302,55 +303,55 @@ func verifyPlan(plan *migrationPlan, encoded []byte) error {
 	}
 
 	if got := configVersionOf(doc); got != ConfigVersionV2 {
-		return fmt.Errorf("migrated config has config_version %d, want %d", got, ConfigVersionV2)
+		return errorcategory.Errorf(errorcategory.Filesystem, "migrated config has config_version %d, want %d", got, ConfigVersionV2)
 	}
 
 	profiles, ok := toStringMap(doc[ProfilesTableName])
 	if !ok {
-		return fmt.Errorf("migrated config has no %s table", ProfilesTableName)
+		return errorcategory.Errorf(errorcategory.Filesystem, "migrated config has no %s table", ProfilesTableName)
 	}
 
 	for _, name := range sortedProfileNames(plan.profiles) {
 		table, ok := toStringMap(profiles[name])
 		if !ok {
-			return fmt.Errorf("profile %q is missing from the migrated config", name)
+			return errorcategory.Errorf(errorcategory.Filesystem, "profile %q is missing from the migrated config", name)
 		}
 
 		for _, field := range sortedKeys(plan.profiles[name]) {
 			want := plan.profiles[name][field]
 			got, present := table[field]
 			if !present {
-				return fmt.Errorf("profile %q lost field %q in the migrated config", name, field)
+				return errorcategory.Errorf(errorcategory.Filesystem, "profile %q lost field %q in the migrated config", name, field)
 			}
 
 			if !reflect.DeepEqual(want, got) {
-				return fmt.Errorf("profile %q field %q changed value in the migrated config", name, field)
+				return errorcategory.Errorf(errorcategory.Filesystem, "profile %q field %q changed value in the migrated config", name, field)
 			}
 		}
 
 		if len(table) != len(plan.profiles[name]) {
-			return fmt.Errorf("profile %q gained fields in the migrated config", name)
+			return errorcategory.Errorf(errorcategory.Filesystem, "profile %q gained fields in the migrated config", name)
 		}
 	}
 
 	if len(profiles) != len(plan.profiles) {
-		return fmt.Errorf("migrated config has %d profiles, want %d", len(profiles), len(plan.profiles))
+		return errorcategory.Errorf(errorcategory.Filesystem, "migrated config has %d profiles, want %d", len(profiles), len(plan.profiles))
 	}
 
 	for _, key := range sortedKeys(plan.settings) {
 		got, present := doc[key]
 		if !present {
-			return fmt.Errorf("setting %q is missing from the migrated config", key)
+			return errorcategory.Errorf(errorcategory.Filesystem, "setting %q is missing from the migrated config", key)
 		}
 
 		if !reflect.DeepEqual(plan.settings[key], got) {
-			return fmt.Errorf("setting %q changed value in the migrated config", key)
+			return errorcategory.Errorf(errorcategory.Filesystem, "setting %q changed value in the migrated config", key)
 		}
 	}
 
 	// The settings, plus config_version and the profiles table.
 	if len(doc) != len(plan.settings)+2 {
-		return fmt.Errorf("migrated config has %d top-level keys, want %d", len(doc), len(plan.settings)+2)
+		return errorcategory.Errorf(errorcategory.Filesystem, "migrated config has %d top-level keys, want %d", len(doc), len(plan.settings)+2)
 	}
 
 	return nil
