@@ -31,9 +31,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  curl-install-windows:
+    runs-on: windows-latest
+    steps:
+      - shell: pwsh
+        run: |
+          irm https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.ps1 | iex
+          $env:Path = "$env:USERPROFILE\.stripe\bin;$env:Path"
+          stripe --version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   notify:
     runs-on: ubuntu-latest
-    needs: [curl-install-macos, curl-install-linux]
+    needs: [curl-install-macos, curl-install-linux, curl-install-windows]
     if: always()
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
