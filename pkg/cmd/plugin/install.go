@@ -102,6 +102,15 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	isLatest := len(version) == 0
 	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
+		// Reported before the branches below, which read every other failure as
+		// possibly an authentication problem and offer to log in. Logging in cannot
+		// make this CLI new enough to run the release, so prompting for it would send
+		// the user somewhere that never resolves.
+		var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
+		if errors.As(err, &requiresNewerCLI) {
+			return err
+		}
+
 		var pluginNotFound *plugins.ErrPluginNotFound
 		if errors.As(err, &pluginNotFound) {
 			accountID, aErr := ic.cfg.GetProfile().GetAccountID()

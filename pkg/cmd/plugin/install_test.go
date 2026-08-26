@@ -2,14 +2,20 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 func TestParseArg(t *testing.T) {
@@ -67,6 +73,67 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 	err := ic.runInstallCmd(ic.Cmd, []string{"nonexistent-plugin"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "login canceled")
+}
+
+// TestRunInstallCmdPluginRequiresNewerCLI pins that a version problem is reported
+// as one. Not being logged in is the other reason a plugin can fail to resolve, and
+// the command cannot tell the two apart from the error alone -- so without the
+// typed check it offers to log in, which can never make this CLI new enough.
+func TestRunInstallCmdPluginRequiresNewerCLI(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+	cfg.Profile.APIKey = ""
+	cfg.Profile.AccountID = ""
+
+	originalVersion := version.Version
+	version.Version = "1.29.0"
+	defer func() { version.Version = originalVersion }()
+
+	// A release hidden for being incompatible makes the endpoint 404, which is what
+	// sends the install to cached metadata in the first place. That cache was written
+	// by whichever CLI installed the plugin last, possibly a newer one.
+	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	metadataPath := filepath.Join(configPath, "plugin-metadata", "appA.toml")
+	require.NoError(t, fs.MkdirAll(filepath.Dir(metadataPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, metadataPath, []byte(fmt.Sprintf(`[[Plugin]]
+  Shortname = "appA"
+  Binary = "stripe-cli-app-a"
+  MagicCookieValue = "APP-A-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "2.0.1"
+    Sum = "abc123"
+    MinCoreVersion = "1.30.0"
+`, runtime.GOARCH, runtime.GOOS)), 0644))
+
+	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusNotFound)
+		_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
+	}))
+	defer server.Close()
+
+	// Left empty on purpose: anything reading stdin here is the login prompt, and it
+	// would read EOF and go on to open a browser.
+	origStdin := os.Stdin
+	r, w, _ := os.Pipe()
+	_ = w.Close()
+	os.Stdin = r
+	defer func() { os.Stdin = origStdin }()
+
+	ic := NewInstallCmd(cfg)
+	ic.fs = fs
+	ic.apiBaseURL = server.URL
+	ic.dashboardBaseURL = server.URL
+	ic.Cmd.SetContext(context.Background())
+
+	err := ic.runInstallCmd(ic.Cmd, []string{"appA@2.0.1"})
+
+	var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
+	require.ErrorAs(t, err, &requiresNewerCLI)
+	require.Equal(t, "1.30.0", requiresNewerCLI.MinCoreVersion)
+	require.NotContains(t, err.Error(), "logged in")
 }
 
 func TestRunInstallCmdNonExistentPluginLoggedIn(t *testing.T) {

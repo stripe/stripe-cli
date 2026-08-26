@@ -4,6 +4,7 @@ package pluginhints
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -245,13 +246,23 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		return p.refuseAutoInstall()
 	}
 
-	if resolved, err := p.lookupFn(ctx); err == nil {
+	resolved, lookupErr := p.lookupFn(ctx)
+	if lookupErr == nil {
 		switch {
 		case p.autoInstallEnabled(resolved) && p.invokedByName(cmd):
 			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs())
 		default:
 			return p.promptInstall(ctx)
 		}
+	}
+
+	// A plugin that exists but needs a newer core CLI is a version problem with one
+	// fix, so say so. Everything below treats a failed lookup as the plugin being
+	// unavailable or the user being logged out, and both of those answers would send
+	// the user after something that cannot help.
+	var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
+	if errors.As(lookupErr, &requiresNewerCLI) {
+		return lookupErr
 	}
 
 	if p.privatePreview {

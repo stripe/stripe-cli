@@ -525,6 +525,15 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return resolvedPlugin, nil
 	}
 
+	// The cached fallback below is skipped for this one: it is there to survive an
+	// endpoint that could not answer, not to overrule one that did. Cached metadata
+	// can predate the constraint entirely, so letting it win here would drop the
+	// constraint on exactly the machines it exists to stop.
+	var requiresNewerCLI *ErrPluginRequiresNewerCLI
+	if errors.As(err, &requiresNewerCLI) {
+		return nil, err
+	}
+
 	log.WithFields(log.Fields{
 		"prefix":  "plugins.ResolvePluginForInstall",
 		"plugin":  pluginName,
@@ -538,10 +547,20 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 			resolvedVersion = cachedPlugin.LookUpLatestVersion()
 		}
 		if resolvedVersion == "" {
+			if coreVersionErr := cachedPlugin.checkCoreVersionForLatestRelease(); coreVersionErr != nil {
+				return nil, coreVersionErr
+			}
 			return nil, errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
 		}
 		if cachedPlugin.getReleaseForVersion(resolvedVersion) == nil {
 			return nil, errorcategory.Errorf(errorcategory.API, "cached plugin metadata did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+		}
+		// Only reachable for an explicitly requested version, since the latest-version
+		// branch above already skips releases this CLI cannot run. This is the path the
+		// API cannot police: the cache was written by whichever CLI installed the plugin
+		// last, and may well have been a newer one than this.
+		if err := cachedPlugin.checkCoreVersionForRelease(resolvedVersion); err != nil {
+			return nil, err
 		}
 
 		return &ResolvedPluginVersion{
@@ -574,6 +593,13 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 	resolvedPlugin, endpointErr := resolvePluginFromMetadata(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL, apiKey)
 	if endpointErr == nil {
 		return resolvedPlugin, nil
+	}
+
+	// See ResolvePluginForInstall: a definitive requires-a-newer-CLI answer is not
+	// something the cached fallback should be able to overturn.
+	var requiresNewerCLI *ErrPluginRequiresNewerCLI
+	if errors.As(endpointErr, &requiresNewerCLI) {
+		return nil, endpointErr
 	}
 
 	log.WithFields(log.Fields{
@@ -724,6 +750,15 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 		return resolvedPlugin, nil
 	}
 
+	// The cached fallback below resolves from the same metadata this already
+	// consulted, so it can only reach the same verdict. Returning now keeps the
+	// version the user needs out of a "latest lookup failed; cached lookup failed"
+	// wrapper that buries it.
+	var requiresNewerCLI *ErrPluginRequiresNewerCLI
+	if errors.As(err, &requiresNewerCLI) {
+		return nil, err
+	}
+
 	log.WithFields(log.Fields{
 		"prefix": "plugins.resolvePluginForAutoInstall",
 		"plugin": pluginName,
@@ -815,10 +850,21 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		resolvedVersion = plugin.LookUpLatestVersion()
 	}
 	if resolvedVersion == "" {
+		if coreVersionErr := plugin.checkCoreVersionForLatestRelease(); coreVersionErr != nil {
+			return nil, coreVersionErr
+		}
 		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
 	}
 	if plugin.getReleaseForVersion(resolvedVersion) == nil {
 		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	}
+	// The API already filters restricted releases out of live responses by
+	// User-Agent, so this should never fire. It is checked anyway because the
+	// filtering depends on a header surviving the whole request path and on the
+	// Vary: User-Agent that keeps a response cached for one CLI version from being
+	// served to another, neither of which this side can verify.
+	if err := plugin.checkCoreVersionForRelease(resolvedVersion); err != nil {
+		return nil, err
 	}
 
 	return &ResolvedPluginVersion{
@@ -852,6 +898,9 @@ func getLatestResolvedPluginVersion(pluginName string, plugin *Plugin) (string, 
 
 	version := plugin.LookUpLatestVersion()
 	if version == "" {
+		if err := plugin.checkCoreVersionForLatestRelease(); err != nil {
+			return "", err
+		}
 		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
 	}
 
