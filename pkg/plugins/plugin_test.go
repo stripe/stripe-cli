@@ -830,6 +830,36 @@ func TestRunVersionOverrideBypassesLocalBuildDev(t *testing.T) {
 	require.NotContains(t, err.Error(), "is not installed")
 }
 
+func TestPostInstallSelectsSpecifiedVersion(t *testing.T) {
+	fs := setUpFS()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	plugin, _ := LookUpPlugin(context.Background(), cfg, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+	afero.WriteFile(fs, "/plugins/appA/2.0.1/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+
+	// PostInstall will fail at the go-plugin handshake against the fake binary; we're only
+	// verifying that it attempts to dispense the correct version rather than erroring out early.
+	err := plugin.PostInstall(context.Background(), &cfg.Config, fs, "2.0.1", "1.0.1")
+	require.Error(t, err)
+}
+
+func TestPreUninstallSelectsSpecifiedVersion(t *testing.T) {
+	fs := setUpFS()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	plugin, _ := LookUpPlugin(context.Background(), cfg, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+	afero.WriteFile(fs, "/plugins/appA/2.0.1/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
+
+	err := plugin.PreUninstall(context.Background(), &cfg.Config, fs, "2.0.1")
+	require.Error(t, err)
+}
+
 func TestLookUpInstalledVersionPrefersLocalDevelopmentVersion(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}

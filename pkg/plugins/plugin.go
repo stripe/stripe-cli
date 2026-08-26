@@ -541,6 +541,78 @@ func buildAdditionalInfo(logger *log.Entry) *proto.AdditionalInfo {
 	}
 }
 
+// dispensePluginInterface launches the plugin binary at the given installed version and
+// returns its dispensed "main" interface, which is one of Dispatcher, DispatcherGRPC, or
+// DispatcherV3 depending on the protocol version the plugin negotiates.
+// cwd sets the working directory for the plugin process; an empty string uses the current directory.
+func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, version, cwd string, logger *log.Entry) (interface{}, error) {
+	pluginDir, err := p.getPluginInstallPath(config, version)
+	if err != nil {
+		return nil, err
+	}
+	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
+	pluginBinaryPath += GetBinaryExtension()
+
+	cmd := exec.Command(pluginBinaryPath)
+
+	if cwd != "" {
+		cmd.Dir = cwd
+	}
+
+	handshakeConfig, pluginSetMap := p.getPluginInterface()
+	timeout, _ := time.ParseDuration("10s")
+
+	pluginLogger := hclog.New(&hclog.LoggerOptions{
+		Name:  fmt.Sprintf("plugin.child.%s", p.Shortname),
+		Level: hclog.LevelFromString("ERROR"),
+	})
+
+	clientConfig := &hcplugin.ClientConfig{
+		HandshakeConfig:  handshakeConfig,
+		VersionedPlugins: pluginSetMap,
+		Cmd:              cmd,
+		SyncStdout:       os.Stdout,
+		SyncStderr:       os.Stderr,
+		Logger:           pluginLogger,
+		Managed:          true,
+		StartTimeout:     timeout,
+		AllowedProtocols: []hcplugin.Protocol{
+			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
+		},
+	}
+
+	if !isLocalDevelopmentVersion(version) {
+		sum, err := p.getChecksum(version)
+		if err != nil {
+			return nil, err
+		}
+
+		clientConfig.SecureConfig = &hcplugin.SecureConfig{
+			Checksum: sum,
+			Hash:     sha256.New(),
+		}
+	}
+
+	// start by launching the plugin process / binary
+	client := hcplugin.NewClient(clientConfig)
+
+	// Connect via RPC to the plugin
+	rpcClient, err := client.Client()
+	if err != nil {
+		logger.Debugf("Could not connect to plugin: %s", err)
+		return nil, err
+	}
+
+	// Request the plugin's main interface
+	raw, err := rpcClient.Dispense("main")
+	if err != nil {
+		logger.Debugf("Could not dispense plugin interface: %s", err)
+		return nil, err
+	}
+
+	return raw, nil
+}
+
 // Run boots up the binary and then sends the command to it via RPC.
 // cwd sets the working directory for the plugin process; an empty string uses the current directory.
 // versionOverride, when non-empty, forces the plugin to run at that specific installed version,
@@ -597,67 +669,8 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		return err
 	}
 
-	pluginDir, err := p.getPluginInstallPath(config, version)
+	raw, err := p.dispensePluginInterface(config, fs, version, cwd, logger)
 	if err != nil {
-		return err
-	}
-	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
-	pluginBinaryPath += GetBinaryExtension()
-
-	cmd := exec.Command(pluginBinaryPath)
-
-	if cwd != "" {
-		cmd.Dir = cwd
-	}
-
-	handshakeConfig, pluginSetMap := p.getPluginInterface()
-	timeout, _ := time.ParseDuration("10s")
-
-	pluginLogger := hclog.New(&hclog.LoggerOptions{
-		Name:  fmt.Sprintf("plugin.child.%s", p.Shortname),
-		Level: hclog.LevelFromString("ERROR"),
-	})
-
-	clientConfig := &hcplugin.ClientConfig{
-		HandshakeConfig:  handshakeConfig,
-		VersionedPlugins: pluginSetMap,
-		Cmd:              cmd,
-		SyncStdout:       os.Stdout,
-		SyncStderr:       os.Stderr,
-		Logger:           pluginLogger,
-		Managed:          true,
-		StartTimeout:     timeout,
-		AllowedProtocols: []hcplugin.Protocol{
-			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
-		},
-	}
-
-	if !isLocalDevelopmentVersion(version) {
-		sum, err := p.getChecksum(version)
-		if err != nil {
-			return err
-		}
-
-		clientConfig.SecureConfig = &hcplugin.SecureConfig{
-			Checksum: sum,
-			Hash:     sha256.New(),
-		}
-	}
-
-	// start by launching the plugin process / binary
-	client := hcplugin.NewClient(clientConfig)
-
-	// Connect via RPC to the plugin
-	rpcClient, err := client.Client()
-	if err != nil {
-		logger.Debugf("Could not connect to plugin: %s", err)
-		return err
-	}
-
-	// Request the plugin's main interface
-	raw, err := rpcClient.Dispense("main")
-	if err != nil {
-		logger.Debugf("Could not dispense plugin interface: %s", err)
 		return err
 	}
 
@@ -682,4 +695,48 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		return errorcategory.New(errorcategory.Internal, "dispensed an unknown plugin interface")
 	}
 	return nil
+}
+
+// PostInstall calls the plugin's PostInstall hook for the given version, if the plugin
+// supports it. Plugins that don't implement DispatcherV3 are silently skipped. Callers
+// should treat errors as best-effort and not block the install/upgrade on them.
+func (p *Plugin) PostInstall(ctx context.Context, config *config.Config, fs afero.Fs, version, previousVersion string) error {
+	logger := log.WithFields(log.Fields{
+		"prefix": "plugins.plugin.PostInstall",
+	})
+
+	raw, err := p.dispensePluginInterface(config, fs, version, "", logger)
+	if err != nil {
+		return err
+	}
+
+	d, ok := raw.(DispatcherV3)
+	if !ok {
+		logger.Debug("plugin does not support PostInstall")
+		return nil
+	}
+
+	return d.PostInstall(buildAdditionalInfo(logger), version, previousVersion, NewCoreCLIHelper(ctx, config, fs))
+}
+
+// PreUninstall calls the plugin's PreUninstall hook for the currently installed version, if
+// the plugin supports it. Plugins that don't implement DispatcherV3 are silently skipped.
+// Callers should treat errors as best-effort and not block the uninstall on them.
+func (p *Plugin) PreUninstall(ctx context.Context, config *config.Config, fs afero.Fs, version string) error {
+	logger := log.WithFields(log.Fields{
+		"prefix": "plugins.plugin.PreUninstall",
+	})
+
+	raw, err := p.dispensePluginInterface(config, fs, version, "", logger)
+	if err != nil {
+		return err
+	}
+
+	d, ok := raw.(DispatcherV3)
+	if !ok {
+		logger.Debug("plugin does not support PreUninstall")
+		return nil
+	}
+
+	return d.PreUninstall(buildAdditionalInfo(logger), version, NewCoreCLIHelper(ctx, config, fs))
 }

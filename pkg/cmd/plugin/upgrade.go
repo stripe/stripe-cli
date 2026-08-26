@@ -91,6 +91,8 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	runPostInstallHook(ctx, uc.cfg, uc.fs, plugin, version, prevVersion)
+
 	sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)
 
 	if prevVersion != "" {

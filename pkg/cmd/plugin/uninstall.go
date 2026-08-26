@@ -58,6 +58,10 @@ func (uc *UninstallCmd) runUninstallCmd(cmd *cobra.Command, args []string) error
 
 	installedVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
 
+	if installedVersion != "" {
+		runPreUninstallHook(ctx, uc.cfg, uc.fs, &plugin, installedVersion)
+	}
+
 	err := plugin.Uninstall(ctx, uc.cfg, uc.fs)
 
 	if err == nil {

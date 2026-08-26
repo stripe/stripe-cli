@@ -170,6 +170,8 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	runPostInstallHook(ctx, ic.cfg, ic.fs, plugin, version, prevVersion)
+
 	if prevVersion != "" {
 		sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)
 		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))

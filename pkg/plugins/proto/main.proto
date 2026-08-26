@@ -5,6 +5,12 @@ option go_package = "github.com/stripe/stripe-cli/plugins/proto";
 
 service Main {
   rpc RunCommand(RunCommandRequest) returns (RunCommandResponse);
+  // PostInstall is called best-effort after `stripe plugins install` or
+  // `stripe plugins upgrade` successfully downloads the plugin binary.
+  rpc PostInstall(PostInstallRequest) returns (PostInstallResponse);
+  // PreUninstall is called best-effort by `stripe plugins uninstall` before
+  // the plugin's files are removed from disk.
+  rpc PreUninstall(PreUninstallRequest) returns (PreUninstallResponse);
 }
 
 message RunCommandRequest {
@@ -14,6 +20,25 @@ message RunCommandRequest {
 }
 
 message RunCommandResponse {
+}
+
+message PostInstallRequest {
+  AdditionalInfo additional_info = 1;
+  string version = 2;
+  string previous_version = 3;
+  uint32 core_cli_helper_id = 4;
+}
+
+message PostInstallResponse {
+}
+
+message PreUninstallRequest {
+  AdditionalInfo additional_info = 1;
+  string version = 2;
+  uint32 core_cli_helper_id = 3;
+}
+
+message PreUninstallResponse {
 }
 
 message AdditionalInfo {
