@@ -17,22 +17,6 @@ import (
 // the migration leaves behind, e.g. "config.toml.v1.bak".
 const ConfigBackupSuffix = ".v1.bak"
 
-// reservedTopLevelKeys are the top-level config.toml keys that belong to the CLI
-// itself. Every other top-level table in a v1 file is a candidate profile.
-//
-// Profiles are identified by exclusion rather than by looking for a display_name
-// as isProfile does, because a profile abandoned part-way through login has no
-// display_name and still needs to move.
-var reservedTopLevelKeys = map[string]bool{
-	ConfigVersionName:   true,
-	ProfilesTableName:   true,
-	UserInfoName:        true,
-	ColorName:           true,
-	InstalledPluginsKey: true,
-	MachineUUIDKey:      true,
-	PluginConfigsKey:    true,
-}
-
 // profileFieldNames are the field names that mark a table as a profile. A
 // top-level table is only migrated when it holds at least one of them, so an
 // unrecognized table is left where it is instead of being guessed into the

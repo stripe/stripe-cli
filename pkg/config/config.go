@@ -399,12 +399,13 @@ func (c *Config) SwitchProfile(profileName string) error {
 // so that a name collision cannot destroy machine-wide settings — or, for
 // "profiles", the entire v2 profile table.
 var reservedTopLevelKeys = map[string]bool{
-	"color":             true,
-	"installed_plugins": true,
-	"machine_uuid":      true,
-	"plugin_configs":    true,
-	"project-name":      true,
+	ConfigVersionName:   true,
 	ProfilesTableName:   true,
+	ColorName:           true,
+	InstalledPluginsKey: true,
+	MachineUUIDKey:      true,
+	PluginConfigsKey:    true,
+	"project-name":      true,
 	UserInfoName:        true,
 }
 
@@ -670,14 +671,10 @@ func configVersion(v *viper.Viper) (int, error) {
 }
 
 // isMigrated reports whether the config file stores profiles in the v2 layout,
-// under the reserved profiles table. This release line never sets config_version;
-// it only recognizes a file that a v2 CLI already migrated.
-//
-// A version this binary cannot act on is not migrated: writeConfig refuses such a
-// file outright, so no write ever reaches the layout decision this gates.
+// under the reserved profiles table.
 func isMigrated(v *viper.Viper) bool {
 	version, err := configVersion(v)
-	return err == nil && version == ConfigVersionV2
+	return err == nil && version >= ConfigVersionV2
 }
 
 // profileTableKeyForWrite returns the key a whole profile table should be
