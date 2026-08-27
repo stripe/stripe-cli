@@ -62,19 +62,15 @@ type PluginList struct {
 }
 
 // Release is the type that holds release data for a specific build of a plugin
+//
+// The manifest also carries each release's MinCoreVersion, which is deliberately
+// not decoded: the metadata endpoint already withholds releases this core CLI
+// cannot run, and answers plugin_requires_newer_cli when one is asked for by name.
 type Release struct {
 	Arch    string `toml:"Arch" json:"arch"`
 	OS      string `toml:"OS" json:"os"`
 	Version string `toml:"Version" json:"version"`
 	Sum     string `toml:"Sum" json:"sum,omitempty"`
-	// MinCoreVersion is the lowest core CLI version that can run this release.
-	// Empty means the release places no requirement on the core CLI, which is
-	// how every release that predates the field arrives.
-	//
-	// Decoding it matters as much as enforcing it: local plugin metadata is
-	// re-encoded from this struct, so a field that is not read here is dropped
-	// from the cache the offline install path then resolves from.
-	MinCoreVersion string `toml:"MinCoreVersion,omitempty" json:"min_core_version,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -206,27 +202,18 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	return decoded, nil
 }
 
-// LookUpLatestVersion gets the latest version of the plugin this core CLI can
-// run, skipping releases that require a newer one. Skipping rather than failing
-// matches what the metadata API does for a caller that asks for no particular
-// version: it hands back the newest release the caller supports.
+// LookUpLatestVersion gets the latest version of the plugin for this platform.
+// A manifest that came from the metadata endpoint has already had the releases
+// this core CLI cannot run withheld, so the newest release listed is the newest
+// one it can install.
 // note: assumes versions are listed in asc order
 func (p *Plugin) LookUpLatestVersion() string {
-	return p.lookUpLatestVersion(true)
-}
-
-// lookUpLatestVersion optionally ignores MinCoreVersion, which is how the
-// requires-a-newer-CLI case is told apart from having no release at all.
-func (p *Plugin) lookUpLatestVersion(requireCoreVersionSupport bool) string {
 	opsystem := runtime.GOOS
 	arch := runtime.GOARCH
 
 	var version string
 	for _, pkg := range p.Releases {
 		if pkg.OS != opsystem || pkg.Arch != arch {
-			continue
-		}
-		if requireCoreVersionSupport && !coreVersionSupports(pkg.MinCoreVersion) {
 			continue
 		}
 
@@ -342,9 +329,9 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, cfg.GetMachineUUID())
 		if err != nil {
 			// Returned rather than kept as metadataLookupErr: every other lookup failure
-			// leaves open the possibility that cached metadata can still complete the
-			// install, and this one does not. It also states the minimum version, which
-			// the check below can only report when some manifest here already recorded it.
+			// leaves open the possibility that a binary URL resolved earlier can still
+			// complete the install, and this one settles that the install must not happen
+			// at all. It is also the only place the minimum version is ever stated.
 			if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
 				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stderr)
 				return newErrPluginRequiresNewerCLI(p.Shortname, version, minCoreVersion)
@@ -364,17 +351,6 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 			pluginToInstall = pluginFromMetadata
 			pluginDownloadURL = pluginMetadata.BinaryURL
 		}
-	}
-
-	// Checked before the download URL below, and after the metadata lookup that
-	// may have replaced pluginToInstall, so this is the last word on every install
-	// path regardless of where the metadata came from. Order matters: a release
-	// hidden for being incompatible makes the metadata endpoint 404, which leaves
-	// no download URL, and "could not resolve download URL" tells the user nothing
-	// about the version they actually need.
-	if err := pluginToInstall.checkCoreVersionForRelease(version); err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stderr)
-		return err
 	}
 
 	if pluginDownloadURL == "" {

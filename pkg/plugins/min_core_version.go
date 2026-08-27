@@ -3,28 +3,19 @@ package plugins
 import (
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
-
-	goversion "github.com/hashicorp/go-version"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
-// developmentCoreVersion is the version a CLI built from source reports. The
-// plugin metadata API treats it as newer than every published release, so the
-// same allowance is made here: otherwise a local build could not install a
-// restricted release the API happily hands it.
-const developmentCoreVersion = "master"
-
-// coreVersionSemver bounds what counts as a comparable core CLI version. It
-// matches the API's own VALID_SEMVER so that a release the API considers
-// reachable is never rejected here, and vice versa.
-var coreVersionSemver = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
-
-// ErrPluginRequiresNewerCLI is returned when a plugin release declares a minimum
-// core CLI version that the running CLI does not meet.
+// ErrPluginRequiresNewerCLI is returned when the plugin metadata endpoint answers
+// that the requested plugin version needs a newer core CLI than this one.
+//
+// Whether a release meets its own min_core_version is decided entirely by the API,
+// which knows the constraint for every release and hides the ones this CLI cannot
+// run. Nothing here re-derives that judgment: an install cannot complete without a
+// binary URL from a live metadata response, so there is no path that reaches a
+// download the API did not agree to.
 type ErrPluginRequiresNewerCLI struct {
 	Name           string
 	Version        string
@@ -52,9 +43,8 @@ func (e *ErrPluginRequiresNewerCLI) Error() string {
 	)
 }
 
-// newErrPluginRequiresNewerCLI builds the error every requires-a-newer-CLI report
-// goes through, so that the constraint the metadata endpoint states and the one
-// read out of a manifest are reported and routed identically.
+// newErrPluginRequiresNewerCLI builds the error both metadata lookups report, so
+// that the endpoint's answer is routed identically whichever one received it.
 //
 // It is categorized as user input because the actionable part belongs to the
 // caller: install a version this CLI supports, or upgrade the CLI.
@@ -71,89 +61,9 @@ func newErrPluginRequiresNewerCLI(name, pluginVersion, minCoreVersion string) er
 //
 // The resolve paths check it to stop before their cached fallback. That fallback is
 // there to survive a source that could not answer, not to overrule one that did,
-// and cached metadata can predate the constraint entirely -- so letting it win here
-// would drop the constraint on exactly the machines it exists to stop.
+// and the cache holds no constraint of its own to weigh against this -- so letting
+// it win here would trade a precise answer for "no such version".
 func requiresNewerCLI(err error) bool {
 	var requiresNewer *ErrPluginRequiresNewerCLI
 	return errors.As(err, &requiresNewer)
-}
-
-// coreVersionSupports reports whether the running core CLI satisfies a release's
-// MinCoreVersion constraint. An empty constraint means the release places no
-// requirement on the core CLI, which is every release that predates the field.
-//
-// This deliberately mirrors the plugin metadata API's own compatibility check
-// (PluginMetadata.core_version_supports_release?). The API already hides
-// incompatible releases from live responses, so the two must agree or the same
-// release would be installable from one source and not the other.
-//
-// It is enforced again on this side because cached plugin metadata outlives the
-// CLI that wrote it. A CLI that was downgraded, or that cannot reach the API,
-// resolves installs from `plugin-metadata/*.toml` and `plugins.toml` instead --
-// caches a newer CLI populated -- and nothing in that path consults the API.
-// Being hidden from the API is itself what sends an older CLI down it, since a
-// hidden release makes the metadata endpoint 404.
-//
-// Anything unparseable counts as unsupported rather than unconstrained: a
-// constraint that cannot be evaluated is precisely the case where installing
-// anyway risks a binary that will not run.
-func coreVersionSupports(minCoreVersion string) bool {
-	if minCoreVersion == "" {
-		return true
-	}
-
-	current := normalizeCoreVersion(version.Version)
-	if current == developmentCoreVersion {
-		return true
-	}
-	if !coreVersionSemver.MatchString(current) {
-		return false
-	}
-
-	currentVersion, err := goversion.NewVersion(current)
-	if err != nil {
-		return false
-	}
-
-	minimumVersion, err := goversion.NewVersion(normalizeCoreVersion(minCoreVersion))
-	if err != nil {
-		return false
-	}
-
-	return currentVersion.GreaterThanOrEqual(minimumVersion)
-}
-
-// normalizeCoreVersion tolerates a leading "v" on either side of the comparison.
-// Published versions carry no prefix, but pkg/version already strips one when
-// comparing CLI versions, so accepting it here keeps the two consistent.
-func normalizeCoreVersion(rawVersion string) string {
-	return strings.TrimPrefix(strings.TrimSpace(rawVersion), "v")
-}
-
-// checkCoreVersionForRelease returns an *ErrPluginRequiresNewerCLI when the
-// release for pluginVersion on this platform declares a MinCoreVersion the
-// running CLI does not meet.
-//
-// A version with no matching release returns nil. Whether a release exists is
-// not this check's question, and every caller already reports that case itself
-// with more context than this could.
-func (p *Plugin) checkCoreVersionForRelease(pluginVersion string) error {
-	if pluginVersion == "" || isLocalDevelopmentVersion(pluginVersion) {
-		return nil
-	}
-
-	release := p.getReleaseForVersion(pluginVersion)
-	if release == nil || coreVersionSupports(release.MinCoreVersion) {
-		return nil
-	}
-
-	return newErrPluginRequiresNewerCLI(p.Shortname, pluginVersion, release.MinCoreVersion)
-}
-
-// checkCoreVersionForLatestRelease reports the requires-a-newer-CLI case behind
-// an empty LookUpLatestVersion result. It exists so that "every release for this
-// platform needs a newer CLI" is not reported as "this plugin has no releases",
-// which reads as though the plugin were unavailable altogether.
-func (p *Plugin) checkCoreVersionForLatestRelease() error {
-	return p.checkCoreVersionForRelease(p.lookUpLatestVersion(false))
 }

@@ -89,9 +89,8 @@ func TestRunInstallCmdPluginRequiresNewerCLI(t *testing.T) {
 	version.Version = "1.29.0"
 	defer func() { version.Version = originalVersion }()
 
-	// A release hidden for being incompatible makes the endpoint 404, which is what
-	// sends the install to cached metadata in the first place. That cache was written
-	// by whichever CLI installed the plugin last, possibly a newer one.
+	// Cached metadata that could satisfy the install, so the endpoint's refusal is
+	// shown to outrank an available fallback rather than being the only thing left.
 	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	metadataPath := filepath.Join(configPath, "plugin-metadata", "appA.toml")
 	require.NoError(t, fs.MkdirAll(filepath.Dir(metadataPath), 0755))
@@ -105,12 +104,12 @@ func TestRunInstallCmdPluginRequiresNewerCLI(t *testing.T) {
     OS = "%s"
     Version = "2.0.1"
     Sum = "abc123"
-    MinCoreVersion = "1.30.0"
 `, runtime.GOARCH, runtime.GOOS)), 0644))
 
 	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusNotFound)
-		_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
+		res.Header().Set("Content-Type", "application/json")
+		res.WriteHeader(http.StatusBadRequest)
+		_, _ = res.Write([]byte(`{"error":{"code":"plugin_requires_newer_cli","message":"Version 2.0.1 of the appA plugin requires Stripe CLI 1.30.0 or later.","min_core_version":"1.30.0","param":"version","type":"invalid_request_error"}}`))
 	}))
 	defer server.Close()
 

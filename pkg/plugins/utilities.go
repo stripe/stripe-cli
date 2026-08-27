@@ -811,9 +811,9 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, config.GetMachineUUID())
 	if err != nil {
 		// Translated here rather than left to normalizePluginMetadataError, which only
-		// runs once the cached lookup has failed too. The endpoint is the sole source of
-		// this constraint on a machine whose cache predates the field, or has none at
-		// all, and that is exactly the machine the answer is worth keeping.
+		// runs once the cached lookup has failed too. The endpoint is the only thing that
+		// knows this constraint, so its answer has to be captured where it arrives or it
+		// becomes an ordinary lookup failure and the cache gets to answer instead.
 		if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
 			return nil, newErrPluginRequiresNewerCLI(pluginName, version, minCoreVersion)
 		}
@@ -865,11 +865,12 @@ const (
 )
 
 // resolveVersionFromReleases picks the version to install out of a plugin's
-// releases: the one that was asked for, or the newest this core CLI can run.
+// releases: the one that was asked for, or the newest listed.
 //
-// This is the only place a resolved plugin's MinCoreVersion is weighed, so the live
-// and cached paths cannot drift apart on it, and their callers are left describing
-// where the metadata came from rather than repeating the constraint themselves.
+// Both callers share it so they cannot drift apart, and are left describing where
+// the metadata came from rather than repeating the lookup themselves. Neither
+// weighs a release's min_core_version, which the metadata endpoint has already
+// applied to whatever it returned.
 func resolveVersionFromReleases(plugin *Plugin, pluginName, requestedVersion, source string) (string, error) {
 	if plugin == nil {
 		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s", source, pluginName)
@@ -878,28 +879,13 @@ func resolveVersionFromReleases(plugin *Plugin, pluginName, requestedVersion, so
 	resolvedVersion := requestedVersion
 	if resolvedVersion == "" {
 		resolvedVersion = plugin.LookUpLatestVersion()
-
-		// Nothing left can mean every release for this platform was skipped for needing
-		// a newer CLI, which must not be reported as the plugin having no release.
 		if resolvedVersion == "" {
-			if err := plugin.checkCoreVersionForLatestRelease(); err != nil {
-				return "", err
-			}
-
 			return "", errorcategory.Errorf(errorcategory.API, "%s did not include a release for %s on %s/%s", source, pluginName, runtime.GOOS, runtime.GOARCH)
 		}
 	}
 
 	if plugin.getReleaseForVersion(resolvedVersion) == nil {
 		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s version %s for %s/%s", source, pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
-	}
-
-	// Only reachable for an explicitly requested version, since the lookup above
-	// already skips what this CLI cannot run, and the API filters live responses the
-	// same way. What is left is the cache: whichever CLI installed the plugin last
-	// wrote it, possibly a newer one than this.
-	if err := plugin.checkCoreVersionForRelease(resolvedVersion); err != nil {
-		return "", err
 	}
 
 	return resolvedVersion, nil
