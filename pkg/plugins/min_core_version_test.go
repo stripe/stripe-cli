@@ -63,6 +63,32 @@ func failingMetadataServer(t *testing.T) *httptest.Server {
 	}))
 }
 
+// requiresNewerCLIMetadataServer stands in for the metadata endpoint naming the
+// constraint instead of hiding the release behind a 404. The body matches the shape
+// the API sends, which is asserted on in pay-server's own tests.
+func requiresNewerCLIMetadataServer(t *testing.T, pluginVersion, minCoreVersion string) *httptest.Server {
+	t.Helper()
+
+	return httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata", "/ajax/stripecli/plugins_metadata":
+			res.Header().Set("Content-Type", "application/json")
+			res.WriteHeader(http.StatusBadRequest)
+			_, _ = fmt.Fprintf(res, `{
+  "error": {
+    "code": "plugin_requires_newer_cli",
+    "message": "Version %s of the appA plugin requires Stripe CLI %s or later. Upgrade the Stripe CLI, or request a plugin version your CLI supports.",
+    "min_core_version": %q,
+    "param": "version",
+    "type": "invalid_request_error"
+  }
+}`, pluginVersion, minCoreVersion, minCoreVersion)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+}
+
 func requireRequiresNewerCLI(t *testing.T, err error, wantMinCoreVersion string) {
 	t.Helper()
 
@@ -410,4 +436,101 @@ func TestResolvePluginForAutoInstallReportsRequiresNewerCoreCLI(t *testing.T) {
 
 	var requiresNewerCLI *ErrPluginRequiresNewerCLI
 	require.True(t, errors.As(err, &requiresNewerCLI))
+}
+
+// TestResolvePluginForInstallReportsEndpointRequiresNewerCLI covers the case no
+// local check can reach: a machine that has never held metadata for this plugin has
+// nothing recording the constraint, so the endpoint's answer is the only source of
+// it. Without reading that answer the install reports `no plugin named "appA"
+// exists`, which is what a 404 for a hidden release used to be indistinguishable
+// from.
+func TestResolvePluginForInstallReportsEndpointRequiresNewerCLI(t *testing.T) {
+	// Both endpoints, because the version a caller runs is the whole question here and
+	// being logged out must not change the answer.
+	for _, tt := range []struct {
+		name   string
+		apiKey string
+	}{
+		{name: "logged in", apiKey: "sk_test_1234"},
+		{name: "not logged in", apiKey: ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			withCoreVersion(t, "1.29.0")
+
+			fs := afero.NewMemMapFs()
+			config := &TestConfig{}
+			config.InitConfig()
+			config.Profile.APIKey = tt.apiKey
+
+			server := requiresNewerCLIMetadataServer(t, "2.0.1", "1.30.0")
+			defer server.Close()
+
+			resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", server.URL, server.URL)
+			require.Nil(t, resolvedPlugin)
+			requireRequiresNewerCLI(t, err, "1.30.0")
+
+			var requiresNewerCLI *ErrPluginRequiresNewerCLI
+			require.ErrorAs(t, err, &requiresNewerCLI)
+			require.Equal(t, "2.0.1", requiresNewerCLI.Version)
+			require.Equal(t, "appA", requiresNewerCLI.Name)
+			require.Contains(t, err.Error(), "Stripe CLI v1.30.0 or newer")
+			require.NotContains(t, err.Error(), "no plugin named")
+			require.NotContains(t, err.Error(), "cached lookup failed")
+		})
+	}
+}
+
+// TestResolvePluginForInstallEndpointRequiresNewerCLIOutranksUnconstrainedCache
+// pins which side wins when they disagree. A cache written before MinCoreVersion
+// existed records the release as unconstrained, and the local check has nothing to
+// refuse on -- so the endpoint saying otherwise has to stick.
+func TestResolvePluginForInstallEndpointRequiresNewerCLIOutranksUnconstrainedCache(t *testing.T) {
+	withCoreVersion(t, "1.29.0")
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	require.NoError(t, writeLocalPluginMetadata(config, fs, restrictedPlugin("2.0.1", "")))
+
+	server := requiresNewerCLIMetadataServer(t, "2.0.1", "1.30.0")
+	defer server.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", server.URL, server.URL)
+	require.Nil(t, resolvedPlugin)
+	requireRequiresNewerCLI(t, err, "1.30.0")
+}
+
+// TestInstallReportsEndpointRequiresNewerCLI covers the same cold-cache gap on the
+// install path, where the plugin being installed carries no constraint of its own.
+// The lookup failing there otherwise surfaces as a missing download URL.
+func TestInstallReportsEndpointRequiresNewerCLI(t *testing.T) {
+	withCoreVersion(t, "1.29.0")
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	server := requiresNewerCLIMetadataServer(t, "2.0.1", "1.30.0")
+	defer server.Close()
+
+	plugin := restrictedPlugin("2.0.1", "")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", server.URL, server.URL)
+	requireRequiresNewerCLI(t, err, "1.30.0")
+	require.NotContains(t, err.Error(), "could not resolve download URL")
+
+	binaryExists, existsErr := afero.Exists(fs, fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension()))
+	require.NoError(t, existsErr)
+	require.False(t, binaryExists)
+}
+
+// TestErrPluginRequiresNewerCLIMessageDegradesWithoutAMinimumVersion guards the
+// wording for an answer that names the problem without naming a target, which is
+// all a response missing the extra attribute can give.
+func TestErrPluginRequiresNewerCLIMessageDegradesWithoutAMinimumVersion(t *testing.T) {
+	withCoreVersion(t, "1.29.0")
+
+	err := newErrPluginRequiresNewerCLI("appA", "2.0.1", "")
+	require.Contains(t, err.Error(), "the appA plugin v2.0.1 requires a newer Stripe CLI")
+	require.Contains(t, err.Error(), "this is Stripe CLI 1.29.0")
+	require.NotContains(t, err.Error(), "v or newer")
 }

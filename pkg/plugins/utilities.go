@@ -837,6 +837,14 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 
 	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, config.GetMachineUUID())
 	if err != nil {
+		// Translated here rather than left to normalizePluginMetadataError, which only
+		// runs once the cached lookup has failed too. The endpoint is the sole source of
+		// this constraint on a machine whose cache predates the field, or has none at
+		// all, and that is exactly the machine the answer is worth keeping.
+		if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
+			return nil, newErrPluginRequiresNewerCLI(pluginName, version, minCoreVersion)
+		}
+
 		return nil, err
 	}
 

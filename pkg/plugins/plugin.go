@@ -341,6 +341,15 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, cfg.GetMachineUUID())
 		if err != nil {
+			// Returned rather than kept as metadataLookupErr: every other lookup failure
+			// leaves open the possibility that cached metadata can still complete the
+			// install, and this one does not. It also states the minimum version, which
+			// the check below can only report when some manifest here already recorded it.
+			if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
+				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stderr)
+				return newErrPluginRequiresNewerCLI(p.Shortname, version, minCoreVersion)
+			}
+
 			metadataLookupErr = err
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",

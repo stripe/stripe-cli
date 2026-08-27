@@ -32,10 +32,38 @@ type ErrPluginRequiresNewerCLI struct {
 }
 
 func (e *ErrPluginRequiresNewerCLI) Error() string {
+	// Both versions are named whenever they are known, and the ones that come from
+	// the metadata endpoint are only as complete as its response. Degrading the
+	// wording beats rendering "the appA plugin v requires Stripe CLI v or newer".
+	subject := fmt.Sprintf("the %s plugin", e.Name)
+	if e.Version != "" {
+		subject = fmt.Sprintf("the %s plugin v%s", e.Name, e.Version)
+	}
+
+	requirement := "a newer Stripe CLI"
+	if e.MinCoreVersion != "" {
+		requirement = fmt.Sprintf("Stripe CLI v%s or newer", e.MinCoreVersion)
+	}
+
 	return fmt.Sprintf(
-		"the %s plugin v%s requires Stripe CLI v%s or newer, but this is Stripe CLI %s. Upgrade the Stripe CLI to install it: https://docs.stripe.com/stripe-cli/upgrade",
-		e.Name, e.Version, e.MinCoreVersion, e.CoreVersion,
+		"%s requires %s, but this is Stripe CLI %s. Upgrade the Stripe CLI to install it: https://docs.stripe.com/stripe-cli/upgrade",
+		subject, requirement, e.CoreVersion,
 	)
+}
+
+// newErrPluginRequiresNewerCLI builds the error every requires-a-newer-CLI report
+// goes through, so that the constraint the metadata endpoint states and the one
+// read out of a manifest are reported and routed identically.
+//
+// It is categorized as user input because the actionable part belongs to the
+// caller: install a version this CLI supports, or upgrade the CLI.
+func newErrPluginRequiresNewerCLI(name, pluginVersion, minCoreVersion string) error {
+	return errorcategory.With(&ErrPluginRequiresNewerCLI{
+		Name:           name,
+		Version:        pluginVersion,
+		MinCoreVersion: minCoreVersion,
+		CoreVersion:    version.Version,
+	}, errorcategory.UserInput)
 }
 
 // coreVersionSupports reports whether the running core CLI satisfies a release's
@@ -107,12 +135,7 @@ func (p *Plugin) checkCoreVersionForRelease(pluginVersion string) error {
 		return nil
 	}
 
-	return errorcategory.With(&ErrPluginRequiresNewerCLI{
-		Name:           p.Shortname,
-		Version:        pluginVersion,
-		MinCoreVersion: release.MinCoreVersion,
-		CoreVersion:    version.Version,
-	}, errorcategory.UserInput)
+	return newErrPluginRequiresNewerCLI(p.Shortname, pluginVersion, release.MinCoreVersion)
 }
 
 // checkCoreVersionForLatestRelease reports the requires-a-newer-CLI case behind
