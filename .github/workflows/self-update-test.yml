@@ -1,0 +1,131 @@
+on:
+  workflow_dispatch:
+name: Self-update test
+permissions:
+  contents: read
+jobs:
+  # Exercises the CLI replacing its own binary, end to end, against the real
+  # latest release. Windows is the reason this exists: it is the only platform
+  # where the outgoing binary cannot be deleted while a process is running from
+  # it, so it is the only one where the rename-aside step is load-bearing.
+  #
+  # Dispatch-only. It downloads a release archive per run and takes a couple of
+  # minutes, so it is not on a schedule; `go test` already covers the pieces.
+  self-update:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-latest
+            exe: ''
+          - platform: macos-latest
+            exe: ''
+          - platform: windows-latest
+            exe: '.exe'
+    runs-on: ${{ matrix.platform }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      EXE: ${{ matrix.exe }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: 1.26.5
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Install an intentionally stale build where the install script puts it
+        run: |
+          set -eu
+          mkdir -p "$HOME/.stripe/bin"
+          go build \
+            -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$HOME/.stripe/bin/stripe$EXE" ./cmd/stripe
+          "$HOME/.stripe/bin/stripe$EXE" version
+      - name: Update in the foreground
+        run: |
+          set -eu
+          STRIPE="$HOME/.stripe/bin/stripe$EXE"
+          installed() { "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
+
+          test "$(installed)" = "1.0.0"
+
+          # The process doing the replacing is itself running from the binary it
+          # replaces, which is the case Windows refuses to allow as an overwrite.
+          "$STRIPE" auto-update --now
+
+          updated="$(installed)"
+          echo "1.0.0 -> $updated"
+          test "$updated" != "1.0.0"
+
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # Windows could not delete the moved-aside image while the updating
+            # process was still running from it, so it is still there...
+            test -f "$STRIPE.old"
+            # ...until any later invocation, which is a process that isn't.
+            "$STRIPE" version > /dev/null
+            test ! -f "$STRIPE.old"
+          else
+            test ! -f "$STRIPE.old"
+          fi
+      - name: Update in the background
+        run: |
+          set -eu
+          STRIPE="$HOME/.stripe/bin/stripe$EXE"
+          installed() { "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
+
+          go build \
+            -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$STRIPE" ./cmd/stripe
+          rm -f "$HOME/.config/stripe/autoupdate-check"
+
+          # An ordinary command, which must not wait for the download.
+          time "$STRIPE" version > /dev/null
+
+          for _ in $(seq 1 45); do
+            sleep 2
+            if [ "$(installed)" != "1.0.0" ]; then
+              break
+            fi
+          done
+
+          echo "--- worker log ---"
+          cat "$HOME/.config/stripe/autoupdate.log" || echo "the worker wrote no log"
+          test "$(installed)" != "1.0.0"
+      - name: Respect the opt-outs
+        run: |
+          set -eu
+          STRIPE="$HOME/.stripe/bin/stripe$EXE"
+          installed() { "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
+
+          go build \
+            -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$STRIPE" ./cmd/stripe
+          rm -f "$HOME/.config/stripe/autoupdate-check"
+
+          STRIPE_NO_AUTO_UPDATE=1 "$STRIPE" version > /dev/null
+          test ! -f "$HOME/.config/stripe/autoupdate-check"
+
+          "$STRIPE" auto-update --disable
+          "$STRIPE" version > /dev/null
+          test ! -f "$HOME/.config/stripe/autoupdate-check"
+
+          sleep 10
+          test "$(installed)" = "1.0.0"
+      - name: Leave a package-manager install alone
+        run: |
+          set -eu
+          mkdir -p "$HOME/elsewhere"
+          go build \
+            -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$HOME/elsewhere/stripe$EXE" ./cmd/stripe
+          rm -rf "$HOME/.config/stripe"
+
+          "$HOME/elsewhere/stripe$EXE" version > /dev/null
+          sleep 10
+          test ! -f "$HOME/.config/stripe/autoupdate-check"
+          test "$("$HOME/elsewhere/stripe$EXE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p')" = "1.0.0"
