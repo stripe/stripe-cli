@@ -1,6 +1,7 @@
 package autoupdate
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -57,20 +58,59 @@ func TestReplaceBinaryClearsAStaleOldFile(t *testing.T) {
 	assert.NoFileExists(t, dst+oldSuffix)
 }
 
+func TestReplaceBinaryWhenTheOldFileCannotBeCleared(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "stripe")
+	staged := filepath.Join(dir, "staged")
+
+	require.NoError(t, os.WriteFile(dst, []byte("old"), 0755))
+	require.NoError(t, os.WriteFile(staged, []byte("new"), 0644))
+
+	// Windows refuses to delete or replace a file while a process is running from
+	// it, which is the state of the .old file left by a concurrent update. A
+	// non-empty directory is refused by os.Remove and os.Rename on every platform,
+	// so it stands in for that obstacle in a test that can run anywhere.
+	require.NoError(t, os.MkdirAll(filepath.Join(dst+oldSuffix, "occupied"), 0755))
+
+	require.NoError(t, replaceBinary(dst, staged),
+		"an unusable .old name must not fail the update")
+
+	installed, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	assert.Equal(t, "new", string(installed))
+
+	// The outgoing binary went to a suffixed name, and whatever was holding the
+	// usual one was left alone rather than clobbered.
+	assert.DirExists(t, dst+oldSuffix)
+}
+
 func TestReplaceBinaryRestoresTheOldBinaryOnFailure(t *testing.T) {
 	dir := t.TempDir()
 	dst := filepath.Join(dir, "stripe")
+	staged := filepath.Join(dir, "staged")
 
 	require.NoError(t, os.WriteFile(dst, []byte("old"), 0755))
+	require.NoError(t, os.WriteFile(staged, []byte("new"), 0644))
 
-	// A staged path that does not exist stands in for any failure of the second
-	// rename. The point is that the working binary is still on disk afterwards.
-	err := replaceBinary(dst, filepath.Join(dir, "missing"))
+	// Fail the move of the new binary into place, after the live one has been moved
+	// aside: a full disk, a revoked permission, an antivirus hold on the download.
+	original := rename
+	rename = func(from, to string) error {
+		if from == staged {
+			return errors.New("cannot move the new binary into place")
+		}
+
+		return original(from, to)
+	}
+
+	t.Cleanup(func() { rename = original })
+
+	err := replaceBinary(dst, staged)
 	require.Error(t, err)
 
 	restored, readErr := os.ReadFile(dst)
 	require.NoError(t, readErr)
-	assert.Equal(t, "old", string(restored))
+	assert.Equal(t, "old", string(restored), "a failed update has to leave a working binary behind")
 }
 
 func TestRemoveSupersededBinary(t *testing.T) {
@@ -79,11 +119,16 @@ func TestRemoveSupersededBinary(t *testing.T) {
 
 	require.NoError(t, os.WriteFile(exe, []byte("current"), 0755))
 	require.NoError(t, os.WriteFile(exe+oldSuffix, []byte("previous"), 0755))
+	// What asideName falls back to when .old itself is occupied.
+	require.NoError(t, os.WriteFile(exe+oldSuffix+".2971828", []byte("older"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "unrelated"), []byte("keep"), 0644))
 
 	removeSupersededBinary(exe)
 
 	assert.NoFileExists(t, exe+oldSuffix)
+	assert.NoFileExists(t, exe+oldSuffix+".2971828")
 	assert.FileExists(t, exe)
+	assert.FileExists(t, filepath.Join(dir, "unrelated"))
 
 	// Nothing to remove is the common case and must not be an error.
 	removeSupersededBinary(exe)

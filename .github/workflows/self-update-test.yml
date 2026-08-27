@@ -45,12 +45,22 @@ jobs:
           go build \
             -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
             -o "$HOME/.stripe/bin/stripe$EXE" ./cmd/stripe
-          "$HOME/.stripe/bin/stripe$EXE" version
+          # Opted out, because a plain invocation of a stale install-script binary
+          # starts a background update — which is the next step's subject, not this
+          # step's, and two updates at once is a third scenario again.
+          STRIPE_NO_AUTO_UPDATE=1 "$HOME/.stripe/bin/stripe$EXE" version
       - name: Update in the foreground
         run: |
           set -eu
           STRIPE="$HOME/.stripe/bin/stripe$EXE"
-          installed() { "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
+          stale() {
+            go build \
+              -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+              -o "$STRIPE" ./cmd/stripe
+          }
+          # Every probe here opts out: they exist to read the version, and must not
+          # start an update of their own alongside the one under test.
+          installed() { STRIPE_NO_AUTO_UPDATE=1 "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
 
           test "$(installed)" = "1.0.0"
 
@@ -66,8 +76,10 @@ jobs:
             # Windows could not delete the moved-aside image while the updating
             # process was still running from it, so it is still there...
             test -f "$STRIPE.old"
-            # ...until any later invocation, which is a process that isn't.
-            "$STRIPE" version > /dev/null
+            # ...until the next invocation of a build that knows to clear it. The
+            # release just installed predates this feature, so put ours back.
+            stale
+            installed > /dev/null
             test ! -f "$STRIPE.old"
           else
             test ! -f "$STRIPE.old"
@@ -76,7 +88,7 @@ jobs:
         run: |
           set -eu
           STRIPE="$HOME/.stripe/bin/stripe$EXE"
-          installed() { "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
+          installed() { STRIPE_NO_AUTO_UPDATE=1 "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
 
           go build \
             -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
@@ -100,7 +112,7 @@ jobs:
         run: |
           set -eu
           STRIPE="$HOME/.stripe/bin/stripe$EXE"
-          installed() { "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
+          installed() { STRIPE_NO_AUTO_UPDATE=1 "$STRIPE" version | sed -n 's/^stripe version \([^ ]*\).*/\1/p'; }
 
           go build \
             -ldflags "-X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \

@@ -170,7 +170,9 @@ func TestDueForCheckWithAnUnreadableStamp(t *testing.T) {
 func TestAcquireLockIsExclusive(t *testing.T) {
 	cfg := newTestConfig(t)
 
-	freezeClock(t, time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC))
+	// Anchored to the real clock, not a fixed date: staleness is judged against the
+	// lock file's modification time, which the filesystem stamps for itself.
+	freezeClock(t, time.Now())
 
 	release, err := acquireLock(cfg)
 	require.NoError(t, err)
@@ -187,7 +189,7 @@ func TestAcquireLockIsExclusive(t *testing.T) {
 
 func TestAcquireLockBreaksAnAbandonedLock(t *testing.T) {
 	cfg := newTestConfig(t)
-	start := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
+	start := time.Now()
 
 	freezeClock(t, start)
 
