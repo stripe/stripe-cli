@@ -21,6 +21,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/reporting"
 
+	"github.com/stripe/stripe-cli/pkg/autoupdate"
 	cmddocs "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
@@ -121,6 +122,15 @@ var rootCmd = &cobra.Command{
 			// record command invocation
 			sendCommandInvocationEvent(cmd.Context())
 		}
+
+		// Keep an install-script install current. This returns immediately: it does
+		// nothing at all for package-manager installs, development builds, and users
+		// who opted out, and otherwise hands the download to a detached process.
+		// Skipped for `stripe auto-update` itself, which is where that process ends up.
+		if cmd.Name() != "auto-update" {
+			autoupdate.MaybeRun(&Config)
+		}
+
 		return nil
 	},
 }
@@ -287,6 +297,7 @@ func init() {
 
 	rootCmd.AddCommand(newReportingCmd().cmd)
 	rootCmd.AddCommand(newAgentCmd().cmd)
+	rootCmd.AddCommand(newAutoUpdateCmd().cmd)
 	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)

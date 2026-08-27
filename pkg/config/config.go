@@ -390,6 +390,7 @@ var reservedTopLevelKeys = map[string]bool{
 	"plugin_configs":    true,
 	"project-name":      true,
 	ProfilesTableName:   true,
+	SettingsTableName:   true,
 	UserInfoName:        true,
 }
 
