@@ -213,7 +213,7 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 
 			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
 				if clientError.StatusCode == http.StatusTooManyRequests {
-					err = errorcategory.New(errorcategory.API, "you have too many `stripe logs tail` sessions open, please close some and try again")
+					err = errorcategory.New(errorcategory.RateLimit, "you have too many `stripe logs tail` sessions open, please close some and try again")
 				}
 				exitCh <- struct{}{}
 				return

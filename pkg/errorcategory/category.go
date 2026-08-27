@@ -5,6 +5,7 @@ package errorcategory
 import (
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 // Category identifies the source of an error.
@@ -15,6 +16,7 @@ const (
 	Auth       Category = "auth"
 	Network    Category = "network"
 	API        Category = "api"
+	RateLimit  Category = "rate_limit"
 	Filesystem Category = "filesystem"
 	Internal   Category = "internal"
 	Panic      Category = "panic"
@@ -30,6 +32,12 @@ type categorizedError struct {
 	err      error
 	category Category
 }
+
+// WrapperTypeName is the Go type name that reflection yields for the wrapper
+// returned by With. Error reporters that derive a title from the concrete error
+// type see this name rather than anything about the underlying failure, so they
+// use it to recognize the wrapper and substitute the category instead.
+var WrapperTypeName = reflect.TypeOf(categorizedError{}).String()
 
 func (e categorizedError) Error() string {
 	return e.err.Error()
