@@ -525,12 +525,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return resolvedPlugin, nil
 	}
 
-	// The cached fallback below is skipped for this one: it is there to survive an
-	// endpoint that could not answer, not to overrule one that did. Cached metadata
-	// can predate the constraint entirely, so letting it win here would drop the
-	// constraint on exactly the machines it exists to stop.
-	var requiresNewerCLI *ErrPluginRequiresNewerCLI
-	if errors.As(err, &requiresNewerCLI) {
+	if requiresNewerCLI(err) {
 		return nil, err
 	}
 
@@ -542,25 +537,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 	cachedPlugin, cachedErr := resolveCachedPluginForInstall(config, fs, pluginName, version)
 	if cachedErr == nil {
-		resolvedVersion := version
-		if resolvedVersion == "" {
-			resolvedVersion = cachedPlugin.LookUpLatestVersion()
-		}
-		if resolvedVersion == "" {
-			if coreVersionErr := cachedPlugin.checkCoreVersionForLatestRelease(); coreVersionErr != nil {
-				return nil, coreVersionErr
-			}
-			return nil, errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
-		}
-		if cachedPlugin.getReleaseForVersion(resolvedVersion) == nil {
-			return nil, errorcategory.Errorf(errorcategory.API, "cached plugin metadata did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
-		}
-		// Only reachable for an explicitly requested version, since the latest-version
-		// branch above already skips releases this CLI cannot run. This is the path the
-		// API cannot police: the cache was written by whichever CLI installed the plugin
-		// last, and may well have been a newer one than this.
-		if err := cachedPlugin.checkCoreVersionForRelease(resolvedVersion); err != nil {
-			return nil, err
+		resolvedVersion, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, version, cachedPluginMetadata)
+		if versionErr != nil {
+			return nil, versionErr
 		}
 
 		return &ResolvedPluginVersion{
@@ -595,10 +574,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		return resolvedPlugin, nil
 	}
 
-	// See ResolvePluginForInstall: a definitive requires-a-newer-CLI answer is not
-	// something the cached fallback should be able to overturn.
-	var requiresNewerCLI *ErrPluginRequiresNewerCLI
-	if errors.As(endpointErr, &requiresNewerCLI) {
+	if requiresNewerCLI(endpointErr) {
 		return nil, endpointErr
 	}
 
@@ -609,7 +585,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 
 	cachedPlugin, cachedErr := resolveCachedPluginForUpgrade(config, fs, pluginName)
 	if cachedErr == nil {
-		version, versionErr := getLatestResolvedPluginVersion(pluginName, cachedPlugin)
+		version, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, "", cachedPluginMetadata)
 		if versionErr != nil {
 			return nil, versionErr
 		}
@@ -750,12 +726,9 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 		return resolvedPlugin, nil
 	}
 
-	// The cached fallback below resolves from the same metadata this already
-	// consulted, so it can only reach the same verdict. Returning now keeps the
-	// version the user needs out of a "latest lookup failed; cached lookup failed"
-	// wrapper that buries it.
-	var requiresNewerCLI *ErrPluginRequiresNewerCLI
-	if errors.As(err, &requiresNewerCLI) {
+	// Returning now also keeps the version the user needs out of this path's combined
+	// "latest lookup failed; cached lookup failed" wrapper, which buries it.
+	if requiresNewerCLI(err) {
 		return nil, err
 	}
 
@@ -769,7 +742,7 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 		return nil, fmt.Errorf("could not resolve plugin %s for auto-install: latest lookup failed: %v; cached lookup failed: %w", pluginName, err, cachedErr)
 	}
 
-	version, versionErr := getLatestResolvedPluginVersion(pluginName, cachedPlugin)
+	version, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, "", cachedPluginMetadata)
 	if versionErr != nil {
 		return nil, versionErr
 	}
@@ -853,25 +826,8 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		return nil, err
 	}
 
-	resolvedVersion := version
-	if resolvedVersion == "" {
-		resolvedVersion = plugin.LookUpLatestVersion()
-	}
-	if resolvedVersion == "" {
-		if coreVersionErr := plugin.checkCoreVersionForLatestRelease(); coreVersionErr != nil {
-			return nil, coreVersionErr
-		}
-		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
-	}
-	if plugin.getReleaseForVersion(resolvedVersion) == nil {
-		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
-	}
-	// The API already filters restricted releases out of live responses by
-	// User-Agent, so this should never fire. It is checked anyway because the
-	// filtering depends on a header surviving the whole request path and on the
-	// Vary: User-Agent that keeps a response cached for one CLI version from being
-	// served to another, neither of which this side can verify.
-	if err := plugin.checkCoreVersionForRelease(resolvedVersion); err != nil {
+	resolvedVersion, err := resolveVersionFromReleases(plugin, pluginName, version, livePluginMetadata)
+	if err != nil {
 		return nil, err
 	}
 
@@ -899,20 +855,54 @@ func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error)
 	return *validatedPluginList, nil
 }
 
-func getLatestResolvedPluginVersion(pluginName string, plugin *Plugin) (string, error) {
+// Where a plugin's releases came from. Resolution treats the two identically and
+// only needs to tell them apart when reporting a version it could not find, since
+// a response that omitted a release and a cache that never held one are different
+// problems for the user.
+const (
+	livePluginMetadata   = "plugin metadata response"
+	cachedPluginMetadata = "cached plugin metadata"
+)
+
+// resolveVersionFromReleases picks the version to install out of a plugin's
+// releases: the one that was asked for, or the newest this core CLI can run.
+//
+// This is the only place a resolved plugin's MinCoreVersion is weighed, so the live
+// and cached paths cannot drift apart on it, and their callers are left describing
+// where the metadata came from rather than repeating the constraint themselves.
+func resolveVersionFromReleases(plugin *Plugin, pluginName, requestedVersion, source string) (string, error) {
 	if plugin == nil {
-		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
+		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s", source, pluginName)
 	}
 
-	version := plugin.LookUpLatestVersion()
-	if version == "" {
-		if err := plugin.checkCoreVersionForLatestRelease(); err != nil {
-			return "", err
+	resolvedVersion := requestedVersion
+	if resolvedVersion == "" {
+		resolvedVersion = plugin.LookUpLatestVersion()
+
+		// Nothing left can mean every release for this platform was skipped for needing
+		// a newer CLI, which must not be reported as the plugin having no release.
+		if resolvedVersion == "" {
+			if err := plugin.checkCoreVersionForLatestRelease(); err != nil {
+				return "", err
+			}
+
+			return "", errorcategory.Errorf(errorcategory.API, "%s did not include a release for %s on %s/%s", source, pluginName, runtime.GOOS, runtime.GOARCH)
 		}
-		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
 	}
 
-	return version, nil
+	if plugin.getReleaseForVersion(resolvedVersion) == nil {
+		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s version %s for %s/%s", source, pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	}
+
+	// Only reachable for an explicitly requested version, since the lookup above
+	// already skips what this CLI cannot run, and the API filters live responses the
+	// same way. What is left is the cache: whichever CLI installed the plugin last
+	// wrote it, possibly a newer one than this.
+	if err := plugin.checkCoreVersionForRelease(resolvedVersion); err != nil {
+		return "", err
+	}
+
+	return resolvedVersion, nil
 }
 
 func lookUpPluginInCachedManifest(config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {

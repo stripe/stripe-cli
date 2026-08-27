@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -64,6 +65,17 @@ func newErrPluginRequiresNewerCLI(name, pluginVersion, minCoreVersion string) er
 		MinCoreVersion: minCoreVersion,
 		CoreVersion:    version.Version,
 	}, errorcategory.UserInput)
+}
+
+// requiresNewerCLI reports whether err is the requires-a-newer-CLI answer.
+//
+// The resolve paths check it to stop before their cached fallback. That fallback is
+// there to survive a source that could not answer, not to overrule one that did,
+// and cached metadata can predate the constraint entirely -- so letting it win here
+// would drop the constraint on exactly the machines it exists to stop.
+func requiresNewerCLI(err error) bool {
+	var requiresNewer *ErrPluginRequiresNewerCLI
+	return errors.As(err, &requiresNewer)
 }
 
 // coreVersionSupports reports whether the running core CLI satisfies a release's
