@@ -64,7 +64,7 @@ func latestVersion(ctx context.Context) (string, error) {
 	}
 
 	if release.TagName == nil {
-		return "", fmt.Errorf("latest release has no tag name")
+		return "", errorcategory.Errorf(errorcategory.API, "latest release has no tag name")
 	}
 
 	return strings.TrimPrefix(*release.TagName, "v"), nil
@@ -98,7 +98,7 @@ func assetNames(release, goos, goarch string) (archive, checksums string, err er
 	case "windows":
 		osLabel, extension, checksums = "windows", "zip", "stripe-windows-checksums.txt"
 	default:
-		return "", "", fmt.Errorf("unsupported operating system: %s", goos)
+		return "", "", errorcategory.Errorf(errorcategory.Internal, "unsupported operating system: %s", goos)
 	}
 
 	archLabel, err := archLabel(goos, goarch)
@@ -122,7 +122,7 @@ func archLabel(goos, goarch string) (string, error) {
 	case goarch == "386" && goos == "windows":
 		return "i386", nil
 	default:
-		return "", fmt.Errorf("unsupported architecture: %s/%s", goos, goarch)
+		return "", errorcategory.Errorf(errorcategory.Internal, "unsupported architecture: %s/%s", goos, goarch)
 	}
 }
 
@@ -186,7 +186,7 @@ func lookupChecksum(contents, asset string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no checksum published for %s", asset)
+	return "", errorcategory.Errorf(errorcategory.API, "no checksum published for %s", asset)
 }
 
 func verifySHA256(path, expected string) error {
@@ -204,7 +204,7 @@ func verifySHA256(path, expected string) error {
 
 	actual := hex.EncodeToString(digest.Sum(nil))
 	if !strings.EqualFold(actual, expected) {
-		return fmt.Errorf("checksum mismatch for %s: expected %s, got %s", filepath.Base(path), expected, actual)
+		return errorcategory.Errorf(errorcategory.API, "checksum mismatch for %s: expected %s, got %s", filepath.Base(path), expected, actual)
 	}
 
 	return nil
@@ -254,7 +254,7 @@ func extractFromZip(archivePath, name, dest string) error {
 		return writeFile(dest, contents)
 	}
 
-	return fmt.Errorf("archive does not contain %s", name)
+	return errorcategory.Errorf(errorcategory.API, "archive does not contain %s", name)
 }
 
 func extractFromTarGz(archivePath, name, dest string) error {
@@ -277,7 +277,7 @@ func extractFromTarGz(archivePath, name, dest string) error {
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
-			return fmt.Errorf("archive does not contain %s", name)
+			return errorcategory.Errorf(errorcategory.API, "archive does not contain %s", name)
 		}
 
 		if err != nil {
@@ -302,7 +302,7 @@ func writeFile(dest string, contents io.Reader) error {
 	// silently truncated file, which for a binary means a broken install.
 	written, err := io.Copy(file, io.LimitReader(contents, maxArchiveSize+1))
 	if err == nil && written > maxArchiveSize {
-		err = fmt.Errorf("%s is larger than the %d byte limit", filepath.Base(dest), maxArchiveSize)
+		err = errorcategory.Errorf(errorcategory.API, "%s is larger than the %d byte limit", filepath.Base(dest), maxArchiveSize)
 	}
 
 	if err != nil {
@@ -357,7 +357,7 @@ func httpBody(ctx context.Context, url string) (io.ReadCloser, error) {
 	if response.StatusCode != http.StatusOK {
 		_ = response.Body.Close()
 
-		return nil, fmt.Errorf("GET %s: %s", url, response.Status)
+		return nil, errorcategory.Errorf(errorcategory.API, "GET %s: %s", url, response.Status)
 	}
 
 	return response.Body, nil
