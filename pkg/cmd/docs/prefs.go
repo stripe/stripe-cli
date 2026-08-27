@@ -36,7 +36,7 @@ func (r *RootCommand) newPrefsListCmd() *cobra.Command {
 		Use:     "list",
 		Short:   "List available preferences for customizing rendered documentation",
 		Long:    `List available preferences for customizing rendered documentation and their allowed values.`,
-		Example: `  stripe docs prefs list`,
+		Example: `stripe docs prefs list`,
 		Args:    cobra.NoArgs,
 		RunE:    r.runPrefsList,
 	}
@@ -47,7 +47,7 @@ func (r *RootCommand) newPrefsSetCmd() *cobra.Command {
 		Use:     "set <id> <value>",
 		Short:   "Set a documentation preference",
 		Long:    `Set a documentation preference to a specific value.`,
-		Example: `  stripe docs prefs set server go`,
+		Example: `stripe docs prefs set server go`,
 		Args:    cobra.ExactArgs(2),
 		RunE:    r.runPrefsSet,
 	}
@@ -58,7 +58,7 @@ func (r *RootCommand) newPrefsUnsetCmd() *cobra.Command {
 		Use:     "unset <id>",
 		Short:   "Unset a documentation preference, reverting to the default",
 		Long:    `Remove a previously set documentation preference, reverting to the default.`,
-		Example: `  stripe docs prefs unset server`,
+		Example: `stripe docs prefs unset server`,
 		Args:    cobra.ExactArgs(1),
 		RunE:    r.runPrefsUnset,
 	}

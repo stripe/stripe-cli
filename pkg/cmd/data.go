@@ -50,7 +50,7 @@ Use the metrics subcommands to query time-series Stripe metric data. This
 namespace is a Private Preview API.`,
 		Args: validators.NoArgs,
 	}
-	dc.cmd.SetUsageTemplate(dataUsageTemplate())
+	dc.cmd.SetUsageTemplate(previewUsageTemplate())
 
 	dc.cmd.AddCommand(newDataMetricsCmd().cmd)
 	return dc
@@ -77,11 +77,18 @@ https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-ve
 	return mc
 }
 
-// dataUsageTemplate is the help template for the data command tree.
+// previewUsageTemplate is the help template for the hand-written preview
+// command trees (data, reporting query-runs).
+//
 // Usage and the trailing hint use HasSubCommands so parent --help stays
 // populated if a child is later hidden. Available commands lists only
 // non-hidden children via IsAvailableCommand.
-func dataUsageTemplate() string {
+//
+// Set this explicitly on the root of each tree. Cobra otherwise inherits a
+// usage template from the nearest ancestor that sets one, and the templates
+// differ in whether they indent {{.Example}} — so a tree that relies on
+// inheritance silently changes indentation if it is ever reparented.
+func previewUsageTemplate() string {
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
@@ -131,17 +138,32 @@ Private Preview API — the Stripe-Version preview header is set automatically.
 
 Metrics are specified by namespace.metric (e.g. revenue.mrr, revenue.arr).
 Multiple metrics can be queried together as long as they share the same
-namespace. Use --group-by to break down results by a dimension (at most one;
-valid names depend on the metric, e.g. price, product, customer). Use --filter
-to restrict results to specific dimension values.
+namespace. Use --group-by to break down results by a dimension (at most one)
+and --filter to restrict results to specific dimension values. Which
+dimensions a metric supports varies by metric, and an unsupported one is
+rejected, so check the metric's documentation before relying on it.
 
-Required API fields: metrics, starts_at, ends_at, granularity. Optional:
-currency, timezone, group_by, filters, limit. The API validates all parameters.
+Required: --metric, --starts-at, --ends-at. --granularity defaults to day.
+Optional: --currency, --timezone, --group-by, --filter, --limit. Only --metric
+is checked locally; the API validates everything else.
+
+Reading the results:
+  * A bucket's timestamp marks the END of its period, not the start. January
+    2026 at --granularity month is timestamped 2026-01-31, and the week of
+    March 1-7 is timestamped 2026-03-07. A period still in progress is
+    timestamped with the most recent day that has data.
+  * Buckets align to the result timezone (your account's, or --timezone), so
+    the first bucket can look like it precedes --starts-at. For an account in
+    UTC-8, --starts-at 2026-03-01T00:00:00Z is 16:00 on 2026-02-28 locally, so
+    the first daily bucket is that local day. Pass --timezone UTC to align
+    buckets to the UTC timestamps you asked for.
+  * API errors name dimensions with an _id suffix: --filter "price=..." is
+    reported against price_id.
 
 See the supported metrics at https://docs.stripe.com/data/analytics/supported-metrics
 and the API reference at
 https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-version=preview`,
-		Example: `  # Query daily MRR for March 2026
+		Example: `# Query daily MRR for March 2026
   stripe data metrics run \
     --metric revenue.mrr \
     --starts-at 2026-03-01T00:00:00Z \
@@ -157,14 +179,14 @@ https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-ve
     --granularity month \
     --currency usd
 
-  # Group by price dimension
+  # Break MRR down by a dimension the metric supports
   stripe data metrics run \
     --metric revenue.mrr \
     --starts-at 2026-01-01T00:00:00Z \
     --ends-at 2026-01-31T23:59:59Z \
     --granularity month \
     --currency usd \
-    --group-by price
+    --group-by subscription
 
   # Filter by price — replace price_<id> with a Price id from your account
   stripe data metrics run \
@@ -180,7 +202,7 @@ https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-ve
 	c.cmd.Flags().StringVar(&c.startsAt, "starts-at", "", "Start of the time range as an ISO 8601 datetime (e.g. 2026-01-01T00:00:00Z)")
 	c.cmd.Flags().StringVar(&c.endsAt, "ends-at", "", "End of the time range as an ISO 8601 datetime (e.g. 2026-01-31T23:59:59Z)")
 	c.cmd.Flags().StringVar(&c.granularity, "granularity", "day", "Time granularity: day, week, month, or year")
-	c.cmd.Flags().StringArrayVar(&c.groupBy, "group-by", []string{}, "Dimension to group by (at most one). Valid names depend on the metric (e.g. price, product, customer). See https://docs.stripe.com/data/analytics/supported-metrics")
+	c.cmd.Flags().StringArrayVar(&c.groupBy, "group-by", []string{}, "Dimension to group by (at most one). Which dimensions a metric supports varies by metric; an unsupported one is rejected. See https://docs.stripe.com/data/analytics/supported-metrics")
 	c.cmd.Flags().StringArrayVar(&c.filters, "filter", []string{}, "Filter results by dimension values, in key=value format (repeatable). E.g. --filter \"price=price_<id>\"")
 	c.cmd.Flags().StringVar(&c.currency, "currency", "", "Currency code to convert monetary values to (e.g. usd, eur). Defaults to your account's default currency.")
 	c.cmd.Flags().StringVar(&c.timezone, "timezone", "", "Timezone for result alignment (e.g. America/New_York). Defaults to your account timezone.")
@@ -212,7 +234,14 @@ func (c *dataMetricsRunCmd) runDataMetricsRunCmd(cmd *cobra.Command, args []stri
 		return errorcategory.Errorf(errorcategory.UserInput, "at least one --metric is required")
 	}
 
-	creds, err := c.rb.ResolveCredentials()
+	// A dry run sends nothing, so resolve credentials leniently: the live/sandbox
+	// context gate must not be the thing that stops you inspecting a request.
+	resolve := c.rb.ResolveCredentials
+	if c.rb.DryRun {
+		resolve = c.rb.ResolveCredentialsForPreview
+	}
+
+	creds, err := resolve()
 	if err != nil {
 		return err
 	}

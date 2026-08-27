@@ -242,6 +242,14 @@ func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
 	return creds, err
 }
 
+// ResolveCredentialsForPreview returns Credentials for a --dry-run preview.
+// A preview sends no request, so an active context in the other mode must not
+// block it. Fall back to whichever mode is actually active so the redacted key
+// and Stripe-Livemode header in the preview still reflect what would be used.
+func (rb *Base) ResolveCredentialsForPreview() (stripe.Credentials, error) {
+	return rb.Profile.ResolveCredentialsForAnyMode(rb.Livemode)
+}
+
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
 // Similar to making a multipart request using curl, add the local filepath to params arg with @ prefix.
 // e.g. params.AppendData([]string{"photo=@/path/to/local/file.png"})

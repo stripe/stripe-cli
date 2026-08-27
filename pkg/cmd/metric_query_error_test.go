@@ -29,6 +29,20 @@ func TestFormatMetricQueryError_InvalidParameterValueDropsRetryWording(t *testin
 	assert.Equal(t, "metric_invalid_parameter_value", reqErr.ErrorCode)
 }
 
+func TestFormatMetricQueryError_InvalidParameterValueKeepsSpecificMessage(t *testing.T) {
+	// The API sometimes names the offending parameter. That beats our checklist,
+	// so it must survive rather than being replaced by it.
+	err := formatMetricQueryError(requests.RequestError{
+		StatusCode: http.StatusBadRequest,
+		ErrorCode:  "metric_invalid_parameter_value",
+		Body:       `{"error":{"code":"metric_invalid_parameter_value","message":"limit cannot be greater than 1,000"}}`,
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "limit cannot be greater than 1,000")
+	assert.Contains(t, err.Error(), "client error")
+	assert.NotContains(t, err.Error(), "--group-by", "the checklist must not displace a specific message")
+}
+
 func TestFormatMetricQueryError_NotFoundMetric(t *testing.T) {
 	err := formatMetricQueryError(requests.RequestError{
 		StatusCode: http.StatusNotFound,

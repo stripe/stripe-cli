@@ -19,6 +19,17 @@ import (
 
 const queryRunsPath = "/v2/data/reporting/query_runs"
 
+// reportingNamespaceShort and reportingNamespaceLong describe the `reporting`
+// namespace, which mixes the generated Sigma API resources (report_runs,
+// report_types) with the hand-written query-runs commands.
+const reportingNamespaceShort = "Run Sigma report and ad hoc SQL queries"
+
+const reportingNamespaceLong = `Access Stripe reporting APIs.
+
+Use the query-runs subcommands to run ad hoc SQL queries against your Stripe
+data via the /v2/data/reporting/query_runs Public Preview API. Use the
+report_runs and report_types resources for scheduled Sigma reports.`
+
 type reportingCmd struct {
 	cmd *cobra.Command
 }
@@ -40,16 +51,46 @@ type reportingQueryRunsRetrieveCmd struct {
 	rb  requests.Base
 }
 
+// addReportingQueryRunsCmd hangs query-runs off the generated `reporting`
+// API-resource namespace rather than registering a second top-level command
+// with the same name.
+//
+// Two same-named root children make cobra's Find resolve `stripe reporting
+// report_runs list` to whichever sibling it reaches first. Because that
+// sibling has no `report_runs` child and no Run function, cobra printed the
+// wrong help and exited 0 — so the Sigma commands were silently unreachable
+// (and Args validation never ran, since Runnable() is checked first).
+//
+// Call this after the generated resource commands are registered.
+func addReportingQueryRunsCmd(rootCmd *cobra.Command) {
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Name() != "reporting" {
+			continue
+		}
+		// The generated namespace carries no descriptions; supply them so
+		// `--help` and `--map` agree on what the namespace does.
+		if cmd.Short == "" {
+			cmd.Short = reportingNamespaceShort
+		}
+		if cmd.Long == "" {
+			cmd.Long = reportingNamespaceLong
+		}
+		cmd.AddCommand(newReportingQueryRunsCmd().cmd)
+		return
+	}
+
+	// No generated namespace to merge into (e.g. a trimmed resource set):
+	// register a top-level command so query-runs stays reachable.
+	rootCmd.AddCommand(newReportingCmd().cmd)
+}
+
 func newReportingCmd() *reportingCmd {
 	rc := &reportingCmd{}
 	rc.cmd = &cobra.Command{
 		Use:   "reporting",
-		Short: "Run Stripe Sigma queries via the Data Reporting API (Public Preview)",
-		Long: `Run ad hoc SQL queries against your Stripe data using the Data Reporting API.
-
-Use the query-runs subcommands to kick off a new query and retrieve its
-results. This uses the /v2/data/reporting/query_runs Public Preview API.`,
-		Args: validators.NoArgs,
+		Short: reportingNamespaceShort,
+		Long:  reportingNamespaceLong,
+		Args:  validators.NoArgs,
 	}
 
 	rc.cmd.AddCommand(newReportingQueryRunsCmd().cmd)
@@ -68,6 +109,9 @@ to kick off a query, then retrieve it to poll its status and fetch the download
 URL of the result once the query has completed.`,
 		Args: validators.NoArgs,
 	}
+	// Set explicitly: this subtree hangs off the generated `reporting`
+	// namespace, whose template renders {{.Example}} unindented.
+	qrc.cmd.SetUsageTemplate(previewUsageTemplate())
 
 	qrc.cmd.AddCommand(newReportingQueryRunsCreateCmd().cmd)
 	qrc.cmd.AddCommand(newReportingQueryRunsRetrieveCmd().cmd)
@@ -93,8 +137,11 @@ API — the Stripe-Version preview header is set automatically.
 
 The query runs asynchronously. The response contains the query run's id and
 status ("running", "succeeded", or "failed"); poll it with
-"stripe reporting query-runs retrieve <id>" until the status is "succeeded",
-then use the result's download_url to fetch the output.
+"stripe reporting query-runs retrieve <id>" until the status is "succeeded".
+The output is then at result.file.download_url.url — download_url is an object
+holding the url and its expires_at, so the url itself is one level deeper than
+the field name suggests. The link is short-lived (a few minutes); retrieve the
+query run again for a fresh one.
 
 Provide the SQL inline with --sql, from a file with --sql-file, or via stdin
 by passing --sql-file -.
@@ -103,7 +150,7 @@ Nested API fields use bracket notation as flags (for example
 --result_options[compress_file]=true), not dotted names from the API
 reference (--result_options.compress_file). Prefer the dedicated
 --compress-file flag when one exists.`,
-		Example: `  # Run an ad hoc query
+		Example: `# Run an ad hoc query
   stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10"
 
   # Compress the result file
@@ -149,9 +196,12 @@ func newReportingQueryRunsRetrieveCmd() *reportingQueryRunsRetrieveCmd {
 Sends a GET request to /v2/data/reporting/query_runs/{id}. This is a
 Public Preview API — the Stripe-Version preview header is set automatically.
 
-Once the query run's status is "succeeded", the result's download_url can be
-used to download the query output.`,
-		Example: `  # Retrieve a query run (replace <query_run_id> with an id from create)
+Once the query run's status is "succeeded", the output can be downloaded from
+result.file.download_url.url. download_url is an object holding the url and its
+expires_at, so the url itself is one level deeper than the field name suggests.
+The link is short-lived (a few minutes); retrieve the query run again for a
+fresh one.`,
+		Example: `# Retrieve a query run (replace <query_run_id> with an id from create)
   stripe reporting query-runs retrieve <query_run_id>`,
 		Args: validators.ExactArgs(1),
 		RunE: rc.runReportingQueryRunsRetrieveCmd,
@@ -176,7 +226,14 @@ func (cc *reportingQueryRunsCreateCmd) runReportingQueryRunsCreateCmd(cmd *cobra
 		return err
 	}
 
-	creds, err := cc.rb.ResolveCredentials()
+	// A dry run sends nothing, so resolve credentials leniently: the live/sandbox
+	// context gate must not be the thing that stops you inspecting a request.
+	resolve := cc.rb.ResolveCredentials
+	if cc.rb.DryRun {
+		resolve = cc.rb.ResolveCredentialsForPreview
+	}
+
+	creds, err := resolve()
 	if err != nil {
 		return err
 	}

@@ -168,6 +168,13 @@ func Execute(ctx context.Context) {
 	// commands (namespaces, root) where PersistentPreRun never fires.
 	if mode := getMapMode(os.Args[1:]); mode != mapModeDefault {
 		remaining := stripMapFlag(os.Args[1:])
+		// "--map compact" is a mode passed without "=", not a command named
+		// "compact". Say so and fail, rather than printing the full tree and
+		// exiting 0 as if the request had been honored.
+		if val, ok := bareMapModeArg(remaining); ok {
+			fmt.Fprintf(os.Stderr, "--map needs \"=\" before its mode: use --map=%s, not --map %s.\n", val, val)
+			os.Exit(1)
+		}
 		targetCmd, _, _ := rootCmd.Find(remaining)
 		if targetCmd == nil || (targetCmd == rootCmd && len(remaining) > 0) {
 			fmt.Fprintf(os.Stderr, "Unknown command %q — showing full command tree.\n\n", strings.Join(remaining, " "))
@@ -291,7 +298,6 @@ func init() {
 	// also, bind flags to the environment variables
 	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
-	rootCmd.AddCommand(newReportingCmd().cmd)
 	rootCmd.AddCommand(newAgentCmd().cmd)
 	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
@@ -333,6 +339,10 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Must run after the generated resource commands so query-runs merges into
+	// the existing `reporting` namespace instead of shadowing it.
+	addReportingQueryRunsCmd(rootCmd)
 
 	// config is not initialized by cobra at this point, so we need to temporarily initialize it
 	Config.InitConfig()

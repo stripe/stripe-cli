@@ -144,6 +144,21 @@ func parseMapMode(arg string) (mapMode, bool) {
 	}
 }
 
+// bareMapModeArg reports whether the args left over after stripping --map are
+// a lone mode name, i.e. the user wrote "--map compact" and meant
+// "--map=compact". pflag requires "=" to pass a value to a flag with an
+// optional value, so the mode name would otherwise be parsed as a command
+// name and silently fall through to the full tree.
+func bareMapModeArg(remaining []string) (string, bool) {
+	if len(remaining) != 1 {
+		return "", false
+	}
+	if _, ok := parseMapMode("--map=" + remaining[0]); ok {
+		return remaining[0], true
+	}
+	return "", false
+}
+
 // stderrOverride can be set in tests to capture error output.
 var stderrOverride io.Writer
 

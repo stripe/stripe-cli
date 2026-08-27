@@ -47,6 +47,12 @@ func metricQueryErrorMessage(reqErr requests.RequestError) string {
 
 	switch reqErr.ErrorCode {
 	case "metric_invalid_parameter_value":
+		// The API sometimes names the offending parameter ("limit cannot be
+		// greater than 1,000"), which beats anything we can guess. Only fall
+		// back to the checklist when it returns the useless retry boilerplate.
+		if apiMessage != "" && !isGenericRetryMessage(apiMessage) {
+			return apiMessage + "\nThis is a client error; retrying the same request will not succeed."
+		}
 		return strings.Join([]string{
 			"Invalid metric query parameter (metric_invalid_parameter_value).",
 			"Check:",

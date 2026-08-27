@@ -430,3 +430,28 @@ func TestParseMapMode(t *testing.T) {
 	assert.Equal(t, mapModeDefault, mode)
 	assert.False(t, ok)
 }
+
+func TestBareMapModeArg(t *testing.T) {
+	// "--map compact": pflag needs "=" to pass a value to a flag with an optional
+	// value, so the mode name is left over as if it were a command name.
+	for _, mode := range []string{"tree", "compact", "paths", "json"} {
+		val, ok := bareMapModeArg([]string{mode})
+		assert.True(t, ok, "%q should be recognized as a stranded --map mode", mode)
+		assert.Equal(t, mode, val)
+	}
+
+	// A real command that happens to be the only leftover arg must not be
+	// mistaken for a mode.
+	_, ok := bareMapModeArg([]string{"listen"})
+	assert.False(t, ok)
+
+	// A mode name followed by anything else is a genuine command path.
+	_, ok = bareMapModeArg([]string{"json", "extra"})
+	assert.False(t, ok)
+
+	_, ok = bareMapModeArg([]string{"data", "metrics"})
+	assert.False(t, ok)
+
+	_, ok = bareMapModeArg(nil)
+	assert.False(t, ok)
+}

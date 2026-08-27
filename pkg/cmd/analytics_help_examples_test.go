@@ -111,6 +111,15 @@ func helpExampleIsPlaceholder(ex helpExample) bool {
 	return helpExamplePlaceholder.MatchString(ex.Raw)
 }
 
+// groupByDimensionsVerifiedAgainstAPI lists the --group-by values confirmed to
+// be accepted by /v2/data/analytics/metric_query for revenue.mrr.
+//
+// Which dimensions a metric supports varies by metric, and the API rejects an
+// unsupported one with metric_invalid_parameter_value. "price", "product" and
+// "customer" all read plausibly but are rejected, so the help examples must not
+// use them — this list is what keeps a plausible-looking swap from shipping.
+var groupByDimensionsVerifiedAgainstAPI = []string{"subscription"}
+
 func analyticsHelpCommands() []*cobra.Command {
 	return []*cobra.Command{
 		newDataCmd().cmd,
@@ -176,7 +185,8 @@ func TestAnalyticsHelpExamples_NoRottingCopyPaste(t *testing.T) {
 					require.NotEmpty(t, groupBy)
 					_, isString := groupBy[0].(string)
 					require.True(t, isString, "group_by entries should be strings, got %T", groupBy[0])
-					assert.Equal(t, "price", groupBy[0])
+					assert.Contains(t, groupByDimensionsVerifiedAgainstAPI, groupBy[0],
+						"--group-by in a help example must use a dimension verified to work against the API")
 				}
 			})
 		}
@@ -184,19 +194,31 @@ func TestAnalyticsHelpExamples_NoRottingCopyPaste(t *testing.T) {
 	require.Greater(t, ran, 0, "expected at least one copy-pasteable help example to execute")
 }
 
-func TestExtractHelpExamples_GroupByPrice(t *testing.T) {
+func TestExtractHelpExamples_GroupByUsesSupportedDimension(t *testing.T) {
 	examples := extractHelpExamples(newDataMetricsRunCmd().cmd.Example)
 	var found bool
 	for _, ex := range examples {
 		if strings.Contains(ex.Raw, "--group-by") {
 			found = true
 			assert.Contains(t, ex.Argv, "--group-by")
-			assert.Contains(t, ex.Argv, "price")
-			assert.NotContains(t, ex.Argv, "product")
 			assert.False(t, helpExampleIsPlaceholder(ex))
+
+			i := indexOf(ex.Argv, "--group-by")
+			require.Less(t, i+1, len(ex.Argv), "--group-by needs a value: %s", ex.Raw)
+			assert.Contains(t, groupByDimensionsVerifiedAgainstAPI, ex.Argv[i+1],
+				"--group-by in a help example must use a dimension verified to work against the API")
 		}
 	}
 	require.True(t, found, "expected a group-by example")
+}
+
+func indexOf(s []string, want string) int {
+	for i, v := range s {
+		if v == want {
+			return i
+		}
+	}
+	return -1
 }
 
 func TestExtractHelpExamples_NoCopyPasteableMetricIDs(t *testing.T) {

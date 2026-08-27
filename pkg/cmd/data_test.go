@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // --- Unit tests: metricRef ---
@@ -566,4 +568,67 @@ func TestDataMetricsRunCmd_HelpStillHasExamples(t *testing.T) {
 	assert.Contains(t, out, "--metric")
 	assert.Contains(t, out, "stripe data metrics run")
 	assert.Contains(t, out, "revenue.mrr")
+}
+
+func TestDataMetricsRunCmd_HelpDocumentsGranularityDefault(t *testing.T) {
+	out := dataHelpOutput(t, "data", "metrics", "run", "--help")
+
+	// The help used to claim --granularity was required. It has a default, and
+	// the two statements have to keep agreeing.
+	assert.Contains(t, out, "--granularity defaults to day")
+	assert.Equal(t, "day", newDataMetricsRunCmd().cmd.Flags().Lookup("granularity").DefValue)
+	assert.NotContains(t, out, "Required: --metric, --starts-at, --ends-at, --granularity")
+}
+
+func TestDataMetricsRunCmd_HelpExplainsBucketTimestamps(t *testing.T) {
+	out := dataHelpOutput(t, "data", "metrics", "run", "--help")
+
+	// Both surprises a first-time reader hits: bucket timestamps are period ends,
+	// and buckets align to the result timezone rather than the requested one.
+	assert.Contains(t, out, "marks the END of its period")
+	assert.Contains(t, out, "--timezone UTC")
+}
+
+func TestDataMetricsRunCmd_HelpDoesNotClaimGroupByIsUniversal(t *testing.T) {
+	usage := newDataMetricsRunCmd().cmd.Flags().Lookup("group-by").Usage
+
+	// Which dimensions a metric supports varies, and the API rejects an
+	// unsupported one rather than ignoring it.
+	assert.Contains(t, usage, "varies by metric")
+	assert.Contains(t, usage, "https://docs.stripe.com/data/analytics/supported-metrics")
+}
+
+func TestDataMetricsRunCmd_DryRunIgnoresActiveContextMode(t *testing.T) {
+	c := newDataMetricsRunCmd()
+	c.rb.Profile = profileWithLiveActiveContext(t)
+	c.rb.APIBaseURL = stripe.DefaultAPIBaseURL
+	c.rb.DryRun = true
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-03-01T00:00:00Z"
+	c.endsAt = "2026-03-31T23:59:59Z"
+	c.granularity = "day"
+
+	var out bytes.Buffer
+	c.cmd.SetOut(&out)
+
+	require.NoError(t, c.runDataMetricsRunCmd(c.cmd, []string{}))
+
+	var output requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(out.Bytes(), &output))
+	assert.Equal(t, http.MethodPost, output.DryRun.Method)
+	assert.Equal(t, stripe.DefaultAPIBaseURL+dataMetricsRunPath, output.DryRun.URL)
+	assert.Equal(t, "true", output.DryRun.Headers["Stripe-Livemode"])
+}
+
+func TestDataMetricsRunCmd_RealRequestStillGatedOnActiveContextMode(t *testing.T) {
+	c := newDataMetricsRunCmd()
+	c.rb.Profile = profileWithLiveActiveContext(t)
+	c.rb.APIBaseURL = stripe.DefaultAPIBaseURL
+	c.metrics = []string{"revenue.mrr"}
+	c.startsAt = "2026-03-01T00:00:00Z"
+	c.endsAt = "2026-03-31T23:59:59Z"
+
+	err := c.runDataMetricsRunCmd(c.cmd, []string{})
+	require.Error(t, err, "leniency must be scoped to --dry-run")
+	assert.Contains(t, err.Error(), "--live")
 }

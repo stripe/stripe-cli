@@ -41,8 +41,8 @@ func NewKeysPermissionsCmd(parentCmd *cobra.Command, cfg *config.Config) {
 		Use:   "permissions [endpoints...]",
 		Short: "Resolve required restricted key permissions for API endpoints",
 		Long:  `Given one or more API endpoints (e.g. "GET /v1/customers"), resolves the minimal set of restricted key permissions required.`,
-		Example: `  stripe keys permissions "GET /v1/customers" "GET /v1/balance"
-    stripe keys permissions "GET /v1/charges/:id"`,
+		Example: `stripe keys permissions "GET /v1/customers" "GET /v1/balance"
+  stripe keys permissions "GET /v1/charges/:id"`,
 		Args:   cobra.MinimumNArgs(1),
 		RunE:   kpc.runKeysPermissionsCmd,
 		Hidden: true,

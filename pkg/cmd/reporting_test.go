@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -12,11 +13,14 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // --- Unit tests: buildRequestBody ---
@@ -366,4 +370,173 @@ func TestReportingQueryRunsRetrieveCmd_HelpDescribesPublicPreview(t *testing.T) 
 
 	assert.Contains(t, out, "Public Preview")
 	assert.Contains(t, out, "/v2/data/reporting/query_runs/{id}")
+}
+
+// --- Integration tests: --dry-run is not gated on the active context's mode ---
+
+// profileWithLiveActiveContext returns a profile whose keyring holds an OAK with
+// a live active context, so resolving test-mode credentials from it fails with
+// ActiveContextLivemodeMismatchError.
+func profileWithLiveActiveContext(t *testing.T) *config.Profile {
+	t.Helper()
+	t.Setenv("STRIPE_API_KEY", "")
+
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
+
+	activeCtxJSON, err := json.Marshal(config.ActiveContext{AccountID: "acct_live123", Livemode: true})
+	require.NoError(t, err)
+
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_live_1234567890"),
+		config.OAuthActiveContextKeychainKey: activeCtxJSON,
+	})
+	t.Cleanup(func() {
+		config.KeyRing = nil
+		viper.Reset()
+	})
+	(&config.Config{LogLevel: "info", ProfilesFile: profilesFile}).InitConfig()
+
+	return &config.Profile{ProfileName: "default"}
+}
+
+func TestReportingCreateCmd_DryRunIgnoresActiveContextMode(t *testing.T) {
+	cc := newReportingQueryRunsCreateCmd()
+	cc.rb.Profile = profileWithLiveActiveContext(t)
+	cc.rb.APIBaseURL = stripe.DefaultAPIBaseURL
+	cc.rb.DryRun = true
+	cc.sql = "SELECT * FROM charges LIMIT 10"
+
+	var out bytes.Buffer
+	cc.cmd.SetOut(&out)
+
+	// A dry run sends nothing, so the live/sandbox gate must not stop you
+	// inspecting the request it would have sent.
+	require.NoError(t, cc.runReportingQueryRunsCreateCmd(cc.cmd, []string{}))
+
+	var output requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(out.Bytes(), &output))
+	assert.Equal(t, http.MethodPost, output.DryRun.Method)
+	assert.Equal(t, stripe.DefaultAPIBaseURL+queryRunsPath, output.DryRun.URL)
+	assert.Equal(t, "SELECT * FROM charges LIMIT 10", output.DryRun.Params["sql"])
+	// Falls back to the mode that is actually active, so the preview reflects
+	// what would really be sent.
+	assert.Equal(t, "true", output.DryRun.Headers["Stripe-Livemode"])
+}
+
+func TestReportingCreateCmd_RealRequestStillGatedOnActiveContextMode(t *testing.T) {
+	cc := newReportingQueryRunsCreateCmd()
+	cc.rb.Profile = profileWithLiveActiveContext(t)
+	cc.rb.APIBaseURL = stripe.DefaultAPIBaseURL
+	cc.sql = "SELECT * FROM charges LIMIT 10"
+
+	err := cc.runReportingQueryRunsCreateCmd(cc.cmd, []string{})
+	require.Error(t, err, "leniency must be scoped to --dry-run")
+	assert.Contains(t, err.Error(), "--live")
+}
+
+// --- Unit tests: merging query-runs into the generated `reporting` namespace ---
+
+// generatedReportingNamespace mimics what resources_gen.go registers: a bare
+// namespace command with no descriptions, hosting the Sigma resources.
+func generatedReportingNamespace() *cobra.Command {
+	ns := &cobra.Command{Use: "reporting"}
+	reportRuns := &cobra.Command{Use: "report_runs"}
+	reportRuns.AddCommand(&cobra.Command{Use: "list", Run: func(*cobra.Command, []string) {}})
+	ns.AddCommand(reportRuns)
+	ns.AddCommand(&cobra.Command{Use: "report_types"})
+	return ns
+}
+
+func TestAddReportingQueryRunsCmd_MergesIntoGeneratedNamespace(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	root.AddCommand(generatedReportingNamespace())
+
+	addReportingQueryRunsCmd(root)
+
+	var reportingCmds []*cobra.Command
+	for _, cmd := range root.Commands() {
+		if cmd.Name() == "reporting" {
+			reportingCmds = append(reportingCmds, cmd)
+		}
+	}
+	require.Len(t, reportingCmds, 1, "two root children named reporting shadow each other")
+
+	names := make([]string, 0, 3)
+	for _, child := range reportingCmds[0].Commands() {
+		names = append(names, child.Name())
+	}
+	assert.ElementsMatch(t, []string{"query-runs", "report_runs", "report_types"}, names)
+}
+
+func TestAddReportingQueryRunsCmd_SigmaResourcesStayReachable(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	root.AddCommand(generatedReportingNamespace())
+
+	addReportingQueryRunsCmd(root)
+
+	// The bug this guards: the shadowing sibling had no report_runs child and no
+	// Run function, so cobra resolved this to the wrong command, printed help and
+	// exited 0.
+	listCmd, _, err := root.Find([]string{"reporting", "report_runs", "list"})
+	require.NoError(t, err)
+	assert.Equal(t, "stripe reporting report_runs list", listCmd.CommandPath())
+
+	createCmd, _, err := root.Find([]string{"reporting", "query-runs", "create"})
+	require.NoError(t, err)
+	assert.Equal(t, "stripe reporting query-runs create", createCmd.CommandPath())
+}
+
+func TestAddReportingQueryRunsCmd_DescribesTheMergedNamespace(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	root.AddCommand(generatedReportingNamespace())
+
+	addReportingQueryRunsCmd(root)
+
+	ns, _, err := root.Find([]string{"reporting"})
+	require.NoError(t, err)
+	assert.Equal(t, reportingNamespaceShort, ns.Short, "--map lists Short; an empty one leaves the namespace undescribed")
+	assert.Contains(t, ns.Long, "query-runs")
+	assert.Contains(t, ns.Long, "report_runs")
+}
+
+func TestAddReportingQueryRunsCmd_KeepsGeneratedDescriptions(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	ns := generatedReportingNamespace()
+	ns.Short = "Generated short"
+	ns.Long = "Generated long"
+	root.AddCommand(ns)
+
+	addReportingQueryRunsCmd(root)
+
+	assert.Equal(t, "Generated short", ns.Short, "do not overwrite descriptions the spec supplies")
+	assert.Equal(t, "Generated long", ns.Long)
+}
+
+func TestAddReportingQueryRunsCmd_FallsBackToTopLevel(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+
+	addReportingQueryRunsCmd(root)
+
+	createCmd, _, err := root.Find([]string{"reporting", "query-runs", "create"})
+	require.NoError(t, err)
+	assert.Equal(t, "stripe reporting query-runs create", createCmd.CommandPath())
+}
+
+func TestReportingQueryRunsCmd_ExampleIndentationMatchesTemplate(t *testing.T) {
+	// query-runs hangs off the generated namespace, whose template renders
+	// {{.Example}} unindented. Its own template must supply the indentation, and
+	// the Example's first line must not double up on it.
+	root := &cobra.Command{Use: "stripe"}
+	root.AddCommand(generatedReportingNamespace())
+	addReportingQueryRunsCmd(root)
+
+	out, err := executeCommand(root, "reporting", "query-runs", "create", "--help")
+	require.NoError(t, err)
+
+	lines := strings.Split(out, "\n")
+	i := indexOf(lines, "Examples:")
+	require.GreaterOrEqual(t, i, 0, "help should have an Examples section:\n%s", out)
+	require.Less(t, i+1, len(lines))
+	assert.Equal(t, "  # Run an ad hoc query", lines[i+1], "example lines should be indented exactly two spaces")
 }
