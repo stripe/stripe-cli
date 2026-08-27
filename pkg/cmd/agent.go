@@ -100,7 +100,7 @@ func newAgentCmd() *agentCmd {
 		Args:  validators.NoArgs,
 	}
 	ac.cmd.AddCommand(newAgentSetupCmd().cmd)
-	ac.cmd.AddCommand(newAgentPingCmd().cmd)
+	ac.cmd.AddCommand(newAgentReportUsageCmd().cmd)
 	return ac
 }
 
