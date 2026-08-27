@@ -23,7 +23,7 @@ detect_platform() {
     linux)  OS_LABEL="linux" ;;
     *)
       echo "Error: unsupported operating system: $OS"
-      echo "Supported: macOS, Linux."
+      echo "Supported: macOS, Linux. For Windows, use scripts/install.ps1."
       exit 1
       ;;
   esac
