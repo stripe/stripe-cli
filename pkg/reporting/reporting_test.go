@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	sentry "github.com/getsentry/sentry-go"
@@ -20,8 +21,11 @@ func TestCaptureExceptionSuppressesExpectedCategories(t *testing.T) {
 	}{
 		{name: "user input", err: context.Canceled},
 		{name: "auth", err: requests.RequestError{StatusCode: 401}},
+		{name: "rate limit", err: requests.RequestError{StatusCode: 429}},
+		{name: "explicit rate limit", err: errorcategory.New(errorcategory.RateLimit, "you have too many `stripe listen` sessions open, please close some and try again")},
 		{name: "wrapped user input", err: fmt.Errorf("wrapped: %w", context.Canceled)},
 		{name: "wrapped auth", err: fmt.Errorf("wrapped: %w", requests.RequestError{StatusCode: 403})},
+		{name: "wrapped rate limit", err: fmt.Errorf("wrapped: %w", requests.RequestError{StatusCode: 429})},
 	}
 
 	for _, test := range tests {
@@ -58,6 +62,38 @@ func TestCaptureExceptionCapturesActionableCategories(t *testing.T) {
 	}
 }
 
+// The Sentry issue title comes from the type of the outermost exception, which
+// is the errorcategory wrapper. Without the substitution in scrubEvent every
+// categorized error would be titled "errorcategory.categorizedError".
+func TestCaptureExceptionTitlesExceptionsWithTheCategory(t *testing.T) {
+	transport, restore := bindTestClient(t)
+	defer restore()
+
+	CaptureException(errorcategory.With(errors.New("actionable error"), errorcategory.API))
+
+	events := transport.Events()
+	require.Len(t, events, 1)
+
+	exceptions := events[0].Exception
+	require.NotEmpty(t, exceptions)
+	require.Equal(t, string(errorcategory.API), exceptions[len(exceptions)-1].Type)
+	require.NotContains(t, exceptions[len(exceptions)-1].Type, "categorizedError")
+}
+
+func TestCaptureExceptionLeavesUncategorizedExceptionTypes(t *testing.T) {
+	transport, restore := bindTestClient(t)
+	defer restore()
+
+	CaptureException(&os.PathError{Op: "open", Path: "config.toml", Err: errors.New("permission denied")})
+
+	events := transport.Events()
+	require.Len(t, events, 1)
+
+	exceptions := events[0].Exception
+	require.NotEmpty(t, exceptions)
+	require.Equal(t, "*fs.PathError", exceptions[len(exceptions)-1].Type)
+}
+
 func TestCaptureExceptionCapturesUnknownErrorsAsInternal(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
@@ -76,6 +112,7 @@ func TestShouldCapture(t *testing.T) {
 	}{
 		{category: errorcategory.UserInput, expected: false},
 		{category: errorcategory.Auth, expected: false},
+		{category: errorcategory.RateLimit, expected: false},
 		{category: errorcategory.Network, expected: true},
 		{category: errorcategory.API, expected: true},
 		{category: errorcategory.Filesystem, expected: true},

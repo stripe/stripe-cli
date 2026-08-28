@@ -75,10 +75,17 @@ func CaptureException(err error) {
 }
 
 // shouldCapture defines the reporting policy for classified errors. Auth covers
-// expected credential or authorization outcomes, not defects in authentication code;
-// callers can explicitly categorize actionable failures as internal, network, or API.
+// expected credential or authorization outcomes, not defects in authentication code,
+// and RateLimit covers quotas the caller can resolve on their own (closing sessions,
+// retrying later); callers can explicitly categorize actionable failures as
+// internal, network, or API.
 func shouldCapture(category errorcategory.Category) bool {
-	return category != errorcategory.UserInput && category != errorcategory.Auth
+	switch category {
+	case errorcategory.UserInput, errorcategory.Auth, errorcategory.RateLimit:
+		return false
+	default:
+		return true
+	}
 }
 
 // RecoverAndReport captures a recovered panic value to the error reporting backend.
