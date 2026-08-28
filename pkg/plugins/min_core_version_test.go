@@ -47,6 +47,11 @@ func pluginWithRelease(pluginVersion string) Plugin {
 // requiresNewerCLIMetadataServer stands in for the metadata endpoint refusing a
 // release whose min_core_version this CLI does not meet. The body matches the shape
 // the API sends, which is asserted on in pay-server's own tests.
+//
+// An empty pluginVersion sends the answer to a request that named no version, where
+// minCoreVersion is the lowest floor among the plugin's releases. That body names no
+// plugin version and blames no parameter, so passing "" here is what keeps a test of
+// a versionless path from being handed more than the endpoint would give it.
 func requiresNewerCLIMetadataServer(t *testing.T, pluginVersion, minCoreVersion string) *httptest.Server {
 	t.Helper()
 
@@ -55,6 +60,20 @@ func requiresNewerCLIMetadataServer(t *testing.T, pluginVersion, minCoreVersion 
 		case "/v1/stripecli/get-plugin-metadata", "/ajax/stripecli/plugins_metadata":
 			res.Header().Set("Content-Type", "application/json")
 			res.WriteHeader(http.StatusBadRequest)
+
+			if pluginVersion == "" {
+				_, _ = fmt.Fprintf(res, `{
+  "error": {
+    "code": "plugin_requires_newer_cli",
+    "message": "The appA plugin requires Stripe CLI %s or later. Upgrade the Stripe CLI to install it.",
+    "min_core_version": %q,
+    "type": "invalid_request_error"
+  }
+}`, minCoreVersion, minCoreVersion)
+
+				return
+			}
+
 			_, _ = fmt.Fprintf(res, `{
   "error": {
     "code": "plugin_requires_newer_cli",
@@ -138,11 +157,37 @@ func TestResolvePluginForInstallEndpointRequiresNewerCLIOutranksCache(t *testing
 	requireRequiresNewerCLI(t, err, "1.30.0")
 }
 
+// TestResolvePluginForInstallWithoutAVersionReportsEndpointRequiresNewerCLI covers an
+// install that named no version, where every release the plugin has needs a newer CLI
+// than this one. The endpoint reports the lowest of their floors, since that is the
+// nearest version that would make any of them installable.
+//
+// It is a separate case from the named-version one because the answer arrives in a
+// different shape: no plugin version to attribute it to, and no parameter to blame.
+// Reading it still has to yield the minimum, which is the only actionable part.
+func TestResolvePluginForInstallWithoutAVersionReportsEndpointRequiresNewerCLI(t *testing.T) {
+	withCoreVersion(t, "1.29.0")
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	server := requiresNewerCLIMetadataServer(t, "", "1.30.0")
+	defer server.Close()
+
+	resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", server.URL, server.URL)
+	require.Nil(t, resolvedPlugin)
+	requireRequiresNewerCLI(t, err, "1.30.0")
+
+	// The plugin is still named, and the sentence still reads, without a version for it.
+	require.Contains(t, err.Error(), "the appA plugin requires Stripe CLI v1.30.0 or newer")
+	require.NotContains(t, err.Error(), "plugin v ")
+	require.NotContains(t, err.Error(), "no plugin named")
+}
+
 // TestResolvePluginForUpgradeReportsEndpointRequiresNewerCLI and its auto-install
-// counterpart pin routing rather than a refusal the endpoint makes today: both paths
-// ask for no particular version, and the endpoint only answers this way for one it
-// was given. They exist so that if it ever does, the answer is reported instead of
-// the cache being allowed to contradict it.
+// counterpart cover the same answer reaching the paths that never name a version, and
+// pin that the cache is not allowed to contradict it there either.
 func TestResolvePluginForUpgradeReportsEndpointRequiresNewerCLI(t *testing.T) {
 	withCoreVersion(t, "1.29.0")
 
@@ -151,7 +196,7 @@ func TestResolvePluginForUpgradeReportsEndpointRequiresNewerCLI(t *testing.T) {
 	config.InitConfig()
 	require.NoError(t, writeLocalPluginMetadata(config, fs, pluginWithRelease("2.0.1")))
 
-	server := requiresNewerCLIMetadataServer(t, "2.0.1", "1.30.0")
+	server := requiresNewerCLIMetadataServer(t, "", "1.30.0")
 	defer server.Close()
 
 	resolvedPlugin, err := ResolvePluginForUpgrade(context.Background(), config, fs, "appA", server.URL, server.URL)
@@ -167,7 +212,7 @@ func TestResolvePluginForAutoInstallReportsEndpointRequiresNewerCLI(t *testing.T
 	config.InitConfig()
 	require.NoError(t, writeLocalPluginMetadata(config, fs, pluginWithRelease("2.0.1")))
 
-	server := requiresNewerCLIMetadataServer(t, "2.0.1", "1.30.0")
+	server := requiresNewerCLIMetadataServer(t, "", "1.30.0")
 	defer server.Close()
 
 	resolvedPlugin, err := resolvePluginForAutoInstall(context.Background(), config, fs, "appA", server.URL, server.URL)

@@ -26,6 +26,19 @@ const requiresNewerCLIBody = `{
   }
 }`
 
+// requiresNewerCLIWithoutVersionBody is the same answer for a request that named no
+// version, where the endpoint reports the lowest floor among the plugin's releases.
+// It blames no parameter, because the caller supplied none to blame, and names no
+// plugin version. Both are absent from the wire, not merely unused here.
+const requiresNewerCLIWithoutVersionBody = `{
+  "error": {
+    "code": "plugin_requires_newer_cli",
+    "message": "The appA plugin requires Stripe CLI 1.30.0 or later. Upgrade the Stripe CLI to install it.",
+    "min_core_version": "1.30.0",
+    "type": "invalid_request_error"
+  }
+}`
+
 func TestPluginRequiresNewerCLI(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -36,6 +49,15 @@ func TestPluginRequiresNewerCLI(t *testing.T) {
 		{
 			name:               "typed response",
 			err:                compileRequestError([]byte(requiresNewerCLIBody), http.StatusBadRequest),
+			wantMinCoreVersion: "1.30.0",
+			wantOK:             true,
+		},
+		{
+			// The code is what identifies this answer, so the minimum version still
+			// arrives for a request that named no version -- the case where the caller
+			// has nothing else to tell the user to do.
+			name:               "typed response for a request that named no version",
+			err:                compileRequestError([]byte(requiresNewerCLIWithoutVersionBody), http.StatusBadRequest),
 			wantMinCoreVersion: "1.30.0",
 			wantOK:             true,
 		},
