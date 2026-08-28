@@ -57,6 +57,39 @@ func TestMarkerReadWrite(t *testing.T) {
 	assert.Nil(t, ReadMarker())
 }
 
+func TestMarkerReadWriteWithReleaseNotes(t *testing.T) {
+	tmpDir := t.TempDir()
+	original := GetStateDirFn
+	defer func() { GetStateDirFn = original }()
+	GetStateDirFn = func() string { return tmpDir }
+
+	notes := "## Changes\n\n- Added one thing\n- Fixed another thing"
+	WriteMarker(UpdateMarker{
+		Version:      "1.24.0",
+		DownloadURL:  "https://example.com/stripe.tar.gz",
+		Checksum:     "abc123",
+		ReleaseNotes: notes,
+	})
+
+	got := ReadMarker()
+	require.NotNil(t, got)
+	assert.Equal(t, notes, got.ReleaseNotes)
+}
+
+func TestReadMarkerWithoutReleaseNotes(t *testing.T) {
+	tmpDir := t.TempDir()
+	original := GetStateDirFn
+	defer func() { GetStateDirFn = original }()
+	GetStateDirFn = func() string { return tmpDir }
+
+	marker := `{"version":"1.24.0","download_url":"https://example.com/stripe.tar.gz","checksum":"abc123"}`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "update-available"), []byte(marker), 0644))
+
+	got := ReadMarker()
+	require.NotNil(t, got)
+	assert.Empty(t, got.ReleaseNotes)
+}
+
 func TestRecordLastCheck(t *testing.T) {
 	tmpDir := t.TempDir()
 	original := GetStateDirFn

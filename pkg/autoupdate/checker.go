@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,9 +28,10 @@ const checkInterval = 24 * time.Hour
 
 // UpdateMarker represents a staged update ready to be applied.
 type UpdateMarker struct {
-	Version     string
-	DownloadURL string
-	Checksum    string
+	Version      string `json:"version"`
+	DownloadURL  string `json:"download_url"`
+	Checksum     string `json:"checksum"`
+	ReleaseNotes string `json:"release_notes"`
 }
 
 // CheckForUpdate checks for a newer CLI version and writes a marker file
@@ -46,7 +48,7 @@ func CheckForUpdate() {
 		return
 	}
 
-	latest, url, checksum := fetchLatestRelease()
+	latest, url, checksum, releaseNotes := fetchLatestRelease()
 	if latest == "" {
 		return
 	}
@@ -66,9 +68,10 @@ func CheckForUpdate() {
 	}
 
 	WriteMarker(UpdateMarker{
-		Version:     latestClean,
-		DownloadURL: url,
-		Checksum:    checksum,
+		Version:      latestClean,
+		DownloadURL:  url,
+		Checksum:     checksum,
+		ReleaseNotes: releaseNotes,
 	})
 	sendTelemetryEvent("Auto-Update Available", fmt.Sprintf("from=%s to=%s", current, latestClean))
 }
@@ -115,7 +118,7 @@ func shouldCheck() bool {
 	return time.Since(time.Unix(ts, 0)) >= checkInterval
 }
 
-func fetchLatestRelease() (ver string, downloadURL string, checksum string) {
+func fetchLatestRelease() (ver string, downloadURL string, checksum string, releaseNotes string) {
 	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
 	defer cancel()
 
@@ -123,10 +126,11 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string) {
 	release, _, err := client.Repositories.GetLatestRelease(ctx, "stripe", "stripe-cli")
 	if err != nil {
 		log.Debug("autoupdate: failed to fetch latest release: ", err)
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	ver = release.GetTagName()
+	releaseNotes = release.GetBody()
 	assetName := binaryAssetName(strings.TrimPrefix(ver, "v"))
 	checksumAsset := checksumAssetName()
 
@@ -143,14 +147,14 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string) {
 
 	if binaryURL == "" {
 		log.Debug("autoupdate: binary asset not found: ", assetName)
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	if checksumURL != "" {
 		checksum = fetchChecksumForAsset(checksumURL, assetName)
 	}
 
-	return ver, binaryURL, checksum
+	return ver, binaryURL, checksum, releaseNotes
 }
 
 func fetchChecksumForAsset(checksumURL, assetName string) string {
@@ -230,9 +234,13 @@ func WriteMarker(m UpdateMarker) {
 		return
 	}
 
-	content := fmt.Sprintf("%s\n%s\n%s\n", m.Version, m.DownloadURL, m.Checksum)
+	content, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+
 	markerPath := filepath.Join(stateDir, "update-available")
-	_ = os.WriteFile(markerPath, []byte(content), 0644)
+	_ = os.WriteFile(markerPath, content, 0644)
 
 	recordLastCheck()
 }
@@ -261,19 +269,11 @@ func ReadMarker() *UpdateMarker {
 		return nil
 	}
 
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) < 2 {
+	var m UpdateMarker
+	if err := json.Unmarshal(data, &m); err != nil {
 		return nil
 	}
-
-	m := &UpdateMarker{
-		Version:     lines[0],
-		DownloadURL: lines[1],
-	}
-	if len(lines) >= 3 {
-		m.Checksum = lines[2]
-	}
-	return m
+	return &m
 }
 
 // ClearMarker removes the pending update marker.

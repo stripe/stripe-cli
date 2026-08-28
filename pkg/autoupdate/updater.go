@@ -16,6 +16,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
+const (
+	maxReleaseNoteLines = 15
+	maxReleaseNoteRunes = 1000
+)
+
 // ApplyIfPending checks for a pending update marker and applies it.
 // If an update is applied, it re-execs the current process with the new binary.
 // This function only returns if no update was applied.
@@ -68,9 +73,56 @@ func ApplyIfPending() {
 
 	ClearMarker()
 	fmt.Fprintf(os.Stderr, "Updated successfully ✓\n")
+	if releaseNotes := formatReleaseNotes(marker.ReleaseNotes, marker.Version); releaseNotes != "" {
+		fmt.Fprint(os.Stderr, releaseNotes)
+		if !strings.HasSuffix(releaseNotes, "\n") {
+			fmt.Fprintln(os.Stderr)
+		}
+	}
 	sendTelemetryEvent("Auto-Update Succeeded", fmt.Sprintf("from=%s to=%s", current, target))
 
 	reexec(exe)
+}
+
+func formatReleaseNotes(notes, markerVersion string) string {
+	if notes == "" {
+		return ""
+	}
+
+	runes := []rune(notes)
+	cutoff := len(runes)
+	truncated := false
+
+	if cutoff > maxReleaseNoteRunes {
+		cutoff = maxReleaseNoteRunes
+		truncated = true
+	}
+
+	lineCount := 0
+	for i, r := range runes {
+		if r != '\n' {
+			continue
+		}
+		lineCount++
+		if lineCount == maxReleaseNoteLines && i+1 < len(runes) {
+			if i+1 < cutoff {
+				cutoff = i + 1
+			}
+			truncated = true
+			break
+		}
+	}
+
+	formatted := string(runes[:cutoff])
+	if !truncated {
+		return formatted
+	}
+
+	if !strings.HasSuffix(formatted, "\n") {
+		formatted += "\n"
+	}
+	version := strings.TrimLeft(markerVersion, "v")
+	return fmt.Sprintf("%sFull release notes: https://github.com/stripe/stripe-cli/releases/tag/v%s", formatted, version)
 }
 
 func downloadAndReplace(marker *UpdateMarker, exePath string) error {
