@@ -35,7 +35,8 @@ type agentReportUsageResponse struct {
 func newAgentReportUsageCmd() *agentReportUsageCmd {
 	arc := &agentReportUsageCmd{}
 	arc.cmd = &cobra.Command{
-		Use:           "report_usage",
+		Use:           "report-usage",
+		Aliases:       []string{"report_usage"},
 		Args:          validators.NoArgs,
 		Hidden:        true,
 		RunE:          arc.runReportUsage,
@@ -52,7 +53,7 @@ func newAgentReportUsageCmd() *agentReportUsageCmd {
 
 func (arc *agentReportUsageCmd) runReportUsage(cmd *cobra.Command, _ []string) error {
 	if arc.debug {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Debug: report_usage arguments: skill=%q dry-run=%t\n", arc.skill, arc.dryRun)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Debug: report-usage arguments: skill=%q dry-run=%t\n", arc.skill, arc.dryRun)
 	}
 	if arc.skill == "" {
 		return errorcategory.New(errorcategory.UserInput, "--skill must not be empty")

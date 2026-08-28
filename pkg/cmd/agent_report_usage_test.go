@@ -82,7 +82,7 @@ func TestAgentReportUsageDebugLogsArgumentsAndCalls(t *testing.T) {
 	_, stderr, err := executeAgentReportUsage(ctx, "--skill", "debug value", "--debug")
 
 	require.NoError(t, err)
-	require.Contains(t, stderr, `Debug: report_usage arguments: skill="debug value" dry-run=false`)
+	require.Contains(t, stderr, `Debug: report-usage arguments: skill="debug value" dry-run=false`)
 	require.Contains(t, stderr, `Debug: emitting telemetry event "skill_used" with additional context {"skillName":"debug value"}`)
 	require.Contains(t, stderr, "Debug: writing JSON response")
 	require.Len(t, client.events, 1)
@@ -104,16 +104,20 @@ func TestAgentReportUsageRejectsPositionalArguments(t *testing.T) {
 
 func TestAgentReportUsageIsHiddenFromHelpAndCommandMap(t *testing.T) {
 	agent := newAgentCmd()
-	reportUsage, _, err := agent.cmd.Find([]string{"report_usage"})
+	reportUsage, _, err := agent.cmd.Find([]string{"report-usage"})
 	require.NoError(t, err)
+	require.Equal(t, "report-usage", reportUsage.Name())
+	require.Contains(t, reportUsage.Aliases, "report_usage")
 	require.True(t, reportUsage.Hidden)
 
 	help, err := executeCommand(agent.cmd, "--help")
 	require.NoError(t, err)
+	require.NotContains(t, help, "report-usage")
 	require.NotContains(t, help, "report_usage")
 
 	var commandMap bytes.Buffer
 	printCommandMap(&commandMap, agent.cmd, mapModeTree)
+	require.NotContains(t, commandMap.String(), "report-usage")
 	require.NotContains(t, commandMap.String(), "report_usage")
 }
 
