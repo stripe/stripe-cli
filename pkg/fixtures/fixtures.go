@@ -362,10 +362,15 @@ func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.R
 }
 
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
+	apiBase := fxt.getAPIBase(data)
+	if err := stripe.ValidateAPIBaseURL(apiBase); err != nil {
+		return make([]byte, 0), fmt.Errorf("fixture api_base %q is not an allowed Stripe API base URL: %w", apiBase, err)
+	}
+
 	req := requests.Base{
 		Method:         strings.ToUpper(data.Method),
 		SuppressOutput: true,
-		APIBaseURL:     fxt.getAPIBase(data),
+		APIBaseURL:     apiBase,
 	}
 
 	path, err := parsers.ParsePath(data.Path, fxt.Responses)
