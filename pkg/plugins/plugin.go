@@ -65,7 +65,8 @@ type PluginList struct {
 //
 // The manifest also carries each release's MinCoreVersion, which is deliberately
 // not decoded: the metadata endpoint already withholds releases this core CLI
-// cannot run, and answers plugin_requires_newer_cli when one is asked for by name.
+// cannot run, and answers plugin_requires_newer_cli when withholding them leaves
+// nothing to hand back -- whether the caller named one of them or named none.
 type Release struct {
 	Arch    string `toml:"Arch" json:"arch"`
 	OS      string `toml:"OS" json:"os"`

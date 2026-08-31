@@ -9,7 +9,8 @@ import (
 )
 
 // ErrPluginRequiresNewerCLI is returned when the plugin metadata endpoint answers
-// that the requested plugin version needs a newer core CLI than this one.
+// that the plugin needs a newer core CLI than this one. Version is the release the
+// caller asked for, and is empty when the caller asked for no particular one.
 //
 // Whether a release meets its own min_core_version is decided entirely by the API,
 // which knows the constraint for every release and hides the ones this CLI cannot

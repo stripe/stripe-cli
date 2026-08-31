@@ -125,9 +125,11 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 }
 
 // PluginRequiresNewerCLI reports whether err is a plugin metadata response saying
-// the requested version needs a newer core CLI, along with the minimum version it
-// names. The endpoints only answer this way for an explicitly requested version;
-// resolving the latest version keeps skipping past incompatible releases silently.
+// the requested plugin needs a newer core CLI, along with the minimum version it
+// names. The endpoints answer this way for a version the caller named, and for a
+// request that named none when every release the plugin has needs a newer CLI --
+// reporting the lowest minimum among them, since that is the nearest version that
+// would make any of them installable.
 //
 // The minimum version rides on the error body as an extra attribute rather than in
 // RequestError, which is shared by every Stripe API request. An answer that names
