@@ -214,11 +214,9 @@ func (p *Plugin) LookUpLatestVersion() string {
 
 	var version string
 	for _, pkg := range p.Releases {
-		if pkg.OS != opsystem || pkg.Arch != arch {
-			continue
+		if pkg.OS == opsystem && pkg.Arch == arch {
+			version = pkg.Version
 		}
-
-		version = pkg.Version
 	}
 
 	return version
