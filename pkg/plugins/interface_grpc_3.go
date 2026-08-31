@@ -105,17 +105,35 @@ func (m *GRPCClientV3) PreUninstall(additionalInfo *proto.AdditionalInfo, versio
 func (m *GRPCClientV3) serveCoreCLIHelper(coreCLIHelper CoreCLIHelper) (uint32, func()) {
 	coreCLIHelperServer := &CoreCLIHelperServer{Impl: coreCLIHelper}
 
-	var s *grpc.Server
+	// serverCh hands off the *grpc.Server once AcceptAndServe's callback constructs it;
+	// done closes when AcceptAndServe returns without ever calling the callback (e.g.
+	// broker.Accept failed). stop() below selects on both so it never touches a server
+	// that was never created, instead of racing a shared variable that's written from
+	// this goroutine and read from the caller's.
+	serverCh := make(chan *grpc.Server, 1)
+	done := make(chan struct{})
 	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
-		s = grpc.NewServer(opts...)
+		s := grpc.NewServer(opts...)
 		proto.RegisterCoreCLIHelperServer(s, coreCLIHelperServer)
+		serverCh <- s
 		return s
 	}
 
 	brokerID := m.broker.NextId()
-	go m.broker.AcceptAndServe(brokerID, serverFunc)
+	go func() {
+		defer close(done)
+		m.broker.AcceptAndServe(brokerID, serverFunc)
+	}()
 
-	return brokerID, func() { s.Stop() }
+	stop := func() {
+		select {
+		case s := <-serverCh:
+			s.Stop()
+		case <-done:
+		}
+	}
+
+	return brokerID, stop
 }
 
 // GRPCServerV3 is the gRPC server that GRPCClientV3 talks to.
