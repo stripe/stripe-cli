@@ -28,6 +28,7 @@ const (
 	StripeCLI_SampleConfigs_FullMethodName         = "/rpc.StripeCLI/SampleConfigs"
 	StripeCLI_SampleCreate_FullMethodName          = "/rpc.StripeCLI/SampleCreate"
 	StripeCLI_SamplesList_FullMethodName           = "/rpc.StripeCLI/SamplesList"
+	StripeCLI_SwitchContext_FullMethodName         = "/rpc.StripeCLI/SwitchContext"
 	StripeCLI_Trigger_FullMethodName               = "/rpc.StripeCLI/Trigger"
 	StripeCLI_TriggersList_FullMethodName          = "/rpc.StripeCLI/TriggersList"
 	StripeCLI_Version_FullMethodName               = "/rpc.StripeCLI/Version"
@@ -59,6 +60,9 @@ type StripeCLIClient interface {
 	SampleCreate(ctx context.Context, in *SampleCreateRequest, opts ...grpc.CallOption) (*SampleCreateResponse, error)
 	// Get a list of available Stripe samples. Like `stripe samples list`.
 	SamplesList(ctx context.Context, in *SamplesListRequest, opts ...grpc.CallOption) (*SamplesListResponse, error)
+	// Switch to a different authorized account context. Like `stripe switch context`, but requires
+	// an account ID since there is no interactive picker.
+	SwitchContext(ctx context.Context, in *SwitchContextRequest, opts ...grpc.CallOption) (*SwitchContextResponse, error)
 	// Trigger a webhook event. Like `stripe trigger`.
 	Trigger(ctx context.Context, in *TriggerRequest, opts ...grpc.CallOption) (*TriggerResponse, error)
 	// Get a list of supported events for `Trigger`.
@@ -187,6 +191,16 @@ func (c *stripeCLIClient) SamplesList(ctx context.Context, in *SamplesListReques
 	return out, nil
 }
 
+func (c *stripeCLIClient) SwitchContext(ctx context.Context, in *SwitchContextRequest, opts ...grpc.CallOption) (*SwitchContextResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SwitchContextResponse)
+	err := c.cc.Invoke(ctx, StripeCLI_SwitchContext_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *stripeCLIClient) Trigger(ctx context.Context, in *TriggerRequest, opts ...grpc.CallOption) (*TriggerResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TriggerResponse)
@@ -261,6 +275,9 @@ type StripeCLIServer interface {
 	SampleCreate(context.Context, *SampleCreateRequest) (*SampleCreateResponse, error)
 	// Get a list of available Stripe samples. Like `stripe samples list`.
 	SamplesList(context.Context, *SamplesListRequest) (*SamplesListResponse, error)
+	// Switch to a different authorized account context. Like `stripe switch context`, but requires
+	// an account ID since there is no interactive picker.
+	SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error)
 	// Trigger a webhook event. Like `stripe trigger`.
 	Trigger(context.Context, *TriggerRequest) (*TriggerResponse, error)
 	// Get a list of supported events for `Trigger`.
@@ -306,6 +323,9 @@ func (UnimplementedStripeCLIServer) SampleCreate(context.Context, *SampleCreateR
 }
 func (UnimplementedStripeCLIServer) SamplesList(context.Context, *SamplesListRequest) (*SamplesListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SamplesList not implemented")
+}
+func (UnimplementedStripeCLIServer) SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SwitchContext not implemented")
 }
 func (UnimplementedStripeCLIServer) Trigger(context.Context, *TriggerRequest) (*TriggerResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Trigger not implemented")
@@ -490,6 +510,24 @@ func _StripeCLI_SamplesList_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StripeCLI_SwitchContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SwitchContextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StripeCLIServer).SwitchContext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StripeCLI_SwitchContext_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StripeCLIServer).SwitchContext(ctx, req.(*SwitchContextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _StripeCLI_Trigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TriggerRequest)
 	if err := dec(in); err != nil {
@@ -614,6 +652,10 @@ var StripeCLI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SamplesList",
 			Handler:    _StripeCLI_SamplesList_Handler,
+		},
+		{
+			MethodName: "SwitchContext",
+			Handler:    _StripeCLI_SwitchContext_Handler,
 		},
 		{
 			MethodName: "Trigger",

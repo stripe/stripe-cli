@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message SwitchContextRequest {
+  // The ID of the Stripe account to switch to, e.g. acct_123. Required: unlike
+  // `stripe switch context`, this RPC has no interactive picker to fall back on.
+  string account_id = 1;
+
+  // Switch to live mode for the given account. Defaults to test mode (sandbox).
+  bool live = 2;
+}
+
+message SwitchContextResponse {
+  // ID of the now-active Stripe account, e.g. acct_123
+  string account_id = 1;
+
+  // Display name of the now-active Stripe account
+  string display_name = 2;
+
+  // Whether the active context is now in live mode
+  bool live = 3;
+}

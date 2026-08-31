@@ -229,7 +229,15 @@ func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []st
 		if len(args) > 0 {
 			accountID = args[0]
 		}
-		return login.SwitchContext(cmd.Context(), lc.accessBaseURL, &Config, accountID, lc.livemode)
+		result, err := login.SwitchContext(cmd.Context(), lc.accessBaseURL, &Config, accountID, lc.livemode)
+		if err != nil {
+			return err
+		}
+		if result == nil {
+			return nil
+		}
+		fmt.Printf("Active context: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
+		return nil
 	}
 	if len(args) == 0 {
 		return errorcategory.Errorf(errorcategory.UserInput, "account name required")

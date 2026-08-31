@@ -24,7 +24,7 @@ var File_commands_proto protoreflect.FileDescriptor
 
 const file_commands_proto_rawDesc = "" +
 	"\n" +
-	"\x0ecommands.proto\x12\x03rpc\x1a\x13events_resend.proto\x1a\x0efixtures.proto\x1a\flisten.proto\x1a\vlogin.proto\x1a\x12login_status.proto\x1a\x0flogs_tail.proto\x1a\x14sample_configs.proto\x1a\x13sample_create.proto\x1a\x12samples_list.proto\x1a\rtrigger.proto\x1a\x13triggers_list.proto\x1a\rversion.proto\x1a\x1dwebhook_endpoint_create.proto\x1a\x1cwebhook_endpoints_list.proto2\xa5\a\n" +
+	"\x0ecommands.proto\x12\x03rpc\x1a\x13events_resend.proto\x1a\x0efixtures.proto\x1a\flisten.proto\x1a\vlogin.proto\x1a\x12login_status.proto\x1a\x0flogs_tail.proto\x1a\x14sample_configs.proto\x1a\x13sample_create.proto\x1a\x12samples_list.proto\x1a\x14switch_context.proto\x1a\rtrigger.proto\x1a\x13triggers_list.proto\x1a\rversion.proto\x1a\x1dwebhook_endpoint_create.proto\x1a\x1cwebhook_endpoints_list.proto2\xed\a\n" +
 	"\tStripeCLI\x12C\n" +
 	"\fEventsResend\x12\x18.rpc.EventsResendRequest\x1a\x19.rpc.EventsResendResponse\x124\n" +
 	"\aFixture\x12\x13.rpc.FixtureRequest\x1a\x14.rpc.FixtureResponse\x123\n" +
@@ -34,7 +34,8 @@ const file_commands_proto_rawDesc = "" +
 	"\bLogsTail\x12\x14.rpc.LogsTailRequest\x1a\x15.rpc.LogsTailResponse0\x01\x12F\n" +
 	"\rSampleConfigs\x12\x19.rpc.SampleConfigsRequest\x1a\x1a.rpc.SampleConfigsResponse\x12C\n" +
 	"\fSampleCreate\x12\x18.rpc.SampleCreateRequest\x1a\x19.rpc.SampleCreateResponse\x12@\n" +
-	"\vSamplesList\x12\x17.rpc.SamplesListRequest\x1a\x18.rpc.SamplesListResponse\x124\n" +
+	"\vSamplesList\x12\x17.rpc.SamplesListRequest\x1a\x18.rpc.SamplesListResponse\x12F\n" +
+	"\rSwitchContext\x12\x19.rpc.SwitchContextRequest\x1a\x1a.rpc.SwitchContextResponse\x124\n" +
 	"\aTrigger\x12\x13.rpc.TriggerRequest\x1a\x14.rpc.TriggerResponse\x12C\n" +
 	"\fTriggersList\x12\x18.rpc.TriggersListRequest\x1a\x19.rpc.TriggersListResponse\x124\n" +
 	"\aVersion\x12\x13.rpc.VersionRequest\x1a\x14.rpc.VersionResponse\x12^\n" +
@@ -51,25 +52,27 @@ var file_commands_proto_goTypes = []any{
 	(*SampleConfigsRequest)(nil),          // 6: rpc.SampleConfigsRequest
 	(*SampleCreateRequest)(nil),           // 7: rpc.SampleCreateRequest
 	(*SamplesListRequest)(nil),            // 8: rpc.SamplesListRequest
-	(*TriggerRequest)(nil),                // 9: rpc.TriggerRequest
-	(*TriggersListRequest)(nil),           // 10: rpc.TriggersListRequest
-	(*VersionRequest)(nil),                // 11: rpc.VersionRequest
-	(*WebhookEndpointCreateRequest)(nil),  // 12: rpc.WebhookEndpointCreateRequest
-	(*WebhookEndpointsListRequest)(nil),   // 13: rpc.WebhookEndpointsListRequest
-	(*EventsResendResponse)(nil),          // 14: rpc.EventsResendResponse
-	(*FixtureResponse)(nil),               // 15: rpc.FixtureResponse
-	(*ListenResponse)(nil),                // 16: rpc.ListenResponse
-	(*LoginResponse)(nil),                 // 17: rpc.LoginResponse
-	(*LoginStatusResponse)(nil),           // 18: rpc.LoginStatusResponse
-	(*LogsTailResponse)(nil),              // 19: rpc.LogsTailResponse
-	(*SampleConfigsResponse)(nil),         // 20: rpc.SampleConfigsResponse
-	(*SampleCreateResponse)(nil),          // 21: rpc.SampleCreateResponse
-	(*SamplesListResponse)(nil),           // 22: rpc.SamplesListResponse
-	(*TriggerResponse)(nil),               // 23: rpc.TriggerResponse
-	(*TriggersListResponse)(nil),          // 24: rpc.TriggersListResponse
-	(*VersionResponse)(nil),               // 25: rpc.VersionResponse
-	(*WebhookEndpointCreateResponse)(nil), // 26: rpc.WebhookEndpointCreateResponse
-	(*WebhookEndpointsListResponse)(nil),  // 27: rpc.WebhookEndpointsListResponse
+	(*SwitchContextRequest)(nil),          // 9: rpc.SwitchContextRequest
+	(*TriggerRequest)(nil),                // 10: rpc.TriggerRequest
+	(*TriggersListRequest)(nil),           // 11: rpc.TriggersListRequest
+	(*VersionRequest)(nil),                // 12: rpc.VersionRequest
+	(*WebhookEndpointCreateRequest)(nil),  // 13: rpc.WebhookEndpointCreateRequest
+	(*WebhookEndpointsListRequest)(nil),   // 14: rpc.WebhookEndpointsListRequest
+	(*EventsResendResponse)(nil),          // 15: rpc.EventsResendResponse
+	(*FixtureResponse)(nil),               // 16: rpc.FixtureResponse
+	(*ListenResponse)(nil),                // 17: rpc.ListenResponse
+	(*LoginResponse)(nil),                 // 18: rpc.LoginResponse
+	(*LoginStatusResponse)(nil),           // 19: rpc.LoginStatusResponse
+	(*LogsTailResponse)(nil),              // 20: rpc.LogsTailResponse
+	(*SampleConfigsResponse)(nil),         // 21: rpc.SampleConfigsResponse
+	(*SampleCreateResponse)(nil),          // 22: rpc.SampleCreateResponse
+	(*SamplesListResponse)(nil),           // 23: rpc.SamplesListResponse
+	(*SwitchContextResponse)(nil),         // 24: rpc.SwitchContextResponse
+	(*TriggerResponse)(nil),               // 25: rpc.TriggerResponse
+	(*TriggersListResponse)(nil),          // 26: rpc.TriggersListResponse
+	(*VersionResponse)(nil),               // 27: rpc.VersionResponse
+	(*WebhookEndpointCreateResponse)(nil), // 28: rpc.WebhookEndpointCreateResponse
+	(*WebhookEndpointsListResponse)(nil),  // 29: rpc.WebhookEndpointsListResponse
 }
 var file_commands_proto_depIdxs = []int32{
 	0,  // 0: rpc.StripeCLI.EventsResend:input_type -> rpc.EventsResendRequest
@@ -81,27 +84,29 @@ var file_commands_proto_depIdxs = []int32{
 	6,  // 6: rpc.StripeCLI.SampleConfigs:input_type -> rpc.SampleConfigsRequest
 	7,  // 7: rpc.StripeCLI.SampleCreate:input_type -> rpc.SampleCreateRequest
 	8,  // 8: rpc.StripeCLI.SamplesList:input_type -> rpc.SamplesListRequest
-	9,  // 9: rpc.StripeCLI.Trigger:input_type -> rpc.TriggerRequest
-	10, // 10: rpc.StripeCLI.TriggersList:input_type -> rpc.TriggersListRequest
-	11, // 11: rpc.StripeCLI.Version:input_type -> rpc.VersionRequest
-	12, // 12: rpc.StripeCLI.WebhookEndpointCreate:input_type -> rpc.WebhookEndpointCreateRequest
-	13, // 13: rpc.StripeCLI.WebhookEndpointsList:input_type -> rpc.WebhookEndpointsListRequest
-	14, // 14: rpc.StripeCLI.EventsResend:output_type -> rpc.EventsResendResponse
-	15, // 15: rpc.StripeCLI.Fixture:output_type -> rpc.FixtureResponse
-	16, // 16: rpc.StripeCLI.Listen:output_type -> rpc.ListenResponse
-	17, // 17: rpc.StripeCLI.Login:output_type -> rpc.LoginResponse
-	18, // 18: rpc.StripeCLI.LoginStatus:output_type -> rpc.LoginStatusResponse
-	19, // 19: rpc.StripeCLI.LogsTail:output_type -> rpc.LogsTailResponse
-	20, // 20: rpc.StripeCLI.SampleConfigs:output_type -> rpc.SampleConfigsResponse
-	21, // 21: rpc.StripeCLI.SampleCreate:output_type -> rpc.SampleCreateResponse
-	22, // 22: rpc.StripeCLI.SamplesList:output_type -> rpc.SamplesListResponse
-	23, // 23: rpc.StripeCLI.Trigger:output_type -> rpc.TriggerResponse
-	24, // 24: rpc.StripeCLI.TriggersList:output_type -> rpc.TriggersListResponse
-	25, // 25: rpc.StripeCLI.Version:output_type -> rpc.VersionResponse
-	26, // 26: rpc.StripeCLI.WebhookEndpointCreate:output_type -> rpc.WebhookEndpointCreateResponse
-	27, // 27: rpc.StripeCLI.WebhookEndpointsList:output_type -> rpc.WebhookEndpointsListResponse
-	14, // [14:28] is the sub-list for method output_type
-	0,  // [0:14] is the sub-list for method input_type
+	9,  // 9: rpc.StripeCLI.SwitchContext:input_type -> rpc.SwitchContextRequest
+	10, // 10: rpc.StripeCLI.Trigger:input_type -> rpc.TriggerRequest
+	11, // 11: rpc.StripeCLI.TriggersList:input_type -> rpc.TriggersListRequest
+	12, // 12: rpc.StripeCLI.Version:input_type -> rpc.VersionRequest
+	13, // 13: rpc.StripeCLI.WebhookEndpointCreate:input_type -> rpc.WebhookEndpointCreateRequest
+	14, // 14: rpc.StripeCLI.WebhookEndpointsList:input_type -> rpc.WebhookEndpointsListRequest
+	15, // 15: rpc.StripeCLI.EventsResend:output_type -> rpc.EventsResendResponse
+	16, // 16: rpc.StripeCLI.Fixture:output_type -> rpc.FixtureResponse
+	17, // 17: rpc.StripeCLI.Listen:output_type -> rpc.ListenResponse
+	18, // 18: rpc.StripeCLI.Login:output_type -> rpc.LoginResponse
+	19, // 19: rpc.StripeCLI.LoginStatus:output_type -> rpc.LoginStatusResponse
+	20, // 20: rpc.StripeCLI.LogsTail:output_type -> rpc.LogsTailResponse
+	21, // 21: rpc.StripeCLI.SampleConfigs:output_type -> rpc.SampleConfigsResponse
+	22, // 22: rpc.StripeCLI.SampleCreate:output_type -> rpc.SampleCreateResponse
+	23, // 23: rpc.StripeCLI.SamplesList:output_type -> rpc.SamplesListResponse
+	24, // 24: rpc.StripeCLI.SwitchContext:output_type -> rpc.SwitchContextResponse
+	25, // 25: rpc.StripeCLI.Trigger:output_type -> rpc.TriggerResponse
+	26, // 26: rpc.StripeCLI.TriggersList:output_type -> rpc.TriggersListResponse
+	27, // 27: rpc.StripeCLI.Version:output_type -> rpc.VersionResponse
+	28, // 28: rpc.StripeCLI.WebhookEndpointCreate:output_type -> rpc.WebhookEndpointCreateResponse
+	29, // 29: rpc.StripeCLI.WebhookEndpointsList:output_type -> rpc.WebhookEndpointsListResponse
+	15, // [15:30] is the sub-list for method output_type
+	0,  // [0:15] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
@@ -121,6 +126,7 @@ func file_commands_proto_init() {
 	file_sample_configs_proto_init()
 	file_sample_create_proto_init()
 	file_samples_list_proto_init()
+	file_switch_context_proto_init()
 	file_trigger_proto_init()
 	file_triggers_list_proto_init()
 	file_version_proto_init()

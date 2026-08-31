@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -56,5 +58,13 @@ func (sc *switchContextCmd) run(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		accountID = args[0]
 	}
-	return login.SwitchContext(cmd.Context(), sc.accessBaseURL, &Config, accountID, sc.livemode)
+	result, err := login.SwitchContext(cmd.Context(), sc.accessBaseURL, &Config, accountID, sc.livemode)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		return nil
+	}
+	fmt.Printf("Active context: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
+	return nil
 }
