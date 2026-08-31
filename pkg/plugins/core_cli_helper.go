@@ -13,6 +13,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -28,6 +29,10 @@ type CoreCLIHelper interface {
 	RunPeerPlugin(pluginName string, args []string, cwd string) error
 	ResolveCredentials(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
 	ResolveCredentialsForAnyMode(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
+	// SwitchContext switches the active authorized account/mode context, the same way
+	// `stripe switch context` does. If accountID is empty, shows an interactive picker;
+	// switched is false if the user cancels it, in which case the other return values are empty.
+	SwitchContext(accountID string, livemode bool) (resultAccountID string, accountName string, resultLivemode bool, switched bool, err error)
 }
 
 type CoreCLIHelperClient struct {
@@ -107,6 +112,14 @@ func (c *CoreCLIHelperClient) ResolveCredentialsForAnyMode(livemode bool) (strin
 	return resp.Token, resp.StripeContext, resp.Livemode, nil
 }
 
+func (c *CoreCLIHelperClient) SwitchContext(accountID string, livemode bool) (string, string, bool, bool, error) {
+	resp, err := c.client.SwitchContext(context.Background(), &proto.SwitchContextRequest{AccountId: accountID, Livemode: livemode})
+	if err != nil {
+		return "", "", false, false, err
+	}
+	return resp.AccountId, resp.AccountName, resp.Livemode, resp.Switched, nil
+}
+
 type CoreCLIHelperServer struct {
 	proto.CoreCLIHelperServer
 	Impl CoreCLIHelper
@@ -184,6 +197,14 @@ func (s *CoreCLIHelperServer) ResolveCredentialsForAnyMode(ctx context.Context, 
 	return &proto.ResolveCredentialsResponse{Token: token, StripeContext: stripeContext, Livemode: livemode}, nil
 }
 
+func (s *CoreCLIHelperServer) SwitchContext(ctx context.Context, req *proto.SwitchContextRequest) (*proto.SwitchContextResponse, error) {
+	accountID, accountName, livemode, switched, err := s.Impl.SwitchContext(req.AccountId, req.Livemode)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SwitchContextResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, Switched: switched}, nil
+}
+
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
 type coreCLIHelper struct {
 	ctx    context.Context
@@ -256,6 +277,10 @@ func clearPendingKeychainValue(key string) {
 	defer keychainVisibilityPendingMu.Unlock()
 	delete(keychainVisibilityPendingValues, key)
 }
+
+// loginSwitchContext is a package variable so tests can stub out the network/keychain calls
+// made by coreCLIHelper.SwitchContext.
+var loginSwitchContext = login.SwitchContext
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
@@ -380,4 +405,21 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
 	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "")
+}
+
+// SwitchContext switches the active authorized account/mode context, the same way
+// `stripe switch context` does.
+func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, string, bool, bool, error) {
+	cfg, ok := h.config.(*config.Config)
+	if !ok {
+		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not switch context: config type mismatch")
+	}
+	result, err := loginSwitchContext(h.ctx, login.DefaultAccessBaseURL, cfg, accountID, livemode)
+	if err != nil {
+		return "", "", false, false, err
+	}
+	if result == nil {
+		return "", "", false, false, nil
+	}
+	return result.Account.ID, result.Account.Name, result.Mode == "live", true, nil
 }

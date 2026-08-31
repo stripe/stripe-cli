@@ -73,6 +73,10 @@ service CoreCLIHelper {
   // OAuth active context, resolves credentials for whichever mode is actually
   // active instead of failing.
   rpc ResolveCredentialsForAnyMode(ResolveCredentialsRequest) returns (ResolveCredentialsResponse);
+  // SwitchContext switches the active authorized account/mode context, the
+  // same way `stripe switch context` does. If account_id is empty, shows an
+  // interactive picker.
+  rpc SwitchContext(SwitchContextRequest) returns (SwitchContextResponse);
 }
 
 message EchoRequest {
@@ -144,4 +148,18 @@ message ResolveCredentialsResponse {
   string token = 1;
   string stripe_context = 2;
   bool livemode = 3;
+}
+
+message SwitchContextRequest {
+  string account_id = 1;
+  bool livemode = 2;
+}
+
+message SwitchContextResponse {
+  string account_id = 1;
+  string account_name = 2;
+  bool livemode = 3;
+  // switched is false if the user cancelled an interactive picker; in that
+  // case the other fields are empty.
+  bool switched = 4;
 }
