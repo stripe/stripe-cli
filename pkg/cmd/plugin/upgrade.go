@@ -91,7 +91,12 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runPostInstallHook(ctx, uc.cfg, uc.fs, plugin, version, prevVersion)
+	accessBaseURL, _ := cmd.Flags().GetString("access-base")
+
+	runPostInstallHook(ctx, uc.cfg, uc.fs, plugin, version, prevVersion,
+		explicitFlagValue(cmd, "api-base", uc.apiBaseURL),
+		explicitFlagValue(cmd, "dashboard-base", uc.dashboardBaseURL),
+		explicitFlagValue(cmd, "access-base", accessBaseURL))
 
 	sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)
 

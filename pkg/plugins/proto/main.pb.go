@@ -321,8 +321,17 @@ type AdditionalInfo struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	IsTerminal         *IsTerminal            `protobuf:"bytes,1,opt,name=is_terminal,json=isTerminal,proto3" json:"is_terminal,omitempty"`
 	TerminalDimensions *TerminalDimensions    `protobuf:"bytes,2,opt,name=terminal_dimensions,json=terminalDimensions,proto3" json:"terminal_dimensions,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// api_base_url, dashboard_base_url, and access_base_url carry the
+	// --api-base/--dashboard-base/--access-base values the user explicitly passed
+	// to the CLI, so a plugin can target the same non-default environment
+	// (e.g. QA/dev) as the CLI that launched it. Each is empty when the user
+	// didn't pass the corresponding flag; a plugin should fall back to its own
+	// default in that case rather than treating an empty string as a host.
+	ApiBaseUrl       string `protobuf:"bytes,3,opt,name=api_base_url,json=apiBaseUrl,proto3" json:"api_base_url,omitempty"`
+	DashboardBaseUrl string `protobuf:"bytes,4,opt,name=dashboard_base_url,json=dashboardBaseUrl,proto3" json:"dashboard_base_url,omitempty"`
+	AccessBaseUrl    string `protobuf:"bytes,5,opt,name=access_base_url,json=accessBaseUrl,proto3" json:"access_base_url,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AdditionalInfo) Reset() {
@@ -367,6 +376,27 @@ func (x *AdditionalInfo) GetTerminalDimensions() *TerminalDimensions {
 		return x.TerminalDimensions
 	}
 	return nil
+}
+
+func (x *AdditionalInfo) GetApiBaseUrl() string {
+	if x != nil {
+		return x.ApiBaseUrl
+	}
+	return ""
+}
+
+func (x *AdditionalInfo) GetDashboardBaseUrl() string {
+	if x != nil {
+		return x.DashboardBaseUrl
+	}
+	return ""
+}
+
+func (x *AdditionalInfo) GetAccessBaseUrl() string {
+	if x != nil {
+		return x.AccessBaseUrl
+	}
+	return ""
 }
 
 type IsTerminal struct {
@@ -1357,11 +1387,15 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\x0fadditional_info\x18\x01 \x01(\v2\x15.proto.AdditionalInfoR\x0eadditionalInfo\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12+\n" +
 	"\x12core_cli_helper_id\x18\x03 \x01(\rR\x0fcoreCliHelperId\"\x16\n" +
-	"\x14PreUninstallResponse\"\x90\x01\n" +
+	"\x14PreUninstallResponse\"\x88\x02\n" +
 	"\x0eAdditionalInfo\x122\n" +
 	"\vis_terminal\x18\x01 \x01(\v2\x11.proto.IsTerminalR\n" +
 	"isTerminal\x12J\n" +
-	"\x13terminal_dimensions\x18\x02 \x01(\v2\x19.proto.TerminalDimensionsR\x12terminalDimensions\"R\n" +
+	"\x13terminal_dimensions\x18\x02 \x01(\v2\x19.proto.TerminalDimensionsR\x12terminalDimensions\x12 \n" +
+	"\fapi_base_url\x18\x03 \x01(\tR\n" +
+	"apiBaseUrl\x12,\n" +
+	"\x12dashboard_base_url\x18\x04 \x01(\tR\x10dashboardBaseUrl\x12&\n" +
+	"\x0faccess_base_url\x18\x05 \x01(\tR\raccessBaseUrl\"R\n" +
 	"\n" +
 	"IsTerminal\x12\x14\n" +
 	"\x05stdin\x18\x01 \x01(\bR\x05stdin\x12\x16\n" +

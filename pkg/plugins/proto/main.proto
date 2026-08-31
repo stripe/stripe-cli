@@ -44,6 +44,15 @@ message PreUninstallResponse {
 message AdditionalInfo {
   IsTerminal is_terminal = 1;
   TerminalDimensions terminal_dimensions = 2;
+  // api_base_url, dashboard_base_url, and access_base_url carry the
+  // --api-base/--dashboard-base/--access-base values the user explicitly passed
+  // to the CLI, so a plugin can target the same non-default environment
+  // (e.g. QA/dev) as the CLI that launched it. Each is empty when the user
+  // didn't pass the corresponding flag; a plugin should fall back to its own
+  // default in that case rather than treating an empty string as a host.
+  string api_base_url = 3;
+  string dashboard_base_url = 4;
+  string access_base_url = 5;
 }
 
 message IsTerminal {

@@ -13,6 +13,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -106,6 +107,17 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 	}
 }
 
+// explicitFlagValue returns value if the named flag was explicitly set by the user, or "" if
+// it was left at its default. This is used to decide what to forward to a plugin via
+// AdditionalInfo: a plugin should only hear about a base URL override the user actually chose,
+// not the CLI's own resolved default.
+func explicitFlagValue(cmd *cobra.Command, name, value string) string {
+	if cmd.Flags().Changed(name) {
+		return value
+	}
+	return ""
+}
+
 // runPluginByName hands off to a plugin that was installed during this invocation
 // rather than at startup, which is how an auto-installing hint command runs the
 // user's original command. It reuses the template command so a just-installed
@@ -143,7 +155,37 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "", "")
+	// GetString only errors when the flag isn't registered on cmd, which shouldn't
+	// happen here since these plugin commands are always attached under rootCmd
+	// (where --api-base/--dashboard-base/--access-base are defined); fall back to
+	// the same defaults the root flags would carry just in case.
+	apiBaseURL, apiBaseErr := cmd.Flags().GetString("api-base")
+	if apiBaseErr != nil {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+	if err := stripe.ValidateAPIBaseURL(apiBaseURL); err != nil {
+		return err
+	}
+	rawDashboardBaseURL, _ := cmd.Flags().GetString("dashboard-base")
+	dashboardBaseURLResolved := stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+	if rawDashboardBaseURL != "" {
+		dashboardBaseURLResolved = rawDashboardBaseURL
+	}
+	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURLResolved); err != nil {
+		return err
+	}
+	accessBaseURL, accessBaseErr := cmd.Flags().GetString("access-base")
+	if accessBaseErr != nil {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+	if err := login.ValidateAccessBaseURL(accessBaseURL); err != nil {
+		return err
+	}
+
+	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "", "",
+		explicitFlagValue(cmd, "api-base", apiBaseURL),
+		explicitFlagValue(cmd, "dashboard-base", rawDashboardBaseURL),
+		explicitFlagValue(cmd, "access-base", accessBaseURL))
 	plugins.CleanupAllClients()
 	if err == nil {
 		dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)

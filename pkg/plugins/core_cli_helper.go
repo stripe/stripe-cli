@@ -210,6 +210,14 @@ type coreCLIHelper struct {
 	ctx    context.Context
 	config config.IConfig
 	fs     afero.Fs
+
+	// apiBaseURL, dashboardBaseURL, and accessBaseURL are the --api-base/--dashboard-base/
+	// --access-base values the user explicitly passed to the CLI, if any. They're forwarded
+	// to peer plugins run via RunPeerPlugin and used for SwitchContext, so a plugin-triggered
+	// action targets the same environment as the CLI that launched the original plugin.
+	apiBaseURL       string
+	dashboardBaseURL string
+	accessBaseURL    string
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
@@ -283,8 +291,17 @@ func clearPendingKeychainValue(key string) {
 var loginSwitchContext = login.SwitchContext
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
-func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
-	return &coreCLIHelper{ctx: ctx, config: cfg, fs: fs}
+// apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
+// passed --api-base/--dashboard-base/--access-base to the CLI.
+func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL, accessBaseURL string) CoreCLIHelper {
+	return &coreCLIHelper{
+		ctx:              ctx,
+		config:           cfg,
+		fs:               fs,
+		apiBaseURL:       apiBaseURL,
+		dashboardBaseURL: dashboardBaseURL,
+		accessBaseURL:    accessBaseURL,
+	}
 }
 
 // Echo echoes the input string.
@@ -404,7 +421,7 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 	if !ok {
 		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
-	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "")
+	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL)
 }
 
 // SwitchContext switches the active authorized account/mode context, the same way
@@ -414,7 +431,11 @@ func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, 
 	if !ok {
 		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not switch context: config type mismatch")
 	}
-	result, err := loginSwitchContext(h.ctx, login.DefaultAccessBaseURL, cfg, accountID, livemode)
+	accessBaseURL := h.accessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+	result, err := loginSwitchContext(h.ctx, accessBaseURL, cfg, accountID, livemode)
 	if err != nil {
 		return "", "", false, false, err
 	}

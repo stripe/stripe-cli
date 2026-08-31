@@ -770,7 +770,7 @@ func TestRunVersionOverrideNotInstalled(t *testing.T) {
 	PluginsPath = ""
 	defer func() { PluginsPath = origPluginsPath }()
 
-	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "9.9.9")
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "9.9.9", "", "", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), `plugin "appA" version "9.9.9" is not installed`)
 	require.Contains(t, err.Error(), "installed version is local.build.dev")
@@ -797,7 +797,7 @@ func TestRunVersionOverrideSelectsSpecifiedVersion(t *testing.T) {
 
 	// Run with override "1.0.1" — this will get past version resolution but fail
 	// at the go-plugin handshake (expected; we're testing that version resolution works).
-	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "1.0.1")
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "1.0.1", "", "", "")
 	// The error should NOT be about version not installed; it should be a runtime error
 	// from trying to actually execute the fake binary.
 	require.Error(t, err)
@@ -825,7 +825,7 @@ func TestRunVersionOverrideBypassesLocalBuildDev(t *testing.T) {
 
 	// Without override, lookUpInstalledVersion would return local.build.dev.
 	// With override "2.0.1", it should bypass that and use 2.0.1.
-	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "2.0.1")
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "2.0.1", "", "", "")
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "is not installed")
 }
@@ -842,7 +842,7 @@ func TestPostInstallSelectsSpecifiedVersion(t *testing.T) {
 
 	// PostInstall will fail at the go-plugin handshake against the fake binary; we're only
 	// verifying that it attempts to dispense the correct version rather than erroring out early.
-	err := plugin.PostInstall(context.Background(), &cfg.Config, fs, "2.0.1", "1.0.1")
+	err := plugin.PostInstall(context.Background(), &cfg.Config, fs, "2.0.1", "1.0.1", "", "", "")
 	require.Error(t, err)
 }
 
@@ -856,7 +856,7 @@ func TestPreUninstallSelectsSpecifiedVersion(t *testing.T) {
 	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
 	afero.WriteFile(fs, "/plugins/appA/2.0.1/stripe-cli-app-a"+GetBinaryExtension(), []byte("bin"), 0755)
 
-	err := plugin.PreUninstall(context.Background(), &cfg.Config, fs, "2.0.1")
+	err := plugin.PreUninstall(context.Background(), &cfg.Config, fs, "2.0.1", "", "", "")
 	require.Error(t, err)
 }
 

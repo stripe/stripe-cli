@@ -12,10 +12,12 @@ import (
 
 // runPostInstallHook calls the plugin's PostInstall RPC, if it implements one. This is
 // best-effort: a failure here must never block `install`/`upgrade` from succeeding.
-func runPostInstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, plugin *plugins.Plugin, version, previousVersion string) {
+// apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
+// passed --api-base/--dashboard-base/--access-base; they're forwarded to the plugin as-is.
+func runPostInstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, plugin *plugins.Plugin, version, previousVersion string, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
 	defer plugins.CleanupAllClients()
 
-	if err := plugin.PostInstall(ctx, cfg, fs, version, previousVersion); err != nil {
+	if err := plugin.PostInstall(ctx, cfg, fs, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL); err != nil {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.plugin.runPostInstallHook",
 			"plugin": plugin.Shortname,
@@ -25,10 +27,12 @@ func runPostInstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, pl
 
 // runPreUninstallHook calls the plugin's PreUninstall RPC, if it implements one. This is
 // best-effort: a failure here must never block `uninstall` from succeeding.
-func runPreUninstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, plugin *plugins.Plugin, version string) {
+// apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
+// passed --api-base/--dashboard-base/--access-base; they're forwarded to the plugin as-is.
+func runPreUninstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, plugin *plugins.Plugin, version string, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
 	defer plugins.CleanupAllClients()
 
-	if err := plugin.PreUninstall(ctx, cfg, fs, version); err != nil {
+	if err := plugin.PreUninstall(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, accessBaseURL); err != nil {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.plugin.runPreUninstallHook",
 			"plugin": plugin.Shortname,
