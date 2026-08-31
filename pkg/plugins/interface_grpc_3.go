@@ -2,12 +2,19 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	hcplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 )
+
+// postInstallPreUninstallTimeout bounds how long the host waits on a plugin's PostInstall/
+// PreUninstall RPC. Both hooks are best-effort, so a plugin that hangs (rather than erroring)
+// must not block `install`/`upgrade`/`uninstall` forever; callers already treat any error here,
+// including a timeout, as non-fatal and continue.
+const postInstallPreUninstallTimeout = 30 * time.Second
 
 // DispatcherV3 is the interface that's implemented by the plugin and used by the host.
 type DispatcherV3 interface {
@@ -64,39 +71,37 @@ func (m *GRPCClientV3) RunCommand(additionalInfo *proto.AdditionalInfo, args []s
 	return nil
 }
 
-// PostInstall calls the RPC.
+// PostInstall calls the RPC, bounded by postInstallPreUninstallTimeout in case the plugin hangs.
 func (m *GRPCClientV3) PostInstall(additionalInfo *proto.AdditionalInfo, version string, previousVersion string, coreCLIHelper CoreCLIHelper) error {
 	brokerID, stop := m.serveCoreCLIHelper(coreCLIHelper)
+	defer stop()
 
-	_, err := m.client.PostInstall(context.Background(), &proto.PostInstallRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), postInstallPreUninstallTimeout)
+	defer cancel()
+
+	_, err := m.client.PostInstall(ctx, &proto.PostInstallRequest{
 		AdditionalInfo:  additionalInfo,
 		Version:         version,
 		PreviousVersion: previousVersion,
 		CoreCliHelperId: brokerID,
 	})
-	if err != nil {
-		return err
-	}
-
-	stop()
-	return nil
+	return err
 }
 
-// PreUninstall calls the RPC.
+// PreUninstall calls the RPC, bounded by postInstallPreUninstallTimeout in case the plugin hangs.
 func (m *GRPCClientV3) PreUninstall(additionalInfo *proto.AdditionalInfo, version string, coreCLIHelper CoreCLIHelper) error {
 	brokerID, stop := m.serveCoreCLIHelper(coreCLIHelper)
+	defer stop()
 
-	_, err := m.client.PreUninstall(context.Background(), &proto.PreUninstallRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), postInstallPreUninstallTimeout)
+	defer cancel()
+
+	_, err := m.client.PreUninstall(ctx, &proto.PreUninstallRequest{
 		AdditionalInfo:  additionalInfo,
 		Version:         version,
 		CoreCliHelperId: brokerID,
 	})
-	if err != nil {
-		return err
-	}
-
-	stop()
-	return nil
+	return err
 }
 
 // serveCoreCLIHelper starts a CoreCLIHelper gRPC server on a new broker stream so the

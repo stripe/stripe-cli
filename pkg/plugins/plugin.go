@@ -546,12 +546,17 @@ func buildAdditionalInfo(logger *log.Entry, apiBaseURL, dashboardBaseURL, access
 
 // dispensePluginInterface launches the plugin binary at the given installed version and
 // returns its dispensed "main" interface, which is one of Dispatcher, DispatcherGRPC, or
-// DispatcherV3 depending on the protocol version the plugin negotiates.
-// cwd sets the working directory for the plugin process; an empty string uses the current directory.
-func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, version, cwd string, logger *log.Entry) (interface{}, error) {
+// DispatcherV3 depending on the protocol version the plugin negotiates, along with the
+// *hcplugin.Client managing that plugin's subprocess. cwd sets the working directory for the
+// plugin process; an empty string uses the current directory.
+//
+// The returned client is non-nil as soon as the subprocess has been launched (i.e. once
+// hcplugin.NewClient is called), even if a later step in this function errors, so callers can
+// unconditionally kill it to avoid leaking the subprocess.
+func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, version, cwd string, logger *log.Entry) (interface{}, *hcplugin.Client, error) {
 	pluginDir, err := p.getPluginInstallPath(config, version)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
@@ -587,7 +592,7 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 	if !isLocalDevelopmentVersion(version) {
 		sum, err := p.getChecksum(version)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		clientConfig.SecureConfig = &hcplugin.SecureConfig{
@@ -603,17 +608,17 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 	rpcClient, err := client.Client()
 	if err != nil {
 		logger.Debugf("Could not connect to plugin: %s", err)
-		return nil, err
+		return nil, client, err
 	}
 
 	// Request the plugin's main interface
 	raw, err := rpcClient.Dispense("main")
 	if err != nil {
 		logger.Debugf("Could not dispense plugin interface: %s", err)
-		return nil, err
+		return nil, client, err
 	}
 
-	return raw, nil
+	return raw, client, nil
 }
 
 // Run boots up the binary and then sends the command to it via RPC.
@@ -686,7 +691,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		return err
 	}
 
-	raw, err := p.dispensePluginInterface(config, fs, version, cwd, logger)
+	raw, _, err := p.dispensePluginInterface(config, fs, version, cwd, logger)
 	if err != nil {
 		return err
 	}
@@ -718,9 +723,12 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 // explicit `plugin install`/`upgrade` commands (e.g. Run's auto-install when the binary is
 // missing locally). This is best-effort: a failure here must never block the command the user
 // actually ran.
+//
+// It intentionally does not call CleanupAllClients: this path is reachable from within another
+// plugin's own RunCommand (via CoreCLIHelper.RunPeerPlugin -> Run -> auto-install), and a global
+// cleanup there would kill that caller's still-running client out from under it. PostInstall
+// kills only the client it dispensed for itself.
 func runPostInstallHook(ctx context.Context, config *config.Config, fs afero.Fs, p *Plugin, version, previousVersion string, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
-	defer CleanupAllClients()
-
 	if err := p.PostInstall(ctx, config, fs, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL); err != nil {
 		log.WithFields(log.Fields{
 			"prefix": "plugins.plugin.runPostInstallHook",
@@ -737,7 +745,10 @@ func (p *Plugin) PostInstall(ctx context.Context, config *config.Config, fs afer
 		"prefix": "plugins.plugin.PostInstall",
 	})
 
-	raw, err := p.dispensePluginInterface(config, fs, version, "", logger)
+	raw, client, err := p.dispensePluginInterface(config, fs, version, "", logger)
+	if client != nil {
+		defer client.Kill()
+	}
 	if err != nil {
 		return err
 	}
@@ -759,7 +770,10 @@ func (p *Plugin) PreUninstall(ctx context.Context, config *config.Config, fs afe
 		"prefix": "plugins.plugin.PreUninstall",
 	})
 
-	raw, err := p.dispensePluginInterface(config, fs, version, "", logger)
+	raw, client, err := p.dispensePluginInterface(config, fs, version, "", logger)
+	if client != nil {
+		defer client.Kill()
+	}
 	if err != nil {
 		return err
 	}
