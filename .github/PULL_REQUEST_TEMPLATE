@@ -4,3 +4,5 @@ cc @stripe/developer-products
 
  ### Summary
 <!-- Simple summary of what the code does or what you have changed. If this is a visual change consider including a screenshot/gif. See go/screencap for tips/tools. -->
+
+<!-- Apply one label to this pull request: breaking-change, security, deprecation, enhancement, bug, or release-notes. Release notes are generated from it. Use skip-release-notes if this is not a user-facing change and you do not want the commit title to show up in changelogs. -->
