@@ -151,25 +151,23 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 		return err
 	}
 
-	afero.Walk(fs, pluginPath, filepath.WalkFunc(func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	entries, err := afero.ReadDir(fs, pluginPath)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		path := filepath.Join(pluginPath, entry.Name())
+		if path == versionPathToKeep {
+			logger.Debugf("Skipping directory: %s", path)
+			continue
 		}
 
-		switch {
-		case path == pluginPath:
-			// Pass the root directory
-			logger.Debugf("Skipping directory: %s", path)
-			return nil
-		case info.IsDir() && path == versionPathToKeep:
-			logger.Debugf("Skipping directory: %s", path)
-			return filepath.SkipDir
-		default:
-			logger.Debugf("Removing old plugin: %s", path)
-			fs.RemoveAll(path)
-			return nil
+		logger.Debugf("Removing old plugin: %s", path)
+		if err := fs.RemoveAll(path); err != nil {
+			return err
 		}
-	}))
+	}
 
 	return nil
 }
@@ -367,7 +365,10 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
-	p.cleanUpPluginPath(cfg, fs, version)
+	if err := p.cleanUpPluginPath(cfg, fs, version); err != nil {
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stderr)
+		return err
+	}
 
 	ansi.StopSpinner(spinner, "", os.Stderr)
 

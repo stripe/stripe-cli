@@ -35,6 +35,20 @@ func (fs *failRemoveAllFs) RemoveAll(name string) error {
 	return fs.Fs.RemoveAll(name)
 }
 
+type failOpenFs struct {
+	afero.Fs
+	path string
+	err  error
+}
+
+func (fs *failOpenFs) Open(name string) (afero.File, error) {
+	if filepath.Clean(name) == filepath.Clean(fs.path) {
+		return nil, fs.err
+	}
+
+	return fs.Fs.Open(name)
+}
+
 func TestLookUpLatestVersion(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
@@ -711,6 +725,10 @@ func TestInstallCleansOtherVersionsOfPlugin(t *testing.T) {
 	fileExists, _ := afero.Exists(fs, file)
 	require.True(t, fileExists, "Test setup failed -- did not download plugin version 0.0.1")
 
+	localBuildPath := "/plugins/appA/local.build.dev"
+	require.NoError(t, fs.MkdirAll(localBuildPath, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(localBuildPath, "stripe-cli-app-a"+GetBinaryExtension()), []byte("local build"), 0755))
+
 	// Download valid plugin
 	err = plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
 	require.Nil(t, err)
@@ -721,6 +739,14 @@ func TestInstallCleansOtherVersionsOfPlugin(t *testing.T) {
 	// Require that the older version got removed from the fs
 	fileExists, _ = afero.Exists(fs, file)
 	require.False(t, fileExists, "Expected the original version of the plugin to be deleted.")
+	localBuildExists, err := afero.Exists(fs, localBuildPath)
+	require.NoError(t, err)
+	require.False(t, localBuildExists, "Expected the local build to be deleted.")
+
+	entries, err := afero.ReadDir(fs, "/plugins/appA")
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "2.0.1", entries[0].Name())
 
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
 }
@@ -750,6 +776,48 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	// Require that we did not delete the initial version of the plugin
 	fileExists, _ = afero.Exists(fs, file)
 	require.True(t, fileExists, "Did not expect the original version of the plugin to be deleted.")
+}
+
+func TestCleanUpPluginPathReturnsListingError(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	plugin := &Plugin{Shortname: "appA"}
+	listingErr := errors.New("listing failed")
+	failingFS := &failOpenFs{
+		Fs:   fs,
+		path: "/plugins/appA",
+		err:  listingErr,
+	}
+
+	err := plugin.cleanUpPluginPath(config, failingFS, "2.0.1")
+	require.ErrorIs(t, err, listingErr)
+}
+
+func TestInstallReturnsCleanupError(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	oldPath := "/plugins/appA/0.0.1"
+	require.NoError(t, fs.MkdirAll(oldPath, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(oldPath, "old"), []byte("old"), 0644))
+
+	removeErr := errors.New("cleanup removal failed")
+	failingFS := &failRemoveAllFs{Fs: fs, path: oldPath, err: removeErr}
+	err := plugin.Install(context.Background(), config, failingFS, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL)
+	require.ErrorIs(t, err, removeErr)
+
+	newPath := "/plugins/appA/2.0.1/stripe-cli-app-a" + GetBinaryExtension()
+	newExists, statErr := afero.Exists(fs, newPath)
+	require.NoError(t, statErr)
+	require.True(t, newExists)
+	oldExists, statErr := afero.Exists(fs, oldPath)
+	require.NoError(t, statErr)
+	require.True(t, oldExists)
 }
 
 func TestRunVersionOverrideNotInstalled(t *testing.T) {
