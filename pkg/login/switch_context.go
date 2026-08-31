@@ -12,35 +12,21 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-// SwitchResult describes the account and mode a SwitchContext call activated.
-type SwitchResult struct {
-	Account config.AuthorizedAccount
-	// Mode is the API's mode value ("test" or "live"); use DisplayMode for the CLI's
-	// user-facing terminology.
-	Mode string
-}
-
-// DisplayMode maps Mode to the CLI's user-facing terminology, e.g. "test" -> "sandbox".
-func (r *SwitchResult) DisplayMode() string {
-	return displayMode(r.Mode)
-}
-
-// SwitchContext updates the active OAuth context and returns the account and mode that became
-// active. If accountID is non-empty it selects that account directly (test mode by default, live
-// if livemode is true). Otherwise it shows an interactive list, returning a nil result if the
-// user cancels it.
-func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*SwitchResult, error) {
+// SwitchContext updates the active OAuth context. If accountID is non-empty
+// it selects that account directly (test mode by default, live if livemode is
+// true). Otherwise it shows an interactive list.
+func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) error {
 	uat, err := cfg.Profile.GetUAT()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if !strings.HasPrefix(uat, "oak_") {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in with OAuth; run 'stripe login' first")
+		return errorcategory.Errorf(errorcategory.Auth, "not logged in with OAuth; run 'stripe login' first")
 	}
 
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, uat)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch authorized accounts: %w", err)
+		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
 	if accountID != "" {
@@ -49,7 +35,7 @@ func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config
 	return runSwitchContextTUI(cfg, accounts)
 }
 
-func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, accountID string, livemode bool) (*SwitchResult, error) {
+func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, accountID string, livemode bool) error {
 	wantMode := "test"
 	if livemode {
 		wantMode = "live"
@@ -60,18 +46,15 @@ func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, account
 		}
 		for _, m := range a.Modes {
 			if m == wantMode {
-				if err := applyContext(cfg, a, m); err != nil {
-					return nil, err
-				}
-				return &SwitchResult{Account: a, Mode: m}, nil
+				return applyContext(cfg, a, m)
 			}
 		}
 		if livemode {
-			return nil, errorcategory.Errorf(errorcategory.Auth, "Account %s does not have live mode access", accountID)
+			return errorcategory.Errorf(errorcategory.Auth, "Account %s does not have live mode access", accountID)
 		}
-		return nil, errorcategory.Errorf(errorcategory.Auth, "Account %s does not have sandbox access; use --live to switch to live mode", accountID)
+		return errorcategory.Errorf(errorcategory.Auth, "Account %s does not have sandbox access; use --live to switch to live mode", accountID)
 	}
-	return nil, errorcategory.Errorf(errorcategory.Auth, "Account %s not found in your authorized accounts", accountID)
+	return errorcategory.Errorf(errorcategory.Auth, "Account %s not found in your authorized accounts", accountID)
 }
 
 func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode string) error {
@@ -84,7 +67,11 @@ func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode str
 	cfg.Profile.UAT = uat
 	cfg.Profile.AccountID = account.ID
 	cfg.Profile.DisplayName = account.Name
-	return cfg.Profile.CreateProfile()
+	if err := cfg.Profile.CreateProfile(); err != nil {
+		return err
+	}
+	fmt.Printf("Active context: %s · %s (%s)\n", account.Name, displayMode(mode), account.ID)
+	return nil
 }
 
 // --- TUI ---
@@ -261,31 +248,28 @@ func (m switchContextModel) View() tea.View {
 	return tea.NewView(sb.String())
 }
 
-func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount) (*SwitchResult, error) {
+func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount) error {
 	if len(accounts) == 0 {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "no authorized accounts found")
+		return errorcategory.Errorf(errorcategory.Auth, "no authorized accounts found")
 	}
 	m := newSwitchContextModel(accounts)
 
 	final, err := tea.NewProgram(m).Run()
 	if err != nil {
-		return nil, fmt.Errorf("context selector: %w", err)
+		return fmt.Errorf("context selector: %w", err)
 	}
 	result, ok := final.(switchContextModel)
 	if !ok || result.quit || !result.done {
-		return nil, nil
+		return nil
 	}
 	if result.cursor < 0 || result.cursor >= len(result.rows) {
-		return nil, nil
+		return nil
 	}
 	sel := result.rows[result.cursor]
 	for _, a := range accounts {
 		if a.ID == sel.id {
-			if err := applyContext(cfg, a, sel.mode); err != nil {
-				return nil, err
-			}
-			return &SwitchResult{Account: a, Mode: sel.mode}, nil
+			return applyContext(cfg, a, sel.mode)
 		}
 	}
-	return nil, errorcategory.Errorf(errorcategory.Auth, "selected account not found")
+	return errorcategory.Errorf(errorcategory.Auth, "selected account not found")
 }

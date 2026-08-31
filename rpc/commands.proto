@@ -11,7 +11,6 @@ import "logs_tail.proto";
 import "sample_configs.proto";
 import "sample_create.proto";
 import "samples_list.proto";
-import "switch_context.proto";
 import "trigger.proto";
 import "triggers_list.proto";
 import "version.proto";
@@ -49,10 +48,6 @@ service StripeCLI {
 
   // Get a list of available Stripe samples. Like `stripe samples list`.
   rpc SamplesList(SamplesListRequest) returns (SamplesListResponse);
-
-  // Switch to a different authorized account context. Like `stripe switch context`, but requires
-  // an account ID since there is no interactive picker.
-  rpc SwitchContext(SwitchContextRequest) returns (SwitchContextResponse);
 
   // Trigger a webhook event. Like `stripe trigger`.
   rpc Trigger(TriggerRequest) returns (TriggerResponse);
