@@ -659,6 +659,8 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			if err := resolvedPlugin.Install(ctx, config, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
 				return err
 			}
+
+			runPostInstallHook(ctx, config, fs, p, version, "")
 		}
 	}
 
@@ -695,6 +697,21 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		return errorcategory.New(errorcategory.Internal, "dispensed an unknown plugin interface")
 	}
 	return nil
+}
+
+// runPostInstallHook calls the plugin's PostInstall hook for a version installed outside the
+// explicit `plugin install`/`upgrade` commands (e.g. Run's auto-install when the binary is
+// missing locally). This is best-effort: a failure here must never block the command the user
+// actually ran.
+func runPostInstallHook(ctx context.Context, config *config.Config, fs afero.Fs, p *Plugin, version, previousVersion string) {
+	defer CleanupAllClients()
+
+	if err := p.PostInstall(ctx, config, fs, version, previousVersion); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.runPostInstallHook",
+			"plugin": p.Shortname,
+		}).Debugf("plugin PostInstall hook failed: %s", err)
+	}
 }
 
 // PostInstall calls the plugin's PostInstall hook for the given version, if the plugin

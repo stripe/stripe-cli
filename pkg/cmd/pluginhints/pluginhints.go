@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -59,6 +60,21 @@ func resolveOnce(resolve pluginResolver) pluginResolver {
 		})
 
 		return resolved, err
+	}
+}
+
+// runPostInstallHook calls the plugin's PostInstall hook after a hint command installs it,
+// whether that install was prompted or automatic. Hint commands only install plugins that
+// were not previously installed, so previousVersion is always empty. This is best-effort: a
+// failure here must never block the install from succeeding.
+func runPostInstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, resolved *plugins.ResolvedPluginVersion) {
+	defer plugins.CleanupAllClients()
+
+	if err := resolved.Plugin.PostInstall(ctx, cfg, fs, resolved.Version, ""); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.pluginhints.runPostInstallHook",
+			"plugin": resolved.Plugin.Shortname,
+		}).Debugf("plugin PostInstall hook failed: %s", err)
 	}
 }
 
@@ -188,7 +204,11 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 			if err != nil {
 				return err
 			}
-			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
+			if err := resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
+				return err
+			}
+			runPostInstallHook(ctx, cfg, fs, resolvedPlugin)
+			return nil
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,
