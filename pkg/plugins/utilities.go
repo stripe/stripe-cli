@@ -876,19 +876,23 @@ func resolveVersionFromReleases(plugin *Plugin, pluginName, requestedVersion, so
 		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s", source, pluginName)
 	}
 
-	resolvedVersion := requestedVersion
-	if resolvedVersion == "" {
-		resolvedVersion = plugin.LookUpLatestVersion()
-		if resolvedVersion == "" {
+	// Only a version the caller named has to be looked for. LookUpLatestVersion
+	// reports a version it read off a release for this platform, so asking the same
+	// releases to produce that release again can only ever succeed.
+	if requestedVersion == "" {
+		latestVersion := plugin.LookUpLatestVersion()
+		if latestVersion == "" {
 			return "", errorcategory.Errorf(errorcategory.API, "%s did not include a release for %s on %s/%s", source, pluginName, runtime.GOOS, runtime.GOARCH)
 		}
+
+		return latestVersion, nil
 	}
 
-	if plugin.getReleaseForVersion(resolvedVersion) == nil {
-		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s version %s for %s/%s", source, pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	if plugin.getReleaseForVersion(requestedVersion) == nil {
+		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s version %s for %s/%s", source, pluginName, requestedVersion, runtime.GOOS, runtime.GOARCH)
 	}
 
-	return resolvedVersion, nil
+	return requestedVersion, nil
 }
 
 func lookUpPluginInCachedManifest(config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {
