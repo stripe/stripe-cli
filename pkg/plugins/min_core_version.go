@@ -12,11 +12,21 @@ import (
 // that the plugin needs a newer core CLI than this one. Version is the release the
 // caller asked for, and is empty when the caller asked for no particular one.
 //
-// Whether a release meets its own min_core_version is decided entirely by the API,
-// which knows the constraint for every release and hides the ones this CLI cannot
-// run. Nothing here re-derives that judgment: an install cannot complete without a
-// binary URL from a live metadata response, so there is no path that reaches a
-// download the API did not agree to.
+// This is the one place min_core_version is explained. The rest of the package
+// points back here instead of restating it, so there is a single copy to keep true.
+//
+// The API owns the judgment: it knows the constraint for every release and withholds
+// the ones this CLI cannot run, sending this answer when that leaves nothing to hand
+// back. See requests.PluginRequiresNewerCLI for when it does so. Two things follow
+// for this package:
+//
+//   - Nothing re-derives the constraint. Releases carry MinCoreVersion in the
+//     manifest and it is deliberately left undecoded, and a manifest that came from
+//     the endpoint has already been filtered, so the newest release it lists is the
+//     newest one this CLI can install.
+//   - Nothing has to. An install cannot complete without a binary URL from a live
+//     metadata response, so no path reaches a download the API did not agree to.
+//     Reading this answer buys the reason, not the refusal.
 type ErrPluginRequiresNewerCLI struct {
 	Name           string
 	Version        string

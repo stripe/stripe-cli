@@ -64,9 +64,7 @@ type PluginList struct {
 // Release is the type that holds release data for a specific build of a plugin
 //
 // The manifest also carries each release's MinCoreVersion, which is deliberately
-// not decoded: the metadata endpoint already withholds releases this core CLI
-// cannot run, and answers plugin_requires_newer_cli when withholding them leaves
-// nothing to hand back -- whether the caller named one of them or named none.
+// not decoded; see ErrPluginRequiresNewerCLI for why the API owns that constraint.
 type Release struct {
 	Arch    string `toml:"Arch" json:"arch"`
 	OS      string `toml:"OS" json:"os"`
@@ -204,9 +202,7 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 }
 
 // LookUpLatestVersion gets the latest version of the plugin for this platform.
-// A manifest that came from the metadata endpoint has already had the releases
-// this core CLI cannot run withheld, so the newest release listed is the newest
-// one it can install.
+// It weighs no min_core_version of its own; see ErrPluginRequiresNewerCLI.
 // note: assumes versions are listed in asc order
 func (p *Plugin) LookUpLatestVersion() string {
 	opsystem := runtime.GOOS

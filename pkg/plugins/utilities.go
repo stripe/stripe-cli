@@ -867,10 +867,9 @@ const (
 // resolveVersionFromReleases picks the version to install out of a plugin's
 // releases: the one that was asked for, or the newest listed.
 //
-// Both callers share it so they cannot drift apart, and are left describing where
-// the metadata came from rather than repeating the lookup themselves. Neither
-// weighs a release's min_core_version, which the metadata endpoint has already
-// applied to whatever it returned.
+// Every resolve path shares it so they cannot drift apart, and is left describing
+// where the metadata came from rather than repeating the lookup itself. None of
+// them weighs a release's min_core_version; see ErrPluginRequiresNewerCLI.
 func resolveVersionFromReleases(plugin *Plugin, pluginName, requestedVersion, source string) (string, error) {
 	if plugin == nil {
 		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s", source, pluginName)
