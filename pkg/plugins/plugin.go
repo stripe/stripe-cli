@@ -327,10 +327,11 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, cfg.GetMachineUUID())
 		if err != nil {
-			// Returned rather than kept as metadataLookupErr: every other lookup failure
-			// leaves open the possibility that a binary URL resolved earlier can still
-			// complete the install, and this one settles that the install must not happen
-			// at all. It is also the only place the minimum version is ever stated.
+			// Returned rather than kept as metadataLookupErr, which surfaces further down
+			// as a missing download URL. The install fails either way -- this lookup only
+			// runs when no binary URL was resolved earlier, and a refusal carries none --
+			// so what this branch changes is that the user is told their CLI version is
+			// the reason, which nothing below can state.
 			if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
 				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stderr)
 				return newErrPluginRequiresNewerCLI(p.Shortname, version, minCoreVersion)
