@@ -43,6 +43,36 @@ func TestValidateDashboardBaseURLWorks(t *testing.T) {
 	assert.ErrorIs(t, ValidateDashboardBaseURL("anything_else"), errInvalidDashboardBaseURL)
 }
 
+// TestValidateBaseURLRejectsAllowlistBypasses covers URLs where the raw
+// string contains an allowlisted substring (e.g. "foo.dev.stripe.me" or
+// "127.0.0.1") but net/url resolves the actual request host to something
+// else entirely — via userinfo, a suffix-grafted hostname, an unescaped
+// regex dot, or a query/fragment placement. Each of these previously
+// bypassed the byte-level regex allowlist.
+func TestValidateBaseURLRejectsAllowlistBypasses(t *testing.T) {
+	cases := []struct {
+		name string
+		url  string
+	}{
+		{"suffix_graft_on_dev_domain", "https://foo.dev.stripe.me.evil.example"},
+		{"userinfo_dev_domain_to_loopback", "http://foo.dev.stripe.me@127.0.0.1:18080"},
+		{"userinfo_dev_domain_to_attacker", "http://foo.dev.stripe.me@attacker.example"},
+		{"dev_domain_in_query_string", "https://evil.example/?u=https://foo.dev.stripe.me"},
+		{"unescaped_dot_in_dev_regex", "https://fooXdevXstripeXme.evil.example"},
+		{"suffix_graft_on_loopback", "http://127.0.0.1.evil.example"},
+		{"userinfo_loopback_to_attacker", "http://127.0.0.1@attacker.example:80"},
+		{"dev_domain_in_fragment", "http://attacker.example/#http://foo.dev.stripe.me"},
+		{"suffix_graft_with_path", "http://foo-dev.stripe.me.attacker.test:8443/v1/customers"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ErrorIs(t, ValidateAPIBaseURL(tc.url), errInvalidAPIBaseURL, "ValidateAPIBaseURL should reject %q", tc.url)
+			assert.ErrorIs(t, ValidateDashboardBaseURL(tc.url), errInvalidDashboardBaseURL, "ValidateDashboardBaseURL should reject %q", tc.url)
+		})
+	}
+}
+
 func TestIsV2PathRequiresTrailingSlash(t *testing.T) {
 	assert.True(t, IsV2Path("/v2/core/events"))
 	assert.True(t, IsV2Path("/v2/billing/meters"))
