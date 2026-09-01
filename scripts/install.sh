@@ -144,6 +144,11 @@ install_binary() {
   mv "$TMP_DIR/stripe" "$INSTALL_DIR/stripe"
   chmod +x "$INSTALL_DIR/stripe"
 
+  # Record how the CLI was installed, so that an out-of-date binary can name the
+  # command that upgrades it. STRIPE_INSTALL_DIR makes the location configurable,
+  # so the CLI cannot infer this from its own path. Read by pkg/installmethod.
+  echo "script" > "$INSTALL_DIR/.stripe-install-method"
+
   # Check for existing brew install and warn
   if command -v brew >/dev/null 2>&1; then
     BREW_STRIPE=$(brew --prefix 2>/dev/null)/bin/stripe

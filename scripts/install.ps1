@@ -130,6 +130,11 @@ function Install-Binary {
         Remove-Item $old -Force -ErrorAction SilentlyContinue
     }
 
+    # Record how the CLI was installed, so that an out-of-date binary can name the
+    # command that upgrades it. STRIPE_INSTALL_DIR makes the location configurable,
+    # so the CLI cannot infer this from its own path. Read by pkg/installmethod.
+    Set-Content -Path (Join-Path $InstallDir ".stripe-install-method") -Value "script" -NoNewline
+
     # Warn about existing scoop/winget installs
     $scoopStripe = Join-Path $env:USERPROFILE "scoop\shims\stripe.exe"
     if (Test-Path $scoopStripe) {
