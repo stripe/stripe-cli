@@ -62,6 +62,9 @@ type PluginList struct {
 }
 
 // Release is the type that holds release data for a specific build of a plugin
+//
+// The manifest also carries each release's MinCoreVersion, which is deliberately
+// not decoded; see ErrPluginRequiresNewerCLI for why the API owns that constraint.
 type Release struct {
 	Arch    string `toml:"Arch" json:"arch"`
 	OS      string `toml:"OS" json:"os"`
@@ -198,7 +201,8 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	return decoded, nil
 }
 
-// LookUpLatestVersion gets latest CLI version
+// LookUpLatestVersion gets the latest version of the plugin for this platform.
+// It weighs no min_core_version of its own; see ErrPluginRequiresNewerCLI.
 // note: assumes versions are listed in asc order
 func (p *Plugin) LookUpLatestVersion() string {
 	opsystem := runtime.GOOS
@@ -319,6 +323,16 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, cfg.GetMachineUUID())
 		if err != nil {
+			// Returned rather than kept as metadataLookupErr, which surfaces further down
+			// as a missing download URL. The install fails either way -- this lookup only
+			// runs when no binary URL was resolved earlier, and a refusal carries none --
+			// so what this branch changes is that the user is told their CLI version is
+			// the reason, which nothing below can state.
+			if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
+				ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stderr)
+				return newErrPluginRequiresNewerCLI(p.Shortname, version, minCoreVersion)
+			}
+
 			metadataLookupErr = err
 			log.WithFields(log.Fields{
 				"prefix": "plugins.plugin.Install",

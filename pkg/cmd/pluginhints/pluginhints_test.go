@@ -582,6 +582,42 @@ func TestRun_AutoInstall_LookupFailureStillFallsBackToHints(t *testing.T) {
 	assert.Contains(t, p.output(), "stripe plugin install directory")
 }
 
+// TestRun_PluginRequiresNewerCLI_ReportsVersionInsteadOfHints covers a lookup that
+// failed for a reason with exactly one fix. The hint and login paths below both read
+// a failed lookup as the plugin being unavailable or the user being logged out, so
+// either would send the user after something that cannot help.
+func TestRun_PluginRequiresNewerCLI_ReportsVersionInsteadOfHints(t *testing.T) {
+	for _, name := range []string{"logged in", "not logged in"} {
+		t.Run(name, func(t *testing.T) {
+			p := newTestCmd("directory")
+			if name == "not logged in" {
+				p.accountIDFn = func() (string, error) { return "", nil }
+			}
+			loginCalled, installCalled := false, false
+			p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
+			p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+				return nil, &plugins.ErrPluginRequiresNewerCLI{
+					Name:           "directory",
+					Version:        "2.0.1",
+					MinCoreVersion: "1.30.0",
+					CoreVersion:    "1.29.0",
+				}
+			}
+
+			err := p.run(p.Command, nil)
+
+			var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
+			require.ErrorAs(t, err, &requiresNewerCLI)
+			assert.Equal(t, "1.30.0", requiresNewerCLI.MinCoreVersion)
+			assert.False(t, loginCalled)
+			assert.False(t, installCalled)
+			assert.NotContains(t, p.output(), "stripe plugin install directory")
+			assert.NotContains(t, p.output(), "stripe login")
+		})
+	}
+}
+
 // TestRun_AutoInstall_ServerDecisionGatesInstalling pins that opting a plugin into
 // auto-install only makes it eligible: the metadata endpoint decides per machine,
 // so a machine the rollout has not reached gets the same prompt as every other
