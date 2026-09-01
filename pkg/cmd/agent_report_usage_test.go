@@ -70,7 +70,7 @@ func TestAgentReportUsageDoesNotValidateSkillName(t *testing.T) {
 	assertNoAgentReportUsageEvent(t, client)
 }
 
-func TestAgentReportUsageMissingOrEmptySkillIsSilentNoOp(t *testing.T) {
+func TestAgentReportUsageRequiresSkill(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -86,7 +86,7 @@ func TestAgentReportUsageMissingOrEmptySkillIsSilentNoOp(t *testing.T) {
 
 			stdout, stderr, err := executeAgentReportUsage(ctx, tt.args...)
 
-			require.NoError(t, err)
+			require.ErrorContains(t, err, "--skill is required")
 			require.Empty(t, stdout)
 			require.Empty(t, stderr)
 			assertNoAgentReportUsageEvent(t, client)

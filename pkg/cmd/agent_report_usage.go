@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -29,21 +30,21 @@ func newAgentReportUsageCmd() *agentReportUsageCmd {
 	arc := &agentReportUsageCmd{}
 	arc.cmd = &cobra.Command{
 		Use:           "report_usage",
-		Short:         "Report Stripe skill usage",
-		Long:          "Report Stripe skill usage from an automated agent hook.",
+		Short:         "Report usage of agent tooling",
+		Long:          "Report usage of agent tooling like Skills.",
 		Args:          validators.NoArgs,
-		Run:           arc.runReportUsage,
+		RunE:          arc.runReportUsage,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	arc.cmd.Flags().StringVar(&arc.skill, "skill", "", "Name of the Stripe skill that was used")
+	arc.cmd.Flags().StringVar(&arc.skill, "skill", "", "Name of the Stripe skill that was used (required)")
 
 	return arc
 }
 
-func (arc *agentReportUsageCmd) runReportUsage(cmd *cobra.Command, _ []string) {
+func (arc *agentReportUsageCmd) runReportUsage(cmd *cobra.Command, _ []string) error {
 	if arc.skill == "" {
-		return
+		return errorcategory.Errorf(errorcategory.UserInput, "--skill is required")
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), agentReportUsageAcknowledgement, arc.skill)
 
@@ -52,8 +53,9 @@ func (arc *agentReportUsageCmd) runReportUsage(cmd *cobra.Command, _ []string) {
 		Name: arc.skill,
 	})
 	if err != nil {
-		return
+		return nil
 	}
 
 	sendAgentEvent(commandContextOrBackground(cmd), agentReportUsageEventName, string(payload))
+	return nil
 }
