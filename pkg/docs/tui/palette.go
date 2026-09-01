@@ -82,6 +82,17 @@ func newPalette(page Page, doc *markdown.Document, client *docs.Client) Palette 
 			},
 		},
 		palette.Command{
+			ID:   "copy-page-url",
+			Name: "Copy page URL",
+			Desc: "Copy this page's docs.stripe.com URL to clipboard",
+			Run: func() tea.Cmd {
+				return func() tea.Msg {
+					_ = page.CopyURL()
+					return statusMsg("Copied!")
+				}
+			},
+		},
+		palette.Command{
 			ID:   "open-in-browser",
 			Name: "Open in browser",
 			Desc: "Open this page on docs.stripe.com",

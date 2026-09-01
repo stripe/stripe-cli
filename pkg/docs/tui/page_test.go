@@ -26,6 +26,18 @@ func stubBrowser(t *testing.T) *[]*exec.Cmd {
 	return &calls
 }
 
+func stubClipboard(t *testing.T) *[]string {
+	t.Helper()
+	var writes []string
+	original := writeClipboard
+	writeClipboard = func(text string) error {
+		writes = append(writes, text)
+		return nil
+	}
+	t.Cleanup(func() { writeClipboard = original })
+	return &writes
+}
+
 // docWithReferences builds a minimal markdown.Document containing a link to each of the given URLs.
 func docWithReferences(urls ...*url.URL) *markdown.Document {
 	src := "# Title\n\n"
@@ -37,6 +49,32 @@ func docWithReferences(urls ...*url.URL) *markdown.Document {
 		panic(err)
 	}
 	return doc
+}
+
+func TestPage_CopyURL(t *testing.T) {
+	writes := stubClipboard(t)
+	p := Page{
+		URL: &url.URL{
+			Scheme:   "https",
+			Host:     "docs.stripe.com",
+			Path:     "/api/charges",
+			RawQuery: "lang=go",
+			Fragment: "create-a-charge",
+		},
+	}
+
+	err := p.CopyURL()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"https://docs.stripe.com/api/charges?lang=go#create-a-charge"}, *writes)
+}
+
+func TestPage_CopyURL_NilURL(t *testing.T) {
+	writes := stubClipboard(t)
+
+	err := (Page{}).CopyURL()
+
+	assert.NoError(t, err)
+	assert.Empty(t, *writes)
 }
 
 func TestPage_Open_NilURL(t *testing.T) {

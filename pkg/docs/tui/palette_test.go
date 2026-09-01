@@ -6,6 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/docs/palette"
 )
 
 func TestSearchHit_Item(t *testing.T) {
@@ -63,6 +66,31 @@ func mustParseURL(s string) *url.URL {
 		panic(err)
 	}
 	return u
+}
+
+func TestPalette_CopyPageURL(t *testing.T) {
+	writes := stubClipboard(t)
+	page := Page{URL: mustParseURL("https://docs.stripe.com/payments?lang=go#overview")}
+	p := newPalette(page, nil, nil)
+	p.Open()
+	p.Model, _ = p.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
+
+	var copyURLCommand *palette.Command
+	for _, item := range p.Items() {
+		command, ok := item.(palette.Command)
+		if ok && command.Name == "Copy page URL" {
+			copyURLCommand = &command
+			break
+		}
+	}
+	require.NotNil(t, copyURLCommand)
+	assert.Equal(t, "copy-page-url", copyURLCommand.ID)
+	assert.Equal(t, "Copy this page's docs.stripe.com URL to clipboard", copyURLCommand.Desc)
+
+	cmd := copyURLCommand.Run()
+	require.NotNil(t, cmd)
+	assert.Equal(t, statusMsg("Copied!"), cmd())
+	assert.Equal(t, []string{"https://docs.stripe.com/payments?lang=go#overview"}, *writes)
 }
 
 func TestSyncKeyMap_ReferenceModeLabel_IsView(t *testing.T) {
