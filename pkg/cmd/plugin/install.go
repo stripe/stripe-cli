@@ -84,6 +84,17 @@ func resolveDashboardBaseURL(apiBaseURL, dashboardBaseURL string) string {
 	return stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
 }
 
+// explicitFlagValue returns value if the named flag was explicitly set by the user, or "" if
+// it was left at its default. This is used to decide what to forward to a plugin via
+// AdditionalInfo: a plugin should only hear about a base URL override the user actually chose,
+// not the CLI's own resolved default.
+func explicitFlagValue(cmd *cobra.Command, name, value string) string {
+	if cmd.Flags().Changed(name) {
+		return value
+	}
+	return ""
+}
+
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
 		return err
@@ -169,6 +180,11 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL, dashboardBaseURL); err != nil {
 		return err
 	}
+
+	runPostInstallHook(ctx, ic.cfg, ic.fs, plugin, version, prevVersion,
+		explicitFlagValue(cmd, "api-base", ic.apiBaseURL),
+		explicitFlagValue(cmd, "dashboard-base", ic.dashboardBaseURL),
+		explicitFlagValue(cmd, "access-base", ic.accessBaseURL))
 
 	if prevVersion != "" {
 		sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)

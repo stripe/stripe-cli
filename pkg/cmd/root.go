@@ -39,7 +39,11 @@ import (
 // Config is the cli configuration for the user
 var Config config.Config
 
-var rootAccessBaseURL string
+var (
+	rootAccessBaseURL    string
+	rootAPIBaseURL       string
+	rootDashboardBaseURL string
+)
 
 var fs = afero.NewOsFs()
 
@@ -282,6 +286,14 @@ func init() {
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 	rootCmd.PersistentFlags().StringVar(&rootAccessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	rootCmd.PersistentFlags().MarkHidden("access-base") //nolint:errcheck
+	// --api-base and --dashboard-base are hidden persistent flags used by the plugin
+	// subsystem (install/upgrade/uninstall/provision/etc.) to target a non-default
+	// environment (e.g. QA/dev). They're only forwarded to plugins when the user
+	// explicitly sets them (see the explicitFlagValue helpers alongside their callers).
+	rootCmd.PersistentFlags().StringVar(&rootAPIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	rootCmd.PersistentFlags().MarkHidden("api-base") //nolint:errcheck
+	rootCmd.PersistentFlags().StringVar(&rootDashboardBaseURL, "dashboard-base", "", "Sets the Dashboard base URL")
+	rootCmd.PersistentFlags().MarkHidden("dashboard-base") //nolint:errcheck
 	rootCmd.SetFlagErrorFunc(flagErrorWithNestedAPIHint)
 
 	// tell viper to monitor the following flags:

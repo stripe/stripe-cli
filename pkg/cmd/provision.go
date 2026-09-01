@@ -101,7 +101,7 @@ func (pc *provisionCmd) runProvisionCmd(cmd *cobra.Command, args []string) error
 
 	pluginArgs := buildProvisionPluginArgs(args)
 
-	err = plugin.Run(ctx, &Config, fs, pluginArgs, "", "")
+	err = plugin.Run(ctx, &Config, fs, pluginArgs, "", "", "", "", "")
 	plugins.CleanupAllClients()
 	if err == nil {
 		dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)

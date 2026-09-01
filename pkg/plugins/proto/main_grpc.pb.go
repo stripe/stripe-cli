@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Main_RunCommand_FullMethodName = "/proto.Main/RunCommand"
+	Main_RunCommand_FullMethodName   = "/proto.Main/RunCommand"
+	Main_PostInstall_FullMethodName  = "/proto.Main/PostInstall"
+	Main_PreUninstall_FullMethodName = "/proto.Main/PreUninstall"
 )
 
 // MainClient is the client API for Main service.
@@ -27,6 +29,12 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MainClient interface {
 	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*RunCommandResponse, error)
+	// PostInstall is called best-effort after `stripe plugins install` or
+	// `stripe plugins upgrade` successfully downloads the plugin binary.
+	PostInstall(ctx context.Context, in *PostInstallRequest, opts ...grpc.CallOption) (*PostInstallResponse, error)
+	// PreUninstall is called best-effort by `stripe plugins uninstall` before
+	// the plugin's files are removed from disk.
+	PreUninstall(ctx context.Context, in *PreUninstallRequest, opts ...grpc.CallOption) (*PreUninstallResponse, error)
 }
 
 type mainClient struct {
@@ -47,11 +55,37 @@ func (c *mainClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts
 	return out, nil
 }
 
+func (c *mainClient) PostInstall(ctx context.Context, in *PostInstallRequest, opts ...grpc.CallOption) (*PostInstallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PostInstallResponse)
+	err := c.cc.Invoke(ctx, Main_PostInstall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mainClient) PreUninstall(ctx context.Context, in *PreUninstallRequest, opts ...grpc.CallOption) (*PreUninstallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PreUninstallResponse)
+	err := c.cc.Invoke(ctx, Main_PreUninstall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MainServer is the server API for Main service.
 // All implementations must embed UnimplementedMainServer
 // for forward compatibility.
 type MainServer interface {
 	RunCommand(context.Context, *RunCommandRequest) (*RunCommandResponse, error)
+	// PostInstall is called best-effort after `stripe plugins install` or
+	// `stripe plugins upgrade` successfully downloads the plugin binary.
+	PostInstall(context.Context, *PostInstallRequest) (*PostInstallResponse, error)
+	// PreUninstall is called best-effort by `stripe plugins uninstall` before
+	// the plugin's files are removed from disk.
+	PreUninstall(context.Context, *PreUninstallRequest) (*PreUninstallResponse, error)
 	mustEmbedUnimplementedMainServer()
 }
 
@@ -64,6 +98,12 @@ type UnimplementedMainServer struct{}
 
 func (UnimplementedMainServer) RunCommand(context.Context, *RunCommandRequest) (*RunCommandResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RunCommand not implemented")
+}
+func (UnimplementedMainServer) PostInstall(context.Context, *PostInstallRequest) (*PostInstallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PostInstall not implemented")
+}
+func (UnimplementedMainServer) PreUninstall(context.Context, *PreUninstallRequest) (*PreUninstallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PreUninstall not implemented")
 }
 func (UnimplementedMainServer) mustEmbedUnimplementedMainServer() {}
 func (UnimplementedMainServer) testEmbeddedByValue()              {}
@@ -104,6 +144,42 @@ func _Main_RunCommand_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Main_PostInstall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PostInstallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).PostInstall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_PostInstall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).PostInstall(ctx, req.(*PostInstallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Main_PreUninstall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PreUninstallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MainServer).PreUninstall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Main_PreUninstall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MainServer).PreUninstall(ctx, req.(*PreUninstallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Main_ServiceDesc is the grpc.ServiceDesc for Main service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +190,14 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RunCommand",
 			Handler:    _Main_RunCommand_Handler,
+		},
+		{
+			MethodName: "PostInstall",
+			Handler:    _Main_PostInstall_Handler,
+		},
+		{
+			MethodName: "PreUninstall",
+			Handler:    _Main_PreUninstall_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -130,6 +214,7 @@ const (
 	CoreCLIHelper_RunPeerPlugin_FullMethodName                = "/proto.CoreCLIHelper/RunPeerPlugin"
 	CoreCLIHelper_ResolveCredentials_FullMethodName           = "/proto.CoreCLIHelper/ResolveCredentials"
 	CoreCLIHelper_ResolveCredentialsForAnyMode_FullMethodName = "/proto.CoreCLIHelper/ResolveCredentialsForAnyMode"
+	CoreCLIHelper_SwitchContext_FullMethodName                = "/proto.CoreCLIHelper/SwitchContext"
 )
 
 // CoreCLIHelperClient is the client API for CoreCLIHelper service.
@@ -150,6 +235,10 @@ type CoreCLIHelperClient interface {
 	// OAuth active context, resolves credentials for whichever mode is actually
 	// active instead of failing.
 	ResolveCredentialsForAnyMode(ctx context.Context, in *ResolveCredentialsRequest, opts ...grpc.CallOption) (*ResolveCredentialsResponse, error)
+	// SwitchContext switches the active authorized account/mode context, the
+	// same way `stripe switch context` does. If account_id is empty, shows an
+	// interactive picker.
+	SwitchContext(ctx context.Context, in *SwitchContextRequest, opts ...grpc.CallOption) (*SwitchContextResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -251,6 +340,16 @@ func (c *coreCLIHelperClient) ResolveCredentialsForAnyMode(ctx context.Context, 
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) SwitchContext(ctx context.Context, in *SwitchContextRequest, opts ...grpc.CallOption) (*SwitchContextResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SwitchContextResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_SwitchContext_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
@@ -269,6 +368,10 @@ type CoreCLIHelperServer interface {
 	// OAuth active context, resolves credentials for whichever mode is actually
 	// active instead of failing.
 	ResolveCredentialsForAnyMode(context.Context, *ResolveCredentialsRequest) (*ResolveCredentialsResponse, error)
+	// SwitchContext switches the active authorized account/mode context, the
+	// same way `stripe switch context` does. If account_id is empty, shows an
+	// interactive picker.
+	SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -305,6 +408,9 @@ func (UnimplementedCoreCLIHelperServer) ResolveCredentials(context.Context, *Res
 }
 func (UnimplementedCoreCLIHelperServer) ResolveCredentialsForAnyMode(context.Context, *ResolveCredentialsRequest) (*ResolveCredentialsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveCredentialsForAnyMode not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SwitchContext not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -489,6 +595,24 @@ func _CoreCLIHelper_ResolveCredentialsForAnyMode_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_SwitchContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SwitchContextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).SwitchContext(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_SwitchContext_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).SwitchContext(ctx, req.(*SwitchContextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -531,6 +655,10 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveCredentialsForAnyMode",
 			Handler:    _CoreCLIHelper_ResolveCredentialsForAnyMode_Handler,
+		},
+		{
+			MethodName: "SwitchContext",
+			Handler:    _CoreCLIHelper_SwitchContext_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

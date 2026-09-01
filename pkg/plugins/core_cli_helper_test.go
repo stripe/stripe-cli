@@ -11,12 +11,13 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestEcho(t *testing.T) {
 	ctx := context.Background()
-	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs(), "", "", "")
 	output, err := coreCLIHelper.Echo("test")
 	require.NoError(t, err)
 	require.Equal(t, "test", output)
@@ -25,7 +26,7 @@ func TestEcho(t *testing.T) {
 func TestSendAnalytics(t *testing.T) {
 	// Test with no telemetry client in context (should not error)
 	ctx := context.Background()
-	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.SendAnalytics("test_event", "test_value")
 	require.NoError(t, err)
 }
@@ -136,7 +137,7 @@ func TestKeychainGetPasswordReturnsNotFoundWithoutRetry(t *testing.T) {
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	value, found, err := coreCLIHelper.KeychainGetPassword("missing.key")
 	require.NoError(t, err)
 	require.False(t, found)
@@ -166,7 +167,7 @@ func TestKeychainGetPasswordReturnsUnexpectedError(t *testing.T) {
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	value, found, err := coreCLIHelper.KeychainGetPassword("broken.key")
 	require.ErrorIs(t, err, expectedErr)
 	require.False(t, found)
@@ -195,7 +196,7 @@ func TestKeychainSetPasswordMakesRecentWriteVisibleWhenKeychainHasNotCaughtUp(t 
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(t, 1, ring.setCalls)
@@ -229,7 +230,7 @@ func TestKeychainGetPasswordPrefersRecentWriteOverStaleVisibleValue(t *testing.T
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
 
@@ -262,7 +263,7 @@ func TestKeychainGetPasswordClearsRecentWriteOnceKeychainMatches(t *testing.T) {
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
 
@@ -299,7 +300,7 @@ func TestKeychainGetPasswordDoesNotReturnRecentWriteAfterExpiry(t *testing.T) {
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
 
@@ -333,7 +334,7 @@ func TestKeychainSetPasswordDoesNotRememberRecentWriteWhenDisabled(t *testing.T)
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(t, 1, ring.setCalls)
@@ -366,7 +367,7 @@ func TestKeychainSetPasswordReturnsSetError(t *testing.T) {
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.ErrorIs(t, err, expectedErr)
 	require.Equal(t, 1, ring.setCalls)
@@ -395,7 +396,7 @@ func TestKeychainDeletePasswordClearsRecentWrite(t *testing.T) {
 		keychainVisibilityRetryTimeout = originalTimeout
 	})
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.KeychainSetPassword("test.key", "sk_test_123")
 	require.NoError(t, err)
 
@@ -422,7 +423,7 @@ func TestKeychainFindCredentialsReturnsKeyWhenPresent(t *testing.T) {
 	config.KeyRing = ring
 	t.Cleanup(func() { config.KeyRing = originalKeyRing })
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	keys, err := coreCLIHelper.KeychainFindCredentials()
 	require.NoError(t, err)
 	require.Equal(t, []string{"default." + config.LiveModeAPIKeyName}, keys)
@@ -438,7 +439,7 @@ func TestKeychainFindCredentialsReturnsEmptyWhenNotFound(t *testing.T) {
 	config.KeyRing = ring
 	t.Cleanup(func() { config.KeyRing = originalKeyRing })
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	keys, err := coreCLIHelper.KeychainFindCredentials()
 	require.NoError(t, err)
 	require.Empty(t, keys)
@@ -455,10 +456,74 @@ func TestKeychainFindCredentialsReturnsErrorOnFailure(t *testing.T) {
 	config.KeyRing = ring
 	t.Cleanup(func() { config.KeyRing = originalKeyRing })
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
 	keys, err := coreCLIHelper.KeychainFindCredentials()
 	require.ErrorIs(t, err, expectedErr)
 	require.Empty(t, keys)
+}
+
+func TestSwitchContextReturnsConfigTypeMismatchError(t *testing.T) {
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, switched, err := coreCLIHelper.SwitchContext("acct_123", false)
+	require.Error(t, err)
+	require.False(t, switched)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
+func TestSwitchContextSuccess(t *testing.T) {
+	originalSwitchContext := loginSwitchContext
+	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
+
+	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+		require.Equal(t, "acct_123", accountID)
+		require.True(t, livemode)
+		return &login.SwitchResult{
+			Account: config.AuthorizedAccount{ID: "acct_123", Name: "Acme Inc"},
+			Mode:    "live",
+		}, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, resultLivemode, switched, err := coreCLIHelper.SwitchContext("acct_123", true)
+	require.NoError(t, err)
+	require.True(t, switched)
+	require.Equal(t, "acct_123", accountID)
+	require.Equal(t, "Acme Inc", accountName)
+	require.True(t, resultLivemode)
+}
+
+func TestSwitchContextCancelledReturnsNotSwitched(t *testing.T) {
+	originalSwitchContext := loginSwitchContext
+	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
+
+	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+		return nil, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, switched, err := coreCLIHelper.SwitchContext("", false)
+	require.NoError(t, err)
+	require.False(t, switched)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
+func TestSwitchContextPropagatesError(t *testing.T) {
+	originalSwitchContext := loginSwitchContext
+	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
+
+	expectedErr := errors.New("boom")
+	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+		return nil, expectedErr
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, switched, err := coreCLIHelper.SwitchContext("acct_123", false)
+	require.ErrorIs(t, err, expectedErr)
+	require.False(t, switched)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
 }
 
 func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
@@ -467,7 +532,7 @@ func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
 	telemetryClient := &stripe.NoOpTelemetryClient{}
 	ctx = stripe.WithTelemetryClient(ctx, telemetryClient)
 
-	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs())
+	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.SendAnalytics("test_event", "test_value")
 	require.NoError(t, err)
 }

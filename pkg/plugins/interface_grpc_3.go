@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"time"
 
 	hcplugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
@@ -9,9 +10,19 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 )
 
+// postInstallPreUninstallTimeout bounds how long the host waits on a plugin's PostInstall/
+// PreUninstall RPC. Both hooks are best-effort, so a plugin that hangs (rather than erroring)
+// must not block `install`/`upgrade`/`uninstall` forever; callers already treat any error here,
+// including a timeout, as non-fatal and continue.
+const postInstallPreUninstallTimeout = 30 * time.Second
+
 // DispatcherV3 is the interface that's implemented by the plugin and used by the host.
 type DispatcherV3 interface {
 	RunCommand(additionalInfo *proto.AdditionalInfo, args []string, coreCLIHelper CoreCLIHelper) error
+	// PostInstall is called best-effort after the plugin is installed or upgraded.
+	PostInstall(additionalInfo *proto.AdditionalInfo, version string, previousVersion string, coreCLIHelper CoreCLIHelper) error
+	// PreUninstall is called best-effort before the plugin is uninstalled.
+	PreUninstall(additionalInfo *proto.AdditionalInfo, version string, coreCLIHelper CoreCLIHelper) error
 }
 
 // CLIPluginV3 is the implementation of plugin.GRPCPlugin so we can serve/consume this.
@@ -45,17 +56,7 @@ type GRPCClientV3 struct {
 
 // RunCommand calls the RPC.
 func (m *GRPCClientV3) RunCommand(additionalInfo *proto.AdditionalInfo, args []string, coreCLIHelper CoreCLIHelper) error {
-	coreCLIHelperServer := &CoreCLIHelperServer{Impl: coreCLIHelper}
-
-	var s *grpc.Server
-	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
-		s = grpc.NewServer(opts...)
-		proto.RegisterCoreCLIHelperServer(s, coreCLIHelperServer)
-		return s
-	}
-
-	brokerID := m.broker.NextId()
-	go m.broker.AcceptAndServe(brokerID, serverFunc)
+	brokerID, stop := m.serveCoreCLIHelper(coreCLIHelper)
 
 	_, err := m.client.RunCommand(context.Background(), &proto.RunCommandRequest{
 		AdditionalInfo:  additionalInfo,
@@ -66,8 +67,78 @@ func (m *GRPCClientV3) RunCommand(additionalInfo *proto.AdditionalInfo, args []s
 		return err
 	}
 
-	s.Stop()
+	stop()
 	return nil
+}
+
+// PostInstall calls the RPC, bounded by postInstallPreUninstallTimeout in case the plugin hangs.
+func (m *GRPCClientV3) PostInstall(additionalInfo *proto.AdditionalInfo, version string, previousVersion string, coreCLIHelper CoreCLIHelper) error {
+	brokerID, stop := m.serveCoreCLIHelper(coreCLIHelper)
+	defer stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), postInstallPreUninstallTimeout)
+	defer cancel()
+
+	_, err := m.client.PostInstall(ctx, &proto.PostInstallRequest{
+		AdditionalInfo:  additionalInfo,
+		Version:         version,
+		PreviousVersion: previousVersion,
+		CoreCliHelperId: brokerID,
+	})
+	return err
+}
+
+// PreUninstall calls the RPC, bounded by postInstallPreUninstallTimeout in case the plugin hangs.
+func (m *GRPCClientV3) PreUninstall(additionalInfo *proto.AdditionalInfo, version string, coreCLIHelper CoreCLIHelper) error {
+	brokerID, stop := m.serveCoreCLIHelper(coreCLIHelper)
+	defer stop()
+
+	ctx, cancel := context.WithTimeout(context.Background(), postInstallPreUninstallTimeout)
+	defer cancel()
+
+	_, err := m.client.PreUninstall(ctx, &proto.PreUninstallRequest{
+		AdditionalInfo:  additionalInfo,
+		Version:         version,
+		CoreCliHelperId: brokerID,
+	})
+	return err
+}
+
+// serveCoreCLIHelper starts a CoreCLIHelper gRPC server on a new broker stream so the
+// plugin can call back into the host, returning the broker ID to send with the request
+// and a func to stop the server once the call completes.
+func (m *GRPCClientV3) serveCoreCLIHelper(coreCLIHelper CoreCLIHelper) (uint32, func()) {
+	coreCLIHelperServer := &CoreCLIHelperServer{Impl: coreCLIHelper}
+
+	// serverCh hands off the *grpc.Server once AcceptAndServe's callback constructs it;
+	// done closes when AcceptAndServe returns without ever calling the callback (e.g.
+	// broker.Accept failed). stop() below selects on both so it never touches a server
+	// that was never created, instead of racing a shared variable that's written from
+	// this goroutine and read from the caller's.
+	serverCh := make(chan *grpc.Server, 1)
+	done := make(chan struct{})
+	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
+		s := grpc.NewServer(opts...)
+		proto.RegisterCoreCLIHelperServer(s, coreCLIHelperServer)
+		serverCh <- s
+		return s
+	}
+
+	brokerID := m.broker.NextId()
+	go func() {
+		defer close(done)
+		m.broker.AcceptAndServe(brokerID, serverFunc)
+	}()
+
+	stop := func() {
+		select {
+		case s := <-serverCh:
+			s.Stop()
+		case <-done:
+		}
+	}
+
+	return brokerID, stop
 }
 
 // GRPCServerV3 is the gRPC server that GRPCClientV3 talks to.
@@ -79,17 +150,52 @@ type GRPCServerV3 struct {
 
 // RunCommand takes the incoming RPC request and calls the real implementation.
 func (m *GRPCServerV3) RunCommand(ctx context.Context, req *proto.RunCommandRequest) (*proto.RunCommandResponse, error) {
-	conn, err := m.broker.Dial(req.CoreCliHelperId)
+	c, closeConn, err := m.dialCoreCLIHelper(req.CoreCliHelperId)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+	defer closeConn()
 
-	c := &CoreCLIHelperClient{client: proto.NewCoreCLIHelperClient(conn)}
-
-	err = m.Impl.RunCommand(req.AdditionalInfo, req.Args, c)
-	if err != nil {
+	if err := m.Impl.RunCommand(req.AdditionalInfo, req.Args, c); err != nil {
 		return nil, err
 	}
 	return &proto.RunCommandResponse{}, nil
+}
+
+// PostInstall takes the incoming RPC request and calls the real implementation.
+func (m *GRPCServerV3) PostInstall(ctx context.Context, req *proto.PostInstallRequest) (*proto.PostInstallResponse, error) {
+	c, closeConn, err := m.dialCoreCLIHelper(req.CoreCliHelperId)
+	if err != nil {
+		return nil, err
+	}
+	defer closeConn()
+
+	if err := m.Impl.PostInstall(req.AdditionalInfo, req.Version, req.PreviousVersion, c); err != nil {
+		return nil, err
+	}
+	return &proto.PostInstallResponse{}, nil
+}
+
+// PreUninstall takes the incoming RPC request and calls the real implementation.
+func (m *GRPCServerV3) PreUninstall(ctx context.Context, req *proto.PreUninstallRequest) (*proto.PreUninstallResponse, error) {
+	c, closeConn, err := m.dialCoreCLIHelper(req.CoreCliHelperId)
+	if err != nil {
+		return nil, err
+	}
+	defer closeConn()
+
+	if err := m.Impl.PreUninstall(req.AdditionalInfo, req.Version, c); err != nil {
+		return nil, err
+	}
+	return &proto.PreUninstallResponse{}, nil
+}
+
+// dialCoreCLIHelper connects back to the host's CoreCLIHelper server over the given broker ID.
+func (m *GRPCServerV3) dialCoreCLIHelper(brokerID uint32) (*CoreCLIHelperClient, func(), error) {
+	conn, err := m.broker.Dial(brokerID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &CoreCLIHelperClient{client: proto.NewCoreCLIHelperClient(conn)}, func() { conn.Close() }, nil
 }

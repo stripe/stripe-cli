@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -60,6 +61,34 @@ func resolveOnce(resolve pluginResolver) pluginResolver {
 
 		return resolved, err
 	}
+}
+
+// runPostInstallHook calls the plugin's PostInstall hook after a hint command installs it,
+// whether that install was prompted or automatic. Hint commands only install plugins that
+// were not previously installed, so previousVersion is always empty. This is best-effort: a
+// failure here must never block the install from succeeding.
+// apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
+// passed --api-base/--dashboard-base/--access-base.
+func runPostInstallHook(ctx context.Context, cfg *config.Config, fs afero.Fs, resolved *plugins.ResolvedPluginVersion, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
+	defer plugins.CleanupAllClients()
+
+	if err := resolved.Plugin.PostInstall(ctx, cfg, fs, resolved.Version, "", apiBaseURL, dashboardBaseURL, accessBaseURL); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.pluginhints.runPostInstallHook",
+			"plugin": resolved.Plugin.Shortname,
+		}).Debugf("plugin PostInstall hook failed: %s", err)
+	}
+}
+
+// explicitFlagValue returns value if the named flag was explicitly set by the user, or "" if
+// it was left at its default. This is used to decide what to forward to a plugin via
+// AdditionalInfo: a plugin should only hear about a base URL override the user actually chose,
+// not the CLI's own resolved default.
+func explicitFlagValue(cmd *cobra.Command, name, value string) string {
+	if cmd == nil || !cmd.Flags().Changed(name) {
+		return ""
+	}
+	return value
 }
 
 // AddHintCommands registers a hint command for each known plugin that is not
@@ -178,7 +207,8 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 		return plugins.ResolvePluginForInstall(ctx, cfg, fs, name, "", stripe.DefaultAPIBaseURL, dashboardBaseURL)
 	})
 
-	p := &pluginHintCmd{
+	var p *pluginHintCmd
+	p = &pluginHintCmd{
 		name:          name,
 		description:   description,
 		accessBaseURL: login.DefaultAccessBaseURL,
@@ -188,7 +218,34 @@ func newPluginHintCmd(cfg *config.Config, name, description string, opts ...opti
 			if err != nil {
 				return err
 			}
-			return resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL)
+			if err := resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
+				return err
+			}
+			apiBaseURLOverride, dashboardBaseURLOverride, accessBaseURLOverride := "", "", ""
+			if p.Command != nil {
+				accessBaseURLOverride = explicitFlagValue(p.Command, "access-base", p.accessBaseURL)
+
+				apiBaseURL, apiBaseErr := p.Command.Flags().GetString("api-base")
+				if apiBaseErr != nil {
+					apiBaseURL = stripe.DefaultAPIBaseURL
+				}
+				if err := stripe.ValidateAPIBaseURL(apiBaseURL); err != nil {
+					return err
+				}
+				apiBaseURLOverride = explicitFlagValue(p.Command, "api-base", apiBaseURL)
+
+				rawDashboardBase, _ := p.Command.Flags().GetString("dashboard-base")
+				resolvedDashboardBase := rawDashboardBase
+				if resolvedDashboardBase == "" {
+					resolvedDashboardBase = stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+				}
+				if err := stripe.ValidateDashboardBaseURL(resolvedDashboardBase); err != nil {
+					return err
+				}
+				dashboardBaseURLOverride = explicitFlagValue(p.Command, "dashboard-base", rawDashboardBase)
+			}
+			runPostInstallHook(ctx, cfg, fs, resolvedPlugin, apiBaseURLOverride, dashboardBaseURLOverride, accessBaseURLOverride)
+			return nil
 		},
 		accountIDFn:   cfg.GetProfile().GetAccountID,
 		openBrowserFn: open.Browser,

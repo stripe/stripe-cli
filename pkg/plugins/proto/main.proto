@@ -5,6 +5,12 @@ option go_package = "github.com/stripe/stripe-cli/plugins/proto";
 
 service Main {
   rpc RunCommand(RunCommandRequest) returns (RunCommandResponse);
+  // PostInstall is called best-effort after `stripe plugins install` or
+  // `stripe plugins upgrade` successfully downloads the plugin binary.
+  rpc PostInstall(PostInstallRequest) returns (PostInstallResponse);
+  // PreUninstall is called best-effort by `stripe plugins uninstall` before
+  // the plugin's files are removed from disk.
+  rpc PreUninstall(PreUninstallRequest) returns (PreUninstallResponse);
 }
 
 message RunCommandRequest {
@@ -16,9 +22,37 @@ message RunCommandRequest {
 message RunCommandResponse {
 }
 
+message PostInstallRequest {
+  AdditionalInfo additional_info = 1;
+  string version = 2;
+  string previous_version = 3;
+  uint32 core_cli_helper_id = 4;
+}
+
+message PostInstallResponse {
+}
+
+message PreUninstallRequest {
+  AdditionalInfo additional_info = 1;
+  string version = 2;
+  uint32 core_cli_helper_id = 3;
+}
+
+message PreUninstallResponse {
+}
+
 message AdditionalInfo {
   IsTerminal is_terminal = 1;
   TerminalDimensions terminal_dimensions = 2;
+  // api_base_url, dashboard_base_url, and access_base_url carry the
+  // --api-base/--dashboard-base/--access-base values the user explicitly passed
+  // to the CLI, so a plugin can target the same non-default environment
+  // (e.g. QA/dev) as the CLI that launched it. Each is empty when the user
+  // didn't pass the corresponding flag; a plugin should fall back to its own
+  // default in that case rather than treating an empty string as a host.
+  string api_base_url = 3;
+  string dashboard_base_url = 4;
+  string access_base_url = 5;
 }
 
 message IsTerminal {
@@ -48,6 +82,10 @@ service CoreCLIHelper {
   // OAuth active context, resolves credentials for whichever mode is actually
   // active instead of failing.
   rpc ResolveCredentialsForAnyMode(ResolveCredentialsRequest) returns (ResolveCredentialsResponse);
+  // SwitchContext switches the active authorized account/mode context, the
+  // same way `stripe switch context` does. If account_id is empty, shows an
+  // interactive picker.
+  rpc SwitchContext(SwitchContextRequest) returns (SwitchContextResponse);
 }
 
 message EchoRequest {
@@ -119,4 +157,18 @@ message ResolveCredentialsResponse {
   string token = 1;
   string stripe_context = 2;
   bool livemode = 3;
+}
+
+message SwitchContextRequest {
+  string account_id = 1;
+  bool livemode = 2;
+}
+
+message SwitchContextResponse {
+  string account_id = 1;
+  string account_name = 2;
+  bool livemode = 3;
+  // switched is false if the user cancelled an interactive picker; in that
+  // case the other fields are empty.
+  bool switched = 4;
 }
