@@ -33,12 +33,13 @@ func newAgentReportUsageCmd() *agentReportUsageCmd {
 		Use:           "report_usage",
 		Short:         "Report usage of agent tooling",
 		Long:          "Report usage of agent tooling like Skills.",
+		Example:       "stripe agent report_usage --type skill --name stripe-best-practices",
 		Args:          validators.NoArgs,
 		RunE:          arc.runReportUsage,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	arc.cmd.Flags().StringVar(&arc.usageType, "type", "", "Type of agent tooling that was used (required)")
+	arc.cmd.Flags().StringVar(&arc.usageType, "type", "", "Type of agent tooling that was used (required; one of: skill)")
 	arc.cmd.Flags().StringVar(&arc.name, "name", "", "Name of the agent tooling that was used (required)")
 
 	return arc

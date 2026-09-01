@@ -35,6 +35,13 @@ func (c *agentReportUsageTelemetryClient) SendEvent(_ context.Context, name, val
 	c.events <- agentReportUsageTelemetryEvent{name: name, value: value}
 }
 
+func TestAgentReportUsageHelpShowsSupportedTypeAndExample(t *testing.T) {
+	reportUsage := newAgentReportUsageCmd()
+
+	require.Contains(t, reportUsage.cmd.Flags().Lookup("type").Usage, "one of: skill")
+	require.Equal(t, "stripe agent report_usage --type skill --name stripe-best-practices", reportUsage.cmd.Example)
+}
+
 func TestAgentReportUsageEmitsSkillUsage(t *testing.T) {
 	client := newAgentReportUsageTelemetryClient()
 	ctx := stripe.WithTelemetryClient(context.Background(), client)
