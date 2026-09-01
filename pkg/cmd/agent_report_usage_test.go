@@ -39,10 +39,10 @@ func TestAgentReportUsageEmitsSkillUsage(t *testing.T) {
 	client := newAgentReportUsageTelemetryClient()
 	ctx := stripe.WithTelemetryClient(context.Background(), client)
 
-	stdout, stderr, err := executeAgentReportUsage(ctx, "--skill", "stripe-best-practices")
+	stdout, stderr, err := executeAgentReportUsage(ctx, "--type", "skill", "--name", "stripe-best-practices")
 
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(agentReportUsageAcknowledgement, "stripe-best-practices"), stdout)
+	require.Equal(t, fmt.Sprintf(agentReportUsageAcknowledgement, "skill", "stripe-best-practices"), stdout)
 	require.Empty(t, stderr)
 	event := waitForAgentReportUsageEvent(t, client)
 	require.Equal(t, agentReportUsageEventName, event.name)
@@ -53,30 +53,35 @@ func TestAgentReportUsageEmitsSkillUsage(t *testing.T) {
 	assertNoAgentReportUsageEvent(t, client)
 }
 
-func TestAgentReportUsageDoesNotValidateSkillName(t *testing.T) {
+func TestAgentReportUsageDoesNotValidateTypeOrName(t *testing.T) {
 	client := newAgentReportUsageTelemetryClient()
 	ctx := stripe.WithTelemetryClient(context.Background(), client)
 
-	stdout, stderr, err := executeAgentReportUsage(ctx, "--skill", "arbitrary skill name")
+	stdout, stderr, err := executeAgentReportUsage(ctx, "--type", "arbitrary type", "--name", "arbitrary name")
 
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(agentReportUsageAcknowledgement, "arbitrary skill name"), stdout)
+	require.Equal(t, fmt.Sprintf(agentReportUsageAcknowledgement, "arbitrary type", "arbitrary name"), stdout)
 	require.Empty(t, stderr)
 	event := waitForAgentReportUsageEvent(t, client)
 
 	var payload agentReportUsageEvent
 	require.NoError(t, json.Unmarshal([]byte(event.value), &payload))
-	require.Equal(t, "arbitrary skill name", payload.Name)
+	require.Equal(t, agentReportUsageEvent{Type: "arbitrary type", Name: "arbitrary name"}, payload)
 	assertNoAgentReportUsageEvent(t, client)
 }
 
-func TestAgentReportUsageRequiresSkill(t *testing.T) {
+func TestAgentReportUsageRequiresTypeAndName(t *testing.T) {
 	tests := []struct {
-		name string
-		args []string
+		name    string
+		args    []string
+		wantErr string
 	}{
-		{name: "missing"},
-		{name: "empty", args: []string{"--skill="}},
+		{name: "both missing", wantErr: "--type and --name are required"},
+		{name: "both empty", args: []string{"--type=", "--name="}, wantErr: "--type and --name are required"},
+		{name: "type missing", args: []string{"--name", "stripe-best-practices"}, wantErr: "--type is required"},
+		{name: "type empty", args: []string{"--type=", "--name", "stripe-best-practices"}, wantErr: "--type is required"},
+		{name: "name missing", args: []string{"--type", "skill"}, wantErr: "--name is required"},
+		{name: "name empty", args: []string{"--type", "skill", "--name="}, wantErr: "--name is required"},
 	}
 
 	for _, tt := range tests {
@@ -86,7 +91,7 @@ func TestAgentReportUsageRequiresSkill(t *testing.T) {
 
 			stdout, stderr, err := executeAgentReportUsage(ctx, tt.args...)
 
-			require.ErrorContains(t, err, "--skill is required")
+			require.ErrorContains(t, err, tt.wantErr)
 			require.Empty(t, stdout)
 			require.Empty(t, stderr)
 			assertNoAgentReportUsageEvent(t, client)
@@ -95,10 +100,10 @@ func TestAgentReportUsageRequiresSkill(t *testing.T) {
 }
 
 func TestAgentReportUsageWithoutTelemetryClientStillAcknowledges(t *testing.T) {
-	stdout, stderr, err := executeAgentReportUsage(context.Background(), "--skill", "stripe-best-practices")
+	stdout, stderr, err := executeAgentReportUsage(context.Background(), "--type", "skill", "--name", "stripe-best-practices")
 
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(agentReportUsageAcknowledgement, "stripe-best-practices"), stdout)
+	require.Equal(t, fmt.Sprintf(agentReportUsageAcknowledgement, "skill", "stripe-best-practices"), stdout)
 	require.Empty(t, stderr)
 }
 

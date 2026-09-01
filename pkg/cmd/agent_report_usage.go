@@ -12,13 +12,14 @@ import (
 
 const (
 	agentReportUsageEventName       = "agent.report_usage"
-	agentReportUsageAcknowledgement = "Thank you for letting us know you used %s. If it was surprisingly good or bad, let us know via `stripe feedback --help`.\n"
+	agentReportUsageAcknowledgement = "Thank you for letting us know you used %s %s. If it was surprisingly good or bad, let us know via `stripe feedback --help`.\n"
 )
 
 type agentReportUsageCmd struct {
 	cmd *cobra.Command
 
-	skill string
+	usageType string
+	name      string
 }
 
 type agentReportUsageEvent struct {
@@ -37,20 +38,27 @@ func newAgentReportUsageCmd() *agentReportUsageCmd {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	arc.cmd.Flags().StringVar(&arc.skill, "skill", "", "Name of the Stripe skill that was used (required)")
+	arc.cmd.Flags().StringVar(&arc.usageType, "type", "", "Type of agent tooling that was used (required)")
+	arc.cmd.Flags().StringVar(&arc.name, "name", "", "Name of the agent tooling that was used (required)")
 
 	return arc
 }
 
 func (arc *agentReportUsageCmd) runReportUsage(cmd *cobra.Command, _ []string) error {
-	if arc.skill == "" {
-		return errorcategory.Errorf(errorcategory.UserInput, "--skill is required")
+	if arc.usageType == "" && arc.name == "" {
+		return errorcategory.Errorf(errorcategory.UserInput, "--type and --name are required")
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), agentReportUsageAcknowledgement, arc.skill)
+	if arc.usageType == "" {
+		return errorcategory.Errorf(errorcategory.UserInput, "--type is required")
+	}
+	if arc.name == "" {
+		return errorcategory.Errorf(errorcategory.UserInput, "--name is required")
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), agentReportUsageAcknowledgement, arc.usageType, arc.name)
 
 	payload, err := json.Marshal(agentReportUsageEvent{
-		Type: "skill",
-		Name: arc.skill,
+		Type: arc.usageType,
+		Name: arc.name,
 	})
 	if err != nil {
 		return nil
