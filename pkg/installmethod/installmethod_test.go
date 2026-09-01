@@ -243,6 +243,47 @@ func TestDetect(t *testing.T) {
 	}
 }
 
+func TestUpgradeAdvice(t *testing.T) {
+	tests := []struct {
+		name     string
+		method   string
+		goos     string
+		expected Advice
+	}{
+		{"homebrew", Homebrew, "darwin", Advice{Command: "brew upgrade stripe"}},
+		{"apt", APT, "linux", Advice{Command: "sudo apt update && sudo apt upgrade stripe"}},
+		{"yum", YUM, "linux", Advice{Command: "sudo yum update stripe"}},
+		{"scoop", Scoop, "windows", Advice{Command: "scoop update stripe"}},
+		{"winget", Winget, "windows", Advice{Command: "winget upgrade Stripe.StripeCLI"}},
+		{"docker", Docker, "linux", Advice{Command: "docker pull stripe/stripe-cli"}},
+		{"npm global", NPMGlobal, "darwin", Advice{Command: "npm install -g @stripe/cli"}},
+		{
+			"install script on unix",
+			Script, "darwin",
+			Advice{Command: "curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh"},
+		},
+		{
+			"install script on windows",
+			Script, "windows",
+			Advice{Command: "irm https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.ps1 | iex"},
+		},
+		// npx resolves the latest version itself, so the notice is suppressed rather
+		// than printed without a command.
+		{"npx", NPX, "darwin", Advice{Suppress: true}},
+		// The remaining methods get the notice with no command: the right upgrade
+		// depends on a project's lockfile, or we could not tell how the CLI arrived.
+		{"npm run", NPMRun, "darwin", Advice{}},
+		{"unknown", Unknown, "linux", Advice{}},
+		{"unrecognized distributor", "acme_internal", "linux", Advice{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, UpgradeAdvice(tt.method, tt.goos))
+		})
+	}
+}
+
 func TestDetectReadsOnlyItsOwnEnvVar(t *testing.T) {
 	// The detected method is reported to telemetry, and this runs on every command
 	// in an environment that routinely holds keys and session identifiers. Detection

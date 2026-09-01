@@ -1,8 +1,7 @@
-// Package installmethod detects how the CLI was installed: which package
-// manager, installer, or image put the running binary in place.
-//
-// The answer is reported to telemetry, and is the thing a caller needs to name
-// the command that upgrades an out-of-date CLI.
+// Package installmethod detects how the CLI was installed -- which package
+// manager, installer, or image put the running binary in place -- and maps that
+// to the command that upgrades it, so an out-of-date CLI can tell a user what to
+// run rather than only that a newer version exists.
 package installmethod
 
 import (
@@ -46,6 +45,19 @@ type Env struct {
 	ReadFile     func(string) ([]byte, error)
 }
 
+// Advice is what to tell a user whose CLI is out of date.
+type Advice struct {
+	// Command upgrades the CLI, or is empty for an install method we cannot name
+	// a command for. Callers should still report that a new version exists in
+	// that case: knowing to upgrade is useful even without the command, and a
+	// wrong command is worse than no command.
+	Command string
+
+	// Suppress is set for a channel that resolves the latest version on every
+	// invocation, where an upgrade notice is noise the user cannot act on.
+	Suppress bool
+}
+
 //
 // Public functions
 //
@@ -72,7 +84,8 @@ func Detect(env Env) string {
 		// Set by the npm wrapper (npm/wrapper/bin/shim.js), which separates a global
 		// install from `npm run` and npx -- a difference only it can see. Reported
 		// as-is rather than checked against the constants above, so that a
-		// distributor setting its own value has that value reported.
+		// distributor setting its own value has that value reported. UpgradeAdvice
+		// names no command for a value it does not know.
 		return method
 	}
 
@@ -104,6 +117,47 @@ func Detect(env Env) string {
 	}
 
 	return Unknown
+}
+
+// UpgradeAdvice returns what to tell a user running an out-of-date CLI that was
+// installed by the given method. goos is the running platform, which the install
+// scripts' advice depends on; callers pass runtime.GOOS.
+func UpgradeAdvice(method, goos string) Advice {
+	switch method {
+	case Homebrew:
+		// "stripe" is both the formula name in stripe/homebrew-stripe-cli and an
+		// alias for homebrew-core's "stripe-cli", so this upgrades either one.
+		return Advice{Command: "brew upgrade stripe"}
+	case APT:
+		return Advice{Command: "sudo apt update && sudo apt upgrade stripe"}
+	case YUM:
+		return Advice{Command: "sudo yum update stripe"}
+	case Scoop:
+		return Advice{Command: "scoop update stripe"}
+	case Winget:
+		return Advice{Command: "winget upgrade Stripe.StripeCLI"}
+	case Docker:
+		return Advice{Command: "docker pull stripe/stripe-cli"}
+	case NPMGlobal:
+		return Advice{Command: "npm install -g @stripe/cli"}
+	case Script:
+		if goos == "windows" {
+			return Advice{Command: "irm https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.ps1 | iex"}
+		}
+		return Advice{Command: "curl -sSL https://raw.githubusercontent.com/stripe/stripe-cli/master/scripts/install.sh | sh"}
+	case NPX:
+		// npx resolves the latest version on every invocation, so there is nothing
+		// to upgrade. Reaching here means a pinned version (`npx @stripe/cli@1.2.3`)
+		// or a stale npx cache, neither of which the notice would help with.
+		return Advice{Suppress: true}
+	case NPMRun:
+		// Run through a project's package.json, where the right change depends on
+		// that project's dependency range and lockfile. Naming a command risks
+		// telling the user to edit the wrong thing, so the notice stands alone.
+		return Advice{}
+	default:
+		return Advice{}
+	}
 }
 
 //
