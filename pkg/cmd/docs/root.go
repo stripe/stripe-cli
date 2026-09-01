@@ -95,10 +95,9 @@ Read API Reference pages by their identifier:
   stripe docs api product
   stripe docs api GET /v1/products
   stripe docs api product.created`,
-		Args:              cobra.ArbitraryArgs,
-		PersistentPreRunE: r.preRun,
-		RunE:              r.run,
-		SilenceUsage:      true,
+		Args:         cobra.ArbitraryArgs,
+		RunE:         r.withSetup(r.run),
+		SilenceUsage: true,
 	}
 
 	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
@@ -205,7 +204,28 @@ func (r *RootCommand) initLogger() {
 	}
 }
 
-func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
+// withSetup wraps a RunE so that setup runs after flag parsing but before the
+// command body.
+//
+// The docs tree deliberately does not use a PersistentPreRun hook for this. Cobra
+// runs only the closest such hook in the chain, so declaring one here shadows the
+// root command's, which silently disables config migration, --access-base
+// validation, Sentry command context, and command-invocation telemetry for every
+// command under `stripe docs`. Other CLI commands do their post-flag setup at the
+// top of RunE for the same reason; see runListenCmd.
+func (r *RootCommand) withSetup(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := r.setup(); err != nil {
+			return err
+		}
+
+		return run(cmd, args)
+	}
+}
+
+// setup initializes the logger, renderer, and docs client from parsed flags and
+// stored credentials. It runs once per invocation, via withSetup.
+func (r *RootCommand) setup() error {
 	r.initLogger()
 	r.initRenderer()
 	if r.client != nil {
