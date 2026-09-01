@@ -75,16 +75,10 @@ func TestPalette_CopyPageURL(t *testing.T) {
 	p.Open()
 	p.Model, _ = p.Update(tea.KeyPressMsg{Code: '>', Text: ">"})
 
-	var copyURLCommand *palette.Command
-	for _, item := range p.Items() {
-		command, ok := item.(palette.Command)
-		if ok && command.Name == "Copy page URL" {
-			copyURLCommand = &command
-			break
-		}
-	}
-	require.NotNil(t, copyURLCommand)
+	copyURLCommand, ok := p.Selected().(palette.Command)
+	require.True(t, ok)
 	assert.Equal(t, "copy-page-url", copyURLCommand.ID)
+	assert.Equal(t, "Copy page URL", copyURLCommand.Name)
 	assert.Equal(t, "Copy this page's docs.stripe.com URL to clipboard", copyURLCommand.Desc)
 
 	cmd := copyURLCommand.Run()
