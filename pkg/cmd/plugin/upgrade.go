@@ -95,6 +95,9 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	if prevVersion != "" {
 		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
+		// Always eligible here: upgrade takes no version, so the user only ever asked
+		// for the latest.
+		printUnrequestedDowngradeNote(os.Stdout, plugin.Shortname, prevVersion, version)
 	} else {
 		fmt.Println(color.Green(fmt.Sprintf("✔ upgrade to v%s complete.", version)))
 	}

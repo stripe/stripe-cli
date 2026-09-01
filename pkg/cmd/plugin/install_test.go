@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -161,4 +162,38 @@ func TestRunInstallCmdNonExistentPluginLoggedIn(t *testing.T) {
 	require.Contains(t, err.Error(), "no plugin named")
 	require.Contains(t, err.Error(), "nonexistent-plugin")
 	require.Contains(t, err.Error(), "exists")
+}
+
+func TestPrintUnrequestedDowngradeNote(t *testing.T) {
+	originalVersion := version.Version
+	version.Version = "1.20.0"
+	defer func() { version.Version = originalVersion }()
+
+	tests := []struct {
+		name        string
+		prevVersion string
+		newVersion  string
+		expectNote  bool
+	}{
+		{name: "rollback to an older release", prevVersion: "2.0.0", newVersion: "1.5.0", expectNote: true},
+		{name: "ordinary upgrade", prevVersion: "1.5.0", newVersion: "2.0.0"},
+		{name: "same version", prevVersion: "2.0.0", newVersion: "2.0.0"},
+		{name: "unparseable versions", prevVersion: "not-a-version", newVersion: "1.5.0"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var out strings.Builder
+			printUnrequestedDowngradeNote(&out, "appA", test.prevVersion, test.newVersion)
+
+			if !test.expectNote {
+				require.Empty(t, out.String())
+				return
+			}
+
+			require.Contains(t, out.String(), "v1.5.0 is the newest appA release available to Stripe CLI 1.20.0")
+			require.Contains(t, out.String(), "Newer releases may require a newer Stripe CLI")
+			require.Contains(t, out.String(), "https://docs.stripe.com/stripe-cli/upgrade")
+		})
+	}
 }
