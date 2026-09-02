@@ -36,6 +36,7 @@ func newAgentReportUsageCmd() *agentReportUsageCmd {
 		Example:       "stripe agent report_usage --type skill --name stripe-best-practices",
 		Args:          validators.NoArgs,
 		RunE:          arc.runReportUsage,
+		Hidden:        true,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
