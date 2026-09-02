@@ -15,6 +15,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -48,7 +49,7 @@ type Client struct {
 	baseURL        *url.URL
 	apiBaseURL     *url.URL
 	userAgent      string
-	apiKey         string
+	credentials    stripe.Credentials
 	cacheKeyPrefix string
 	cache          Cache
 	logger         *log.Entry
@@ -72,8 +73,15 @@ func WithCache(cache Cache) ClientOption { return func(c *Client) { c.cache = ca
 // WithLogger sets a custom logger.
 func WithLogger(logger *log.Entry) ClientOption { return func(c *Client) { c.logger = logger } }
 
+// WithCredentials sets the credentials used for authenticated requests.
+func WithCredentials(credentials stripe.Credentials) ClientOption {
+	return func(c *Client) { c.credentials = credentials }
+}
+
 // WithAPIKey sets the Stripe API key sent as an Authorization header on every request.
-func WithAPIKey(key string) ClientOption { return func(c *Client) { c.apiKey = key } }
+func WithAPIKey(key string) ClientOption {
+	return WithCredentials(stripe.NewAPIKeyCredentials(key))
+}
 
 // WithAPIBaseURL overrides the Stripe API base URL used for authenticated requests
 // (defaults to https://api.stripe.com).
@@ -129,7 +137,7 @@ type retrieveDocResponse struct {
 //
 //	page, err := c.FetchPage(ctx, &url.URL{Path: "/payments/accept-a-payment", RawQuery: "api_version=2024-06-30"})
 func (c *Client) FetchPage(ctx context.Context, ref *url.URL) (Page, error) {
-	if c.apiKey != "" {
+	if c.credentials.Token != "" {
 		return c.fetchPageViaAPI(ctx, ref)
 	}
 
@@ -241,9 +249,7 @@ func (c *Client) cacheKey(rawURL string) string {
 
 func (c *Client) do(req *http.Request) (response, error) {
 	req.Header.Set("User-Agent", c.userAgent)
-	if c.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	}
+	c.credentials.SetRequestHeaders(req)
 
 	start := time.Now()
 	resp, err := c.http.Do(req)
@@ -338,7 +344,7 @@ func (c *Client) Search(ctx context.Context, query string) (*SearchResponse, err
 	}
 
 	var u *url.URL
-	if c.apiKey != "" {
+	if c.credentials.Token != "" {
 		u = c.apiBaseURL.JoinPath("/v2/docs/search")
 	} else {
 		u = c.baseURL.JoinPath("/_endpoint/search")

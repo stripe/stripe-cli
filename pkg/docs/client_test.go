@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -106,7 +107,17 @@ func TestWithOptions(t *testing.T) {
 			name: "set API key",
 			opts: []ClientOption{WithAPIKey("sk_test_abc123")},
 			wantCheck: func(t *testing.T, c *Client) {
-				assert.Equal(t, "sk_test_abc123", c.apiKey)
+				assert.Equal(t, stripe.NewAPIKeyCredentials("sk_test_abc123"), c.credentials)
+			},
+		},
+		{
+			name: "set credentials",
+			opts: []ClientOption{WithCredentials(stripe.NewOAKCredentials("oak_test_abc123", "context_123", false))},
+			wantCheck: func(t *testing.T, c *Client) {
+				assert.Equal(t, "oak_test_abc123", c.credentials.Token)
+				assert.Equal(t, "context_123", c.credentials.OAKContext)
+				require.NotNil(t, c.credentials.OAKLivemode)
+				assert.False(t, *c.credentials.OAKLivemode)
 			},
 		},
 		{
@@ -704,6 +715,47 @@ func TestFetchPage_Authenticated_ForwardsLocatorPath(t *testing.T) {
 	got, err := client.FetchPage(context.Background(), ref)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("locator content"), got.Content)
+}
+
+func TestOAuthCredentials_UseAuthenticatedPageAndSearchEndpoints(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		livemode bool
+	}{
+		{name: "live", livemode: true},
+		{name: "sandbox", livemode: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var paths []string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				paths = append(paths, r.URL.Path)
+				assert.Equal(t, "Bearer oak_test_abc123", r.Header.Get("Authorization"))
+				assert.Equal(t, "context_123", r.Header.Get("Stripe-Context"))
+				assert.Equal(t, fmt.Sprintf("%t", tc.livemode), r.Header.Get("Stripe-Livemode"))
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/v2/docs/page":
+					fmt.Fprint(w, `{"content":"page content"}`)
+				case "/v2/docs/search":
+					fmt.Fprint(w, `{"hits":[]}`)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			client := NewClient("0.1.0").WithOptions(
+				WithAPIBaseURL(server.URL),
+				WithCredentials(stripe.NewOAKCredentials("oak_test_abc123", "context_123", tc.livemode)),
+			)
+
+			_, err := client.FetchPage(context.Background(), &url.URL{Path: "/payments"})
+			require.NoError(t, err)
+			_, err = client.Search(context.Background(), "payments")
+			require.NoError(t, err)
+			assert.Equal(t, []string{"/v2/docs/page", "/v2/docs/search"}, paths)
+		})
+	}
 }
 
 func TestFetchPage_Unauthenticated_DoesNotSetAuthorizationHeader(t *testing.T) {

@@ -3,6 +3,7 @@ package docs_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/markdown"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -358,6 +360,81 @@ func TestFetchPage_Authenticated(t *testing.T) {
 	assert.Equal(t, "/payments", gotPath)
 	assert.Equal(t, "Bearer sk_test_123", gotAuth)
 	assert.Equal(t, requests.StripeVersionHeaderValue, gotVersion)
+}
+
+func TestOAuthCredentials_UseAuthenticatedEndpoints(t *testing.T) {
+	for _, initPath := range []struct {
+		name         string
+		injectClient bool
+	}{
+		{name: "client initialization"},
+		{name: "pre-run initialization", injectClient: true},
+	} {
+		t.Run(initPath.name, func(t *testing.T) {
+			for _, mode := range []struct {
+				name     string
+				livemode bool
+			}{
+				{name: "live", livemode: true},
+				{name: "sandbox", livemode: false},
+			} {
+				t.Run(mode.name, func(t *testing.T) {
+					for _, request := range []struct {
+						name     string
+						args     []string
+						wantPath string
+					}{
+						{name: "page", args: []string{"--non-interactive", "/payments"}, wantPath: "/v2/docs/page"},
+						{name: "search", args: []string{"--non-interactive", "search", "payments"}, wantPath: "/v2/docs/search"},
+					} {
+						t.Run(request.name, func(t *testing.T) {
+							t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+							cfg, cleanup := setupPrefsTestConfig(t)
+							defer cleanup()
+
+							activeContext, err := json.Marshal(cliconfig.ActiveContext{AccountID: "context_123", Livemode: mode.livemode})
+							require.NoError(t, err)
+							previousKeyRing := cliconfig.KeyRing
+							cliconfig.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+								cliconfig.UATKeychainItemKey:            []byte("oak_test_abc123"),
+								cliconfig.OAuthActiveContextKeychainKey: activeContext,
+							})
+							defer func() { cliconfig.KeyRing = previousKeyRing }()
+
+							server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+								assert.Equal(t, request.wantPath, r.URL.Path)
+								assert.Equal(t, "Bearer oak_test_abc123", r.Header.Get("Authorization"))
+								assert.Equal(t, "context_123", r.Header.Get("Stripe-Context"))
+								assert.Equal(t, fmt.Sprintf("%t", mode.livemode), r.Header.Get("Stripe-Livemode"))
+								w.Header().Set("Content-Type", "application/json")
+								if request.wantPath == "/v2/docs/page" {
+									fmt.Fprint(w, `{"content":"# Payments"}`)
+								} else {
+									fmt.Fprint(w, `{"hits":[]}`)
+								}
+							}))
+							defer server.Close()
+
+							config := &cliconfig.Config{Color: "off", Profile: cfg.Profile, ProfilesFile: cfg.ProfilesFile}
+							options := []cmd.Option{
+								cmd.WithConfig(config),
+								cmd.WithAPIBaseURL(server.URL),
+							}
+							if initPath.injectClient {
+								options = append(options, cmd.WithClient(docs.NewClient("test").WithOptions(docs.WithAPIBaseURL(server.URL))))
+							}
+
+							root := cmd.New().WithOptions(options...).Root()
+							root.SetOut(new(bytes.Buffer))
+							root.SetErr(new(bytes.Buffer))
+							root.SetArgs(request.args)
+							require.NoError(t, root.ExecuteContext(context.Background()))
+						})
+					}
+				})
+			}
+		})
+	}
 }
 
 func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
