@@ -1,0 +1,25 @@
+changelog:
+  exclude:
+    labels:
+      - dependencies
+      - documentation
+      - skip-release-notes
+  categories:
+    - title: Breaking changes
+      labels:
+        - breaking-change
+    - title: Security
+      labels:
+        - security
+    - title: Deprecations
+      labels:
+        - deprecation
+    - title: Features
+      labels:
+        - enhancement
+    - title: Bug fixes
+      labels:
+        - bug
+    - title: Other user-facing changes
+      labels:
+        - "*"

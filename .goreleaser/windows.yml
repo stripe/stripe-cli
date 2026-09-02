@@ -33,11 +33,7 @@ archives:
     files:
       - none*
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  use: github-native
 checksum:
   name_template: "{{ .ProjectName }}-windows-checksums.txt"
 release:
