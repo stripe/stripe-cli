@@ -87,7 +87,9 @@ func newPalette(page Page, doc *markdown.Document, client *docs.Client) Palette 
 			Desc: "Open this page on docs.stripe.com",
 			Run: func() tea.Cmd {
 				return func() tea.Msg {
-					_ = page.Open(context.Background())
+					if err := page.Open(context.Background()); err != nil {
+						return statusMsg("Failed to open")
+					}
 					return statusMsg("Opened!")
 				}
 			},
