@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,54 @@ func sha256sum(path string) string {
 	data, _ := os.ReadFile(path)
 	h := sha256.Sum256(data)
 	return hex.EncodeToString(h[:])
+}
+
+func TestFormatReleaseNotes_Empty(t *testing.T) {
+	assert.Empty(t, formatReleaseNotes("", "1.24.0"))
+}
+
+func TestFormatReleaseNotes_ExactLineBoundary(t *testing.T) {
+	notes := strings.Join([]string{
+		"line 1", "line 2", "line 3", "line 4", "line 5",
+		"line 6", "line 7", "line 8", "line 9", "line 10",
+		"line 11", "line 12", "line 13", "line 14", "line 15",
+	}, "\n")
+
+	assert.Equal(t, notes, formatReleaseNotes(notes, "1.24.0"))
+}
+
+func TestFormatReleaseNotes_ExactCharacterBoundary(t *testing.T) {
+	notes := strings.Repeat("a", maxReleaseNoteRunes)
+
+	assert.Equal(t, notes, formatReleaseNotes(notes, "1.24.0"))
+}
+
+func TestFormatReleaseNotes_TruncatesLines(t *testing.T) {
+	lines := make([]string, maxReleaseNoteLines+1)
+	for i := range lines {
+		lines[i] = "release note"
+	}
+
+	got := formatReleaseNotes(strings.Join(lines, "\n"), "v1.24.0")
+	notes, pointer, found := strings.Cut(got, "\nFull release notes: ")
+	require.True(t, found)
+	assert.Equal(t, strings.Join(lines[:maxReleaseNoteLines], "\n"), notes)
+	assert.Equal(t, "https://github.com/stripe/stripe-cli/releases/tag/v1.24.0", pointer)
+	assert.LessOrEqual(t, strings.Count(notes, "\n")+1, maxReleaseNoteLines)
+	assert.LessOrEqual(t, utf8.RuneCountInString(notes), maxReleaseNoteRunes)
+}
+
+func TestFormatReleaseNotes_TruncatesCharactersWithoutSplittingUTF8(t *testing.T) {
+	notes := strings.Repeat("界", maxReleaseNoteRunes+1)
+
+	got := formatReleaseNotes(notes, "vv1.24.0")
+	retained, pointer, found := strings.Cut(got, "\nFull release notes: ")
+	require.True(t, found)
+	assert.True(t, utf8.ValidString(retained))
+	assert.Equal(t, strings.Repeat("界", maxReleaseNoteRunes), retained)
+	assert.Equal(t, "https://github.com/stripe/stripe-cli/releases/tag/v1.24.0", pointer)
+	assert.LessOrEqual(t, strings.Count(retained, "\n")+1, maxReleaseNoteLines)
+	assert.LessOrEqual(t, utf8.RuneCountInString(retained), maxReleaseNoteRunes)
 }
 
 func TestExtractFromTarGz(t *testing.T) {
