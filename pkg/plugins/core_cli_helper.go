@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +35,16 @@ type CoreCLIHelper interface {
 	// `stripe switch context` does. If accountID is empty, shows an interactive picker;
 	// switched is false if the user cancels it, in which case the other return values are empty.
 	SwitchContext(accountID string, livemode bool) (resultAccountID string, accountName string, resultLivemode bool, switched bool, err error)
+	// Login starts a Stripe CLI login, the same way `stripe login --new-session` does when run
+	// interactively: it revokes any existing OAuth session first (so this works even if the
+	// stored credential is expired or revoked), then runs the normal login flow, printing the
+	// same output and opening the browser only after the user presses enter.
+	// timeoutSeconds bounds how long it waits for the user to complete authentication (0 waits
+	// indefinitely, matching `stripe login`); loggedIn is false if that timeout elapses or the
+	// attempt is otherwise canceled first, in which case the other return values are empty.
+	// Calling Login again starts a brand new login attempt (a new device code and browser URL),
+	// not a resumption of this one.
+	Login(timeoutSeconds int32) (accountID string, accountName string, livemode bool, loggedIn bool, err error)
 }
 
 type CoreCLIHelperClient struct {
@@ -120,6 +132,14 @@ func (c *CoreCLIHelperClient) SwitchContext(accountID string, livemode bool) (st
 	return resp.AccountId, resp.AccountName, resp.Livemode, resp.Switched, nil
 }
 
+func (c *CoreCLIHelperClient) Login(timeoutSeconds int32) (string, string, bool, bool, error) {
+	resp, err := c.client.Login(context.Background(), &proto.LoginRequest{TimeoutSeconds: timeoutSeconds})
+	if err != nil {
+		return "", "", false, false, err
+	}
+	return resp.AccountId, resp.AccountName, resp.Livemode, resp.LoggedIn, nil
+}
+
 type CoreCLIHelperServer struct {
 	proto.CoreCLIHelperServer
 	Impl CoreCLIHelper
@@ -203,6 +223,14 @@ func (s *CoreCLIHelperServer) SwitchContext(ctx context.Context, req *proto.Swit
 		return nil, err
 	}
 	return &proto.SwitchContextResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, Switched: switched}, nil
+}
+
+func (s *CoreCLIHelperServer) Login(ctx context.Context, req *proto.LoginRequest) (*proto.LoginResponse, error) {
+	accountID, accountName, livemode, loggedIn, err := s.Impl.Login(req.TimeoutSeconds)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.LoginResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, LoggedIn: loggedIn}, nil
 }
 
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
@@ -289,6 +317,13 @@ func clearPendingKeychainValue(key string) {
 // loginSwitchContext is a package variable so tests can stub out the network/keychain calls
 // made by coreCLIHelper.SwitchContext.
 var loginSwitchContext = login.SwitchContext
+
+// loginRevokeToken and loginLogin are package variables so tests can stub out the network/
+// keychain calls made by coreCLIHelper.Login.
+var (
+	loginRevokeToken = login.RevokeToken
+	loginLogin       = login.Login
+)
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 // apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
@@ -443,4 +478,49 @@ func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, 
 		return "", "", false, false, nil
 	}
 	return result.Account.ID, result.Account.Name, result.Mode == "live", true, nil
+}
+
+// Login starts a Stripe CLI login, the same way `stripe login --new-session` does when run
+// interactively.
+func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool, error) {
+	cfg, ok := h.config.(*config.Config)
+	if !ok {
+		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not log in: config type mismatch")
+	}
+	dashboardBaseURL := h.dashboardBaseURL
+	if dashboardBaseURL == "" {
+		dashboardBaseURL = stripe.DefaultDashboardBaseURL
+	}
+	accessBaseURL := h.accessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+
+	ctx := h.ctx
+	if timeoutSeconds > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(h.ctx, time.Duration(timeoutSeconds)*time.Second)
+		defer cancel()
+	}
+
+	// Same as `stripe login --new-session`: revoke any existing OAuth session before starting a
+	// new one, so this works even if the stored credential is expired or revoked.
+	if uat, _ := cfg.Profile.GetUAT(); strings.HasPrefix(uat, "oak_") {
+		if err := loginRevokeToken(ctx, accessBaseURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
+		}
+	}
+
+	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, cfg); err != nil {
+		if ctx.Err() != nil {
+			return "", "", false, false, nil
+		}
+		return "", "", false, false, err
+	}
+
+	livemode := false
+	if ac, _ := config.GetActiveContext(); ac != nil {
+		livemode = ac.Livemode
+	}
+	return cfg.Profile.AccountID, cfg.Profile.DisplayName, livemode, true, nil
 }

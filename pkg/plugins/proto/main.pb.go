@@ -1367,6 +1367,125 @@ func (x *SwitchContextResponse) GetSwitched() bool {
 	return false
 }
 
+type LoginRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// timeout_seconds bounds how long Login waits for the user to complete
+	// authentication. If unset or 0, it waits indefinitely, matching
+	// `stripe login`.
+	TimeoutSeconds int32 `protobuf:"varint,1,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LoginRequest) Reset() {
+	*x = LoginRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginRequest) ProtoMessage() {}
+
+func (x *LoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
+func (*LoginRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *LoginRequest) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
+}
+
+type LoginResponse struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AccountId   string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountName string                 `protobuf:"bytes,2,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	Livemode    bool                   `protobuf:"varint,3,opt,name=livemode,proto3" json:"livemode,omitempty"`
+	// logged_in is false if the attempt was cancelled or timed out before
+	// completing; in that case the other fields are empty. Calling Login
+	// again starts a brand new login attempt (a new device code and browser
+	// URL), not a resumption of this one.
+	LoggedIn      bool `protobuf:"varint,4,opt,name=logged_in,json=loggedIn,proto3" json:"logged_in,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LoginResponse) Reset() {
+	*x = LoginResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LoginResponse) ProtoMessage() {}
+
+func (x *LoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
+func (*LoginResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *LoginResponse) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *LoginResponse) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *LoginResponse) GetLivemode() bool {
+	if x != nil {
+		return x.Livemode
+	}
+	return false
+}
+
+func (x *LoginResponse) GetLoggedIn() bool {
+	if x != nil {
+		return x.LoggedIn
+	}
+	return false
+}
+
 var File_pkg_plugins_proto_main_proto protoreflect.FileDescriptor
 
 const file_pkg_plugins_proto_main_proto_rawDesc = "" +
@@ -1451,12 +1570,20 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
 	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
 	"\blivemode\x18\x03 \x01(\bR\blivemode\x12\x1a\n" +
-	"\bswitched\x18\x04 \x01(\bR\bswitched2\xd8\x01\n" +
+	"\bswitched\x18\x04 \x01(\bR\bswitched\"7\n" +
+	"\fLoginRequest\x12'\n" +
+	"\x0ftimeout_seconds\x18\x01 \x01(\x05R\x0etimeoutSeconds\"\x8a\x01\n" +
+	"\rLoginResponse\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
+	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
+	"\blivemode\x18\x03 \x01(\bR\blivemode\x12\x1b\n" +
+	"\tlogged_in\x18\x04 \x01(\bR\bloggedIn2\xd8\x01\n" +
 	"\x04Main\x12A\n" +
 	"\n" +
 	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse\x12D\n" +
 	"\vPostInstall\x12\x19.proto.PostInstallRequest\x1a\x1a.proto.PostInstallResponse\x12G\n" +
-	"\fPreUninstall\x12\x1a.proto.PreUninstallRequest\x1a\x1b.proto.PreUninstallResponse2\xf6\x06\n" +
+	"\fPreUninstall\x12\x1a.proto.PreUninstallRequest\x1a\x1b.proto.PreUninstallResponse2\xaa\a\n" +
 	"\rCoreCLIHelper\x12/\n" +
 	"\x04Echo\x12\x12.proto.EchoRequest\x1a\x13.proto.EchoResponse\x12J\n" +
 	"\rSendAnalytics\x12\x1b.proto.SendAnalyticsRequest\x1a\x1c.proto.SendAnalyticsResponse\x12\\\n" +
@@ -1467,7 +1594,8 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\rRunPeerPlugin\x12\x1b.proto.RunPeerPluginRequest\x1a\x1c.proto.RunPeerPluginResponse\x12Y\n" +
 	"\x12ResolveCredentials\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponse\x12c\n" +
 	"\x1cResolveCredentialsForAnyMode\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponse\x12J\n" +
-	"\rSwitchContext\x12\x1b.proto.SwitchContextRequest\x1a\x1c.proto.SwitchContextResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
+	"\rSwitchContext\x12\x1b.proto.SwitchContextRequest\x1a\x1c.proto.SwitchContextResponse\x122\n" +
+	"\x05Login\x12\x13.proto.LoginRequest\x1a\x14.proto.LoginResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
 
 var (
 	file_pkg_plugins_proto_main_proto_rawDescOnce sync.Once
@@ -1481,7 +1609,7 @@ func file_pkg_plugins_proto_main_proto_rawDescGZIP() []byte {
 	return file_pkg_plugins_proto_main_proto_rawDescData
 }
 
-var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_pkg_plugins_proto_main_proto_goTypes = []any{
 	(*RunCommandRequest)(nil),               // 0: proto.RunCommandRequest
 	(*RunCommandResponse)(nil),              // 1: proto.RunCommandResponse
@@ -1510,6 +1638,8 @@ var file_pkg_plugins_proto_main_proto_goTypes = []any{
 	(*ResolveCredentialsResponse)(nil),      // 24: proto.ResolveCredentialsResponse
 	(*SwitchContextRequest)(nil),            // 25: proto.SwitchContextRequest
 	(*SwitchContextResponse)(nil),           // 26: proto.SwitchContextResponse
+	(*LoginRequest)(nil),                    // 27: proto.LoginRequest
+	(*LoginResponse)(nil),                   // 28: proto.LoginResponse
 }
 var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	6,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
@@ -1530,21 +1660,23 @@ var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	23, // 15: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
 	23, // 16: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
 	25, // 17: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
-	1,  // 18: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
-	3,  // 19: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
-	5,  // 20: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
-	10, // 21: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
-	12, // 22: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
-	14, // 23: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
-	16, // 24: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
-	18, // 25: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
-	20, // 26: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
-	22, // 27: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
-	24, // 28: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
-	24, // 29: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
-	26, // 30: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
-	18, // [18:31] is the sub-list for method output_type
-	5,  // [5:18] is the sub-list for method input_type
+	27, // 18: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
+	1,  // 19: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
+	3,  // 20: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
+	5,  // 21: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
+	10, // 22: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
+	12, // 23: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
+	14, // 24: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
+	16, // 25: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
+	18, // 26: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
+	20, // 27: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
+	22, // 28: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
+	24, // 29: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
+	24, // 30: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
+	26, // 31: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
+	28, // 32: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
+	19, // [19:33] is the sub-list for method output_type
+	5,  // [5:19] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -1561,7 +1693,7 @@ func file_pkg_plugins_proto_main_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_plugins_proto_main_proto_rawDesc), len(file_pkg_plugins_proto_main_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   27,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
