@@ -526,6 +526,86 @@ func TestSwitchContextPropagatesError(t *testing.T) {
 	require.Empty(t, accountName)
 }
 
+func TestLoginReturnsConfigTypeMismatchError(t *testing.T) {
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.Login(0)
+	require.Error(t, err)
+	require.False(t, loggedIn)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
+func TestLoginSuccess(t *testing.T) {
+	originalLoginAndWait := loginAndWait
+	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+
+	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
+		require.Equal(t, login.DefaultLoginTimeout, timeout)
+		return &login.LoginResult{
+			AccountID:   "acct_123",
+			AccountName: "Acme Inc",
+			Livemode:    true,
+		}, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, livemode, loggedIn, err := coreCLIHelper.Login(0)
+	require.NoError(t, err)
+	require.True(t, loggedIn)
+	require.Equal(t, "acct_123", accountID)
+	require.Equal(t, "Acme Inc", accountName)
+	require.True(t, livemode)
+}
+
+func TestLoginUsesRequestedTimeout(t *testing.T) {
+	originalLoginAndWait := loginAndWait
+	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+
+	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
+		require.Equal(t, 5*time.Second, timeout)
+		return &login.LoginResult{AccountID: "acct_123"}, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, _, _, loggedIn, err := coreCLIHelper.Login(5)
+	require.NoError(t, err)
+	require.True(t, loggedIn)
+	require.Equal(t, "acct_123", accountID)
+}
+
+func TestLoginCancelledReturnsNotLoggedIn(t *testing.T) {
+	originalLoginAndWait := loginAndWait
+	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+
+	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
+		return nil, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.Login(0)
+	require.NoError(t, err)
+	require.False(t, loggedIn)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
+func TestLoginPropagatesError(t *testing.T) {
+	originalLoginAndWait := loginAndWait
+	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+
+	expectedErr := errors.New("boom")
+	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
+		return nil, expectedErr
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.Login(0)
+	require.ErrorIs(t, err, expectedErr)
+	require.False(t, loggedIn)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
 func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
 	// Test with a NoOp telemetry client
 	ctx := context.Background()

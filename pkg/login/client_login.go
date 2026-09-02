@@ -25,6 +25,17 @@ func SetOpenBrowserForTesting(fn func(string) error) (restore func()) {
 	return func() { openBrowser = orig }
 }
 
+// OpenBrowserIfPossible opens rawURL in the user's default browser when the current environment
+// supports it (not over SSH, and a browser is available). It is a no-op returning nil when the
+// environment can't open a browser automatically, so the caller should always also present
+// rawURL for the user to open manually.
+func OpenBrowserIfPossible(rawURL string) error {
+	if isSSH() || !canOpenBrowser() {
+		return nil
+	}
+	return openBrowser(rawURL)
+}
+
 const stripeCLIAuthPath = "/stripecli/auth"
 
 // TODO

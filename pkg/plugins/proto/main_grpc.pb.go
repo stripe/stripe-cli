@@ -215,6 +215,7 @@ const (
 	CoreCLIHelper_ResolveCredentials_FullMethodName           = "/proto.CoreCLIHelper/ResolveCredentials"
 	CoreCLIHelper_ResolveCredentialsForAnyMode_FullMethodName = "/proto.CoreCLIHelper/ResolveCredentialsForAnyMode"
 	CoreCLIHelper_SwitchContext_FullMethodName                = "/proto.CoreCLIHelper/SwitchContext"
+	CoreCLIHelper_Login_FullMethodName                        = "/proto.CoreCLIHelper/Login"
 )
 
 // CoreCLIHelperClient is the client API for CoreCLIHelper service.
@@ -239,6 +240,13 @@ type CoreCLIHelperClient interface {
 	// same way `stripe switch context` does. If account_id is empty, shows an
 	// interactive picker.
 	SwitchContext(ctx context.Context, in *SwitchContextRequest, opts ...grpc.CallOption) (*SwitchContextResponse, error)
+	// Login starts a Stripe CLI login, the same way `stripe login` does when
+	// run interactively: opens the browser automatically when possible and
+	// waits for the user to complete authentication. Unlike `stripe login`,
+	// it always starts a new login attempt regardless of any credential
+	// already stored, so it works even if that credential is expired or
+	// revoked.
+	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -350,6 +358,16 @@ func (c *coreCLIHelperClient) SwitchContext(ctx context.Context, in *SwitchConte
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoginResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_Login_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
@@ -372,6 +390,13 @@ type CoreCLIHelperServer interface {
 	// same way `stripe switch context` does. If account_id is empty, shows an
 	// interactive picker.
 	SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error)
+	// Login starts a Stripe CLI login, the same way `stripe login` does when
+	// run interactively: opens the browser automatically when possible and
+	// waits for the user to complete authentication. Unlike `stripe login`,
+	// it always starts a new login attempt regardless of any credential
+	// already stored, so it works even if that credential is expired or
+	// revoked.
+	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -411,6 +436,9 @@ func (UnimplementedCoreCLIHelperServer) ResolveCredentialsForAnyMode(context.Con
 }
 func (UnimplementedCoreCLIHelperServer) SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SwitchContext not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -613,6 +641,24 @@ func _CoreCLIHelper_SwitchContext_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).Login(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_Login_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).Login(ctx, req.(*LoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -659,6 +705,10 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SwitchContext",
 			Handler:    _CoreCLIHelper_SwitchContext_Handler,
+		},
+		{
+			MethodName: "Login",
+			Handler:    _CoreCLIHelper_Login_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

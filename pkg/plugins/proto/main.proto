@@ -86,6 +86,13 @@ service CoreCLIHelper {
   // same way `stripe switch context` does. If account_id is empty, shows an
   // interactive picker.
   rpc SwitchContext(SwitchContextRequest) returns (SwitchContextResponse);
+  // Login starts a Stripe CLI login, the same way `stripe login` does when
+  // run interactively: opens the browser automatically when possible and
+  // waits for the user to complete authentication. Unlike `stripe login`,
+  // it always starts a new login attempt regardless of any credential
+  // already stored, so it works even if that credential is expired or
+  // revoked.
+  rpc Login(LoginRequest) returns (LoginResponse);
 }
 
 message EchoRequest {
@@ -171,4 +178,20 @@ message SwitchContextResponse {
   // switched is false if the user cancelled an interactive picker; in that
   // case the other fields are empty.
   bool switched = 4;
+}
+
+message LoginRequest {
+  // timeout_seconds bounds how long Login waits for the user to complete
+  // authentication in the browser. If unset or 0, a default timeout is used.
+  int32 timeout_seconds = 1;
+}
+
+message LoginResponse {
+  string account_id = 1;
+  string account_name = 2;
+  bool livemode = 3;
+  // logged_in is false if the attempt was cancelled or timed out before
+  // completing; in that case the other fields are empty. Call Login again
+  // to keep waiting.
+  bool logged_in = 4;
 }
