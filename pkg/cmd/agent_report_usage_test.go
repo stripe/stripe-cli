@@ -127,6 +127,7 @@ func TestAgentCommandRegistersReportUsage(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "report_usage", reportUsage.Name())
+	require.True(t, reportUsage.Hidden)
 
 	for _, child := range agent.cmd.Commands() {
 		require.NotEqual(t, "ping", child.Name())
