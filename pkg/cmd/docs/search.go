@@ -37,7 +37,7 @@ Search by keyword or phrase:
   stripe docs search "API keys"
   stripe docs search "dispute evidence"`,
 		Args: cobra.ArbitraryArgs,
-		RunE: r.runSearch,
+		RunE: r.withSetup(r.runSearch),
 	}
 }
 

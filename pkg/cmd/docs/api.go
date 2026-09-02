@@ -45,7 +45,7 @@ Look up by event type:
   stripe docs api charge.succeeded
   stripe docs api payment_intent.created`,
 		Args: cobra.MinimumNArgs(1),
-		RunE: r.runAPI,
+		RunE: r.withSetup(r.runAPI),
 	}
 }
 
