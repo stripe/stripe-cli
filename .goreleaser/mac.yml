@@ -88,4 +88,9 @@ brews:
           if [[ -f $e ]]; then source $e; fi
         }
       EOS
-    caveats: "❤ Thanks for installing the Stripe CLI! If this is your first time using the CLI, be sure to run `stripe login` first."
+    caveats: |-
+      ❤ Thanks for installing the Stripe CLI! If this is your first time using the CLI, be sure to run `stripe login` first.
+
+      Uninstalling: Homebrew preserves your Stripe CLI plugins and configuration when it
+      removes the stripe binary. To remove plugins too, run `stripe plugin uninstall --all`
+      before `brew uninstall stripe`, while the stripe binary is still available.
