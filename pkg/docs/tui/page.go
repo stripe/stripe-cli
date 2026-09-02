@@ -10,7 +10,10 @@ import (
 	"github.com/stripe/stripe-cli/pkg/open"
 )
 
-var docsAllowedHosts = map[string]bool{"docs.stripe.com": true}
+var docsAllowedHosts = map[string]bool{
+	"docs.stripe.com":    true,
+	"support.stripe.com": true,
+}
 
 // Page holds the raw content and metadata needed by the TUI to display a
 // documentation page. Callers construct a Page from a fetched docs response

@@ -433,7 +433,9 @@ func (m Model) handleSelected(msg palette.SelectedMsg) (Model, tea.Cmd) {
 		if hit.external {
 			u := hit.url
 			return m, func() tea.Msg {
-				_ = open.OpenURL(context.Background(), u, docsAllowedHosts)
+				if err := open.OpenURL(context.Background(), u, docsAllowedHosts); err != nil {
+					return statusMsg("Failed to open")
+				}
 				return statusMsg("Opened!")
 			}
 		}
@@ -497,11 +499,16 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.PageDown):
 		m.viewport.PageDown()
 	case key.Matches(msg, m.keys.OpenInBrowser):
+		var err error
 		if m.isLanding() {
-			_ = open.OpenURL(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"}, docsAllowedHosts)
+			err = open.OpenURL(context.Background(), &url.URL{Scheme: "https", Host: docsHost, Path: "/"}, docsAllowedHosts)
 		} else {
-			_ = m.page.Open(context.Background())
+			err = m.page.Open(context.Background())
 		}
+		if err != nil {
+			return m, func() tea.Msg { return statusMsg("Failed to open") }
+		}
+		return m, func() tea.Msg { return statusMsg("Opened!") }
 	case key.Matches(msg, m.keys.Back):
 		return m.handleBack()
 	}
