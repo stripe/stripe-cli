@@ -3,12 +3,16 @@ package docs_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +21,7 @@ import (
 	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/markdown"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -358,6 +363,101 @@ func TestFetchPage_Authenticated(t *testing.T) {
 	assert.Equal(t, "/payments", gotPath)
 	assert.Equal(t, "Bearer sk_test_123", gotAuth)
 	assert.Equal(t, requests.StripeVersionHeaderValue, gotVersion)
+}
+
+// setupLiveActiveContextConfig configures the global keyring with an OAK
+// token and an active OAuth context in live mode, so that ResolveCredentials
+// requests for test mode fail with an ActiveContextLivemodeMismatchError, and
+// ResolveCredentialsForAnyMode falls back to the live credentials instead.
+func setupLiveActiveContextConfig(t *testing.T) *cliconfig.Config {
+	t.Helper()
+
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
+
+	activeCtxJSON, err := json.Marshal(cliconfig.ActiveContext{AccountID: "acct_live123", Livemode: true})
+	require.NoError(t, err)
+	cliconfig.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		cliconfig.UATKeychainItemKey:            []byte("oak_live_1234567890"),
+		cliconfig.OAuthActiveContextKeychainKey: activeCtxJSON,
+	})
+	t.Cleanup(func() {
+		cliconfig.KeyRing = nil
+		viper.Reset()
+	})
+
+	cfg := &cliconfig.Config{LogLevel: "info", ProfilesFile: profilesFile}
+	cfg.InitConfig()
+	cfg.Profile = cliconfig.Profile{ProfileName: "default"}
+
+	return cfg
+}
+
+// TestPreRunAuthenticatesWithActiveLiveModeWhenTestModeMismatched verifies that
+// preRun's credential resolution (used when a client is supplied via
+// WithClient, as the CLI's own docs command does) falls back to the active
+// live-mode OAK credentials rather than silently sending no Authorization
+// header, even though it requests test-mode credentials by default.
+func TestPreRunAuthenticatesWithActiveLiveModeWhenTestModeMismatched(t *testing.T) {
+	cfg := setupLiveActiveContextConfig(t)
+
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"content":"# Payments\n\nAccept payments with Stripe."}`)
+	}))
+	defer server.Close()
+
+	client := docs.NewClient("test").WithOptions(docs.WithAPIBaseURL(server.URL))
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithClient(client),
+		cmd.WithConfig(cfg),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"--non-interactive", "/payments"})
+
+	require.NoError(t, root.ExecuteContext(context.Background()))
+	assert.Contains(t, out.String(), "Payments")
+	assert.Equal(t, "Bearer oak_live_1234567890", gotAuth)
+}
+
+// TestInitClientAuthenticatesWithActiveLiveModeWhenTestModeMismatched exercises
+// the same fallback through initClient's credential resolution, which runs
+// when no client is explicitly supplied (the path used by the real "stripe
+// docs" command construction).
+func TestInitClientAuthenticatesWithActiveLiveModeWhenTestModeMismatched(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := setupLiveActiveContextConfig(t)
+
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"content":"# Payments\n\nAccept payments with Stripe."}`)
+	}))
+	defer server.Close()
+
+	renderer, err := markdown.NewRenderer()
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithConfig(cfg),
+		cmd.WithAPIBaseURL(server.URL),
+		cmd.WithRenderer(renderer),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"--non-interactive", "/payments"})
+
+	require.NoError(t, root.ExecuteContext(context.Background()))
+	assert.Contains(t, out.String(), "Payments")
+	assert.Equal(t, "Bearer oak_live_1234567890", gotAuth)
 }
 
 func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {

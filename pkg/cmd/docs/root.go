@@ -158,7 +158,7 @@ func (r *RootCommand) initClient() {
 		if accountID, err := r.cfg.Profile.GetAccountID(); err == nil {
 			clientOpts = append(clientOpts, pkgdocs.WithCacheKeyPrefix(accountID))
 		}
-		if creds, err := r.cfg.Profile.ResolveCredentials(false); err == nil {
+		if creds, err := r.cfg.Profile.ResolveCredentialsForAnyMode(false); err == nil {
 			clientOpts = append(clientOpts, pkgdocs.WithAPIKey(creds.Token))
 		}
 	}
@@ -211,7 +211,7 @@ func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
 	if r.client != nil {
 		var credOpts []pkgdocs.ClientOption
 		if r.cfg != nil {
-			if creds, err := r.cfg.Profile.ResolveCredentials(false); err == nil {
+			if creds, err := r.cfg.Profile.ResolveCredentialsForAnyMode(false); err == nil {
 				credOpts = append(credOpts, pkgdocs.WithAPIKey(creds.Token))
 			}
 		}
