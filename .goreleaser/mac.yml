@@ -98,4 +98,3 @@ brews:
       Uninstalling: Homebrew preserves your Stripe CLI plugins and configuration when it
       removes the stripe binary. To remove plugins too, run `stripe plugin uninstall --all`
       before `brew uninstall stripe`, while the stripe binary is still available.
-      See https://docs.stripe.com/cli/uninstall for full cleanup instructions.
