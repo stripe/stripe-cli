@@ -191,7 +191,8 @@ message LoginResponse {
   string account_name = 2;
   bool livemode = 3;
   // logged_in is false if the attempt was cancelled or timed out before
-  // completing; in that case the other fields are empty. Call Login again
-  // to keep waiting.
+  // completing; in that case the other fields are empty. Calling Login
+  // again starts a brand new login attempt (a new device code and browser
+  // URL), not a resumption of this one.
   bool logged_in = 4;
 }

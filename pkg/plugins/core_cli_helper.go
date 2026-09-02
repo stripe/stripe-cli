@@ -41,8 +41,9 @@ type CoreCLIHelper interface {
 	// same output and opening the browser only after the user presses enter.
 	// timeoutSeconds bounds how long it waits for the user to complete authentication (0 waits
 	// indefinitely, matching `stripe login`); loggedIn is false if that timeout elapses or the
-	// attempt is otherwise canceled first, in which case the other return values are empty and
-	// the caller should call Login again to keep waiting.
+	// attempt is otherwise canceled first, in which case the other return values are empty.
+	// Calling Login again starts a brand new login attempt (a new device code and browser URL),
+	// not a resumption of this one.
 	Login(timeoutSeconds int32) (accountID string, accountName string, livemode bool, loggedIn bool, err error)
 }
 

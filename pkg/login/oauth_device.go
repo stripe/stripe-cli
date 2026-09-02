@@ -197,6 +197,12 @@ func PollAndSaveDeviceCredentials(ctx context.Context, accessBaseURL, clientID, 
 		return nil, err
 	}
 
+	// The token has been issued, so from here on use a context detached from ctx's
+	// cancellation/deadline: a caller-side timeout (or the natural device-code expiry) firing at
+	// this exact moment shouldn't leave a valid token saved but the account list and active
+	// context unpopulated.
+	ctx = context.WithoutCancel(ctx)
+
 	// Clear all stale credentials before saving new ones, so this succeeds even if a
 	// previously stored credential is expired or revoked.
 	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)

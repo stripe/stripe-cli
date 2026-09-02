@@ -1420,8 +1420,9 @@ type LoginResponse struct {
 	AccountName string                 `protobuf:"bytes,2,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
 	Livemode    bool                   `protobuf:"varint,3,opt,name=livemode,proto3" json:"livemode,omitempty"`
 	// logged_in is false if the attempt was cancelled or timed out before
-	// completing; in that case the other fields are empty. Call Login again
-	// to keep waiting.
+	// completing; in that case the other fields are empty. Calling Login
+	// again starts a brand new login attempt (a new device code and browser
+	// URL), not a resumption of this one.
 	LoggedIn      bool `protobuf:"varint,4,opt,name=logged_in,json=loggedIn,proto3" json:"logged_in,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
