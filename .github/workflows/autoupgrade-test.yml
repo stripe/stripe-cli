@@ -79,8 +79,10 @@ jobs:
           esac
           URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_mac-os_${ARCH_NAME}.tar.gz"
 
+          # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
           mkdir -p "$HOME/.stripe/state"
-          printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
+          printf '{"version":"%s","download_url":"%s","checksum":"","release_notes":""}' \
+            "$LATEST" "$URL" > "$HOME/.stripe/state/update-available"
           echo "Wrote update marker:"
           cat "$HOME/.stripe/state/update-available"
 
@@ -156,8 +158,10 @@ jobs:
           esac
           URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_linux_${ARCH_NAME}.tar.gz"
 
+          # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
           mkdir -p "$HOME/.stripe/state"
-          printf '%s\n%s\n%s\n' "$LATEST" "$URL" "" > "$HOME/.stripe/state/update-available"
+          printf '{"version":"%s","download_url":"%s","checksum":"","release_notes":""}' \
+            "$LATEST" "$URL" > "$HOME/.stripe/state/update-available"
           echo "Wrote update marker:"
           cat "$HOME/.stripe/state/update-available"
 
