@@ -1370,7 +1370,8 @@ func (x *SwitchContextResponse) GetSwitched() bool {
 type LoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// timeout_seconds bounds how long Login waits for the user to complete
-	// authentication in the browser. If unset or 0, a default timeout is used.
+	// authentication. If unset or 0, it waits indefinitely, matching
+	// `stripe login`.
 	TimeoutSeconds int32 `protobuf:"varint,1,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache

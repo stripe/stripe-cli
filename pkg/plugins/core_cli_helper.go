@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,13 +35,14 @@ type CoreCLIHelper interface {
 	// `stripe switch context` does. If accountID is empty, shows an interactive picker;
 	// switched is false if the user cancels it, in which case the other return values are empty.
 	SwitchContext(accountID string, livemode bool) (resultAccountID string, accountName string, resultLivemode bool, switched bool, err error)
-	// Login starts a Stripe CLI login, the same way `stripe login` does when run interactively:
-	// opens the browser automatically when possible and waits for the user to complete
-	// authentication. Unlike `stripe login`, it always starts a new login attempt regardless of
-	// any credential already stored, so it works even if that credential is expired or revoked.
-	// timeoutSeconds bounds how long it waits (0 uses a default); loggedIn is false if that
-	// timeout elapses first, in which case the other return values are empty and the caller
-	// should call Login again to keep waiting.
+	// Login starts a Stripe CLI login, the same way `stripe login --new-session` does when run
+	// interactively: it revokes any existing OAuth session first (so this works even if the
+	// stored credential is expired or revoked), then runs the normal login flow, printing the
+	// same output and opening the browser only after the user presses enter.
+	// timeoutSeconds bounds how long it waits for the user to complete authentication (0 waits
+	// indefinitely, matching `stripe login`); loggedIn is false if that timeout elapses or the
+	// attempt is otherwise canceled first, in which case the other return values are empty and
+	// the caller should call Login again to keep waiting.
 	Login(timeoutSeconds int32) (accountID string, accountName string, livemode bool, loggedIn bool, err error)
 }
 
@@ -314,9 +317,12 @@ func clearPendingKeychainValue(key string) {
 // made by coreCLIHelper.SwitchContext.
 var loginSwitchContext = login.SwitchContext
 
-// loginAndWait is a package variable so tests can stub out the network/keychain calls made by
-// coreCLIHelper.Login.
-var loginAndWait = login.LoginAndWait
+// loginRevokeToken and loginLogin are package variables so tests can stub out the network/
+// keychain calls made by coreCLIHelper.Login.
+var (
+	loginRevokeToken = login.RevokeToken
+	loginLogin       = login.Login
+)
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 // apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
@@ -473,7 +479,8 @@ func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, 
 	return result.Account.ID, result.Account.Name, result.Mode == "live", true, nil
 }
 
-// Login starts a Stripe CLI login, the same way `stripe login` does when run interactively.
+// Login starts a Stripe CLI login, the same way `stripe login --new-session` does when run
+// interactively.
 func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool, error) {
 	cfg, ok := h.config.(*config.Config)
 	if !ok {
@@ -487,17 +494,32 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	if accessBaseURL == "" {
 		accessBaseURL = login.DefaultAccessBaseURL
 	}
-	timeout := login.DefaultLoginTimeout
+
+	ctx := h.ctx
 	if timeoutSeconds > 0 {
-		timeout = time.Duration(timeoutSeconds) * time.Second
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(h.ctx, time.Duration(timeoutSeconds)*time.Second)
+		defer cancel()
 	}
 
-	result, err := loginAndWait(h.ctx, dashboardBaseURL, accessBaseURL, cfg, timeout)
-	if err != nil {
+	// Same as `stripe login --new-session`: revoke any existing OAuth session before starting a
+	// new one, so this works even if the stored credential is expired or revoked.
+	if uat, _ := cfg.Profile.GetUAT(); strings.HasPrefix(uat, "oak_") {
+		if err := loginRevokeToken(ctx, accessBaseURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
+		}
+	}
+
+	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, cfg); err != nil {
+		if ctx.Err() != nil {
+			return "", "", false, false, nil
+		}
 		return "", "", false, false, err
 	}
-	if result == nil {
-		return "", "", false, false, nil
+
+	livemode := false
+	if ac, _ := config.GetActiveContext(); ac != nil {
+		livemode = ac.Livemode
 	}
-	return result.AccountID, result.AccountName, result.Livemode, true, nil
+	return cfg.Profile.AccountID, cfg.Profile.DisplayName, livemode, true, nil
 }

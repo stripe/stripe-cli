@@ -536,17 +536,27 @@ func TestLoginReturnsConfigTypeMismatchError(t *testing.T) {
 }
 
 func TestLoginSuccess(t *testing.T) {
-	originalLoginAndWait := loginAndWait
-	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+	originalRevokeToken, originalLogin := loginRevokeToken, loginLogin
+	t.Cleanup(func() {
+		loginRevokeToken = originalRevokeToken
+		loginLogin = originalLogin
+	})
 
-	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
-		require.Equal(t, login.DefaultLoginTimeout, timeout)
-		return &login.LoginResult{
-			AccountID:   "acct_123",
-			AccountName: "Acme Inc",
-			Livemode:    true,
-		}, nil
+	var revokeCalled bool
+	loginRevokeToken = func(ctx context.Context, accessBaseURL string) error {
+		revokeCalled = true
+		return nil
 	}
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		require.False(t, revokeCalled, "no oak_-prefixed UAT is set, so login should not be preceded by a revoke")
+		cfg.Profile.AccountID = "acct_123"
+		cfg.Profile.DisplayName = "Acme Inc"
+		return nil
+	}
+
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
+	require.NoError(t, config.SaveActiveContext("acct_123", true))
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
 	accountID, accountName, livemode, loggedIn, err := coreCLIHelper.Login(0)
@@ -557,32 +567,92 @@ func TestLoginSuccess(t *testing.T) {
 	require.True(t, livemode)
 }
 
-func TestLoginUsesRequestedTimeout(t *testing.T) {
-	originalLoginAndWait := loginAndWait
-	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+// TestLoginRevokesExistingOAuthSession verifies that Login revokes a stored oak_-prefixed
+// token before logging in again, the same way `stripe login --new-session` does, so it works
+// even if that credential is expired or revoked.
+func TestLoginRevokesExistingOAuthSession(t *testing.T) {
+	originalRevokeToken, originalLogin := loginRevokeToken, loginLogin
+	t.Cleanup(func() {
+		loginRevokeToken = originalRevokeToken
+		loginLogin = originalLogin
+	})
 
-	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
-		require.Equal(t, 5*time.Second, timeout)
-		return &login.LoginResult{AccountID: "acct_123"}, nil
+	var revokeCalled bool
+	loginRevokeToken = func(ctx context.Context, accessBaseURL string) error {
+		revokeCalled = true
+		return nil
 	}
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		require.True(t, revokeCalled, "expected the previous session to be revoked before logging in again")
+		return nil
+	}
+
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_previous_uat"),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, _, _, loggedIn, err := coreCLIHelper.Login(0)
+	require.NoError(t, err)
+	require.True(t, loggedIn)
+	require.True(t, revokeCalled)
+	require.Empty(t, accountID)
+}
+
+func TestLoginUsesRequestedTimeout(t *testing.T) {
+	originalLogin := loginLogin
+	t.Cleanup(func() { loginLogin = originalLogin })
+
+	var gotDeadline bool
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		_, gotDeadline = ctx.Deadline()
+		cfg.Profile.AccountID = "acct_123"
+		return nil
+	}
+
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
 	accountID, _, _, loggedIn, err := coreCLIHelper.Login(5)
 	require.NoError(t, err)
 	require.True(t, loggedIn)
+	require.True(t, gotDeadline, "expected a requested timeout to be applied as a context deadline")
 	require.Equal(t, "acct_123", accountID)
 }
 
-func TestLoginCancelledReturnsNotLoggedIn(t *testing.T) {
-	originalLoginAndWait := loginAndWait
-	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+func TestLoginNoTimeoutWaitsIndefinitely(t *testing.T) {
+	originalLogin := loginLogin
+	t.Cleanup(func() { loginLogin = originalLogin })
 
-	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
-		return nil, nil
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		_, hasDeadline := ctx.Deadline()
+		require.False(t, hasDeadline, "expected no deadline when timeoutSeconds is 0, matching `stripe login`")
+		return nil
+	}
+
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, _, _, loggedIn, err := coreCLIHelper.Login(0)
+	require.NoError(t, err)
+	require.True(t, loggedIn)
+	require.Empty(t, accountID)
+}
+
+func TestLoginTimeoutReturnsNotLoggedIn(t *testing.T) {
+	originalLogin := loginLogin
+	t.Cleanup(func() { loginLogin = originalLogin })
+
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		<-ctx.Done()
+		return ctx.Err()
 	}
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
-	accountID, accountName, _, loggedIn, err := coreCLIHelper.Login(0)
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.Login(1)
 	require.NoError(t, err)
 	require.False(t, loggedIn)
 	require.Empty(t, accountID)
@@ -590,12 +660,12 @@ func TestLoginCancelledReturnsNotLoggedIn(t *testing.T) {
 }
 
 func TestLoginPropagatesError(t *testing.T) {
-	originalLoginAndWait := loginAndWait
-	t.Cleanup(func() { loginAndWait = originalLoginAndWait })
+	originalLogin := loginLogin
+	t.Cleanup(func() { loginLogin = originalLogin })
 
 	expectedErr := errors.New("boom")
-	loginAndWait = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config, timeout time.Duration) (*login.LoginResult, error) {
-		return nil, expectedErr
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		return expectedErr
 	}
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")

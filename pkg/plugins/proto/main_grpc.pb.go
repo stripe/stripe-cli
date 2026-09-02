@@ -240,12 +240,11 @@ type CoreCLIHelperClient interface {
 	// same way `stripe switch context` does. If account_id is empty, shows an
 	// interactive picker.
 	SwitchContext(ctx context.Context, in *SwitchContextRequest, opts ...grpc.CallOption) (*SwitchContextResponse, error)
-	// Login starts a Stripe CLI login, the same way `stripe login` does when
-	// run interactively: opens the browser automatically when possible and
-	// waits for the user to complete authentication. Unlike `stripe login`,
-	// it always starts a new login attempt regardless of any credential
-	// already stored, so it works even if that credential is expired or
-	// revoked.
+	// Login starts a Stripe CLI login, the same way `stripe login --new-session`
+	// does when run interactively: it revokes any existing OAuth session first
+	// (so this works even if the stored credential is expired or revoked),
+	// then runs the normal login flow, printing the same output and opening
+	// the browser only after the user presses enter.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 }
 
@@ -390,12 +389,11 @@ type CoreCLIHelperServer interface {
 	// same way `stripe switch context` does. If account_id is empty, shows an
 	// interactive picker.
 	SwitchContext(context.Context, *SwitchContextRequest) (*SwitchContextResponse, error)
-	// Login starts a Stripe CLI login, the same way `stripe login` does when
-	// run interactively: opens the browser automatically when possible and
-	// waits for the user to complete authentication. Unlike `stripe login`,
-	// it always starts a new login attempt regardless of any credential
-	// already stored, so it works even if that credential is expired or
-	// revoked.
+	// Login starts a Stripe CLI login, the same way `stripe login --new-session`
+	// does when run interactively: it revokes any existing OAuth session first
+	// (so this works even if the stored credential is expired or revoked),
+	// then runs the normal login flow, printing the same output and opening
+	// the browser only after the user presses enter.
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
