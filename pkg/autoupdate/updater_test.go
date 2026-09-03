@@ -2,6 +2,7 @@ package autoupdate
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -38,6 +39,24 @@ func createTestTarGz(t *testing.T, filename string, content []byte) string {
 
 	require.NoError(t, tw.Close())
 	require.NoError(t, gw.Close())
+	require.NoError(t, f.Close())
+	return path
+}
+
+// createTestZip writes the archive format the Windows release publishes.
+func createTestZip(t *testing.T, filename string, content []byte) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "test.zip")
+	f, err := os.Create(path)
+	require.NoError(t, err)
+
+	zw := zip.NewWriter(f)
+	entry, err := zw.Create(filename)
+	require.NoError(t, err)
+	_, err = entry.Write(content)
+	require.NoError(t, err)
+
+	require.NoError(t, zw.Close())
 	require.NoError(t, f.Close())
 	return path
 }
@@ -98,7 +117,7 @@ func TestFormatReleaseNotes_TruncatesCharactersWithoutSplittingUTF8(t *testing.T
 
 func TestExtractFromTarGz(t *testing.T) {
 	content := []byte("#!/bin/sh\necho hello\n")
-	archivePath := createTestTarGz(t, "stripe", content)
+	archivePath := createTestTarGz(t, binaryName(), content)
 
 	destPath := filepath.Join(t.TempDir(), "stripe")
 	err := extractFromTarGz(archivePath, destPath)
@@ -111,7 +130,7 @@ func TestExtractFromTarGz(t *testing.T) {
 
 func TestExtractFromTarGz_NestedPath(t *testing.T) {
 	content := []byte("binary content")
-	archivePath := createTestTarGz(t, "stripe_1.43.8_linux_arm64/stripe", content)
+	archivePath := createTestTarGz(t, "stripe_1.43.8_linux_arm64/"+binaryName(), content)
 
 	destPath := filepath.Join(t.TempDir(), "stripe")
 	err := extractFromTarGz(archivePath, destPath)
@@ -131,9 +150,79 @@ func TestExtractFromTarGz_NoBinary(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found in archive")
 }
 
+func TestExtractFromZip(t *testing.T) {
+	content := []byte("MZ windows binary")
+	archivePath := createTestZip(t, binaryName(), content)
+
+	destPath := filepath.Join(t.TempDir(), binaryName())
+	err := extractFromZip(archivePath, destPath)
+	require.NoError(t, err)
+
+	got, err := os.ReadFile(destPath)
+	require.NoError(t, err)
+	assert.Equal(t, content, got)
+}
+
+func TestExtractFromZip_NestedPath(t *testing.T) {
+	content := []byte("MZ windows binary")
+	// Zip entry names use forward slashes whatever the platform reading them.
+	archivePath := createTestZip(t, "stripe_1.43.8_windows_x86_64/"+binaryName(), content)
+
+	destPath := filepath.Join(t.TempDir(), binaryName())
+	err := extractFromZip(archivePath, destPath)
+	require.NoError(t, err)
+
+	got, err := os.ReadFile(destPath)
+	require.NoError(t, err)
+	assert.Equal(t, content, got)
+}
+
+func TestExtractFromZip_NoBinary(t *testing.T) {
+	archivePath := createTestZip(t, "not-stripe", []byte("nope"))
+
+	destPath := filepath.Join(t.TempDir(), binaryName())
+	err := extractFromZip(archivePath, destPath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found in archive")
+}
+
+// The archive is downloaded to a temporary name, so its format has to be read off
+// the bytes rather than an extension.
+func TestExtractBinary_PicksTheFormatFromTheContents(t *testing.T) {
+	for _, tt := range []struct {
+		format  string
+		archive func(*testing.T, string, []byte) string
+	}{
+		{"tar.gz", createTestTarGz},
+		{"zip", createTestZip},
+	} {
+		t.Run(tt.format, func(t *testing.T) {
+			content := []byte("binary for " + tt.format)
+			// A name that gives nothing away, as os.CreateTemp produces.
+			archivePath := tt.archive(t, binaryName(), content)
+			anonymous := filepath.Join(t.TempDir(), "stripe-update-archive-1234")
+			require.NoError(t, os.Rename(archivePath, anonymous))
+
+			destPath := filepath.Join(t.TempDir(), binaryName())
+			require.NoError(t, extractBinary(anonymous, destPath))
+
+			got, err := os.ReadFile(destPath)
+			require.NoError(t, err)
+			assert.Equal(t, content, got)
+		})
+	}
+}
+
+func TestExtractBinary_ShortFileIsAnError(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "stripe-update-archive-1234")
+	require.NoError(t, os.WriteFile(archivePath, []byte("PK"), 0644))
+
+	assert.Error(t, extractBinary(archivePath, filepath.Join(t.TempDir(), binaryName())))
+}
+
 func TestDownloadAndReplace(t *testing.T) {
 	content := []byte("#!/bin/sh\necho updated\n")
-	archivePath := createTestTarGz(t, "stripe", content)
+	archivePath := createTestTarGz(t, binaryName(), content)
 	archiveData, err := os.ReadFile(archivePath)
 	require.NoError(t, err)
 
@@ -145,7 +234,7 @@ func TestDownloadAndReplace(t *testing.T) {
 	defer server.Close()
 
 	dir := t.TempDir()
-	exePath := filepath.Join(dir, "stripe")
+	exePath := filepath.Join(dir, binaryName())
 	require.NoError(t, os.WriteFile(exePath, []byte("old binary"), 0755))
 
 	marker := &UpdateMarker{
@@ -166,11 +255,19 @@ func TestDownloadAndReplace(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, os.FileMode(0755), info.Mode().Perm())
 	}
+
+	// Nothing staged is left in the install directory.
+	assert.NoFileExists(t, exePath+oldSuffix)
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1)
 }
 
-func TestDownloadAndReplace_BadChecksum(t *testing.T) {
-	content := []byte("#!/bin/sh\necho updated\n")
-	archivePath := createTestTarGz(t, "stripe", content)
+// The Windows release ships a zip rather than a tar.gz, and the binary inside it
+// is named stripe.exe.
+func TestDownloadAndReplace_Zip(t *testing.T) {
+	content := []byte("MZ updated windows binary")
+	archivePath := createTestZip(t, binaryName(), content)
 	archiveData, err := os.ReadFile(archivePath)
 	require.NoError(t, err)
 
@@ -180,7 +277,35 @@ func TestDownloadAndReplace_BadChecksum(t *testing.T) {
 	defer server.Close()
 
 	dir := t.TempDir()
-	exePath := filepath.Join(dir, "stripe")
+	exePath := filepath.Join(dir, binaryName())
+	require.NoError(t, os.WriteFile(exePath, []byte("old binary"), 0755))
+
+	marker := &UpdateMarker{
+		Version:     "1.43.8",
+		DownloadURL: server.URL + "/stripe.zip",
+		Checksum:    sha256sum(archivePath),
+	}
+
+	require.NoError(t, downloadAndReplace(marker, exePath))
+
+	got, err := os.ReadFile(exePath)
+	require.NoError(t, err)
+	assert.Equal(t, content, got)
+}
+
+func TestDownloadAndReplace_BadChecksum(t *testing.T) {
+	content := []byte("#!/bin/sh\necho updated\n")
+	archivePath := createTestTarGz(t, binaryName(), content)
+	archiveData, err := os.ReadFile(archivePath)
+	require.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(archiveData)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	exePath := filepath.Join(dir, binaryName())
 	require.NoError(t, os.WriteFile(exePath, []byte("old binary"), 0755))
 
 	marker := &UpdateMarker{
@@ -204,7 +329,7 @@ func TestDownloadAndReplace_ServerError(t *testing.T) {
 	defer server.Close()
 
 	dir := t.TempDir()
-	exePath := filepath.Join(dir, "stripe")
+	exePath := filepath.Join(dir, binaryName())
 	require.NoError(t, os.WriteFile(exePath, []byte("old binary"), 0755))
 
 	marker := &UpdateMarker{
