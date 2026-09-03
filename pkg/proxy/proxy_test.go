@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
@@ -37,6 +39,37 @@ func TestFilterWebhookEvent(t *testing.T) {
 
 	require.True(t, proxyUseLatest.webhookEventProcessor.filterWebhookEvent(evtDefault))
 	require.False(t, proxyUseLatest.webhookEventProcessor.filterWebhookEvent(evtLatest))
+}
+
+func TestInitThinEventValidation(t *testing.T) {
+	tests := []struct {
+		name          string
+		thinEvents    []string
+		expectWarning bool
+	}{
+		{"thin event", []string{"v2.core.account.created"}, false},
+		{"preview thin event", []string{"v2.money_management.transaction.created"}, false},
+		{"interop event", []string{"v1.charge.succeeded"}, false},
+		{"wildcard", []string{"*"}, false},
+		{"unknown event", []string{"v1.not.a.real.event"}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			logger, hook := logtest.NewNullLogger()
+
+			_, err := Init(context.Background(), &Config{Log: logger, ThinEvents: test.thinEvents})
+			require.NoError(t, err)
+
+			var warned bool
+			for _, entry := range hook.AllEntries() {
+				if entry.Level == log.WarnLevel {
+					warned = true
+				}
+			}
+			require.Equal(t, test.expectWarning, warned)
+		})
+	}
 }
 
 func TestTruncate(t *testing.T) {
