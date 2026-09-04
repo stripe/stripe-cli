@@ -4,14 +4,16 @@ package doctor
 // configurations (with capability availability), and the events census.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // dpmCutoff is the API version at/after which removing payment_method_types
@@ -43,34 +45,48 @@ type accountFacts struct {
 	VersionsMixed      bool // some but not all versions >= dpmCutoff
 }
 
-// loadTestKey resolves a test-mode key through the CLI's own profile
-// machinery (which already honors STRIPE_API_KEY); live-mode keys are
-// refused — every account call here is read-only and test-mode by design.
-func loadTestKey(cfg *config.Config) (string, error) {
+// loadTestCredentials resolves sandbox/test-mode credentials through the
+// CLI's own profile machinery: the user access token (UAT) from `stripe
+// login` when present, falling back to an API key (which already honors
+// STRIPE_API_KEY). Live-mode API keys are refused — every account call here
+// is read-only and test-mode by design. UAT credentials need no such check:
+// ResolveCredentials(false) already scopes them to test mode via the
+// Stripe-Livemode header, erroring out if the active context is live.
+func loadTestCredentials(cfg *config.Config) (stripe.Credentials, error) {
 	if cfg == nil {
-		return "", fmt.Errorf("no CLI configuration available")
+		return stripe.Credentials{}, fmt.Errorf("no CLI configuration available")
 	}
-	key, err := cfg.GetProfile().GetAPIKey(false)
+	creds, err := cfg.GetProfile().ResolveCredentials(false)
 	if err != nil {
-		return "", err
+		return stripe.Credentials{}, err
 	}
-	if !strings.HasPrefix(key, "sk_test_") && !strings.HasPrefix(key, "rk_test_") {
-		return "", fmt.Errorf("resolved key is not a test-mode key (sk_test_/rk_test_); refusing")
+	if creds.OAKLivemode == nil && !strings.HasPrefix(creds.Token, "sk_test_") && !strings.HasPrefix(creds.Token, "rk_test_") {
+		return stripe.Credentials{}, fmt.Errorf("resolved key is not a test-mode key (sk_test_/rk_test_); refusing")
 	}
-	return key, nil
+	return creds, nil
 }
 
-func stripeGET(key, stripeAccount, path string, out any) error {
-	req, err := http.NewRequest("GET", "https://api.stripe.com"+path, nil)
+// newAccountClient builds the shared stripe.Client used for account.go's
+// read-only GETs, so they inherit the CLI's normal request path — unix
+// socket / proxy support, standard headers — instead of a bare http.Client.
+func newAccountClient(creds stripe.Credentials) (*stripe.Client, error) {
+	base, err := url.Parse(stripe.DefaultAPIBaseURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	req.SetBasicAuth(key, "")
-	if stripeAccount != "" {
-		req.Header.Set("Stripe-Account", stripeAccount)
+	return &stripe.Client{BaseURL: base, Credentials: creds}, nil
+}
+
+// stripeGET issues a read-only GET through client, decoding the JSON
+// response into out. query is the raw (already-encoded) query string, e.g.
+// "limit=20"; it is applied via PerformRequest rather than appended to path
+// since PerformRequest overwrites any query already present on path.
+func stripeGET(client *stripe.Client, stripeAccount, path, query string, out any) error {
+	configure := func(req *http.Request) error {
+		client.Credentials.ApplyAccountContextHeaders(req.Header, stripeAccount, "")
+		return nil
 	}
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, path, query, configure)
 	if err != nil {
 		return err
 	}
@@ -88,7 +104,11 @@ func stripeGET(key, stripeAccount, path string, out any) error {
 // non-empty, is sent as the Stripe-Account header so Connect direct-charge
 // integrations resolve the CONNECTED account's payment-method configuration
 // (the platform's own config does not govern those charges).
-func fetchAccountFacts(key, stripeAccount string) (*accountFacts, error) {
+func fetchAccountFacts(creds stripe.Credentials, stripeAccount string) (*accountFacts, error) {
+	client, err := newAccountClient(creds)
+	if err != nil {
+		return nil, err
+	}
 	f := &accountFacts{EventVersions: map[string]int{}}
 
 	var acct struct {
@@ -99,7 +119,7 @@ func fetchAccountFacts(key, stripeAccount string) (*accountFacts, error) {
 			} `json:"dashboard"`
 		} `json:"settings"`
 	}
-	if err := stripeGET(key, stripeAccount, "/v1/account", &acct); err != nil {
+	if err := stripeGET(client, stripeAccount, "/v1/account", "", &acct); err != nil {
 		return nil, err
 	}
 	f.AccountID, f.DisplayName = acct.ID, acct.Settings.Dashboard.DisplayName
@@ -110,7 +130,7 @@ func fetchAccountFacts(key, stripeAccount string) (*accountFacts, error) {
 	var pmc struct {
 		Data []map[string]any `json:"data"`
 	}
-	if err := stripeGET(key, stripeAccount, "/v1/payment_method_configurations", &pmc); err != nil {
+	if err := stripeGET(client, stripeAccount, "/v1/payment_method_configurations", "", &pmc); err != nil {
 		return nil, err
 	}
 	// Choose ONE governing config — strictly the default (the one the API
@@ -167,7 +187,7 @@ func fetchAccountFacts(key, stripeAccount string) (*accountFacts, error) {
 			APIVersion string `json:"api_version"`
 		} `json:"data"`
 	}
-	if err := stripeGET(key, stripeAccount, "/v1/events?limit=20", &evts); err != nil {
+	if err := stripeGET(client, stripeAccount, "/v1/events", "limit=20", &evts); err != nil {
 		return nil, err
 	}
 	ge := 0
