@@ -198,48 +198,11 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	uat, _ := Config.Profile.GetUAT()
 	if !lc.newSession {
 		if strings.HasPrefix(uat, "oak_") {
-			expiresAt, expErr := config.GetUATExpiresAt()
-			sessionValid := expErr == nil && time.Now().Before(expiresAt)
-			if !sessionValid && config.OAuthTokenRefresher != nil {
-				// The access token may be expired while its refresh token is
-				// still good; only treat the session as unusable once a refresh
-				// attempt confirms it can't be revived.
-				if refreshErr := config.OAuthTokenRefresher(&Config.Profile); refreshErr == nil {
-					sessionValid = true
-					if refreshedUAT, err := Config.Profile.GetUAT(); err == nil {
-						uat = refreshedUAT
-					}
-				}
-			}
-			if sessionValid {
-				// The session is still valid, so there's nothing to log back into.
-				// Kick off reauthorization instead, so the user can change
-				// permissions or authorize additional accounts/sandboxes.
-				if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
-					return initiateReauth(cmd.Context(), lc.accessBaseURL, uat)
-				}
-				email := fetchLoginEmail(cmd.Context(), lc.apiBaseURL, uat)
-				// Best-effort: the context list is a courtesy, not a precondition for reauthorizing.
-				var accounts []config.AuthorizedAccount
-				if a, err := login.ListAuthorizedAccounts(cmd.Context(), lc.accessBaseURL, uat); err == nil {
-					accounts = a
-				}
-				contextCount := countAuthorizedContexts(accounts)
-				switch {
-				case email != "" && contextCount == 1:
-					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s as %s.\n", soleAuthorizedContextName(accounts), email)
-				case email != "" && contextCount > 1:
-					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s and have %d authorized contexts.\n", email, contextCount)
-				case contextCount == 1:
-					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s.\n", soleAuthorizedContextName(accounts))
-				case contextCount > 1:
-					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in and have %d authorized contexts.\n", contextCount)
-				case email != "":
-					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", email)
-				default:
-					fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
-				}
-				return reauth(cmd.Context(), lc.accessBaseURL, uat)
+			if refreshedUAT, ok := sessionIsValid(uat); ok {
+				// The session is still valid, so there's nothing to log back
+				// into. Kick off reauthorization instead, so the user can
+				// change permissions or authorize additional accounts/sandboxes.
+				return lc.reauthorizeSession(cmd, refreshedUAT)
 			}
 			// The session and its refresh token have both expired; fall through to a fresh login below.
 		}
@@ -262,6 +225,67 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+}
+
+// sessionIsValid reports whether the current OAuth session is still usable,
+// attempting a token refresh first if the access token's own expiry has
+// already passed. An expired access token often still has a valid refresh
+// token behind it, so the session is only treated as unusable once a refresh
+// attempt confirms it can't be revived. It returns the token to use, which is
+// the refreshed token if a refresh occurred.
+func sessionIsValid(uat string) (string, bool) {
+	expiresAt, expErr := config.GetUATExpiresAt()
+	if expErr == nil && time.Now().Before(expiresAt) {
+		return uat, true
+	}
+	if config.OAuthTokenRefresher == nil {
+		return uat, false
+	}
+	if err := config.OAuthTokenRefresher(&Config.Profile); err != nil {
+		return uat, false
+	}
+	if refreshedUAT, err := Config.Profile.GetUAT(); err == nil {
+		uat = refreshedUAT
+	}
+	return uat, true
+}
+
+// reauthorizeSession kicks off reauthorization for a still-valid OAuth
+// session, so the user can change permissions or authorize additional
+// accounts/sandboxes, instead of starting a fresh login.
+func (lc *loginCmd) reauthorizeSession(cmd *cobra.Command, uat string) error {
+	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+		return initiateReauth(cmd.Context(), lc.accessBaseURL, uat)
+	}
+	printAlreadyLoggedIn(cmd, lc.apiBaseURL, lc.accessBaseURL, uat)
+	return reauth(cmd.Context(), lc.accessBaseURL, uat)
+}
+
+// printAlreadyLoggedIn prints a summary of the currently authenticated
+// identity and authorized contexts before handing off to the interactive
+// reauth flow.
+func printAlreadyLoggedIn(cmd *cobra.Command, apiBaseURL, accessBaseURL, uat string) {
+	email := fetchLoginEmail(cmd.Context(), apiBaseURL, uat)
+	// Best-effort: the context list is a courtesy, not a precondition for reauthorizing.
+	var accounts []config.AuthorizedAccount
+	if a, err := login.ListAuthorizedAccounts(cmd.Context(), accessBaseURL, uat); err == nil {
+		accounts = a
+	}
+	contextCount := countAuthorizedContexts(accounts)
+	switch {
+	case email != "" && contextCount == 1:
+		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s as %s.\n", soleAuthorizedContextName(accounts), email)
+	case email != "" && contextCount > 1:
+		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s and have %d authorized contexts.\n", email, contextCount)
+	case contextCount == 1:
+		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s.\n", soleAuthorizedContextName(accounts))
+	case contextCount > 1:
+		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in and have %d authorized contexts.\n", contextCount)
+	case email != "":
+		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", email)
+	default:
+		fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
+	}
 }
 
 // fetchLoginEmail returns the email of the currently logged-in OAuth user, or
