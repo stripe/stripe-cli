@@ -42,9 +42,10 @@ Three layers, deliberately separated:
 - `--json`: one JSON object on stdout, logs on stderr (`reports.go` is the
   schema). Exit codes: 0 clean/verified, 1 findings/not-verified, 2 error.
   `--apply --json` requires `--yes`.
-- Account access is read-only GETs with test-mode keys only; live keys are
-  refused. `--stripe-account` scopes Connect direct-charge diagnosis to the
-  connected account.
+- Account access is read-only GETs, sandbox/test-mode only: the CLI's stored
+  user access token (from `stripe login`) is preferred, falling back to a
+  test-mode API key; live-mode API keys are refused. `--stripe-account`
+  scopes Connect direct-charge diagnosis to the connected account.
 - Binary size: `make build` and the release configs always pass the
   `grammar_subset` build tags (see GRAMMAR_TAGS in the Makefile), embedding
   only the grammars for the languages the doctor supports (+10 MB over the
