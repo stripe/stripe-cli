@@ -238,9 +238,52 @@ func TestLoginCompleteReauthPollsPendingReauth(t *testing.T) {
 	assert.True(t, pollCalled, "expected --complete-reauth to poll for reauth completion")
 }
 
+// TestLoginReauthorizesWhenSessionExpiredButRefreshable verifies that an
+// expired access token whose refresh token is still good is treated as a
+// valid session (reauthorizing in place) rather than falling through to a
+// fresh login.
+func TestLoginReauthorizesWhenSessionExpiredButRefreshable(t *testing.T) {
+	origInitiateReauth, origInitiateLogin, origRefresher := initiateReauth, initiateLogin, config.OAuthTokenRefresher
+	t.Cleanup(func() {
+		initiateReauth = origInitiateReauth
+		initiateLogin = origInitiateLogin
+		config.OAuthTokenRefresher = origRefresher
+	})
+
+	var initiateReauthCalled, initiateLoginCalled bool
+	initiateReauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		initiateReauthCalled = true
+		assert.Equal(t, "oak_refreshed_uat", accessToken)
+		return nil
+	}
+	initiateLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		initiateLoginCalled = true
+		return nil
+	}
+	config.OAuthTokenRefresher = func(p *config.Profile) error {
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_refreshed_uat"), "test")
+	}
+
+	newTestLoginConfig(t)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:           []byte("oak_stale_uat"),
+		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	lc := newLoginCmd()
+	lc.nonInteractive = true
+	lc.cmd.SetContext(context.Background())
+
+	require.NoError(t, lc.runLoginCmd(lc.cmd, []string{}))
+	assert.True(t, initiateReauthCalled, "expected a refreshable expired session to reauthorize instead of starting a fresh login")
+	assert.False(t, initiateLoginCalled, "a fresh login should not start when the refresh succeeds")
+}
+
 // TestLoginProceedsWithFreshLoginWhenSessionExpired verifies that running
-// `stripe login` with an expired OAuth session falls through to a normal
-// login instead of reauthorizing.
+// `stripe login` with an expired OAuth session, whose refresh token is also
+// invalid or missing, falls through to a normal login instead of
+// reauthorizing.
 func TestLoginProceedsWithFreshLoginWhenSessionExpired(t *testing.T) {
 	origInitiateReauth, origInitiateLogin := initiateReauth, initiateLogin
 	t.Cleanup(func() {

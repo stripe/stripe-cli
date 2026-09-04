@@ -199,7 +199,19 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if !lc.newSession {
 		if strings.HasPrefix(uat, "oak_") {
 			expiresAt, expErr := config.GetUATExpiresAt()
-			if expErr == nil && time.Now().Before(expiresAt) {
+			sessionValid := expErr == nil && time.Now().Before(expiresAt)
+			if !sessionValid && config.OAuthTokenRefresher != nil {
+				// The access token may be expired while its refresh token is
+				// still good; only treat the session as unusable once a refresh
+				// attempt confirms it can't be revived.
+				if refreshErr := config.OAuthTokenRefresher(&Config.Profile); refreshErr == nil {
+					sessionValid = true
+					if refreshedUAT, err := Config.Profile.GetUAT(); err == nil {
+						uat = refreshedUAT
+					}
+				}
+			}
+			if sessionValid {
 				// The session is still valid, so there's nothing to log back into.
 				// Kick off reauthorization instead, so the user can change
 				// permissions or authorize additional accounts/sandboxes.
@@ -229,7 +241,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 				}
 				return reauth(cmd.Context(), lc.accessBaseURL, uat)
 			}
-			// The session has expired; fall through to a fresh login below.
+			// The session and its refresh token have both expired; fall through to a fresh login below.
 		}
 	} else if strings.HasPrefix(uat, "oak_") {
 		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
