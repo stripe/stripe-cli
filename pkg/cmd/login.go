@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -11,16 +13,21 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-// revokeToken and initiateLogin are package variables so tests can stub out
-// the network calls made by runLoginCmd.
+// revokeToken, initiateLogin, reauth, initiateReauth, and pollPendingReauth
+// are package variables so tests can stub out the network calls made by
+// runLoginCmd.
 var (
-	revokeToken   = login.RevokeToken
-	initiateLogin = login.InitiateLogin
+	revokeToken       = login.RevokeToken
+	initiateLogin     = login.InitiateLogin
+	reauth            = login.Reauth
+	initiateReauth    = login.InitiateReauth
+	pollPendingReauth = login.PollPendingReauth
 )
 
 type loginCmd struct {
@@ -28,9 +35,11 @@ type loginCmd struct {
 	interactive      bool
 	dashboardBaseURL string
 	accessBaseURL    string
+	apiBaseURL       string
 	nonInteractive   bool
 	completeURL      string
 	completeDevice   bool
+	completeReauth   bool
 	newSession       bool
 }
 
@@ -76,7 +85,13 @@ For agents and scripts, use the two-step non-interactive flow:
 
   --complete <poll-url>
       Polls the given URL (from the next_step of a prior --non-interactive run)
-      until the user approves in the browser, then saves credentials.`,
+      until the user approves in the browser, then saves credentials.
+
+If you're already logged in with a valid session, running this again re-authorizes
+the CLI instead: it opens the Stripe Dashboard so you can change permissions or
+authorize access to additional accounts or sandboxes. Use --new-session to log in
+as a different user instead. --non-interactive works here too, printing a
+browser_url and a next_step of 'stripe login --complete-reauth' to poll.`,
 		Example: `# Standard browser login (default for TTY users)
   stripe login
 
@@ -104,6 +119,8 @@ For agents and scripts, use the two-step non-interactive flow:
 	lc.cmd.Flags().StringVar(&lc.completeURL, "complete", "", "Complete a browser login by polling the given URL (from 'stripe login --non-interactive')")
 	lc.cmd.Flags().BoolVar(&lc.completeDevice, "complete-device", false, "Complete an OAuth device authorization started by 'stripe login --non-interactive'")
 	lc.cmd.Flags().MarkHidden("complete-device") // #nosec G104
+	lc.cmd.Flags().BoolVar(&lc.completeReauth, "complete-reauth", false, "Complete a reauthorization started by 'stripe login --non-interactive'")
+	lc.cmd.Flags().MarkHidden("complete-reauth") // #nosec G104
 
 	// TODO: a flag to replace existing account?
 	// TODO: what happens to if already logged into that account? - profile name should be the account id
@@ -115,6 +132,8 @@ For agents and scripts, use the two-step non-interactive flow:
 	lc.cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 	lc.cmd.Flags().StringVar(&lc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	lc.cmd.Flags().MarkHidden("access-base") // #nosec G104
+	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	lc.cmd.Flags().MarkHidden("api-base") // #nosec G104
 	lc.cmd.Flags().BoolVar(&lc.newSession, "new-session", false, "Force a new login even if already authenticated")
 
 	listCmd := &loginListCmd{}
@@ -159,9 +178,17 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
 		return err
 	}
+	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
+		return err
+	}
 
 	if lc.completeDevice {
 		return login.PollPendingDeviceAuth(cmd.Context(), &Config)
+	}
+
+	if lc.completeReauth {
+		uat, _ := Config.Profile.GetUAT()
+		return pollPendingReauth(cmd.Context(), lc.accessBaseURL, uat)
 	}
 
 	if lc.completeURL != "" {
@@ -171,20 +198,38 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	uat, _ := Config.Profile.GetUAT()
 	if !lc.newSession {
 		if strings.HasPrefix(uat, "oak_") {
-			identity := Config.Profile.GetDisplayName()
-			if identity == "" {
-				if ac, _ := config.GetActiveContext(); ac != nil {
-					identity = ac.AccountID
+			expiresAt, expErr := config.GetUATExpiresAt()
+			if expErr == nil && time.Now().Before(expiresAt) {
+				// The session is still valid, so there's nothing to log back into.
+				// Kick off reauthorization instead, so the user can change
+				// permissions or authorize additional accounts/sandboxes.
+				if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+					return initiateReauth(cmd.Context(), lc.accessBaseURL, uat)
 				}
+				email := fetchLoginEmail(cmd.Context(), lc.apiBaseURL, uat)
+				// Best-effort: the context list is a courtesy, not a precondition for reauthorizing.
+				var accounts []config.AuthorizedAccount
+				if a, err := login.ListAuthorizedAccounts(cmd.Context(), lc.accessBaseURL, uat); err == nil {
+					accounts = a
+				}
+				contextCount := countAuthorizedContexts(accounts)
+				switch {
+				case email != "" && contextCount == 1:
+					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s as %s.\n", soleAuthorizedContextName(accounts), email)
+				case email != "" && contextCount > 1:
+					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s and have %d authorized contexts.\n", email, contextCount)
+				case contextCount == 1:
+					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s.\n", soleAuthorizedContextName(accounts))
+				case contextCount > 1:
+					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in and have %d authorized contexts.\n", contextCount)
+				case email != "":
+					fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", email)
+				default:
+					fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
+				}
+				return reauth(cmd.Context(), lc.accessBaseURL, uat)
 			}
-			if identity != "" {
-				fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", identity)
-			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
-			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
-			fmt.Fprintln(cmd.OutOrStdout(), "To log in as a different user, run: stripe login --new-session")
-			return nil
+			// The session has expired; fall through to a fresh login below.
 		}
 	} else if strings.HasPrefix(uat, "oak_") {
 		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
@@ -205,6 +250,46 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+}
+
+// fetchLoginEmail returns the email of the currently logged-in OAuth user, or
+// "" if there's no active context or the lookup fails; it fails open since
+// the email here is a courtesy identity confirmation, not a precondition for
+// reauthorizing.
+func fetchLoginEmail(ctx context.Context, apiBaseURL, uat string) string {
+	ac, _ := config.GetActiveContext()
+	if ac == nil {
+		return ""
+	}
+	creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
+	info, err := requests.GetUserInfo(ctx, apiBaseURL, &Config.Profile, creds, ac.Livemode)
+	if err != nil {
+		return ""
+	}
+	return info.Email
+}
+
+// countAuthorizedContexts counts (account, mode) pairs across accounts, the
+// same unit "contexts" refers to elsewhere (e.g. printAuthorizedSummary).
+func countAuthorizedContexts(accounts []config.AuthorizedAccount) int {
+	count := 0
+	for _, a := range accounts {
+		if len(a.Modes) == 0 {
+			count++
+		} else {
+			count += len(a.Modes)
+		}
+	}
+	return count
+}
+
+// soleAuthorizedContextName returns the display name of the single account in
+// accounts. Callers must check countAuthorizedContexts == 1 first.
+func soleAuthorizedContextName(accounts []config.AuthorizedAccount) string {
+	if len(accounts) == 0 {
+		return ""
+	}
+	return accounts[0].Name
 }
 
 // TODO: we should support bash completion for account names
