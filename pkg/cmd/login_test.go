@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +16,23 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
+
+// newTestLoginConfig sets up a fresh package-level Config backed by a temp
+// profiles file, so runLoginCmd's profile-name validation passes.
+func newTestLoginConfig(t *testing.T) {
+	t.Helper()
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	Config = config.Config{
+		LogLevel: "info",
+		Profile: config.Profile{
+			ProfileName: "default",
+			DeviceName:  "test-device",
+		},
+		ProfilesFile: profilesFile,
+	}
+	Config.InitConfig()
+	t.Cleanup(func() { viper.Reset() })
+}
 
 // TestLoginNewSessionRevokesPreviousToken verifies that `stripe login --new-session`
 // revokes the previously stored OAuth token, same as `stripe logout`, before
@@ -144,4 +164,183 @@ func TestLoginValidatesProfileNameBeforeAuthentication(t *testing.T) {
 			require.EqualError(t, err, tt.wantError)
 		})
 	}
+}
+
+// TestLoginReauthorizesNonExpiredSession verifies that running `stripe login`
+// with a still-valid OAuth session kicks off the (non-interactive) reauth
+// flow instead of starting a fresh login. Test processes never have a TTY on
+// stdin, so shouldAutoLogin always reports false and the non-interactive
+// dispatch (initiateReauth) is the only reachable path here — the same
+// constraint that keeps the interactive login.Login browser flow untested.
+func TestLoginReauthorizesNonExpiredSession(t *testing.T) {
+	origInitiateReauth, origReauth, origInitiateLogin := initiateReauth, reauth, initiateLogin
+	t.Cleanup(func() {
+		initiateReauth = origInitiateReauth
+		reauth = origReauth
+		initiateLogin = origInitiateLogin
+	})
+
+	var initiateReauthCalled, reauthCalled, initiateLoginCalled bool
+	initiateReauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		initiateReauthCalled = true
+		assert.Equal(t, "oak_current_uat", accessToken)
+		return nil
+	}
+	reauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		reauthCalled = true
+		return nil
+	}
+	initiateLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		initiateLoginCalled = true
+		return nil
+	}
+
+	newTestLoginConfig(t)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:           []byte("oak_current_uat"),
+		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(time.Hour).UTC().Format(time.RFC3339)),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	lc := newLoginCmd()
+	lc.cmd.SetContext(context.Background())
+
+	require.NoError(t, lc.runLoginCmd(lc.cmd, []string{}))
+	assert.True(t, initiateReauthCalled, "expected a non-expired session to trigger the non-interactive reauth flow")
+	assert.False(t, reauthCalled, "the interactive reauth flow should not run without a TTY")
+	assert.False(t, initiateLoginCalled, "a fresh login should not start while the session is still valid")
+}
+
+// TestLoginCompleteReauthPollsPendingReauth verifies that `stripe login
+// --complete-reauth` polls for reauth completion using the current UAT.
+func TestLoginCompleteReauthPollsPendingReauth(t *testing.T) {
+	origPollPendingReauth := pollPendingReauth
+	t.Cleanup(func() { pollPendingReauth = origPollPendingReauth })
+
+	var pollCalled bool
+	pollPendingReauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		pollCalled = true
+		assert.Equal(t, "oak_current_uat", accessToken)
+		return nil
+	}
+
+	newTestLoginConfig(t)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_current_uat"),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	lc := newLoginCmd()
+	lc.completeReauth = true
+	lc.cmd.SetContext(context.Background())
+
+	require.NoError(t, lc.runLoginCmd(lc.cmd, []string{}))
+	assert.True(t, pollCalled, "expected --complete-reauth to poll for reauth completion")
+}
+
+// TestLoginReauthorizesWhenSessionExpiredButRefreshable verifies that an
+// expired access token whose refresh token is still good is treated as a
+// valid session (reauthorizing in place) rather than falling through to a
+// fresh login.
+func TestLoginReauthorizesWhenSessionExpiredButRefreshable(t *testing.T) {
+	origInitiateReauth, origInitiateLogin, origRefresher := initiateReauth, initiateLogin, config.OAuthTokenRefresher
+	t.Cleanup(func() {
+		initiateReauth = origInitiateReauth
+		initiateLogin = origInitiateLogin
+		config.OAuthTokenRefresher = origRefresher
+	})
+
+	var initiateReauthCalled, initiateLoginCalled bool
+	initiateReauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		initiateReauthCalled = true
+		assert.Equal(t, "oak_refreshed_uat", accessToken)
+		return nil
+	}
+	initiateLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		initiateLoginCalled = true
+		return nil
+	}
+	config.OAuthTokenRefresher = func(p *config.Profile) error {
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_refreshed_uat"), "test")
+	}
+
+	newTestLoginConfig(t)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:           []byte("oak_stale_uat"),
+		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	lc := newLoginCmd()
+	lc.nonInteractive = true
+	lc.cmd.SetContext(context.Background())
+
+	require.NoError(t, lc.runLoginCmd(lc.cmd, []string{}))
+	assert.True(t, initiateReauthCalled, "expected a refreshable expired session to reauthorize instead of starting a fresh login")
+	assert.False(t, initiateLoginCalled, "a fresh login should not start when the refresh succeeds")
+}
+
+// TestLoginProceedsWithFreshLoginWhenSessionExpired verifies that running
+// `stripe login` with an expired OAuth session, whose refresh token is also
+// invalid or missing, falls through to a normal login instead of
+// reauthorizing.
+func TestLoginProceedsWithFreshLoginWhenSessionExpired(t *testing.T) {
+	origInitiateReauth, origInitiateLogin := initiateReauth, initiateLogin
+	t.Cleanup(func() {
+		initiateReauth = origInitiateReauth
+		initiateLogin = origInitiateLogin
+	})
+
+	var initiateReauthCalled, initiateLoginCalled bool
+	initiateReauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		initiateReauthCalled = true
+		return nil
+	}
+	initiateLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+		initiateLoginCalled = true
+		return nil
+	}
+
+	newTestLoginConfig(t)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:           []byte("oak_stale_uat"),
+		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	lc := newLoginCmd()
+	lc.nonInteractive = true
+	lc.cmd.SetContext(context.Background())
+
+	require.NoError(t, lc.runLoginCmd(lc.cmd, []string{}))
+	assert.True(t, initiateLoginCalled, "expected an expired session to fall through to a fresh login")
+	assert.False(t, initiateReauthCalled, "the reauth flow should not run for an expired session")
+}
+
+// TestLoginRejectsArbitraryAccessBaseWithoutSendingUAT verifies that an
+// arbitrary --access-base is rejected before the reauth flow can send the
+// UAT anywhere, even when a valid OAuth session is present.
+func TestLoginRejectsArbitraryAccessBaseWithoutSendingUAT(t *testing.T) {
+	var requestReceived bool
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
+		assert.Empty(t, r.Header.Get("Authorization"), "attacker-controlled server must never see the UAT")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer attacker.Close()
+
+	newTestLoginConfig(t)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:           []byte("oak_live_secret_token"),
+		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(time.Hour).UTC().Format(time.RFC3339)),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	lc := newLoginCmd()
+	lc.accessBaseURL = attacker.URL
+	lc.cmd.SetContext(context.Background())
+
+	err := lc.runLoginCmd(lc.cmd, []string{})
+	require.Error(t, err)
+	assert.False(t, requestReceived, "an arbitrary --access-base must be rejected before any request is sent")
 }
