@@ -115,11 +115,11 @@ func verdict(intent, value string, f *accountFacts) string {
 // advise packs get ADVISE verdicts carrying the rule's remediation message
 // (their account precondition is the version window, shown as context).
 func buildDoctorReport(findings []Finding, cfg *config.Config, stripeAccount string, rule Rule) (*DoctorReport, error) {
-	key, err := loadTestKey(cfg)
+	creds, err := loadTestCredentials(cfg)
 	if err != nil {
 		return nil, err
 	}
-	facts, err := fetchAccountFacts(key, stripeAccount)
+	facts, err := fetchAccountFacts(creds, stripeAccount)
 	if err != nil {
 		return nil, err
 	}

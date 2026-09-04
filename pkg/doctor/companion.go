@@ -86,11 +86,11 @@ func resolveCompanion(rule Rule, cfg *config.Config, stripeAccount, root string,
 		if offline {
 			return unknown("--offline")
 		}
-		key, err := loadTestKey(cfg)
+		creds, err := loadTestCredentials(cfg)
 		if err != nil {
 			return unknown("no credentials (" + err.Error() + ")")
 		}
-		facts, err := fetchAccountFacts(key, stripeAccount)
+		facts, err := fetchAccountFacts(creds, stripeAccount)
 		if err != nil {
 			return unknown("account lookup failed (" + err.Error() + ")")
 		}
