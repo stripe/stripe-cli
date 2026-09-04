@@ -127,7 +127,7 @@ func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--status")
 
 	require.NoError(t, err)
-	require.Contains(t, output, "Detected agents with supported Stripe plugins:")
+	require.Contains(t, output, "Detected supported agents:")
 	require.Contains(t, output, "Claude Code")
 	require.Contains(t, output, "plugin not installed")
 }
@@ -648,6 +648,75 @@ func TestAgentSetupStatusWithNoClientsShowsSkills(t *testing.T) {
 	require.Contains(t, output, "No supported AI coding clients detected on this machine.")
 	require.Contains(t, output, "Stripe skills:")
 	require.Contains(t, output, "not installed")
+}
+
+func TestAgentSetupYesInstallsSkillsOnceForCompatibleClients(t *testing.T) {
+	var installCalls int
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{
+		agentsetup.ClientGrok: agentsetup.NewGrokProvider(agentsetup.Scanner{
+			LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil },
+		}),
+		agentsetup.ClientKimi: agentsetup.NewKimiProvider(agentsetup.Scanner{
+			LookPath: func(string) (string, error) { return "/usr/local/bin/kimi", nil },
+		}),
+	}
+	setup.skillsInstall = func(context.Context, string) ([]string, error) {
+		installCalls++
+		return []string{"stripe-best-practices"}, nil
+	}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--yes")
+
+	require.NoError(t, err)
+	require.Equal(t, 1, installCalls)
+	require.Contains(t, output, "Grok Build")
+	require.Contains(t, output, "Kimi Code")
+	require.Contains(t, output, "Stripe skills (local)")
+	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+}
+
+func TestAgentSetupJSONDeduplicatesCompatibleClientSkillsAction(t *testing.T) {
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{
+		agentsetup.ClientGrok: agentsetup.NewGrokProvider(agentsetup.Scanner{
+			LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil },
+		}),
+		agentsetup.ClientKimi: agentsetup.NewKimiProvider(agentsetup.Scanner{
+			LookPath: func(string) (string, error) { return "/usr/local/bin/kimi", nil },
+		}),
+	}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--json")
+
+	require.NoError(t, err)
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Len(t, result.Actions, 1)
+	require.Equal(t, agentsetup.ActionInstallSkills, result.Actions[0].Action)
+}
+
+func TestAgentSetupJSONOmitsSkillsActionWhenCompatibleClientIsCurrent(t *testing.T) {
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{
+		agentsetup.ClientGrok: agentsetup.NewGrokProvider(agentsetup.Scanner{
+			LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil },
+		}),
+	}
+	setup.skillsCheck = mockSkillsCheckCurrent
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--json")
+
+	require.NoError(t, err)
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Empty(t, result.Actions)
 }
 
 func TestAgentSetupStatusWithNoClientsHidesUninstalledScopeWhenOtherInstalled(t *testing.T) {

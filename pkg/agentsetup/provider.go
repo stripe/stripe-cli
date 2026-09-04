@@ -17,6 +17,9 @@ const (
 	ActionNone      = "none"
 	ActionInstall   = "install"
 	ActionReinstall = "reinstall"
+	// ActionInstallSkills installs the shared Stripe skills for clients without
+	// an official Stripe plugin marketplace entry.
+	ActionInstallSkills = "install_skills"
 	// ActionManual means setup cannot be automated and the user must perform a
 	// step themselves (e.g. Cursor plugins are installed from inside Cursor).
 	ActionManual = "manual"
@@ -36,10 +39,18 @@ func DefaultProviders() map[string]Provider {
 	claude := NewClaudeProvider(scanner, RunCommand)
 	cursor := NewCursorProvider(scanner, RunCommand)
 	codex := NewCodexProvider(scanner, RunCommand)
+	grok := NewGrokProvider(scanner)
+	kimi := NewKimiProvider(scanner)
+	githubCopilot := NewGitHubCopilotProvider(scanner)
+	vsCode := NewVSCodeProvider(scanner)
 	return map[string]Provider{
-		claude.ID(): claude,
-		cursor.ID(): cursor,
-		codex.ID():  codex,
+		claude.ID():        claude,
+		cursor.ID():        cursor,
+		codex.ID():         codex,
+		grok.ID():          grok,
+		kimi.ID():          kimi,
+		githubCopilot.ID(): githubCopilot,
+		vsCode.ID():        vsCode,
 	}
 }
 
@@ -58,10 +69,15 @@ type Status struct {
 	DisplayName    string       `json:"display_name"`
 	Detected       bool         `json:"detected"`
 	ExecutablePath string       `json:"executable_path,omitempty"`
+	Setup          string       `json:"setup,omitempty"`
 	Plugin         PluginStatus `json:"plugin"`
 	Status         string       `json:"status"`
 	Error          string       `json:"error,omitempty"`
 }
+
+// SetupSkills identifies clients configured through the portable Agent Skills
+// directory rather than a native plugin marketplace.
+const SetupSkills = "skills"
 
 // PluginStatus is the plugin-specific part of a client setup status.
 type PluginStatus struct {
