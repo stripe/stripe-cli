@@ -367,7 +367,9 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 				if _, foundInPreview := validPreviewThinEvents[event]; !foundInPreview {
 					if event == "*" {
 						cfg.Log.Infof("* is only supported in the CLI, thin event destinations do not support selecting all event types\n")
-					} else {
+					} else if !isInteropEvent(event) {
+						// interop events aren't in the generated thin event lists,
+						// but they can be listened for by name
 						cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
 					}
 				}

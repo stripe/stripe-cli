@@ -192,8 +192,24 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 	p.sendMessage(websocket.NewEventAck(evt.ID, "", v2Event.EventDestinationID))
 
 	// skip further event processing if the event type is not enabled
-	if !p.thinEvents[evt.Type] && !p.thinEvents["*"] {
-		return
+	if !p.thinEvents[evt.Type] {
+		if !p.thinEvents["*"] {
+			return
+		}
+
+		// Interop events are snapshot events rendered as v2 events, and the
+		// webhooks channel already delivers them. Skip them here so listening
+		// for all thin events doesn't show every snapshot event twice; users
+		// who want them can name them explicitly.
+		if isInteropEvent(evt.Type) {
+			p.cfg.Log.WithFields(log.Fields{
+				"prefix":     "proxy.WebhookEventProcessor.ProcessV2Event",
+				"event_id":   evt.ID,
+				"event_type": evt.Type,
+			}).Debugf("Skipping interop event, listen for %s explicitly to receive it", evt.Type)
+
+			return
+		}
 	}
 
 	// notify consumers
