@@ -212,14 +212,19 @@ func TestAPIDataMetricsRunLive(t *testing.T) {
 	}))
 	runner = runner.WithTimeout(60 * time.Second)
 
+	// Omit --currency / --group-by: those are account-specific and can 400
+	// with metric_invalid_parameter_value. Dry-run covers request serialization.
+	// Query the previous complete calendar month with exclusive ends-at.
+	now := time.Now().UTC()
+	ends := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	starts := ends.AddDate(0, -1, 0)
+
 	result, err := runner.Run(
 		"data", "metrics", "run",
 		"--metric", "revenue.mrr",
-		"--starts-at", "2026-01-01T00:00:00Z",
-		"--ends-at", "2026-01-31T23:59:59Z",
+		"--starts-at", starts.Format(time.RFC3339),
+		"--ends-at", ends.Format(time.RFC3339),
 		"--granularity", "month",
-		"--currency", "usd",
-		"--group-by", "price",
 	)
 	if err != nil {
 		fatalf(t, "Failed to run 'stripe data metrics run': %v", err)
