@@ -103,7 +103,7 @@ Nested API fields use bracket notation as flags (for example
 --result_options[compress_file]=true), not dotted names from the API
 reference (--result_options.compress_file). Prefer the dedicated
 --compress-file flag when one exists.`,
-		Example: `  # Run an ad hoc query
+		Example: `# Run an ad hoc query
   stripe reporting query-runs create --sql "SELECT * FROM charges LIMIT 10"
 
   # Compress the result file
@@ -151,7 +151,7 @@ Public Preview API — the Stripe-Version preview header is set automatically.
 
 Once the query run's status is "succeeded", the result's download_url can be
 used to download the query output.`,
-		Example: `  # Retrieve a query run (replace <query_run_id> with an id from create)
+		Example: `# Retrieve a query run (replace <query_run_id> with an id from create)
   stripe reporting query-runs retrieve <query_run_id>`,
 		Args: validators.ExactArgs(1),
 		RunE: rc.runReportingQueryRunsRetrieveCmd,

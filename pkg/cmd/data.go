@@ -141,7 +141,7 @@ currency, timezone, group_by, filters, limit. The API validates all parameters.
 See the supported metrics at https://docs.stripe.com/data/analytics/supported-metrics
 and the API reference at
 https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-version=preview`,
-		Example: `  # Query daily MRR for March 2026
+		Example: `# Query daily MRR for March 2026
   stripe data metrics run \
     --metric revenue.mrr \
     --starts-at 2026-03-01T00:00:00Z \
