@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -210,6 +211,9 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
 		if err := revokeToken(cmd.Context(), lc.accessBaseURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
+		}
+		if !lc.nonInteractive {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s Logged out of your previous session.\n", ansi.Color(os.Stdout).Green("✓"))
 		}
 	}
 
