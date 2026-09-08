@@ -52,8 +52,10 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 		return err
 	}
 
+	var browserOpened chan struct{}
 	fmt.Println()
 	if !isSSH() && canOpenBrowser() {
+		browserOpened = make(chan struct{})
 		fmt.Printf("To authorize more contexts, visit %s\n\n", reauthURL)
 		fmt.Println("Press enter to open the browser (^C to quit)")
 		go func() {
@@ -61,12 +63,13 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 			if err := openBrowser(reauthURL); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
 			}
+			close(browserOpened)
 		}()
 	} else {
 		fmt.Printf("Visit the following URL to re-authorize the CLI:\n  %s\n", reauthURL)
 	}
 
-	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, nil)
+	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil)
 }
 
 type reauthSessionOutput struct {
@@ -137,7 +140,7 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) e
 	}
 
 	fmt.Println("Waiting for you to finish in the browser. Press ^C to cancel.")
-	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, func([]config.AuthorizedAccount) {
+	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, nil, func([]config.AuthorizedAccount) {
 		clearPendingReauthAccounts()
 	})
 }
@@ -148,16 +151,17 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) e
 // so a change to the accounts/scopes returned for the token is used as a
 // proxy for completion. onComplete, if non-nil, runs once a change is
 // detected and before the summary is printed.
-func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken string, before []config.AuthorizedAccount, onComplete func([]config.AuthorizedAccount)) error {
+func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken string, before []config.AuthorizedAccount, browserOpened <-chan struct{}, onComplete func([]config.AuthorizedAccount)) error {
 	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
-	s := ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+	stopSpinner := startSpinnerAfterSignal("Waiting for confirmation...", os.Stdout, browserOpened)
 	after, err := waitForAccountsChange(waitCtx, accessBaseURL, accessToken, before, reauthPollInterval, reauthPollTimeout)
-	ansi.StopSpinner(s, "", os.Stdout)
+	stopSpinner()
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
+			ansi.ClearLine(os.Stdout)
 			fmt.Println("Canceled. Run 'stripe whoami' to see your authorized contexts or 'stripe login --new-session' to log in as a different user.")
 			return nil
 		case errors.Is(err, errReauthTimeout):

@@ -3,11 +3,13 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -244,13 +246,16 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	fmt.Println(ansi.Purple(authResp.UserCode))
 	fmt.Println()
 
+	var browserOpened chan struct{}
 	if !isSSH() && canOpenBrowser() {
+		browserOpened = make(chan struct{})
 		fmt.Printf("Press enter to open the browser (^C to quit)\n")
 		go func() {
 			fmt.Scanln() //nolint:errcheck
 			if err := openBrowser(authResp.VerificationURI); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
 			}
+			close(browserOpened)
 		}()
 	}
 
@@ -259,15 +264,23 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
+	waitCtx, stop := signal.NotifyContext(pollCtx, os.Interrupt)
+	defer stop()
 
-	s := ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
-	result, err := PollAndSaveDeviceCredentials(pollCtx, accessBaseURL, clientID, authResp.DeviceCode, interval, cfg)
-	ansi.StopSpinner(s, "", os.Stdout)
+	stopSpinner := startSpinnerAfterSignal("Waiting for confirmation...", os.Stdout, browserOpened)
+	result, err := PollAndSaveDeviceCredentials(waitCtx, accessBaseURL, clientID, authResp.DeviceCode, interval, cfg)
+	stopSpinner()
 	if err != nil {
-		if pollCtx.Err() != nil {
+		switch {
+		case errors.Is(err, context.Canceled):
+			ansi.ClearLine(os.Stdout)
+			fmt.Println("Canceled. Run 'stripe login' to try again.")
+			return nil
+		case pollCtx.Err() != nil:
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login' again")
+		default:
+			return err
 		}
-		return err
 	}
 
 	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
