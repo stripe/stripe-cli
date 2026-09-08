@@ -27,7 +27,17 @@ func IsOptedOut() bool {
 		return false
 	}
 
-	return !v.GetBool("settings.auto_update") && v.IsSet("settings.auto_update")
+	// Both spellings count. The install script tells users to write a [settings]
+	// table; the message the CLI prints when it updates tells them to write a
+	// top-level auto_update, which is also where every other CLI setting lives in
+	// config.toml. Someone who followed either has said what they want.
+	for _, key := range []string{"auto_update", "settings.auto_update"} {
+		if v.IsSet(key) && !v.GetBool(key) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // IsCurlInstall reports whether the current binary was installed via curl (lives in ~/.stripe/bin/).
