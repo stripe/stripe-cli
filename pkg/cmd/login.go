@@ -286,6 +286,9 @@ func printAlreadyLoggedIn(cmd *cobra.Command, apiBaseURL, accessBaseURL, uat str
 	default:
 		fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
 	}
+	if contextCount > 1 {
+		login.PrintAuthorizedContextsList(accounts)
+	}
 }
 
 // fetchLoginEmail returns the email of the currently logged-in OAuth user, or
