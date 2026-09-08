@@ -595,11 +595,11 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	// not the per-profile field, so read it directly from the keyring rather
 	// than going through the profile helpers (which read live/test API keys).
 	if config.KeyRing == nil {
-		return fmt.Errorf("credential store unavailable; run `stripe login` first")
+		return errorcategory.Errorf(errorcategory.Auth, "credential store unavailable; run `stripe login` first")
 	}
 	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
 	if err != nil || len(uatBytes) == 0 {
-		return fmt.Errorf("no user access token found; run `stripe login` first")
+		return errorcategory.Errorf(errorcategory.Auth, "no user access token found; run `stripe login` first")
 	}
 	uat := strings.TrimSpace(string(uatBytes))
 
@@ -651,7 +651,7 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	// Guard every resolution path at one choke point: the live parent must be a
 	// workspace (wksp_). A sandbox belongs to an account, never an organization.
 	if !strings.HasPrefix(liveWorkspace, "wksp_") {
-		return fmt.Errorf("resolved live parent %q is not a workspace (wksp_...); a sandbox belongs to an account, not an organization", liveWorkspace)
+		return errorcategory.Errorf(errorcategory.API, "resolved live parent %q is not a workspace (wksp_...); a sandbox belongs to an account, not an organization", liveWorkspace)
 	}
 	// Surface the resolved parent so it is never a silent default.
 	if liveAccountName != "" {
@@ -667,7 +667,7 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 		return err
 	}
 	if !strings.HasPrefix(stripeContext, "play_") {
-		return fmt.Errorf("resolved a non-playground context %q for %s", stripeContext, liveWorkspace)
+		return errorcategory.Errorf(errorcategory.API, "resolved a non-playground context %q for %s", stripeContext, liveWorkspace)
 	}
 
 	activateSandbox := snc.activate
@@ -713,7 +713,7 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("create sandbox failed: %s\n%s", resp.Status, string(respBytes))
+		return errorcategory.Errorf(errorcategory.API, "create sandbox failed: %s\n%s", resp.Status, string(respBytes))
 	}
 
 	// Identify the sandbox by its account (acct_); the wksp_test_ compartment id is
@@ -754,10 +754,10 @@ func (snc *sandboxNewCmd) validateFlags() error {
 	// reports per-item partial failures instead of aborting the whole batch.
 	// Until that lands, reject >1 explicitly rather than silently creating one.
 	if snc.batch < 1 {
-		return fmt.Errorf("--batch must be >= 1")
+		return errorcategory.Errorf(errorcategory.UserInput, "--batch must be >= 1")
 	}
 	if snc.batch > 1 {
-		return fmt.Errorf("--batch > 1 is not yet implemented; only --batch 1 is supported today")
+		return errorcategory.Errorf(errorcategory.UserInput, "--batch > 1 is not yet implemented; only --batch 1 is supported today")
 	}
 
 	// Mode selection mirrors the dashboard's create-sandbox modal: copy a live
@@ -766,17 +766,17 @@ func (snc *sandboxNewCmd) validateFlags() error {
 	businessLocation := strings.TrimSpace(snc.businessLocation)
 	switch {
 	case snc.copyLiveAccount && snc.createBlank:
-		return fmt.Errorf("--copy-live-account and --create-blank are mutually exclusive")
+		return errorcategory.Errorf(errorcategory.UserInput, "--copy-live-account and --create-blank are mutually exclusive")
 	case !snc.copyLiveAccount && !snc.createBlank:
-		return fmt.Errorf("pass one of --copy-live-account (copy your live account) or --create-blank (a fresh sandbox)")
+		return errorcategory.Errorf(errorcategory.UserInput, "pass one of --copy-live-account (copy your live account) or --create-blank (a fresh sandbox)")
 	case snc.createBlank && businessLocation == "":
-		return fmt.Errorf("--create-blank requires --business-location (e.g. US)")
+		return errorcategory.Errorf(errorcategory.UserInput, "--create-blank requires --business-location (e.g. US)")
 	case snc.copyLiveAccount && businessLocation != "":
-		return fmt.Errorf("--business-location is only valid with --create-blank")
+		return errorcategory.Errorf(errorcategory.UserInput, "--business-location is only valid with --create-blank")
 	case strings.HasPrefix(stripeAccount, "org_"):
-		return fmt.Errorf("--stripe-account must be an account (acct_...), not an organization (org_...)")
+		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account (acct_...), not an organization (org_...)")
 	case stripeAccount != "" && !strings.HasPrefix(stripeAccount, "acct_"):
-		return fmt.Errorf("--stripe-account must be an account id (acct_...), got %q", stripeAccount)
+		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account id (acct_...), got %q", stripeAccount)
 	}
 	return nil
 }
@@ -805,7 +805,7 @@ func fetchAccessibleWorkspaces(ctx context.Context, client *stripe.Client, confi
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("could not list your accounts: %s\n%s", resp.Status, string(respBytes))
+		return nil, errorcategory.Errorf(errorcategory.API, "could not list your accounts: %s\n%s", resp.Status, string(respBytes))
 	}
 	var parsed struct {
 		StandaloneWorkspaces []accessibleWorkspace `json:"standalone_workspaces"`
@@ -837,7 +837,7 @@ func resolveWorkspaceByAccount(ctx context.Context, client *stripe.Client, confi
 			return w.ID, w.Name, nil
 		}
 	}
-	return "", "", fmt.Errorf("no accessible live account matches %s; check the id or run `stripe login` again", account)
+	return "", "", errorcategory.Errorf(errorcategory.UserInput, "no accessible live account matches %s; check the id or run `stripe login` again", account)
 }
 
 // resolveLiveWorkspace determines the livemode workspace/org compartment to use
@@ -866,7 +866,7 @@ func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure 
 		return "", err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("could not list your accounts: %s\n%s", resp.Status, string(respBytes))
+		return "", errorcategory.Errorf(errorcategory.API, "could not list your accounts: %s\n%s", resp.Status, string(respBytes))
 	}
 
 	// standalone_workspaces are already filtered to livemode roots by the backend.
@@ -887,11 +887,11 @@ func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure 
 	}
 	switch len(workspaces) {
 	case 0:
-		return "", fmt.Errorf("no livemode workspace found for your account; run `stripe login`, or pass --stripe-account with an acct_ id")
+		return "", errorcategory.Errorf(errorcategory.API, "no livemode workspace found for your account; run `stripe login`, or pass --stripe-account with an acct_ id")
 	case 1:
 		return workspaces[0], nil
 	default:
-		return "", fmt.Errorf("you have multiple livemode workspaces; pass --stripe-account acct_... to choose one")
+		return "", errorcategory.Errorf(errorcategory.UserInput, "you have multiple livemode workspaces; pass --stripe-account acct_... to choose one")
 	}
 }
 
@@ -899,7 +899,7 @@ func resolveLiveWorkspace(ctx context.Context, client *stripe.Client, configure 
 // livemode workspace/org via GET /v2/compartments/playground/:id.
 func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, compartmentID string) (string, error) {
 	if compartmentID == "" {
-		return "", fmt.Errorf("could not determine a live workspace to resolve the playground from")
+		return "", errorcategory.Errorf(errorcategory.API, "could not determine a live workspace to resolve the playground from")
 	}
 	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/playground/"+url.PathEscape(compartmentID), "", configure)
 	if err != nil {
@@ -911,7 +911,7 @@ func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.
 		return "", err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("could not resolve the playground for %s: %s\n%s", compartmentID, resp.Status, string(respBytes))
+		return "", errorcategory.Errorf(errorcategory.API, "could not resolve the playground for %s: %s\n%s", compartmentID, resp.Status, string(respBytes))
 	}
 	var parsed struct {
 		ID string `json:"id"`
@@ -920,7 +920,7 @@ func (snc *sandboxNewCmd) resolvePlayground(ctx context.Context, client *stripe.
 		return "", fmt.Errorf("could not parse playground response: %w", err)
 	}
 	if parsed.ID == "" {
-		return "", fmt.Errorf("no playground found for %s; run 'stripe login' again", compartmentID)
+		return "", errorcategory.Errorf(errorcategory.API, "no playground found for %s; run 'stripe login' again", compartmentID)
 	}
 	return parsed.ID, nil
 }
@@ -956,23 +956,24 @@ func newSandboxListCmd() *sandboxListCmd {
 	return slc
 }
 
+//nolint:gocyclo // The hidden POC keeps OAuth and legacy fallback paths together until M3c.
 func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) error {
 	if config.KeyRing == nil {
-		return fmt.Errorf("credential store unavailable; run `stripe login` first")
+		return errorcategory.Errorf(errorcategory.Auth, "credential store unavailable; run `stripe login` first")
 	}
 	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
 	if err != nil || len(uatBytes) == 0 {
-		return fmt.Errorf("no user access token found; run `stripe login` first")
+		return errorcategory.Errorf(errorcategory.Auth, "no user access token found; run `stripe login` first")
 	}
 	uat := strings.TrimSpace(string(uatBytes))
 
 	stripeAccount := strings.TrimSpace(slc.stripeAccount)
 	if stripeAccount != "" {
 		if strings.HasPrefix(stripeAccount, "org_") {
-			return fmt.Errorf("--stripe-account must be an account (acct_...), not an organization (org_...)")
+			return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account (acct_...), not an organization (org_...)")
 		}
 		if !strings.HasPrefix(stripeAccount, "acct_") {
-			return fmt.Errorf("--stripe-account must be an account id (acct_...), got %q", stripeAccount)
+			return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account id (acct_...), got %q", stripeAccount)
 		}
 	}
 
@@ -1024,7 +1025,7 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 			}
 		}
 		if liveWorkspace == "" {
-			return fmt.Errorf("no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
+			return errorcategory.Errorf(errorcategory.UserInput, "no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
 		}
 		liveAccount = stripeAccount
 	} else {
@@ -1036,7 +1037,7 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 		liveName = nameByWksp[liveWorkspace]
 	}
 	if !strings.HasPrefix(liveWorkspace, "wksp_") {
-		return fmt.Errorf("resolved live parent %q is not a workspace (wksp_...)", liveWorkspace)
+		return errorcategory.Errorf(errorcategory.API, "resolved live parent %q is not a workspace (wksp_...)", liveWorkspace)
 	}
 
 	// Transparency line (stderr): prefer name, then acct_, never show wksp_ unless nothing else
@@ -1062,7 +1063,7 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("list sandboxes failed: %s\n%s", resp.Status, string(respBytes))
+		return errorcategory.Errorf(errorcategory.API, "list sandboxes failed: %s\n%s", resp.Status, string(respBytes))
 	}
 
 	var parsed struct {
@@ -1152,7 +1153,7 @@ func (slc *sandboxListCmd) printOAuthSandboxes(cmd *cobra.Command, accounts []co
 			}
 		}
 		if !isAuthorizedLiveAccount {
-			return fmt.Errorf("no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
+			return errorcategory.Errorf(errorcategory.Auth, "no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
 		}
 	}
 
@@ -1213,11 +1214,11 @@ workspace, mirroring the dashboard's delete action; it never touches your live a
 
 func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []string) error {
 	if config.KeyRing == nil {
-		return fmt.Errorf("credential store unavailable; run `stripe login` first")
+		return errorcategory.Errorf(errorcategory.Auth, "credential store unavailable; run `stripe login` first")
 	}
 	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
 	if err != nil || len(uatBytes) == 0 {
-		return fmt.Errorf("no user access token found; run `stripe login` first")
+		return errorcategory.Errorf(errorcategory.Auth, "no user access token found; run `stripe login` first")
 	}
 	uat := strings.TrimSpace(string(uatBytes))
 
@@ -1226,11 +1227,11 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 	stripeAccount := strings.TrimSpace(sdc.stripeAccount)
 	switch {
 	case stripeAccount == "":
-		return fmt.Errorf("--stripe-account is required (the acct_ of the sandbox to delete; see `stripe sandbox list`)")
+		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account is required (the acct_ of the sandbox to delete; see `stripe sandbox list`)")
 	case strings.HasPrefix(stripeAccount, "org_"):
-		return fmt.Errorf("--stripe-account must be an account (acct_...), not an organization (org_...)")
+		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account (acct_...), not an organization (org_...)")
 	case !strings.HasPrefix(stripeAccount, "acct_"):
-		return fmt.Errorf("--stripe-account must be an account id (acct_...), got %q", stripeAccount)
+		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account id (acct_...), got %q", stripeAccount)
 	}
 
 	baseURL, err := url.Parse(sdc.apiBase)
@@ -1258,7 +1259,7 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 	}
 	// Guard: only ever close a sandbox (testmode) workspace, never something else.
 	if !strings.HasPrefix(sandboxWorkspace, "wksp_test") {
-		return fmt.Errorf("resolved sandbox id %q is not a testmode workspace (wksp_test...)", sandboxWorkspace)
+		return errorcategory.Errorf(errorcategory.API, "resolved sandbox id %q is not a testmode workspace (wksp_test...)", sandboxWorkspace)
 	}
 
 	if sandboxName != "" {
@@ -1282,7 +1283,7 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 		return err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("delete sandbox failed: %s\n%s", resp.Status, string(respBytes))
+		return errorcategory.Errorf(errorcategory.API, "delete sandbox failed: %s\n%s", resp.Status, string(respBytes))
 	}
 
 	out := cmd.OutOrStdout()
@@ -1309,7 +1310,7 @@ func fetchSandboxesForParent(ctx context.Context, client *stripe.Client, configu
 		return nil, err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("could not list sandboxes: %s\n%s", resp.Status, string(respBytes))
+		return nil, errorcategory.Errorf(errorcategory.API, "could not list sandboxes: %s\n%s", resp.Status, string(respBytes))
 	}
 	var parsed struct {
 		Workspaces    []accessibleWorkspace `json:"workspaces"`
@@ -1350,7 +1351,7 @@ func resolveSandboxWorkspaceByAccount(ctx context.Context, client *stripe.Client
 			}
 		}
 	}
-	return "", "", fmt.Errorf("no sandbox found for %s under your accessible live accounts; run `stripe sandbox list` to see available sandboxes", sandboxAccount)
+	return "", "", errorcategory.Errorf(errorcategory.API, "no sandbox found for %s under your accessible live accounts; run `stripe sandbox list` to see available sandboxes", sandboxAccount)
 }
 
 type sandboxClaimStatusResponse struct {
