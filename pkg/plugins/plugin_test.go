@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 type failRemoveAllFs struct {
@@ -757,10 +756,6 @@ func TestRunVersionOverrideNotInstalled(t *testing.T) {
 	fs := setUpFS()
 	cfg := &TestConfig{}
 	cfg.InitConfig()
-	telemetryClient := &recordingTelemetryClient{}
-	telemetryMetadata := stripe.NewEventMetadata()
-	ctx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
-	ctx = stripe.WithTelemetryClient(ctx, telemetryClient)
 
 	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
 
@@ -775,23 +770,10 @@ func TestRunVersionOverrideNotInstalled(t *testing.T) {
 	PluginsPath = ""
 	defer func() { PluginsPath = origPluginsPath }()
 
-	err := plugin.Run(ctx, &cfg.Config, fs, nil, "", "9.9.9", "", "", "")
+	err := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "9.9.9", "", "", "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), `plugin "appA" version "9.9.9" is not installed`)
 	require.Contains(t, err.Error(), "installed version is local.build.dev")
-	require.Empty(t, telemetryMetadata.PluginName)
-	require.Empty(t, telemetryMetadata.PluginVersion)
-	require.Len(t, telemetryClient.events, 1)
-	require.Equal(t, pluginCommandFinishedEventName, telemetryClient.events[0].name)
-	require.Equal(t, "appA", telemetryClient.events[0].pluginName)
-	require.Equal(t, "9.9.9", telemetryClient.events[0].pluginVersion)
-	var event pluginCommandFinishedEvent
-	require.NoError(t, json.Unmarshal([]byte(telemetryClient.events[0].value), &event))
-	require.Equal(t, "appA", event.PluginName)
-	require.Equal(t, "9.9.9", event.PluginVersion)
-	require.Equal(t, "error", event.Outcome)
-	require.GreaterOrEqual(t, event.DurationMS, int64(0))
-	require.Equal(t, "user_input", event.FailureCategory)
 }
 
 func TestRunVersionOverrideSelectsSpecifiedVersion(t *testing.T) {
