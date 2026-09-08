@@ -3,6 +3,7 @@ package autoupdate
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -31,6 +32,50 @@ func TestIsMajorVersionChange(t *testing.T) {
 			assert.Equal(t, tt.expected, isMajorVersionChange(tt.current, tt.latest))
 		})
 	}
+}
+
+// The expected names are the ones the .goreleaser archive templates produce. An
+// asset name that does not match one of them is not a download that fails
+// loudly — fetchLatestRelease finds no matching asset and gives up silently, so
+// auto-update simply never happens on that platform.
+func TestBinaryAssetNameFor(t *testing.T) {
+	tests := []struct {
+		goos     string
+		goarch   string
+		expected string
+	}{
+		{"darwin", "amd64", "stripe_1.24.0_mac-os_x86_64.tar.gz"},
+		{"darwin", "arm64", "stripe_1.24.0_mac-os_arm64.tar.gz"},
+		{"linux", "amd64", "stripe_1.24.0_linux_x86_64.tar.gz"},
+		{"linux", "arm64", "stripe_1.24.0_linux_arm64.tar.gz"},
+		{"linux", "386", "stripe_1.24.0_linux_i386.tar.gz"},
+		{"windows", "amd64", "stripe_1.24.0_windows_x86_64.zip"},
+		{"windows", "386", "stripe_1.24.0_windows_i386.zip"},
+		// No arm64 Windows build is published; that machine runs the x64 one.
+		{"windows", "arm64", "stripe_1.24.0_windows_x86_64.zip"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.goos+"/"+tt.goarch, func(t *testing.T) {
+			assert.Equal(t, tt.expected, binaryAssetNameFor("1.24.0", tt.goos, tt.goarch))
+		})
+	}
+}
+
+func TestBinaryAssetNameUsesTheRunningPlatform(t *testing.T) {
+	assert.Equal(t, binaryAssetNameFor("1.24.0", runtime.GOOS, runtime.GOARCH), binaryAssetName("1.24.0"))
+}
+
+func TestChecksumAssetName(t *testing.T) {
+	// The checksums file the release publishes for this platform, which is where
+	// the archive's expected digest is read from.
+	expected := map[string]string{
+		"darwin":  "stripe-mac-checksums.txt",
+		"linux":   "stripe-linux-checksums.txt",
+		"windows": "stripe-windows-checksums.txt",
+	}[runtime.GOOS]
+
+	assert.Equal(t, expected, checksumAssetName())
 }
 
 func TestMarkerReadWrite(t *testing.T) {

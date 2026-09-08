@@ -189,25 +189,46 @@ func fetchChecksumForAsset(checksumURL, assetName string) string {
 }
 
 func binaryAssetName(ver string) string {
-	goos := runtime.GOOS
-	goarch := runtime.GOARCH
+	return binaryAssetNameFor(ver, runtime.GOOS, runtime.GOARCH)
+}
 
-	var archName string
-	switch goarch {
-	case "amd64":
-		archName = "x86_64"
-	case "arm64":
-		archName = "arm64"
-	default:
-		archName = goarch
-	}
-
+// binaryAssetNameFor is the release archive published for a platform.
+//
+// The names come from the archive templates in .goreleaser/, which do not use
+// the Go names for either half: darwin is published as "mac-os" and amd64 as
+// "x86_64". Passing runtime.GOOS straight through asks for an asset that does
+// not exist, and a missing asset stops the update silently.
+func binaryAssetNameFor(ver, goos, goarch string) string {
+	osLabel := goos
 	ext := "tar.gz"
-	if goos == "windows" {
+
+	switch goos {
+	case "darwin":
+		osLabel = "mac-os"
+	case "windows":
 		ext = "zip"
 	}
 
-	return fmt.Sprintf("stripe_%s_%s_%s.%s", ver, goos, archName, ext)
+	return fmt.Sprintf("stripe_%s_%s_%s.%s", ver, osLabel, archAssetLabel(goos, goarch), ext)
+}
+
+func archAssetLabel(goos, goarch string) string {
+	switch goarch {
+	case "amd64":
+		return "x86_64"
+	case "386":
+		return "i386"
+	case "arm64":
+		// .goreleaser/windows.yml builds amd64 and 386 only. Windows on ARM runs
+		// the x64 binary under emulation, so that is the archive to fetch.
+		if goos == "windows" {
+			return "x86_64"
+		}
+
+		return "arm64"
+	default:
+		return goarch
+	}
 }
 
 func checksumAssetName() string {
