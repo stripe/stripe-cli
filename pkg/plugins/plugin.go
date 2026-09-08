@@ -643,16 +643,21 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 // so it can target the same non-default environment as the CLI that launched it. They should be
 // empty unless the user explicitly passed --api-base/--dashboard-base/--access-base; an empty
 // value tells the plugin to fall back to its own default rather than the CLI's resolved default.
-func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string) error {
+func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string) (err error) {
+	startedAt := time.Now()
+	pluginName := p.Shortname
+	version := versionOverride
+	pluginCtx := withPluginTelemetryMetadata(ctx, pluginName, version)
+	defer func() {
+		sendPluginCommandFinished(pluginCtx, pluginName, version, time.Since(startedAt), err)
+	}()
+
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
 
-	var version string
-
 	switch {
 	case versionOverride != "":
-		version = versionOverride
 		if !p.IsVersionInstalled(config, fs, version) {
 			installed := p.InstalledVersion(config, fs)
 			hint := ""
@@ -664,7 +669,6 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	case PluginsPath != "":
 		version = localDevelopmentVersion
 	default:
-		var err error
 		version, err = p.lookUpInstalledVersion(config, fs)
 		if err != nil {
 			return err
@@ -683,20 +687,22 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 				installDashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(installAPIBaseURL)
 			}
 
-			resolvedPlugin, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, installAPIBaseURL, installDashboardBaseURL)
+			resolvedPlugin, err := resolvePluginForAutoInstall(pluginCtx, config, fs, p.Shortname, installAPIBaseURL, installDashboardBaseURL)
 			if err != nil {
 				return err
 			}
 
 			p = resolvedPlugin.Plugin
 			version = resolvedPlugin.Version
-			if err := resolvedPlugin.Install(ctx, config, fs, installAPIBaseURL, installDashboardBaseURL); err != nil {
+			pluginCtx = withPluginTelemetryMetadata(ctx, pluginName, version)
+			if err := resolvedPlugin.Install(pluginCtx, config, fs, installAPIBaseURL, installDashboardBaseURL); err != nil {
 				return err
 			}
 
-			runPostInstallHook(ctx, config, fs, p, version, "", apiBaseURL, dashboardBaseURL, accessBaseURL)
+			runPostInstallHook(pluginCtx, config, fs, p, version, "", apiBaseURL, dashboardBaseURL, accessBaseURL)
 		}
 	}
+	pluginCtx = withPluginTelemetryMetadata(ctx, pluginName, version)
 
 	// Plugins read the config file themselves, so one too old to understand the v2
 	// layout would start up and find no profiles at all. Fail with something the
@@ -724,7 +730,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
+		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelper(pluginCtx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
 			return err
 		}
 	default:
