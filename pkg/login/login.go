@@ -172,7 +172,9 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
 
+	s := ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 	result, err := PollAndSaveDeviceCredentials(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval, cfg)
+	ansi.StopSpinner(s, "", os.Stdout)
 	if err != nil {
 		if pollCtx.Err() != nil {
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login --non-interactive' again")

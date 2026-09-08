@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
@@ -151,7 +152,9 @@ func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken str
 	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
+	s := ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 	after, err := waitForAccountsChange(waitCtx, accessBaseURL, accessToken, before, reauthPollInterval, reauthPollTimeout)
+	ansi.StopSpinner(s, "", os.Stdout)
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
