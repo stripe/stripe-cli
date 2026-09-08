@@ -90,9 +90,10 @@ For agents and scripts, use the two-step non-interactive flow:
 
 If you're already logged in with a valid session, running this again re-authorizes
 the CLI instead: it opens the Stripe Dashboard so you can change permissions or
-authorize access to additional accounts or sandboxes. Use --new-session to log in
-as a different user instead. --non-interactive works here too, printing a
-browser_url and a next_step of 'stripe login --complete-reauth' to poll.`,
+authorize access to additional accounts or sandboxes. Use --new-session to log out
+of the current session and log in as a different user instead. --non-interactive
+works here too, printing a browser_url and a next_step of
+'stripe login --complete-reauth' to poll.`,
 		Example: `# Standard browser login (default for TTY users)
   stripe login
 
@@ -135,7 +136,7 @@ browser_url and a next_step of 'stripe login --complete-reauth' to poll.`,
 	lc.cmd.Flags().MarkHidden("access-base") // #nosec G104
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	lc.cmd.Flags().MarkHidden("api-base") // #nosec G104
-	lc.cmd.Flags().BoolVar(&lc.newSession, "new-session", false, "Force a new login even if already authenticated")
+	lc.cmd.Flags().BoolVar(&lc.newSession, "new-session", false, "Log out of the current session and force a new login, even if already authenticated")
 
 	listCmd := &loginListCmd{}
 	listCmd.cmd = &cobra.Command{
