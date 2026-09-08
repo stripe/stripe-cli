@@ -84,7 +84,7 @@ func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken str
 			return accounts, nil
 		}
 		if len(result.Accounts) == 0 {
-			return nil, fmt.Errorf("accounts response indicated more results but returned an empty page")
+			return nil, errorcategory.Errorf(errorcategory.API, "accounts response indicated more results but returned an empty page")
 		}
 		startingAfter = result.Accounts[len(result.Accounts)-1].ID
 	}
