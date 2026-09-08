@@ -13,28 +13,25 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
-// resolveCredentialsForAnyMode resolves credentials for livemode, but if that
-// doesn't match the OAuth active context, resolves credentials for whichever
-// mode is actually active instead of failing. Plugin metadata/list requests
-// don't expose their own mode selection, so any usable credential will do.
-func resolveCredentialsForAnyMode(profile *config.Profile, livemode bool, apiKey string) stripe.Credentials {
-	creds, err := profile.ResolveCredentials(livemode)
-	var mismatch *config.ActiveContextLivemodeMismatchError
-	if errors.As(err, &mismatch) {
-		if retried, retryErr := profile.ResolveCredentials(mismatch.ActiveLivemode); retryErr == nil {
-			return retried
-		}
-	}
-	if err != nil {
-		return stripe.NewAPIKeyCredentials(apiKey)
-	}
-	return creds
-}
+// ErrCodePluginRequiresNewerCLI is the error.code the plugin metadata endpoints
+// send when the requested plugin version declares a minimum core CLI version this
+// CLI does not meet.
+//
+// Such a release is otherwise hidden, so the request would 404 -- and a 404 says
+// only that the version does not exist, which is both wrong and the signal that
+// sends the CLI off to its cached metadata.
+const ErrCodePluginRequiresNewerCLI = "plugin_requires_newer_cli"
 
 // PluginMetadata contains plugin-specific manifest and binary information.
 type PluginMetadata struct {
 	BinaryURL      string `json:"binary_url"`
 	PluginManifest string `json:"plugin_manifest"`
+	// AutoInstall reports whether the server wants this plugin installed on first
+	// use without asking. The endpoints always send the field, and a response that
+	// omits it decodes to false, which is the prompting behavior the CLI has always
+	// had — so losing the signal can only cost a prompt, never cause a surprise
+	// download.
+	AutoInstall bool `json:"auto_install"`
 }
 
 func getPluginMetadataPath(apiKey string) string {
@@ -64,7 +61,11 @@ func getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) strin
 // GetPluginMetadata returns plugin-specific manifest and binary information.
 // It uses the authenticated endpoint when an API key is available and the
 // anonymous endpoint otherwise.
-func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
+//
+// machineUUID is the CLI's persistent per-installation identifier. The server
+// keys the auto-install rollout on it so a machine stays on the same side of that
+// rollout across invocations rather than flipping between prompting and not.
+func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch, machineUUID string) (PluginMetadata, error) {
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,
@@ -81,6 +82,9 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		"version":  version,
 		"os":       os,
 		"arch":     arch,
+		// Logged so a machine that is not being auto-installed to can be told apart
+		// from one that never sent the identifier the rollout is keyed on.
+		"machine_uuid": machineUUID,
 	}).Debug("Fetching plugin metadata")
 
 	base := &Base{
@@ -90,14 +94,24 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		APIBaseURL:     metadataBaseURL,
 	}
 
-	resolvedCreds := resolveCredentialsForAnyMode(profile, base.Livemode, apiKey)
+	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(base.Livemode)
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
 
-	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, map[string]interface{}{
+	requestParams := map[string]interface{}{
 		"plugin":  pluginName,
 		"version": version,
 		"os":      os,
 		"arch":    arch,
-	}, true, nil)
+	}
+	// Left out when there is no uuid to send: the server reads absent and empty
+	// identically, as "this caller keeps prompting".
+	if machineUUID != "" {
+		requestParams["machine_uuid"] = machineUUID
+	}
+
+	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, requestParams, true, nil)
 	if err != nil {
 		return PluginMetadata{}, err
 	}
@@ -108,6 +122,44 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 	}
 
 	return metadata, nil
+}
+
+// PluginRequiresNewerCLI reports whether err is a plugin metadata response saying
+// the requested plugin needs a newer core CLI, along with the minimum version it
+// names. The endpoints answer this way for a version the caller named, and for a
+// request that named none when every release the plugin has needs a newer CLI --
+// reporting the lowest minimum among them, since that is the nearest version that
+// would make any of them installable.
+//
+// The minimum version rides on the error body as an extra attribute rather than in
+// RequestError, which is shared by every Stripe API request. An answer that names
+// no minimum is still the same answer, so ok is true with an empty version: the
+// caller reports the upgrade without naming a target rather than losing the reason.
+func PluginRequiresNewerCLI(err error) (minCoreVersion string, ok bool) {
+	var requestErr RequestError
+	if !errors.As(err, &requestErr) {
+		return "", false
+	}
+
+	if requestErr.StatusCode != http.StatusBadRequest || requestErr.ErrorCode != ErrCodePluginRequiresNewerCLI {
+		return "", false
+	}
+
+	body, isString := requestErr.Body.(string)
+	if !isString {
+		return "", true
+	}
+
+	var errorBody struct {
+		Error struct {
+			MinCoreVersion string `json:"min_core_version"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(body), &errorBody); err != nil {
+		return "", true
+	}
+
+	return errorBody.Error.MinCoreVersion, true
 }
 
 // GetPluginList returns the list of plugins visible to the current caller for
@@ -137,7 +189,10 @@ func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion
 		APIBaseURL:     listBaseURL,
 	}
 
-	resolvedCreds := resolveCredentialsForAnyMode(profile, base.Livemode, apiKey)
+	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(base.Livemode)
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
 
 	resp, err := base.MakeRequest(ctx, resolvedCreds, listPath, params, map[string]interface{}{
 		"os":   os,

@@ -2,8 +2,10 @@ package validators
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
@@ -54,6 +56,34 @@ func authError(message string) error {
 	return errorcategory.New(errorcategory.Auth, message)
 }
 
+// Length returns an ArgValidator requiring the value's rune length to fall
+// within [minLength, maxLength].
+func Length(minLength, maxLength int) ArgValidator {
+	return func(value string) error {
+		length := utf8.RuneCountInString(value)
+		if length < minLength {
+			return errorcategory.Errorf(errorcategory.UserInput, "must be at least %d characters", minLength)
+		}
+		if length > maxLength {
+			return errorcategory.Errorf(errorcategory.UserInput, "must be at most %d characters", maxLength)
+		}
+
+		return nil
+	}
+}
+
+// OneOf returns an ArgValidator requiring the value to exactly match one of
+// allowed.
+func OneOf(allowed ...string) ArgValidator {
+	return func(value string) error {
+		if slices.Contains(allowed, value) {
+			return nil
+		}
+
+		return errorcategory.Errorf(errorcategory.UserInput, "%q is not one of the allowed values (%s)", value, strings.Join(allowed, ", "))
+	}
+}
+
 // APIKey validates that a string looks like an API key.
 func APIKey(input string) error {
 	if len(input) == 0 {
@@ -64,7 +94,7 @@ func APIKey(input string) error {
 
 	keyParts := strings.Split(input, "_")
 	if len(keyParts) < 3 {
-		return authError("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+		return authError("You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new test API key")
 	}
 
 	if keyParts[0] != "sk" && keyParts[0] != "rk" && keyParts[0] != "rkcs" {
@@ -84,7 +114,7 @@ func APIKeyNotRestricted(input string) error {
 
 	keyParts := strings.Split(input, "_")
 	if len(keyParts) < 3 {
-		return authError("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+		return authError("You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new test API key")
 	}
 
 	if keyParts[0] != "sk" || keyParts[0] == "rk" {

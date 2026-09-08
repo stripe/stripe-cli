@@ -96,6 +96,9 @@ func initiateOAuthDeviceLogin(ctx context.Context, accessBaseURL string) error {
 	if err != nil {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
+	if err := validateBrowserURL(authResp.VerificationURI, accessBaseURL); err != nil {
+		return err
+	}
 
 	cont := &oauthContinuation{
 		DeviceCode:    authResp.DeviceCode,
@@ -158,6 +161,10 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 	// Remove the pending file whether polling succeeds or fails.
 	defer clearPendingDeviceAuth()
 
+	if err := ValidateAccessBaseURL(cont.AccessBaseURL); err != nil {
+		return err
+	}
+
 	clientID := clientIDForAccessBaseURL(cont.AccessBaseURL)
 	interval := max(time.Duration(cont.Interval)*time.Second, 5*time.Second)
 	expiresIn := max(time.Duration(cont.ExpiresIn)*time.Second, 10*time.Minute)
@@ -165,7 +172,7 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
 
-	tokenResp, err := PollDeviceToken(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval)
+	result, err := PollAndSaveDeviceCredentials(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval, cfg)
 	if err != nil {
 		if pollCtx.Err() != nil {
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login --non-interactive' again")
@@ -173,23 +180,7 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
-	// Clear all stale credentials before saving new ones.
-	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
-
-	if err := saveOAuthCredentials(cfg, tokenResp); err != nil {
-		return fmt.Errorf("failed to save credentials: %w", err)
-	}
-
-	accounts, err := ListAuthorizedAccounts(ctx, cont.AccessBaseURL, tokenResp.AccessToken)
-	if err != nil {
-		return fmt.Errorf("failed to fetch account info: %w", err)
-	}
-	activeID, activeLivemode := pickActiveContext(accounts)
-	if err := populateProfileFromAccounts(cfg, accounts, activeID, activeLivemode); err != nil {
-		return fmt.Errorf("failed to save account info: %w", err)
-	}
-
-	printLoginSuccess(accounts, activeID, activeLivemode)
+	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
 	warnIfInsecureStorage()
 	return nil
 }

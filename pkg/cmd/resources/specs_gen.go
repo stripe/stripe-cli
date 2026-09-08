@@ -692,6 +692,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
+		"capabilities.sequra_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
 		"capabilities.sofort_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
@@ -1887,6 +1891,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.sepa_debit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.sequra_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -3323,6 +3331,71 @@ var V1BillingCreditGrantsVoidGrant = resource.OperationSpec{
 	Method: "POST",
 }
 
+var V1BillingFeedbackOptionsCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v1/billing/feedback_options",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"description": {
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+		},
+	},
+}
+
+var V1BillingFeedbackOptionsDeactivate = resource.OperationSpec{
+	Name:   "deactivate",
+	Path:   "/v1/billing/feedback_options/{id}/deactivate",
+	Method: "POST",
+}
+
+var V1BillingFeedbackOptionsList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v1/billing/feedback_options",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "A limit on the number of objects to be returned",
+		},
+		"starting_after": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"status": {
+			Type:             "string",
+			ShortDescription: "Filter results to only include feedback options with the given status",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "inactive"},
+			},
+		},
+	},
+}
+
+var V1BillingFeedbackOptionsRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v1/billing/feedback_options/{id}",
+	Method: "GET",
+}
+
+var V1BillingFeedbackOptionsUpdate = resource.OperationSpec{
+	Name:   "update",
+	Path:   "/v1/billing/feedback_options/{id}",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"description": {
+			Type:       "string",
+			MostCommon: true,
+		},
+	},
+}
+
 var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 	Name:   "create",
 	Path:   "/v1/billing/meter_event_adjustments",
@@ -3583,6 +3656,10 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
 		},
+		"features.subscription_cancel.cancellation_reason.feedback_options": {
+			Type:             "array",
+			ShortDescription: "The IDs of custom feedback options to use for this cancellation reason",
+		},
 		"features.subscription_cancel.cancellation_reason.options": {
 			Type:             "array",
 			ShortDescription: "Which cancellation reasons will be given as options to the customer",
@@ -3739,6 +3816,10 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
 		},
+		"features.subscription_cancel.cancellation_reason.feedback_options": {
+			Type:             "array",
+			ShortDescription: "The IDs of custom feedback options to use for this cancellation reason",
+		},
 		"features.subscription_cancel.cancellation_reason.options": {
 			Type:             "array",
 			ShortDescription: "Which cancellation reasons will be given as options to the customer",
@@ -3875,6 +3956,7 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 			ShortDescription: "Type of flow that the customer will go through",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
+				{Value: "customer_update"},
 				{Value: "payment_method_update"},
 				{Value: "subscription_cancel"},
 				{Value: "subscription_update"},
@@ -5106,6 +5188,10 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The card brands to block",
 		},
+		"payment_method_options.card.restrictions.funding_types_blocked": {
+			Type:             "array",
+			ShortDescription: "Card funding types to block for this Checkout Session",
+		},
 		"payment_method_options.card.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
@@ -5610,6 +5696,13 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_method_options.sepa_debit.target_date": {
 			Type:             "string",
 			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sequra.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
 		},
 		"payment_method_options.sofort.setup_future_usage": {
 			Type:             "string",
@@ -6561,6 +6654,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -7197,9 +7291,17 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 	Path:   "/v1/customer_sessions",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"components.active_entitlements.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Whether the active entitlements is enabled",
+		},
 		"components.buy_button.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the buy button is enabled",
+		},
+		"components.customer_portal.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Whether the customer portal is enabled",
 		},
 		"components.customer_sheet.enabled": {
 			Type:             "boolean",
@@ -7700,6 +7802,7 @@ var V1CustomersListPaymentMethods = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -15226,6 +15329,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -15719,6 +15823,35 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "2.2.0"},
 				{Value: "2.3.0"},
 				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.aade_data.mark_data": {
+			Type:             "string",
+			ShortDescription: "The canonical string that was signed by the e-invoicing provider to produce `signed_mark`, formatted per Appendix A of A.1155/2023",
+		},
+		"payment_method_options.card_present.aade_data.mode": {
+			Type:             "string",
+			ShortDescription: "The e-invoicing mode under which the mark was generated",
+			Enum: []resource.EnumSpec{
+				{Value: "autonomous"},
+				{Value: "standard"},
+			},
+		},
+		"payment_method_options.card_present.aade_data.provider_id": {
+			Type:             "integer",
+			ShortDescription: "The AADE-assigned approval number of the e-invoicing provider that generated the mark",
+		},
+		"payment_method_options.card_present.aade_data.signed_mark": {
+			Type:             "string",
+			ShortDescription: "The cryptographic signature returned by the e-invoicing provider for this transaction, hex-encoded",
+		},
+		"payment_method_options.card_present.aade_data.unbound_pos": {
+			Type:             "string",
+			ShortDescription: "The reason for entering autonomous mode",
+			Enum: []resource.EnumSpec{
+				{Value: "interconnection_loss"},
+				{Value: "lock"},
+				{Value: "replacement_cash_system"},
 			},
 		},
 		"payment_method_options.card_present.capture_method": {
@@ -16359,6 +16492,20 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.sepa_debit.target_date": {
 			Type:             "string",
 			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sequra.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sequra.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
 		},
 		"payment_method_options.sofort.preferred_language": {
 			Type:             "string",
@@ -17121,6 +17268,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -17614,6 +17762,35 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "2.2.0"},
 				{Value: "2.3.0"},
 				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.aade_data.mark_data": {
+			Type:             "string",
+			ShortDescription: "The canonical string that was signed by the e-invoicing provider to produce `signed_mark`, formatted per Appendix A of A.1155/2023",
+		},
+		"payment_method_options.card_present.aade_data.mode": {
+			Type:             "string",
+			ShortDescription: "The e-invoicing mode under which the mark was generated",
+			Enum: []resource.EnumSpec{
+				{Value: "autonomous"},
+				{Value: "standard"},
+			},
+		},
+		"payment_method_options.card_present.aade_data.provider_id": {
+			Type:             "integer",
+			ShortDescription: "The AADE-assigned approval number of the e-invoicing provider that generated the mark",
+		},
+		"payment_method_options.card_present.aade_data.signed_mark": {
+			Type:             "string",
+			ShortDescription: "The cryptographic signature returned by the e-invoicing provider for this transaction, hex-encoded",
+		},
+		"payment_method_options.card_present.aade_data.unbound_pos": {
+			Type:             "string",
+			ShortDescription: "The reason for entering autonomous mode",
+			Enum: []resource.EnumSpec{
+				{Value: "interconnection_loss"},
+				{Value: "lock"},
+				{Value: "replacement_cash_system"},
 			},
 		},
 		"payment_method_options.card_present.capture_method": {
@@ -18254,6 +18431,20 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_options.sepa_debit.target_date": {
 			Type:             "string",
 			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sequra.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sequra.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
 		},
 		"payment_method_options.sofort.preferred_language": {
 			Type:             "string",
@@ -19105,6 +19296,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -19598,6 +19790,35 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "2.2.0"},
 				{Value: "2.3.0"},
 				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.aade_data.mark_data": {
+			Type:             "string",
+			ShortDescription: "The canonical string that was signed by the e-invoicing provider to produce `signed_mark`, formatted per Appendix A of A.1155/2023",
+		},
+		"payment_method_options.card_present.aade_data.mode": {
+			Type:             "string",
+			ShortDescription: "The e-invoicing mode under which the mark was generated",
+			Enum: []resource.EnumSpec{
+				{Value: "autonomous"},
+				{Value: "standard"},
+			},
+		},
+		"payment_method_options.card_present.aade_data.provider_id": {
+			Type:             "integer",
+			ShortDescription: "The AADE-assigned approval number of the e-invoicing provider that generated the mark",
+		},
+		"payment_method_options.card_present.aade_data.signed_mark": {
+			Type:             "string",
+			ShortDescription: "The cryptographic signature returned by the e-invoicing provider for this transaction, hex-encoded",
+		},
+		"payment_method_options.card_present.aade_data.unbound_pos": {
+			Type:             "string",
+			ShortDescription: "The reason for entering autonomous mode",
+			Enum: []resource.EnumSpec{
+				{Value: "interconnection_loss"},
+				{Value: "lock"},
+				{Value: "replacement_cash_system"},
 			},
 		},
 		"payment_method_options.card_present.capture_method": {
@@ -20238,6 +20459,20 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.sepa_debit.target_date": {
 			Type:             "string",
 			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sequra.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sequra.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
 		},
 		"payment_method_options.sofort.preferred_language": {
 			Type:             "string",
@@ -20904,6 +21139,14 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Enables user redeemable promotion codes",
 		},
+		"application_fee_amount": {
+			Type:             "integer",
+			ShortDescription: "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account",
+		},
+		"application_fee_percent": {
+			Type:             "number",
+			ShortDescription: "A non-negative decimal between 0 and 100, with at most two decimal places",
+		},
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to [calculate tax automatically](https://docs.stripe.com/tax) using the customer's location",
@@ -21039,6 +21282,10 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether the customer is required to provide their full name before checking out",
 		},
+		"on_behalf_of": {
+			Type:             "string",
+			ShortDescription: "The account on behalf of which to charge",
+		},
 		"payment_intent_data.description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
@@ -21147,6 +21394,17 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 				{Value: "if_supported"},
 				{Value: "never"},
 			},
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type:             "integer",
+			ShortDescription: "The amount that will be transferred automatically when a charge succeeds",
+		},
+		"transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "If specified, successful charges will be attributed to the destination\n account for tax reporting, and the funds from charges will be transferred\n to the destination account",
 		},
 	},
 }
@@ -21626,6 +21884,15 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 			},
 		},
 		"sepa_debit.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
+		"sequra.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
 			Enum: []resource.EnumSpec{
@@ -22226,6 +22493,15 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 				{Value: "on"},
 			},
 		},
+		"sequra.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
 		"sofort.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
@@ -22774,6 +23050,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -22927,6 +23204,7 @@ var V1PaymentMethodsList = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -27363,6 +27641,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -28330,6 +28609,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -29322,6 +29602,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -31718,6 +31999,10 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "unused"},
 			},
 		},
+		"cancellation_details.feedback_option": {
+			Type:             "string",
+			ShortDescription: "Customized feedback options that provide deeper insight into why the subscription was canceled, if the subscription was canceled explicitly by the user",
+		},
 		"collection_method": {
 			Type:             "string",
 			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
@@ -32648,6 +32933,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.at.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.at.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -32749,6 +33042,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.be.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.be.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -32780,6 +33081,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.bg.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -32924,6 +33233,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.cy.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.cy.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -32940,6 +33257,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.cz.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -32962,6 +33287,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.de.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.de.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -32978,6 +33311,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.dk.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33007,6 +33348,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.ee.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.ee.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33031,6 +33380,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
+			},
+		},
+		"country_options.es.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
 			},
 		},
 		"country_options.es.standard.place_of_supply_scheme": {
@@ -33067,6 +33424,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.fi.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.fi.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33083,6 +33448,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.fr.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33142,6 +33515,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.gr.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.gr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33161,6 +33542,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.hr.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.hr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33177,6 +33566,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.hu.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33204,6 +33601,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
+			},
+		},
+		"country_options.ie.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
 			},
 		},
 		"country_options.ie.standard.place_of_supply_scheme": {
@@ -33244,6 +33649,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.it.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33330,6 +33743,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.lt.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.lt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33349,6 +33770,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.lu.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.lu.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33365,6 +33794,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.lv.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33446,6 +33883,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.mt.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.mt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33484,6 +33929,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
+			},
+		},
+		"country_options.nl.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
 			},
 		},
 		"country_options.nl.standard.place_of_supply_scheme": {
@@ -33571,6 +34024,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.pl.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.pl.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33590,6 +34051,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.pt.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.pt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33606,6 +34075,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ro.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33657,6 +34134,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.se.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.se.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33691,6 +34176,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
+		"country_options.si.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.si.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33707,6 +34200,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.sk.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -35967,6 +36468,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 				{Value: "satispay"},
 				{Value: "scalapay"},
 				{Value: "sepa_debit"},
+				{Value: "sequra"},
 				{Value: "sofort"},
 				{Value: "sunbit"},
 				{Value: "swish"},
@@ -41132,6 +41634,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-05-27.dahlia"},
 				{Value: "2026-06-24.dahlia"},
 				{Value: "2026-07-29.dahlia"},
+				{Value: "2026-08-26.dahlia"},
 			},
 		},
 		"connect": {
@@ -42772,7 +43275,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.relationship.owner": {
 			Type:             "boolean",
-			ShortDescription: "Whether the person is an owner of the account’s identity",
+			ShortDescription: "Whether the person is an owner of the account's identity",
 		},
 		"identity.individual.relationship.percent_ownership": {
 			Type:             "string",
@@ -42887,7 +43390,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
-			ShortDescription: "The account token generated by the account token api",
+			ShortDescription: "The account token generated by the account token API",
 		},
 		"configuration.customer.automatic_indirect_tax.exempt": {
 			Type:             "string",
@@ -43843,7 +44346,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.relationship.owner": {
 			Type:             "boolean",
-			ShortDescription: "Whether the person is an owner of the account’s identity",
+			ShortDescription: "Whether the person is an owner of the account's identity",
 		},
 		"identity.individual.relationship.percent_ownership": {
 			Type:             "string",
@@ -43980,7 +44483,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
-			ShortDescription: "The account token generated by the account token api",
+			ShortDescription: "The account token generated by the account token API",
 		},
 		"configuration.customer.applied": {
 			Type:             "boolean",
@@ -44987,7 +45490,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.relationship.owner": {
 			Type:             "boolean",
-			ShortDescription: "Whether the person is an owner of the account’s identity",
+			ShortDescription: "Whether the person is an owner of the account's identity",
 		},
 		"identity.individual.relationship.percent_ownership": {
 			Type:             "string",
@@ -47589,7 +48092,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.relationship.owner": {
 			Type:             "boolean",
-			ShortDescription: "Whether the person is an owner of the account’s identity",
+			ShortDescription: "Whether the person is an owner of the account's identity",
 		},
 		"identity.individual.relationship.percent_ownership": {
 			Type:             "string",
@@ -47707,7 +48210,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
-			ShortDescription: "The account token generated by the account token api",
+			ShortDescription: "The account token generated by the account token API",
 		},
 		"configuration.customer.automatic_indirect_tax.exempt": {
 			Type:             "string",
@@ -48783,7 +49286,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.relationship.owner": {
 			Type:             "boolean",
-			ShortDescription: "Whether the person is an owner of the account’s identity",
+			ShortDescription: "Whether the person is an owner of the account's identity",
 		},
 		"identity.individual.relationship.percent_ownership": {
 			Type:             "string",
@@ -48923,7 +49426,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
-			ShortDescription: "The account token generated by the account token api",
+			ShortDescription: "The account token generated by the account token API",
 		},
 		"configuration.customer.applied": {
 			Type:             "boolean",
@@ -50045,7 +50548,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.relationship.owner": {
 			Type:             "boolean",
-			ShortDescription: "Whether the person is an owner of the account’s identity",
+			ShortDescription: "Whether the person is an owner of the account's identity",
 		},
 		"identity.individual.relationship.percent_ownership": {
 			Type:             "string",
@@ -50135,6 +50638,58 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"include": {
 			Type:             "array",
 			ShortDescription: "Additional fields to include in the response",
+		},
+	},
+}
+
+var V2PreviewCoreApprovalRequestsCancel = resource.OperationSpec{
+	Name:      "cancel",
+	Path:      "/v2/core/approval_requests/{id}/cancel",
+	Method:    "POST",
+	IsPreview: true,
+}
+
+var V2PreviewCoreApprovalRequestsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/approval_requests",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"action": {
+			Type:             "string",
+			ShortDescription: "Filter by action type (e.g. \"refund.create\", \"payment_intent.create\", \"payout.create\")",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "Maximum number of results to return",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "Cursor for the requested page",
+		},
+		"status": {
+			Type:             "string",
+			ShortDescription: "Filter by approval request status (e.g. \"requires_review\", \"approved\", \"succeeded\", \"failed\", \"rejected\", \"canceled\", \"expired\")",
+		},
+	},
+}
+
+var V2PreviewCoreApprovalRequestsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/approval_requests/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewCoreApprovalRequestsUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/core/approval_requests/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"reason": {
+			Type:             "string",
+			ShortDescription: "The updated reason for the approval request",
 		},
 	},
 }
@@ -51320,7 +51875,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 		},
 		"payout_method_data.type": {
 			Type:             "string",
-			ShortDescription: "Closed Enum",
+			ShortDescription: "Open Enum",
 			Enum: []resource.EnumSpec{
 				{Value: "bank_account"},
 				{Value: "card"},
@@ -51424,7 +51979,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 		},
 		"payout_method_data.type": {
 			Type:             "string",
-			ShortDescription: "Closed Enum",
+			ShortDescription: "Open Enum",
 			Enum: []resource.EnumSpec{
 				{Value: "bank_account"},
 				{Value: "card"},
@@ -51563,6 +52118,13 @@ var V2PreviewMoneyManagementPayoutMethodsBankAccountSpecsRetrieve = resource.Ope
 			ShortDescription: "The countries to fetch the bank account spec for",
 		},
 	},
+}
+
+var V2PreviewMoneyManagementPayoutMethodsDisable = resource.OperationSpec{
+	Name:      "disable",
+	Path:      "/v2/money_management/payout_methods/{id}/disable",
+	Method:    "POST",
+	IsPreview: true,
 }
 
 var V2PreviewMoneyManagementPayoutMethodsList = resource.OperationSpec{
@@ -51846,6 +52408,240 @@ var V2PreviewOrchestratedCommerceAgreementsTerminate = resource.OperationSpec{
 	Name:      "terminate",
 	Path:      "/v2/orchestrated_commerce/agreements/{id}/terminate",
 	Method:    "POST",
+	IsPreview: true,
+}
+
+var V2PreviewSignalsAccountActivitysCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/signals/account_activity",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"account_details.account": {
+			Type:             "string",
+			ShortDescription: "The v2 account ID of the account",
+		},
+		"account_details.customer": {
+			Type:             "string",
+			ShortDescription: "The v1 customer ID of the account, for users not yet migrated to v2/accounts",
+		},
+		"account_details.data.defaults.profile.business_url": {
+			Type:             "string",
+			ShortDescription: "The business URL",
+		},
+		"account_details.data.defaults.profile.doing_business_as": {
+			Type:             "string",
+			ShortDescription: "Doing business as (DBA) name",
+		},
+		"account_details.data.defaults.profile.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the account's product or service",
+		},
+		"account_evaluation": {
+			Type:             "string",
+			ShortDescription: "The account evaluation this activity is associated with, when applicable",
+		},
+		"login_attempt.client_details.data.ip": {
+			Type:             "string",
+			ShortDescription: "The IP address associated with the activity",
+		},
+		"login_attempt.client_details.data.referrer": {
+			Type:             "string",
+			ShortDescription: "The referrer associated with the activity",
+		},
+		"login_attempt.client_details.data.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent associated with the activity",
+		},
+		"login_attempt.client_details.radar_session": {
+			Type:             "string",
+			ShortDescription: "The Radar session ID capturing client details for the activity",
+		},
+		"login_decision.status": {
+			Type:             "string",
+			ShortDescription: "The action the merchant took following the evaluation",
+			Enum: []resource.EnumSpec{
+				{Value: "allowed"},
+				{Value: "blocked"},
+				{Value: "restricted"},
+			},
+		},
+		"occurred_at": {
+			Type:             "string",
+			ShortDescription: "Timestamp at which the activity occurred",
+			Format:           "date-time",
+		},
+		"registration_attempt.client_details.data.ip": {
+			Type:             "string",
+			ShortDescription: "The IP address associated with the activity",
+		},
+		"registration_attempt.client_details.data.referrer": {
+			Type:             "string",
+			ShortDescription: "The referrer associated with the activity",
+		},
+		"registration_attempt.client_details.data.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent associated with the activity",
+		},
+		"registration_attempt.client_details.radar_session": {
+			Type:             "string",
+			ShortDescription: "The Radar session ID capturing client details for the activity",
+		},
+		"registration_decision.status": {
+			Type:             "string",
+			ShortDescription: "The action the merchant took following the evaluation",
+			Enum: []resource.EnumSpec{
+				{Value: "allowed"},
+				{Value: "blocked"},
+				{Value: "restricted"},
+			},
+		},
+		"type": {
+			Type:             "string",
+			ShortDescription: "The type of activity",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "login_attempt"},
+				{Value: "login_decision"},
+				{Value: "registration_attempt"},
+				{Value: "registration_decision"},
+			},
+		},
+	},
+}
+
+var V2PreviewSignalsAccountActivitysDelete = resource.OperationSpec{
+	Name:      "delete",
+	Path:      "/v2/signals/account_activity/{id}",
+	Method:    "DELETE",
+	IsPreview: true,
+}
+
+var V2PreviewSignalsAccountActivitysRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/signals/account_activity/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewSignalsAccountEvaluationsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/signals/account_evaluations",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"account_activity_details.account_activity": {
+			Type:             "string",
+			ShortDescription: "The ID of an existing account activity to associate with the evaluation",
+		},
+		"account_activity_details.data.login_attempt.client_details.data.ip": {
+			Type:             "string",
+			ShortDescription: "The IP address associated with the activity",
+		},
+		"account_activity_details.data.login_attempt.client_details.data.referrer": {
+			Type:             "string",
+			ShortDescription: "The referrer associated with the activity",
+		},
+		"account_activity_details.data.login_attempt.client_details.data.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent associated with the activity",
+		},
+		"account_activity_details.data.login_attempt.client_details.radar_session": {
+			Type:             "string",
+			ShortDescription: "The Radar session ID capturing client details for the activity",
+		},
+		"account_activity_details.data.occurred_at": {
+			Type:             "string",
+			ShortDescription: "Timestamp at which the activity occurred",
+			Format:           "date-time",
+		},
+		"account_activity_details.data.registration_attempt.client_details.data.ip": {
+			Type:             "string",
+			ShortDescription: "The IP address associated with the activity",
+		},
+		"account_activity_details.data.registration_attempt.client_details.data.referrer": {
+			Type:             "string",
+			ShortDescription: "The referrer associated with the activity",
+		},
+		"account_activity_details.data.registration_attempt.client_details.data.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent associated with the activity",
+		},
+		"account_activity_details.data.registration_attempt.client_details.radar_session": {
+			Type:             "string",
+			ShortDescription: "The Radar session ID capturing client details for the activity",
+		},
+		"account_activity_details.data.type": {
+			Type:             "string",
+			ShortDescription: "The type of activity",
+			Enum: []resource.EnumSpec{
+				{Value: "login_attempt"},
+				{Value: "login_decision"},
+				{Value: "registration_attempt"},
+				{Value: "registration_decision"},
+			},
+		},
+		"account_details.account": {
+			Type:             "string",
+			ShortDescription: "The v2 account ID of the account",
+		},
+		"account_details.customer": {
+			Type:             "string",
+			ShortDescription: "The v1 customer ID of the account, for users not yet migrated to v2/accounts",
+		},
+		"account_details.data.defaults.profile.business_url": {
+			Type:             "string",
+			ShortDescription: "The business URL",
+		},
+		"account_details.data.defaults.profile.doing_business_as": {
+			Type:             "string",
+			ShortDescription: "Doing business as (DBA) name",
+		},
+		"account_details.data.defaults.profile.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the account's product or service",
+		},
+		"requested_signals": {
+			Type:             "array",
+			ShortDescription: "List of signals to evaluate",
+			Required:         true,
+		},
+	},
+}
+
+var V2PreviewSignalsAccountEvaluationsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/signals/account_evaluations/{id}",
+	Method:    "GET",
+	IsPreview: true,
+}
+
+var V2PreviewSignalsAccountSignalsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/signals/account_signals",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "Maximum number of results to return per page",
+		},
+		"page": {
+			Type:             "string",
+			ShortDescription: "Opaque page token for pagination",
+		},
+		"type": {
+			Type:             "array",
+			ShortDescription: "Signal types to filter by",
+			Required:         true,
+		},
+	},
+}
+
+var V2PreviewSignalsAccountSignalsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/signals/account_signals/{id}",
+	Method:    "GET",
 	IsPreview: true,
 }
 

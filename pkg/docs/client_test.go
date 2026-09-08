@@ -106,7 +106,7 @@ func TestWithOptions(t *testing.T) {
 			name: "set API key",
 			opts: []ClientOption{WithAPIKey("sk_test_abc123")},
 			wantCheck: func(t *testing.T, c *Client) {
-				assert.Equal(t, "sk_test_abc123", c.apiKey)
+				assert.Equal(t, "sk_test_abc123", c.creds.Token)
 			},
 		},
 		{

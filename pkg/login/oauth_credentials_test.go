@@ -1,6 +1,9 @@
 package login
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
@@ -118,6 +121,32 @@ func TestClearOAuthCredentials(t *testing.T) {
 
 	_, err = config.KeyRing.Get(OAuthRefreshTokenKeychainKey)
 	assert.Error(t, err, "refresh token should be removed")
+}
+
+func TestRevokeToken_DoesNotFollowRedirectToAttackerHost(t *testing.T) {
+	_, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	var attackerReceivedRefreshToken bool
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.FormValue("token") == "oart_secret_refresh" {
+			attackerReceivedRefreshToken = true
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer attacker.Close()
+
+	accessSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, attacker.URL+"/stripecli/oauth2/revoke", http.StatusTemporaryRedirect)
+	}))
+	defer accessSrv.Close()
+
+	require.NoError(t, config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte("oart_secret_refresh"), ""))
+
+	err := RevokeToken(context.Background(), accessSrv.URL)
+	require.Error(t, err, "the disabled redirect must surface as a non-2xx/redirect response, not a followed request")
+	assert.False(t, attackerReceivedRefreshToken, "the refresh token must never reach a redirect-controlled host")
 }
 
 func TestClearOAuthCredentials_NoExistingTokens(t *testing.T) {

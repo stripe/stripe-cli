@@ -20,8 +20,8 @@ func newLogoutCmd() *logoutCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "logout",
 		Args:  validators.NoArgs,
-		Short: "Logout of your Stripe account",
-		Long:  `Logout of your Stripe account from the CLI`,
+		Short: "Log out of your Stripe account",
+		Long:  `Log out of your Stripe account from the CLI`,
 		RunE:  lc.runLogoutCmd,
 	}
 
@@ -33,6 +33,9 @@ func newLogoutCmd() *logoutCmd {
 }
 
 func (lc *logoutCmd) runLogoutCmd(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
+		return err
+	}
 	if lc.all {
 		return logout.All(cmd.Context(), lc.accessBaseURL, &Config)
 	}

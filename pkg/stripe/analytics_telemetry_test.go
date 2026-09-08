@@ -260,6 +260,7 @@ func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
 		bodyString := string(body)
 		require.NotContains(t, bodyString, "agent_version")
 		require.NotContains(t, bodyString, "agent_host_kind")
+		require.NotContains(t, bodyString, "agent_host_raw")
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
@@ -394,4 +395,53 @@ func TestNewEventMetadata_FromObservedDesktopSession(t *testing.T) {
 	require.Equal(t, "claude_code", tel.AIAgent)
 	require.Equal(t, "desktop", tel.AgentHostKind)
 	require.Equal(t, "2.1.227", tel.AgentVersion)
+	require.Equal(t, "claude-desktop", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_ReportsRawHostWhenUncategorized(t *testing.T) {
+	// The debugging case: a host neither vendor had shipped when this CLI was released.
+	// The category cannot identify it; the raw value can.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "some-future-surface")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "other", tel.AgentHostKind)
+	require.Equal(t, "some-future-surface", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_InfersCodexTerminalFromAbsentOriginator(t *testing.T) {
+	// Codex sets its originator override only from non-default surfaces, so a terminal
+	// session reports no host at all. Without the inference this is indistinguishable
+	// from a CLI too old to report a host, and terminal Codex is invisible.
+	clearAgentEnv(t)
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "codex_cli", tel.AIAgent)
+	require.Equal(t, "terminal", tel.AgentHostKind)
+	require.Equal(t, "codex-cli", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_InfersAgentFromHostAlone(t *testing.T) {
+	// A Claude Code entrypoint with no CLAUDECODE: hosted and SDK surfaces do not always
+	// set it. The entrypoint names the agent, so the two fields stay consistent.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "remote-trigger")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "claude_code", tel.AIAgent)
+	require.Equal(t, "remote", tel.AgentHostKind)
+	require.Equal(t, "remote-trigger", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_CategorizesCodexVSCode(t *testing.T) {
+	clearAgentEnv(t)
+	t.Setenv("CODEX_CI", "1")
+	t.Setenv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "codex_vscode")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "codex_cli", tel.AIAgent)
+	require.Equal(t, "ide", tel.AgentHostKind)
+	require.Equal(t, "codex-vscode", tel.AgentHostRaw)
 }

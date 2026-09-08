@@ -1,6 +1,7 @@
 package stripe
 
 import (
+	"net"
 	"net/url"
 	"regexp"
 	"strings"
@@ -10,60 +11,96 @@ import (
 
 const (
 	// DefaultAPIBaseURL is the default base URL for API requests
-	DefaultAPIBaseURL   = "https://api.stripe.com"
-	APIBaseURLRegexp    = `^https:\/\/api\.stripe\.com\/v\d+$`
-	qaAPIBaseURL        = "https://qa-api.stripe.com"
-	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+.dev.stripe.me`
+	DefaultAPIBaseURL = "https://api.stripe.com"
+	qaAPIBaseURL      = "https://qa-api.stripe.com"
 
 	// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
 	DefaultFilesAPIBaseURL = "https://files.stripe.com/"
 
 	// DefaultDashboardBaseURL is the default base URL for dashboard requests
-	DefaultDashboardBaseURL   = "https://dashboard.stripe.com"
-	qaDashboardBaseURL        = "https://qa-dashboard.stripe.com"
-	devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+\.dev\.stripe\.me`
+	DefaultDashboardBaseURL = "https://dashboard.stripe.com"
+	qaDashboardBaseURL      = "https://qa-dashboard.stripe.com"
 
-	// localhostURLRegexp is used in tests
-	localhostURLRegexp = `http:\/\/127\.0\.0\.1(:[0-9]+)?`
+	// devHostSuffix matches Stripe's per-developer dev domains, e.g.
+	// foo-lv5r9y--api-mydev.dev.stripe.me
+	devHostSuffix = ".dev.stripe.me"
 )
 
 var (
 	errInvalidAPIBaseURL       = errorcategory.New(errorcategory.UserInput, "invalid API base URL")
 	errInvalidDashboardBaseURL = errorcategory.New(errorcategory.UserInput, "invalid dashboard base URL")
+
+	devHostLabelRegexp   = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
+	apiVersionPathRegexp = regexp.MustCompile(`^/v\d+$`)
 )
 
-func isValid(url string, exactStrings []string, regexpStrings []string) bool {
-	for _, s := range exactStrings {
-		if url == s {
-			return true
-		}
+// parseBaseURL parses raw as a URL and rejects forms that let the parsed
+// host diverge from what a quick read of the string would suggest, namely
+// userinfo (`user@host`), which is never legitimate in a base URL flag.
+func parseBaseURL(raw string) (*url.URL, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Hostname() == "" {
+		return nil, false
 	}
-	for _, r := range regexpStrings {
-		matched, err := regexp.Match(r, []byte(url))
-		if err == nil && matched {
-			return true
-		}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, false
 	}
-	return false
+	return u, true
+}
+
+func isDevHost(host string) bool {
+	label, ok := strings.CutSuffix(strings.ToLower(host), devHostSuffix)
+	return ok && devHostLabelRegexp.MatchString(label)
+}
+
+func isLoopbackHost(host string) bool {
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // ValidateAPIBaseURL returns an error if apiBaseURL isn't allowed
 func ValidateAPIBaseURL(apiBaseURL string) error {
-	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL, DefaultFilesAPIBaseURL}
-	regexpStrings := []string{APIBaseURLRegexp, devAPIBaseURLRegexp, localhostURLRegexp}
-	if isValid(apiBaseURL, exactStrings, regexpStrings) {
+	if apiBaseURL == DefaultAPIBaseURL || apiBaseURL == qaAPIBaseURL || apiBaseURL == DefaultFilesAPIBaseURL {
 		return nil
 	}
+
+	u, ok := parseBaseURL(apiBaseURL)
+	if !ok {
+		return errInvalidAPIBaseURL
+	}
+
+	host := strings.ToLower(u.Hostname())
+	switch {
+	case host == "api.stripe.com" && u.Scheme == "https" && apiVersionPathRegexp.MatchString(u.Path):
+		return nil
+	case isDevHost(host):
+		return nil
+	case isLoopbackHost(host) && u.Scheme == "http":
+		return nil
+	}
+
 	return errInvalidAPIBaseURL
 }
 
 // ValidateDashboardBaseURL returns an error if dashboardBaseURL isn't allowed
 func ValidateDashboardBaseURL(dashboardBaseURL string) error {
-	exactStrings := []string{DefaultDashboardBaseURL, qaDashboardBaseURL}
-	regexpStrings := []string{devDashboardBaseURLRegexp, localhostURLRegexp}
-	if isValid(dashboardBaseURL, exactStrings, regexpStrings) {
+	if dashboardBaseURL == DefaultDashboardBaseURL || dashboardBaseURL == qaDashboardBaseURL {
 		return nil
 	}
+
+	u, ok := parseBaseURL(dashboardBaseURL)
+	if !ok {
+		return errInvalidDashboardBaseURL
+	}
+
+	host := strings.ToLower(u.Hostname())
+	switch {
+	case isDevHost(host):
+		return nil
+	case isLoopbackHost(host) && u.Scheme == "http":
+		return nil
+	}
+
 	return errInvalidDashboardBaseURL
 }
 

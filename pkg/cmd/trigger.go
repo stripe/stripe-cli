@@ -50,7 +50,7 @@ needed to create the triggered event as well as the corresponding API objects.
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--override` to customize event data, e.g. `--override customer:email=test@example.com`.\n" +
 				"  Use `--skip` to skip specific steps in the trigger sequence.\n" +
-				"  Triggers create real API objects in test mode that you can inspect afterward.",
+				"  Triggers create real API objects in your sandbox that you can inspect afterward.",
 		},
 		RunE: tc.runTriggerCmd,
 	}

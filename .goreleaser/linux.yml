@@ -38,11 +38,7 @@ archives:
     files:
       - none*
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  use: github-native
 checksum:
   name_template: "{{ .ProjectName }}-linux-checksums.txt"
 release:

@@ -95,11 +95,12 @@ func newAgentCmd() *agentCmd {
 	ac := &agentCmd{}
 	ac.cmd = &cobra.Command{
 		Use:   "agent",
-		Short: "Set up AI agent tooling",
-		Long:  "Set up AI agent tooling for Stripe development.",
+		Short: "Manage AI agent tooling",
+		Long:  "Manage AI agent tooling for Stripe development.",
 		Args:  validators.NoArgs,
 	}
 	ac.cmd.AddCommand(newAgentSetupCmd().cmd)
+	ac.cmd.AddCommand(newAgentReportUsageCmd().cmd)
 	return ac
 }
 

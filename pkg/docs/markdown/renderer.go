@@ -3,10 +3,12 @@ package markdown
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"charm.land/glamour/v2"
 	"charm.land/glamour/v2/ansi"
 	"charm.land/lipgloss/v2"
+	"github.com/acarl005/stripansi"
 )
 
 const (
@@ -16,6 +18,48 @@ const (
 // Renderer renders a Document to a terminal-friendly string.
 type Renderer interface {
 	Render(doc *Document) (string, error)
+}
+
+// RenderedDocument contains rendered content and the line offset of each heading.
+type RenderedDocument struct {
+	Content        string
+	HeadingOffsets map[string]int
+}
+
+// RenderWithHeadingOffsets renders doc and locates each heading in the output.
+func RenderWithHeadingOffsets(r Renderer, doc *Document) (RenderedDocument, error) {
+	content, err := r.Render(doc)
+	if err != nil {
+		return RenderedDocument{}, err
+	}
+
+	result := RenderedDocument{
+		Content:        content,
+		HeadingOffsets: make(map[string]int),
+	}
+	lines := strings.Split(content, "\n")
+	searchFrom := 0
+	for _, heading := range doc.Headings() {
+		for i := searchFrom; i < len(lines); i++ {
+			if renderedLineMatchesHeading(lines[i], heading) {
+				result.HeadingOffsets[heading.Fragment] = i
+				searchFrom = i + 1
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+func renderedLineMatchesHeading(line string, heading Heading) bool {
+	line = strings.TrimSpace(stripansi.Strip(line))
+	if heading.Level > 1 && !strings.HasPrefix(line, strings.Repeat("#", heading.Level)+" ") {
+		return false
+	}
+	line = strings.TrimSpace(strings.TrimLeft(line, "#"))
+	lineFragment := NormalizeFragment(line)
+	headingFragment := NormalizeFragment(heading.Text)
+	return lineFragment != "" && (lineFragment == headingFragment || strings.HasPrefix(headingFragment, lineFragment+"-"))
 }
 
 // WithStyle sets a built-in glamour style by name (e.g. "dark", "light", "dracula", "notty").

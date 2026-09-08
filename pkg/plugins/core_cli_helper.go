@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -27,6 +30,21 @@ type CoreCLIHelper interface {
 	KeychainFindCredentials() ([]string, error)
 	RunPeerPlugin(pluginName string, args []string, cwd string) error
 	ResolveCredentials(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
+	ResolveCredentialsForAnyMode(livemode bool) (token string, stripeContext string, resolvedLivemode bool, err error)
+	// SwitchContext switches the active authorized account/mode context, the same way
+	// `stripe switch context` does. If accountID is empty, shows an interactive picker;
+	// switched is false if the user cancels it, in which case the other return values are empty.
+	SwitchContext(accountID string, livemode bool) (resultAccountID string, accountName string, resultLivemode bool, switched bool, err error)
+	// Login starts a Stripe CLI login, the same way `stripe login --new-session` does when run
+	// interactively: it revokes any existing OAuth session first (so this works even if the
+	// stored credential is expired or revoked), then runs the normal login flow, printing the
+	// same output and opening the browser only after the user presses enter.
+	// timeoutSeconds bounds how long it waits for the user to complete authentication (0 waits
+	// indefinitely, matching `stripe login`); loggedIn is false if that timeout elapses or the
+	// attempt is otherwise canceled first, in which case the other return values are empty.
+	// Calling Login again starts a brand new login attempt (a new device code and browser URL),
+	// not a resumption of this one.
+	Login(timeoutSeconds int32) (accountID string, accountName string, livemode bool, loggedIn bool, err error)
 }
 
 type CoreCLIHelperClient struct {
@@ -98,6 +116,30 @@ func (c *CoreCLIHelperClient) ResolveCredentials(livemode bool) (string, string,
 	return resp.Token, resp.StripeContext, resp.Livemode, nil
 }
 
+func (c *CoreCLIHelperClient) ResolveCredentialsForAnyMode(livemode bool) (string, string, bool, error) {
+	resp, err := c.client.ResolveCredentialsForAnyMode(context.Background(), &proto.ResolveCredentialsRequest{Livemode: livemode})
+	if err != nil {
+		return "", "", false, err
+	}
+	return resp.Token, resp.StripeContext, resp.Livemode, nil
+}
+
+func (c *CoreCLIHelperClient) SwitchContext(accountID string, livemode bool) (string, string, bool, bool, error) {
+	resp, err := c.client.SwitchContext(context.Background(), &proto.SwitchContextRequest{AccountId: accountID, Livemode: livemode})
+	if err != nil {
+		return "", "", false, false, err
+	}
+	return resp.AccountId, resp.AccountName, resp.Livemode, resp.Switched, nil
+}
+
+func (c *CoreCLIHelperClient) Login(timeoutSeconds int32) (string, string, bool, bool, error) {
+	resp, err := c.client.Login(context.Background(), &proto.LoginRequest{TimeoutSeconds: timeoutSeconds})
+	if err != nil {
+		return "", "", false, false, err
+	}
+	return resp.AccountId, resp.AccountName, resp.Livemode, resp.LoggedIn, nil
+}
+
 type CoreCLIHelperServer struct {
 	proto.CoreCLIHelperServer
 	Impl CoreCLIHelper
@@ -167,11 +209,43 @@ func (s *CoreCLIHelperServer) ResolveCredentials(ctx context.Context, req *proto
 	return &proto.ResolveCredentialsResponse{Token: token, StripeContext: stripeContext, Livemode: livemode}, nil
 }
 
+func (s *CoreCLIHelperServer) ResolveCredentialsForAnyMode(ctx context.Context, req *proto.ResolveCredentialsRequest) (*proto.ResolveCredentialsResponse, error) {
+	token, stripeContext, livemode, err := s.Impl.ResolveCredentialsForAnyMode(req.Livemode)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.ResolveCredentialsResponse{Token: token, StripeContext: stripeContext, Livemode: livemode}, nil
+}
+
+func (s *CoreCLIHelperServer) SwitchContext(ctx context.Context, req *proto.SwitchContextRequest) (*proto.SwitchContextResponse, error) {
+	accountID, accountName, livemode, switched, err := s.Impl.SwitchContext(req.AccountId, req.Livemode)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SwitchContextResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, Switched: switched}, nil
+}
+
+func (s *CoreCLIHelperServer) Login(ctx context.Context, req *proto.LoginRequest) (*proto.LoginResponse, error) {
+	accountID, accountName, livemode, loggedIn, err := s.Impl.Login(req.TimeoutSeconds)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.LoginResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, LoggedIn: loggedIn}, nil
+}
+
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
 type coreCLIHelper struct {
 	ctx    context.Context
 	config config.IConfig
 	fs     afero.Fs
+
+	// apiBaseURL, dashboardBaseURL, and accessBaseURL are the --api-base/--dashboard-base/
+	// --access-base values the user explicitly passed to the CLI, if any. They're forwarded
+	// to peer plugins run via RunPeerPlugin and used for SwitchContext, so a plugin-triggered
+	// action targets the same environment as the CLI that launched the original plugin.
+	apiBaseURL       string
+	dashboardBaseURL string
+	accessBaseURL    string
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
@@ -240,9 +314,29 @@ func clearPendingKeychainValue(key string) {
 	delete(keychainVisibilityPendingValues, key)
 }
 
+// loginSwitchContext is a package variable so tests can stub out the network/keychain calls
+// made by coreCLIHelper.SwitchContext.
+var loginSwitchContext = login.SwitchContext
+
+// loginRevokeToken and loginLogin are package variables so tests can stub out the network/
+// keychain calls made by coreCLIHelper.Login.
+var (
+	loginRevokeToken = login.RevokeToken
+	loginLogin       = login.Login
+)
+
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
-func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs) CoreCLIHelper {
-	return &coreCLIHelper{ctx: ctx, config: cfg, fs: fs}
+// apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
+// passed --api-base/--dashboard-base/--access-base to the CLI.
+func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL, accessBaseURL string) CoreCLIHelper {
+	return &coreCLIHelper{
+		ctx:              ctx,
+		config:           cfg,
+		fs:               fs,
+		apiBaseURL:       apiBaseURL,
+		dashboardBaseURL: dashboardBaseURL,
+		accessBaseURL:    accessBaseURL,
+	}
 }
 
 // Echo echoes the input string.
@@ -328,6 +422,19 @@ func (h *coreCLIHelper) KeychainFindCredentials() ([]string, error) {
 // Stripe-Context header value, and effective livemode. stripeContext is empty for plain API keys.
 func (h *coreCLIHelper) ResolveCredentials(livemode bool) (string, string, bool, error) {
 	creds, err := h.config.GetProfile().ResolveCredentials(livemode)
+	return credentialsResult(creds, err)
+}
+
+// ResolveCredentialsForAnyMode delegates to Profile.ResolveCredentialsForAnyMode and
+// returns the token, Stripe-Context header value, and effective livemode. Unlike
+// ResolveCredentials, it resolves credentials for whichever mode is actually active
+// if the requested livemode doesn't match, instead of failing.
+func (h *coreCLIHelper) ResolveCredentialsForAnyMode(livemode bool) (string, string, bool, error) {
+	creds, err := h.config.GetProfile().ResolveCredentialsForAnyMode(livemode)
+	return credentialsResult(creds, err)
+}
+
+func credentialsResult(creds stripe.Credentials, err error) (string, string, bool, error) {
 	if err != nil {
 		return "", "", false, err
 	}
@@ -349,5 +456,71 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 	if !ok {
 		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
-	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "")
+	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL)
+}
+
+// SwitchContext switches the active authorized account/mode context, the same way
+// `stripe switch context` does.
+func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, string, bool, bool, error) {
+	cfg, ok := h.config.(*config.Config)
+	if !ok {
+		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not switch context: config type mismatch")
+	}
+	accessBaseURL := h.accessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+	result, err := loginSwitchContext(h.ctx, accessBaseURL, cfg, accountID, livemode)
+	if err != nil {
+		return "", "", false, false, err
+	}
+	if result == nil {
+		return "", "", false, false, nil
+	}
+	return result.Account.ID, result.Account.Name, result.Mode == "live", true, nil
+}
+
+// Login starts a Stripe CLI login, the same way `stripe login --new-session` does when run
+// interactively.
+func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool, error) {
+	cfg, ok := h.config.(*config.Config)
+	if !ok {
+		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not log in: config type mismatch")
+	}
+	dashboardBaseURL := h.dashboardBaseURL
+	if dashboardBaseURL == "" {
+		dashboardBaseURL = stripe.DefaultDashboardBaseURL
+	}
+	accessBaseURL := h.accessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+
+	ctx := h.ctx
+	if timeoutSeconds > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(h.ctx, time.Duration(timeoutSeconds)*time.Second)
+		defer cancel()
+	}
+
+	// Same as `stripe login --new-session`: revoke any existing OAuth session before starting a
+	// new one, so this works even if the stored credential is expired or revoked.
+	if uat, _ := cfg.Profile.GetUAT(); strings.HasPrefix(uat, "oak_") {
+		if err := loginRevokeToken(ctx, accessBaseURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
+		}
+	}
+
+	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, cfg); err != nil {
+		if ctx.Err() != nil {
+			return "", "", false, false, nil
+		}
+		return "", "", false, false, err
+	}
+
+	livemode := false
+	if ac, _ := config.GetActiveContext(); ac != nil {
+		livemode = ac.Livemode
+	}
+	return cfg.Profile.AccountID, cfg.Profile.DisplayName, livemode, true, nil
 }

@@ -9,6 +9,22 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
+func TestLength(t *testing.T) {
+	validate := Length(2, 4)
+
+	require.NoError(t, validate("ab"))
+	require.NoError(t, validate("abcd"))
+	require.EqualError(t, validate("a"), "must be at least 2 characters")
+	require.EqualError(t, validate("abcde"), "must be at most 4 characters")
+}
+
+func TestOneOf(t *testing.T) {
+	validate := OneOf("red", "green", "blue")
+
+	require.NoError(t, validate("green"))
+	require.EqualError(t, validate("purple"), `"purple" is not one of the allowed values (red, green, blue)`)
+}
+
 func TestNoKey(t *testing.T) {
 	err := APIKey("")
 	require.EqualError(t, err, "you have not configured API keys yet")
@@ -25,7 +41,7 @@ func TestKeyTooShort(t *testing.T) {
 
 func TestLegacyAPIKeys(t *testing.T) {
 	err := APIKey("sk_123457890abcdef")
-	require.EqualError(t, err, "you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
+	require.EqualError(t, err, "You are using a legacy-style API key, which is unsupported by the CLI. Please generate a new test API key")
 	requireErrorCategory(t, err, errorcategory.Auth)
 }
 

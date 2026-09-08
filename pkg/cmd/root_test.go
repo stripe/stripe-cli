@@ -166,6 +166,34 @@ func TestV2BillingOverrides(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestDocsRunsRootPersistentPreRun guards the root PersistentPreRunE against being
+// shadowed by a subcommand tree that declares its own. Cobra runs only the closest
+// such hook, so a subcommand that declares one silently disables config migration,
+// --access-base validation, Sentry command context, and command telemetry for
+// everything beneath it. `stripe docs` did exactly that from v1.43.3, when it was
+// inlined from a plugin, until its setup moved into RunE.
+//
+// The probe is --access-base: only the root hook rejects a non-Stripe value, so if
+// the root hook does not run, the invalid URL is accepted and the command proceeds.
+func TestDocsRunsRootPersistentPreRun(t *testing.T) {
+	previousAccessBase := rootAccessBaseURL
+	previousProfilesFile := Config.ProfilesFile
+	t.Cleanup(func() {
+		rootAccessBaseURL = previousAccessBase
+		Config.ProfilesFile = previousProfilesFile
+	})
+
+	// Keep any config migration triggered by the root hook off the real config file.
+	Config.ProfilesFile = filepath.Join(t.TempDir(), "config.toml")
+
+	Execute(context.Background())
+
+	// A nested subcommand, so that the hook is reached through more than one parent.
+	_, err := executeCommand(rootCmd, "docs", "prefs", "list", "--access-base", "https://evil.example.com")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid access base URL")
+}
+
 func TestDatabasesHiddenButDirectlyAddressable(t *testing.T) {
 	root := &cobra.Command{
 		Use:         "stripe",

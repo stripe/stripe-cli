@@ -3,6 +3,7 @@ package errorcategory
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -84,4 +85,14 @@ func TestGetUsesOutermostCategory(t *testing.T) {
 	category, ok := Get(err)
 	require.True(t, ok)
 	require.Equal(t, API, category)
+}
+
+// Error reporters match WrapperTypeName against the type name reflection
+// produces for a wrapped error, so renaming categorizedError must not silently
+// break them.
+func TestWrapperTypeName(t *testing.T) {
+	err := With(errors.New("wrapped"), Internal)
+
+	require.Equal(t, reflect.TypeOf(err).String(), WrapperTypeName)
+	require.Equal(t, "errorcategory.categorizedError", WrapperTypeName)
 }

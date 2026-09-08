@@ -29,8 +29,11 @@ func classifyError(err error) errorcategory.Category {
 	}
 
 	if statusCode, ok := requestErrorStatusCode(err); ok {
-		if statusCode == 401 || statusCode == 403 {
+		switch statusCode {
+		case 401, 403:
 			return errorcategory.Auth
+		case 429:
+			return errorcategory.RateLimit
 		}
 		return errorcategory.API
 	}

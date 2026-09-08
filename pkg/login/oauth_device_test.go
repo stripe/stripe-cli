@@ -241,7 +241,7 @@ func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 			json.NewEncoder(w).Encode(DeviceAuthResponse{ //nolint:errcheck
 				DeviceCode:      "device-code",
 				UserCode:        "ABCD-EFGH",
-				VerificationURI: "https://example.com/verify",
+				VerificationURI: "https://dashboard.stripe.com/verify",
 				ExpiresIn:       30,
 				Interval:        1,
 			})

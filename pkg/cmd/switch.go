@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -34,14 +36,13 @@ func newSwitchCmd() *switchCmd {
 Without an argument, shows an interactive list of your authorized accounts and
 modes. Navigate with ↑↓, confirm with enter, or cancel with esc.
 
-With an account ID, switches directly to that account in test mode by default.
-Use --live to switch to livemode instead.`,
+With an account ID, switches directly to that account. Add --live to switch to live mode.`,
 		Example: `  stripe switch context
   stripe switch context acct_1234
   stripe switch context acct_1234 --live`,
 		RunE: ctxCmd.run,
 	}
-	ctxCmd.cmd.Flags().BoolVar(&ctxCmd.livemode, "live", false, "Select livemode for the given account")
+	ctxCmd.cmd.Flags().BoolVar(&ctxCmd.livemode, "live", false, "Select live mode for the given account")
 	ctxCmd.cmd.Flags().StringVar(&ctxCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	ctxCmd.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
 
@@ -50,9 +51,19 @@ Use --live to switch to livemode instead.`,
 }
 
 func (sc *switchContextCmd) run(cmd *cobra.Command, args []string) error {
+	if err := login.ValidateAccessBaseURL(sc.accessBaseURL); err != nil {
+		return err
+	}
 	accountID := ""
 	if len(args) > 0 {
 		accountID = args[0]
 	}
-	return login.SwitchContext(cmd.Context(), sc.accessBaseURL, &Config, accountID, sc.livemode)
+	result, err := login.SwitchContext(cmd.Context(), sc.accessBaseURL, &Config, accountID, sc.livemode)
+	if err != nil {
+		return err
+	}
+	if result != nil {
+		fmt.Printf("Active context: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
+	}
+	return nil
 }

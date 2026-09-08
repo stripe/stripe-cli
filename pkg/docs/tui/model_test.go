@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -162,6 +163,38 @@ func TestUpdate_WindowSizeMsg_RendersDocument(t *testing.T) {
 	model := result.(Model)
 
 	assert.NotEmpty(t, model.viewport.GetContent())
+}
+
+func TestUpdate_WindowSizeMsg_RerenderPreservesPosition(t *testing.T) {
+	src := []byte("# Title\n\n" + strings.Repeat("A paragraph with enough words to wrap across lines. ", 20) + "\n\n## Target\n\n" + strings.Repeat("Body after the target.\n\n", 10))
+	m := New(
+		WithRendererOptions(markdown.WithStyle("notty")),
+		WithPage(Page{Content: src, URL: &url.URL{Path: "/page", Fragment: "target"}}),
+	)
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 8})
+	model := result.(Model)
+	initialOffset := model.viewport.YOffset()
+	require.Greater(t, initialOffset, 0)
+
+	result, cmd := model.Update(tea.WindowSizeMsg{Width: 35, Height: 8})
+	model = result.(Model)
+	require.NotNil(t, cmd)
+	msg := cmd()
+	require.NotNil(t, msg)
+	result, _ = model.Update(msg)
+	model = result.(Model)
+
+	assert.Equal(t, model.headingOffsets["target"], model.viewport.YOffset())
+	assert.Greater(t, model.viewport.YOffset(), initialOffset)
+
+	model.activeFragment = ""
+	model.viewport.SetYOffset(5)
+	result, cmd = model.Update(tea.WindowSizeMsg{Width: 45, Height: 8})
+	model = result.(Model)
+	require.NotNil(t, cmd)
+	result, _ = model.Update(cmd())
+	model = result.(Model)
+	assert.Equal(t, 5, model.viewport.YOffset())
 }
 
 func TestUpdate_QuitKey(t *testing.T) {
@@ -504,6 +537,49 @@ func TestUpdate_PageReadyMsg(t *testing.T) {
 	assert.NotEmpty(t, model.viewport.GetContent())
 }
 
+func TestUpdate_ForwardNavigationStartsAtTop(t *testing.T) {
+	r, err := markdown.NewRenderer(markdown.WithStyle("notty"))
+	require.NoError(t, err)
+	m := New(WithRenderer(r), WithPage(Page{Content: longDocument("Original"), URL: &url.URL{Path: "/original"}}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 8})
+	model := result.(Model)
+	model.viewport.SetYOffset(10)
+	require.Greater(t, model.viewport.YOffset(), 0)
+
+	doc, err := markdown.Parse(longDocument("Next"))
+	require.NoError(t, err)
+	result, _ = model.Update(pageReadyMsg{page: Page{Content: doc.Source, URL: &url.URL{Path: "/next"}}, doc: doc})
+	model = result.(Model)
+
+	assert.Equal(t, 0, model.viewport.YOffset())
+	require.Len(t, model.history, 1)
+	assert.Greater(t, model.history[0].yOffset, 0)
+}
+
+func TestUpdate_FragmentNavigation(t *testing.T) {
+	r, err := markdown.NewRenderer(markdown.WithStyle("notty"), markdown.WithWordWrap(40))
+	require.NoError(t, err)
+	m := New(WithRenderer(r), WithPage(Page{Content: []byte("# Original")}))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 8})
+	model := result.(Model)
+
+	src := []byte("# Next\n\n" + strings.Repeat("Paragraph content.\n\n", 10) + "## Target heading\n\n" + strings.Repeat("Body after the target.\n\n", 10))
+	doc, err := markdown.Parse(src)
+	require.NoError(t, err)
+	result, _ = model.Update(pageReadyMsg{page: Page{Content: src, URL: &url.URL{Path: "/next", Fragment: "target-heading"}}, doc: doc})
+	model = result.(Model)
+
+	assert.Equal(t, model.headingOffsets["target-heading"], model.viewport.YOffset())
+	assert.Greater(t, model.viewport.YOffset(), 0)
+	assert.Equal(t, "target-heading", model.activeFragment)
+
+	missingPage := Page{Content: src, URL: &url.URL{Path: "/missing", Fragment: "missing"}}
+	result, _ = model.Update(pageReadyMsg{page: missingPage, doc: doc})
+	model = result.(Model)
+	assert.Equal(t, 0, model.viewport.YOffset())
+	assert.Empty(t, model.activeFragment)
+}
+
 func TestUpdate_BackWithEmptyHistoryIsNoOp(t *testing.T) {
 	page := Page{Content: []byte("# Original"), URL: &url.URL{Path: "/original"}}
 	m := New(WithPage(page))
@@ -548,6 +624,39 @@ func TestUpdate_BackRestoresPreviousPage(t *testing.T) {
 	assert.Equal(t, originalContent, model.viewport.GetContent())
 	assert.Empty(t, model.history)
 	assert.False(t, model.keys.Back.Enabled())
+}
+
+func TestUpdate_BackRestoresScrollOffset(t *testing.T) {
+	r, err := markdown.NewRenderer(markdown.WithStyle("notty"))
+	require.NoError(t, err)
+
+	pageA := Page{Content: longDocument("Page A"), URL: &url.URL{Path: "/a"}}
+	m := New(WithRenderer(r), WithPage(pageA))
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 8})
+	model := result.(Model)
+	model.viewport.SetYOffset(8)
+	offsetA := model.viewport.YOffset()
+
+	docB, err := markdown.Parse(longDocument("Page B"))
+	require.NoError(t, err)
+	pageB := Page{Content: docB.Source, URL: &url.URL{Path: "/b"}}
+	result, _ = model.Update(pageReadyMsg{page: pageB, doc: docB})
+	model = result.(Model)
+	model.viewport.SetYOffset(14)
+	offsetB := model.viewport.YOffset()
+
+	docC, err := markdown.Parse(longDocument("Page C"))
+	require.NoError(t, err)
+	result, _ = model.Update(pageReadyMsg{page: Page{Content: docC.Source, URL: &url.URL{Path: "/c"}}, doc: docC})
+	model = result.(Model)
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model = result.(Model)
+	assert.Equal(t, offsetB, model.viewport.YOffset())
+
+	result, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model = result.(Model)
+	assert.Equal(t, offsetA, model.viewport.YOffset())
 }
 
 func TestUpdate_BackNavigatesMultipleHistoryEntries(t *testing.T) {
@@ -663,6 +772,10 @@ func TestView_ProgressBar_NilWhenPaletteVisibleButNotLoading(t *testing.T) {
 	assert.True(t, model.palette.Visible())
 	assert.False(t, model.palette.Loading())
 	assert.Nil(t, model.View().ProgressBar)
+}
+
+func longDocument(title string) []byte {
+	return []byte("# " + title + "\n\n" + strings.Repeat("Paragraph content for scrolling.\n\n", 40))
 }
 
 func TestView_WindowTitle_FromPage(t *testing.T) {

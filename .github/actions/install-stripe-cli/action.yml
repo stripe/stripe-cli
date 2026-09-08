@@ -22,7 +22,10 @@ runs:
     - name: Install Stripe CLI on Windows
       if: runner.os == 'Windows'
       shell: powershell
-      run: |
+      # The GITHUB_PATH write below is unavoidable for exposing the installed
+      # binary to later steps. The value is not attacker-controlled: it is the
+      # directory of the stripe binary that winget just installed.
+      run: | # zizmor: ignore[github-env] path comes from the winget install, not from input
         winget install Stripe.StripeCli -e --source winget --accept-package-agreements --accept-source-agreements
         $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH", "User")
         $stripeDir = Split-Path (Get-Command stripe).Source

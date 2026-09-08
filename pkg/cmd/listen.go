@@ -144,9 +144,9 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	var mismatch *config.ActiveContextLivemodeMismatchError
 	if errors.As(err, &mismatch) {
 		if mismatch.ActiveLivemode {
-			return errorcategory.UserInputErrorf("your active context is livemode; add --live to match it, or run 'stripe switch context' to select a test mode context")
+			return errorcategory.UserInputErrorf("You're in live mode. Add --live to run the command, or run 'stripe switch context' to select a sandbox.")
 		}
-		return errorcategory.UserInputErrorf("your active context is test mode; remove --live to match it, or run 'stripe switch context' to select a livemode context")
+		return errorcategory.UserInputErrorf("You're in a sandbox. Remove --live to run the command, or run 'stripe switch context' to select a live account.")
 	}
 	if err != nil {
 		return err

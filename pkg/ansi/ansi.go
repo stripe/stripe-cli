@@ -53,6 +53,15 @@ func Bold(text string) string {
 	return color.Sprintf(color.Bold(text))
 }
 
+// purpleIndex is the closest 8-bit terminal color (#875fff) to #746cff.
+const purpleIndex = 99
+
+// Purple returns purple text if the writer supports colors.
+func Purple(text string) string {
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Index(purpleIndex, text))
+}
+
 // Color returns an aurora.Aurora instance with colors enabled or disabled
 // depending on whether the writer supports colors.
 func Color(w io.Writer) aurora.Aurora {

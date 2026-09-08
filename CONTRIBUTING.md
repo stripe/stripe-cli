@@ -46,6 +46,27 @@ To run the linter, run `make lint`.
 
 Make sure `golangci-lint` is installed: `brew install golangci/tap/golangci-lint`
 
+### Error categories
+
+Assign a semantic category whenever production code creates an error. Use
+`errorcategory.New` for fixed messages and `errorcategory.Errorf` for formatted
+messages:
+
+```go
+return errorcategory.New(errorcategory.UserInput, "an argument is required")
+return errorcategory.Errorf(errorcategory.Auth, "profile %q has no API key", profile)
+```
+
+When adding context to an existing error, continue to use `%w`. The category and
+concrete error type remain available through the unwrap chain:
+
+```go
+return fmt.Errorf("loading configuration: %w", err)
+```
+
+Tests and generated files are excluded from this check. In the rare case where
+no semantic category can be assigned, use `//nolint:errorcategory` with a reason.
+
 ### Tests
 
 You can run tests with:

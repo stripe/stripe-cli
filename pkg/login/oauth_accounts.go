@@ -61,7 +61,7 @@ func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken str
 		}
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := accessSrvHTTPClient.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -98,6 +98,13 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
+	PrintAuthorizedContextsList(accounts)
+	return nil
+}
+
+// PrintAuthorizedContextsList prints already-fetched authorized accounts as a
+// formatted list, marking the active context.
+func PrintAuthorizedContextsList(accounts []config.AuthorizedAccount) {
 	ac, _ := config.GetActiveContext()
 	activeID, activeMode := "", "test"
 	if ac != nil {
@@ -124,7 +131,7 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 			rows = append(rows, row{
 				name:   a.Name,
 				id:     a.ID,
-				mode:   m,
+				mode:   displayMode(m),
 				active: a.ID == activeID && m == activeMode,
 			})
 			if len(a.Name) > nameW {
@@ -145,7 +152,14 @@ func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken str
 			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, idW, r.id, r.mode)
 		}
 	}
-	return nil
+}
+
+// displayMode maps the API's "test" mode value to the CLI's "sandbox" terminology.
+func displayMode(m string) string {
+	if m == "test" {
+		return "sandbox"
+	}
+	return m
 }
 
 // pickActiveContext selects the active account and livemode from the list of
