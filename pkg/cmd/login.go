@@ -275,12 +275,8 @@ func printAlreadyLoggedIn(cmd *cobra.Command, apiBaseURL, accessBaseURL, uat str
 	switch {
 	case email != "" && contextCount == 1:
 		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s as %s.\n", soleAuthorizedContextName(accounts), email)
-	case email != "" && contextCount > 1:
-		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s and have %d authorized contexts.\n", email, contextCount)
 	case contextCount == 1:
 		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in to %s.\n", soleAuthorizedContextName(accounts))
-	case contextCount > 1:
-		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in and have %d authorized contexts.\n", contextCount)
 	case email != "":
 		fmt.Fprintf(cmd.OutOrStdout(), "You're already logged in as %s.\n", email)
 	default:
