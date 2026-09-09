@@ -28,12 +28,11 @@ func TestSandboxCmd_AgentGuidance(t *testing.T) {
 	guidance := newSandboxCmd().cmd.Annotations[AIAgentHelpAnnotationKey]
 
 	for _, expected := range []string{
-		"For new integrations, prefer a general Sandbox over your account's shared test mode sandbox",
-		"don't use shared test mode as the primary development or CI environment",
-		"General Sandboxes isolate settings and test data from live mode",
-		"Use separate Sandboxes for local development and CI so automated tests don't interfere with developers",
-		"Accounts can have up to five Sandboxes; reuse stable environments rather than creating one per test run",
-		"Keep using test mode for existing integrations that depend on it or features that don't support general Sandboxes",
+		"For new integrations, use general sandboxes instead of your test mode sandbox",
+		"General sandboxes isolate settings and test data from live mode",
+		"Use separate sandboxes for local development and continuous integration (CI) so automated tests don't affect your settings or data",
+		"You can create a limited number of sandboxes, so reuse them instead of creating one for each test run",
+		"Use the test mode sandbox for existing integrations that depend on it or when a required feature doesn't support general sandboxes",
 	} {
 		assert.Contains(t, guidance, expected)
 	}
