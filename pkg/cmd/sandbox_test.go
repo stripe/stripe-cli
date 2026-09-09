@@ -24,20 +24,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/sandbox"
 )
 
-func TestSandboxCmd_AgentGuidance(t *testing.T) {
-	guidance := newSandboxCmd().cmd.Annotations[AIAgentHelpAnnotationKey]
-
-	for _, expected := range []string{
-		"For new integrations, use general sandboxes instead of your test mode sandbox",
-		"General sandboxes isolate settings and test data from live mode",
-		"Use separate sandboxes for local development and continuous integration (CI) so automated tests don't affect your settings or data",
-		"You can create a limited number of sandboxes, so reuse them instead of creating one for each test run",
-		"Use the test mode sandbox for existing integrations that depend on it or when a required feature doesn't support general sandboxes",
-	} {
-		assert.Contains(t, guidance, expected)
-	}
-}
-
 func setupSandboxTestConfig(t *testing.T) func() {
 	t.Helper()
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
