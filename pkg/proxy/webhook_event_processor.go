@@ -38,6 +38,9 @@ type WebhookEventProcessorConfig struct {
 
 	// LoggedInAccountID is the currently logged-in account ID
 	LoggedInAccountID string
+
+	// EventsFrom filters events by source: "@self", "@accounts", or "all"
+	EventsFrom string
 }
 
 // WebhookEventProcessor encapsulates logic around processing and forwarding
@@ -150,6 +153,10 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 		return
 	}
 
+	if p.filterBySource(&evt) {
+		return
+	}
+
 	evtCtx := eventContext{
 		webhookID:             webhookEvent.WebhookID,
 		webhookConversationID: webhookEvent.WebhookConversationID,
@@ -196,6 +203,10 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 		return
 	}
 
+	if p.filterByV2Source(&evt) {
+		return
+	}
+
 	// notify consumers
 	p.cfg.OutCh <- websocket.DataElement{
 		Data: evt,
@@ -235,6 +246,28 @@ func (p *WebhookEventProcessor) filterWebhookEvent(msg *websocket.WebhookEvent) 
 	}
 
 	return false
+}
+
+func (p *WebhookEventProcessor) filterBySource(evt *StripeEvent) bool {
+	switch p.cfg.EventsFrom {
+	case "@self":
+		return evt.IsConnect()
+	case "@accounts":
+		return !evt.IsConnect()
+	default:
+		return false
+	}
+}
+
+func (p *WebhookEventProcessor) filterByV2Source(evt *V2EventPayload) bool {
+	switch p.cfg.EventsFrom {
+	case "@self":
+		return evt.IsConnect()
+	case "@accounts":
+		return !evt.IsConnect()
+	default:
+		return false
+	}
 }
 
 func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {

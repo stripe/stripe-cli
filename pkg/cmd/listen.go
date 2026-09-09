@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -26,24 +27,33 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
+// thinEventPattern matches thin event types, which are namespaced by API
+// version (e.g. v1.billing.meter.no_meter_found, v2.core.account.created).
+var thinEventPattern = regexp.MustCompile(`^v\d+\.`)
+
 const (
 	webhooksWebSocketFeature     = "webhooks"
 	destinationsWebSocketFeature = "v2_events"
 	timeLayout                   = "2006-01-02 15:04:05"
 	outputFormatJSON             = "JSON"
+
+	// Accepted values for --events-from.
+	eventsFromSelf     = "@self"
+	eventsFromAccounts = "@accounts"
+	eventsFromAll      = "all"
 )
 
 type listenCmd struct {
 	cmd *cobra.Command
 
 	forwardURL            string
-	forwardThinURL        string
 	forwardHeaders        []string
 	forwardConnectHeaders []string
 	forwardConnectURL     string
-	forwardThinConnectURL string
+	eventsFrom            string
 	events                []string
-	thinEvents            []string
+	allSnapshot           bool
+	allThin               bool
 	latestAPIVersion      bool
 	livemode              bool
 	useConfiguredWebhooks bool
@@ -70,10 +80,14 @@ local machine by connecting directly to Stripe's API. You can test the latest
 API version, filter events, or even load your saved webhook endpoints from your
 Stripe account.`,
 		Example: `stripe listen
-  stripe listen --events charge.captured,charge.updated \
+  stripe listen --all-snapshot --forward-to localhost:3000/events
+  stripe listen --all-thin --forward-to localhost:3000/events
+  stripe listen --events charge.captured,customer.created \
     --forward-to localhost:3000/events
-  stripe listen --thin-events v1.billing.meter.no_meter_found \
-    --forward-thin-to localhost:3000/thin-events`,
+  stripe listen --events v1.billing.meter.no_meter_found \
+    --forward-to localhost:3000/events
+  stripe listen --all-thin --events-from @accounts \
+    --forward-to localhost:3000/events`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Use `--forward-to` to specify where events are sent, e.g. localhost:4242/webhook.\n" +
 				"  Use `--events` to filter to specific event types, e.g. `--events checkout.session.completed`.\n" +
@@ -84,13 +98,23 @@ Stripe account.`,
 	}
 
 	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
-	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{}, "A comma-separated list of specific events to listen for. Accepts both snapshot events (e.g. charge.captured) and thin events (e.g. v1.billing.meter.no_meter_found). For a list of all possible events, see: https://stripe.com/docs/api/events/types")
+	lc.cmd.Flags().BoolVar(&lc.allSnapshot, "all-snapshot", false, "Subscribe to all snapshot events")
+	lc.cmd.Flags().BoolVar(&lc.allThin, "all-thin", false, "Subscribe to all thin events")
+	lc.cmd.Flags().StringVar(&lc.eventsFrom, "events-from", eventsFromAll, "Which accounts to receive events from: '@self' (your account only), '@accounts' (connected accounts only), or 'all'")
+	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
-	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
-	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
-	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
+	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
+
+	// Removed flags. They stay registered but hidden so that using one gives a
+	// message naming its replacement instead of cobra's "unknown flag".
+	lc.cmd.Flags().StringSlice("thin-events", []string{}, "")
+	lc.cmd.Flags().MarkHidden("thin-events") // #nosec G104
+	lc.cmd.Flags().String("forward-thin-to", "", "")
+	lc.cmd.Flags().MarkHidden("forward-thin-to") // #nosec G104
+	lc.cmd.Flags().String("forward-thin-connect-to", "", "")
+	lc.cmd.Flags().MarkHidden("forward-thin-connect-to") // #nosec G104
+
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -127,6 +151,12 @@ Stripe account.`,
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	// Validate flags before touching credentials or the network, so a bad flag
+	// combination reports itself rather than failing on something downstream.
+	if err := lc.validateFlags(); err != nil {
+		return err
+	}
+
 	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
 		return err
 	}
@@ -189,15 +219,18 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
+	snapshotEvents, thinEvents := lc.resolveEvents()
+	directURL, connectURL := lc.resolveForwardURLs()
+
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
-		ForwardURL:            lc.forwardURL,
-		ForwardThinURL:        lc.forwardThinURL,
+		ForwardURL:            directURL,
+		ForwardThinURL:        directURL,
 		ForwardHeaders:        lc.forwardHeaders,
-		ForwardConnectURL:     lc.forwardConnectURL,
-		ForwardThinConnectURL: lc.forwardThinConnectURL,
+		ForwardConnectURL:     connectURL,
+		ForwardThinConnectURL: connectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
@@ -207,10 +240,11 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Log:                   logger,
 		NoWSS:                 lc.noWSS,
 		Timeout:               lc.timeout,
-		Events:                lc.events,
-		ThinEvents:            lc.thinEvents,
+		Events:                snapshotEvents,
+		ThinEvents:            thinEvents,
 		OutCh:                 proxyOutCh,
 		LoggedInAccountID:     accountID,
+		EventsFrom:            lc.eventsFrom,
 	})
 	if err != nil {
 		return err
@@ -369,15 +403,199 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 }
 
 func (lc *listenCmd) getFeatures() []string {
-	features := []string{}
+	needsSnapshot := lc.allSnapshot
+	needsThin := lc.allThin
 
-	if len(lc.events) > 0 {
-		features = append(features, webhooksWebSocketFeature)
+	for _, e := range lc.events {
+		if isThinEvent(e) {
+			needsThin = true
+		} else {
+			needsSnapshot = true
+		}
 	}
 
-	if len(lc.thinEvents) > 0 {
+	// A bare "stripe listen" with no event flags opens both channels.
+	if !needsSnapshot && !needsThin {
+		needsSnapshot = true
+		needsThin = true
+	}
+
+	features := []string{}
+	if needsSnapshot {
+		features = append(features, webhooksWebSocketFeature)
+	}
+	if needsThin {
 		features = append(features, destinationsWebSocketFeature)
 	}
 
 	return features
+}
+
+func isThinEvent(eventType string) bool {
+	return thinEventPattern.MatchString(eventType)
+}
+
+// resolveEvents splits the --events list into the snapshot and thin event lists
+// the proxy subscribes with.
+func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
+	return splitEventsByType(lc.events, lc.allSnapshot, lc.allThin)
+}
+
+// splitEventsByType separates an event list into snapshot and thin event lists.
+func splitEventsByType(events []string, allSnapshot, allThin bool) (snapshotEvents []string, thinEvents []string) {
+	if allSnapshot {
+		snapshotEvents = append(snapshotEvents, "*")
+	}
+	if allThin {
+		thinEvents = append(thinEvents, "*")
+	}
+
+	for _, e := range events {
+		if isThinEvent(e) {
+			thinEvents = append(thinEvents, e)
+		} else {
+			snapshotEvents = append(snapshotEvents, e)
+		}
+	}
+
+	// A bare "stripe listen" with no event flags subscribes to everything.
+	if len(snapshotEvents) == 0 && len(thinEvents) == 0 {
+		snapshotEvents = []string{"*"}
+		thinEvents = []string{"*"}
+	}
+
+	return
+}
+
+// resolveForwardURLs determines the direct and Connect forwarding URLs from
+// --events-from, --forward-to, and --forward-connect-to.
+func (lc *listenCmd) resolveForwardURLs() (directURL, connectURL string) {
+	switch lc.eventsFrom {
+	case eventsFromSelf:
+		directURL = lc.forwardURL
+		connectURL = ""
+	case eventsFromAccounts:
+		directURL = ""
+		connectURL = lc.forwardURL
+		if lc.forwardConnectURL != "" {
+			connectURL = lc.forwardConnectURL
+		}
+	default: // eventsFromAll
+		directURL = lc.forwardURL
+		connectURL = lc.forwardConnectURL
+		if connectURL == "" {
+			connectURL = lc.forwardURL
+		}
+	}
+
+	return
+}
+
+// validateFlags rejects flag combinations that are contradictory, ambiguous, or
+// no longer supported.
+func (lc *listenCmd) validateFlags() error {
+	if err := lc.checkRemovedFlags(); err != nil {
+		return err
+	}
+
+	if err := lc.validateEvents(); err != nil {
+		return err
+	}
+
+	if err := lc.validateEventsFrom(); err != nil {
+		return err
+	}
+
+	// --print-secret exits before forwarding anything, so don't hold it to the
+	// forwarding rules.
+	if lc.onlyPrintSecret {
+		return nil
+	}
+
+	return lc.validateForwardingConfig()
+}
+
+// checkRemovedFlags reports the replacement for each flag that this command used
+// to accept.
+func (lc *listenCmd) checkRemovedFlags() error {
+	if lc.cmd.Flags().Changed("thin-events") {
+		thinEvents, err := lc.cmd.Flags().GetStringSlice("thin-events")
+		if err == nil && len(thinEvents) == 1 && thinEvents[0] == "*" {
+			return errorcategory.UserInputErrorf("--thin-events is no longer supported. Use --all-thin to subscribe to all thin events.")
+		}
+		return errorcategory.UserInputErrorf("--thin-events is no longer supported. Use --events instead, which accepts both snapshot and thin event types.")
+	}
+
+	if lc.cmd.Flags().Changed("forward-thin-to") {
+		return errorcategory.UserInputErrorf("--forward-thin-to is no longer supported. Use --forward-to instead, which forwards both snapshot and thin events.")
+	}
+
+	if lc.cmd.Flags().Changed("forward-thin-connect-to") {
+		return errorcategory.UserInputErrorf("--forward-thin-connect-to is no longer supported. Use --events-from @accounts --forward-to <url> instead.")
+	}
+
+	return nil
+}
+
+// validateEvents rejects the "*" wildcard, which used to mean "all snapshot
+// events" and is ambiguous now that --events also accepts thin events.
+func (lc *listenCmd) validateEvents() error {
+	for _, e := range lc.events {
+		if e == "*" {
+			return errorcategory.UserInputErrorf("--events '*' is no longer supported. Use --all-snapshot for all snapshot events, or --all-thin for all thin events.")
+		}
+	}
+
+	return nil
+}
+
+func (lc *listenCmd) validateEventsFrom() error {
+	switch lc.eventsFrom {
+	case eventsFromSelf, eventsFromAccounts, eventsFromAll:
+		return nil
+	default:
+		return errorcategory.UserInputErrorf("invalid --events-from value %q: must be one of '@self', '@accounts', or 'all'", lc.eventsFrom)
+	}
+}
+
+// validateForwardingConfig checks that the forwarding flags name exactly one
+// destination for exactly one payload style.
+func (lc *listenCmd) validateForwardingConfig() error {
+	if lc.forwardURL == "" && lc.forwardConnectURL == "" {
+		return nil
+	}
+
+	// Forwarding requires an explicit subscription. Defaulting to everything
+	// would POST every event on the account to the user's endpoint.
+	if !lc.allSnapshot && !lc.allThin && len(lc.events) == 0 {
+		return errorcategory.UserInputErrorf("must specify events to forward using --events, --all-snapshot, or --all-thin")
+	}
+
+	// --events-from @self drops Connect events, so a Connect destination would
+	// never receive anything.
+	if lc.eventsFrom == eventsFromSelf && lc.forwardConnectURL != "" {
+		return errorcategory.UserInputErrorf("--forward-connect-to cannot be used with --events-from @self, which excludes events from connected accounts")
+	}
+
+	// Under @accounts both flags name the same destination, so two different
+	// URLs is ambiguous.
+	if lc.eventsFrom == eventsFromAccounts &&
+		lc.forwardURL != "" && lc.forwardConnectURL != "" && lc.forwardURL != lc.forwardConnectURL {
+		return errorcategory.UserInputErrorf("--forward-to and --forward-connect-to name the same destination when --events-from is @accounts: specify only one")
+	}
+
+	// The two payload styles are framed differently, so a single endpoint can't
+	// receive both.
+	snapshotEvents, thinEvents := lc.resolveEvents()
+	if len(snapshotEvents) > 0 && len(thinEvents) > 0 {
+		directURL, connectURL := lc.resolveForwardURLs()
+		if directURL != "" {
+			return errorcategory.UserInputErrorf("cannot forward both snapshot and thin events to the same destination")
+		}
+		if connectURL != "" {
+			return errorcategory.UserInputErrorf("cannot forward both snapshot and thin events to the same connect destination")
+		}
+	}
+
+	return nil
 }
