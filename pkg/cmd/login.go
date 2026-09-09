@@ -155,7 +155,7 @@ works here too, printing a browser_url and a next_step of
 	switchCmd.cmd = &cobra.Command{
 		Use:     "switch [account_id]",
 		Args:    validators.MaximumNArgs(1),
-		Short:   "Alias for 'stripe switch context'",
+		Short:   "Alias for 'stripe switch'",
 		Example: `stripe login switch\n  stripe login switch acct_1234\n  stripe login switch acct_1234 --live`,
 		RunE:    switchCmd.switchLoggedInAccountCmd,
 	}

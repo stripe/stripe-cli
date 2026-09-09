@@ -363,7 +363,7 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 	}
 
 	fmt.Println()
-	fmt.Println("Run 'stripe switch context' to change your active context.")
+	fmt.Println("Run 'stripe switch' to change your active context.")
 	fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 }
 

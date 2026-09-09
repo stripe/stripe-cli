@@ -1011,9 +1011,9 @@ type ActiveContextLivemodeMismatchError struct {
 
 func (e *ActiveContextLivemodeMismatchError) Error() string {
 	if e.ActiveLivemode {
-		return "You're in live mode. Run 'stripe switch context' to select a sandbox."
+		return "You're in live mode. Run 'stripe switch' to select a sandbox."
 	}
-	return "You're in a sandbox. Run 'stripe switch context' to select a live account."
+	return "You're in a sandbox. Run 'stripe switch' to select a live account."
 }
 
 // ResolveCredentials returns the credentials for the given mode. If an OAK

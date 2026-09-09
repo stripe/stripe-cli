@@ -123,7 +123,7 @@ reference (--result_options.compress_file). Prefer the dedicated
 	cc.cmd.SetFlagErrorFunc(flagErrorWithNestedAPIHint)
 
 	cc.cmd.Flags().BoolVar(&cc.rb.DryRun, "dry-run", false, "Preview the request without sending it")
-	cc.cmd.Flags().BoolVarP(&cc.rb.Livemode, "live", "", false, "Make a live request (default: test)")
+	cc.cmd.Flags().BoolVarP(&cc.rb.Livemode, "live", "", false, "Make a live request (default: test). Requires your active context to be in live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	cc.cmd.Flags().BoolVarP(&cc.rb.DarkStyle, "dark-style", "", false, "Use a darker color scheme better suited for lighter command-lines")
 
 	cc.cmd.Flags().StringVar(&cc.rb.APIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -157,7 +157,7 @@ used to download the query output.`,
 		RunE: rc.runReportingQueryRunsRetrieveCmd,
 	}
 
-	rc.cmd.Flags().BoolVarP(&rc.rb.Livemode, "live", "", false, "Make a live request (default: test)")
+	rc.cmd.Flags().BoolVarP(&rc.rb.Livemode, "live", "", false, "Make a live request (default: test). Requires your active context to be in live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	rc.cmd.Flags().BoolVarP(&rc.rb.DarkStyle, "dark-style", "", false, "Use a darker color scheme better suited for lighter command-lines")
 
 	rc.cmd.Flags().StringVar(&rc.rb.APIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
