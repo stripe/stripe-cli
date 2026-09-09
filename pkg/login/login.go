@@ -3,8 +3,10 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/spf13/afero"
@@ -171,13 +173,23 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
+	waitCtx, stop := signal.NotifyContext(pollCtx, os.Interrupt)
+	defer stop()
 
-	result, err := PollAndSaveDeviceCredentials(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval, cfg)
+	s := ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+	result, err := PollAndSaveDeviceCredentials(waitCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval, cfg)
+	ansi.StopSpinner(s, "", os.Stdout)
 	if err != nil {
-		if pollCtx.Err() != nil {
+		switch {
+		case errors.Is(err, context.Canceled):
+			ansi.ClearLine(os.Stdout)
+			fmt.Println("Canceled. Run 'stripe login --non-interactive' again to try again.")
+			return nil
+		case pollCtx.Err() != nil:
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login --non-interactive' again")
+		default:
+			return err
 		}
-		return err
 	}
 
 	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
@@ -36,9 +37,7 @@ type reauthResponse struct {
 // directs the user to it. If a browser is available it is opened automatically;
 // otherwise the URL is printed for the user to visit manually. It then waits
 // for the authorized-accounts list to change before printing the updated list
-// of authorized contexts; access-srv has no dedicated signal for "the user
-// finished reauthorizing," so a change to the accounts/scopes returned for the
-// token is used as a proxy for completion.
+// of authorized contexts.
 func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 	before, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
@@ -53,25 +52,117 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 		return err
 	}
 
+	var browserOpened chan struct{}
+	fmt.Println()
 	if !isSSH() && canOpenBrowser() {
-		fmt.Println("Opening the Stripe Dashboard to re-authorize the CLI...")
-		fmt.Printf("If the browser does not open automatically, visit:\n  %s\n", reauthURL)
-		if err := openBrowser(reauthURL); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
-		}
+		browserOpened = make(chan struct{})
+		fmt.Printf("To authorize more contexts, visit %s\n\n", reauthURL)
+		fmt.Println("Press enter to open the browser (^C to quit)")
+		go func() {
+			fmt.Scanln() //nolint:errcheck
+			if err := openBrowser(reauthURL); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
+			}
+			close(browserOpened)
+		}()
 	} else {
 		fmt.Printf("Visit the following URL to re-authorize the CLI:\n  %s\n", reauthURL)
 	}
-	fmt.Println("Waiting for you to finish in the browser. Press ^C to cancel.")
 
+	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil)
+}
+
+type reauthSessionOutput struct {
+	BrowserURL string `json:"browser_url"`
+	NextStep   string `json:"next_step"`
+}
+
+// InitiateReauth fetches a reauthentication URL for the active OAuth session
+// and prints it as JSON with a next_step command, then returns immediately.
+// Intended for non-interactive (agent/script) use.
+func InitiateReauth(ctx context.Context, accessBaseURL, accessToken string) error {
+	// Best-effort: if this snapshot can't be fetched or saved, the later
+	// --complete-reauth invocation (a separate process) just falls back to a
+	// single check instead of polling for a change from it.
+	if before, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken); err == nil {
+		_ = savePendingReauthAccounts(before)
+	}
+
+	reauthURL, err := fetchReauthURL(ctx, accessBaseURL, accessToken)
+	if err != nil {
+		return err
+	}
+	if err := validateBrowserURL(reauthURL, accessBaseURL); err != nil {
+		return err
+	}
+
+	out := reauthSessionOutput{
+		BrowserURL: reauthURL,
+		NextStep:   "stripe login --complete-reauth",
+	}
+	b, err := json.MarshalIndent(out, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+	return nil
+}
+
+// PollPendingReauth checks, immediately on invocation, whether the
+// authorized-accounts list already differs from the snapshot InitiateReauth
+// saved - covering both a user who finished in the browser before running
+// this, and one who runs `--complete-reauth` without a snapshot at all (e.g.
+// skipped `--non-interactive`). Only if there's a snapshot and nothing has
+// changed yet does it fall back to waiting/polling for a change.
+func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) error {
+	before, err := loadPendingReauthAccounts()
+	if err != nil {
+		return err
+	}
+
+	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
+	if err != nil {
+		return err
+	}
+
+	if before == nil || accountsSignature(accounts) != accountsSignature(before) {
+		if before != nil {
+			clearPendingReauthAccounts()
+		}
+		ac, _ := config.GetActiveContext()
+		activeID, activeLivemode := "", false
+		if ac != nil {
+			activeID = ac.AccountID
+			activeLivemode = ac.Livemode
+		}
+		printAuthorizedSummary(accounts, activeID, activeLivemode)
+		return nil
+	}
+
+	fmt.Println("Waiting for you to finish in the browser. Press ^C to cancel.")
+	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, nil, func([]config.AuthorizedAccount) {
+		clearPendingReauthAccounts()
+	})
+}
+
+// waitForReauthCompletion waits for the authorized-accounts list to change
+// from before, then prints the updated list of authorized contexts;
+// access-srv has no dedicated signal for "the user finished reauthorizing,"
+// so a change to the accounts/scopes returned for the token is used as a
+// proxy for completion. onComplete, if non-nil, runs once a change is
+// detected and before the summary is printed.
+func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken string, before []config.AuthorizedAccount, browserOpened <-chan struct{}, onComplete func([]config.AuthorizedAccount)) error {
 	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
+	stopSpinner := startSpinnerAfterSignal("Waiting for confirmation...", os.Stdout, browserOpened)
 	after, err := waitForAccountsChange(waitCtx, accessBaseURL, accessToken, before, reauthPollInterval, reauthPollTimeout)
+	stopSpinner()
 	if err != nil {
 		switch {
 		case errors.Is(err, context.Canceled):
-			fmt.Println("Canceled. Run 'stripe whoami' to check your authorized contexts.")
+			ansi.ClearLine(os.Stdout)
+			fmt.Println("Canceled. Run 'stripe whoami' to see your authorized contexts or 'stripe login --new-session' to log in as a different user.")
 			return nil
 		case errors.Is(err, errReauthTimeout):
 			fmt.Println("Still waiting on the re-authorization. Run 'stripe whoami' once you've finished.")
@@ -79,6 +170,10 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 		default:
 			return err
 		}
+	}
+
+	if onComplete != nil {
+		onComplete(after)
 	}
 
 	ac, _ := config.GetActiveContext()
