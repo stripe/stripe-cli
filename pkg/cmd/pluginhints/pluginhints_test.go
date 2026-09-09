@@ -128,7 +128,7 @@ func TestAddHintCommands_SetsAvailablePluginAnnotations(t *testing.T) {
 
 	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{}, nil)
 
-	for _, name := range []string{"apps", "generate", "projects", "directory", "tools"} {
+	for _, name := range []string{"apps", "generate", "projects", "pay", "directory", "tools"} {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, "available_plugin", rootCmd.Annotations[name])
 		})
@@ -141,10 +141,12 @@ func TestAddHintCommands_NoAnnotationWhenPluginInstalled(t *testing.T) {
 	AddHintCommands(rootCmd, &config.Config{}, map[string]bool{
 		"tools": true,
 		"apps":  true,
+		"pay":   true,
 	}, nil)
 
 	assert.Empty(t, rootCmd.Annotations["tools"])
 	assert.Empty(t, rootCmd.Annotations["apps"])
+	assert.Empty(t, rootCmd.Annotations["pay"])
 	assert.Equal(t, "available_plugin", rootCmd.Annotations["generate"])
 	assert.Equal(t, "available_plugin", rootCmd.Annotations["projects"])
 	assert.Equal(t, "available_plugin", rootCmd.Annotations["directory"])
