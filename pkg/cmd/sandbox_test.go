@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -1440,357 +1439,97 @@ func TestSandboxNewCmd_StripeAccountRejectsOrg(t *testing.T) {
 	assert.Contains(t, err.Error(), "not an organization")
 }
 
-func TestSandboxListCmd_ByStripeAccount(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
-			assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_target", "name": "Acme", "merchant_id": "acct_target"},
-				},
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
-			if r.URL.RawQuery != "live_compartment_parent_id=wksp_target" {
-				t.Errorf("expected live_compartment_parent_id=wksp_target, got %s", r.URL.RawQuery)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces": []map[string]interface{}{
-					{"id": "wksp_test_a", "name": "sbxA", "merchant_id": "acct_a", "replica_of": "wksp_target"},
-					{"id": "wksp_test_b", "name": "sbxB", "merchant_id": "acct_b", "replica_of": "wksp_target"},
-				},
-			})
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	output, err := executeCommand(
-		rootCmd,
-		"sandbox", "list",
-		"--api-base="+server.URL,
-		"--stripe-account=acct_target",
-	)
-
-	require.NoError(t, err)
-	assert.Contains(t, output, "acct_a")
-	assert.Contains(t, output, "acct_b")
-	assert.Contains(t, output, "sbxA")
-	assert.Contains(t, output, "sbxB")
-	assert.Contains(t, output, "acct_target")
-	assert.NotContains(t, output, "wksp_")
+type fakeSandboxListClient struct {
+	sandboxes []sandbox.ManagedSandbox
+	err       error
 }
 
-func TestSandboxListCmd_AutoResolve(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_solo", "name": "Solo", "merchant_id": "acct_solo"},
-				},
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
-			if r.URL.RawQuery != "live_compartment_parent_id=wksp_solo" {
-				t.Errorf("expected live_compartment_parent_id=wksp_solo, got %s", r.URL.RawQuery)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces": []map[string]interface{}{
-					{"id": "wksp_child", "name": "ChildSbx", "merchant_id": "acct_child", "replica_of": "wksp_solo"},
-				},
-			})
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	output, err := executeCommand(
-		rootCmd,
-		"sandbox", "list",
-		"--api-base="+server.URL,
-		"--stripe-account=",
-	)
-
-	require.NoError(t, err)
-	assert.Contains(t, output, "acct_child")
-	assert.Contains(t, output, "ChildSbx")
-	assert.Contains(t, output, "acct_solo")
-	assert.NotContains(t, output, "wksp_")
+func (f fakeSandboxListClient) ListAccessible(context.Context) ([]sandbox.ManagedSandbox, error) {
+	return f.sandboxes, f.err
 }
 
-func TestSandboxListCmd_OrgNestedSandboxes(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
+func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
+	cmd := newSandboxListCmd()
+	cmd.client = fakeSandboxListClient{
+		sandboxes: []sandbox.ManagedSandbox{
+			{WorkspaceID: "wksp_test_z", AccountID: "acct_z", Name: "Zeta", AccessLevel: sandbox.AccessLevelNone},
+			{WorkspaceID: "wksp_test_a", AccountID: "acct_a", Name: "Alpha", AccessLevel: sandbox.AccessLevelDirect},
+			{WorkspaceID: "wksp_test_b", AccountID: "acct_b", Name: "Beta", AccessLevel: sandbox.AccessLevelSandboxChildren},
+		},
+	}
 
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_target", "name": "Target", "merchant_id": "acct_target"},
-				},
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces": []map[string]interface{}{},
-				"organizations": []map[string]interface{}{
-					{
-						"workspaces": []map[string]interface{}{
-							{"id": "wksp_test_org", "name": "orgsbx", "merchant_id": "acct_o", "replica_of": "wksp_target"},
-						},
-					},
-				},
-			})
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
+	require.NoError(t, cmd.cmd.Execute())
 
-	output, err := executeCommand(
-		rootCmd,
-		"sandbox", "list",
-		"--api-base="+server.URL,
-		"--stripe-account=acct_target",
-	)
-
-	require.NoError(t, err)
-	assert.Contains(t, output, "acct_o")
-	assert.Contains(t, output, "orgsbx")
-	assert.Contains(t, output, "acct_target")
-	assert.NotContains(t, output, "wksp_")
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	require.Len(t, lines, 4)
+	assert.Equal(t, []string{"NAME", "ACCOUNT", "ACCESS", "LEVEL"}, strings.Fields(lines[0]))
+	assert.Equal(t, []string{"Zeta", "acct_z", "NO_ACCESS"}, strings.Fields(lines[1]))
+	assert.Equal(t, []string{"Alpha", "acct_a", "DIRECT_ACCESS"}, strings.Fields(lines[2]))
+	assert.Equal(t, []string{"Beta", "acct_b", "ACCESS_TO_SANDBOX_CHILDREN"}, strings.Fields(lines[3]))
+	assert.NotContains(t, stdout.String(), "wksp_")
+	assert.Empty(t, stderr.String())
 }
 
 func TestSandboxListCmd_Empty(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_solo", "name": "Solo", "merchant_id": "acct_solo"},
-				},
-			})
-			return
-		}
-		if r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces":    []map[string]interface{}{},
-				"organizations": []map[string]interface{}{},
-			})
-			return
-		}
-		t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	output, err := executeCommand(
-		rootCmd,
-		"sandbox", "list",
-		"--api-base="+server.URL,
-		"--stripe-account=",
-	)
-
-	require.NoError(t, err)
-	assert.Contains(t, output, "No sandboxes found")
-}
-
-func TestSandboxListCmd_OAuthListsOnlyTestOnlyAccounts(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_list_test"), "test uat"))
-	require.NoError(t, config.SaveActiveContext("acct_live", true))
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "Bearer oak_list_test", r.Header.Get("Authorization"))
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"accounts": []map[string]interface{}{
-				{"id": "acct_live", "name": "Live account", "modes": []string{"live", "test"}},
-				{"id": "acct_sandbox", "name": "Authorized sandbox", "modes": []string{"test"}},
-				{"id": "acct_live_only", "name": "Live only", "modes": []string{"live"}},
-			},
-		})
-	}))
-	defer server.Close()
-
-	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
-	Config.Profile.OAuthAccessBaseURL = server.URL
-	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
-
 	cmd := newSandboxListCmd()
-	var output bytes.Buffer
-	cmd.cmd.SetOut(&output)
+	cmd.client = fakeSandboxListClient{sandboxes: []sandbox.ManagedSandbox{}}
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
 	require.NoError(t, cmd.cmd.Execute())
-	assert.Contains(t, output.String(), "acct_sandbox")
-	assert.Contains(t, output.String(), "Authorized sandbox")
-	assert.NotContains(t, output.String(), "acct_live")
-	assert.NotContains(t, output.String(), "Live only")
+
+	assert.Equal(t, "No sandboxes found.\n", stdout.String())
+	assert.Empty(t, stderr.String())
 }
 
-func TestSandboxListCmd_OAuthValidatesExplicitLiveAccount(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_list_test"), "test uat"))
-	require.NoError(t, config.SaveActiveContext("acct_live", true))
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"accounts": []map[string]interface{}{
-				{"id": "acct_live", "name": "Live account", "modes": []string{"live", "test"}},
-				{"id": "acct_sandbox", "name": "Authorized sandbox", "modes": []string{"test"}},
-			},
-		})
-	}))
-	defer server.Close()
-
-	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
-	Config.Profile.OAuthAccessBaseURL = server.URL
-	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
-
+func TestSandboxListCmd_ClientError(t *testing.T) {
 	cmd := newSandboxListCmd()
-	cmd.stripeAccount = "acct_sandbox"
-	cmd.cmd.SetContext(context.Background())
-	err := cmd.runSandboxListCmd(cmd.cmd, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no accessible live account matches acct_sandbox")
+	cmd.client = fakeSandboxListClient{err: fmt.Errorf("could not list accessible sandboxes")}
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+	cmd.cmd.SilenceUsage = true
+	cmd.cmd.SilenceErrors = true
+
+	err := cmd.cmd.Execute()
+	require.EqualError(t, err, "could not list accessible sandboxes")
+	assert.Empty(t, stdout.String())
+	assert.Empty(t, stderr.String())
 }
 
-func TestSandboxListCmd_OAuthProactivelyRefreshesToken(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
+func TestSandboxListCmd_Surface(t *testing.T) {
+	cmd := newSandboxListCmd()
+	assert.True(t, cmd.cmd.Hidden)
+	require.NotNil(t, cmd.cmd.Flags().Lookup("api-base"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-account"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-version"))
 
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_expiring"), "test uat"))
-	require.NoError(t, config.SaveActiveContext("acct_live", true))
-	require.NoError(t, config.SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+	var stdout, stderr bytes.Buffer
+	cmd.client = fakeSandboxListClient{}
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+	cmd.cmd.SilenceUsage = true
+	cmd.cmd.SilenceErrors = true
+	cmd.cmd.SetArgs([]string{"--api-base=http://example.test"})
+	require.NoError(t, cmd.cmd.Execute())
+	assert.Equal(t, "No sandboxes found.\n", stdout.String())
+	assert.Empty(t, stderr.String())
 
-	originalRefresher := config.OAuthTokenRefresher
-	refreshes := 0
-	config.OAuthTokenRefresher = func(profile *config.Profile) error {
-		refreshes++
-		profile.UAT = "oak_refreshed"
-		require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte(profile.UAT), "refreshed uat"))
-		return config.SaveUATExpiresAt(time.Now().Add(time.Hour))
+	for _, args := range [][]string{{"acct_123"}, {"--stripe-account=acct_123"}, {"--stripe-version=2026-01-01"}} {
+		cmd := newSandboxListCmd()
+		cmd.client = fakeSandboxListClient{}
+		cmd.cmd.SilenceUsage = true
+		cmd.cmd.SilenceErrors = true
+		cmd.cmd.SetArgs(args)
+		require.Error(t, cmd.cmd.Execute())
 	}
-	t.Cleanup(func() { config.OAuthTokenRefresher = originalRefresher })
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "Bearer oak_refreshed", r.Header.Get("Authorization"))
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"accounts": []map[string]interface{}{}})
-	}))
-	defer server.Close()
-
-	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
-	Config.Profile.OAuthAccessBaseURL = server.URL
-	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
-
-	cmd := newSandboxListCmd()
-	cmd.cmd.SetContext(context.Background())
-	require.NoError(t, cmd.runSandboxListCmd(cmd.cmd, nil))
-	assert.Equal(t, 1, refreshes)
-}
-
-func TestSandboxListCmd_OAuthRetriesUnauthorizedOnce(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_expired"), "test uat"))
-	require.NoError(t, config.SaveActiveContext("acct_live", true))
-
-	originalRefresher := config.OAuthTokenRefresher
-	refreshes := 0
-	config.OAuthTokenRefresher = func(profile *config.Profile) error {
-		refreshes++
-		profile.UAT = "oak_refreshed"
-		return config.KeyRing.Set(config.UATKeychainItemKey, []byte(profile.UAT), "refreshed uat")
-	}
-	t.Cleanup(func() { config.OAuthTokenRefresher = originalRefresher })
-
-	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests++
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{"error": "unauthorized"})
-	}))
-	defer server.Close()
-
-	originalAccessBaseURL := Config.Profile.OAuthAccessBaseURL
-	Config.Profile.OAuthAccessBaseURL = server.URL
-	t.Cleanup(func() { Config.Profile.OAuthAccessBaseURL = originalAccessBaseURL })
-
-	cmd := newSandboxListCmd()
-	cmd.cmd.SetContext(context.Background())
-	err := cmd.runSandboxListCmd(cmd.cmd, nil)
-	require.Error(t, err)
-	assert.Equal(t, 1, refreshes)
-	assert.Equal(t, 2, requests)
-}
-
-func TestSandboxListCmd_RejectsOrg(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
-
-	_, err = executeCommand(
-		rootCmd,
-		"sandbox", "list",
-		"--stripe-account=org_123",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not an organization")
-}
-
-func TestSandboxListCmd_NoUAT(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	_, err := executeCommand(
-		rootCmd,
-		"sandbox", "list",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "stripe login")
 }
 
 func TestSandboxDeleteCmd_Success(t *testing.T) {
