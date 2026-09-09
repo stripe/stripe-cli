@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -287,4 +288,9 @@ func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
 	err = p.Run(context.Background())
 	require.ErrorContains(t, err, "you have too many `stripe listen` sessions open, please close some and try again")
 	require.Equal(t, 1, nAttempts)
+
+	// RateLimit keeps this expected, self-serviceable failure out of Sentry.
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.RateLimit, category)
 }

@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	sentry "github.com/getsentry/sentry-go"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 var (
@@ -32,8 +34,17 @@ func scrubEvent(event *sentry.Event, _ *sentry.EventHint) *sentry.Event {
 
 	event.Message = redactSensitiveStrings(event.Message)
 
+	// Sentry titles an issue after the type of the outermost error, which for a
+	// categorized error is the errorcategory wrapper — a name that says nothing
+	// about the failure. Substitute the category so titles read "api" or
+	// "internal" instead of "errorcategory.categorizedError".
+	category := event.Tags["error_category"]
+
 	for i := range event.Exception {
 		event.Exception[i].Value = redactSensitiveStrings(event.Exception[i].Value)
+		if category != "" && event.Exception[i].Type == errorcategory.WrapperTypeName {
+			event.Exception[i].Type = category
+		}
 		if st := event.Exception[i].Stacktrace; st != nil {
 			// Drop internal reporting wrapper frames (frames are outermost-first,
 			// so the innermost call — our CaptureException — is at the end).

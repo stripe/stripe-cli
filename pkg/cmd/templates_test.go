@@ -50,10 +50,7 @@ func TestIsAIAgent_Detected(t *testing.T) {
 }
 
 func TestIsAIAgent_NotDetected(t *testing.T) {
-	// Ensure none of the agent env vars are set
-	for _, key := range []string{"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI", "CURSOR_AGENT", "GEMINI_CLI", "OPENCODE"} {
-		t.Setenv(key, "")
-	}
+	clearAgentEnv(t)
 	assert.False(t, isAIAgent())
 }
 
@@ -67,6 +64,8 @@ func TestFormatAgentGuidance(t *testing.T) {
 	assert.Contains(t, output, "STRIPE_API_KEY")
 	assert.Contains(t, output, "stripe --map")
 	assert.Contains(t, output, "stripe resources")
+	assert.Contains(t, output, "--parent[child]=value")
+	assert.Contains(t, output, "--parent.child=value")
 	assert.NotContains(t, output, "--stripe-account", "should not show --stripe-account when flag is not defined")
 	assert.NotContains(t, output, "-d", "should not show -d when data flag is not defined")
 }
@@ -138,9 +137,7 @@ func TestAIAgentHelp_SubcommandOnly(t *testing.T) {
 }
 
 func TestAIAgentHelp_NotDetected(t *testing.T) {
-	for _, key := range []string{"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI", "CURSOR_AGENT", "GEMINI_CLI", "OPENCODE"} {
-		t.Setenv(key, "")
-	}
+	clearAgentEnv(t)
 
 	root := &cobra.Command{Use: "stripe"}
 	child := &cobra.Command{Use: "listen"}

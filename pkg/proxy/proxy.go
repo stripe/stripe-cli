@@ -288,7 +288,7 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 
 			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
 				if clientError.StatusCode == http.StatusTooManyRequests {
-					err = errorcategory.New(errorcategory.API, "you have too many `stripe listen` sessions open, please close some and try again")
+					err = errorcategory.New(errorcategory.RateLimit, "you have too many `stripe listen` sessions open, please close some and try again")
 				}
 				exitCh <- struct{}{}
 				return

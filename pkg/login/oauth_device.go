@@ -3,11 +3,13 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -168,10 +170,69 @@ func clientIDForAccessBaseURL(accessBaseURL string) string {
 	return StripeCLIClientIDProd
 }
 
+// RequestDeviceCodeForAccessBase requests a device code using the client ID registered for
+// accessBaseURL, returning that client ID alongside the response so callers can later poll for
+// the token with PollAndSaveDeviceCredentials.
+func RequestDeviceCodeForAccessBase(ctx context.Context, accessBaseURL string) (authResp *DeviceAuthResponse, clientID string, err error) {
+	clientID = clientIDForAccessBaseURL(accessBaseURL)
+	authResp, err = RequestDeviceCode(ctx, accessBaseURL, clientID)
+	return authResp, clientID, err
+}
+
+// DeviceCodeLoginResult holds the accounts and the active account/mode saved by a completed
+// OAuth device-code login.
+type DeviceCodeLoginResult struct {
+	Accounts          []config.AuthorizedAccount
+	ActiveAccountID   string
+	ActiveDisplayName string
+	ActiveLivemode    bool
+}
+
+// PollAndSaveDeviceCredentials polls the token endpoint until the user approves, ctx is
+// canceled, or ctx's deadline is exceeded, then saves the resulting OAuth credentials and
+// populates cfg's profile with the active account. Unlike LoginWithDeviceCode, it does not print
+// progress to stdout, so callers with their own UX (e.g. the RPC service) can drive completion
+// themselves.
+func PollAndSaveDeviceCredentials(ctx context.Context, accessBaseURL, clientID, deviceCode string, interval time.Duration, cfg *config.Config) (*DeviceCodeLoginResult, error) {
+	tokenResp, err := PollDeviceToken(ctx, accessBaseURL, clientID, deviceCode, interval)
+	if err != nil {
+		return nil, err
+	}
+
+	// The token has been issued, so from here on use a context detached from ctx's
+	// cancellation/deadline: a caller-side timeout (or the natural device-code expiry) firing at
+	// this exact moment shouldn't leave a valid token saved but the account list and active
+	// context unpopulated.
+	ctx = context.WithoutCancel(ctx)
+
+	// Clear all stale credentials before saving new ones, so this succeeds even if a
+	// previously stored credential is expired or revoked.
+	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
+
+	if err := saveOAuthCredentials(cfg, tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to save credentials: %w", err)
+	}
+
+	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, tokenResp.AccessToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch account info: %w", err)
+	}
+	activeID, activeLivemode := pickActiveContext(accounts)
+	if err := populateProfileFromAccounts(cfg, accounts, activeID, activeLivemode); err != nil {
+		return nil, fmt.Errorf("failed to save account info: %w", err)
+	}
+
+	return &DeviceCodeLoginResult{
+		Accounts:          accounts,
+		ActiveAccountID:   activeID,
+		ActiveDisplayName: cfg.Profile.DisplayName,
+		ActiveLivemode:    activeLivemode,
+	}, nil
+}
+
 // LoginWithDeviceCode runs the full OAuth 2.1 device-code flow and saves credentials.
 func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
-	clientID := clientIDForAccessBaseURL(accessBaseURL)
-	authResp, err := RequestDeviceCode(ctx, accessBaseURL, clientID)
+	authResp, clientID, err := RequestDeviceCodeForAccessBase(ctx, accessBaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
@@ -179,17 +240,22 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 		return err
 	}
 
-	color := ansi.Color(os.Stdout)
-	fmt.Printf("Your pairing code is: %s\n", color.Bold(authResp.UserCode))
-	fmt.Printf("To authorize the CLI, visit: %s\n", authResp.VerificationURI)
+	fmt.Printf("To authorize, visit %s\n\n", authResp.VerificationURI)
+	fmt.Println("When prompted, enter your verification code:")
+	fmt.Println()
+	fmt.Println(ansi.Purple(authResp.UserCode))
+	fmt.Println()
 
+	var browserOpened chan struct{}
 	if !isSSH() && canOpenBrowser() {
-		fmt.Printf("Press Enter to open the browser (^C to quit)\n")
+		browserOpened = make(chan struct{})
+		fmt.Printf("Press enter to open the browser (^C to quit)\n")
 		go func() {
 			fmt.Scanln() //nolint:errcheck
 			if err := openBrowser(authResp.VerificationURI); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
 			}
+			close(browserOpened)
 		}()
 	}
 
@@ -198,29 +264,26 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
+	waitCtx, stop := signal.NotifyContext(pollCtx, os.Interrupt)
+	defer stop()
 
-	tokenResp, err := PollDeviceToken(pollCtx, accessBaseURL, clientID, authResp.DeviceCode, interval)
+	stopSpinner := startSpinnerAfterSignal("Waiting for confirmation...", os.Stdout, browserOpened)
+	result, err := PollAndSaveDeviceCredentials(waitCtx, accessBaseURL, clientID, authResp.DeviceCode, interval, cfg)
+	stopSpinner()
 	if err != nil {
-		if pollCtx.Err() != nil {
+		switch {
+		case errors.Is(err, context.Canceled):
+			ansi.ClearLine(os.Stdout)
+			fmt.Println("Canceled. Run 'stripe login' to try again.")
+			return nil
+		case pollCtx.Err() != nil:
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login' again")
+		default:
+			return err
 		}
-		return err
 	}
 
-	if err := saveOAuthCredentials(cfg, tokenResp); err != nil {
-		return fmt.Errorf("failed to save credentials: %w", err)
-	}
-
-	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, tokenResp.AccessToken)
-	if err != nil {
-		return fmt.Errorf("failed to fetch account info: %w", err)
-	}
-	activeID, activeLivemode := pickActiveContext(accounts)
-	if err := populateProfileFromAccounts(cfg, accounts, activeID, activeLivemode); err != nil {
-		return fmt.Errorf("failed to save account info: %w", err)
-	}
-
-	printLoginSuccess(accounts, activeID, activeLivemode)
+	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
 	warnIfInsecureStorage()
 	return nil
 }
@@ -255,7 +318,9 @@ func buildContextRows(accounts []config.AuthorizedAccount, activeID string, acti
 	return rows
 }
 
-func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) {
+// printAuthorizedSummary prints the "Done! The Stripe CLI is authorized for
+// ..." banner and context table shared by login and reauth.
+func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) {
 	color := ansi.Color(os.Stdout)
 	rows := buildContextRows(accounts, activeID, activeLivemode)
 
@@ -266,10 +331,10 @@ func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, act
 
 	if len(rows) == 1 {
 		r := rows[0]
-		ctx := fmt.Sprintf("%s · %s", r.name, r.mode)
+		ctx := fmt.Sprintf("%s · %s", r.name, displayMode(r.mode))
 		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n", color.Green("✓"), ctx, r.id)
 		fmt.Printf("  Active context: %s\n\n", ctx)
-		fmt.Println("Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
+		fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 		return
 	}
 
@@ -280,8 +345,8 @@ func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, act
 		if len(r.name) > nameW {
 			nameW = len(r.name)
 		}
-		if len(r.mode) > modeW {
-			modeW = len(r.mode)
+		if dl := len(displayMode(r.mode)); dl > modeW {
+			modeW = dl
 		}
 		if len(r.id) > idW {
 			idW = len(r.id)
@@ -289,16 +354,17 @@ func printLoginSuccess(accounts []config.AuthorizedAccount, activeID string, act
 	}
 
 	for _, r := range rows {
+		mode := displayMode(r.mode)
 		if r.active {
-			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, r.mode, idW, r.id, color.Green("●"))
+			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, mode, idW, r.id, color.Green("●"))
 		} else {
-			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, r.mode, r.id)
+			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, mode, r.id)
 		}
 	}
 
 	fmt.Println()
 	fmt.Println("Run 'stripe switch context' to change your active context.")
-	fmt.Println("Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
+	fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 }
 
 // RefreshAccessToken exchanges a refresh token for a new access token.

@@ -46,6 +46,12 @@ type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
+	// AutoInstall carries the metadata endpoint's answer to "may this machine
+	// install this plugin without being asked?". It is only ever true for a
+	// resolution that came from a live metadata response: a resolution that fell
+	// back to cached metadata leaves it false, so a machine that cannot reach the
+	// endpoint keeps prompting rather than installing on a stale answer.
+	AutoInstall bool
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -519,6 +525,10 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return resolvedPlugin, nil
 	}
 
+	if requiresNewerCLI(err) {
+		return nil, err
+	}
+
 	log.WithFields(log.Fields{
 		"prefix":  "plugins.ResolvePluginForInstall",
 		"plugin":  pluginName,
@@ -527,15 +537,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 	cachedPlugin, cachedErr := resolveCachedPluginForInstall(config, fs, pluginName, version)
 	if cachedErr == nil {
-		resolvedVersion := version
-		if resolvedVersion == "" {
-			resolvedVersion = cachedPlugin.LookUpLatestVersion()
-		}
-		if resolvedVersion == "" {
-			return nil, errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
-		}
-		if cachedPlugin.getReleaseForVersion(resolvedVersion) == nil {
-			return nil, errorcategory.Errorf(errorcategory.API, "cached plugin metadata did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+		resolvedVersion, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, version, cachedPluginMetadata)
+		if versionErr != nil {
+			return nil, versionErr
 		}
 
 		return &ResolvedPluginVersion{
@@ -570,6 +574,10 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		return resolvedPlugin, nil
 	}
 
+	if requiresNewerCLI(endpointErr) {
+		return nil, endpointErr
+	}
+
 	log.WithFields(log.Fields{
 		"prefix": "plugins.ResolvePluginForUpgrade",
 		"plugin": pluginName,
@@ -577,7 +585,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 
 	cachedPlugin, cachedErr := resolveCachedPluginForUpgrade(config, fs, pluginName)
 	if cachedErr == nil {
-		version, versionErr := getLatestResolvedPluginVersion(pluginName, cachedPlugin)
+		version, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, "", cachedPluginMetadata)
 		if versionErr != nil {
 			return nil, versionErr
 		}
@@ -708,10 +716,20 @@ func mergePluginMetadata(primary, fallback *Plugin) *Plugin {
 	return &pluginCopy
 }
 
+// resolvePluginForAutoInstall resolves the version to re-download for a plugin
+// that is already installed but whose binary is missing. This repairs a broken
+// install rather than adding a plugin the user never asked for, so it is
+// deliberately not gated on the metadata endpoint's auto_install answer.
 func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	resolvedPlugin, err := ResolvePluginForInstall(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL)
 	if err == nil {
 		return resolvedPlugin, nil
+	}
+
+	// Returning now also keeps the version the user needs out of this path's combined
+	// "latest lookup failed; cached lookup failed" wrapper, which buries it.
+	if requiresNewerCLI(err) {
+		return nil, err
 	}
 
 	log.WithFields(log.Fields{
@@ -724,7 +742,7 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 		return nil, fmt.Errorf("could not resolve plugin %s for auto-install: latest lookup failed: %v; cached lookup failed: %w", pluginName, err, cachedErr)
 	}
 
-	version, versionErr := getLatestResolvedPluginVersion(pluginName, cachedPlugin)
+	version, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, "", cachedPluginMetadata)
 	if versionErr != nil {
 		return nil, versionErr
 	}
@@ -790,8 +808,16 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		basePlugin = &cachedPlugin
 	}
 
-	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, config.GetMachineUUID())
 	if err != nil {
+		// Translated here rather than left to normalizePluginMetadataError, which only
+		// runs once the cached lookup has failed too. The endpoint is the only thing that
+		// knows this constraint, so its answer has to be captured where it arrives or it
+		// becomes an ordinary lookup failure and the cache gets to answer instead.
+		if minCoreVersion, requiresNewerCLI := requests.PluginRequiresNewerCLI(err); requiresNewerCLI {
+			return nil, newErrPluginRequiresNewerCLI(pluginName, version, minCoreVersion)
+		}
+
 		return nil, err
 	}
 
@@ -800,21 +826,16 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		return nil, err
 	}
 
-	resolvedVersion := version
-	if resolvedVersion == "" {
-		resolvedVersion = plugin.LookUpLatestVersion()
-	}
-	if resolvedVersion == "" {
-		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include a release for %s on %s/%s", pluginName, runtime.GOOS, runtime.GOARCH)
-	}
-	if plugin.getReleaseForVersion(resolvedVersion) == nil {
-		return nil, errorcategory.Errorf(errorcategory.API, "plugin metadata response did not include plugin %s version %s for %s/%s", pluginName, resolvedVersion, runtime.GOOS, runtime.GOARCH)
+	resolvedVersion, err := resolveVersionFromReleases(plugin, pluginName, version, livePluginMetadata)
+	if err != nil {
+		return nil, err
 	}
 
 	return &ResolvedPluginVersion{
-		Plugin:    plugin,
-		Version:   resolvedVersion,
-		BinaryURL: pluginMetadata.BinaryURL,
+		Plugin:      plugin,
+		Version:     resolvedVersion,
+		BinaryURL:   pluginMetadata.BinaryURL,
+		AutoInstall: pluginMetadata.AutoInstall,
 	}, nil
 }
 
@@ -834,17 +855,43 @@ func getCachedPluginList(config config.IConfig, fs afero.Fs) (PluginList, error)
 	return *validatedPluginList, nil
 }
 
-func getLatestResolvedPluginVersion(pluginName string, plugin *Plugin) (string, error) {
+// Where a plugin's releases came from. Resolution treats the two identically and
+// only needs to tell them apart when reporting a version it could not find, since
+// a response that omitted a release and a cache that never held one are different
+// problems for the user.
+const (
+	livePluginMetadata   = "plugin metadata response"
+	cachedPluginMetadata = "cached plugin metadata"
+)
+
+// resolveVersionFromReleases picks the version to install out of a plugin's
+// releases: the one that was asked for, or the newest listed.
+//
+// Every resolve path shares it so they cannot drift apart, and is left describing
+// where the metadata came from rather than repeating the lookup itself. None of
+// them weighs a release's min_core_version; see ErrPluginRequiresNewerCLI.
+func resolveVersionFromReleases(plugin *Plugin, pluginName, requestedVersion, source string) (string, error) {
 	if plugin == nil {
-		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
+		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s", source, pluginName)
 	}
 
-	version := plugin.LookUpLatestVersion()
-	if version == "" {
-		return "", errorcategory.Errorf(errorcategory.API, "could not determine latest version for plugin %s", pluginName)
+	// Only a version the caller named has to be looked for. LookUpLatestVersion
+	// reports a version it read off a release for this platform, so asking the same
+	// releases to produce that release again can only ever succeed.
+	if requestedVersion == "" {
+		latestVersion := plugin.LookUpLatestVersion()
+		if latestVersion == "" {
+			return "", errorcategory.Errorf(errorcategory.API, "%s did not include a release for %s on %s/%s", source, pluginName, runtime.GOOS, runtime.GOARCH)
+		}
+
+		return latestVersion, nil
 	}
 
-	return version, nil
+	if plugin.getReleaseForVersion(requestedVersion) == nil {
+		return "", errorcategory.Errorf(errorcategory.API, "%s did not include plugin %s version %s for %s/%s", source, pluginName, requestedVersion, runtime.GOOS, runtime.GOARCH)
+	}
+
+	return requestedVersion, nil
 }
 
 func lookUpPluginInCachedManifest(config config.IConfig, fs afero.Fs, pluginName string) (Plugin, error) {

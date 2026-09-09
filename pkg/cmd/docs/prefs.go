@@ -8,7 +8,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/list"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	pkgdocs "github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/pager"
@@ -39,7 +38,7 @@ func (r *RootCommand) newPrefsListCmd() *cobra.Command {
 		Long:    `List available preferences for customizing rendered documentation and their allowed values.`,
 		Example: `  stripe docs prefs list`,
 		Args:    cobra.NoArgs,
-		RunE:    r.runPrefsList,
+		RunE:    r.withSetup(r.runPrefsList),
 	}
 }
 
@@ -50,7 +49,7 @@ func (r *RootCommand) newPrefsSetCmd() *cobra.Command {
 		Long:    `Set a documentation preference to a specific value.`,
 		Example: `  stripe docs prefs set server go`,
 		Args:    cobra.ExactArgs(2),
-		RunE:    r.runPrefsSet,
+		RunE:    r.withSetup(r.runPrefsSet),
 	}
 }
 
@@ -61,7 +60,7 @@ func (r *RootCommand) newPrefsUnsetCmd() *cobra.Command {
 		Long:    `Remove a previously set documentation preference, reverting to the default.`,
 		Example: `  stripe docs prefs unset server`,
 		Args:    cobra.ExactArgs(1),
-		RunE:    r.runPrefsUnset,
+		RunE:    r.withSetup(r.runPrefsUnset),
 	}
 }
 
@@ -191,7 +190,7 @@ func (r *RootCommand) loadDocsPrefMap() map[string]string {
 	if r.cfg == nil {
 		return nil
 	}
-	raw := viper.GetStringMapString(r.cfg.Profile.GetConfigField(docsPrefsConfigKey))
+	raw := r.cfg.Profile.ReadProfileStringMap(docsPrefsConfigKey)
 	if len(raw) == 0 {
 		return nil
 	}
@@ -202,7 +201,7 @@ func (r *RootCommand) getDocsPref(id string) string {
 	if r.cfg == nil {
 		return ""
 	}
-	return viper.GetString(r.cfg.Profile.GetConfigField(docsPrefsConfigKey + "." + id))
+	return r.cfg.Profile.ReadProfileString(docsPrefsConfigKey + "." + id)
 }
 
 func (r *RootCommand) writeDocsPref(id, value string) error {

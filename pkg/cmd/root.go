@@ -39,7 +39,11 @@ import (
 // Config is the cli configuration for the user
 var Config config.Config
 
-var rootAccessBaseURL string
+var (
+	rootAccessBaseURL    string
+	rootAPIBaseURL       string
+	rootDashboardBaseURL string
+)
 
 var fs = afero.NewOsFs()
 
@@ -60,6 +64,9 @@ var rootCmd = &cobra.Command{
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
 			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
 			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
+			// `stripe directory` installs itself on first use once the auto-install
+			// rollout reaches a machine, but until that flag is fully rolled out the
+			// prompt is still what most callers get, so describe that.
 			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
@@ -72,6 +79,12 @@ var rootCmd = &cobra.Command{
 		if cmd.Name() == "help" {
 			fullHelpMode = true
 		}
+
+		// Move the config file to the v2 layout before the command reads anything
+		// out of it. This lives here rather than in InitConfig because Go plugins
+		// call InitConfig directly, and would otherwise rewrite the user's config
+		// file themselves at arbitrary times.
+		migrateConfigIfNeeded(cmd)
 
 		// --access-base is a hidden persistent flag accepted by every command, and
 		// feeds the OAuth token refresher below, which runs silently on any command
@@ -273,6 +286,15 @@ func init() {
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 	rootCmd.PersistentFlags().StringVar(&rootAccessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	rootCmd.PersistentFlags().MarkHidden("access-base") //nolint:errcheck
+	// --api-base and --dashboard-base are hidden persistent flags used by the plugin
+	// subsystem (install/upgrade/uninstall/provision/etc.) to target a non-default
+	// environment (e.g. QA/dev). They're only forwarded to plugins when the user
+	// explicitly sets them (see the explicitFlagValue helpers alongside their callers).
+	rootCmd.PersistentFlags().StringVar(&rootAPIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	rootCmd.PersistentFlags().MarkHidden("api-base") //nolint:errcheck
+	rootCmd.PersistentFlags().StringVar(&rootDashboardBaseURL, "dashboard-base", "", "Sets the Dashboard base URL")
+	rootCmd.PersistentFlags().MarkHidden("dashboard-base") //nolint:errcheck
+	rootCmd.SetFlagErrorFunc(flagErrorWithNestedAPIHint)
 
 	// tell viper to monitor the following flags:
 	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
@@ -293,9 +315,9 @@ func init() {
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
-	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
+	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
@@ -307,6 +329,7 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newWhoamiCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
+	rootCmd.AddCommand(newProvisionCmd().cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
@@ -329,8 +352,9 @@ func init() {
 	installedPluginSet := registerInstalledPlugins(rootCmd, &Config, afero.NewOsFs())
 
 	// For known plugins not yet installed, add a hint command so users get
-	// a helpful message instead of "unknown command".
-	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
+	// a helpful message instead of "unknown command". Plugins that auto-install
+	// use runPluginByName to run the user's command once the install finishes.
+	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet, runPluginByName)
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {

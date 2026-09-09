@@ -3,8 +3,10 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/spf13/afero"
@@ -171,32 +173,26 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
+	waitCtx, stop := signal.NotifyContext(pollCtx, os.Interrupt)
+	defer stop()
 
-	tokenResp, err := PollDeviceToken(pollCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval)
+	s := ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+	result, err := PollAndSaveDeviceCredentials(waitCtx, cont.AccessBaseURL, clientID, cont.DeviceCode, interval, cfg)
+	ansi.StopSpinner(s, "", os.Stdout)
 	if err != nil {
-		if pollCtx.Err() != nil {
+		switch {
+		case errors.Is(err, context.Canceled):
+			ansi.ClearLine(os.Stdout)
+			fmt.Println("Canceled. Run 'stripe login --non-interactive' again to try again.")
+			return nil
+		case pollCtx.Err() != nil:
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login --non-interactive' again")
+		default:
+			return err
 		}
-		return err
 	}
 
-	// Clear all stale credentials before saving new ones.
-	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
-
-	if err := saveOAuthCredentials(cfg, tokenResp); err != nil {
-		return fmt.Errorf("failed to save credentials: %w", err)
-	}
-
-	accounts, err := ListAuthorizedAccounts(ctx, cont.AccessBaseURL, tokenResp.AccessToken)
-	if err != nil {
-		return fmt.Errorf("failed to fetch account info: %w", err)
-	}
-	activeID, activeLivemode := pickActiveContext(accounts)
-	if err := populateProfileFromAccounts(cfg, accounts, activeID, activeLivemode); err != nil {
-		return fmt.Errorf("failed to save account info: %w", err)
-	}
-
-	printLoginSuccess(accounts, activeID, activeLivemode)
+	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
 	warnIfInsecureStorage()
 	return nil
 }

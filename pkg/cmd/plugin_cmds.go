@@ -10,8 +10,10 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -50,7 +52,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		Long:  plugin.Description,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// "stripe [host_flags...] plugin_name [plugin_subcommands...] [plugin_flags...]" => "[plugin_subcommands...] [plugin_flags...]"
-			pluginArgs := subsliceAfter(os.Args, cmd.Name())
+			pluginArgs := cmdutil.ArgsAfter(os.Args, cmd.Name())
 			return ptc.runPluginCmdFn(cmd, pluginArgs)
 		},
 		Annotations: map[string]string{"scope": "plugin"},
@@ -64,12 +66,12 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		var args []string
 		if len(s) == 0 {
 			// "stripe help plugin_name [plugin_subcommands...]" => "[plugin_subcommands...] --help"
-			args = subsliceAfter(os.Args, c.Name())
+			args = cmdutil.ArgsAfter(os.Args, c.Name())
 			args = append(args, "--help")
 			c.SetContext(context.Background())
 		} else {
 			// "stripe plugin_name [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
-			args = subsliceAfter(s, c.Name())
+			args = cmdutil.ArgsAfter(s, c.Name())
 		}
 		ptc.runPluginCmdFn(c, args)
 	})
@@ -92,7 +94,7 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 			Use:   ci.Name,
 			Short: ci.Desc,
 			RunE: func(cmd *cobra.Command, args []string) error {
-				pluginArgs := subsliceAfter(os.Args, ptc.cmd.Name())
+				pluginArgs := cmdutil.ArgsAfter(os.Args, ptc.cmd.Name())
 				return ptc.runPluginCmdFn(cmd, pluginArgs)
 			},
 			Annotations: map[string]string{"scope": "plugin"},
@@ -103,6 +105,33 @@ func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandI
 		parent.AddCommand(sub)
 		addPluginSubcommandStubs(sub, ci.Commands, ptc)
 	}
+}
+
+// explicitFlagValue returns value if the named flag was explicitly set by the user, or "" if
+// it was left at its default. This is used to decide what to forward to a plugin via
+// AdditionalInfo: a plugin should only hear about a base URL override the user actually chose,
+// not the CLI's own resolved default.
+func explicitFlagValue(cmd *cobra.Command, name, value string) string {
+	if cmd.Flags().Changed(name) {
+		return value
+	}
+	return ""
+}
+
+// runPluginByName hands off to a plugin that was installed during this invocation
+// rather than at startup, which is how an auto-installing hint command runs the
+// user's original command. It reuses the template command so a just-installed
+// plugin gets the same execution, version-check, and exit-code handling as one
+// that was already present when the CLI started.
+func runPluginByName(cmd *cobra.Command, name string, args []string) error {
+	fs := afero.NewOsFs()
+
+	plugin, err := plugins.LookUpPlugin(commandContextOrBackground(cmd), &Config, fs, name)
+	if err != nil {
+		return err
+	}
+
+	return newPluginTemplateCmd(&Config, &plugin).runPluginCmd(cmd, args)
 }
 
 // runPluginCmd hands off to the plugin itself to take over
@@ -126,7 +155,37 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "", "")
+	// GetString only errors when the flag isn't registered on cmd, which shouldn't
+	// happen here since these plugin commands are always attached under rootCmd
+	// (where --api-base/--dashboard-base/--access-base are defined); fall back to
+	// the same defaults the root flags would carry just in case.
+	apiBaseURL, apiBaseErr := cmd.Flags().GetString("api-base")
+	if apiBaseErr != nil {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+	if err := stripe.ValidateAPIBaseURL(apiBaseURL); err != nil {
+		return err
+	}
+	rawDashboardBaseURL, _ := cmd.Flags().GetString("dashboard-base")
+	dashboardBaseURLResolved := stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL)
+	if rawDashboardBaseURL != "" {
+		dashboardBaseURLResolved = rawDashboardBaseURL
+	}
+	if err := stripe.ValidateDashboardBaseURL(dashboardBaseURLResolved); err != nil {
+		return err
+	}
+	accessBaseURL, accessBaseErr := cmd.Flags().GetString("access-base")
+	if accessBaseErr != nil {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+	if err := login.ValidateAccessBaseURL(accessBaseURL); err != nil {
+		return err
+	}
+
+	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs, "", "",
+		explicitFlagValue(cmd, "api-base", apiBaseURL),
+		explicitFlagValue(cmd, "dashboard-base", rawDashboardBaseURL),
+		explicitFlagValue(cmd, "access-base", accessBaseURL))
 	plugins.CleanupAllClients()
 	if err == nil {
 		dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
@@ -158,19 +217,6 @@ func commandContextOrBackground(cmd *cobra.Command) context.Context {
 	return cmd.Context()
 }
 
-// Return a copy of sl strictly after the first occurrence of str, or empty slice if not found.
-func subsliceAfter(sl []string, str string) []string {
-	for i, s := range sl {
-		if s == str {
-			subsl := sl[i+1:]
-			res := make([]string, len(subsl))
-			copy(res, subsl)
-			return res
-		}
-	}
-	return make([]string, 0)
-}
-
 func resolvePluginTelemetryCommandPath(cmd *cobra.Command, argv []string) string {
 	if cmd == nil {
 		return ""
@@ -188,7 +234,7 @@ func resolvePluginTelemetryCommandPath(cmd *cobra.Command, argv []string) string
 		return basePath
 	}
 
-	pluginArgs := subsliceAfter(argv, pluginRoot.Name())
+	pluginArgs := cmdutil.ArgsAfter(argv, pluginRoot.Name())
 	subcommand := firstPluginTelemetrySubcommand(pluginArgs)
 	if subcommand == "" {
 		return basePath

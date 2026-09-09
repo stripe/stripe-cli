@@ -5,12 +5,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/google/go-github/v72/github"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/installmethod"
 )
 
 // Version of the CLI.
@@ -33,9 +35,32 @@ func CheckLatestVersion() {
 		ansi.StopSpinner(s, "", os.Stdout)
 
 		if needsToUpgrade(Version, latest) {
-			fmt.Println(ansi.Italic("A newer version of the Stripe CLI is available, please update to:"), ansi.Italic(latest))
+			method := installmethod.Detect(installmethod.OSEnv())
+			if notice := upgradeNotice(latest, installmethod.UpgradeAdvice(method, runtime.GOOS)); notice != "" {
+				fmt.Println(notice)
+			}
 		}
 	}
+}
+
+// upgradeNotice builds the out-of-date message, naming the command that upgrades
+// the CLI when the install method is one we can name a command for. Returns ""
+// when the notice should not be printed at all.
+func upgradeNotice(latest string, advice installmethod.Advice) string {
+	if advice.Suppress {
+		return ""
+	}
+
+	notice := fmt.Sprintf("%s %s",
+		ansi.Italic("A newer version of the Stripe CLI is available, please update to:"),
+		ansi.Italic(latest),
+	)
+
+	if advice.Command != "" {
+		notice += fmt.Sprintf("\n%s %s %s", ansi.Italic("Run"), ansi.Bold(advice.Command), ansi.Italic("to upgrade."))
+	}
+
+	return notice
 }
 
 func needsToUpgrade(version, latest string) bool {

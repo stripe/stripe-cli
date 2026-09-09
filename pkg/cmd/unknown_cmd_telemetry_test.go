@@ -33,18 +33,7 @@ func (m *mockUnknownCmdTelemetryClient) SendEvent(_ context.Context, eventName s
 }
 
 func TestRecordUnknownCommand_NotInAgentEnv(t *testing.T) {
-	t.Setenv("CLAUDECODE", "")
-	t.Setenv("CURSOR_AGENT", "")
-	t.Setenv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "")
-	t.Setenv("CODEX_SANDBOX", "")
-	t.Setenv("CODEX_THREAD_ID", "")
-	t.Setenv("CODEX_SANDBOX_NETWORK_DISABLED", "")
-	t.Setenv("CODEX_CI", "")
-	t.Setenv("CLINE_ACTIVE", "")
-	t.Setenv("GEMINI_CLI", "")
-	t.Setenv("OPENCODE", "")
-	t.Setenv("OPENCLAW_SHELL", "")
-	t.Setenv("ANTIGRAVITY_CLI_ALIAS", "")
+	clearAgentEnv(t)
 
 	tmpDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)

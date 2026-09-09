@@ -1,0 +1,55 @@
+name: Release note label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate release note label
+    runs-on: ubuntu-latest
+    env:
+      LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+    steps:
+      - name: Require a release note label
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          # Keep in sync with the labels in .github/release.yml. dependencies and
+          # documentation are already applied by dependabot and during triage, and
+          # both are excluded from the notes, so they count as a choice too.
+          allowed = {
+              "breaking-change",
+              "security",
+              "deprecation",
+              "enhancement",
+              "bug",
+              "release-notes",
+              "skip-release-notes",
+              "dependencies",
+              "documentation",
+          }
+          labels = set(json.loads(os.environ["LABELS"]))
+          selected = sorted(labels & allowed)
+
+          if selected:
+              print(f"Release note label: {', '.join(selected)}")
+              sys.exit(0)
+
+          print(
+              "::error::Please add a label to your pull request. We use it to generate "
+              "the changelog when releasing a new version."
+          )
+          print("Pick from:")
+          print("- breaking-change, security, deprecation, enhancement, or bug if one of these describes the change")
+          print("- release-notes for all other user-facing changes")
+          print("- skip-release-notes for non user-facing changes; the title will not show up in the changelog")
+          sys.exit(1)
+          PY

@@ -18,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/installmethod"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -85,19 +86,15 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 	agentHostKind, agentHostRaw := useragent.DetectAgentHost(os.Getenv)
 
 	return &CLIAnalyticsEventMetadata{
-		InvocationID:  uuid.NewString(),
-		CLIVersion:    version.Version,
-		OS:            runtime.GOOS,
-		Arch:          runtime.GOARCH,
-		AIAgent:       useragent.DetectAIAgent(os.Getenv),
-		AgentHostKind: agentHostKind,
-		AgentHostRaw:  agentHostRaw,
-		AgentVersion:  useragent.DetectAgentVersion(os.Getenv),
-		InstallMethod: useragent.DetectInstallMethod(
-			os.Getenv,
-			os.Executable,
-			func(p string) error { _, err := os.Stat(p); return err },
-		),
+		InvocationID:    uuid.NewString(),
+		CLIVersion:      version.Version,
+		OS:              runtime.GOOS,
+		Arch:            runtime.GOARCH,
+		AIAgent:         useragent.DetectAIAgent(os.Getenv),
+		AgentHostKind:   agentHostKind,
+		AgentHostRaw:    agentHostRaw,
+		AgentVersion:    useragent.DetectAgentVersion(os.Getenv),
+		InstallMethod:   installmethod.Detect(installmethod.OSEnv()),
 		InTmux:          useragent.DetectInTmux(os.Getenv),
 		InScreen:        useragent.DetectInScreen(os.Getenv),
 		TerminalProgram: useragent.DetectTerminalProgram(os.Getenv),
