@@ -224,6 +224,61 @@ func TestSendEvent_WithAIAgent(t *testing.T) {
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
+func TestSendEvent_WithAgentHost(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		bodyString := string(body)
+		require.Contains(t, bodyString, "ai_agent=claude_code")
+		require.Contains(t, bodyString, "agent_version=2.1.222")
+		require.Contains(t, bodyString, "agent_host_kind=desktop")
+	}))
+	defer ts.Close()
+	baseURL, _ := url.Parse(ts.URL)
+
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
+		InvocationID:  "123456",
+		UserAgent:     "Unit Test",
+		CLIVersion:    "master",
+		OS:            "darwin",
+		CommandPath:   "stripe test",
+		Merchant:      "acct_1234",
+		AIAgent:       "claude_code",
+		AgentHostKind: "desktop",
+		AgentVersion:  "2.1.222",
+	}
+
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
+func TestSendEvent_OmitsUnsetAgentFields(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		bodyString := string(body)
+		require.NotContains(t, bodyString, "agent_version")
+		require.NotContains(t, bodyString, "agent_host_kind")
+		require.NotContains(t, bodyString, "agent_host_raw")
+	}))
+	defer ts.Close()
+	baseURL, _ := url.Parse(ts.URL)
+
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
+		InvocationID: "123456",
+		UserAgent:    "Unit Test",
+		CLIVersion:   "master",
+		OS:           "linux",
+		CommandPath:  "stripe test",
+		Merchant:     "acct_1234",
+	}
+
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
 func TestSkipsSendEventWhenMetadataIsEmpty(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Fail(t, "Did not expect to reach sendData")
@@ -275,15 +330,19 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 	tests := []struct {
 		name     string
 		envVar   string
+		envValue string
 		expected string
 	}{
-		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "antigravity"},
-		{"Claude Code", "CLAUDECODE", "claude_code"},
-		{"Cline", "CLINE_ACTIVE", "cline"},
-		{"Codex CLI", "CODEX_SANDBOX", "codex_cli"},
-		{"Cursor", "CURSOR_AGENT", "cursor"},
-		{"Gemini CLI", "GEMINI_CLI", "gemini_cli"},
-		{"Open Code", "OPENCODE", "open_code"},
+		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "true", "antigravity"},
+		{"Claude Code", "CLAUDECODE", "true", "claude_code"},
+		{"Cline", "CLINE_ACTIVE", "true", "cline"},
+		{"Codex CLI sandbox", "CODEX_SANDBOX", "true", "codex_cli"},
+		{"Codex CLI thread", "CODEX_THREAD_ID", "thread-id", "codex_cli"},
+		{"Codex CLI sandbox network", "CODEX_SANDBOX_NETWORK_DISABLED", "true", "codex_cli"},
+		{"Codex CLI CI", "CODEX_CI", "true", "codex_cli"},
+		{"Cursor", "CURSOR_AGENT", "true", "cursor"},
+		{"Gemini CLI", "GEMINI_CLI", "true", "gemini_cli"},
+		{"Open Code", "OPENCODE", "true", "open_code"},
 	}
 
 	for _, tt := range tests {
@@ -291,7 +350,7 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 			// Mock env getter that returns only the specific env var being tested
 			getEnv := func(key string) string {
 				if key == tt.envVar {
-					return "true"
+					return tt.envValue
 				}
 				return ""
 			}
@@ -311,4 +370,78 @@ func TestAIAgentDetection_Priority(t *testing.T) {
 	}
 	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "antigravity", result)
+}
+
+func clearAgentEnv(t *testing.T) {
+	for _, key := range []string{
+		"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+		"CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI",
+		"CURSOR_AGENT", "GEMINI_CLI", "OPENCODE", "OPENCLAW_SHELL",
+		"AI_AGENT", "AGENT", "CLAUDE_CODE_ENTRYPOINT", "__CFBundleIdentifier",
+	} {
+		t.Setenv(key, "")
+	}
+}
+
+func TestNewEventMetadata_FromObservedDesktopSession(t *testing.T) {
+	// Values observed in a real Claude Desktop session; see TestObservedAgentSessions
+	// in pkg/useragent for the full set and for Codex Desktop.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("AI_AGENT", "claude-code_2-1-227_agent")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "claude-desktop")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "claude_code", tel.AIAgent)
+	require.Equal(t, "desktop", tel.AgentHostKind)
+	require.Equal(t, "2.1.227", tel.AgentVersion)
+	require.Equal(t, "claude-desktop", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_ReportsRawHostWhenUncategorized(t *testing.T) {
+	// The debugging case: a host neither vendor had shipped when this CLI was released.
+	// The category cannot identify it; the raw value can.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "some-future-surface")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "other", tel.AgentHostKind)
+	require.Equal(t, "some-future-surface", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_InfersCodexTerminalFromAbsentOriginator(t *testing.T) {
+	// Codex sets its originator override only from non-default surfaces, so a terminal
+	// session reports no host at all. Without the inference this is indistinguishable
+	// from a CLI too old to report a host, and terminal Codex is invisible.
+	clearAgentEnv(t)
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "codex_cli", tel.AIAgent)
+	require.Equal(t, "terminal", tel.AgentHostKind)
+	require.Equal(t, "codex-cli", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_InfersAgentFromHostAlone(t *testing.T) {
+	// A Claude Code entrypoint with no CLAUDECODE: hosted and SDK surfaces do not always
+	// set it. The entrypoint names the agent, so the two fields stay consistent.
+	clearAgentEnv(t)
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "remote-trigger")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "claude_code", tel.AIAgent)
+	require.Equal(t, "remote", tel.AgentHostKind)
+	require.Equal(t, "remote-trigger", tel.AgentHostRaw)
+}
+
+func TestNewEventMetadata_CategorizesCodexVSCode(t *testing.T) {
+	clearAgentEnv(t)
+	t.Setenv("CODEX_CI", "1")
+	t.Setenv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "codex_vscode")
+
+	tel := stripe.NewEventMetadata()
+	require.Equal(t, "codex_cli", tel.AIAgent)
+	require.Equal(t, "ide", tel.AgentHostKind)
+	require.Equal(t, "codex-vscode", tel.AgentHostRaw)
 }

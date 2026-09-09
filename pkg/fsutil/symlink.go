@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/afero"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 func lstatIfPossible(fs afero.Fs, path string) (os.FileInfo, bool, error) {
@@ -80,7 +82,7 @@ func refuseWriteThroughSymlink(entry os.FileInfo, err error, path, name string) 
 		return fmt.Errorf("failed to check %s for symlink: %w", name, err)
 	}
 	if entry.Mode()&os.ModeSymlink == os.ModeSymlink {
-		return fmt.Errorf("refusing to write %s: %s is a symlink", name, path)
+		return errorcategory.Errorf(errorcategory.Filesystem, "refusing to write %s: %s is a symlink", name, path)
 	}
 
 	return nil

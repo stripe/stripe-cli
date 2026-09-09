@@ -86,6 +86,8 @@ func runClimateOperation(cmd *cobra.Command, opCmd *OperationCmd, requestParams 
 		return err
 	}
 
+	opCmd.Profile.PrintActiveContextBanner()
+
 	// Suppress base output so we can transform the response before printing.
 	opCmd.SuppressOutput = true
 

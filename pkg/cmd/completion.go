@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -115,9 +116,9 @@ func selectShell(shell string, writeToStdout bool) error {
 		return genFish(writeToStdout, autoDetected)
 	default:
 		if shell != "" {
-			return fmt.Errorf("unsupported shell %q; supported shells are: bash, zsh, fish", shell)
+			return errorcategory.Errorf(errorcategory.UserInput, "unsupported shell %q; supported shells are: bash, zsh, fish", shell)
 		}
-		return fmt.Errorf("could not automatically detect your shell; please run the command with the --shell flag for bash, zsh, or fish")
+		return errorcategory.Errorf(errorcategory.UserInput, "could not automatically detect your shell; please run the command with the --shell flag for bash, zsh, or fish")
 	}
 }
 

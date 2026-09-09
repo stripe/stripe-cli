@@ -53,6 +53,15 @@ func Bold(text string) string {
 	return color.Sprintf(color.Bold(text))
 }
 
+// purpleIndex is the closest 8-bit terminal color (#875fff) to #746cff.
+const purpleIndex = 99
+
+// Purple returns purple text if the writer supports colors.
+func Purple(text string) string {
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Index(purpleIndex, text))
+}
+
 // Color returns an aurora.Aurora instance with colors enabled or disabled
 // depending on whether the writer supports colors.
 func Color(w io.Writer) aurora.Aurora {
@@ -180,6 +189,17 @@ func StopSpinner(s *spinner.Spinner, msg string, w io.Writer) {
 	}
 
 	s.Stop()
+}
+
+// ClearLine erases the current line and returns the cursor to its start, if
+// the writer is a terminal that supports it. Useful for erasing a stray ^C
+// the terminal driver echoed on interrupt before printing a replacement
+// message. It's a no-op otherwise.
+func ClearLine(w io.Writer) {
+	if !isTerminal(w) || !shouldUseColors(w) {
+		return
+	}
+	fmt.Fprint(w, "\r\x1b[K")
 }
 
 // StrikeThrough returns struck though text if the writer supports colors

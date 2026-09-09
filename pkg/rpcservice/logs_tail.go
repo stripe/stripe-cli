@@ -2,13 +2,13 @@ package rpcservice
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -85,7 +85,7 @@ func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *websocket.Visitor {
 		VisitData: func(de websocket.DataElement) error {
 			log, ok := de.Data.(logtailing.EventPayload)
 			if !ok {
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
+				return errorcategory.Errorf(errorcategory.Internal, "VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
 			}
 
 			logResponse := rpc.LogsTailResponse_Log{

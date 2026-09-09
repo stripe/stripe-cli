@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // IndexURL is the canonical Stripe skills index. It is a var (not a const) so
@@ -354,7 +356,7 @@ func get(ctx context.Context, client *http.Client, rawURL string) ([]byte, error
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%s returned %d", rawURL, resp.StatusCode)
+		return nil, errorcategory.Errorf(errorcategory.API, "%s returned %d", rawURL, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)

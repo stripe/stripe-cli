@@ -20,6 +20,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -172,6 +173,10 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if ac, acErr := config.GetActiveContext(); acErr == nil && ac != nil && ac.Livemode {
+		return errorcategory.UserInputErrorf("'stripe logs tail' only works in sandboxes, but you're in live mode. Run 'stripe switch context' to select a sandbox.")
+	}
+
 	creds, err := tailCmd.cfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err
@@ -293,7 +298,7 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 		VisitData: func(de websocket.DataElement) error {
 			log, ok := de.Data.(logtailing.EventPayload)
 			if !ok {
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
+				return errorcategory.Errorf(errorcategory.Internal, "VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
 			}
 
 			sanitizePayload(&log)

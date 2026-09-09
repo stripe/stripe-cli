@@ -67,6 +67,8 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	fc.Cfg.Profile.PrintActiveContextBanner()
+
 	creds, err := fc.Cfg.Profile.ResolveCredentials(false)
 	if err != nil {
 		return err

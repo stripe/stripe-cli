@@ -5,10 +5,11 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 const (
@@ -105,7 +106,7 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 		return nil
 	}
 	if len(plan.Command) == 0 {
-		return fmt.Errorf("missing command for %s action", plan.Action)
+		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
 
 	name, installArgs := plan.Command[0], plan.Command[1:]

@@ -3,8 +3,9 @@ package spec
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 //
@@ -117,7 +118,7 @@ func (e *StripeEnum) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	return fmt.Errorf("x-stripeEnum: expected object or array, got: %s", string(data))
+	return errorcategory.Errorf(errorcategory.Internal, "x-stripeEnum: expected object or array, got: %s", string(data))
 }
 
 // This is a list of fields that either we handle properly or we're confident
@@ -225,7 +226,7 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	}
 
 	for unsupportedField := range rawFields {
-		return fmt.Errorf(
+		return errorcategory.Errorf(errorcategory.Internal,
 			"unsupported field in JSON schema: '%s'", unsupportedField)
 	}
 
@@ -327,7 +328,7 @@ func LoadSpec(specPath string) (*Spec, error) {
 
 	err = json.Unmarshal(data, &stripeSpec)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding spec: %v", err)
+		return nil, errorcategory.Errorf(errorcategory.Internal, "error decoding spec: %v", err)
 	}
 
 	return &stripeSpec, nil

@@ -66,7 +66,6 @@ func TestListPluginsUsesAuthenticatedEndpoint(t *testing.T) {
 	require.Equal(t, "create", pluginList.Plugins[0].Commands[0].Name)
 	require.Len(t, pluginList.Plugins[0].Releases, 1)
 	require.Equal(t, "1.12.0", pluginList.Plugins[0].Releases[0].Version)
-	require.Equal(t, "20", pluginList.Plugins[0].Releases[0].Runtime["node"])
 }
 
 func TestListPluginsUsesAnonymousEndpointWhenAPIKeyNotConfigured(t *testing.T) {
@@ -320,7 +319,6 @@ func TestResolvePluginForInstallUsesLocalMetadataAsMetadataBase(t *testing.T) {
 				OS:      runtime.GOOS,
 				Version: "1.0.0",
 				Sum:     "abc123",
-				Runtime: map[string]string{"node": "20"},
 			},
 		},
 	}
@@ -362,7 +360,6 @@ func TestResolvePluginForInstallUsesLocalMetadataAsMetadataBase(t *testing.T) {
 
 	release := resolvedPlugin.Plugin.getReleaseForVersion("1.0.0")
 	require.NotNil(t, release)
-	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *testing.T) {
@@ -382,6 +379,9 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 		switch req.URL.Path {
 		case "/ajax/stripecli/plugins_metadata":
 			metadataLookups++
+			// The anonymous endpoint keys the auto-install rollout on this, and it is
+			// the only identifier it gets.
+			require.Equal(t, TestMachineUUID, req.URL.Query().Get("machine_uuid"))
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      "https://example.test/appA/2.0.1",
 				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
@@ -439,6 +439,71 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(
 	require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
 	require.Equal(t, "2.0.1", resolvedPlugin.Version)
 	require.Empty(t, resolvedPlugin.BinaryURL)
+	// Nothing answered the auto-install question, so the caller keeps prompting
+	// rather than installing on an assumption.
+	require.False(t, resolvedPlugin.AutoInstall)
+}
+
+func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
+	optedIn, optedOut := true, false
+
+	tests := []struct {
+		name string
+		// autoInstall is what the response says; nil leaves the field out entirely,
+		// as an older server would.
+		autoInstall     *bool
+		wantAutoInstall bool
+	}{
+		{
+			name:            "server opted this machine in",
+			autoInstall:     &optedIn,
+			wantAutoInstall: true,
+		},
+		{
+			name:        "server opted this machine out",
+			autoInstall: &optedOut,
+		},
+		{
+			name: "server did not answer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			config := &TestConfig{MachineUUID: "machine-abc"}
+			config.InitConfig()
+			manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+			response := map[string]interface{}{
+				"binary_url":      "https://example.test/appA/2.0.1",
+				"plugin_manifest": string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			}
+			if tt.autoInstall != nil {
+				response["auto_install"] = *tt.autoInstall
+			}
+
+			stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				switch req.URL.Path {
+				case "/v1/stripecli/get-plugin-metadata":
+					// The server hashes this to decide which side of the auto-install
+					// rollout the machine is on, so it has to reach the endpoint.
+					require.Equal(t, "machine-abc", req.URL.Query().Get("machine_uuid"))
+					body, err := json.Marshal(response)
+					require.NoError(t, err)
+					_, _ = res.Write(body)
+				default:
+					t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+				}
+			}))
+			defer stripeServer.Close()
+
+			resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL, stripeServer.URL)
+			require.NoError(t, err)
+			require.Equal(t, "2.0.1", resolvedPlugin.Version)
+			require.Equal(t, tt.wantAutoInstall, resolvedPlugin.AutoInstall)
+		})
+	}
 }
 
 func TestResolvePluginForInstallPrefersFresherCachedManifestWhenEndpointFails(t *testing.T) {
@@ -463,7 +528,6 @@ func TestResolvePluginForInstallPrefersFresherCachedManifestWhenEndpointFails(t 
 				OS:      runtime.GOOS,
 				Version: "1.0.0",
 				Sum:     "abc123",
-				Runtime: map[string]string{"node": "20"},
 			},
 		},
 	}
@@ -504,7 +568,6 @@ func TestResolvePluginForInstallPrefersFresherCachedManifestWhenEndpointFails(t 
 
 	release := resolvedPlugin.Plugin.getReleaseForVersion("1.0.0")
 	require.NotNil(t, release)
-	require.Equal(t, "20", release.Runtime["node"])
 }
 
 func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) {
@@ -1138,150 +1201,6 @@ func TestIsPluginCommand(t *testing.T) {
 	require.False(t, IsPluginCommand(notPluginCmd))
 }
 
-func TestIsValidNodeLTSVersion(t *testing.T) {
-	validVersions := []string{"18", "20", "22", "24", "26"}
-	for _, version := range validVersions {
-		require.True(t, isValidNodeLTSVersion(version), "Expected %s to be valid LTS version", version)
-	}
-
-	invalidVersions := []string{"10", "11", "12", "13", "14", "15", "16", "17", "19", "21", "23", "25"}
-	for _, version := range invalidVersions {
-		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid LTS version", version)
-	}
-
-	invalidFormats := []string{"", "abc", "20.0", "v20", "20.0.0", "node20"}
-	for _, version := range invalidFormats {
-		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid format", version)
-	}
-}
-
-func TestValidateRuntimeVersionsValid(t *testing.T) {
-	pluginList := &PluginList{
-		Plugins: []Plugin{
-			{
-				Shortname: "test-plugin",
-				Releases: []Release{
-					{
-						Version: "1.0.0",
-						Runtime: map[string]string{"node": "18"},
-					},
-					{
-						Version: "1.1.0",
-						Runtime: map[string]string{"node": "20"},
-					},
-					{
-						Version: "2.0.0",
-						Runtime: map[string]string{"node": "24"},
-					},
-				},
-			},
-		},
-	}
-
-	require.NoError(t, validateRuntimeVersions(pluginList))
-}
-
-func TestValidateRuntimeVersionsInvalidNonLTS(t *testing.T) {
-	pluginList := &PluginList{
-		Plugins: []Plugin{
-			{
-				Shortname: "test-plugin",
-				Releases: []Release{
-					{
-						Version: "1.0.0",
-						Runtime: map[string]string{"node": "19"},
-					},
-				},
-			},
-		},
-	}
-
-	err := validateRuntimeVersions(pluginList)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "invalid Node.js version '19'")
-	require.ErrorContains(t, err, "test-plugin")
-	require.ErrorContains(t, err, "Only LTS major versions are allowed")
-}
-
-func TestValidateRuntimeVersionsInvalidOldVersion(t *testing.T) {
-	pluginList := &PluginList{
-		Plugins: []Plugin{
-			{
-				Shortname: "test-plugin",
-				Releases: []Release{
-					{
-						Version: "1.0.0",
-						Runtime: map[string]string{"node": "10"},
-					},
-				},
-			},
-		},
-	}
-
-	err := validateRuntimeVersions(pluginList)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "invalid Node.js version '10'")
-}
-
-func TestValidateRuntimeVersionsNoRuntime(t *testing.T) {
-	pluginList := &PluginList{
-		Plugins: []Plugin{
-			{
-				Shortname: "test-plugin",
-				Releases: []Release{
-					{
-						Version: "1.0.0",
-					},
-				},
-			},
-		},
-	}
-
-	require.NoError(t, validateRuntimeVersions(pluginList))
-}
-
-func TestValidatePluginManifestWithInvalidRuntime(t *testing.T) {
-	invalidManifest := `
-[[Plugin]]
-  Shortname = "test-app"
-  Binary = "stripe-cli-test-app"
-  MagicCookieValue = "TEST-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "amd64"
-    OS = "darwin"
-    Version = "1.0.0"
-    Sum = "abcdef1234567890"
-    Runtime = {node = "17"}
-`
-
-	_, err := validatePluginManifest([]byte(invalidManifest))
-	require.Error(t, err)
-	require.ErrorContains(t, err, "invalid Node.js version '17'")
-}
-
-func TestValidatePluginManifestWithValidRuntime(t *testing.T) {
-	validManifest := `
-[[Plugin]]
-  Shortname = "test-app"
-  Binary = "stripe-cli-test-app"
-  MagicCookieValue = "TEST-COOKIE"
-
-  [[Plugin.Release]]
-    Arch = "amd64"
-    OS = "darwin"
-    Version = "1.0.0"
-    Sum = "abcdef1234567890"
-    Runtime = {node = "24"}
-`
-
-	pluginList, err := validatePluginManifest([]byte(validManifest))
-	require.NoError(t, err)
-	require.NotNil(t, pluginList)
-	require.Len(t, pluginList.Plugins, 1)
-	require.Equal(t, "24", pluginList.Plugins[0].Releases[0].Runtime["node"])
-}
-
 func TestAddPluginToListSortsBySemver(t *testing.T) {
 	pluginList := &PluginList{
 		Plugins: []Plugin{
@@ -1335,10 +1254,7 @@ func testListEndpointResponseJSON() []byte {
         {
           "os": "%s",
           "arch": "%s",
-          "version": "1.12.0",
-          "runtime": {
-            "node": "20"
-          }
+          "version": "1.12.0"
         }
       ],
       "binary_url": null

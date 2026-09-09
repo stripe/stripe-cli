@@ -2,10 +2,11 @@
 package validators
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 func getCommandPath(cmd *cobra.Command) string {
@@ -19,6 +20,10 @@ func getCommandPath(cmd *cobra.Command) string {
 	return commandPath
 }
 
+func userInputError(message string) error {
+	return errorcategory.New(errorcategory.UserInput, message)
+}
+
 // NoArgs is a validator for commands to print an error when an argument is provided
 func NoArgs(cmd *cobra.Command, args []string) error {
 	commandPath := getCommandPath(cmd)
@@ -29,7 +34,7 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 	)
 
 	if len(args) > 0 {
-		return errors.New(errorMessage)
+		return userInputError(errorMessage)
 	}
 
 	return nil
@@ -54,7 +59,7 @@ func ExactArgs(num int) cobra.PositionalArgs {
 		)
 
 		if len(args) != num {
-			return errors.New(errorMessage)
+			return userInputError(errorMessage)
 		}
 		return nil
 	}
@@ -79,7 +84,7 @@ func MaximumNArgs(num int) cobra.PositionalArgs {
 		)
 
 		if len(args) > num {
-			return errors.New(errorMessage)
+			return userInputError(errorMessage)
 		}
 		return nil
 	}

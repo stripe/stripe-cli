@@ -301,6 +301,13 @@ var validThinEvents = map[string]bool{
 var validPreviewThinEvents = map[string]bool{
 	"v2.core.account[configuration.money_manager].capability_status_updated": true,
 	"v2.core.account[configuration.money_manager].updated":                   true,
+	"v2.core.approval_request.approved":                                      true,
+	"v2.core.approval_request.canceled":                                      true,
+	"v2.core.approval_request.created":                                       true,
+	"v2.core.approval_request.expired":                                       true,
+	"v2.core.approval_request.failed":                                        true,
+	"v2.core.approval_request.rejected":                                      true,
+	"v2.core.approval_request.succeeded":                                     true,
 	"v2.core.batch_job.batch_failed":                                         true,
 	"v2.core.batch_job.canceled":                                             true,
 	"v2.core.batch_job.completed":                                            true,
@@ -361,4 +368,5 @@ var validPreviewThinEvents = map[string]bool{
 	"v2.orchestrated_commerce.agreement.created":                             true,
 	"v2.orchestrated_commerce.agreement.partially_confirmed":                 true,
 	"v2.orchestrated_commerce.agreement.terminated":                          true,
+	"v2.signals.account_evaluation.complete":                                 true,
 }

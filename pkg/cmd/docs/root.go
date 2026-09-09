@@ -13,6 +13,8 @@ import (
 	"golang.org/x/term"
 
 	cliconfig "github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 
@@ -38,6 +40,7 @@ type RootCommand struct {
 
 	noPager        bool
 	nonInteractive bool
+	apiBaseURL     string
 }
 
 // Option is a functional option for configuring RootCommand.
@@ -64,6 +67,11 @@ func WithConfig(cfg *cliconfig.Config) Option {
 	return func(r *RootCommand) { r.cfg = cfg }
 }
 
+// WithAPIBaseURL sets the Stripe API base URL used for authenticated requests.
+func WithAPIBaseURL(u string) Option {
+	return func(r *RootCommand) { r.apiBaseURL = u }
+}
+
 // New creates a new RootCommand with sensible defaults.
 func New() *RootCommand {
 	r := &RootCommand{}
@@ -87,15 +95,16 @@ Read API Reference pages by their identifier:
   stripe docs api product
   stripe docs api GET /v1/products
   stripe docs api product.created`,
-		Args:              cobra.ArbitraryArgs,
-		PersistentPreRunE: r.preRun,
-		RunE:              r.run,
-		SilenceUsage:      true,
+		Args:         cobra.ArbitraryArgs,
+		RunE:         r.withSetup(r.run),
+		SilenceUsage: true,
 	}
 
 	agentDetected := useragent.DetectAIAgent(os.Getenv) != ""
 	r.cmd.PersistentFlags().BoolVar(&r.noPager, "no-pager", agentDetected, "Write output directly to stdout")
 	r.cmd.PersistentFlags().BoolVar(&r.nonInteractive, "non-interactive", agentDetected, "Write output directly without the interactive browser")
+	r.cmd.PersistentFlags().StringVar(&r.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	_ = r.cmd.PersistentFlags().MarkHidden("api-base")
 
 	docsGroup := &cobra.Group{ID: "docs", Title: "Docs Commands:"}
 
@@ -148,9 +157,12 @@ func (r *RootCommand) initClient() {
 		if accountID, err := r.cfg.Profile.GetAccountID(); err == nil {
 			clientOpts = append(clientOpts, pkgdocs.WithCacheKeyPrefix(accountID))
 		}
-		if creds, err := r.cfg.Profile.ResolveCredentials(false); err == nil {
-			clientOpts = append(clientOpts, pkgdocs.WithAPIKey(creds.Token))
+		if creds, err := r.cfg.Profile.ResolveCredentialsForAnyMode(false); err == nil {
+			clientOpts = append(clientOpts, pkgdocs.WithCredentials(creds))
 		}
+	}
+	if r.apiBaseURL != "" {
+		clientOpts = append(clientOpts, pkgdocs.WithAPIBaseURL(r.apiBaseURL))
 	}
 	if len(clientOpts) > 0 {
 		r.client.WithOptions(clientOpts...)
@@ -192,10 +204,43 @@ func (r *RootCommand) initLogger() {
 	}
 }
 
-func (r *RootCommand) preRun(_ *cobra.Command, _ []string) error {
+// withSetup wraps a RunE so that setup runs after flag parsing but before the
+// command body.
+//
+// The docs tree deliberately does not use a PersistentPreRun hook for this. Cobra
+// runs only the closest such hook in the chain, so declaring one here shadows the
+// root command's, which silently disables config migration, --access-base
+// validation, Sentry command context, and command-invocation telemetry for every
+// command under `stripe docs`. Other CLI commands do their post-flag setup at the
+// top of RunE for the same reason; see runListenCmd.
+func (r *RootCommand) withSetup(run func(*cobra.Command, []string) error) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := r.setup(); err != nil {
+			return err
+		}
+
+		return run(cmd, args)
+	}
+}
+
+// setup initializes the logger, renderer, and docs client from parsed flags and
+// stored credentials. It runs once per invocation, via withSetup.
+func (r *RootCommand) setup() error {
 	r.initLogger()
 	r.initRenderer()
 	if r.client != nil {
+		var credOpts []pkgdocs.ClientOption
+		if r.cfg != nil {
+			if creds, err := r.cfg.Profile.ResolveCredentialsForAnyMode(false); err == nil {
+				credOpts = append(credOpts, pkgdocs.WithCredentials(creds))
+			}
+		}
+		if r.cmd.PersistentFlags().Changed("api-base") {
+			credOpts = append(credOpts, pkgdocs.WithAPIBaseURL(r.apiBaseURL))
+		}
+		if len(credOpts) > 0 {
+			r.client.WithOptions(credOpts...)
+		}
 		r.client.WithOptions(pkgdocs.WithPrefs(r.loadDocsPrefMap()))
 	}
 	if r.logger != nil {
@@ -221,10 +266,10 @@ func (r *RootCommand) run(cmd *cobra.Command, args []string) error {
 	}
 
 	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "docs client not initialized")
 	}
 	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "markdown renderer not initialized")
 	}
 
 	ref := parseDocsRef(args)
@@ -280,10 +325,10 @@ func terminalSize(cmd *cobra.Command) (w, h int, ok bool) {
 // tui.WithPaletteInput) are forwarded to the model constructor.
 func (r *RootCommand) show(cmd *cobra.Command, page *pkgdocs.Page, extraOpts ...tui.Option) error {
 	if r.client == nil {
-		return fmt.Errorf("docs client not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "docs client not initialized")
 	}
 	if r.renderer == nil {
-		return fmt.Errorf("markdown renderer not initialized")
+		return errorcategory.Errorf(errorcategory.Internal, "markdown renderer not initialized")
 	}
 
 	if r.useTUI(cmd) {
