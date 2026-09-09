@@ -325,7 +325,7 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 	rows := buildContextRows(accounts, activeID, activeLivemode)
 
 	if len(rows) == 0 {
-		fmt.Printf("%s Done! The Stripe CLI is configured with your OAuth credentials.\n", color.Green("✓"))
+		fmt.Printf("%s Done! The Stripe CLI is configured with your credentials.\n", color.Green("✓"))
 		return
 	}
 

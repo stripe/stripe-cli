@@ -35,7 +35,7 @@ func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config
 		return nil, err
 	}
 	if !strings.HasPrefix(uat, "oak_") {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in with OAuth; run 'stripe login' first")
+		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in; run 'stripe login' first")
 	}
 
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, uat)
