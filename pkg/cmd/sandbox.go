@@ -483,11 +483,14 @@ type sandboxNewCmd struct {
 	apiBase          string
 }
 
+type sandboxListClient interface {
+	ListAccessible(context.Context) ([]sandbox.ManagedSandbox, error)
+}
+
 type sandboxListCmd struct {
-	cmd           *cobra.Command
-	stripeAccount string
-	stripeVersion string
-	apiBase       string
+	cmd     *cobra.Command
+	apiBase string
+	client  sandboxListClient
 }
 
 type sandboxDeleteCmd struct {
@@ -946,140 +949,30 @@ func newSandboxListCmd() *sandboxListCmd {
 		Hidden: true,
 	}
 
-	slc.cmd.Flags().StringVar(&slc.stripeAccount, "stripe-account", "", "Live account (acct_...) whose sandboxes to list; defaults to your logged-in account")
-	slc.cmd.Flags().StringVar(&slc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
-	_ = slc.cmd.Flags().MarkHidden("stripe-version")
-
 	slc.cmd.Flags().StringVar(&slc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = slc.cmd.Flags().MarkHidden("api-base")
 
 	return slc
 }
 
-//nolint:gocyclo // The hidden POC keeps OAuth and legacy fallback paths together until M3c.
 func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) error {
-	if config.KeyRing == nil {
-		return errorcategory.Errorf(errorcategory.Auth, "credential store unavailable; run `stripe login` first")
-	}
-	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
-	if err != nil || len(uatBytes) == 0 {
-		return errorcategory.Errorf(errorcategory.Auth, "no user access token found; run `stripe login` first")
-	}
-	uat := strings.TrimSpace(string(uatBytes))
-
-	stripeAccount := strings.TrimSpace(slc.stripeAccount)
-	if stripeAccount != "" {
-		if strings.HasPrefix(stripeAccount, "org_") {
-			return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account (acct_...), not an organization (org_...)")
-		}
-		if !strings.HasPrefix(stripeAccount, "acct_") {
-			return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account id (acct_...), got %q", stripeAccount)
-		}
+	client := slc.client
+	if client == nil {
+		client = sandbox.NewManagementClient(slc.apiBase, Config.GetProfile())
 	}
 
-	baseURL, err := url.Parse(slc.apiBase)
-	if err != nil {
-		return fmt.Errorf("invalid --api-base %q: %w", slc.apiBase, err)
-	}
-
-	oauthAccounts, isOAuth, err := slc.oauthAuthorizedAccounts(cmd.Context())
-	if err != nil {
-		return err
-	}
-	if isOAuth {
-		return slc.printOAuthSandboxes(cmd, oauthAccounts, stripeAccount)
-	}
-
-	client := &stripe.Client{
-		BaseURL: baseURL,
-	}
-
-	authConfigure := func(req *http.Request) error {
-		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)
-		req.Header.Set("Stripe-Version", slc.stripeVersion)
-		req.Header.Set("Content-Type", stripe.V2ContentType)
-		return nil
-	}
-
-	// Fetch accessible workspaces once and build maps for translation
-	accessible, err := fetchAccessibleWorkspaces(cmd.Context(), client, authConfigure)
-	if err != nil {
-		return err
-	}
-	acctByWksp := make(map[string]string, len(accessible))
-	nameByWksp := make(map[string]string, len(accessible))
-	for _, w := range accessible {
-		if w.ID != "" {
-			acctByWksp[w.ID] = w.MerchantID
-			nameByWksp[w.ID] = w.Name
-		}
-	}
-
-	// Resolve the live parent (workspace id, acct_, and name)
-	var liveWorkspace, liveAccount, liveName string
-	if stripeAccount != "" {
-		for _, w := range accessible {
-			if w.MerchantID == stripeAccount && strings.HasPrefix(w.ID, "wksp_") {
-				liveWorkspace, liveName = w.ID, w.Name
-				break
-			}
-		}
-		if liveWorkspace == "" {
-			return errorcategory.Errorf(errorcategory.UserInput, "no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
-		}
-		liveAccount = stripeAccount
-	} else {
-		liveWorkspace, err = resolveLiveWorkspace(cmd.Context(), client, authConfigure)
-		if err != nil {
-			return err
-		}
-		liveAccount = acctByWksp[liveWorkspace]
-		liveName = nameByWksp[liveWorkspace]
-	}
-	if !strings.HasPrefix(liveWorkspace, "wksp_") {
-		return errorcategory.Errorf(errorcategory.API, "resolved live parent %q is not a workspace (wksp_...)", liveWorkspace)
-	}
-
-	// Transparency line (stderr): prefer name, then acct_, never show wksp_ unless nothing else
-	switch {
-	case liveName != "":
-		fmt.Fprintf(cmd.ErrOrStderr(), "Listing sandboxes under live account %q (%s)\n", liveName, liveAccount)
-	case liveAccount != "":
-		fmt.Fprintf(cmd.ErrOrStderr(), "Listing sandboxes under live account %s\n", liveAccount)
-	default:
-		fmt.Fprintf(cmd.ErrOrStderr(), "Listing sandboxes under live workspace %s\n", liveWorkspace)
-	}
-
-	query := "live_compartment_parent_id=" + url.QueryEscape(liveWorkspace)
-	resp, err := client.PerformRequest(cmd.Context(), http.MethodGet, "/v2/compartments/user_accessible_sandboxes", query, authConfigure)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	respBytes, err := io.ReadAll(resp.Body)
+	sandboxes, err := client.ListAccessible(cmd.Context())
 	if err != nil {
 		return err
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errorcategory.Errorf(errorcategory.API, "list sandboxes failed: %s\n%s", resp.Status, string(respBytes))
-	}
-
-	var parsed struct {
-		Workspaces    []accessibleWorkspace `json:"workspaces"`
-		Organizations []struct {
-			Workspaces []accessibleWorkspace `json:"workspaces"`
-		} `json:"organizations"`
-	}
-	if err := json.Unmarshal(respBytes, &parsed); err != nil {
-		return fmt.Errorf("could not parse sandboxes response: %w", err)
-	}
-
-	var sandboxes []accessibleWorkspace
-	sandboxes = append(sandboxes, parsed.Workspaces...)
-	for _, org := range parsed.Organizations {
-		sandboxes = append(sandboxes, org.Workspaces...)
+	accessLevels := make([]string, len(sandboxes))
+	for i, managedSandbox := range sandboxes {
+		var ok bool
+		accessLevels[i], ok = sandboxAccessLevelLabel(managedSandbox.AccessLevel)
+		if !ok {
+			return errorcategory.New(errorcategory.API, "could not render sandbox list: the response contained an invalid access level")
+		}
 	}
 
 	if len(sandboxes) == 0 {
@@ -1088,101 +981,24 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 	}
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ACCOUNT\tNAME\tREPLICA OF")
-	for _, s := range sandboxes {
-		replicaAcct := ""
-		if s.ReplicaOf != "" {
-			replicaAcct = acctByWksp[s.ReplicaOf] // parent's acct_; empty if not found — never show wksp_
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", s.MerchantID, s.Name, replicaAcct)
-	}
-	w.Flush()
-
-	return nil
-}
-
-func (slc *sandboxListCmd) oauthAuthorizedAccounts(ctx context.Context) ([]config.AuthorizedAccount, bool, error) {
-	uat, err := Config.Profile.GetUAT()
-	if err != nil {
-		return nil, false, err
-	}
-	if !strings.HasPrefix(uat, "oak_") {
-		return nil, false, nil
-	}
-
-	livemode := true
-	activeContext, err := config.GetActiveContext()
-	if err != nil {
-		return nil, true, err
-	}
-	if activeContext != nil {
-		livemode = activeContext.Livemode
-	}
-
-	credentials, err := Config.Profile.ResolveCredentials(livemode)
-	if err != nil {
-		return nil, true, err
-	}
-	accessBaseURL := Config.Profile.OAuthAccessBaseURL
-	if accessBaseURL == "" {
-		accessBaseURL = login.DefaultAccessBaseURL
-	}
-	accounts, err := login.ListAuthorizedAccounts(ctx, accessBaseURL, credentials.Token)
-	if err == nil || !login.IsAuthorizedAccountsUnauthorized(err) || config.OAuthTokenRefresher == nil {
-		return accounts, true, err
-	}
-
-	if err := config.OAuthTokenRefresher(&Config.Profile); err != nil {
-		return nil, true, err
-	}
-	credentials, err = Config.Profile.ResolveCredentials(livemode)
-	if err != nil {
-		return nil, true, err
-	}
-	accounts, err = login.ListAuthorizedAccounts(ctx, accessBaseURL, credentials.Token)
-	return accounts, true, err
-}
-
-func (slc *sandboxListCmd) printOAuthSandboxes(cmd *cobra.Command, accounts []config.AuthorizedAccount, stripeAccount string) error {
-	if stripeAccount != "" {
-		isAuthorizedLiveAccount := false
-		for _, account := range accounts {
-			if account.ID == stripeAccount && authorizedAccountHasMode(account, "live") {
-				isAuthorizedLiveAccount = true
-				break
-			}
-		}
-		if !isAuthorizedLiveAccount {
-			return errorcategory.Errorf(errorcategory.Auth, "no accessible live account matches %s; check the id or run `stripe login` again", stripeAccount)
-		}
-	}
-
-	var sandboxes []config.AuthorizedAccount
-	for _, account := range accounts {
-		if authorizedAccountHasMode(account, "test") && !authorizedAccountHasMode(account, "live") {
-			sandboxes = append(sandboxes, account)
-		}
-	}
-	if len(sandboxes) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No sandboxes found.")
-		return nil
-	}
-
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ACCOUNT\tNAME\tREPLICA OF")
-	for _, account := range sandboxes {
-		fmt.Fprintf(w, "%s\t%s\t\n", account.ID, account.Name)
+	fmt.Fprintln(w, "NAME\tACCOUNT\tACCESS LEVEL")
+	for i, managedSandbox := range sandboxes {
+		fmt.Fprintf(w, "%s\t%s\t%s\n", managedSandbox.Name, managedSandbox.AccountID, accessLevels[i])
 	}
 	return w.Flush()
 }
 
-func authorizedAccountHasMode(account config.AuthorizedAccount, mode string) bool {
-	for _, accountMode := range account.Modes {
-		if accountMode == mode {
-			return true
-		}
+func sandboxAccessLevelLabel(accessLevel sandbox.AccessLevel) (string, bool) {
+	switch accessLevel {
+	case sandbox.AccessLevelDirect:
+		return "DIRECT_ACCESS", true
+	case sandbox.AccessLevelSandboxChildren:
+		return "ACCESS_TO_SANDBOX_CHILDREN", true
+	case sandbox.AccessLevelNone:
+		return "NO_ACCESS", true
+	default:
+		return "", false
 	}
-	return false
 }
 
 func newSandboxDeleteCmd() *sandboxDeleteCmd {
