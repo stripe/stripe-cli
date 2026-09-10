@@ -61,11 +61,11 @@ func newSandboxCmd() *sandboxCmd {
 		Short: "Manage Stripe sandbox environments",
 		Args:  validators.NoArgs,
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  For new integrations, use separate general sandboxes for local development and continuous integration.\n" +
-				"  This isolates settings and test data from live mode and keeps automated tests from affecting developers.\n" +
-				"  Reuse sandboxes across runs. Use test mode only for existing integrations or features that require it.\n" +
+			AIAgentHelpAnnotationKey: "  For new integrations, use separate general sandboxes to isolate settings and test data from live mode. Use the test mode sandbox only for existing integrations or features that require it.\n" +
+				"  Use separate sandboxes for local development and continuous integration (CI) as this avoids undesired interaction between your test environments.\n" +
+				"  Reuse sandboxes across test runs.\n" +
 				"  Use `stripe sandbox create --from-git` to provision a sandbox using your git email.\n" +
-				"  Use `stripe sandbox create --email you@example.com` to provision with an explicit email.\n" +
+				"  Use `stripe sandbox create --email [you@example.com](mailto:you@example.com)` to provision with an explicit email.\n" +
 				"  If provisioning fails, falls back to browser login (like stripe login).\n" +
 				"  If already logged in, opens the sandbox management page.",
 		},
