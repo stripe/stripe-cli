@@ -10,13 +10,14 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
+	"google.golang.org/protobuf/encoding/protowire"
+	googleProto "google.golang.org/protobuf/proto"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
-	"google.golang.org/protobuf/encoding/protowire"
-	googleProto "google.golang.org/protobuf/proto"
 )
 
 type recordingTelemetryClient struct {

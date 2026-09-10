@@ -444,8 +444,8 @@ func validatedPluginCommandMetadata(eventName string, value *proto.PluginCommand
 			metadata.outcome = "success"
 		case proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_ERROR:
 			metadata.outcome = "error"
-		case proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_CANCELLED:
-			metadata.outcome = "cancelled"
+		case proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_CANCELLED: //nolint:misspell // Wire schema uses British spelling.
+			metadata.outcome = "cancelled" //nolint:misspell // Existing analytics outcome uses British spelling.
 		default:
 			return nil
 		}
