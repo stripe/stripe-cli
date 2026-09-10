@@ -23,13 +23,13 @@ const (
 	accountIDPrefix         = "acct_"
 )
 
-// AccessLevel describes the OAuth account's access in the workspace hierarchy.
-type AccessLevel int
+// SandboxAccessLevel describes the sandbox's default team access setting.
+type SandboxAccessLevel int
 
 const (
-	AccessLevelDirect          AccessLevel = 1
-	AccessLevelSandboxChildren AccessLevel = 2
-	AccessLevelNone            AccessLevel = 3
+	SandboxAccessLevelPrivate SandboxAccessLevel = iota + 1
+	SandboxAccessLevelGlobal
+	SandboxAccessLevelDeveloper
 )
 
 // ManagedSandbox is the normalized representation shared by sandbox list and
@@ -39,7 +39,7 @@ type ManagedSandbox struct {
 	WorkspaceID string
 	AccountID   string
 	Name        string
-	AccessLevel AccessLevel
+	AccessLevel SandboxAccessLevel
 }
 
 // ManagementClient discovers sandboxes authorized by the active live OAuth
@@ -135,46 +135,64 @@ type accessibleSandboxesResponse struct {
 }
 
 type sandboxOrganization struct {
-	Workspaces []accessibleSandbox `json:"workspaces"`
+	Workspaces        []accessibleSandbox `json:"workspaces"`
+	CompartmentLabels []compartmentLabel  `json:"compartment_labels"`
 }
 
 type accessibleSandbox struct {
-	WorkspaceID string                       `json:"id"`
-	AccountID   string                       `json:"merchant_id"`
-	Name        string                       `json:"name"`
-	AccessLevel accessibleSandboxAccessLevel `json:"access_level"`
+	WorkspaceID       string             `json:"id"`
+	AccountID         string             `json:"merchant_id"`
+	Name              string             `json:"name"`
+	CompartmentLabels []compartmentLabel `json:"compartment_labels"`
 }
 
-type accessibleSandboxAccessLevel string
+type compartmentLabel struct {
+	UsageType string `json:"usage_type"`
+}
 
 const (
-	accessibleSandboxAccessLevelDirect          accessibleSandboxAccessLevel = "direct_access"
-	accessibleSandboxAccessLevelSandboxChildren accessibleSandboxAccessLevel = "access_to_sandbox_children"
-	accessibleSandboxAccessLevelNone            accessibleSandboxAccessLevel = "no_access"
+	sandboxAccessLabelPrivate   = "sandbox_access_level_private"
+	sandboxAccessLabelGlobal    = "sandbox_access_level_global"
+	sandboxAccessLabelDeveloper = "sandbox_access_level_developer"
 )
 
 func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]ManagedSandbox, error) {
-	records := make([]accessibleSandbox, 0, len(response.Workspaces))
-	records = append(records, response.Workspaces...)
+	type sandboxWithAccessLabels struct {
+		sandbox      accessibleSandbox
+		accessLabels []compartmentLabel
+	}
+
+	records := make([]sandboxWithAccessLabels, 0, len(response.Workspaces))
+	for _, workspace := range response.Workspaces {
+		records = append(records, sandboxWithAccessLabels{
+			sandbox:      workspace,
+			accessLabels: workspace.CompartmentLabels,
+		})
+	}
 	for _, organization := range response.Organizations {
-		records = append(records, organization.Workspaces...)
+		// Account sandboxes in a sandbox organization inherit the organization's
+		// default access setting, which is also how Dashboard renders them.
+		for _, workspace := range organization.Workspaces {
+			records = append(records, sandboxWithAccessLabels{
+				sandbox:      workspace,
+				accessLabels: organization.CompartmentLabels,
+			})
+		}
 	}
 
 	validated := make([]ManagedSandbox, 0, len(records))
 	for _, record := range records {
-		accessLevel, validAccessLevel := normalizeAccessLevel(record.AccessLevel)
-		if !validTestmodeWorkspaceID(record.WorkspaceID) ||
-			!validAccountID(record.AccountID) ||
-			strings.TrimSpace(record.Name) == "" ||
-			!validAccessLevel {
+		if !validTestmodeWorkspaceID(record.sandbox.WorkspaceID) ||
+			!validAccountID(record.sandbox.AccountID) ||
+			strings.TrimSpace(record.sandbox.Name) == "" {
 			return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response contained an invalid sandbox")
 		}
 
 		validated = append(validated, ManagedSandbox{
-			WorkspaceID: record.WorkspaceID,
-			AccountID:   record.AccountID,
-			Name:        record.Name,
-			AccessLevel: accessLevel,
+			WorkspaceID: record.sandbox.WorkspaceID,
+			AccountID:   record.sandbox.AccountID,
+			Name:        record.sandbox.Name,
+			AccessLevel: sandboxAccessLevelFromLabels(record.accessLabels),
 		})
 	}
 
@@ -208,17 +226,18 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 	return result, nil
 }
 
-func normalizeAccessLevel(accessLevel accessibleSandboxAccessLevel) (AccessLevel, bool) {
-	switch accessLevel {
-	case accessibleSandboxAccessLevelDirect:
-		return AccessLevelDirect, true
-	case accessibleSandboxAccessLevelSandboxChildren:
-		return AccessLevelSandboxChildren, true
-	case accessibleSandboxAccessLevelNone:
-		return AccessLevelNone, true
-	default:
-		return 0, false
+func sandboxAccessLevelFromLabels(labels []compartmentLabel) SandboxAccessLevel {
+	for _, label := range labels {
+		if label.UsageType == sandboxAccessLabelGlobal {
+			return SandboxAccessLevelGlobal
+		}
 	}
+	for _, label := range labels {
+		if label.UsageType == sandboxAccessLabelDeveloper {
+			return SandboxAccessLevelDeveloper
+		}
+	}
+	return SandboxAccessLevelPrivate
 }
 
 func validLiveWorkspaceID(id string) bool {
