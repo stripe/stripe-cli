@@ -139,11 +139,19 @@ type sandboxOrganization struct {
 }
 
 type accessibleSandbox struct {
-	WorkspaceID string      `json:"id"`
-	AccountID   string      `json:"merchant_id"`
-	Name        string      `json:"name"`
-	AccessLevel AccessLevel `json:"access_level"`
+	WorkspaceID string                       `json:"id"`
+	AccountID   string                       `json:"merchant_id"`
+	Name        string                       `json:"name"`
+	AccessLevel accessibleSandboxAccessLevel `json:"access_level"`
 }
+
+type accessibleSandboxAccessLevel string
+
+const (
+	accessibleSandboxAccessLevelDirect          accessibleSandboxAccessLevel = "direct_access"
+	accessibleSandboxAccessLevelSandboxChildren accessibleSandboxAccessLevel = "access_to_sandbox_children"
+	accessibleSandboxAccessLevelNone            accessibleSandboxAccessLevel = "no_access"
+)
 
 func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]ManagedSandbox, error) {
 	records := make([]accessibleSandbox, 0, len(response.Workspaces))
@@ -154,15 +162,20 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 
 	validated := make([]ManagedSandbox, 0, len(records))
 	for _, record := range records {
+		accessLevel, validAccessLevel := normalizeAccessLevel(record.AccessLevel)
 		if !validTestmodeWorkspaceID(record.WorkspaceID) ||
 			!validAccountID(record.AccountID) ||
 			strings.TrimSpace(record.Name) == "" ||
-			record.AccessLevel < AccessLevelDirect ||
-			record.AccessLevel > AccessLevelNone {
+			!validAccessLevel {
 			return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response contained an invalid sandbox")
 		}
 
-		validated = append(validated, ManagedSandbox(record))
+		validated = append(validated, ManagedSandbox{
+			WorkspaceID: record.WorkspaceID,
+			AccountID:   record.AccountID,
+			Name:        record.Name,
+			AccessLevel: accessLevel,
+		})
 	}
 
 	byWorkspaceID := make(map[string]ManagedSandbox, len(validated))
@@ -193,6 +206,19 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 	})
 
 	return result, nil
+}
+
+func normalizeAccessLevel(accessLevel accessibleSandboxAccessLevel) (AccessLevel, bool) {
+	switch accessLevel {
+	case accessibleSandboxAccessLevelDirect:
+		return AccessLevelDirect, true
+	case accessibleSandboxAccessLevelSandboxChildren:
+		return AccessLevelSandboxChildren, true
+	case accessibleSandboxAccessLevelNone:
+		return AccessLevelNone, true
+	default:
+		return 0, false
+	}
 }
 
 func validLiveWorkspaceID(id string) bool {

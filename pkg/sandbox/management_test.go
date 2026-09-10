@@ -39,12 +39,12 @@ func TestManagementClientListAccessible(t *testing.T) {
 			require.Empty(t, body)
 			_, _ = w.Write([]byte(`{
   "workspaces": [
-    {"id":"wksp_test_z","merchant_id":"acct_z","name":"Zeta","access_level":3},
-    {"id":"wksp_test_b","merchant_id":"acct_b","name":"Alpha","access_level":1}
+    {"id":"wksp_test_z","merchant_id":"acct_z","name":"Zeta","access_level":"no_access"},
+    {"id":"wksp_test_b","merchant_id":"acct_b","name":"Alpha","access_level":"direct_access"}
   ],
   "organizations": [{"workspaces": [
-    {"id":"wksp_test_a","merchant_id":"acct_a","name":"alpha","access_level":2},
-    {"id":"wksp_test_b","merchant_id":"acct_b","name":"Alpha","access_level":1}
+    {"id":"wksp_test_a","merchant_id":"acct_a","name":"alpha","access_level":"access_to_sandbox_children"},
+    {"id":"wksp_test_b","merchant_id":"acct_b","name":"Alpha","access_level":"direct_access"}
   ]}]
 }`))
 		default:
@@ -205,16 +205,16 @@ func TestManagementClientRejectsInvalidSandboxResponses(t *testing.T) {
 		response string
 	}{
 		{name: "malformed JSON", response: `{"workspaces":`},
-		{name: "missing workspace id", response: `{"workspaces":[{"merchant_id":"acct_1","name":"one","access_level":1}]}`},
-		{name: "missing account id", response: `{"workspaces":[{"id":"wksp_test_1","name":"one","access_level":1}]}`},
-		{name: "missing name", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","access_level":1}]}`},
-		{name: "live workspace", response: `{"workspaces":[{"id":"wksp_live_1","merchant_id":"acct_1","name":"one","access_level":1}]}`},
-		{name: "zero access level", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":0}]}`},
-		{name: "unknown access level", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":4}]}`},
-		{name: "string access level", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":"DIRECT"}]}`},
+		{name: "missing workspace id", response: `{"workspaces":[{"merchant_id":"acct_1","name":"one","access_level":"direct_access"}]}`},
+		{name: "missing account id", response: `{"workspaces":[{"id":"wksp_test_1","name":"one","access_level":"direct_access"}]}`},
+		{name: "missing name", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","access_level":"direct_access"}]}`},
+		{name: "live workspace", response: `{"workspaces":[{"id":"wksp_live_1","merchant_id":"acct_1","name":"one","access_level":"direct_access"}]}`},
+		{name: "missing access level", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"one"}]}`},
+		{name: "unknown access level", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":"unknown_access"}]}`},
+		{name: "numeric access level", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":1}]}`},
 		{name: "conflicting duplicate", response: `{"workspaces":[
-  {"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":1},
-  {"id":"wksp_test_1","merchant_id":"acct_2","name":"one","access_level":1}
+  {"id":"wksp_test_1","merchant_id":"acct_1","name":"one","access_level":"direct_access"},
+  {"id":"wksp_test_1","merchant_id":"acct_2","name":"one","access_level":"direct_access"}
 ]}`},
 	}
 
