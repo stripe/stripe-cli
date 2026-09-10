@@ -981,21 +981,21 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 	}
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tACCOUNT\tACCESS LEVEL")
+	fmt.Fprintln(w, "NAME\tACCOUNT\tACCESS")
 	for i, managedSandbox := range sandboxes {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", managedSandbox.Name, managedSandbox.AccountID, accessLevels[i])
 	}
 	return w.Flush()
 }
 
-func sandboxAccessLevelLabel(accessLevel sandbox.AccessLevel) (string, bool) {
+func sandboxAccessLevelLabel(accessLevel sandbox.SandboxAccessLevel) (string, bool) {
 	switch accessLevel {
-	case sandbox.AccessLevelDirect:
-		return "DIRECT_ACCESS", true
-	case sandbox.AccessLevelSandboxChildren:
-		return "ACCESS_TO_SANDBOX_CHILDREN", true
-	case sandbox.AccessLevelNone:
-		return "NO_ACCESS", true
+	case sandbox.SandboxAccessLevelPrivate:
+		return "Private", true
+	case sandbox.SandboxAccessLevelGlobal:
+		return "All team members", true
+	case sandbox.SandboxAccessLevelDeveloper:
+		return "Developer", true
 	default:
 		return "", false
 	}

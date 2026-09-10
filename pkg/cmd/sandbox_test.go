@@ -1452,9 +1452,9 @@ func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
 	cmd := newSandboxListCmd()
 	cmd.client = fakeSandboxListClient{
 		sandboxes: []sandbox.ManagedSandbox{
-			{WorkspaceID: "wksp_test_z", AccountID: "acct_z", Name: "Zeta", AccessLevel: sandbox.AccessLevelNone},
-			{WorkspaceID: "wksp_test_a", AccountID: "acct_a", Name: "Alpha", AccessLevel: sandbox.AccessLevelDirect},
-			{WorkspaceID: "wksp_test_b", AccountID: "acct_b", Name: "Beta", AccessLevel: sandbox.AccessLevelSandboxChildren},
+			{WorkspaceID: "wksp_test_z", AccountID: "acct_z", Name: "Zeta", AccessLevel: sandbox.SandboxAccessLevelPrivate},
+			{WorkspaceID: "wksp_test_a", AccountID: "acct_a", Name: "Alpha", AccessLevel: sandbox.SandboxAccessLevelGlobal},
+			{WorkspaceID: "wksp_test_b", AccountID: "acct_b", Name: "Beta", AccessLevel: sandbox.SandboxAccessLevelDeveloper},
 		},
 	}
 
@@ -1466,10 +1466,10 @@ func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
 
 	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
 	require.Len(t, lines, 4)
-	assert.Equal(t, []string{"NAME", "ACCOUNT", "ACCESS", "LEVEL"}, strings.Fields(lines[0]))
-	assert.Equal(t, []string{"Zeta", "acct_z", "NO_ACCESS"}, strings.Fields(lines[1]))
-	assert.Equal(t, []string{"Alpha", "acct_a", "DIRECT_ACCESS"}, strings.Fields(lines[2]))
-	assert.Equal(t, []string{"Beta", "acct_b", "ACCESS_TO_SANDBOX_CHILDREN"}, strings.Fields(lines[3]))
+	assert.Equal(t, []string{"NAME", "ACCOUNT", "ACCESS"}, strings.Fields(lines[0]))
+	assert.Equal(t, []string{"Zeta", "acct_z", "Private"}, strings.Fields(lines[1]))
+	assert.Equal(t, []string{"Alpha", "acct_a", "All", "team", "members"}, strings.Fields(lines[2]))
+	assert.Equal(t, []string{"Beta", "acct_b", "Developer"}, strings.Fields(lines[3]))
 	assert.NotContains(t, stdout.String(), "wksp_")
 	assert.Empty(t, stderr.String())
 }
