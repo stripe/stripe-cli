@@ -112,7 +112,7 @@ func TestLookUpPluginUsesLocalMetadata(t *testing.T) {
 	require.Equal(t, "appB", plugin.Shortname)
 	require.Equal(t, "stripe-cli-app-b", plugin.Binary)
 	require.Equal(t, "FDBE6FB9-A149-44BD-9639-4D33D8B594E8", plugin.MagicCookieValue)
-	require.Len(t, plugin.Releases, 4)
+	require.Len(t, plugin.Releases, 5)
 }
 
 func TestLookUpPluginFallsBackToCachedManifest(t *testing.T) {
