@@ -37,8 +37,8 @@ func newSwitchCmd() *switchCmd {
 	sc.cmd = &cobra.Command{
 		Use:   "switch [account_id]",
 		Args:  validators.MaximumNArgs(1),
-		Short: "Switch to a different authorized account context",
-		Long: `Switch to a different authorized account context.
+		Short: "Switch to a different authorized account in live mode or a sandbox",
+		Long: `Switch to a different authorized account in live mode or a sandbox.
 
 Without an argument, shows an interactive list of your authorized accounts and
 modes. Navigate with ↑↓, confirm with enter, or cancel with esc.
@@ -58,7 +58,7 @@ With an account ID, switches directly to that account. Add --live to switch to l
 	legacyCtxCmd := &cobra.Command{
 		Use:    "context [account_id]",
 		Args:   validators.MaximumNArgs(1),
-		Short:  "Switch to a different authorized account context",
+		Short:  "Switch to a different authorized account in live mode or a sandbox",
 		Hidden: true,
 		RunE:   ctxCmd.run,
 	}
@@ -108,6 +108,6 @@ func (sc *switchContextCmd) run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("Active context: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
+	fmt.Printf("Logged in to: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
 	return nil
 }

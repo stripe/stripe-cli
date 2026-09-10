@@ -106,7 +106,7 @@ func PrintAuthorizedContextsList(accounts []config.AuthorizedAccount) {
 	}
 
 	color := ansi.Color(os.Stdout)
-	fmt.Printf("Authorized contexts (%d):\n", len(rows))
+	fmt.Printf("Authorized (%d accounts):\n", len(rows))
 	for _, r := range rows {
 		if r.active {
 			fmt.Printf("  %-*s  %-*s  %-7s  %s\n", nameW, r.name, idW, r.id, r.mode, color.Green("● active"))

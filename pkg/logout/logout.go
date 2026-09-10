@@ -33,7 +33,7 @@ func Logout(ctx context.Context, accessBaseURL string, cfg *config.Config) error
 			return err
 		}
 		color := ansi.Color(os.Stdout)
-		fmt.Printf("%s Logged out of all contexts and revoked session.\n", color.Green("✓"))
+		fmt.Printf("%s Logged out of all accounts and revoked session.\n", color.Green("✓"))
 		return nil
 	}
 
