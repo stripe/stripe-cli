@@ -40,13 +40,13 @@ func loadPendingDeviceAuth() (*oauthContinuation, error) {
 	data, err := os.ReadFile(pendingDeviceAuthPath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, errorcategory.New(errorcategory.UserInput, "no pending OAuth login found; run 'stripe login --non-interactive' first")
+			return nil, errorcategory.New(errorcategory.UserInput, "no pending login found; run 'stripe login --non-interactive' first")
 		}
 		return nil, err
 	}
 	var cont oauthContinuation
 	if err := json.Unmarshal(data, &cont); err != nil {
-		return nil, fmt.Errorf("invalid pending OAuth state: %w", err)
+		return nil, fmt.Errorf("invalid pending login state: %w", err)
 	}
 	return &cont, nil
 }

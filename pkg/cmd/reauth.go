@@ -20,13 +20,13 @@ func newReauthCmd() *reauthCmd {
 	rc.cmd = &cobra.Command{
 		Use:   "reauth",
 		Args:  validators.NoArgs,
-		Short: "Re-authorize the CLI for the current OAuth session",
+		Short: "Re-authorize the CLI for the current session",
 		Long: `Re-authorize the CLI to change permissions or authorize access to
 additional accounts or sandboxes.
 
-Opens the Stripe Dashboard so you can re-consent for the current OAuth session.
+Opens the browser so you can re-consent for the current session.
 
-Deprecated: running 'stripe login' with a valid OAuth session now does this
+Deprecated: running 'stripe login' with a valid session now does this
 directly, so this command is hidden.`,
 		Example: `stripe reauth`,
 		Hidden:  true,
@@ -43,7 +43,7 @@ func (rc *reauthCmd) runReauthCmd(cmd *cobra.Command, args []string) error {
 	}
 	uat, _ := Config.Profile.GetUAT()
 	if !strings.HasPrefix(uat, "oak_") {
-		return errorcategory.Errorf(errorcategory.Auth, "reauth requires an OAuth session; run 'stripe login' to authenticate")
+		return errorcategory.Errorf(errorcategory.Auth, "reauth requires a valid session; run 'stripe login' to authenticate")
 	}
 	return login.Reauth(cmd.Context(), rc.accessBaseURL, uat)
 }

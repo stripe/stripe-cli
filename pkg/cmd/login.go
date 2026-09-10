@@ -64,7 +64,7 @@ func newLoginCmd() *loginCmd {
 		Short: "Log in to your Stripe account",
 		Long: `Log in to your Stripe account to set up the CLI.
 
-By default (when stdin is a terminal), this opens a browser-based OAuth flow: it
+By default (when stdin is a terminal), this opens a browser-based login flow: it
 prints a pairing code, launches your browser to the Stripe Dashboard, and waits for
 you to approve the request before saving your credentials.
 
@@ -119,7 +119,7 @@ works here too, printing a browser_url and a next_step of
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
 	lc.cmd.Flags().BoolVar(&lc.nonInteractive, "non-interactive", false, "Print login URL and verification code as JSON and exit; immediately run the next_step command from the output to poll while the user approves in the browser")
 	lc.cmd.Flags().StringVar(&lc.completeURL, "complete", "", "Complete a browser login by polling the given URL (from 'stripe login --non-interactive')")
-	lc.cmd.Flags().BoolVar(&lc.completeDevice, "complete-device", false, "Complete an OAuth device authorization started by 'stripe login --non-interactive'")
+	lc.cmd.Flags().BoolVar(&lc.completeDevice, "complete-device", false, "Complete a device authorization started by 'stripe login --non-interactive'")
 	lc.cmd.Flags().MarkHidden("complete-device") // #nosec G104
 	lc.cmd.Flags().BoolVar(&lc.completeReauth, "complete-reauth", false, "Complete a reauthorization started by 'stripe login --non-interactive'")
 	lc.cmd.Flags().MarkHidden("complete-reauth") // #nosec G104
@@ -155,7 +155,7 @@ works here too, printing a browser_url and a next_step of
 	switchCmd.cmd = &cobra.Command{
 		Use:     "switch [account_id]",
 		Args:    validators.MaximumNArgs(1),
-		Short:   "Alias for 'stripe switch context'",
+		Short:   "Alias for 'stripe switch'",
 		Example: `stripe login switch\n  stripe login switch acct_1234\n  stripe login switch acct_1234 --live`,
 		RunE:    switchCmd.switchLoggedInAccountCmd,
 	}

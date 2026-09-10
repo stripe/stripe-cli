@@ -187,7 +187,7 @@ https://docs.stripe.com/api/v2/data/analytics/metric-query-results/create?api-ve
 	c.cmd.Flags().IntVar(&c.limit, "limit", 0, "Maximum number of rows to return (1–1000). Default is all rows.")
 
 	c.cmd.Flags().BoolVar(&c.rb.DryRun, "dry-run", false, "Preview the request without sending it")
-	c.cmd.Flags().BoolVarP(&c.rb.Livemode, "live", "", false, "Make a live request (default: test)")
+	c.cmd.Flags().BoolVarP(&c.rb.Livemode, "live", "", false, "Make a live request (default: test). Requires your active context to be in live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	c.cmd.Flags().BoolVarP(&c.rb.DarkStyle, "dark-style", "", false, "Use a darker color scheme better suited for lighter command-lines")
 
 	// --api-base overrides the API host (used for local/dev testing); it's hidden

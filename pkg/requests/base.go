@@ -203,7 +203,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
-	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
+	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test). Requires your active context to be in live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
 	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
 
@@ -235,9 +235,9 @@ func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
 	var mismatch *config.ActiveContextLivemodeMismatchError
 	if errors.As(err, &mismatch) {
 		if mismatch.ActiveLivemode {
-			return stripe.Credentials{}, errorcategory.UserInputErrorf("You're in live mode. Add --live to run the command, or run 'stripe switch context' to select a sandbox.")
+			return stripe.Credentials{}, errorcategory.UserInputErrorf("You're in live mode. Add --live to run the command, or run 'stripe switch' to select a sandbox.")
 		}
-		return stripe.Credentials{}, errorcategory.UserInputErrorf("You're in a sandbox. Remove --live to run the command, or run 'stripe switch context' to select a live account.")
+		return stripe.Credentials{}, errorcategory.UserInputErrorf("You're in a sandbox. Remove --live to run the command, or run 'stripe switch' to select a live account.")
 	}
 	return creds, err
 }
