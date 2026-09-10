@@ -70,18 +70,13 @@ func newWhoamiCmd() *whoamiCmd {
 	wc.cmd = &cobra.Command{
 		Use:   "whoami",
 		Args:  validators.NoArgs,
-		Short: "Show whether you're logged in to live mode or a sandbox",
-		Long: `Display whether the Stripe CLI is logged in to live mode or a sandbox.
+		Short: "Show what account you're logged in to and accounts you've authorized",
+		Long: `Show what account you're logged in to and the accounts you've authorized.
 
-Reads credentials from the config file and keychain — no API calls are made.
-
-Use --format json for output suitable for scripting or agent consumption. The
-schema is stable: test_mode_key and live_mode_key are always present regardless
-of whether you're logged in to live mode or a sandbox, and authenticated: false
-indicates no usable credentials exist.
+Use --format json for output suitable for scripting or agent consumption.
 
 Exit codes:
-  0  Authenticated (at least one key is available)
+  0  Authenticated
   1  Not authenticated, or an error occurred`,
 		Example: `stripe whoami
   stripe whoami --format json
