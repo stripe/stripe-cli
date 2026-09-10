@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -18,6 +19,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -493,11 +495,15 @@ type sandboxListCmd struct {
 	client  sandboxListClient
 }
 
+type sandboxDeleteClient interface {
+	PrepareDelete(context.Context, string) (*sandbox.DeleteTarget, error)
+	Delete(context.Context, *sandbox.DeleteTarget) error
+}
+
 type sandboxDeleteCmd struct {
-	cmd           *cobra.Command
-	stripeAccount string
-	stripeVersion string
-	apiBase       string
+	cmd     *cobra.Command
+	apiBase string
+	client  sandboxDeleteClient
 }
 
 func newSandboxClaimCmd() *sandboxClaimCmd {
@@ -1004,23 +1010,16 @@ func sandboxAccessLevelLabel(accessLevel sandbox.AccessLevel) (string, bool) {
 func newSandboxDeleteCmd() *sandboxDeleteCmd {
 	sdc := &sandboxDeleteCmd{}
 	sdc.cmd = &cobra.Command{
-		Use:   "delete",
+		Use:   "delete <account>",
 		Short: "Delete a sandbox by its account id",
 		Long: `Delete a sandbox created for the logged-in account.
 
-Deletes the sandbox whose account (acct_...) you pass via --stripe-account (the
-ACCOUNT shown by ` + "`stripe sandbox list`" + `). This closes the sandbox's testmode
-workspace, mirroring the dashboard's delete action; it never touches your live account.`,
-		Args:   validators.NoArgs,
+Pass the sandbox ACCOUNT (acct_...) shown by ` + "`stripe sandbox list`" + `. The
+command always asks for confirmation and cannot run non-interactively.`,
+		Args:   cobra.ExactArgs(1),
 		RunE:   sdc.runSandboxDeleteCmd,
 		Hidden: true,
 	}
-
-	sdc.cmd.Flags().StringVar(&sdc.stripeAccount, "stripe-account", "", "Account (acct_...) of the sandbox to delete; see `stripe sandbox list`")
-	_ = sdc.cmd.MarkFlagRequired("stripe-account")
-
-	sdc.cmd.Flags().StringVar(&sdc.stripeVersion, "stripe-version", requests.StripeVersionHeaderValue, "Sets the Stripe-Version header")
-	_ = sdc.cmd.Flags().MarkHidden("stripe-version")
 
 	sdc.cmd.Flags().StringVar(&sdc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = sdc.cmd.Flags().MarkHidden("api-base")
@@ -1029,145 +1028,47 @@ workspace, mirroring the dashboard's delete action; it never touches your live a
 }
 
 func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []string) error {
-	if config.KeyRing == nil {
-		return errorcategory.Errorf(errorcategory.Auth, "credential store unavailable; run `stripe login` first")
+	accountID := strings.TrimSpace(args[0])
+	if len(accountID) <= len("acct_") || !strings.HasPrefix(accountID, "acct_") {
+		return errorcategory.New(errorcategory.UserInput, "a valid sandbox account id (acct_...) is required; run `stripe sandbox list` to find one")
 	}
-	uatBytes, err := config.KeyRing.Get(config.UATKeychainItemKey)
-	if err != nil || len(uatBytes) == 0 {
-		return errorcategory.Errorf(errorcategory.Auth, "no user access token found; run `stripe login` first")
-	}
-	uat := strings.TrimSpace(string(uatBytes))
-
-	// --stripe-account names the sandbox to delete (its acct_), consistent with the
-	// acct_-centric selector on `new`/`list`. Never an org.
-	stripeAccount := strings.TrimSpace(sdc.stripeAccount)
-	switch {
-	case stripeAccount == "":
-		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account is required (the acct_ of the sandbox to delete; see `stripe sandbox list`)")
-	case strings.HasPrefix(stripeAccount, "org_"):
-		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account (acct_...), not an organization (org_...)")
-	case !strings.HasPrefix(stripeAccount, "acct_"):
-		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account id (acct_...), got %q", stripeAccount)
+	if !sandboxDeleteInteractive(cmd) {
+		return errorcategory.New(errorcategory.UserInput, "sandbox deletion requires an interactive terminal")
 	}
 
-	baseURL, err := url.Parse(sdc.apiBase)
-	if err != nil {
-		return fmt.Errorf("invalid --api-base %q: %w", sdc.apiBase, err)
+	client := sdc.client
+	if client == nil {
+		client = sandbox.NewManagementClient(sdc.apiBase, Config.GetProfile())
 	}
-
-	// Empty APIKey so no Bearer header is set; the UAT is injected as STRIPE-V2-SIG.
-	client := &stripe.Client{
-		BaseURL: baseURL,
-	}
-	authConfigure := func(req *http.Request) error {
-		req.Header.Set("Authorization", "STRIPE-V2-SIG "+uat)
-		req.Header.Set("Stripe-Version", sdc.stripeVersion)
-		req.Header.Set("Content-Type", stripe.V2ContentType)
-		return nil
-	}
-
-	// The delete endpoint takes the sandbox's testmode workspace (wksp_test). We only have
-	// its account (acct_), so resolve acct_ -> wksp_test by finding the sandbox under the
-	// caller's accessible live parents.
-	sandboxWorkspace, sandboxName, err := resolveSandboxWorkspaceByAccount(cmd.Context(), client, authConfigure, stripeAccount)
+	target, err := client.PrepareDelete(cmd.Context(), accountID)
 	if err != nil {
 		return err
-	}
-	// Guard: only ever close a sandbox (testmode) workspace, never something else.
-	if !strings.HasPrefix(sandboxWorkspace, "wksp_test") {
-		return errorcategory.Errorf(errorcategory.API, "resolved sandbox id %q is not a testmode workspace (wksp_test...)", sandboxWorkspace)
-	}
-
-	if sandboxName != "" {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Deleting sandbox %q (%s)\n", sandboxName, stripeAccount)
-	} else {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Deleting sandbox %s\n", stripeAccount)
-	}
-
-	// Close the testmode workspace, mirroring the dashboard's v2CloseTestmodeWorkspace
-	// mutation. The workspace id is in the path; the call is self-scoped by the UAT (no
-	// Stripe-Context), like the compartment resolution GETs.
-	path := "/v2/workspaces/undocumented/testmode/" + url.PathEscape(sandboxWorkspace) + "/close"
-	resp, err := client.PerformRequest(cmd.Context(), http.MethodPost, path, "", authConfigure)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errorcategory.Errorf(errorcategory.API, "delete sandbox failed: %s\n%s", resp.Status, string(respBytes))
 	}
 
 	out := cmd.OutOrStdout()
-	if sandboxName != "" {
-		fmt.Fprintf(out, "Deleted sandbox %q (%s)\n", sandboxName, stripeAccount)
-	} else {
-		fmt.Fprintf(out, "Deleted sandbox %s\n", stripeAccount)
+	fmt.Fprintf(out, "Delete sandbox %q (%s)? This cannot be undone. [y/N] ", target.Name, target.AccountID)
+	input, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return err
 	}
+	answer := strings.ToLower(strings.TrimSpace(input))
+	if answer != "y" && answer != "yes" {
+		fmt.Fprintln(out, "Aborted. No changes were made.")
+		return nil
+	}
+
+	if err := client.Delete(cmd.Context(), target); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "Deleted sandbox %q (%s)\n", target.Name, target.AccountID)
 	return nil
 }
 
-// fetchSandboxesForParent lists the sandboxes under one live parent workspace via
-// GET /v2/compartments/user_accessible_sandboxes, flattening standalone and org-nested
-// sandbox entries.
-func fetchSandboxesForParent(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, liveWorkspace string) ([]accessibleWorkspace, error) {
-	query := "live_compartment_parent_id=" + url.QueryEscape(liveWorkspace)
-	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v2/compartments/user_accessible_sandboxes", query, configure)
-	if err != nil {
-		return nil, err
+func sandboxDeleteInteractive(cmd *cobra.Command) bool {
+	if cmd.InOrStdin() != os.Stdin {
+		return true
 	}
-	defer resp.Body.Close()
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, errorcategory.Errorf(errorcategory.API, "could not list sandboxes: %s\n%s", resp.Status, string(respBytes))
-	}
-	var parsed struct {
-		Workspaces    []accessibleWorkspace `json:"workspaces"`
-		Organizations []struct {
-			Workspaces []accessibleWorkspace `json:"workspaces"`
-		} `json:"organizations"`
-	}
-	if err := json.Unmarshal(respBytes, &parsed); err != nil {
-		return nil, fmt.Errorf("could not parse sandboxes response: %w", err)
-	}
-	out := append([]accessibleWorkspace{}, parsed.Workspaces...)
-	for _, org := range parsed.Organizations {
-		out = append(out, org.Workspaces...)
-	}
-	return out, nil
-}
-
-// resolveSandboxWorkspaceByAccount finds the sandbox workspace (wksp_test) whose account
-// (merchant_id) matches sandboxAccount. Sandboxes are listed per live parent, so it
-// searches each accessible live workspace's sandboxes. Returns the sandbox workspace id
-// and its name.
-func resolveSandboxWorkspaceByAccount(ctx context.Context, client *stripe.Client, configure func(*http.Request) error, sandboxAccount string) (string, string, error) {
-	liveWorkspaces, err := fetchAccessibleWorkspaces(ctx, client, configure)
-	if err != nil {
-		return "", "", err
-	}
-	for _, lw := range liveWorkspaces {
-		if !strings.HasPrefix(lw.ID, "wksp_") {
-			continue
-		}
-		sandboxes, err := fetchSandboxesForParent(ctx, client, configure, lw.ID)
-		if err != nil {
-			return "", "", err
-		}
-		for _, s := range sandboxes {
-			if s.MerchantID == sandboxAccount && strings.HasPrefix(s.ID, "wksp_test") {
-				return s.ID, s.Name, nil
-			}
-		}
-	}
-	return "", "", errorcategory.Errorf(errorcategory.API, "no sandbox found for %s under your accessible live accounts; run `stripe sandbox list` to see available sandboxes", sandboxAccount)
+	return interactiveHuman(os.Getenv, term.IsTerminal(int(os.Stdin.Fd())))
 }
 
 type sandboxClaimStatusResponse struct {

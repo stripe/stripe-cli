@@ -42,6 +42,17 @@ type ManagedSandbox struct {
 	AccessLevel AccessLevel
 }
 
+// DeleteTarget is a sandbox selected for deletion. Only user-facing account
+// information is exported; the workspace and originating live account remain
+// private to the management client.
+type DeleteTarget struct {
+	AccountID string
+	Name      string
+
+	workspaceID   string
+	liveAccountID string
+}
+
 // ManagementClient discovers sandboxes authorized by the active live OAuth
 // account.
 type ManagementClient struct {
@@ -58,17 +69,97 @@ func NewManagementClient(apiBaseURL string, profile *config.Profile) *Management
 // ListAccessible resolves the active live OAuth workspace and returns the
 // sandboxes accessible beneath it.
 func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox, error) {
-	creds, err := c.resolveCredentials()
+	sandboxes, _, err := c.listAccessible(ctx)
+	return sandboxes, err
+}
+
+// PrepareDelete finds one sandbox account within the active live account's
+// accessible sandbox scope and binds it to that live account for deletion.
+func (c *ManagementClient) PrepareDelete(ctx context.Context, accountID string) (*DeleteTarget, error) {
+	accountID = strings.TrimSpace(accountID)
+	if !validAccountID(accountID) {
+		return nil, errorcategory.New(errorcategory.UserInput, "a valid sandbox account id (acct_...) is required; run `stripe sandbox list` to find one")
+	}
+
+	sandboxes, creds, err := c.listAccessible(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	var match *ManagedSandbox
+	for i := range sandboxes {
+		if sandboxes[i].AccountID != accountID {
+			continue
+		}
+		if match != nil {
+			return nil, errorcategory.New(errorcategory.UserInput, "more than one accessible sandbox matches that account; reauthenticate and try again")
+		}
+		match = &sandboxes[i]
+	}
+	if match == nil {
+		return nil, errorcategory.New(errorcategory.UserInput, "no accessible sandbox matches that account; run `stripe sandbox list` to see available sandboxes")
+	}
+
+	return &DeleteTarget{
+		AccountID:     match.AccountID,
+		Name:          match.Name,
+		workspaceID:   match.WorkspaceID,
+		liveAccountID: creds.OAKContext,
+	}, nil
+}
+
+// Delete closes a prepared sandbox after verifying that the active live
+// account has not changed since selection.
+func (c *ManagementClient) Delete(ctx context.Context, target *DeleteTarget) error {
+	if target == nil ||
+		!validAccountID(target.AccountID) ||
+		strings.TrimSpace(target.Name) == "" ||
+		!validTestmodeWorkspaceID(target.workspaceID) ||
+		!validAccountID(target.liveAccountID) {
+		return errorcategory.New(errorcategory.API, "could not delete sandbox: the prepared target was invalid")
+	}
+
+	creds, err := c.resolveDeleteCredentials(target)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.closeSandbox(ctx, target, creds)
+	if statusCode, ok := requestStatusCode(err); ok && statusCode == http.StatusUnauthorized && config.OAuthTokenRefresher != nil {
+		if refreshErr := config.OAuthTokenRefresher(c.Profile); refreshErr != nil {
+			return errorcategory.New(errorcategory.Auth, "could not delete sandbox: OAuth authorization could not be refreshed; run `stripe login` or reauthorize the CLI")
+		}
+		creds, err = c.resolveDeleteCredentials(target)
+		if err != nil {
+			return err
+		}
+		response, err = c.closeSandbox(ctx, target, creds)
+	}
+	if err != nil {
+		return safeDependencyError("could not delete sandbox", err)
+	}
+
+	var parsed struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(response, &parsed); err != nil || parsed.ID != target.workspaceID {
+		return errorcategory.New(errorcategory.API, "could not delete sandbox: the response was invalid")
+	}
+	return nil
+}
+
+func (c *ManagementClient) listAccessible(ctx context.Context) ([]ManagedSandbox, stripe.Credentials, error) {
+	creds, err := c.resolveCredentials()
+	if err != nil {
+		return nil, stripe.Credentials{}, err
+	}
+
 	workspaceContext, err := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true)
 	if err != nil {
-		return nil, safeDependencyError("could not resolve the active live workspace", err)
+		return nil, stripe.Credentials{}, safeDependencyError("could not resolve the active live workspace", err)
 	}
 	if !validLiveWorkspaceID(workspaceContext.WorkspaceID) {
-		return nil, errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid")
+		return nil, stripe.Credentials{}, errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid")
 	}
 
 	base := &requests.Base{
@@ -94,15 +185,41 @@ func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox
 		nil,
 	)
 	if err != nil {
-		return nil, safeDependencyError("could not list accessible sandboxes", err)
+		return nil, stripe.Credentials{}, safeDependencyError("could not list accessible sandboxes", err)
 	}
 
 	var parsed accessibleSandboxesResponse
 	if err := json.Unmarshal(response, &parsed); err != nil {
-		return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response was invalid")
+		return nil, stripe.Credentials{}, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response was invalid")
 	}
 
-	return normalizeAccessibleSandboxes(parsed)
+	sandboxes, err := normalizeAccessibleSandboxes(parsed)
+	if err != nil {
+		return nil, stripe.Credentials{}, err
+	}
+	return sandboxes, creds, nil
+}
+
+func (c *ManagementClient) resolveDeleteCredentials(target *DeleteTarget) (stripe.Credentials, error) {
+	creds, err := c.resolveCredentials()
+	if err != nil {
+		return stripe.Credentials{}, err
+	}
+	if creds.OAKContext != target.liveAccountID {
+		return stripe.Credentials{}, errorcategory.New(errorcategory.UserInput, "could not delete sandbox because the active live account changed; run the command again")
+	}
+	return stripe.NewOAKCredentials(creds.Token, target.AccountID, false), nil
+}
+
+func (c *ManagementClient) closeSandbox(ctx context.Context, target *DeleteTarget, creds stripe.Credentials) ([]byte, error) {
+	base := &requests.Base{
+		Method:         http.MethodPost,
+		SuppressOutput: true,
+		APIBaseURL:     c.APIBaseURL,
+		Livemode:       false,
+	}
+	path := "/v2/workspaces/undocumented/testmode/" + url.PathEscape(target.workspaceID) + "/close"
+	return base.MakeRequest(ctx, creds, path, &requests.RequestParameters{}, nil, true, nil)
 }
 
 func (c *ManagementClient) resolveCredentials() (stripe.Credentials, error) {

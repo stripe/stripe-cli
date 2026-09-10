@@ -297,6 +297,226 @@ func TestManagementClientSanitizesTransportErrors(t *testing.T) {
 	assert.NotContains(t, err.Error(), serverURL)
 }
 
+func TestManagementClientPrepareDelete(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_live_token")
+	server := managementTestServer(t, `{"workspace_id":"wksp_live_parent"}`, `{
+  "workspaces": [
+    {"id":"wksp_test_other","merchant_id":"acct_other","name":"Other","access_level":1},
+    {"id":"wksp_test_target","merchant_id":"acct_target","name":"Target","access_level":2}
+  ]
+}`)
+	defer server.Close()
+
+	target, err := NewManagementClient(server.URL, profile).PrepareDelete(context.Background(), "acct_target")
+	require.NoError(t, err)
+	require.NotNil(t, target)
+	assert.Equal(t, "acct_target", target.AccountID)
+	assert.Equal(t, "Target", target.Name)
+	assert.Equal(t, "wksp_test_target", target.workspaceID)
+	assert.Equal(t, "acct_live_parent", target.liveAccountID)
+}
+
+func TestManagementClientPrepareDeleteRejectsInvalidOrMissingAccount(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_live_token")
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+	}))
+	defer server.Close()
+
+	for _, accountID := range []string{"", "acct_", "org_target", "wksp_test_target"} {
+		target, err := NewManagementClient(server.URL, profile).PrepareDelete(context.Background(), accountID)
+		require.Error(t, err)
+		assert.Nil(t, target)
+		assert.Equal(t, errorcategory.UserInput, mustErrorCategory(t, err))
+	}
+
+	assert.Zero(t, requests)
+}
+
+func TestManagementClientPrepareDeleteRejectsMissingAndAmbiguousMatches(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+	}{
+		{
+			name:     "missing",
+			response: `{"workspaces":[{"id":"wksp_test_other","merchant_id":"acct_other","name":"Other","access_level":1}]}`,
+		},
+		{
+			name: "ambiguous",
+			response: `{"workspaces":[
+  {"id":"wksp_test_one","merchant_id":"acct_target","name":"One","access_level":1},
+  {"id":"wksp_test_two","merchant_id":"acct_target","name":"Two","access_level":1}
+]}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := managementTestProfile(t, "acct_live_parent", true, "oak_live_token")
+			server := managementTestServer(t, `{"workspace_id":"wksp_live_parent"}`, test.response)
+			defer server.Close()
+
+			target, err := NewManagementClient(server.URL, profile).PrepareDelete(context.Background(), "acct_target")
+			require.Error(t, err)
+			assert.Nil(t, target)
+			assert.Equal(t, errorcategory.UserInput, mustErrorCategory(t, err))
+			assert.NotContains(t, err.Error(), "acct_target")
+			assert.NotContains(t, err.Error(), "wksp_test")
+		})
+	}
+}
+
+func TestManagementClientDeleteUsesDirectSandboxTestmodeCredentials(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_live_token")
+	target := &DeleteTarget{
+		AccountID:     "acct_target",
+		Name:          "Target",
+		workspaceID:   "wksp_test_target",
+		liveAccountID: "acct_live_parent",
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/workspaces/undocumented/testmode/wksp_test_target/close", r.URL.Path)
+		require.Equal(t, "Bearer oak_live_token", r.Header.Get("Authorization"))
+		require.Equal(t, "acct_target", r.Header.Get("Stripe-Context"))
+		require.Equal(t, "false", r.Header.Get("Stripe-Livemode"))
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.Empty(t, body)
+		_, _ = w.Write([]byte(`{"id":"wksp_test_target"}`))
+	}))
+	defer server.Close()
+
+	err := NewManagementClient(server.URL, profile).Delete(context.Background(), target)
+	require.NoError(t, err)
+}
+
+func TestManagementClientDeleteRejectsChangedLiveContextBeforeClose(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_live_token")
+	target := &DeleteTarget{
+		AccountID:     "acct_target",
+		Name:          "Target",
+		workspaceID:   "wksp_test_target",
+		liveAccountID: "acct_live_parent",
+	}
+	require.NoError(t, config.SaveActiveContext("acct_other_live_parent", true))
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+	}))
+	defer server.Close()
+
+	err := NewManagementClient(server.URL, profile).Delete(context.Background(), target)
+	require.Error(t, err)
+	assert.Equal(t, errorcategory.UserInput, mustErrorCategory(t, err))
+	assert.Contains(t, err.Error(), "active live account changed")
+	assert.NotContains(t, err.Error(), "acct_")
+	assert.Zero(t, requests)
+}
+
+func TestManagementClientDeleteRefreshesAndRetriesOnce(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_initial")
+	target := &DeleteTarget{
+		AccountID:     "acct_target",
+		Name:          "Target",
+		workspaceID:   "wksp_test_target",
+		liveAccountID: "acct_live_parent",
+	}
+	refreshes := 0
+	config.OAuthTokenRefresher = func(p *config.Profile) error {
+		refreshes++
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_refreshed"), "test refreshed token")
+	}
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		require.Equal(t, "acct_target", r.Header.Get("Stripe-Context"))
+		require.Equal(t, "false", r.Header.Get("Stripe-Livemode"))
+		if requests == 1 {
+			require.Equal(t, "Bearer oak_initial", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":{"code":"unauthorized","message":"sentinel oak_initial wksp_test_target"}}`))
+			return
+		}
+		require.Equal(t, "Bearer oak_refreshed", r.Header.Get("Authorization"))
+		_, _ = w.Write([]byte(`{"id":"wksp_test_target"}`))
+	}))
+	defer server.Close()
+
+	err := NewManagementClient(server.URL, profile).Delete(context.Background(), target)
+	require.NoError(t, err)
+	assert.Equal(t, 1, refreshes)
+	assert.Equal(t, 2, requests)
+}
+
+func TestManagementClientDeleteDoesNotRetryTwice(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_initial")
+	target := &DeleteTarget{
+		AccountID:     "acct_target",
+		Name:          "Target",
+		workspaceID:   "wksp_test_target",
+		liveAccountID: "acct_live_parent",
+	}
+	refreshes := 0
+	config.OAuthTokenRefresher = func(p *config.Profile) error {
+		refreshes++
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_refreshed"), "test refreshed token")
+	}
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":{"code":"unauthorized","message":"sentinel oak_secret wksp_test_target"}}`))
+	}))
+	defer server.Close()
+
+	err := NewManagementClient(server.URL, profile).Delete(context.Background(), target)
+	require.Error(t, err)
+	assert.Equal(t, 1, refreshes)
+	assert.Equal(t, 2, requests)
+	assert.NotContains(t, err.Error(), "sentinel")
+	assert.NotContains(t, err.Error(), "oak_")
+	assert.NotContains(t, err.Error(), "wksp_test")
+}
+
+func TestManagementClientDeleteSanitizesFailures(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "forbidden", statusCode: http.StatusForbidden, body: `{"error":{"message":"sentinel acct_target wksp_test_target"}}`},
+		{name: "malformed success", statusCode: http.StatusOK, body: `{"id":`},
+		{name: "mismatched success", statusCode: http.StatusOK, body: `{"id":"wksp_test_other"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := managementTestProfile(t, "acct_live_parent", true, "oak_live_token")
+			target := &DeleteTarget{
+				AccountID:     "acct_target",
+				Name:          "Target",
+				workspaceID:   "wksp_test_target",
+				liveAccountID: "acct_live_parent",
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(test.statusCode)
+				_, _ = w.Write([]byte(test.body))
+			}))
+			defer server.Close()
+
+			err := NewManagementClient(server.URL, profile).Delete(context.Background(), target)
+			require.Error(t, err)
+			assert.NotContains(t, err.Error(), "sentinel")
+			assert.NotContains(t, err.Error(), "acct_target")
+			assert.NotContains(t, err.Error(), "wksp_test")
+			assert.NotContains(t, err.Error(), server.URL)
+		})
+	}
+}
+
 func managementTestProfile(t *testing.T, accountID string, livemode bool, token string) *config.Profile {
 	t.Helper()
 	activeContext, err := json.Marshal(config.ActiveContext{AccountID: accountID, Livemode: livemode})
