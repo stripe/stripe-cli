@@ -359,7 +359,7 @@ func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []st
 			return err
 		}
 		if result != nil {
-			fmt.Fprintf(cmd.OutOrStdout(), "Active context: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
+			fmt.Fprintf(cmd.OutOrStdout(), "Logged in to: %s · %s (%s)\n", result.Account.Name, result.DisplayMode(), result.Account.ID)
 		}
 		return nil
 	}

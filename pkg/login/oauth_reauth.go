@@ -56,7 +56,7 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 	fmt.Println()
 	if !isSSH() && canOpenBrowser() {
 		browserOpened = make(chan struct{})
-		fmt.Printf("To authorize more contexts, visit %s\n\n", reauthURL)
+		fmt.Printf("To authorize more accounts in live mode or a sandbox, visit %s\n\n", reauthURL)
 		fmt.Println("Press enter to open the browser (^C to quit)")
 		go func() {
 			fmt.Scanln() //nolint:errcheck
@@ -162,7 +162,7 @@ func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken str
 		switch {
 		case errors.Is(err, context.Canceled):
 			ansi.ClearLine(os.Stdout)
-			fmt.Println("Canceled. Run 'stripe whoami' to see your authorized contexts or 'stripe login --new-session' to log in as a different user.")
+			fmt.Println("Canceled. Run 'stripe whoami' to see the accounts you're logged in to or 'stripe login --new-session' to log in as a different user.")
 			return nil
 		case errors.Is(err, errReauthTimeout):
 			fmt.Println("Still waiting on the re-authorization. Run 'stripe whoami' once you've finished.")

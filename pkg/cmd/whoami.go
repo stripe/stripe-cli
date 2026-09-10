@@ -70,14 +70,15 @@ func newWhoamiCmd() *whoamiCmd {
 	wc.cmd = &cobra.Command{
 		Use:   "whoami",
 		Args:  validators.NoArgs,
-		Short: "Show the current Stripe auth context",
-		Long: `Display the current authentication context for the Stripe CLI.
+		Short: "Show whether you're logged in to live mode or a sandbox",
+		Long: `Display whether the Stripe CLI is logged in to live mode or a sandbox.
 
 Reads credentials from the config file and keychain — no API calls are made.
 
 Use --format json for output suitable for scripting or agent consumption. The
 schema is stable: test_mode_key and live_mode_key are always present regardless
-of auth context, and authenticated: false indicates no usable credentials exist.
+of whether you're logged in to live mode or a sandbox, and authenticated: false
+indicates no usable credentials exist.
 
 Exit codes:
   0  Authenticated (at least one key is available)
@@ -184,9 +185,9 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 			fmt.Fprintf(tw, "User\t%s\n", out.Email)
 		}
 		if out.DisplayName != ac.AccountID {
-			fmt.Fprintf(tw, "Context\t%s · %s (%s)\n", out.DisplayName, displayModeText(out.Mode), ac.AccountID)
+			fmt.Fprintf(tw, "Account\t%s · %s (%s)\n", out.DisplayName, displayModeText(out.Mode), ac.AccountID)
 		} else {
-			fmt.Fprintf(tw, "Context\t%s · %s\n", out.DisplayName, displayModeText(out.Mode))
+			fmt.Fprintf(tw, "Account\t%s · %s\n", out.DisplayName, displayModeText(out.Mode))
 		}
 		if out.Role != "" {
 			fmt.Fprintf(tw, "Role\t%s\n", out.Role)
@@ -199,6 +200,9 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	}
 
 	login.PrintAuthorizedContextsList(accounts)
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
+	fmt.Fprintln(w, "Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
 	return nil
 }
 

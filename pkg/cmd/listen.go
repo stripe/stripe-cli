@@ -92,7 +92,7 @@ Stripe account.`,
 	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
 	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
-	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test). Requires your active context to be in live mode — check with 'stripe whoami', switch with 'stripe switch'")
+	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
 	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format json` instead and use `jq` if you need to process the JSON in the terminal.")
 	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
