@@ -44,7 +44,7 @@ Without an argument, shows an interactive list of your authorized accounts and
 modes. Navigate with ↑↓, confirm with enter, or cancel with esc.
 
 With an account ID, switches directly to that account. Add --live to switch to live mode.`,
-		Example: `  stripe switch
+		Example: `stripe switch
   stripe switch acct_1234
   stripe switch acct_1234 --live
   stripe switch acct_1234 --format json`,
