@@ -44,6 +44,9 @@ type CLIAnalyticsEventMetadata struct {
 	CommandFlags      string `url:"command_flags"`              // Comma-separated list of flags that were passed to the command (only includes flag names, not their values)
 	PluginName        string `url:"plugin_name,omitempty"`      // the plugin being installed, when relevant
 	PluginVersion     string `url:"plugin_version,omitempty"`   // the version of the plugin being installed/uninstalled/upgraded
+	PluginCommand     string `url:"command,omitempty"`          // bounded plugin command bucket supplied by the plugin analytics protocol
+	PluginOutcome     string `url:"outcome,omitempty"`          // bounded plugin command outcome supplied by the plugin analytics protocol
+	PluginDurationMS  string `url:"duration_ms,omitempty"`      // nonnegative plugin command duration supplied by the plugin analytics protocol
 	Merchant          string `url:"merchant"`                   // the merchant ID: ex. acct_xxxx
 	CLIVersion        string `url:"cli_version"`                // the version of the CLI
 	OS                string `url:"os"`                         // the OS of the system

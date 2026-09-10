@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -45,6 +46,12 @@ type CoreCLIHelper interface {
 	// Calling Login again starts a brand new login attempt (a new device code and browser URL),
 	// not a resumption of this one.
 	Login(timeoutSeconds int32) (accountID string, accountName string, livemode bool, loggedIn bool, err error)
+}
+
+// CoreCLIHelperPluginAnalytics is an optional extension implemented by hosts that
+// accept bounded plugin command metadata alongside the legacy analytics value.
+type CoreCLIHelperPluginAnalytics interface {
+	SendAnalyticsWithPluginCommand(eventName string, eventValue string, pluginCommand *proto.PluginCommandAnalytics) error
 }
 
 type CoreCLIHelperClient struct {
@@ -154,7 +161,12 @@ func (s *CoreCLIHelperServer) Echo(ctx context.Context, req *proto.EchoRequest) 
 }
 
 func (s *CoreCLIHelperServer) SendAnalytics(ctx context.Context, req *proto.SendAnalyticsRequest) (*proto.SendAnalyticsResponse, error) {
-	err := s.Impl.SendAnalytics(req.EventName, req.EventValue)
+	var err error
+	if analyticsImpl, ok := s.Impl.(CoreCLIHelperPluginAnalytics); ok && req.PluginCommand != nil {
+		err = analyticsImpl.SendAnalyticsWithPluginCommand(req.EventName, req.EventValue, req.PluginCommand)
+	} else {
+		err = s.Impl.SendAnalytics(req.EventName, req.EventValue)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -347,6 +359,16 @@ func (h *coreCLIHelper) Echo(input string) (string, error) {
 
 // SendAnalytics sends a telemetry event to the analytics service.
 func (h *coreCLIHelper) SendAnalytics(eventName string, eventValue string) error {
+	return h.sendAnalytics(eventName, eventValue, nil)
+}
+
+// SendAnalyticsWithPluginCommand sends the legacy analytics event once and, when
+// valid, adds a bounded typed projection for AEL metrics.
+func (h *coreCLIHelper) SendAnalyticsWithPluginCommand(eventName string, eventValue string, pluginCommand *proto.PluginCommandAnalytics) error {
+	return h.sendAnalytics(eventName, eventValue, pluginCommand)
+}
+
+func (h *coreCLIHelper) sendAnalytics(eventName string, eventValue string, pluginCommand *proto.PluginCommandAnalytics) error {
 	// Get the telemetry client from the context
 	telemetryClient := stripe.GetTelemetryClient(h.ctx)
 	if telemetryClient == nil {
@@ -354,9 +376,83 @@ func (h *coreCLIHelper) SendAnalytics(eventName string, eventValue string) error
 		return nil
 	}
 
-	// Send the event via the telemetry client
-	telemetryClient.SendEvent(h.ctx, eventName, eventValue)
+	eventCtx := h.ctx
+	if metadata := validatedPluginCommandMetadata(eventName, pluginCommand); metadata != nil {
+		if base := stripe.GetEventMetadata(h.ctx); base != nil {
+			copy := *base
+			copy.PluginName = metadata.pluginName
+			copy.PluginVersion = metadata.pluginVersion
+			copy.PluginCommand = metadata.command
+			copy.PluginOutcome = metadata.outcome
+			copy.PluginDurationMS = metadata.durationMS
+			eventCtx = stripe.WithEventMetadata(h.ctx, &copy)
+		}
+	}
+
+	telemetryClient.SendEvent(eventCtx, eventName, eventValue)
 	return nil
+}
+
+type pluginCommandMetadata struct {
+	pluginName    string
+	pluginVersion string
+	command       string
+	outcome       string
+	durationMS    string
+}
+
+var projectsPluginCommands = map[string]struct{}{
+	"add": {}, "billing": {}, "build": {}, "catalog": {}, "env": {},
+	"feedback": {}, "import": {}, "init": {}, "link": {}, "list": {},
+	"llm-context": {}, "open": {}, "pull": {}, "remove": {}, "rotate": {},
+	"search": {}, "self-check": {}, "services": {}, "share": {}, "show": {},
+	"spend": {}, "status": {}, "switch-account": {}, "switch-accounts": {},
+	"unlink": {}, "update": {}, "upgrade": {}, "downgrade": {}, "variables": {},
+	"unknown": {},
+}
+
+var pluginVersionPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.+-]{0,63}$`)
+
+func validatedPluginCommandMetadata(eventName string, value *proto.PluginCommandAnalytics) *pluginCommandMetadata {
+	if value == nil || (value.PluginName != "projects" && value.PluginName != "other" && value.PluginName != "unknown") {
+		return nil
+	}
+	if !pluginVersionPattern.MatchString(value.PluginVersion) {
+		return nil
+	}
+	if value.PluginName == "projects" {
+		if _, ok := projectsPluginCommands[value.Command]; !ok {
+			return nil
+		}
+	} else if value.Command != "unknown" {
+		return nil
+	}
+
+	metadata := &pluginCommandMetadata{pluginName: value.PluginName, pluginVersion: value.PluginVersion, command: value.Command}
+	switch eventName {
+	case "Plugin invoked":
+		if value.Outcome != proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_UNSPECIFIED || value.DurationMs != nil {
+			return nil
+		}
+	case "Plugin command finished":
+		if value.DurationMs == nil || value.GetDurationMs() < 0 {
+			return nil
+		}
+		metadata.durationMS = fmt.Sprint(value.GetDurationMs())
+		switch value.Outcome {
+		case proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_SUCCESS:
+			metadata.outcome = "success"
+		case proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_ERROR:
+			metadata.outcome = "error"
+		case proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_CANCELLED:
+			metadata.outcome = "cancelled"
+		default:
+			return nil
+		}
+	default:
+		return nil
+	}
+	return metadata
 }
 
 // KeychainGetPassword retrieves a password from the system keychain.

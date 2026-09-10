@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -12,8 +13,43 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"google.golang.org/protobuf/encoding/protowire"
+	googleProto "google.golang.org/protobuf/proto"
 )
+
+type recordingTelemetryClient struct {
+	contexts []context.Context
+	names    []string
+	values   []string
+}
+
+type analyticsHelperStub struct {
+	CoreCLIHelper
+	legacyCalls int
+	typedCalls  int
+}
+
+func (s *analyticsHelperStub) SendAnalytics(string, string) error {
+	s.legacyCalls++
+	return nil
+}
+
+func (s *analyticsHelperStub) SendAnalyticsWithPluginCommand(string, string, *proto.PluginCommandAnalytics) error {
+	s.typedCalls++
+	return nil
+}
+
+func (r *recordingTelemetryClient) SendAPIRequestEvent(context.Context, string, bool) (*http.Response, error) {
+	return nil, nil
+}
+
+func (r *recordingTelemetryClient) SendEvent(ctx context.Context, name string, value string) {
+	r.contexts = append(r.contexts, ctx)
+	r.names = append(r.names, name)
+	r.values = append(r.values, value)
+}
 
 func TestEcho(t *testing.T) {
 	ctx := context.Background()
@@ -685,4 +721,96 @@ func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
 	coreCLIHelper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs(), "", "", "")
 	err := coreCLIHelper.SendAnalytics("test_event", "test_value")
 	require.NoError(t, err)
+}
+
+func TestSendAnalyticsWithPluginCommandUsesEventScopedMetadata(t *testing.T) {
+	client := &recordingTelemetryClient{}
+	base := stripe.NewEventMetadata()
+	base.PluginName = "installed-plugin"
+	ctx := stripe.WithEventMetadata(context.Background(), base)
+	ctx = stripe.WithTelemetryClient(ctx, client)
+	helper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs(), "", "", "").(CoreCLIHelperPluginAnalytics)
+	duration := int64(123)
+
+	err := helper.SendAnalyticsWithPluginCommand(
+		"Plugin command finished",
+		`{"outcome":"success"}`,
+		&proto.PluginCommandAnalytics{
+			PluginName: "projects", PluginVersion: "0.40.0", Command: "status",
+			Outcome: proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_SUCCESS, DurationMs: &duration,
+		},
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"Plugin command finished"}, client.names)
+	require.Equal(t, []string{`{"outcome":"success"}`}, client.values)
+	eventMetadata := stripe.GetEventMetadata(client.contexts[0])
+	require.Equal(t, "projects", eventMetadata.PluginName)
+	require.Equal(t, "0.40.0", eventMetadata.PluginVersion)
+	require.Equal(t, "status", eventMetadata.PluginCommand)
+	require.Equal(t, "success", eventMetadata.PluginOutcome)
+	require.Equal(t, "123", eventMetadata.PluginDurationMS)
+	require.Equal(t, "installed-plugin", base.PluginName, "shared metadata must not be mutated")
+}
+
+func TestSendAnalyticsWithMalformedPluginCommandPreservesLegacySend(t *testing.T) {
+	client := &recordingTelemetryClient{}
+	base := stripe.NewEventMetadata()
+	ctx := stripe.WithEventMetadata(context.Background(), base)
+	ctx = stripe.WithTelemetryClient(ctx, client)
+	helper := NewCoreCLIHelper(ctx, nil, afero.NewMemMapFs(), "", "", "").(CoreCLIHelperPluginAnalytics)
+
+	err := helper.SendAnalyticsWithPluginCommand(
+		"Plugin command finished",
+		"legacy",
+		&proto.PluginCommandAnalytics{PluginName: "projects", PluginVersion: "0.40.0", Command: "user-input"},
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"legacy"}, client.values)
+	require.Same(t, base, stripe.GetEventMetadata(client.contexts[0]))
+}
+
+func TestCoreCLIHelperServerSendsTypedAnalyticsExactlyOnce(t *testing.T) {
+	impl := &analyticsHelperStub{}
+	server := &CoreCLIHelperServer{Impl: impl}
+
+	_, err := server.SendAnalytics(context.Background(), &proto.SendAnalyticsRequest{
+		EventName: "Plugin invoked", EventValue: "projects@0.40.0",
+		PluginCommand: &proto.PluginCommandAnalytics{PluginName: "projects", PluginVersion: "0.40.0", Command: "status"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 0, impl.legacyCalls)
+	require.Equal(t, 1, impl.typedCalls)
+}
+
+func TestLegacyDecoderCanIgnoreTypedAnalyticsField(t *testing.T) {
+	encoded, err := googleProto.Marshal(&proto.SendAnalyticsRequest{
+		EventName: "Plugin invoked", EventValue: "projects@0.40.0",
+		PluginCommand: &proto.PluginCommandAnalytics{PluginName: "projects", PluginVersion: "0.40.0", Command: "status"},
+	})
+	require.NoError(t, err)
+
+	legacyFields := map[protowire.Number]string{}
+	for len(encoded) > 0 {
+		number, wireType, tagLength := protowire.ConsumeTag(encoded)
+		require.GreaterOrEqual(t, tagLength, 0)
+		encoded = encoded[tagLength:]
+		if wireType != protowire.BytesType {
+			valueLength := protowire.ConsumeFieldValue(number, wireType, encoded)
+			require.GreaterOrEqual(t, valueLength, 0)
+			encoded = encoded[valueLength:]
+			continue
+		}
+		value, valueLength := protowire.ConsumeBytes(encoded)
+		require.GreaterOrEqual(t, valueLength, 0)
+		if number == 1 || number == 2 {
+			legacyFields[number] = string(value)
+		}
+		encoded = encoded[valueLength:]
+	}
+
+	require.Equal(t, "Plugin invoked", legacyFields[1])
+	require.Equal(t, "projects@0.40.0", legacyFields[2])
 }
