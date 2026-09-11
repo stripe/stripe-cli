@@ -20,6 +20,7 @@ const stripeCLISessionPath = "/v1/stripecli/sessions"
 type AuthorizeHTTPError struct {
 	StatusCode int
 	Body       string
+	ErrorCode  string
 }
 
 func (e *AuthorizeHTTPError) Error() string {
@@ -108,6 +109,7 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 		return nil, &AuthorizeHTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       string(body),
+			ErrorCode:  parseErrorCode(body),
 		}
 	}
 
@@ -152,4 +154,29 @@ func IsAuthorizationClientError(err error) (*AuthorizeHTTPError, bool) {
 		return clientError, true
 	}
 	return nil, false
+}
+
+// MorePermissionsRequiredErrorCode is the Stripe API error code returned
+// when the API key's role does not have permission to perform a request.
+const MorePermissionsRequiredErrorCode = "more_permissions_required"
+
+// IsMorePermissionsRequiredError returns true if the provided error was
+// caused by a session authorization request returning a
+// `more_permissions_required` error code.
+func IsMorePermissionsRequiredError(err error) bool {
+	var authErr *AuthorizeHTTPError
+	if errors.As(err, &authErr) {
+		return authErr.StatusCode == http.StatusForbidden && authErr.ErrorCode == MorePermissionsRequiredErrorCode
+	}
+	return false
+}
+
+func parseErrorCode(body []byte) string {
+	var errorBody struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	json.Unmarshal(body, &errorBody) // #nosec G104
+	return errorBody.Error.Code
 }

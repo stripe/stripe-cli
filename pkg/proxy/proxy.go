@@ -162,7 +162,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		session, err := p.createSession(ctx)
 		if err != nil {
 			p.cfg.OutCh <- websocket.ErrorElement{
-				Error: errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %v", err),
+				Error: errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", err),
 			}
 			return err
 		}

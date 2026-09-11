@@ -99,6 +99,20 @@ func IsAPIKeyExpiredError(err error) bool {
 	return false
 }
 
+// MorePermissionsRequiredErrorCode is the Stripe API error code returned
+// when the API key's role does not have permission to perform a request.
+const MorePermissionsRequiredErrorCode = "more_permissions_required"
+
+// IsMorePermissionsRequiredError returns true if the provided error was
+// caused by a request returning a `more_permissions_required` error code.
+func IsMorePermissionsRequiredError(err error) bool {
+	var reqErr RequestError
+	if errors.As(err, &reqErr) {
+		return reqErr.StatusCode == http.StatusForbidden && reqErr.ErrorCode == MorePermissionsRequiredErrorCode
+	}
+	return false
+}
+
 // Base encapsulates the required information needed to make requests to the API
 type Base struct {
 	Cmd *cobra.Command

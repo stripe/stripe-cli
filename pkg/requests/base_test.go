@@ -401,6 +401,36 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 	})
 }
 
+func TestIsMorePermissionsRequiredError(t *testing.T) {
+	for _, tt := range []struct {
+		statusCode int
+		errorCode  string
+		want       bool
+	}{
+		{200, "", false},
+		{403, "resource_missing", false},
+		{500, "more_permissions_required", false},
+		{403, "more_permissions_required", true},
+	} {
+		t.Run(fmt.Sprintf("status=%v,code=%q", tt.statusCode, tt.errorCode), func(t *testing.T) {
+			err := RequestError{
+				StatusCode: tt.statusCode,
+				ErrorCode:  tt.errorCode,
+			}
+			require.Equal(t, tt.want, IsMorePermissionsRequiredError(err))
+		})
+	}
+
+	t.Run("non-RequestError", func(t *testing.T) {
+		require.False(t, IsMorePermissionsRequiredError(fmt.Errorf("other")))
+	})
+
+	t.Run("wrapped", func(t *testing.T) {
+		err := fmt.Errorf("could not fetch resource: %w", RequestError{StatusCode: 403, ErrorCode: "more_permissions_required"})
+		require.True(t, IsMorePermissionsRequiredError(err))
+	})
+}
+
 func TestComputeVersionHeader(t *testing.T) {
 	t.Run("explicit version", func(t *testing.T) {
 		rb := Base{}

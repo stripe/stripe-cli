@@ -116,7 +116,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 
 		if err != nil {
 			t.cfg.OutCh <- websocket.ErrorElement{
-				Error: errorcategory.Errorf(errorcategory.Auth, "error while authenticating with Stripe: %v", err),
+				Error: errorcategory.Errorf(errorcategory.Auth, "error while authenticating with Stripe: %w", err),
 			}
 			return err
 		}
