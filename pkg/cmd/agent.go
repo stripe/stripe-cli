@@ -40,6 +40,10 @@ var providerOrder = []string{
 	agentsetup.ClientClaudeCode,
 	agentsetup.ClientCodex,
 	agentsetup.ClientCursor,
+	agentsetup.ClientGrok,
+	agentsetup.ClientKimi,
+	agentsetup.ClientGitHubCopilot,
+	agentsetup.ClientVSCode,
 }
 
 type agentCmd struct {
@@ -206,6 +210,9 @@ func (asc *agentSetupCmd) runSetup(cmd *cobra.Command, _ []string) error {
 	for _, s := range statuses {
 		if s.Detected {
 			sendAgentEvent(ctx, "Agent Setup: Client Detected", s.Client)
+			if s.Setup == agentsetup.SetupSkills {
+				continue
+			}
 			if s.Plugin.Installed {
 				sendAgentEvent(ctx, "Agent Setup: Plugin Detected", s.Client+":installed")
 			} else {
@@ -256,7 +263,7 @@ type skillsStatusView struct {
 }
 
 func (asc *agentSetupCmd) skillsStatusView(ctx context.Context, detected []agentsetup.Status) (skillsStatusView, error) {
-	if len(detected) == 0 {
+	if len(detected) == 0 || statusesUseSkills(detected) {
 		scopes, err := asc.loadSkillsScopes(ctx)
 		return skillsStatusView{scopes: scopes, show: true, allowInstall: true}, err
 	}
@@ -405,6 +412,7 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 	warn := color.Yellow("⚠").String()
 
 	var installedCount, updatedCount, skipCount, errCount int
+	installSkills := sel.InstallSkills
 	for _, status := range sel.Agents {
 		provider := providers[status.Client]
 		plan := provider.Plan(status, asc.force)
@@ -423,6 +431,10 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":manual")
 			skipCount++
 			continue
+		case agentsetup.ActionInstallSkills:
+			fmt.Fprintln(out, "  uses shared Stripe skills")
+			installSkills = true
+			continue
 		}
 
 		err := spinner.New().
@@ -440,7 +452,10 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		installedCount++
 	}
 
-	if sel.InstallSkills {
+	if installSkills {
+		if scope == "" {
+			scope = skillsScopeLocal
+		}
 		ok, installed, updated, skipped := asc.installSkills(ctx, out, scope, check, cross)
 		if !ok {
 			errCount++
@@ -635,6 +650,11 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 	}
 	for _, status := range statuses {
 		if plan := providers[status.Client].Plan(status, asc.force); plan.Action != agentsetup.ActionNone {
+			// The skills status below determines whether installation or update is
+			// actually needed and emits one shared action for every compatible client.
+			if plan.Action == agentsetup.ActionInstallSkills {
+				continue
+			}
 			result.Actions = append(result.Actions, plan)
 		}
 		if status.Status == agentsetup.StatusError {
@@ -731,13 +751,22 @@ func detectedStatuses(statuses []agentsetup.Status) []agentsetup.Status {
 	return detected
 }
 
+func statusesUseSkills(statuses []agentsetup.Status) bool {
+	for _, status := range statuses {
+		if status.Setup == agentsetup.SetupSkills {
+			return true
+		}
+	}
+	return false
+}
+
 // printStatusTable renders a compact, aligned, color-coded view of each client
 // and its Stripe plugin state. Colors are disabled automatically when the writer
 // is not a TTY (via ansi.Color).
 func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 	color := ansi.Color(w)
 
-	fmt.Fprintln(w, color.Bold("Detected agents with supported Stripe plugins:").String())
+	fmt.Fprintln(w, color.Bold("Detected supported agents:").String())
 	fmt.Fprintln(w)
 
 	nameWidth := 0
@@ -763,6 +792,9 @@ func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 			if detail := pluginDetail(s.Plugin); detail != "" {
 				state += "  " + color.Faint(detail).String()
 			}
+		case s.Setup == agentsetup.SetupSkills:
+			icon = color.Yellow("•").String()
+			state = "uses shared Stripe skills"
 		case s.Error != "":
 			icon = color.Yellow("•").String()
 			state = s.Error
@@ -775,7 +807,7 @@ func printStatusTable(w io.Writer, statuses []agentsetup.Status) {
 	}
 
 	if needsSetup {
-		fmt.Fprintf(w, "\nRun %s to install the Stripe plugin where it's missing.\n", color.Bold("stripe agent setup").String())
+		fmt.Fprintf(w, "\nRun %s to install the missing Stripe tooling.\n", color.Bold("stripe agent setup").String())
 	}
 }
 
@@ -858,6 +890,10 @@ Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
+  • Grok Build    https://x.ai/grok
+  • Kimi Code     https://www.kimi.com/code
+  • Copilot CLI   https://github.com/features/copilot/cli
+  • VS Code       https://code.visualstudio.com
 
 You can still install Stripe skills.
 `)
@@ -870,6 +906,10 @@ Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
+  • Grok Build    https://x.ai/grok
+  • Kimi Code     https://www.kimi.com/code
+  • Copilot CLI   https://github.com/features/copilot/cli
+  • VS Code       https://code.visualstudio.com
 
 Once a client is installed, re-run: stripe agent setup
 `)

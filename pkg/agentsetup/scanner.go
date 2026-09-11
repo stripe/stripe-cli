@@ -27,6 +27,10 @@ type ReadDirFunc func(string) ([]os.DirEntry, error)
 // StatFunc matches os.Stat and exists to make file existence checks testable.
 type StatFunc func(string) (os.FileInfo, error)
 
+// GetenvFunc matches os.Getenv and exists to make environment-based install
+// locations testable.
+type GetenvFunc func(string) string
+
 // RunCommandFunc runs a command. The production implementation captures output
 // silently and returns a concise error on failure.
 type RunCommandFunc func(context.Context, string, ...string) error
@@ -39,6 +43,7 @@ type Scanner struct {
 	WorkDir  WorkDirFunc
 	ReadDir  ReadDirFunc
 	Stat     StatFunc
+	Getenv   GetenvFunc
 }
 
 // DefaultScanner returns a Scanner backed by the real OS.
@@ -50,6 +55,7 @@ func DefaultScanner() Scanner {
 		WorkDir:  os.Getwd,
 		ReadDir:  os.ReadDir,
 		Stat:     os.Stat,
+		Getenv:   os.Getenv,
 	}
 }
 
@@ -72,6 +78,9 @@ func (s Scanner) withDefaults() Scanner {
 	}
 	if s.Stat == nil {
 		s.Stat = defaults.Stat
+	}
+	if s.Getenv == nil {
+		s.Getenv = defaults.Getenv
 	}
 	return s
 }

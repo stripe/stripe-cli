@@ -56,6 +56,8 @@ func newSelectModel(statuses []agentsetup.Status, skills skillsScopes) selectMod
 			label:  s.DisplayName,
 		}
 		switch {
+		case s.Setup == agentsetup.SetupSkills:
+			row.detail = "uses shared Stripe skills"
 		case s.Plugin.Installed:
 			row.disabled = true
 			row.hint = "plugin already installed"
@@ -69,13 +71,15 @@ func newSelectModel(statuses []agentsetup.Status, skills skillsScopes) selectMod
 		rows = append(rows, row)
 	}
 
-	skillsLabel, skillsDetail, skillsSelected := skillsRowPresentation(statuses, skills)
-	rows = append(rows, selectRow{
-		kind:     rowSkills,
-		label:    skillsLabel,
-		detail:   skillsDetail,
-		selected: skillsSelected,
-	})
+	if !statusesUseSkills(statuses) {
+		skillsLabel, skillsDetail, skillsSelected := skillsRowPresentation(statuses, skills)
+		rows = append(rows, selectRow{
+			kind:     rowSkills,
+			label:    skillsLabel,
+			detail:   skillsDetail,
+			selected: skillsSelected,
+		})
+	}
 
 	return selectModel{rows: rows}
 }
@@ -155,6 +159,9 @@ func (m selectModel) selection() Selection {
 		switch r.kind {
 		case rowAgent:
 			sel.Agents = append(sel.Agents, r.status)
+			if r.status.Setup == agentsetup.SetupSkills {
+				sel.InstallSkills = true
+			}
 		case rowSkills:
 			sel.InstallSkills = true
 		}
@@ -171,7 +178,7 @@ var (
 )
 
 func (m selectModel) View() tea.View {
-	body := "Select agents to install the Stripe plugin:\n\n"
+	body := "Select agents to set up Stripe tooling:\n\n"
 
 	skillsDividerShown := false
 	for i, r := range m.rows {
