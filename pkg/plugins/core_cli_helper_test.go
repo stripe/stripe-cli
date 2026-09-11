@@ -825,6 +825,16 @@ func TestSendAnalyticsWithMalformedPluginCommandPreservesOneLegacySend(t *testin
 			},
 		},
 		{
+			name: "invoked has duration", eventName: "Plugin invoked",
+			metadata: func() *proto.PluginCommandAnalytics {
+				duration := int64(1)
+				return &proto.PluginCommandAnalytics{
+					PluginName: "projects", PluginVersion: "0.40.0", Command: "status",
+					DurationMs: &duration,
+				}
+			}(),
+		},
+		{
 			name: "finished missing duration", eventName: "Plugin command finished",
 			metadata: &proto.PluginCommandAnalytics{
 				PluginName: "projects", PluginVersion: "0.40.0", Command: "status",
