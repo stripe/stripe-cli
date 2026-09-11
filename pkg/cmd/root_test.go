@@ -231,3 +231,27 @@ func TestIsMorePermissionsRequiredError(t *testing.T) {
 	wrapped := errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", authErr)
 	require.True(t, isMorePermissionsRequiredError(wrapped))
 }
+
+func TestMorePermissionsRequiredMessage(t *testing.T) {
+	t.Run("requests.RequestError, API key", func(t *testing.T) {
+		reqErr := requests.RequestError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", UsesAPIKey: true}
+		require.Equal(t, "raw error message", morePermissionsRequiredMessage(reqErr))
+	})
+
+	t.Run("requests.RequestError, OAuth/UAT", func(t *testing.T) {
+		reqErr := requests.RequestError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", UsesAPIKey: false}
+		require.Equal(t, morePermissionsRequiredRoleMessage, morePermissionsRequiredMessage(reqErr))
+	})
+
+	t.Run("stripeauth.AuthorizeHTTPError, API key", func(t *testing.T) {
+		authErr := &stripeauth.AuthorizeHTTPError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", UsesAPIKey: true}
+		wrapped := errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", authErr)
+		require.Equal(t, "raw error message", morePermissionsRequiredMessage(wrapped))
+	})
+
+	t.Run("stripeauth.AuthorizeHTTPError, OAuth/UAT", func(t *testing.T) {
+		authErr := &stripeauth.AuthorizeHTTPError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", UsesAPIKey: false}
+		wrapped := errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", authErr)
+		require.Equal(t, morePermissionsRequiredRoleMessage, morePermissionsRequiredMessage(wrapped))
+	})
+}

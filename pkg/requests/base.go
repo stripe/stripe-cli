@@ -80,6 +80,8 @@ type RequestError struct {
 	StatusCode int
 	ErrorType  string
 	ErrorCode  string
+	Message    string      // the human-readable "message" field from the error response body
+	UsesAPIKey bool        // true if the request was authenticated with a plain API key rather than an OAuth/UAT token
 	Body       interface{} // the raw response body
 }
 
@@ -368,6 +370,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
+		requestError.UsesAPIKey = creds.OAKContext == ""
 
 		// For OAK tokens, "unauthorized" means the token was manually revoked
 		// or otherwise invalidated server-side. Attempt a transparent refresh
@@ -595,8 +598,9 @@ func setNestedValue(m map[string]interface{}, key string, value string) {
 
 func compileRequestError(body []byte, statusCode int) RequestError {
 	type requestErrorContent struct {
-		Code string `json:"code"`
-		Type string `json:"type"`
+		Code    string `json:"code"`
+		Type    string `json:"type"`
+		Message string `json:"message"`
 	}
 
 	type requestErrorBody struct {
@@ -612,6 +616,7 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 		StatusCode: statusCode,
 		ErrorType:  errorBody.Content.Type,
 		ErrorCode:  errorBody.Content.Code,
+		Message:    errorBody.Content.Message,
 		Body:       string(body),
 	}
 }

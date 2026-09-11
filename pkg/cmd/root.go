@@ -194,7 +194,7 @@ func Execute(ctx context.Context) {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isMorePermissionsRequiredError(err):
-			fmt.Fprintln(os.Stderr, morePermissionsRequiredMessage)
+			fmt.Fprintln(os.Stderr, morePermissionsRequiredMessage(err))
 		case isLoginRequiredError && projectNameFlag != "default":
 			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
@@ -257,7 +257,25 @@ func isMorePermissionsRequiredError(err error) bool {
 	return requests.IsMorePermissionsRequiredError(err) || stripeauth.IsMorePermissionsRequiredError(err)
 }
 
-const morePermissionsRequiredMessage = "You don't have permission to do this with your current role. Ask an account administrator to assign you a different role with more permissions."
+// morePermissionsRequiredMessage returns the message to show the user for a
+// more_permissions_required error. Requests authenticated with a plain API
+// key have no notion of "role", so the raw message from the Stripe API is
+// shown instead of the role-reassignment message.
+func morePermissionsRequiredMessage(err error) string {
+	var reqErr requests.RequestError
+	if errors.As(err, &reqErr) && reqErr.UsesAPIKey {
+		return reqErr.Message
+	}
+
+	var authErr *stripeauth.AuthorizeHTTPError
+	if errors.As(err, &authErr) && authErr.UsesAPIKey {
+		return authErr.Message
+	}
+
+	return morePermissionsRequiredRoleMessage
+}
+
+const morePermissionsRequiredRoleMessage = "You don't have permission to do this with your current role. Ask an account administrator to assign you a different role with more permissions."
 
 var keysToReBind []string
 

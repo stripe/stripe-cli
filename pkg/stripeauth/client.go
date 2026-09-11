@@ -21,6 +21,8 @@ type AuthorizeHTTPError struct {
 	StatusCode int
 	Body       string
 	ErrorCode  string
+	Message    string // the human-readable "message" field from the error response body
+	UsesAPIKey bool   // true if the request was authenticated with a plain API key rather than an OAuth/UAT token
 }
 
 func (e *AuthorizeHTTPError) Error() string {
@@ -106,10 +108,17 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		code, message := parseErrorCodeAndMessage(body)
+		usesAPIKey := true
+		if stripeClient, ok := c.client.(*stripe.Client); ok {
+			usesAPIKey = stripeClient.Credentials.OAKContext == ""
+		}
 		return nil, &AuthorizeHTTPError{
 			StatusCode: resp.StatusCode,
 			Body:       string(body),
-			ErrorCode:  parseErrorCode(body),
+			ErrorCode:  code,
+			Message:    message,
+			UsesAPIKey: usesAPIKey,
 		}
 	}
 
@@ -171,12 +180,13 @@ func IsMorePermissionsRequiredError(err error) bool {
 	return false
 }
 
-func parseErrorCode(body []byte) string {
+func parseErrorCodeAndMessage(body []byte) (code, message string) {
 	var errorBody struct {
 		Error struct {
-			Code string `json:"code"`
+			Code    string `json:"code"`
+			Message string `json:"message"`
 		} `json:"error"`
 	}
 	json.Unmarshal(body, &errorBody) // #nosec G104
-	return errorBody.Error.Code
+	return errorBody.Error.Code, errorBody.Error.Message
 }

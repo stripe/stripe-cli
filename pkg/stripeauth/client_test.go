@@ -179,6 +179,33 @@ func TestAuthorizeMorePermissionsRequiredError(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, http.StatusForbidden, clientError.StatusCode)
 	require.Equal(t, "more_permissions_required", clientError.ErrorCode)
+	require.True(t, clientError.UsesAPIKey)
+	require.Equal(t, "The provided key does not have the required permissions for this endpoint.", clientError.Message)
+}
+
+func TestAuthorizeMorePermissionsRequiredError_OAKCredentials(t *testing.T) {
+	body := `{"error":{"code":"more_permissions_required","message":"The provided key does not have the required permissions for this endpoint.","type":"invalid_request_error"}}`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(body))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := NewClient(&stripe.Client{Credentials: stripe.NewOAKCredentials("oak_test_123", "acct_a", false), BaseURL: baseURL}, nil)
+
+	_, err := client.Authorize(context.Background(), CreateSessionRequest{
+		DeviceName:        "my-device",
+		WebSocketFeatures: []string{"webhooks"},
+	})
+
+	require.Error(t, err)
+	require.True(t, IsMorePermissionsRequiredError(err))
+
+	clientError, ok := IsAuthorizationClientError(err)
+	require.True(t, ok)
+	require.False(t, clientError.UsesAPIKey)
 }
 
 func TestAuthorizeServerError(t *testing.T) {
