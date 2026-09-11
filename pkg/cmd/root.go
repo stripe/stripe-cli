@@ -263,12 +263,12 @@ func isMorePermissionsRequiredError(err error) bool {
 // shown instead of the role-reassignment message.
 func morePermissionsRequiredMessage(err error) string {
 	var reqErr requests.RequestError
-	if errors.As(err, &reqErr) && reqErr.UsesAPIKey {
+	if errors.As(err, &reqErr) && !reqErr.HasOAKContext {
 		return reqErr.Message
 	}
 
 	var authErr *stripeauth.AuthorizeHTTPError
-	if errors.As(err, &authErr) && authErr.UsesAPIKey {
+	if errors.As(err, &authErr) && !authErr.HasOAKContext {
 		return authErr.Message
 	}
 

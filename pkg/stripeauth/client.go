@@ -18,11 +18,11 @@ import (
 const stripeCLISessionPath = "/v1/stripecli/sessions"
 
 type AuthorizeHTTPError struct {
-	StatusCode int
-	Body       string
-	ErrorCode  string
-	Message    string // the human-readable "message" field from the error response body
-	UsesAPIKey bool   // true if the request was authenticated with a plain API key rather than an OAuth/UAT token
+	StatusCode    int
+	Body          string
+	ErrorCode     string
+	Message       string // the human-readable "message" field from the error response body
+	HasOAKContext bool   // true if the request was authenticated with an OAuth/UAT token rather than a plain API key
 }
 
 func (e *AuthorizeHTTPError) Error() string {
@@ -109,16 +109,16 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 
 	if resp.StatusCode != http.StatusOK {
 		code, message := parseErrorCodeAndMessage(body)
-		usesAPIKey := true
+		var hasOAKContext bool
 		if stripeClient, ok := c.client.(*stripe.Client); ok {
-			usesAPIKey = stripeClient.Credentials.OAKContext == ""
+			hasOAKContext = stripeClient.Credentials.OAKContext != ""
 		}
 		return nil, &AuthorizeHTTPError{
-			StatusCode: resp.StatusCode,
-			Body:       string(body),
-			ErrorCode:  code,
-			Message:    message,
-			UsesAPIKey: usesAPIKey,
+			StatusCode:    resp.StatusCode,
+			Body:          string(body),
+			ErrorCode:     code,
+			Message:       message,
+			HasOAKContext: hasOAKContext,
 		}
 	}
 

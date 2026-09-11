@@ -452,7 +452,7 @@ func TestMakeRequest_MorePermissionsRequired(t *testing.T) {
 
 		var reqErr RequestError
 		require.True(t, errors.As(err, &reqErr))
-		require.True(t, reqErr.UsesAPIKey)
+		require.False(t, reqErr.HasOAKContext)
 		require.Equal(t, "The provided key does not have the required permissions for this endpoint.", reqErr.Message)
 	})
 
@@ -464,7 +464,7 @@ func TestMakeRequest_MorePermissionsRequired(t *testing.T) {
 
 		var reqErr RequestError
 		require.True(t, errors.As(err, &reqErr))
-		require.False(t, reqErr.UsesAPIKey)
+		require.True(t, reqErr.HasOAKContext)
 	})
 }
 

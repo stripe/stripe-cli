@@ -76,13 +76,13 @@ func (r *RequestParameters) SetVersion(value string) {
 
 // RequestError captures the response of the request that resulted in an error
 type RequestError struct {
-	msg        string
-	StatusCode int
-	ErrorType  string
-	ErrorCode  string
-	Message    string      // the human-readable "message" field from the error response body
-	UsesAPIKey bool        // true if the request was authenticated with a plain API key rather than an OAuth/UAT token
-	Body       interface{} // the raw response body
+	msg           string
+	StatusCode    int
+	ErrorType     string
+	ErrorCode     string
+	Message       string      // the human-readable "message" field from the error response body
+	HasOAKContext bool        // true if the request was authenticated with an OAuth/UAT token rather than a plain API key
+	Body          interface{} // the raw response body
 }
 
 func (e RequestError) Error() string {
@@ -370,7 +370,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
-		requestError.UsesAPIKey = creds.OAKContext == ""
+		requestError.HasOAKContext = creds.OAKContext != ""
 
 		// For OAK tokens, "unauthorized" means the token was manually revoked
 		// or otherwise invalidated server-side. Attempt a transparent refresh

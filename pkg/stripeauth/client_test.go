@@ -179,7 +179,7 @@ func TestAuthorizeMorePermissionsRequiredError(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, http.StatusForbidden, clientError.StatusCode)
 	require.Equal(t, "more_permissions_required", clientError.ErrorCode)
-	require.True(t, clientError.UsesAPIKey)
+	require.False(t, clientError.HasOAKContext)
 	require.Equal(t, "The provided key does not have the required permissions for this endpoint.", clientError.Message)
 }
 
@@ -205,7 +205,7 @@ func TestAuthorizeMorePermissionsRequiredError_OAKCredentials(t *testing.T) {
 
 	clientError, ok := IsAuthorizationClientError(err)
 	require.True(t, ok)
-	require.False(t, clientError.UsesAPIKey)
+	require.True(t, clientError.HasOAKContext)
 }
 
 func TestAuthorizeServerError(t *testing.T) {
