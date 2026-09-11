@@ -50,7 +50,7 @@ func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion string, profi
 }
 
 // WebhookEndpointsListWithClient returns all the webhook endpoints on a users' account
-func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPerformer, apiVersion string, profile *config.Profile) WebhookEndpointList {
+func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPerformer, apiVersion string, profile *config.Profile) (WebhookEndpointList, error) {
 	params := &RequestParameters{
 		data:    []string{"limit=30"},
 		version: apiVersion,
@@ -61,11 +61,16 @@ func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPe
 		Method:         http.MethodGet,
 		SuppressOutput: true,
 	}
-	resp, _ := base.MakeRequestWithClient(ctx, client, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
+	resp, err := base.MakeRequestWithClient(ctx, client, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
+	if err != nil {
+		return WebhookEndpointList{}, err
+	}
 	data := WebhookEndpointList{}
-	json.Unmarshal(resp, &data)
+	if err := json.Unmarshal(resp, &data); err != nil {
+		return WebhookEndpointList{}, err
+	}
 
-	return data
+	return data, nil
 }
 
 // WebhookEndpointCreate creates a new webhook endpoint

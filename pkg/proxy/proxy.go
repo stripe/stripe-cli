@@ -391,11 +391,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	var endpointRoutes []EndpointRoute
 	if cfg.UseConfiguredWebhooks {
 		// build from user's API config
-		endpoints := getEndpointsFromAPI(ctx, cfg.Client)
+		endpoints, err := getEndpointsFromAPI(ctx, cfg.Client)
+		if err != nil {
+			return nil, err
+		}
 		if len(endpoints.Data) == 0 {
 			return nil, errorcategory.New(errorcategory.UserInput, "you have not defined any webhook endpoints on your account, go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
-		var err error
 		endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
 		if err != nil {
 			return nil, err
@@ -583,7 +585,7 @@ func parseURL(url string) string {
 	return url
 }
 
-func getEndpointsFromAPI(ctx context.Context, client stripe.RequestPerformer) requests.WebhookEndpointList {
+func getEndpointsFromAPI(ctx context.Context, client stripe.RequestPerformer) (requests.WebhookEndpointList, error) {
 	return requests.WebhookEndpointsListWithClient(ctx, client, stripe.APIVersion, &config.Profile{})
 }
 
