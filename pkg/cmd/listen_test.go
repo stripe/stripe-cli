@@ -421,36 +421,78 @@ func TestEventsFromDefaultsToAll(t *testing.T) {
 	assert.NoError(t, lc.validateEventsFrom())
 }
 
-func TestCheckRemovedFlags(t *testing.T) {
+// The deprecated flags keep working: published commands that use them must
+// resolve to the same subscription and destinations they did before the redesign.
+func TestDeprecatedThinFlagsStillWork(t *testing.T) {
 	tests := []struct {
-		name    string
-		args    []string
-		wantErr string
+		name            string
+		args            []string
+		wantSnapshot    []string
+		wantThin        []string
+		wantThinURL     string
+		wantThinConnect string
+		wantFeatures    []string
 	}{
 		{
-			name:    "--thin-events points at --events",
-			args:    []string{"--thin-events", "v1.billing.meter.no_meter_found"},
-			wantErr: "--thin-events is no longer supported. Use --events instead",
+			// The docs' most common thin invocation.
+			name:            "--thin-events wildcard forwards all thin events",
+			args:            []string{"--thin-events", "*", "--forward-thin-to", "http://localhost:3000"},
+			wantSnapshot:    []string{"*"},
+			wantThin:        []string{"*"},
+			wantThinURL:     "http://localhost:3000",
+			wantThinConnect: "http://localhost:3000",
+			wantFeatures:    []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
 		},
 		{
-			name:    "--thin-events wildcard points at --all-thin",
-			args:    []string{"--thin-events", "*"},
-			wantErr: "--thin-events is no longer supported. Use --all-thin",
+			name:            "specific thin events",
+			args:            []string{"--thin-events", "v1.billing.meter.no_meter_found", "--forward-thin-to", "http://localhost:3000"},
+			wantSnapshot:    []string{"*"},
+			wantThin:        []string{"v1.billing.meter.no_meter_found"},
+			wantThinURL:     "http://localhost:3000",
+			wantThinConnect: "http://localhost:3000",
+			wantFeatures:    []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
 		},
 		{
-			name:    "--thin-events wildcard among other events points at --events",
-			args:    []string{"--thin-events", "*,v2.core.account.created"},
-			wantErr: "--thin-events is no longer supported. Use --events instead",
+			// --forward-to can't express this, which is why the flags stay.
+			name:            "a separate destination per payload style",
+			args:            []string{"--events", "charge.succeeded", "--forward-to", "http://a", "--thin-events", "v1.billing.meter.no_meter_found", "--forward-thin-to", "http://b"},
+			wantSnapshot:    []string{"charge.succeeded"},
+			wantThin:        []string{"v1.billing.meter.no_meter_found"},
+			wantThinURL:     "http://b",
+			wantThinConnect: "http://b",
+			wantFeatures:    []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
 		},
 		{
-			name:    "--forward-thin-to points at --forward-to",
-			args:    []string{"--forward-thin-to", "http://localhost:3000"},
-			wantErr: "--forward-thin-to is no longer supported. Use --forward-to instead",
+			name:            "--forward-thin-connect-to routes only connect thin events",
+			args:            []string{"--thin-events", "*", "--forward-thin-connect-to", "http://c"},
+			wantSnapshot:    []string{"*"},
+			wantThin:        []string{"*"},
+			wantThinURL:     "",
+			wantThinConnect: "http://c",
+			wantFeatures:    []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
 		},
 		{
-			name:    "--forward-thin-connect-to points at --events-from @accounts",
-			args:    []string{"--forward-thin-connect-to", "http://localhost:3000"},
-			wantErr: "--forward-thin-connect-to is no longer supported. Use --events-from @accounts --forward-to <url> instead.",
+			// Before the redesign this forwarded snapshot events and only printed
+			// thin ones, since --forward-thin-to was what built a thin route. It
+			// keeps doing that instead of erroring on a destination the user never
+			// pointed thin events at.
+			name:            "--thin-events with a bare --forward-to still forwards only snapshot events",
+			args:            []string{"--thin-events", "*", "--forward-to", "http://a"},
+			wantSnapshot:    []string{"*"},
+			wantThin:        []string{"*"},
+			wantThinURL:     "",
+			wantThinConnect: "",
+			wantFeatures:    []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
+		},
+		{
+			// Values are thin by declaration, so shape doesn't decide.
+			name:            "a thin event that doesn't look versioned",
+			args:            []string{"--thin-events", "unusual.event.shape"},
+			wantSnapshot:    []string{"*"},
+			wantThin:        []string{"unusual.event.shape"},
+			wantThinURL:     "",
+			wantThinConnect: "",
+			wantFeatures:    []string{webhooksWebSocketFeature, destinationsWebSocketFeature},
 		},
 	}
 
@@ -458,29 +500,41 @@ func TestCheckRemovedFlags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			lc := newListenCmd()
 			require.NoError(t, lc.cmd.ParseFlags(tt.args))
-			assert.ErrorContains(t, lc.checkRemovedFlags(), tt.wantErr)
+			require.NoError(t, lc.validateFlags())
+
+			snapshotEvents, thinEvents := lc.resolveEvents()
+			assert.Equal(t, tt.wantSnapshot, snapshotEvents)
+			assert.Equal(t, tt.wantThin, thinEvents)
+
+			directURL, connectURL := lc.resolveForwardURLs()
+			thinURL, thinConnectURL := lc.resolveThinForwardURLs(directURL, connectURL)
+			assert.Equal(t, tt.wantThinURL, thinURL)
+			assert.Equal(t, tt.wantThinConnect, thinConnectURL)
+
+			assert.Equal(t, tt.wantFeatures, lc.getFeatures())
 		})
 	}
 }
 
-func TestCheckRemovedFlagsAllowsSupportedFlags(t *testing.T) {
+// Without the deprecated flags, thin events follow --forward-to.
+func TestThinForwardURLsDefaultToForwardTo(t *testing.T) {
 	lc := newListenCmd()
-	require.NoError(t, lc.cmd.ParseFlags([]string{
-		"--events", "charge.captured",
-		"--forward-to", "http://localhost:3000",
-		"--forward-connect-to", "http://localhost:4000",
-	}))
-	assert.NoError(t, lc.checkRemovedFlags())
+	require.NoError(t, lc.cmd.ParseFlags([]string{"--all-thin", "--forward-to", "http://a"}))
+
+	directURL, connectURL := lc.resolveForwardURLs()
+	thinURL, thinConnectURL := lc.resolveThinForwardURLs(directURL, connectURL)
+	assert.Equal(t, "http://a", thinURL)
+	assert.Equal(t, "http://a", thinConnectURL)
 }
 
-// The removed flags are registered so that using one produces a message naming
-// its replacement rather than cobra's "unknown flag" error.
-func TestRemovedFlagsParseButAreHidden(t *testing.T) {
+// MarkDeprecated warns on use and keeps the flags out of help, but they still work.
+func TestDeprecatedFlagsAreMarkedDeprecated(t *testing.T) {
 	for _, name := range []string{"thin-events", "forward-thin-to", "forward-thin-connect-to"} {
 		t.Run(name, func(t *testing.T) {
 			flag := newListenCmd().cmd.Flags().Lookup(name)
-			require.NotNil(t, flag, "removed flag should stay registered")
-			assert.True(t, flag.Hidden, "removed flag should not appear in help")
+			require.NotNil(t, flag, "deprecated flag should stay registered")
+			assert.NotEmpty(t, flag.Deprecated, "flag should warn when used")
+			assert.True(t, flag.Hidden, "deprecated flag should not appear in help")
 		})
 	}
 }
@@ -508,9 +562,23 @@ func TestValidateFlags(t *testing.T) {
 			args: []string{"--events", "customer.created", "--events-from", "@accounts", "--forward-to", "http://localhost:3000"},
 		},
 		{
-			name:    "removed flag beats other validation errors",
-			args:    []string{"--thin-events", "v2.core.account.created", "--forward-to", "http://localhost:3000"},
-			wantErr: "--thin-events is no longer supported",
+			name: "deprecated thin flags satisfy the subscription requirement",
+			args: []string{"--thin-events", "*", "--forward-thin-to", "http://localhost:3000"},
+		},
+		{
+			name: "deprecated flags name a separate destination per payload style",
+			args: []string{"--events", "charge.succeeded", "--forward-to", "http://a", "--thin-events", "v1.billing.meter.no_meter_found", "--forward-thin-to", "http://b"},
+		},
+		{
+			name:    "deprecated flags pointing both payload styles at one destination",
+			args:    []string{"--events", "charge.succeeded", "--forward-to", "http://a", "--thin-events", "v1.billing.meter.no_meter_found", "--forward-thin-to", "http://a"},
+			wantErr: "cannot forward both snapshot and thin events to the same destination",
+		},
+		{
+			// The mixed-destination rule applies to what --events subscribes to,
+			// not to a deprecated thin subscription that reaches no destination.
+			name: "deprecated --thin-events alongside a bare --forward-to",
+			args: []string{"--thin-events", "*", "--forward-to", "http://a"},
 		},
 		{
 			name:    "wildcard events",
@@ -537,9 +605,8 @@ func TestValidateFlags(t *testing.T) {
 			args: []string{"--print-secret", "--forward-to", "http://localhost:3000"},
 		},
 		{
-			name:    "--print-secret still rejects removed flags",
-			args:    []string{"--print-secret", "--forward-thin-to", "http://localhost:3000"},
-			wantErr: "--forward-thin-to is no longer supported",
+			name: "--print-secret with deprecated flags",
+			args: []string{"--print-secret", "--forward-thin-to", "http://localhost:3000"},
 		},
 	}
 

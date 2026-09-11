@@ -54,6 +54,14 @@ type listenCmd struct {
 	events                []string
 	allSnapshot           bool
 	allThin               bool
+
+	// Deprecated event flags. Still functional so that published commands keep
+	// working; they also cover the one case --forward-to can't express, a
+	// separate destination per payload style.
+	thinEvents            []string
+	forwardThinURL        string
+	forwardThinConnectURL string
+
 	latestAPIVersion      bool
 	livemode              bool
 	useConfiguredWebhooks bool
@@ -106,14 +114,14 @@ Stripe account.`,
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect events to (default: same as --forward-to)")
 
-	// Removed flags. They stay registered but hidden so that using one gives a
-	// message naming its replacement instead of cobra's "unknown flag".
-	lc.cmd.Flags().StringSlice("thin-events", []string{}, "")
-	lc.cmd.Flags().MarkHidden("thin-events") // #nosec G104
-	lc.cmd.Flags().String("forward-thin-to", "", "")
-	lc.cmd.Flags().MarkHidden("forward-thin-to") // #nosec G104
-	lc.cmd.Flags().String("forward-thin-connect-to", "", "")
-	lc.cmd.Flags().MarkHidden("forward-thin-connect-to") // #nosec G104
+	// Deprecated flags. MarkDeprecated warns on use and hides them from help,
+	// but they keep working; they'll be removed once the docs have migrated.
+	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
+	lc.cmd.Flags().MarkDeprecated("thin-events", "use --events, which accepts both snapshot and thin event types, or --all-thin for all thin events.")
+	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
+	lc.cmd.Flags().MarkDeprecated("forward-thin-to", "use --forward-to together with --all-thin (or --events naming thin event types). Snapshot and thin events cannot share one destination.")
+	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
+	lc.cmd.Flags().MarkDeprecated("forward-thin-connect-to", "use --events-from @accounts with --all-thin (or --events naming thin event types) and --forward-to <url>.")
 
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
@@ -221,16 +229,18 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	snapshotEvents, thinEvents := lc.resolveEvents()
 	directURL, connectURL := lc.resolveForwardURLs()
+	thinURL, thinConnectURL := lc.resolveThinForwardURLs(directURL, connectURL)
+	lc.warnUnforwardedThinEvents(logger)
 
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
 		DeviceToken:           &lc.deviceToken,
 		ForwardURL:            directURL,
-		ForwardThinURL:        directURL,
+		ForwardThinURL:        thinURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     connectURL,
-		ForwardThinConnectURL: connectURL,
+		ForwardThinConnectURL: thinConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
@@ -402,29 +412,16 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 	}
 }
 
+// getFeatures derives the websocket features from the resolved subscription, so
+// that the channels opened always match the events actually subscribed to.
 func (lc *listenCmd) getFeatures() []string {
-	needsSnapshot := lc.allSnapshot
-	needsThin := lc.allThin
-
-	for _, e := range lc.events {
-		if isThinEvent(e) {
-			needsThin = true
-		} else {
-			needsSnapshot = true
-		}
-	}
-
-	// A bare "stripe listen" with no event flags opens both channels.
-	if !needsSnapshot && !needsThin {
-		needsSnapshot = true
-		needsThin = true
-	}
+	snapshotEvents, thinEvents := lc.resolveEvents()
 
 	features := []string{}
-	if needsSnapshot {
+	if len(snapshotEvents) > 0 {
 		features = append(features, webhooksWebSocketFeature)
 	}
-	if needsThin {
+	if len(thinEvents) > 0 {
 		features = append(features, destinationsWebSocketFeature)
 	}
 
@@ -435,14 +432,52 @@ func isThinEvent(eventType string) bool {
 	return thinEventPattern.MatchString(eventType)
 }
 
-// resolveEvents splits the --events list into the snapshot and thin event lists
+// usesDeprecatedThinFlags reports whether the invocation drives the thin side
+// through the deprecated flags rather than --events / --forward-to.
+func (lc *listenCmd) usesDeprecatedThinFlags() bool {
+	return len(lc.thinEvents) > 0 || lc.forwardThinURL != "" || lc.forwardThinConnectURL != ""
+}
+
+// namesSnapshotEvents reports whether --events named any snapshot event type.
+func (lc *listenCmd) namesSnapshotEvents() bool {
+	for _, e := range lc.events {
+		if !isThinEvent(e) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// resolveEvents splits the event flags into the snapshot and thin event lists
 // the proxy subscribes with.
 func (lc *listenCmd) resolveEvents() (snapshotEvents []string, thinEvents []string) {
-	return splitEventsByType(lc.events, lc.allSnapshot, lc.allThin)
+	allSnapshot := lc.allSnapshot
+	allThin := lc.allThin
+
+	// Deprecated --thin-events folds into the thin subscription. Its values are
+	// thin by declaration, so they skip the event-type sniffing below.
+	var legacyThin []string
+	for _, e := range lc.thinEvents {
+		if e == "*" {
+			allThin = true
+			continue
+		}
+		legacyThin = append(legacyThin, e)
+	}
+
+	// The deprecated flags ran alongside an --events default of "*", so a legacy
+	// invocation that never named snapshot events still subscribed to them all.
+	if lc.usesDeprecatedThinFlags() && !allSnapshot && !lc.namesSnapshotEvents() {
+		allSnapshot = true
+	}
+
+	return splitEventsByType(lc.events, allSnapshot, allThin, legacyThin...)
 }
 
 // splitEventsByType separates an event list into snapshot and thin event lists.
-func splitEventsByType(events []string, allSnapshot, allThin bool) (snapshotEvents []string, thinEvents []string) {
+// extraThin holds event types already known to be thin.
+func splitEventsByType(events []string, allSnapshot, allThin bool, extraThin ...string) (snapshotEvents []string, thinEvents []string) {
 	if allSnapshot {
 		snapshotEvents = append(snapshotEvents, "*")
 	}
@@ -457,6 +492,8 @@ func splitEventsByType(events []string, allSnapshot, allThin bool) (snapshotEven
 			snapshotEvents = append(snapshotEvents, e)
 		}
 	}
+
+	thinEvents = append(thinEvents, extraThin...)
 
 	// A bare "stripe listen" with no event flags subscribes to everything.
 	if len(snapshotEvents) == 0 && len(thinEvents) == 0 {
@@ -491,13 +528,48 @@ func (lc *listenCmd) resolveForwardURLs() (directURL, connectURL string) {
 	return
 }
 
+// resolveThinForwardURLs determines where thin events go. Normally they follow
+// --forward-to alongside snapshot events.
+//
+// A deprecated invocation instead forwards thin events only to the destinations
+// --forward-thin-to / --forward-thin-connect-to name. That covers the one
+// arrangement the unified --forward-to can't express, a separate endpoint per
+// payload style, and it keeps --thin-events with a bare --forward-to behaving as
+// it always did: thin events were printed but never forwarded there.
+func (lc *listenCmd) resolveThinForwardURLs(directURL, connectURL string) (thinURL, thinConnectURL string) {
+	if !lc.usesDeprecatedThinFlags() {
+		return directURL, connectURL
+	}
+
+	thinURL = lc.forwardThinURL
+	thinConnectURL = lc.forwardThinConnectURL
+	if thinConnectURL == "" {
+		thinConnectURL = thinURL
+	}
+
+	return
+}
+
+// warnUnforwardedThinEvents flags the one deprecated shape that silently drops
+// events: --thin-events with a forwarding destination that only snapshot events
+// reach. Previously this printed thin events and forwarded nothing; say so
+// rather than leaving the user to notice the gap.
+func (lc *listenCmd) warnUnforwardedThinEvents(logger *log.Logger) {
+	if !lc.usesDeprecatedThinFlags() || lc.forwardThinURL != "" || lc.forwardThinConnectURL != "" {
+		return
+	}
+
+	directURL, connectURL := lc.resolveForwardURLs()
+	if directURL == "" && connectURL == "" {
+		return
+	}
+
+	logger.Warn("--thin-events without --forward-thin-to does not forward thin events; they are only printed here. Use --all-thin (or --events with thin event types) and --forward-to to forward them.")
+}
+
 // validateFlags rejects flag combinations that are contradictory, ambiguous, or
 // no longer supported.
 func (lc *listenCmd) validateFlags() error {
-	if err := lc.checkRemovedFlags(); err != nil {
-		return err
-	}
-
 	if err := lc.validateEvents(); err != nil {
 		return err
 	}
@@ -513,28 +585,6 @@ func (lc *listenCmd) validateFlags() error {
 	}
 
 	return lc.validateForwardingConfig()
-}
-
-// checkRemovedFlags reports the replacement for each flag that this command used
-// to accept.
-func (lc *listenCmd) checkRemovedFlags() error {
-	if lc.cmd.Flags().Changed("thin-events") {
-		thinEvents, err := lc.cmd.Flags().GetStringSlice("thin-events")
-		if err == nil && len(thinEvents) == 1 && thinEvents[0] == "*" {
-			return errorcategory.UserInputErrorf("--thin-events is no longer supported. Use --all-thin to subscribe to all thin events.")
-		}
-		return errorcategory.UserInputErrorf("--thin-events is no longer supported. Use --events instead, which accepts both snapshot and thin event types.")
-	}
-
-	if lc.cmd.Flags().Changed("forward-thin-to") {
-		return errorcategory.UserInputErrorf("--forward-thin-to is no longer supported. Use --forward-to instead, which forwards both snapshot and thin events.")
-	}
-
-	if lc.cmd.Flags().Changed("forward-thin-connect-to") {
-		return errorcategory.UserInputErrorf("--forward-thin-connect-to is no longer supported. Use --events-from @accounts --forward-to <url> instead.")
-	}
-
-	return nil
 }
 
 // validateEvents rejects the "*" wildcard, which used to mean "all snapshot
@@ -566,8 +616,9 @@ func (lc *listenCmd) validateForwardingConfig() error {
 	}
 
 	// Forwarding requires an explicit subscription. Defaulting to everything
-	// would POST every event on the account to the user's endpoint.
-	if !lc.allSnapshot && !lc.allThin && len(lc.events) == 0 {
+	// would POST every event on the account to the user's endpoint. The
+	// deprecated flags carry their own subscription, so they satisfy this too.
+	if !lc.allSnapshot && !lc.allThin && len(lc.events) == 0 && !lc.usesDeprecatedThinFlags() {
 		return errorcategory.UserInputErrorf("must specify events to forward using --events, --all-snapshot, or --all-thin")
 	}
 
@@ -585,14 +636,16 @@ func (lc *listenCmd) validateForwardingConfig() error {
 	}
 
 	// The two payload styles are framed differently, so a single endpoint can't
-	// receive both.
+	// receive both. Distinct destinations are fine, which is what the deprecated
+	// --forward-thin-to still buys.
 	snapshotEvents, thinEvents := lc.resolveEvents()
 	if len(snapshotEvents) > 0 && len(thinEvents) > 0 {
 		directURL, connectURL := lc.resolveForwardURLs()
-		if directURL != "" {
+		thinURL, thinConnectURL := lc.resolveThinForwardURLs(directURL, connectURL)
+		if directURL != "" && directURL == thinURL {
 			return errorcategory.UserInputErrorf("cannot forward both snapshot and thin events to the same destination")
 		}
-		if connectURL != "" {
+		if connectURL != "" && connectURL == thinConnectURL {
 			return errorcategory.UserInputErrorf("cannot forward both snapshot and thin events to the same connect destination")
 		}
 	}

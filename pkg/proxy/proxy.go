@@ -366,7 +366,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	if len(cfg.ThinEvents) > 0 {
 		for _, event := range cfg.ThinEvents {
 			if event == "*" {
-				cfg.Log.Infof("--all-thin is only supported in the CLI; thin event destinations do not support selecting all event types\n")
+				cfg.Log.Infof("Subscribing to all thin events is only supported in the CLI; thin event destinations do not support selecting all event types")
 				continue
 			}
 			if _, found := validThinEvents[event]; !found {
