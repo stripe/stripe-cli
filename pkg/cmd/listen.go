@@ -277,6 +277,9 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				// Don't exit program
 				return nil
 			default:
+				if isMorePermissionsRequiredError(ee.Error) {
+					return ee.Error
+				}
 				logger.Fatal(ee.Error)
 				return ee.Error
 			}

@@ -91,6 +91,48 @@ func TestBuildEndpointRoutes(t *testing.T) {
 	require.Equal(t, []string{"*"}, output[1].EventTypes)
 }
 
+func TestInit_UseConfiguredWebhooks_APIError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v1/webhook_endpoints", r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"internal_server_error"}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+
+	cfg := Config{
+		Client:                &stripe.Client{Credentials: stripe.NewAPIKeyCredentials("sk_test_123"), BaseURL: baseURL},
+		UseConfiguredWebhooks: true,
+		ForwardURL:            "http://localhost:1234",
+	}
+
+	_, err := Init(context.Background(), &cfg)
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "you have not defined any webhook endpoints")
+}
+
+func TestInit_UseConfiguredWebhooks_NoEndpoints(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v1/webhook_endpoints", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"data":[]}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+
+	cfg := Config{
+		Client:                &stripe.Client{Credentials: stripe.NewAPIKeyCredentials("sk_test_123"), BaseURL: baseURL},
+		UseConfiguredWebhooks: true,
+		ForwardURL:            "http://localhost:1234",
+	}
+
+	_, err := Init(context.Background(), &cfg)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "you have not defined any webhook endpoints")
+}
+
 func TestBuildForwardURL(t *testing.T) {
 	f, err := url.Parse("http://example.com/foo/bar.php")
 	require.NoError(t, err)

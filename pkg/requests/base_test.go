@@ -3,6 +3,7 @@ package requests
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -398,6 +399,72 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 
 	t.Run("non-RequestError", func(t *testing.T) {
 		require.False(t, IsAPIKeyExpiredError(fmt.Errorf("other")))
+	})
+}
+
+func TestIsMorePermissionsRequiredError(t *testing.T) {
+	for _, tt := range []struct {
+		statusCode int
+		errorCode  string
+		want       bool
+	}{
+		{200, "", false},
+		{403, "resource_missing", false},
+		{500, "more_permissions_required", false},
+		{403, "more_permissions_required", true},
+	} {
+		t.Run(fmt.Sprintf("status=%v,code=%q", tt.statusCode, tt.errorCode), func(t *testing.T) {
+			err := RequestError{
+				StatusCode: tt.statusCode,
+				ErrorCode:  tt.errorCode,
+			}
+			require.Equal(t, tt.want, IsMorePermissionsRequiredError(err))
+		})
+	}
+
+	t.Run("non-RequestError", func(t *testing.T) {
+		require.False(t, IsMorePermissionsRequiredError(fmt.Errorf("other")))
+	})
+
+	t.Run("wrapped", func(t *testing.T) {
+		err := fmt.Errorf("could not fetch resource: %w", RequestError{StatusCode: 403, ErrorCode: "more_permissions_required"})
+		require.True(t, IsMorePermissionsRequiredError(err))
+	})
+}
+
+func TestMakeRequest_MorePermissionsRequired(t *testing.T) {
+	body := `{"error":{"code":"more_permissions_required","message":"The provided key does not have the required permissions for this endpoint.","type":"invalid_request_error"}}`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(body))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+	params := &RequestParameters{}
+
+	t.Run("api key", func(t *testing.T) {
+		_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, make(map[string]interface{}), true, nil)
+		require.Error(t, err)
+		require.True(t, IsMorePermissionsRequiredError(err))
+
+		var reqErr RequestError
+		require.True(t, errors.As(err, &reqErr))
+		require.False(t, reqErr.HasOAKContext)
+		require.Equal(t, "The provided key does not have the required permissions for this endpoint.", reqErr.Message)
+	})
+
+	t.Run("oak credentials", func(t *testing.T) {
+		creds := stripe.NewOAKCredentials("oak_test_123", "acct_a", false)
+		_, err := rb.MakeRequest(context.Background(), creds, "/foo/bar", params, make(map[string]interface{}), true, nil)
+		require.Error(t, err)
+		require.True(t, IsMorePermissionsRequiredError(err))
+
+		var reqErr RequestError
+		require.True(t, errors.As(err, &reqErr))
+		require.True(t, reqErr.HasOAKContext)
 	})
 }
 

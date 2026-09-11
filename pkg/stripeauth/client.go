@@ -18,8 +18,11 @@ import (
 const stripeCLISessionPath = "/v1/stripecli/sessions"
 
 type AuthorizeHTTPError struct {
-	StatusCode int
-	Body       string
+	StatusCode    int
+	Body          string
+	ErrorCode     string
+	Message       string // the human-readable "message" field from the error response body
+	HasOAKContext bool   // true if the request was authenticated with an OAuth/UAT token rather than a plain API key
 }
 
 func (e *AuthorizeHTTPError) Error() string {
@@ -105,9 +108,17 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		code, message := parseErrorCodeAndMessage(body)
+		var hasOAKContext bool
+		if stripeClient, ok := c.client.(*stripe.Client); ok {
+			hasOAKContext = stripeClient.Credentials.OAKContext != ""
+		}
 		return nil, &AuthorizeHTTPError{
-			StatusCode: resp.StatusCode,
-			Body:       string(body),
+			StatusCode:    resp.StatusCode,
+			Body:          string(body),
+			ErrorCode:     code,
+			Message:       message,
+			HasOAKContext: hasOAKContext,
 		}
 	}
 
@@ -152,4 +163,30 @@ func IsAuthorizationClientError(err error) (*AuthorizeHTTPError, bool) {
 		return clientError, true
 	}
 	return nil, false
+}
+
+// MorePermissionsRequiredErrorCode is the Stripe API error code returned
+// when the API key's role does not have permission to perform a request.
+const MorePermissionsRequiredErrorCode = "more_permissions_required"
+
+// IsMorePermissionsRequiredError returns true if the provided error was
+// caused by a session authorization request returning a
+// `more_permissions_required` error code.
+func IsMorePermissionsRequiredError(err error) bool {
+	var authErr *AuthorizeHTTPError
+	if errors.As(err, &authErr) {
+		return authErr.StatusCode == http.StatusForbidden && authErr.ErrorCode == MorePermissionsRequiredErrorCode
+	}
+	return false
+}
+
+func parseErrorCodeAndMessage(body []byte) (code, message string) {
+	var errorBody struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	json.Unmarshal(body, &errorBody) // #nosec G104
+	return errorBody.Error.Code, errorBody.Error.Message
 }
