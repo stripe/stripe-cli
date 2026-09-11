@@ -21,6 +21,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type PluginCommandOutcome int32
+
+const (
+	PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_UNSPECIFIED PluginCommandOutcome = 0
+	PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_SUCCESS     PluginCommandOutcome = 1
+	PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_ERROR       PluginCommandOutcome = 2
+	PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_CANCELLED   PluginCommandOutcome = 3
+)
+
+// Enum value maps for PluginCommandOutcome.
+var (
+	PluginCommandOutcome_name = map[int32]string{
+		0: "PLUGIN_COMMAND_OUTCOME_UNSPECIFIED",
+		1: "PLUGIN_COMMAND_OUTCOME_SUCCESS",
+		2: "PLUGIN_COMMAND_OUTCOME_ERROR",
+		3: "PLUGIN_COMMAND_OUTCOME_CANCELLED",
+	}
+	PluginCommandOutcome_value = map[string]int32{
+		"PLUGIN_COMMAND_OUTCOME_UNSPECIFIED": 0,
+		"PLUGIN_COMMAND_OUTCOME_SUCCESS":     1,
+		"PLUGIN_COMMAND_OUTCOME_ERROR":       2,
+		"PLUGIN_COMMAND_OUTCOME_CANCELLED":   3,
+	}
+)
+
+func (x PluginCommandOutcome) Enum() *PluginCommandOutcome {
+	p := new(PluginCommandOutcome)
+	*p = x
+	return p
+}
+
+func (x PluginCommandOutcome) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PluginCommandOutcome) Descriptor() protoreflect.EnumDescriptor {
+	return file_pkg_plugins_proto_main_proto_enumTypes[0].Descriptor()
+}
+
+func (PluginCommandOutcome) Type() protoreflect.EnumType {
+	return &file_pkg_plugins_proto_main_proto_enumTypes[0]
+}
+
+func (x PluginCommandOutcome) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PluginCommandOutcome.Descriptor instead.
+func (PluginCommandOutcome) EnumDescriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{0}
+}
+
 type RunCommandRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	AdditionalInfo  *AdditionalInfo        `protobuf:"bytes,1,opt,name=additional_info,json=additionalInfo,proto3" json:"additional_info,omitempty"`
@@ -600,9 +652,10 @@ func (x *EchoResponse) GetOutput() string {
 }
 
 type SendAnalyticsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	EventName     string                 `protobuf:"bytes,1,opt,name=event_name,json=eventName,proto3" json:"event_name,omitempty"`
-	EventValue    string                 `protobuf:"bytes,2,opt,name=event_value,json=eventValue,proto3" json:"event_value,omitempty"`
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	EventName     string                  `protobuf:"bytes,1,opt,name=event_name,json=eventName,proto3" json:"event_name,omitempty"`
+	EventValue    string                  `protobuf:"bytes,2,opt,name=event_value,json=eventValue,proto3" json:"event_value,omitempty"`
+	PluginCommand *PluginCommandAnalytics `protobuf:"bytes,3,opt,name=plugin_command,json=pluginCommand,proto3" json:"plugin_command,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -651,6 +704,89 @@ func (x *SendAnalyticsRequest) GetEventValue() string {
 	return ""
 }
 
+func (x *SendAnalyticsRequest) GetPluginCommand() *PluginCommandAnalytics {
+	if x != nil {
+		return x.PluginCommand
+	}
+	return nil
+}
+
+type PluginCommandAnalytics struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PluginName    string                 `protobuf:"bytes,1,opt,name=plugin_name,json=pluginName,proto3" json:"plugin_name,omitempty"`
+	PluginVersion string                 `protobuf:"bytes,2,opt,name=plugin_version,json=pluginVersion,proto3" json:"plugin_version,omitempty"`
+	Command       string                 `protobuf:"bytes,3,opt,name=command,proto3" json:"command,omitempty"`
+	Outcome       PluginCommandOutcome   `protobuf:"varint,4,opt,name=outcome,proto3,enum=proto.PluginCommandOutcome" json:"outcome,omitempty"`
+	DurationMs    *int64                 `protobuf:"varint,5,opt,name=duration_ms,json=durationMs,proto3,oneof" json:"duration_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PluginCommandAnalytics) Reset() {
+	*x = PluginCommandAnalytics{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PluginCommandAnalytics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PluginCommandAnalytics) ProtoMessage() {}
+
+func (x *PluginCommandAnalytics) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PluginCommandAnalytics.ProtoReflect.Descriptor instead.
+func (*PluginCommandAnalytics) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *PluginCommandAnalytics) GetPluginName() string {
+	if x != nil {
+		return x.PluginName
+	}
+	return ""
+}
+
+func (x *PluginCommandAnalytics) GetPluginVersion() string {
+	if x != nil {
+		return x.PluginVersion
+	}
+	return ""
+}
+
+func (x *PluginCommandAnalytics) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *PluginCommandAnalytics) GetOutcome() PluginCommandOutcome {
+	if x != nil {
+		return x.Outcome
+	}
+	return PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_UNSPECIFIED
+}
+
+func (x *PluginCommandAnalytics) GetDurationMs() int64 {
+	if x != nil && x.DurationMs != nil {
+		return *x.DurationMs
+	}
+	return 0
+}
+
 type SendAnalyticsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -659,7 +795,7 @@ type SendAnalyticsResponse struct {
 
 func (x *SendAnalyticsResponse) Reset() {
 	*x = SendAnalyticsResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[12]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -671,7 +807,7 @@ func (x *SendAnalyticsResponse) String() string {
 func (*SendAnalyticsResponse) ProtoMessage() {}
 
 func (x *SendAnalyticsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[12]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -684,7 +820,7 @@ func (x *SendAnalyticsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendAnalyticsResponse.ProtoReflect.Descriptor instead.
 func (*SendAnalyticsResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{12}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{13}
 }
 
 type KeychainGetPasswordRequest struct {
@@ -696,7 +832,7 @@ type KeychainGetPasswordRequest struct {
 
 func (x *KeychainGetPasswordRequest) Reset() {
 	*x = KeychainGetPasswordRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[13]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -708,7 +844,7 @@ func (x *KeychainGetPasswordRequest) String() string {
 func (*KeychainGetPasswordRequest) ProtoMessage() {}
 
 func (x *KeychainGetPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[13]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -721,7 +857,7 @@ func (x *KeychainGetPasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainGetPasswordRequest.ProtoReflect.Descriptor instead.
 func (*KeychainGetPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{13}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *KeychainGetPasswordRequest) GetKey() string {
@@ -741,7 +877,7 @@ type KeychainGetPasswordResponse struct {
 
 func (x *KeychainGetPasswordResponse) Reset() {
 	*x = KeychainGetPasswordResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[14]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -753,7 +889,7 @@ func (x *KeychainGetPasswordResponse) String() string {
 func (*KeychainGetPasswordResponse) ProtoMessage() {}
 
 func (x *KeychainGetPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[14]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -766,7 +902,7 @@ func (x *KeychainGetPasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainGetPasswordResponse.ProtoReflect.Descriptor instead.
 func (*KeychainGetPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{14}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *KeychainGetPasswordResponse) GetValue() string {
@@ -793,7 +929,7 @@ type KeychainSetPasswordRequest struct {
 
 func (x *KeychainSetPasswordRequest) Reset() {
 	*x = KeychainSetPasswordRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[15]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -805,7 +941,7 @@ func (x *KeychainSetPasswordRequest) String() string {
 func (*KeychainSetPasswordRequest) ProtoMessage() {}
 
 func (x *KeychainSetPasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[15]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +954,7 @@ func (x *KeychainSetPasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainSetPasswordRequest.ProtoReflect.Descriptor instead.
 func (*KeychainSetPasswordRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{15}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *KeychainSetPasswordRequest) GetKey() string {
@@ -843,7 +979,7 @@ type KeychainSetPasswordResponse struct {
 
 func (x *KeychainSetPasswordResponse) Reset() {
 	*x = KeychainSetPasswordResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[16]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -855,7 +991,7 @@ func (x *KeychainSetPasswordResponse) String() string {
 func (*KeychainSetPasswordResponse) ProtoMessage() {}
 
 func (x *KeychainSetPasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[16]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -868,7 +1004,7 @@ func (x *KeychainSetPasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainSetPasswordResponse.ProtoReflect.Descriptor instead.
 func (*KeychainSetPasswordResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{16}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{17}
 }
 
 type KeychainDeletePasswordRequest struct {
@@ -880,7 +1016,7 @@ type KeychainDeletePasswordRequest struct {
 
 func (x *KeychainDeletePasswordRequest) Reset() {
 	*x = KeychainDeletePasswordRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[17]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -892,7 +1028,7 @@ func (x *KeychainDeletePasswordRequest) String() string {
 func (*KeychainDeletePasswordRequest) ProtoMessage() {}
 
 func (x *KeychainDeletePasswordRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[17]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -905,7 +1041,7 @@ func (x *KeychainDeletePasswordRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainDeletePasswordRequest.ProtoReflect.Descriptor instead.
 func (*KeychainDeletePasswordRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{17}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *KeychainDeletePasswordRequest) GetKey() string {
@@ -924,7 +1060,7 @@ type KeychainDeletePasswordResponse struct {
 
 func (x *KeychainDeletePasswordResponse) Reset() {
 	*x = KeychainDeletePasswordResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[18]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -936,7 +1072,7 @@ func (x *KeychainDeletePasswordResponse) String() string {
 func (*KeychainDeletePasswordResponse) ProtoMessage() {}
 
 func (x *KeychainDeletePasswordResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[18]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -949,7 +1085,7 @@ func (x *KeychainDeletePasswordResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainDeletePasswordResponse.ProtoReflect.Descriptor instead.
 func (*KeychainDeletePasswordResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{18}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *KeychainDeletePasswordResponse) GetDeleted() bool {
@@ -970,7 +1106,7 @@ type KeychainFindCredentialsRequest struct {
 
 func (x *KeychainFindCredentialsRequest) Reset() {
 	*x = KeychainFindCredentialsRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[19]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -982,7 +1118,7 @@ func (x *KeychainFindCredentialsRequest) String() string {
 func (*KeychainFindCredentialsRequest) ProtoMessage() {}
 
 func (x *KeychainFindCredentialsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[19]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -995,7 +1131,7 @@ func (x *KeychainFindCredentialsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainFindCredentialsRequest.ProtoReflect.Descriptor instead.
 func (*KeychainFindCredentialsRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{19}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{20}
 }
 
 // Deprecated: KeychainFindCredentials always returns an empty list. Use KeychainGetPassword to retrieve an individual password instead.
@@ -1010,7 +1146,7 @@ type KeychainFindCredentialsResponse struct {
 
 func (x *KeychainFindCredentialsResponse) Reset() {
 	*x = KeychainFindCredentialsResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[20]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1022,7 +1158,7 @@ func (x *KeychainFindCredentialsResponse) String() string {
 func (*KeychainFindCredentialsResponse) ProtoMessage() {}
 
 func (x *KeychainFindCredentialsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[20]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1035,7 +1171,7 @@ func (x *KeychainFindCredentialsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeychainFindCredentialsResponse.ProtoReflect.Descriptor instead.
 func (*KeychainFindCredentialsResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{20}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *KeychainFindCredentialsResponse) GetKeys() []string {
@@ -1056,7 +1192,7 @@ type RunPeerPluginRequest struct {
 
 func (x *RunPeerPluginRequest) Reset() {
 	*x = RunPeerPluginRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[21]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1068,7 +1204,7 @@ func (x *RunPeerPluginRequest) String() string {
 func (*RunPeerPluginRequest) ProtoMessage() {}
 
 func (x *RunPeerPluginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[21]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1081,7 +1217,7 @@ func (x *RunPeerPluginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunPeerPluginRequest.ProtoReflect.Descriptor instead.
 func (*RunPeerPluginRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{21}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RunPeerPluginRequest) GetPluginName() string {
@@ -1113,7 +1249,7 @@ type RunPeerPluginResponse struct {
 
 func (x *RunPeerPluginResponse) Reset() {
 	*x = RunPeerPluginResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[22]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1125,7 +1261,7 @@ func (x *RunPeerPluginResponse) String() string {
 func (*RunPeerPluginResponse) ProtoMessage() {}
 
 func (x *RunPeerPluginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[22]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1138,7 +1274,7 @@ func (x *RunPeerPluginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunPeerPluginResponse.ProtoReflect.Descriptor instead.
 func (*RunPeerPluginResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{22}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{23}
 }
 
 type ResolveCredentialsRequest struct {
@@ -1150,7 +1286,7 @@ type ResolveCredentialsRequest struct {
 
 func (x *ResolveCredentialsRequest) Reset() {
 	*x = ResolveCredentialsRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[23]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1298,7 @@ func (x *ResolveCredentialsRequest) String() string {
 func (*ResolveCredentialsRequest) ProtoMessage() {}
 
 func (x *ResolveCredentialsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[23]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,7 +1311,7 @@ func (x *ResolveCredentialsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveCredentialsRequest.ProtoReflect.Descriptor instead.
 func (*ResolveCredentialsRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{23}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ResolveCredentialsRequest) GetLivemode() bool {
@@ -1196,7 +1332,7 @@ type ResolveCredentialsResponse struct {
 
 func (x *ResolveCredentialsResponse) Reset() {
 	*x = ResolveCredentialsResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[24]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1344,7 @@ func (x *ResolveCredentialsResponse) String() string {
 func (*ResolveCredentialsResponse) ProtoMessage() {}
 
 func (x *ResolveCredentialsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[24]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1357,7 @@ func (x *ResolveCredentialsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveCredentialsResponse.ProtoReflect.Descriptor instead.
 func (*ResolveCredentialsResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{24}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ResolveCredentialsResponse) GetToken() string {
@@ -1255,7 +1391,7 @@ type SwitchContextRequest struct {
 
 func (x *SwitchContextRequest) Reset() {
 	*x = SwitchContextRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[25]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1267,7 +1403,7 @@ func (x *SwitchContextRequest) String() string {
 func (*SwitchContextRequest) ProtoMessage() {}
 
 func (x *SwitchContextRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[25]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,7 +1416,7 @@ func (x *SwitchContextRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwitchContextRequest.ProtoReflect.Descriptor instead.
 func (*SwitchContextRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{25}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SwitchContextRequest) GetAccountId() string {
@@ -1311,7 +1447,7 @@ type SwitchContextResponse struct {
 
 func (x *SwitchContextResponse) Reset() {
 	*x = SwitchContextResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[26]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1323,7 +1459,7 @@ func (x *SwitchContextResponse) String() string {
 func (*SwitchContextResponse) ProtoMessage() {}
 
 func (x *SwitchContextResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[26]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1336,7 +1472,7 @@ func (x *SwitchContextResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SwitchContextResponse.ProtoReflect.Descriptor instead.
 func (*SwitchContextResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{26}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SwitchContextResponse) GetAccountId() string {
@@ -1379,7 +1515,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1391,7 +1527,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1404,7 +1540,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{27}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *LoginRequest) GetTimeoutSeconds() int32 {
@@ -1430,7 +1566,7 @@ type LoginResponse struct {
 
 func (x *LoginResponse) Reset() {
 	*x = LoginResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1442,7 +1578,7 @@ func (x *LoginResponse) String() string {
 func (*LoginResponse) ProtoMessage() {}
 
 func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1455,7 +1591,7 @@ func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
 func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{28}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *LoginResponse) GetAccountId() string {
@@ -1526,12 +1662,22 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\vEchoRequest\x12\x14\n" +
 	"\x05input\x18\x01 \x01(\tR\x05input\"&\n" +
 	"\fEchoResponse\x12\x16\n" +
-	"\x06output\x18\x01 \x01(\tR\x06output\"V\n" +
+	"\x06output\x18\x01 \x01(\tR\x06output\"\x9c\x01\n" +
 	"\x14SendAnalyticsRequest\x12\x1d\n" +
 	"\n" +
 	"event_name\x18\x01 \x01(\tR\teventName\x12\x1f\n" +
 	"\vevent_value\x18\x02 \x01(\tR\n" +
-	"eventValue\"\x17\n" +
+	"eventValue\x12D\n" +
+	"\x0eplugin_command\x18\x03 \x01(\v2\x1d.proto.PluginCommandAnalyticsR\rpluginCommand\"\xe7\x01\n" +
+	"\x16PluginCommandAnalytics\x12\x1f\n" +
+	"\vplugin_name\x18\x01 \x01(\tR\n" +
+	"pluginName\x12%\n" +
+	"\x0eplugin_version\x18\x02 \x01(\tR\rpluginVersion\x12\x18\n" +
+	"\acommand\x18\x03 \x01(\tR\acommand\x125\n" +
+	"\aoutcome\x18\x04 \x01(\x0e2\x1b.proto.PluginCommandOutcomeR\aoutcome\x12$\n" +
+	"\vduration_ms\x18\x05 \x01(\x03H\x00R\n" +
+	"durationMs\x88\x01\x01B\x0e\n" +
+	"\f_duration_ms\"\x17\n" +
 	"\x15SendAnalyticsResponse\".\n" +
 	"\x1aKeychainGetPasswordRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\"I\n" +
@@ -1578,7 +1724,12 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
 	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
 	"\blivemode\x18\x03 \x01(\bR\blivemode\x12\x1b\n" +
-	"\tlogged_in\x18\x04 \x01(\bR\bloggedIn2\xd8\x01\n" +
+	"\tlogged_in\x18\x04 \x01(\bR\bloggedIn*\xaa\x01\n" +
+	"\x14PluginCommandOutcome\x12&\n" +
+	"\"PLUGIN_COMMAND_OUTCOME_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1ePLUGIN_COMMAND_OUTCOME_SUCCESS\x10\x01\x12 \n" +
+	"\x1cPLUGIN_COMMAND_OUTCOME_ERROR\x10\x02\x12$\n" +
+	" PLUGIN_COMMAND_OUTCOME_CANCELLED\x10\x032\xd8\x01\n" +
 	"\x04Main\x12A\n" +
 	"\n" +
 	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse\x12D\n" +
@@ -1609,77 +1760,82 @@ func file_pkg_plugins_proto_main_proto_rawDescGZIP() []byte {
 	return file_pkg_plugins_proto_main_proto_rawDescData
 }
 
-var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_pkg_plugins_proto_main_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_pkg_plugins_proto_main_proto_goTypes = []any{
-	(*RunCommandRequest)(nil),               // 0: proto.RunCommandRequest
-	(*RunCommandResponse)(nil),              // 1: proto.RunCommandResponse
-	(*PostInstallRequest)(nil),              // 2: proto.PostInstallRequest
-	(*PostInstallResponse)(nil),             // 3: proto.PostInstallResponse
-	(*PreUninstallRequest)(nil),             // 4: proto.PreUninstallRequest
-	(*PreUninstallResponse)(nil),            // 5: proto.PreUninstallResponse
-	(*AdditionalInfo)(nil),                  // 6: proto.AdditionalInfo
-	(*IsTerminal)(nil),                      // 7: proto.IsTerminal
-	(*TerminalDimensions)(nil),              // 8: proto.TerminalDimensions
-	(*EchoRequest)(nil),                     // 9: proto.EchoRequest
-	(*EchoResponse)(nil),                    // 10: proto.EchoResponse
-	(*SendAnalyticsRequest)(nil),            // 11: proto.SendAnalyticsRequest
-	(*SendAnalyticsResponse)(nil),           // 12: proto.SendAnalyticsResponse
-	(*KeychainGetPasswordRequest)(nil),      // 13: proto.KeychainGetPasswordRequest
-	(*KeychainGetPasswordResponse)(nil),     // 14: proto.KeychainGetPasswordResponse
-	(*KeychainSetPasswordRequest)(nil),      // 15: proto.KeychainSetPasswordRequest
-	(*KeychainSetPasswordResponse)(nil),     // 16: proto.KeychainSetPasswordResponse
-	(*KeychainDeletePasswordRequest)(nil),   // 17: proto.KeychainDeletePasswordRequest
-	(*KeychainDeletePasswordResponse)(nil),  // 18: proto.KeychainDeletePasswordResponse
-	(*KeychainFindCredentialsRequest)(nil),  // 19: proto.KeychainFindCredentialsRequest
-	(*KeychainFindCredentialsResponse)(nil), // 20: proto.KeychainFindCredentialsResponse
-	(*RunPeerPluginRequest)(nil),            // 21: proto.RunPeerPluginRequest
-	(*RunPeerPluginResponse)(nil),           // 22: proto.RunPeerPluginResponse
-	(*ResolveCredentialsRequest)(nil),       // 23: proto.ResolveCredentialsRequest
-	(*ResolveCredentialsResponse)(nil),      // 24: proto.ResolveCredentialsResponse
-	(*SwitchContextRequest)(nil),            // 25: proto.SwitchContextRequest
-	(*SwitchContextResponse)(nil),           // 26: proto.SwitchContextResponse
-	(*LoginRequest)(nil),                    // 27: proto.LoginRequest
-	(*LoginResponse)(nil),                   // 28: proto.LoginResponse
+	(PluginCommandOutcome)(0),               // 0: proto.PluginCommandOutcome
+	(*RunCommandRequest)(nil),               // 1: proto.RunCommandRequest
+	(*RunCommandResponse)(nil),              // 2: proto.RunCommandResponse
+	(*PostInstallRequest)(nil),              // 3: proto.PostInstallRequest
+	(*PostInstallResponse)(nil),             // 4: proto.PostInstallResponse
+	(*PreUninstallRequest)(nil),             // 5: proto.PreUninstallRequest
+	(*PreUninstallResponse)(nil),            // 6: proto.PreUninstallResponse
+	(*AdditionalInfo)(nil),                  // 7: proto.AdditionalInfo
+	(*IsTerminal)(nil),                      // 8: proto.IsTerminal
+	(*TerminalDimensions)(nil),              // 9: proto.TerminalDimensions
+	(*EchoRequest)(nil),                     // 10: proto.EchoRequest
+	(*EchoResponse)(nil),                    // 11: proto.EchoResponse
+	(*SendAnalyticsRequest)(nil),            // 12: proto.SendAnalyticsRequest
+	(*PluginCommandAnalytics)(nil),          // 13: proto.PluginCommandAnalytics
+	(*SendAnalyticsResponse)(nil),           // 14: proto.SendAnalyticsResponse
+	(*KeychainGetPasswordRequest)(nil),      // 15: proto.KeychainGetPasswordRequest
+	(*KeychainGetPasswordResponse)(nil),     // 16: proto.KeychainGetPasswordResponse
+	(*KeychainSetPasswordRequest)(nil),      // 17: proto.KeychainSetPasswordRequest
+	(*KeychainSetPasswordResponse)(nil),     // 18: proto.KeychainSetPasswordResponse
+	(*KeychainDeletePasswordRequest)(nil),   // 19: proto.KeychainDeletePasswordRequest
+	(*KeychainDeletePasswordResponse)(nil),  // 20: proto.KeychainDeletePasswordResponse
+	(*KeychainFindCredentialsRequest)(nil),  // 21: proto.KeychainFindCredentialsRequest
+	(*KeychainFindCredentialsResponse)(nil), // 22: proto.KeychainFindCredentialsResponse
+	(*RunPeerPluginRequest)(nil),            // 23: proto.RunPeerPluginRequest
+	(*RunPeerPluginResponse)(nil),           // 24: proto.RunPeerPluginResponse
+	(*ResolveCredentialsRequest)(nil),       // 25: proto.ResolveCredentialsRequest
+	(*ResolveCredentialsResponse)(nil),      // 26: proto.ResolveCredentialsResponse
+	(*SwitchContextRequest)(nil),            // 27: proto.SwitchContextRequest
+	(*SwitchContextResponse)(nil),           // 28: proto.SwitchContextResponse
+	(*LoginRequest)(nil),                    // 29: proto.LoginRequest
+	(*LoginResponse)(nil),                   // 30: proto.LoginResponse
 }
 var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
-	6,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
-	6,  // 1: proto.PostInstallRequest.additional_info:type_name -> proto.AdditionalInfo
-	6,  // 2: proto.PreUninstallRequest.additional_info:type_name -> proto.AdditionalInfo
-	7,  // 3: proto.AdditionalInfo.is_terminal:type_name -> proto.IsTerminal
-	8,  // 4: proto.AdditionalInfo.terminal_dimensions:type_name -> proto.TerminalDimensions
-	0,  // 5: proto.Main.RunCommand:input_type -> proto.RunCommandRequest
-	2,  // 6: proto.Main.PostInstall:input_type -> proto.PostInstallRequest
-	4,  // 7: proto.Main.PreUninstall:input_type -> proto.PreUninstallRequest
-	9,  // 8: proto.CoreCLIHelper.Echo:input_type -> proto.EchoRequest
-	11, // 9: proto.CoreCLIHelper.SendAnalytics:input_type -> proto.SendAnalyticsRequest
-	13, // 10: proto.CoreCLIHelper.KeychainGetPassword:input_type -> proto.KeychainGetPasswordRequest
-	15, // 11: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
-	17, // 12: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
-	19, // 13: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
-	21, // 14: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
-	23, // 15: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
-	23, // 16: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
-	25, // 17: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
-	27, // 18: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
-	1,  // 19: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
-	3,  // 20: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
-	5,  // 21: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
-	10, // 22: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
-	12, // 23: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
-	14, // 24: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
-	16, // 25: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
-	18, // 26: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
-	20, // 27: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
-	22, // 28: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
-	24, // 29: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
-	24, // 30: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
-	26, // 31: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
-	28, // 32: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
-	19, // [19:33] is the sub-list for method output_type
-	5,  // [5:19] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	7,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
+	7,  // 1: proto.PostInstallRequest.additional_info:type_name -> proto.AdditionalInfo
+	7,  // 2: proto.PreUninstallRequest.additional_info:type_name -> proto.AdditionalInfo
+	8,  // 3: proto.AdditionalInfo.is_terminal:type_name -> proto.IsTerminal
+	9,  // 4: proto.AdditionalInfo.terminal_dimensions:type_name -> proto.TerminalDimensions
+	13, // 5: proto.SendAnalyticsRequest.plugin_command:type_name -> proto.PluginCommandAnalytics
+	0,  // 6: proto.PluginCommandAnalytics.outcome:type_name -> proto.PluginCommandOutcome
+	1,  // 7: proto.Main.RunCommand:input_type -> proto.RunCommandRequest
+	3,  // 8: proto.Main.PostInstall:input_type -> proto.PostInstallRequest
+	5,  // 9: proto.Main.PreUninstall:input_type -> proto.PreUninstallRequest
+	10, // 10: proto.CoreCLIHelper.Echo:input_type -> proto.EchoRequest
+	12, // 11: proto.CoreCLIHelper.SendAnalytics:input_type -> proto.SendAnalyticsRequest
+	15, // 12: proto.CoreCLIHelper.KeychainGetPassword:input_type -> proto.KeychainGetPasswordRequest
+	17, // 13: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
+	19, // 14: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
+	21, // 15: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
+	23, // 16: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
+	25, // 17: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
+	25, // 18: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
+	27, // 19: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
+	29, // 20: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
+	2,  // 21: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
+	4,  // 22: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
+	6,  // 23: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
+	11, // 24: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
+	14, // 25: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
+	16, // 26: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
+	18, // 27: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
+	20, // 28: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
+	22, // 29: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
+	24, // 30: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
+	26, // 31: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
+	26, // 32: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
+	28, // 33: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
+	30, // 34: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
+	21, // [21:35] is the sub-list for method output_type
+	7,  // [7:21] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_pkg_plugins_proto_main_proto_init() }
@@ -1687,18 +1843,20 @@ func file_pkg_plugins_proto_main_proto_init() {
 	if File_pkg_plugins_proto_main_proto != nil {
 		return
 	}
+	file_pkg_plugins_proto_main_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_plugins_proto_main_proto_rawDesc), len(file_pkg_plugins_proto_main_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   29,
+			NumEnums:      1,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
 		GoTypes:           file_pkg_plugins_proto_main_proto_goTypes,
 		DependencyIndexes: file_pkg_plugins_proto_main_proto_depIdxs,
+		EnumInfos:         file_pkg_plugins_proto_main_proto_enumTypes,
 		MessageInfos:      file_pkg_plugins_proto_main_proto_msgTypes,
 	}.Build()
 	File_pkg_plugins_proto_main_proto = out.File

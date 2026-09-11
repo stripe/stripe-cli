@@ -105,6 +105,22 @@ message EchoResponse {
 message SendAnalyticsRequest {
   string event_name = 1;
   string event_value = 2;
+  PluginCommandAnalytics plugin_command = 3;
+}
+
+enum PluginCommandOutcome {
+  PLUGIN_COMMAND_OUTCOME_UNSPECIFIED = 0;
+  PLUGIN_COMMAND_OUTCOME_SUCCESS = 1;
+  PLUGIN_COMMAND_OUTCOME_ERROR = 2;
+  PLUGIN_COMMAND_OUTCOME_CANCELLED = 3;
+}
+
+message PluginCommandAnalytics {
+  string plugin_name = 1;
+  string plugin_version = 2;
+  string command = 3;
+  PluginCommandOutcome outcome = 4;
+  optional int64 duration_ms = 5;
 }
 
 message SendAnalyticsResponse {
