@@ -420,15 +420,16 @@ func validatedPluginCommandMetadata(eventName string, value *proto.PluginCommand
 	if !pluginVersionPattern.MatchString(value.PluginVersion) {
 		return nil
 	}
+	command := value.Command
 	if value.PluginName == "projects" {
 		if _, ok := projectsPluginCommands[value.Command]; !ok {
-			return nil
+			command = "unknown"
 		}
 	} else if value.Command != "unknown" {
 		return nil
 	}
 
-	metadata := &pluginCommandMetadata{pluginName: value.PluginName, pluginVersion: value.PluginVersion, command: value.Command}
+	metadata := &pluginCommandMetadata{pluginName: value.PluginName, pluginVersion: value.PluginVersion, command: command}
 	switch eventName {
 	case "Plugin invoked":
 		if value.Outcome != proto.PluginCommandOutcome_PLUGIN_COMMAND_OUTCOME_UNSPECIFIED || value.DurationMs != nil {
