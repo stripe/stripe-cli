@@ -8,7 +8,6 @@ import (
 
 func TestCreateRabbitServicePayload(t *testing.T) {
 	tsCtx := TerminalSessionContext{
-		APIKey: "sk_123",
 		DeviceInfo: DeviceInfo{
 			DeviceClass:   "POS",
 			DeviceUUID:    "pos-1234",

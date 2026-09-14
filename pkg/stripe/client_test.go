@@ -235,3 +235,9 @@ func TestPerformRequest_ConfigureFuncReturnsError(t *testing.T) {
 		resp.Body.Close()
 	}
 }
+
+func TestIsOAK(t *testing.T) {
+	require.True(t, NewOAKCredentials("oak_test_123", "acct_a", false).IsOAK())
+	require.False(t, NewAPIKeyCredentials("sk_test_123").IsOAK())
+	require.False(t, Credentials{}.IsOAK())
+}

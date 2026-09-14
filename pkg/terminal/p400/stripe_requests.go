@@ -166,7 +166,7 @@ func GetNewConnectionToken(ctx context.Context, tsCtx TerminalSessionContext) (s
 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
-		Credentials: stripe.NewAPIKeyCredentials(tsCtx.APIKey),
+		Credentials: tsCtx.Creds,
 		Verbose:     false,
 	}
 
@@ -209,7 +209,7 @@ func CreatePaymentIntent(ctx context.Context, tsCtx TerminalSessionContext) (str
 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
-		Credentials: stripe.NewAPIKeyCredentials(tsCtx.APIKey),
+		Credentials: tsCtx.Creds,
 		Verbose:     false,
 	}
 
@@ -258,7 +258,7 @@ func CapturePaymentIntent(ctx context.Context, tsCtx TerminalSessionContext) err
 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
-		Credentials: stripe.NewAPIKeyCredentials(tsCtx.APIKey),
+		Credentials: tsCtx.Creds,
 		Verbose:     false,
 	}
 
@@ -295,7 +295,7 @@ func RegisterReader(ctx context.Context, regcode string, tsCtx TerminalSessionCo
 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
-		Credentials: stripe.NewAPIKeyCredentials(tsCtx.APIKey),
+		Credentials: tsCtx.Creds,
 		Verbose:     false,
 	}
 
