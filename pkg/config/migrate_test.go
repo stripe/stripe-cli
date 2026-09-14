@@ -488,3 +488,28 @@ installed_plugins = ['apps']
 
 	require.False(t, NeedsMigration())
 }
+
+func TestStampNewConfigFileWritesTheV2Layout(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "nested", "config.toml")
+
+	require.NoError(t, StampNewConfigFile(path))
+
+	v := viper.New()
+	v.SetConfigFile(path)
+	require.NoError(t, v.ReadInConfig())
+	require.Equal(t, ConfigVersionV2, v.GetInt(ConfigVersionName))
+	require.True(t, isMigrated(v), "a write into this file has to nest")
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+}
+
+// Choosing the layout of a file that already holds something is
+// MigrateConfigFile's job: it takes a backup and verifies the result first.
+func TestStampNewConfigFileRefusesAnExistingFile(t *testing.T) {
+	path := writeConfigFileForMigration(t, "[default]\n  display_name = 'Acme'\n")
+
+	require.Error(t, StampNewConfigFile(path))
+	require.Contains(t, string(helperLoadBytes(t, path)), "display_name = 'Acme'")
+}

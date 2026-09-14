@@ -29,6 +29,7 @@ type configMigration struct {
 	installedPluginCount func() int
 	upgradePlugin        func(plugins.ConfigV2Incompatibility) (string, error)
 	migrate              func(path string) (bool, error)
+	stampNew             func(path string) error
 	reload               func() error
 	out                  io.Writer
 }
@@ -56,9 +57,10 @@ func newConfigMigration(cfg *config.Config, ctx context.Context) configMigration
 		upgradePlugin: func(incompatibility plugins.ConfigV2Incompatibility) (string, error) {
 			return upgradePluginForConfigV2(ctx, cfg, fs, incompatibility)
 		},
-		migrate: config.MigrateConfigFile,
-		reload:  config.ReloadConfigFile,
-		out:     os.Stderr,
+		migrate:  config.MigrateConfigFile,
+		stampNew: config.StampNewConfigFile,
+		reload:   config.ReloadConfigFile,
+		out:      os.Stderr,
 	}
 }
 
@@ -103,9 +105,9 @@ func (m configMigration) run() {
 	}
 
 	if _, err := os.Stat(m.profilesFile); err != nil {
-		// No config file yet, so there is nothing to move. The first write picks
-		// the layout.
-		logger.Debugf("Skipping the config migration: %s", err)
+		// No config file yet, so there is nothing to move -- but there is a layout
+		// to choose for whatever gets written first.
+		m.stampNewConfigFile(logger, err)
 		return
 	}
 
@@ -119,6 +121,49 @@ func (m configMigration) run() {
 	}
 
 	m.migrateAndReload()
+}
+
+// stampNewConfigFile records the v2 layout in a config file that does not exist
+// yet, so that the first write into it -- usually a login -- lands in the new
+// layout directly.
+//
+// Without this, the first command writes the flat layout and the *next* command
+// migrates it. That shows a brand-new user a migration notice before they have
+// logged in, and leaves a backup file holding a copy of the credentials the
+// previous command just wrote.
+//
+// Gated on plugins for the same reason the migration is: once a profile is written
+// under the profiles table, a plugin too old to look there cannot find it. Silent,
+// though. There is nothing to migrate and nothing at risk, so an incompatible
+// plugin simply means the file keeps the flat layout until that plugin is
+// upgraded -- and a status line here would land in front of a user who has not
+// run anything yet.
+func (m configMigration) stampNewConfigFile(logger *log.Entry, statErr error) {
+	logger.Debugf("No config file to migrate: %s", statErr)
+
+	if m.stampNew == nil || !m.pluginsReady() {
+		return
+	}
+
+	incompatibilities, err := m.incompatibilities()
+	if err != nil {
+		logger.Debugf("Not recording the new config format: could not check installed plugins: %s", err)
+		return
+	}
+
+	if len(incompatibilities) > 0 {
+		logger.Debugf("Not recording the new config format: %s", incompatibilities[0].Error())
+		return
+	}
+
+	if err := m.stampNew(m.profilesFile); err != nil {
+		logger.Debugf("Could not record the new config format in %s: %s", m.profilesFile, err)
+		return
+	}
+
+	if err := m.reload(); err != nil {
+		logger.Debugf("Recorded the new config format in %s but could not re-read it: %s", m.profilesFile, err)
+	}
 }
 
 // ensurePluginsCompatible upgrades any installed plugin that cannot read the v2
