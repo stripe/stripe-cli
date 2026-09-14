@@ -14,9 +14,7 @@ func newRootWithDeprecatedCmds() *cobra.Command {
 	// Mirror the real root's silencing so the shims' output is what a user
 	// actually sees; without it cobra appends its own error and usage block.
 	root := &cobra.Command{Use: "stripe", SilenceUsage: true, SilenceErrors: true}
-	terminal := &cobra.Command{Use: "terminal"}
-	terminal.AddCommand(newTerminalQuickstartCmd())
-	root.AddCommand(newSamplesCmd(), newServeCmd(), terminal)
+	root.AddCommand(newSamplesCmd(), newServeCmd())
 	return root
 }
 
@@ -40,11 +38,6 @@ func TestDeprecatedCommands(t *testing.T) {
 			name:     "serve alias",
 			args:     []string{"srv", "."},
 			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
-		},
-		{
-			name:     "terminal quickstart",
-			args:     []string{"terminal", "quickstart", "--api-key", "example"},
-			expected: "The `stripe terminal quickstart` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
 		},
 	}
 
@@ -91,16 +84,6 @@ func TestDeprecatedCommandHelp(t *testing.T) {
 			args:     []string{"serve", "--help"},
 			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
 		},
-		{
-			name:     "terminal quickstart",
-			args:     []string{"help", "terminal", "quickstart"},
-			expected: "The `stripe terminal quickstart` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
-		},
-		{
-			name:     "terminal quickstart help flag",
-			args:     []string{"terminal", "quickstart", "--help"},
-			expected: "The `stripe terminal quickstart` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
-		},
 	}
 
 	for _, tt := range tests {
@@ -121,22 +104,15 @@ func TestDeprecatedCommandsHidden(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, rootHelp, "samples")
 	require.NotContains(t, rootHelp, "serve")
-
-	terminalHelp, err := executeCommand(root, "terminal", "--help")
-	require.NoError(t, err)
-	require.NotContains(t, terminalHelp, "quickstart")
 }
 
 // The tests above build their own root, so they can't catch the shims falling
-// out of the real command tree. In particular quickstart is attached by looking
-// up `terminal` in root.go, which silently attaches nothing if that lookup ever
-// stops resolving.
+// out of the real command tree.
 func TestDeprecatedCommandsRegisteredOnRoot(t *testing.T) {
 	paths := [][]string{
 		{"samples"},
 		{"serve"},
 		{"srv"},
-		{"terminal", "quickstart"},
 	}
 
 	for _, path := range paths {
