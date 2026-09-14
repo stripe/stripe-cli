@@ -33,9 +33,9 @@ func newPostinstallCmd(config *config.Config) *postinstallCmd {
 
 func (pic *postinstallCmd) runPostinstallCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(os.Stdout)
-	_, err := pic.cfg.Profile.GetAPIKey(false)
+	_, err := pic.cfg.Profile.ResolveCredentialsForAnyMode(false)
 
-	// If we can't get the API key, then it's likely that this is a first install rather than an upgrade.
+	// If we can't get credentials, then it's likely that this is a first install rather than an upgrade.
 	// Suggest the user run `stripe login` to get started as a helpful prompt.
 	if err != nil {
 		welcomeIcon := color.BrightRed("❤").String()

@@ -54,20 +54,24 @@ func NewKeysPermissionsCmd(parentCmd *cobra.Command, cfg *config.Config) {
 }
 
 func (kpc *KeysPermissionsCmd) runKeysPermissionsCmd(cmd *cobra.Command, args []string) error {
-	apiKey, err := kpc.cfg.Profile.GetAPIKey(false)
+	creds, err := kpc.cfg.Profile.ResolveCredentialsForAnyMode(false)
 	if err != nil {
 		return err
 	}
 
-	err = validators.APIKeyNotRestricted(apiKey)
-	if err != nil {
-		return err
+	// The restricted-key guard only applies to a plain API key, e.g. one passed
+	// with --api-key; an OAK carries the user's own permissions.
+	if !creds.IsOAK() {
+		err = validators.APIKeyNotRestricted(creds.Token)
+		if err != nil {
+			return err
+		}
 	}
 
 	baseURL, _ := url.Parse(kpc.apiBaseURL)
 	client := &stripe.Client{
 		BaseURL:     baseURL,
-		Credentials: stripe.NewAPIKeyCredentials(apiKey),
+		Credentials: creds,
 	}
 
 	// Build form-encoded body

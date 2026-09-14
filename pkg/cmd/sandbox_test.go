@@ -194,6 +194,29 @@ func captureStdout(t *testing.T, fn func() error) (string, error) {
 	return buf.String(), runErr
 }
 
+// An OAuth login stores a UAT in the keyring rather than an API key in the
+// config, so a gate that only looks for an API key sees an empty profile and
+// provisions a sandbox for someone who is already signed in to a real account.
+func TestSandboxCreateCmd_OAuthSessionGoesToDashboard(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	activeCtx, err := json.Marshal(config.ActiveContext{AccountID: "acct_oauth_123", Livemode: false})
+	require.NoError(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_test_1234567890"),
+		config.OAuthActiveContextKeychainKey: activeCtx,
+	})
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--non-interactive"})
+
+	output, err := captureStdout(t, cmd.cmd.Execute)
+	require.NoError(t, err)
+	require.Contains(t, output, "already authenticated")
+	require.Contains(t, output, "/sandboxes")
+}
+
 // A sandbox provisioned under an invalid profile name would have nowhere to save
 // its keys, so the name is checked before any request is made.
 func TestSandboxCreateCmd_RejectsNewDottedProfileBeforeProvisioning(t *testing.T) {

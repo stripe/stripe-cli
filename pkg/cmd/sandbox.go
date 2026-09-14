@@ -138,14 +138,15 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 
 	color := ansi.Color(cmd.ErrOrStderr())
 
-	existingKey, _ := Config.Profile.GetAPIKey(false)
+	existingKey := currentProfileToken()
 
 	switch {
 	case existingKey == "":
-		// No key — proceed to provision a new sandbox below.
+		// No credentials — proceed to provision a new sandbox below.
 
 	case !isClaimableSandbox():
-		// Logged in with a real key (sk_test_, rk_test_ from stripe login).
+		// Logged in with a real account (an OAuth session, or sk_test_/rk_test_
+		// from an earlier `stripe login`).
 		// Direct to dashboard — sandbox creation requires an empty profile.
 		sandboxURL := scc.dashboardURL + "/sandboxes"
 		fmt.Printf("You're already authenticated; sandbox management is available in Dashboard.\n\n")
@@ -389,12 +390,20 @@ func saveSandboxToConfig(result *sandbox.ProvisionResponse) error {
 	return nil
 }
 
+// currentProfileToken returns the auth token for the current profile, or "" if
+// the profile holds no credentials. An OAuth session counts as credentials just
+// as a configured API key does.
+func currentProfileToken() string {
+	creds, _ := Config.Profile.ResolveCredentialsForAnyMode(false)
+	return creds.Token
+}
+
 // isClaimableSandbox returns true if the current profile looks like a
 // CLI-created claimable sandbox (not a real account from stripe login).
-// Key prefix is authoritative — if the key is sk_test_ or rk_test_,
-// it's a real account regardless of leftover sandbox metadata.
+// The token is authoritative — anything other than an rkcs_ key, including an
+// OAuth token, means a real account regardless of leftover sandbox metadata.
 func isClaimableSandbox() bool {
-	key, _ := Config.Profile.GetAPIKey(false)
+	key := currentProfileToken()
 	if key != "" && !strings.HasPrefix(key, "rkcs_") {
 		return false
 	}
