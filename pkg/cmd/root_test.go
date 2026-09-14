@@ -3,6 +3,8 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +17,9 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
 func executeCommand(root *cobra.Command, args ...string) (output string, err error) {
@@ -209,4 +214,44 @@ func TestDatabasesHiddenButDirectlyAddressable(t *testing.T) {
 	require.Contains(t, output, "Manage StripeDB")
 	require.Contains(t, output, "unstable preview APIs")
 	require.Contains(t, output, "users")
+}
+
+func TestIsMorePermissionsRequiredError(t *testing.T) {
+	require.False(t, isMorePermissionsRequiredError(fmt.Errorf("other")))
+
+	// requests.RequestError, as returned by resource commands, trigger, fixtures, etc.
+	reqErr := requests.RequestError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required"}
+	require.True(t, isMorePermissionsRequiredError(reqErr))
+	require.False(t, isMorePermissionsRequiredError(requests.RequestError{StatusCode: http.StatusForbidden, ErrorCode: "resource_missing"}))
+
+	// stripeauth.AuthorizeHTTPError, as returned by the `stripe listen` / `stripe logs tail`
+	// session-auth flow. It's wrapped with errorcategory.Errorf(..., "%w", err) the same way
+	// proxy.go and logtailing/tailer.go wrap it before sending it out over the OutCh channel.
+	authErr := &stripeauth.AuthorizeHTTPError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required"}
+	wrapped := errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", authErr)
+	require.True(t, isMorePermissionsRequiredError(wrapped))
+}
+
+func TestMorePermissionsRequiredMessage(t *testing.T) {
+	t.Run("requests.RequestError, API key", func(t *testing.T) {
+		reqErr := requests.RequestError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", HasOAKContext: false}
+		require.Equal(t, "raw error message", morePermissionsRequiredMessage(reqErr))
+	})
+
+	t.Run("requests.RequestError, OAuth/UAT", func(t *testing.T) {
+		reqErr := requests.RequestError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", HasOAKContext: true}
+		require.Equal(t, morePermissionsRequiredRoleMessage, morePermissionsRequiredMessage(reqErr))
+	})
+
+	t.Run("stripeauth.AuthorizeHTTPError, API key", func(t *testing.T) {
+		authErr := &stripeauth.AuthorizeHTTPError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", HasOAKContext: false}
+		wrapped := errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", authErr)
+		require.Equal(t, "raw error message", morePermissionsRequiredMessage(wrapped))
+	})
+
+	t.Run("stripeauth.AuthorizeHTTPError, OAuth/UAT", func(t *testing.T) {
+		authErr := &stripeauth.AuthorizeHTTPError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required", Message: "raw error message", HasOAKContext: true}
+		wrapped := errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", authErr)
+		require.Equal(t, morePermissionsRequiredRoleMessage, morePermissionsRequiredMessage(wrapped))
+	})
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -194,6 +195,8 @@ func Execute(ctx context.Context) {
 			// the shim already printed the downgrade guidance; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
+		case isMorePermissionsRequiredError(err):
+			fmt.Fprintln(os.Stderr, morePermissionsRequiredMessage(err))
 		case isLoginRequiredError && projectNameFlag != "default":
 			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
@@ -245,6 +248,36 @@ func apiKeyExpiredMessage(profileName string) string {
 	}
 	return fmt.Sprintf("The API key for profile %q has expired. Run `stripe login --project-name=%s` to re-authenticate.", profileName, profileName)
 }
+
+// isMorePermissionsRequiredError reports whether err was caused by a Stripe
+// API request failing because the API key's role lacks the permissions
+// required for that request. Requests made through pkg/requests surface this
+// as a requests.RequestError; the websocket session-auth flows used by
+// `stripe listen` and `stripe logs tail` surface it as a
+// stripeauth.AuthorizeHTTPError instead.
+func isMorePermissionsRequiredError(err error) bool {
+	return requests.IsMorePermissionsRequiredError(err) || stripeauth.IsMorePermissionsRequiredError(err)
+}
+
+// morePermissionsRequiredMessage returns the message to show the user for a
+// more_permissions_required error. Requests authenticated with a plain API
+// key have no notion of "role", so the raw message from the Stripe API is
+// shown instead of the role-reassignment message.
+func morePermissionsRequiredMessage(err error) string {
+	var reqErr requests.RequestError
+	if errors.As(err, &reqErr) && !reqErr.HasOAKContext {
+		return reqErr.Message
+	}
+
+	var authErr *stripeauth.AuthorizeHTTPError
+	if errors.As(err, &authErr) && !authErr.HasOAKContext {
+		return authErr.Message
+	}
+
+	return morePermissionsRequiredRoleMessage
+}
+
+const morePermissionsRequiredRoleMessage = "You don't have permission to do this with your current role. Ask an account administrator to assign you a different role with more permissions."
 
 var keysToReBind []string
 

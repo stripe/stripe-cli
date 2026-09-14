@@ -76,11 +76,13 @@ func (r *RequestParameters) SetVersion(value string) {
 
 // RequestError captures the response of the request that resulted in an error
 type RequestError struct {
-	msg        string
-	StatusCode int
-	ErrorType  string
-	ErrorCode  string
-	Body       interface{} // the raw response body
+	msg           string
+	StatusCode    int
+	ErrorType     string
+	ErrorCode     string
+	Message       string      // the human-readable "message" field from the error response body
+	HasOAKContext bool        // true if the request was authenticated with an OAuth/UAT token rather than a plain API key
+	Body          interface{} // the raw response body
 }
 
 func (e RequestError) Error() string {
@@ -95,6 +97,20 @@ func IsAPIKeyExpiredError(err error) bool {
 	var reqErr RequestError
 	if errors.As(err, &reqErr) {
 		return reqErr.StatusCode == 401 && reqErr.ErrorCode == "api_key_expired"
+	}
+	return false
+}
+
+// MorePermissionsRequiredErrorCode is the Stripe API error code returned
+// when the API key's role does not have permission to perform a request.
+const MorePermissionsRequiredErrorCode = "more_permissions_required"
+
+// IsMorePermissionsRequiredError returns true if the provided error was
+// caused by a request returning a `more_permissions_required` error code.
+func IsMorePermissionsRequiredError(err error) bool {
+	var reqErr RequestError
+	if errors.As(err, &reqErr) {
+		return reqErr.StatusCode == http.StatusForbidden && reqErr.ErrorCode == MorePermissionsRequiredErrorCode
 	}
 	return false
 }
@@ -354,6 +370,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
+		requestError.HasOAKContext = creds.OAKContext != ""
 
 		// For OAK tokens, "unauthorized" means the token was manually revoked
 		// or otherwise invalidated server-side. Attempt a transparent refresh
@@ -581,8 +598,9 @@ func setNestedValue(m map[string]interface{}, key string, value string) {
 
 func compileRequestError(body []byte, statusCode int) RequestError {
 	type requestErrorContent struct {
-		Code string `json:"code"`
-		Type string `json:"type"`
+		Code    string `json:"code"`
+		Type    string `json:"type"`
+		Message string `json:"message"`
 	}
 
 	type requestErrorBody struct {
@@ -598,6 +616,7 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 		StatusCode: statusCode,
 		ErrorType:  errorBody.Content.Type,
 		ErrorCode:  errorBody.Content.Code,
+		Message:    errorBody.Content.Message,
 		Body:       string(body),
 	}
 }
