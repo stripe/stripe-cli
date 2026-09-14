@@ -396,3 +396,95 @@ func TestVerifyPlanCatchesADroppedSetting(t *testing.T) {
 	err := verifyPlan(plan, []byte("config_version = 2\n\n[profiles]\n"))
 	require.ErrorContains(t, err, "is missing from the migrated config")
 }
+
+// Nothing stops `stripe login --project-name installed_plugins` on a v1 CLI, so a
+// profile can already be sitting on a key the CLI uses for its own settings. That
+// collision is the whole reason for the v2 layout, so the profile has to move --
+// leaving it at the top level means the migration does not fix the case it exists
+// for, and the next plugin install overwrites the profile with an array.
+func TestMigrateConfigFileMovesProfileNamedAfterAReservedKey(t *testing.T) {
+	for _, name := range []string{"installed_plugins", "plugin_configs", "color", "user_info", "project-name"} {
+		t.Run(name, func(t *testing.T) {
+			path := writeConfigFileForMigration(t, "["+name+"]\n"+
+				"  display_name = 'Collided Account'\n"+
+				"  test_mode_api_key = 'sk_test_collided_key'\n")
+
+			changed, err := MigrateConfigFile(path)
+			require.NoError(t, err)
+			require.True(t, changed)
+
+			v := viper.New()
+			v.SetConfigFile(path)
+			require.NoError(t, v.ReadInConfig())
+
+			require.Equal(t, "sk_test_collided_key",
+				v.GetString(ProfilesTableName+"."+name+".test_mode_api_key"))
+			require.False(t, v.IsSet(name+".test_mode_api_key"))
+		})
+	}
+}
+
+// The flip side: a reserved key holding its real value is a setting, not a
+// profile, and must stay at the top level. plugin_configs is a table of tables and
+// user_info holds compartments; neither has a profile field in it.
+func TestMigrateConfigFileLeavesRealReservedSettingsAlone(t *testing.T) {
+	path := writeConfigFileForMigration(t, `installed_plugins = ['apps']
+machine_uuid = 'uuid-reserved'
+
+[plugin_configs.__global]
+  updates = 'on'
+
+[user_info]
+  compartments = []
+
+[default]
+  display_name = 'Acme'
+  test_mode_api_key = 'sk_test_acme_key'
+`)
+
+	changed, err := MigrateConfigFile(path)
+	require.NoError(t, err)
+	require.True(t, changed)
+
+	v := viper.New()
+	v.SetConfigFile(path)
+	require.NoError(t, v.ReadInConfig())
+
+	require.Equal(t, []string{"apps"}, v.GetStringSlice("installed_plugins"))
+	require.Equal(t, "on", v.GetString("plugin_configs.__global.updates"))
+	require.True(t, v.IsSet("user_info"))
+	require.False(t, v.IsSet(ProfilesTableName+".plugin_configs"))
+	require.False(t, v.IsSet(ProfilesTableName+".user_info"))
+	require.Equal(t, "sk_test_acme_key", v.GetString(ProfilesTableName+".default.test_mode_api_key"))
+}
+
+// A collided profile must not be left behind by NeedsMigration either, or the
+// migration and the check that triggers it disagree and the file never converges.
+func TestNeedsMigrationSeesProfileNamedAfterAReservedKey(t *testing.T) {
+	setupProfileConfig(t, `config_version = 2
+
+[profiles.default]
+  display_name = 'Acme'
+
+[installed_plugins]
+  display_name = 'Collided Account'
+  test_mode_api_key = 'sk_test_collided_key'
+`)
+
+	require.True(t, NeedsMigration())
+}
+
+// ...while a fully migrated file with only real settings at the top level is done.
+func TestNeedsMigrationIsFalseForAMigratedFile(t *testing.T) {
+	setupProfileConfig(t, `config_version = 2
+installed_plugins = ['apps']
+
+[plugin_configs.__global]
+  updates = 'on'
+
+[profiles.default]
+  display_name = 'Acme'
+`)
+
+	require.False(t, NeedsMigration())
+}

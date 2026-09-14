@@ -91,7 +91,11 @@ func NeedsMigration() bool {
 // migration itself always agree on whether there is work to do.
 func hasFlatProfileTable(v *viper.Viper) bool {
 	for key, value := range v.AllSettings() {
-		if reservedTopLevelKeys[key] {
+		if key == ProfilesTableName {
+			// The v2 container itself. Its keys are profile names, which can
+			// coincide with profile *field* names, so testing it with
+			// looksLikeProfile would report a stray profile that is already
+			// migrated -- and migrate forever.
 			continue
 		}
 
@@ -250,12 +254,16 @@ func planMigration(contents []byte) (*migrationPlan, bool, error) {
 // reservedProfileNameException reports whether a top-level key must be treated
 // as a setting rather than as a profile. Only the profiles table itself
 // qualifies, and only when it is acting as the v2 container.
+//
+// The other reserved keys need no exception. Their real values are scalars,
+// arrays, or tables of tables, none of which hold profile fields, so
+// looksLikeProfile already tells them apart from a profile. A reserved-named
+// table that *does* hold profile fields is a profile whose name collided with the
+// setting -- `stripe login --project-name installed_plugins` -- which is the
+// collision the v2 layout exists to separate, so it has to move rather than be
+// left behind as a setting.
 func reservedProfileNameException(key string, nestedIsContainer bool) bool {
-	if key == ProfilesTableName {
-		return nestedIsContainer
-	}
-
-	return reservedTopLevelKeys[key]
+	return key == ProfilesTableName && nestedIsContainer
 }
 
 // profilesContainer returns the v2 profiles table, if the document has one.
