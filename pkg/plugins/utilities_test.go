@@ -1263,6 +1263,54 @@ func testListEndpointResponseJSON() []byte {
 }`, runtime.GOOS, runtime.GOARCH))
 }
 
+func TestResolveInstallBaseURLs(t *testing.T) {
+	tests := []struct {
+		name             string
+		apiBaseURL       string
+		dashboardBaseURL string
+		wantAPI          string
+		wantDashboard    string
+	}{
+		{
+			// What Run is handed when the user passed no base URL flags at all, which is
+			// the usual case. An empty pair has to become a real host, not stay empty.
+			name:          "both empty fall back to this CLI's defaults",
+			wantAPI:       "https://api.stripe.com",
+			wantDashboard: "https://dashboard.stripe.com",
+		},
+		{
+			// The dashboard has to follow the API base URL. If it didn't, an --api-base
+			// pointed at QA would pair with production's dashboard.
+			name:          "dashboard follows an overridden api base",
+			apiBaseURL:    "https://qa-api.stripe.com",
+			wantAPI:       "https://qa-api.stripe.com",
+			wantDashboard: "https://qa-dashboard.stripe.com",
+		},
+		{
+			name:             "dashboard override stands on its own",
+			dashboardBaseURL: "https://qa-dashboard.stripe.com",
+			wantAPI:          "https://api.stripe.com",
+			wantDashboard:    "https://qa-dashboard.stripe.com",
+		},
+		{
+			name:             "both overrides pass through untouched",
+			apiBaseURL:       "https://qa-api.stripe.com",
+			dashboardBaseURL: "https://custom-dashboard.stripe.com",
+			wantAPI:          "https://qa-api.stripe.com",
+			wantDashboard:    "https://custom-dashboard.stripe.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotAPI, gotDashboard := resolveInstallBaseURLs(tt.apiBaseURL, tt.dashboardBaseURL)
+
+			require.Equal(t, tt.wantAPI, gotAPI)
+			require.Equal(t, tt.wantDashboard, gotDashboard)
+		})
+	}
+}
+
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()
 	orig := os.Stderr

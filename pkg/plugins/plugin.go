@@ -674,14 +674,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		// before reinstalling so stale cached local metadata does not pin us to an
 		// older release.
 		if version == "" {
-			installAPIBaseURL := apiBaseURL
-			if installAPIBaseURL == "" {
-				installAPIBaseURL = stripe.DefaultAPIBaseURL
-			}
-			installDashboardBaseURL := dashboardBaseURL
-			if installDashboardBaseURL == "" {
-				installDashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(installAPIBaseURL)
-			}
+			installAPIBaseURL, installDashboardBaseURL := resolveInstallBaseURLs(apiBaseURL, dashboardBaseURL)
 
 			resolvedPlugin, err := resolvePluginForAutoInstall(ctx, config, fs, p.Shortname, installAPIBaseURL, installDashboardBaseURL)
 			if err != nil {

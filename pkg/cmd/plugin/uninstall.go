@@ -158,7 +158,7 @@ func (uc *UninstallCmd) uninstallPlugin(ctx context.Context, cmd *cobra.Command,
 		return err
 	}
 
-	sendPluginLifecycleEvent(cmd.Context(), "Plugin Uninstalled", installedVersion)
+	plugins.SendPluginLifecycleEvent(cmd.Context(), plugins.PluginUninstalledEvent, installedVersion)
 
 	out := cmd.OutOrStdout()
 	color := ansi.Color(out)
