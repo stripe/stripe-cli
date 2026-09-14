@@ -98,7 +98,7 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		explicitFlagValue(cmd, "dashboard-base", uc.dashboardBaseURL),
 		explicitFlagValue(cmd, "access-base", accessBaseURL))
 
-	sendPluginLifecycleEvent(cmd.Context(), "Plugin Upgraded", version)
+	plugins.SendPluginLifecycleEvent(cmd.Context(), plugins.PluginUpgradedEvent, version)
 
 	if prevVersion != "" {
 		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))

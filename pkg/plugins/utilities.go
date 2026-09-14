@@ -716,6 +716,28 @@ func mergePluginMetadata(primary, fallback *Plugin) *Plugin {
 	return &pluginCopy
 }
 
+// resolveInstallBaseURLs fills in this CLI's own defaults for a download that
+// this package starts on its own, such as Run's auto-install.
+//
+// The base URLs threaded through Run hold only what the user explicitly passed,
+// because an empty value is what tells a plugin to fall back to its own default
+// instead of inheriting the CLI's. That convention does not survive a metadata
+// request, which has to name a real host. So the gaps are filled here rather
+// than in Run's arguments, leaving what gets forwarded to the plugin alone.
+func resolveInstallBaseURLs(apiBaseURL, dashboardBaseURL string) (resolvedAPIBaseURL, resolvedDashboardBaseURL string) {
+	resolvedAPIBaseURL = apiBaseURL
+	if resolvedAPIBaseURL == "" {
+		resolvedAPIBaseURL = stripe.DefaultAPIBaseURL
+	}
+
+	resolvedDashboardBaseURL = dashboardBaseURL
+	if resolvedDashboardBaseURL == "" {
+		resolvedDashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(resolvedAPIBaseURL)
+	}
+
+	return resolvedAPIBaseURL, resolvedDashboardBaseURL
+}
+
 // resolvePluginForAutoInstall resolves the version to re-download for a plugin
 // that is already installed but whose binary is missing. This repairs a broken
 // install rather than adding a plugin the user never asked for, so it is
