@@ -366,9 +366,6 @@ func init() {
 	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
-	if terminalCmd, ok := cmdutil.FindSubCmd(rootCmd, "terminal"); ok {
-		terminalCmd.AddCommand(newTerminalQuickstartCmd())
-	}
 	registerHTTPCmds(rootCmd)
 	err := resource.AddDatabasesCmd(rootCmd, &Config)
 	if err != nil {

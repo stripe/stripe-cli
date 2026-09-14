@@ -50,7 +50,3 @@ func newServeCmd() *cobra.Command {
 	cmd.Aliases = []string{"srv"}
 	return cmd
 }
-
-func newTerminalQuickstartCmd() *cobra.Command {
-	return newDeprecatedCommand("quickstart", "stripe terminal quickstart")
-}
