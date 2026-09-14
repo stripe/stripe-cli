@@ -358,7 +358,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Pull down bin, verify, and save to disk
-	if err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version); err != nil {
+	if err := pluginToInstall.downloadAndSavePlugin(ctx, cfg, pluginDownloadURL, fs, version); err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stderr)
 		return err
 	}
@@ -446,8 +446,8 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 	return nil
 }
 
-func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
-	body, err := FetchRemoteResource(pluginDownloadURL)
+func (p *Plugin) downloadAndSavePlugin(ctx context.Context, config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
+	body, err := FetchRemoteResource(ctx, pluginDownloadURL)
 	if err != nil {
 		return err
 	}

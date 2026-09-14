@@ -1115,11 +1115,16 @@ func (e *ErrPluginNotFound) Error() string {
 	return fmt.Sprintf("no plugin named %q exists", e.Name)
 }
 
-// FetchRemoteResource returns the remote resource body
-func FetchRemoteResource(url string) ([]byte, error) {
+// FetchRemoteResource returns the remote resource body.
+//
+// The context covers the body transfer, not just getting a response, because the
+// resource this fetches is a plugin binary: by the time the wait is long enough to
+// be worth abandoning, the download has already started. Canceling only the
+// handshake would leave Ctrl+C with nothing to interrupt.
+func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 	t := &requests.TracedTransport{}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		return nil, err
