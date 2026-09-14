@@ -257,7 +257,8 @@ func (m switchContextModel) View() tea.View {
 		}
 	}
 
-	sb.WriteString("\n↑↓ to navigate · enter to select · esc to cancel")
+	sb.WriteString("\nRun 'stripe login' to authorize additional accounts or sandboxes.\n\n")
+	sb.WriteString("↑↓ to navigate · enter to select · esc to cancel")
 	return tea.NewView(sb.String())
 }
 

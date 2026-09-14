@@ -332,13 +332,12 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 	if len(rows) == 1 {
 		r := rows[0]
 		ctx := fmt.Sprintf("%s · %s", r.name, displayMode(r.mode))
-		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n", color.Green("✓"), ctx, r.id)
-		fmt.Printf("  Logged in to: %s\n\n", ctx)
+		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n\n", color.Green("✓"), ctx, r.id)
 		fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 		return
 	}
 
-	fmt.Printf("%s Done! The Stripe CLI is authorized for %d accounts in live mode or a sandbox.\n\n", color.Green("✓"), len(rows))
+	fmt.Printf("%s Done! The Stripe CLI is authorized for:\n\n", color.Green("✓"))
 
 	nameW, modeW, idW := 0, 0, 0
 	for _, r := range rows {
@@ -353,9 +352,11 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 		}
 	}
 
+	var active contextRow
 	for _, r := range rows {
 		mode := displayMode(r.mode)
 		if r.active {
+			active = r
 			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, mode, idW, r.id, color.Green("●"))
 		} else {
 			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, mode, r.id)
@@ -363,6 +364,7 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 	}
 
 	fmt.Println()
+	fmt.Printf("Currently active: %s · %s (%s)\n\n", active.name, displayMode(active.mode), active.id)
 	fmt.Println("Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
 	fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 }
