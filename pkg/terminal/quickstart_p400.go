@@ -10,12 +10,13 @@ import (
 	"github.com/manifoldco/promptui"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/terminal/p400"
 )
 
 // QuickstartP400 runs the quickstart interactive prompt sequence to walk the user through setting up a P400 reader
-func QuickstartP400(ctx context.Context, cfg *config.Config) error {
-	tsCtx := SetTerminalSessionContext(cfg)
+func QuickstartP400(ctx context.Context, cfg *config.Config, creds stripe.Credentials) error {
+	tsCtx := SetTerminalSessionContext(cfg, creds)
 
 	tsCtx, err := p400.RegisterAndActivateReader(ctx, tsCtx)
 
@@ -58,8 +59,7 @@ func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 
 // SetTerminalSessionContext creates a data struct that contains the context of the user's current quickstart session
 // it returns a TerminalSessionContext interface that is passed into most of the P400 reader related functions in the quickstart flow
-func SetTerminalSessionContext(cfg *config.Config) p400.TerminalSessionContext {
-	apiKey, _ := cfg.Profile.GetAPIKey(false)
+func SetTerminalSessionContext(cfg *config.Config, creds stripe.Credentials) p400.TerminalSessionContext {
 	posID := cfg.Profile.GetTerminalPOSDeviceID()
 
 	if posID == "" {
@@ -72,7 +72,7 @@ func SetTerminalSessionContext(cfg *config.Config) p400.TerminalSessionContext {
 	POSInfoDescription := fmt.Sprintf("%v:StripeCLI", hostOSVersion)
 
 	tsCtx := p400.TerminalSessionContext{
-		APIKey: apiKey,
+		Creds: creds,
 		DeviceInfo: p400.DeviceInfo{
 			DeviceClass:   "POS",
 			DeviceUUID:    posID,

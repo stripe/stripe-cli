@@ -35,16 +35,20 @@ func NewQuickstartCmd(parentCmd *cobra.Command, config *config.Config) {
 func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
 
-	key, err := cc.cfg.Profile.GetAPIKey(false)
+	creds, err := cc.cfg.Profile.ResolveCredentials(false)
 
 	if err != nil {
 		return err
 	}
 
-	err = validators.APIKeyNotRestricted(key)
+	// The restricted-key guard only applies to a plain API key, e.g. one passed
+	// with --api-key; an OAK carries the user's own permissions.
+	if !creds.IsOAK() {
+		err = validators.APIKeyNotRestricted(creds.Token)
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	readers := terminal.ReaderNames()
@@ -55,7 +59,7 @@ func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) err
 	}
 
 	if reader == terminal.ReaderList["verifone-p400"].Name {
-		err = terminal.QuickstartP400(cmd.Context(), cc.cfg)
+		err = terminal.QuickstartP400(cmd.Context(), cc.cfg, creds)
 		if err != nil {
 			return err
 		}
