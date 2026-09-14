@@ -101,6 +101,13 @@ func (c Credentials) SetRequestHeaders(req *http.Request) {
 	}
 }
 
+// IsOAK reports whether these credentials are an OAK (User Access Token)
+// rather than a plain API key. Callers that validate the shape of an API key
+// need to skip that check for an OAK, whose permissions come from the user.
+func (c Credentials) IsOAK() bool {
+	return c.OAKLivemode != nil
+}
+
 // Livemode reports the effective livemode for the credentials. For OAK tokens
 // this is explicit; for plain API keys it is inferred from the key string.
 func (c Credentials) Livemode() bool {
