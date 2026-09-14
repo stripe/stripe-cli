@@ -152,6 +152,17 @@ func autoUpgradeResolvedPlugin(version string) *ResolvedPluginVersion {
 	}
 }
 
+// autoUpgradeCachedResolution mirrors what ResolvePluginForUpgrade returns once the
+// metadata endpoint has failed and it falls back to cached metadata: full plugin
+// metadata and a version, but no binary URL, because only a live response carries
+// one.
+func autoUpgradeCachedResolution(version string) *ResolvedPluginVersion {
+	resolved := autoUpgradeResolvedPlugin(version)
+	resolved.BinaryURL = ""
+
+	return resolved
+}
+
 func autoUpgradeTestConfig() *cfgpkg.Config {
 	cfg := &TestConfig{}
 	cfg.InitConfig()
@@ -358,6 +369,17 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 			name:             "the lookup answered without plugin metadata",
 			installedVersion: "1.2.0",
 			resolved:         &ResolvedPluginVersion{Version: "1.3.0"},
+			wantSettingRead:  true,
+			wantLookup:       true,
+		},
+		{
+			// What ResolvePluginForUpgrade returns when it falls back to cached metadata:
+			// a newer version, and no binary URL. Installing it would send install back
+			// to the endpoint that just missed the deadline, this time without one, so
+			// the budget above has to require the URL to mean anything.
+			name:             "the newest release came back without a binary URL",
+			installedVersion: "1.2.0",
+			resolved:         autoUpgradeCachedResolution("1.3.0"),
 			wantSettingRead:  true,
 			wantLookup:       true,
 		},

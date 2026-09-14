@@ -19,9 +19,12 @@ import (
 // hint's budget because giving up here means the upgrade silently never happens,
 // while giving up on the hint only costs a message.
 //
-// Only the lookup is bounded. The download that may follow is not: a slow endpoint
-// should not hold up the user's command, but a large binary on a slow connection is
-// not a failure to cut short.
+// This is the whole budget for deciding, not just for the first request: an
+// auto-upgrade proceeds only on a resolution that already carries a binary URL, so
+// install never spends a second, unbounded lookup on the way to the download.
+//
+// The download itself is not bounded. A slow endpoint should not hold up the user's
+// command, but a large binary on a slow connection is not a failure to cut short.
 var autoUpgradeResolveTimeout = 3 * time.Second
 
 // Swappable for test injection. These are every effect maybeAutoUpgrade has outside
@@ -106,6 +109,23 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 	// downgraded. Accepting anything but ">" would roll the plugin back, and would do
 	// it again on every command.
 	if comparePluginVersions(installedVersion, resolved.Version) >= 0 {
+		return p, installedVersion
+	}
+
+	// A resolution carrying no binary URL is one install has to look up all over
+	// again, and it would do that on ctx rather than the budget above -- so an
+	// endpoint that just failed to answer in time would get a second turn with no
+	// deadline at all, immediately before the command the user typed. Requiring the
+	// URL here is what makes the budget cover the whole decision instead of only its
+	// first request.
+	//
+	// The cached-metadata fallback is what usually lands here: it can name a version
+	// but never a binary URL. Skipping it costs nothing, because auto-upgrade runs on
+	// every invocation and the next one starts a fresh budget. It also means an
+	// auto-upgrade only ever installs a release a live metadata response just
+	// offered, which is the guarantee ErrPluginRequiresNewerCLI's doc relies on.
+	if resolved.BinaryURL == "" {
+		logger.Debugf("skipping auto-upgrade to v%s, the lookup returned no binary URL", resolved.Version)
 		return p, installedVersion
 	}
 
