@@ -151,6 +151,9 @@ func MigrateConfigFile(path string) (bool, error) {
 	}
 
 	backupPath := path + ConfigBackupSuffix
+	if err := fsutil.RefuseWriteThroughSymlinkOS(backupPath, filepath.Dir(filepath.Dir(path)), "backup"); err != nil {
+		return false, err
+	}
 	if err := writeFileSync(backupPath, original); err != nil {
 		return false, fmt.Errorf("could not back up %s: %w", path, err)
 	}

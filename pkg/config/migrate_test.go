@@ -352,6 +352,21 @@ func TestMigrateConfigFileRefusesSymlink(t *testing.T) {
 	require.NoFileExists(t, profilesFile+ConfigBackupSuffix)
 }
 
+func TestMigrateConfigFileRefusesBackupSymlink(t *testing.T) {
+	path := writeConfigFileForMigration(t, v1ConfigFileToMigrate)
+
+	victimFile := filepath.Join(filepath.Dir(path), "victim.toml")
+	require.NoError(t, os.WriteFile(victimFile, []byte("original = true\n"), 0600))
+	require.NoError(t, os.Symlink(victimFile, path+ConfigBackupSuffix))
+
+	changed, err := MigrateConfigFile(path)
+	require.ErrorContains(t, err, "symlink")
+	require.False(t, changed)
+
+	require.Equal(t, "original = true\n", string(helperLoadBytes(t, victimFile)))
+	require.Equal(t, v1ConfigFileToMigrate, string(helperLoadBytes(t, path)))
+}
+
 func TestMigrateConfigFileRefusesSymlinkedParent(t *testing.T) {
 	profilesFile, victimDir := setupProfilesFileWithSymlinkedParent(t)
 	require.NoError(t, os.WriteFile(profilesFile, []byte(v1ConfigFileToMigrate), 0600))
