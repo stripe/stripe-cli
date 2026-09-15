@@ -163,7 +163,13 @@ func Execute(ctx context.Context) {
 
 	reporting.SetAccountIDProvider(Config.Profile.GetAccountID)
 
-	telemetryMetadata := stripe.NewEventMetadata()
+	// Reuse metadata the caller already attached to ctx (main.go does this so
+	// a panic recovered outside Execute still shares the same populated
+	// metadata pointer) rather than always creating a fresh one.
+	telemetryMetadata := stripe.GetEventMetadata(ctx)
+	if telemetryMetadata == nil {
+		telemetryMetadata = stripe.NewEventMetadata()
+	}
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
 
 	rootCmd.SetUsageTemplate(getUsageTemplate())
@@ -223,7 +229,7 @@ func Execute(ctx context.Context) {
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
-			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
+			recordUnknownCommand(updatedCtx, sanitizeUnknownCommand(os.Args[1:]))
 
 		default:
 			reporting.CaptureException(updatedCtx, err)

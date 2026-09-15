@@ -236,11 +236,29 @@ func resolvePluginTelemetryCommandPath(cmd *cobra.Command, argv []string) string
 
 	pluginArgs := cmdutil.ArgsAfter(argv, pluginRoot.Name())
 	subcommand := firstPluginTelemetrySubcommand(pluginArgs)
-	if subcommand == "" {
+	if subcommand == "" || !isKnownPluginSubcommand(pluginRoot, subcommand) {
+		// Untrusted: argv might not be a subcommand at all (e.g. a plugin
+		// that doesn't declare Commands in its manifest yet, or the plugin's
+		// own positional argument data), and command_path can end up keyed
+		// as a Prometheus tag downstream, so don't pass through anything
+		// that isn't a name Cobra actually knows about.
 		return basePath
 	}
 
 	return basePath + " " + subcommand
+}
+
+// isKnownPluginSubcommand reports whether name is one of pluginRoot's
+// registered subcommand stubs, i.e. it came from the plugin manifest's
+// Commands metadata (see addPluginSubcommandStubs) rather than being
+// inferred from raw argv.
+func isKnownPluginSubcommand(pluginRoot *cobra.Command, name string) bool {
+	for _, c := range pluginRoot.Commands() {
+		if c.Name() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func pluginRootCommand(cmd *cobra.Command) *cobra.Command {

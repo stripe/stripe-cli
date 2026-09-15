@@ -232,6 +232,7 @@ func TestResolvePluginTelemetryCommandPathAddsFirstPluginSubcommand(t *testing.T
 		Use:         "projects",
 		Annotations: map[string]string{"scope": "plugin"},
 	}
+	pluginCmd.AddCommand(&cobra.Command{Use: "catalog", Annotations: map[string]string{"scope": "plugin"}})
 	root.AddCommand(pluginCmd)
 
 	assert.Equal(
@@ -247,12 +248,31 @@ func TestResolvePluginTelemetryCommandPathSkipsPluginGlobalFlags(t *testing.T) {
 		Use:         "projects",
 		Annotations: map[string]string{"scope": "plugin"},
 	}
+	pluginCmd.AddCommand(&cobra.Command{Use: "catalog", Annotations: map[string]string{"scope": "plugin"}})
 	root.AddCommand(pluginCmd)
 
 	assert.Equal(
 		t,
 		"stripe projects catalog",
 		resolvePluginTelemetryCommandPath(pluginCmd, []string{"stripe", "projects", "--color", "off", "--project-name", "demo", "catalog"}),
+	)
+}
+
+func TestResolvePluginTelemetryCommandPathDropsUnknownSubcommand(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	pluginCmd := &cobra.Command{
+		Use:         "projects",
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+	root.AddCommand(pluginCmd)
+
+	// No "catalog" stub is registered (e.g. the plugin manifest doesn't
+	// declare Commands metadata), so the raw argv token must not be trusted
+	// as a bounded command_path value.
+	assert.Equal(
+		t,
+		"stripe projects",
+		resolvePluginTelemetryCommandPath(pluginCmd, []string{"stripe", "projects", "catalog"}),
 	)
 }
 
