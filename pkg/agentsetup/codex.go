@@ -3,6 +3,7 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os/exec"
 	"strings"
@@ -101,7 +102,8 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--json")
+	// The unfiltered list can omit locally installed curated plugins.
+	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
 	if err != nil {
 		return "", false, false
 	}
@@ -138,11 +140,12 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 		runCommand = RunCommand
 	}
 	command := append([]string(nil), plan.Command...)
-	var err error
+	var failures []error
 	for _, marketplace := range codexMarketplaces {
 		pluginID := CodexPluginName + "@" + marketplace
 		command[len(command)-1] = pluginID
-		if err = runCommand(ctx, command[0], command[1:]...); err != nil {
+		if err := runCommand(ctx, command[0], command[1:]...); err != nil {
+			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "%s: %w", marketplace, err))
 			continue
 		}
 
@@ -150,13 +153,13 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 		// configured), so the exit code cannot be trusted. Confirm the plugin is
 		// actually installed before reporting success.
 		if _, installed, _ := p.stripePluginStatus(ctx, marketplace); !installed {
-			err = errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
-				pluginID, strings.Join(command, " "))
+			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
+				pluginID, strings.Join(command, " ")))
 			continue
 		}
 		return nil
 	}
-	return err
+	return errorcategory.Errorf(errorcategory.Internal, "failed to install the Stripe plugin from all marketplaces:\n%w", errors.Join(failures...))
 }
 
 // codexPluginList is the shape of `codex plugin list --json` output.

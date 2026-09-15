@@ -88,8 +88,9 @@ func TestCodexApply_APIMarketplace(t *testing.T) {
 		})
 		provider.RunOutput = func(_ context.Context, name string, args ...string) ([]byte, error) {
 			require.Equal(t, "codex", name)
-			require.Equal(t, []string{"plugin", "list", "--json"}, args)
-			if installed {
+			require.Equal(t, []string{"plugin", "list", "--marketplace"}, args[:3])
+			require.Equal(t, "--json", args[4])
+			if installed && args[3] == "openai-api-curated" {
 				return []byte(`{"installed":[{"name":"stripe","marketplaceName":"openai-api-curated","version":"1.0.0"}]}`), nil
 			}
 			return []byte(`{"installed":[]}`), nil
@@ -158,16 +159,26 @@ func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {
 // where `codex plugin add` prints an error but exits 0. Apply must not report
 // success when the plugin is still not present afterward.
 func TestCodexApply_FailsWhenExitZeroButNotInstalled(t *testing.T) {
-	provider := codexTestProvider(`{"installed":[]}`, nil, func(context.Context, string, ...string) error {
-		return nil // add "succeeds" (exit 0) but installs nothing
-	})
+	for _, installErr := range []error{nil, errors.New("marketplace unavailable")} {
+		provider := codexTestProvider(`{"installed":[]}`, nil, func(_ context.Context, _ string, args ...string) error {
+			if args[2] == "stripe@openai-api-curated" {
+				return installErr
+			}
+			return nil // add "succeeds" (exit 0) but installs nothing
+		})
 
-	status := provider.Detect()
-	plan := provider.Plan(status, false)
-	err := provider.Apply(context.Background(), nil, plan)
+		status := provider.Detect()
+		plan := provider.Plan(status, false)
+		err := provider.Apply(context.Background(), nil, plan)
 
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "is not installed")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "is not installed")
+		require.Contains(t, err.Error(), "openai-curated")
+		require.Contains(t, err.Error(), "openai-api-curated")
+		if installErr != nil {
+			require.ErrorIs(t, err, installErr)
+		}
+	}
 }
 
 func codexTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) CodexProvider {
