@@ -3,7 +3,6 @@ package reporting
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
@@ -15,19 +14,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
-// errorTelemetryEventName is the telemetry event name used to mirror errors
-// reported to Sentry, so error rates can be tracked without Sentry access.
+// errorTelemetryEventName is the telemetry event used to mirror errors
+// reported to Sentry, so error rates can be tracked in Prometheus without
+// Sentry access. The event value is just the category (e.g. "api",
+// "internal") — never the error message, which is unbounded free text and
+// would blow up tag cardinality downstream.
 const errorTelemetryEventName = "CLI Error"
-
-// errorTelemetryPayload mirrors the data attached to the corresponding Sentry
-// event: the classification tag and the fingerprint (call site, root error
-// type, and root error message).
-type errorTelemetryPayload struct {
-	Category string `json:"category"`
-	Type     string `json:"type"`
-	Message  string `json:"message"`
-	Location string `json:"location,omitempty"`
-}
 
 var accountIDProvider func() (string, error)
 
@@ -93,14 +85,15 @@ func CaptureException(ctx context.Context, err error) {
 		sentry.CaptureException(err)
 	})
 
-	sendErrorTelemetry(ctx, category, root, caller)
+	sendErrorTelemetry(ctx, category)
 }
 
-// sendErrorTelemetry mirrors a captured Sentry event to telemetry: the same
-// category tag, and the same root error type/message/call site used for the
-// Sentry fingerprint. account_id and command are omitted here since they're
-// already attached to every telemetry event via CLIAnalyticsEventMetadata.
-func sendErrorTelemetry(ctx context.Context, category errorcategory.Category, root error, caller string) {
+// sendErrorTelemetry mirrors a captured Sentry event's category to
+// telemetry. The value is the bare category string (e.g. "api") so that AEL
+// can key a Prometheus tag directly off it with a fixed values allowlist —
+// nothing free-form (error message, call site) is sent, since that would be
+// unbounded cardinality if ever wired into a tag/gauge/set.
+func sendErrorTelemetry(ctx context.Context, category errorcategory.Category) {
 	telemetryClient := stripe.GetTelemetryClient(ctx)
 	if telemetryClient == nil {
 		return
@@ -112,18 +105,7 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category, ro
 		ctx = stripe.WithEventMetadata(ctx, stripe.NewEventMetadata())
 	}
 
-	payload := errorTelemetryPayload{
-		Category: string(category),
-		Type:     fmt.Sprintf("%T", root),
-		Message:  redactSensitiveStrings(root.Error()),
-		Location: caller,
-	}
-	value, err := json.Marshal(payload)
-	if err != nil {
-		return
-	}
-
-	go telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(value))
+	go telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(category))
 }
 
 // shouldCapture defines the reporting policy for classified errors. Auth covers
@@ -148,7 +130,7 @@ func RecoverAndReport(ctx context.Context, r any) {
 		sentry.CurrentHub().Recover(r)
 	})
 
-	sendErrorTelemetry(ctx, errorcategory.Panic, fmt.Errorf("%v", r), "")
+	sendErrorTelemetry(ctx, errorcategory.Panic)
 }
 
 // Flush blocks until all buffered events are delivered or the timeout elapses.

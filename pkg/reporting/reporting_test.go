@@ -2,7 +2,6 @@ package reporting
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -117,11 +116,7 @@ func TestCaptureExceptionCapturesActionableCategories(t *testing.T) {
 			telemetryClient.waitForEvent(t)
 			eventName, eventValue := telemetryClient.lastEvent()
 			require.Equal(t, errorTelemetryEventName, eventName)
-
-			var payload errorTelemetryPayload
-			require.NoError(t, json.Unmarshal([]byte(eventValue), &payload))
-			require.Equal(t, string(category), payload.Category)
-			require.Equal(t, "actionable error", payload.Message)
+			require.Equal(t, string(category), eventValue, "telemetry value must be the bare category, never the error message")
 		})
 	}
 }
@@ -169,6 +164,18 @@ func TestCaptureExceptionCapturesUnknownErrorsAsInternal(t *testing.T) {
 	require.Equal(t, string(errorcategory.Internal), events[0].Tags["error_category"])
 }
 
+func TestCaptureExceptionNeverSendsTheErrorMessageToTelemetry(t *testing.T) {
+	_, restore := bindTestClient(t)
+	defer restore()
+	telemetryClient := newSyncTelemetryClient()
+
+	CaptureException(telemetryContext(telemetryClient), errors.New("failed for account acct_1abcDEF at https://example.com/secret-path?token=xyz"))
+
+	telemetryClient.waitForEvent(t)
+	_, eventValue := telemetryClient.lastEvent()
+	require.Equal(t, string(errorcategory.Internal), eventValue)
+}
+
 func TestShouldCapture(t *testing.T) {
 	tests := []struct {
 		category errorcategory.Category
@@ -209,10 +216,8 @@ func TestRecoverAndReportSetsIsolatedPanicCategory(t *testing.T) {
 	telemetryClient.waitForEvent(t)
 	telemetryClient.waitForEvent(t)
 	require.Len(t, telemetryClient.events, 2)
-	var panicPayload errorTelemetryPayload
-	require.NoError(t, json.Unmarshal([]byte(telemetryClient.events[0].value), &panicPayload))
-	require.Equal(t, string(errorcategory.Panic), panicPayload.Category)
-	require.Equal(t, "panic value", panicPayload.Message)
+	require.Equal(t, string(errorcategory.Panic), telemetryClient.events[0].value)
+	require.Equal(t, string(errorcategory.Internal), telemetryClient.events[1].value)
 }
 
 func bindTestClient(t *testing.T) (*sentry.MockTransport, func()) {
