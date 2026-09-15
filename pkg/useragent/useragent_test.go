@@ -210,9 +210,9 @@ func TestDetectAIAgent_AIAgentFallback(t *testing.T) {
 			description: "AGENT is the same convention under the name Goose, Amp and Bun use",
 		},
 		{
-			name:        "AI_AGENT wins over AGENT",
-			envs:        map[string]string{"AI_AGENT": "goose", "AGENT": "amp"},
-			expected:    "goose",
+			name:     "AI_AGENT wins over AGENT",
+			envs:     map[string]string{"AI_AGENT": "goose", "AGENT": "amp"},
+			expected: "goose",
 		},
 		{"blank AGENT reports nothing", map[string]string{"AGENT": "   "}, "", ""},
 	}
