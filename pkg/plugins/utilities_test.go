@@ -1191,6 +1191,67 @@ func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
 	require.Empty(t, output)
 }
 
+func TestCheckLatestPluginVersionSilentWhenPluginAutoUpdates(t *testing.T) {
+	origPluginsPath := PluginsPath
+	origUpdatesEnabled := pluginUpdatesEnabled
+	origResolver := checkLatestPluginVersionResolver
+	PluginsPath = ""
+
+	var settingReads []string
+	pluginUpdatesEnabled = func(pluginName string) bool {
+		settingReads = append(settingReads, pluginName)
+		return true
+	}
+	resolveCalls := 0
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		resolveCalls++
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+				},
+			},
+			Version: "1.1.0",
+		}, nil
+	}
+	defer func() {
+		PluginsPath = origPluginsPath
+		pluginUpdatesEnabled = origUpdatesEnabled
+		checkLatestPluginVersionResolver = origResolver
+	}()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	// This setup is exactly TestCheckLatestPluginVersionPrintsWhenUpgradeAvailable --
+	// 1.0.0 installed, 1.1.0 offered -- so the setting is the only thing keeping it
+	// quiet, and the hint text is not what is being suppressed here anyway.
+	require.Equal(t, []string{"myplugin"}, settingReads)
+	require.Empty(t, output)
+
+	// The point is the request, not just the message: the pre-run upgrade check already
+	// asked this question on this invocation.
+	require.Zero(t, resolveCalls)
+}
+
 func TestIsPluginCommand(t *testing.T) {
 	pluginCmd := &cobra.Command{
 		Annotations: map[string]string{"scope": "plugin"},
