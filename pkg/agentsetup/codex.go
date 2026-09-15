@@ -20,6 +20,9 @@ const (
 	codexListTimeout = 5 * time.Second
 )
 
+// Official Codex marketplaces for ChatGPT and API-key users, respectively:
+// https://github.com/openai/plugins/blob/main/.agents/plugins/marketplace.json#L2
+// https://github.com/openai/plugins/blob/main/.agents/plugins/api_marketplace.json
 var codexMarketplaces = [...]string{"openai-curated", "openai-api-curated"}
 
 // RunOutputFunc runs a command and returns its standard output. It exists so
