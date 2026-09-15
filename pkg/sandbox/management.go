@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -18,10 +20,24 @@ import (
 
 const (
 	accessibleSandboxesPath = "/v2/compartments/user_accessible_sandboxes"
+	createSandboxPath       = "/v2/sandboxes"
 	workspaceIDPrefix       = "wksp_"
 	testmodeWorkspacePrefix = "wksp_test_"
 	accountIDPrefix         = "acct_"
+	playgroundIDPrefix      = "play_"
 )
+
+// CreateOptions describes one authenticated sandbox creation request.
+type CreateOptions struct {
+	Name    string
+	Blank   bool
+	Country string
+}
+
+// CreatedSandbox is the public identifier returned after creation.
+type CreatedSandbox struct {
+	AccountID string
+}
 
 // SandboxAccessLevel describes the sandbox's default team access setting.
 type SandboxAccessLevel int
@@ -53,6 +69,94 @@ type ManagementClient struct {
 // Stripe API base URL and CLI profile.
 func NewManagementClient(apiBaseURL string, profile *config.Profile) *ManagementClient {
 	return &ManagementClient{APIBaseURL: apiBaseURL, Profile: profile}
+}
+
+// Create creates a sandbox beneath the active live OAuth account.
+func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (CreatedSandbox, error) {
+	name := strings.TrimSpace(options.Name)
+	if name == "" {
+		return CreatedSandbox{}, errorcategory.New(errorcategory.UserInput, "sandbox name cannot be blank")
+	}
+	if options.Blank {
+		if !validCountryCode(options.Country) {
+			return CreatedSandbox{}, errorcategory.New(errorcategory.UserInput, "blank sandbox creation requires a two-letter country code")
+		}
+	} else if options.Country != "" {
+		return CreatedSandbox{}, errorcategory.New(errorcategory.UserInput, "country is only valid for blank sandbox creation")
+	}
+
+	creds, err := c.resolveCredentials()
+	if err != nil {
+		return CreatedSandbox{}, err
+	}
+
+	playgroundContext, err := requests.GetPlaygroundContext(ctx, c.APIBaseURL, c.Profile, creds, true)
+	if err != nil {
+		return CreatedSandbox{}, safeDependencyError("could not resolve the active playground", err)
+	}
+	if !validPlaygroundID(playgroundContext.PlaygroundID) {
+		return CreatedSandbox{}, errorcategory.New(errorcategory.API, "could not resolve the active playground: the response was invalid")
+	}
+
+	body := map[string]interface{}{
+		"name":             name,
+		"activate_sandbox": !options.Blank,
+	}
+	if options.Blank {
+		body["business_location"] = options.Country
+	} else {
+		creds, err = c.resolveCredentials()
+		if err != nil {
+			return CreatedSandbox{}, err
+		}
+		workspaceContext, workspaceErr := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true)
+		if workspaceErr != nil {
+			return CreatedSandbox{}, safeDependencyError("could not resolve the active live workspace", workspaceErr)
+		}
+		if !validLiveWorkspaceID(workspaceContext.WorkspaceID) {
+			return CreatedSandbox{}, errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid")
+		}
+		body["replica_of"] = workspaceContext.WorkspaceID
+	}
+
+	creds, err = c.resolveCredentials()
+	if err != nil {
+		return CreatedSandbox{}, err
+	}
+	params := &requests.RequestParameters{}
+	params.SetIdempotency(uuid.NewString())
+	base := &requests.Base{
+		Profile:        c.Profile,
+		Method:         http.MethodPost,
+		SuppressOutput: true,
+		APIBaseURL:     c.APIBaseURL,
+		Livemode:       true,
+	}
+	response, err := base.MakeRequest(
+		ctx,
+		creds,
+		createSandboxPath,
+		params,
+		body,
+		true,
+		func(request *http.Request) error {
+			request.Header.Del("Stripe-Account")
+			request.Header.Set("Stripe-Context", playgroundContext.PlaygroundID)
+			return nil
+		},
+	)
+	if err != nil {
+		return CreatedSandbox{}, safeCreateError(err)
+	}
+
+	var parsed struct {
+		AccountID string `json:"v1_account_id"`
+	}
+	if err := json.Unmarshal(response, &parsed); err != nil || !validAccountID(parsed.AccountID) {
+		return CreatedSandbox{}, errorcategory.New(errorcategory.API, "sandbox creation could not be confirmed; check Dashboard before retrying")
+	}
+
+	return CreatedSandbox{AccountID: parsed.AccountID}, nil
 }
 
 // ListAccessible resolves the active live OAuth workspace and returns the
@@ -252,6 +356,31 @@ func validTestmodeWorkspaceID(id string) bool {
 
 func validAccountID(id string) bool {
 	return len(id) > len(accountIDPrefix) && strings.HasPrefix(id, accountIDPrefix)
+}
+
+func validPlaygroundID(id string) bool {
+	return len(id) > len(playgroundIDPrefix) && strings.HasPrefix(id, playgroundIDPrefix)
+}
+
+func validCountryCode(country string) bool {
+	return len(country) == 2 &&
+		country[0] >= 'A' && country[0] <= 'Z' &&
+		country[1] >= 'A' && country[1] <= 'Z'
+}
+
+func safeCreateError(err error) error {
+	if _, ok := requestStatusCode(err); ok {
+		return safeDependencyError("could not create sandbox", err)
+	}
+
+	category := errorcategory.API
+	var urlErr *url.Error
+	var netErr net.Error
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+		errors.As(err, &urlErr) || errors.As(err, &netErr) {
+		category = errorcategory.Network
+	}
+	return errorcategory.New(category, "sandbox creation could not be confirmed; check Dashboard before retrying")
 }
 
 func safeDependencyError(operation string, err error) error {
