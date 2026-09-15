@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -415,11 +416,56 @@ func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
 	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 }
 
+func TestAgentSetupCodexMarketplaces(t *testing.T) {
+	for _, marketplace := range []string{"openai-curated", "openai-api-curated"} {
+		t.Run(marketplace, func(t *testing.T) {
+			pluginID := "stripe@" + marketplace
+			provider := codexMissingProviderInMarketplace(marketplace, func(_ context.Context, name string, args ...string) error {
+				require.Equal(t, "codex", name)
+				require.Equal(t, []string{"plugin", "add", pluginID}, args)
+				return nil
+			})
+			newSetup := func() *agentSetupCmd {
+				setup := testAgentSetupCmd()
+				setup.providers = map[string]agentsetup.Provider{provider.ID(): provider}
+				setup.cmd.SetContext(context.Background())
+				return setup
+			}
+
+			output, err := executeCommand(newSetup().cmd, "--client", "codex", "--status", "--json")
+			require.NoError(t, err)
+			var before agentSetupJSON
+			require.NoError(t, json.Unmarshal([]byte(output), &before))
+			require.Len(t, before.Clients, 1)
+			require.Equal(t, agentsetup.StatusMissing, before.Clients[0].Status)
+			require.Equal(t, []agentsetup.Plan{{Action: agentsetup.ActionInstall, Command: []string{"codex", "plugin", "add", pluginID}}}, before.Actions)
+
+			output, err = executeCommand(newSetup().cmd, "--client", "codex")
+			require.NoError(t, err)
+			require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+
+			output, err = executeCommand(newSetup().cmd, "--client", "codex", "--status", "--json")
+			require.NoError(t, err)
+			var after agentSetupJSON
+			require.NoError(t, json.Unmarshal([]byte(output), &after))
+			require.Len(t, after.Clients, 1)
+			require.Equal(t, agentsetup.StatusInstalled, after.Clients[0].Status)
+			require.True(t, after.Clients[0].Plugin.Installed)
+			require.Equal(t, pluginID, after.Clients[0].Plugin.ID)
+			require.Empty(t, after.Actions)
+		})
+	}
+}
+
 // codexMissingProvider returns a Codex provider that detects the binary, starts
 // with the Stripe plugin not installed, records install commands via record, and
 // reports the plugin as installed once the add command has run (mirroring the
 // post-install verification the provider performs).
 func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProvider {
+	return codexMissingProviderInMarketplace("openai-curated", record)
+}
+
+func codexMissingProviderInMarketplace(marketplace string, record agentsetup.RunCommandFunc) agentsetup.CodexProvider {
 	installed := false
 	return agentsetup.CodexProvider{
 		Scanner: agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
@@ -430,9 +476,12 @@ func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProv
 			}
 			return nil
 		},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
+			if strings.Join(args, " ") == "plugin marketplace list --json" {
+				return []byte(fmt.Sprintf(`{"marketplaces":[{"name":%q}]}`, marketplace)), nil
+			}
 			if installed {
-				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
+				return []byte(fmt.Sprintf(`{"installed":[{"pluginId":"stripe@%[1]s","name":"stripe","marketplaceName":"%[1]s","version":"1.0.0"}]}`, marketplace)), nil
 			}
 			return []byte(`{"installed":[]}`), nil
 		},
