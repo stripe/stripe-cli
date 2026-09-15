@@ -67,7 +67,7 @@ func TestScanCodex_APIPluginInstalled(t *testing.T) {
 	require.Equal(t, "stripe@openai-api-curated", status.Plugin.ID)
 	require.Equal(t, "1.0.0", status.Plugin.Version)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, []string{"codex", "plugin", "add", "stripe@openai-api-curated"}, provider.Plan(status, true).Command)
+	require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"codex", "plugin", "add", "stripe@openai-curated"}}, provider.Plan(status, true))
 }
 
 func TestCodexApply_APIMarketplace(t *testing.T) {
@@ -102,7 +102,7 @@ func TestCodexApply_APIMarketplace(t *testing.T) {
 
 		attempts = nil
 		require.NoError(t, provider.Apply(context.Background(), nil, provider.Plan(provider.Detect(), true)))
-		require.Equal(t, []string{"stripe@openai-api-curated"}, attempts)
+		require.Equal(t, []string{"stripe@openai-curated", "stripe@openai-api-curated"}, attempts)
 	}
 }
 
@@ -146,6 +146,11 @@ func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "codex", gotName)
+	require.Equal(t, []string{"plugin", "add", "stripe@openai-curated"}, gotArgs)
+
+	status.Plugin = PluginStatus{Installed: true, ID: "stripe@openai-api-curated"}
+	installed = false
+	require.NoError(t, provider.Apply(context.Background(), nil, provider.Plan(status, true)))
 	require.Equal(t, []string{"plugin", "add", "stripe@openai-curated"}, gotArgs)
 }
 

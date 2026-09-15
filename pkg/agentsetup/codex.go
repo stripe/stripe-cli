@@ -111,9 +111,6 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
 	command := []string{CodexBinaryName, "plugin", "add", CodexPluginName + "@" + codexMarketplaces[0]}
-	if status.Plugin.ID != "" {
-		command[3] = status.Plugin.ID
-	}
 
 	switch {
 	case status.Status == StatusError:
@@ -140,13 +137,9 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	marketplaces := codexMarketplaces[:]
-	if plan.Action == ActionReinstall {
-		marketplaces = []string{strings.TrimPrefix(plan.Command[len(plan.Command)-1], CodexPluginName+"@")}
-	}
 	command := append([]string(nil), plan.Command...)
 	var err error
-	for _, marketplace := range marketplaces {
+	for _, marketplace := range codexMarketplaces {
 		pluginID := CodexPluginName + "@" + marketplace
 		command[len(command)-1] = pluginID
 		if err = runCommand(ctx, command[0], command[1:]...); err != nil {
