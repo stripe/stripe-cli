@@ -1016,6 +1016,34 @@ func (e *ActiveContextLivemodeMismatchError) Error() string {
 	return "You're in a sandbox. Run 'stripe switch' to select a live account."
 }
 
+// RefreshUATIfNeeded returns uat as-is unless it's expired or about to expire
+// (within 60 seconds), in which case it refreshes the token via
+// OAuthTokenRefresher and returns the new value. Callers that read the UAT
+// outside of ResolveCredentials (e.g. whoami) should route it through here so
+// an expired token doesn't surface as an opaque auth failure.
+func RefreshUATIfNeeded(p *Profile, uat string) (string, error) {
+	if OAuthTokenRefresher == nil {
+		return uat, nil
+	}
+	t, tErr := GetUATExpiresAt()
+	if tErr != nil || time.Until(t) >= 60*time.Second {
+		return uat, nil
+	}
+
+	refreshMu.Lock()
+	defer refreshMu.Unlock()
+	// Re-check after acquiring the lock; another goroutine may have already
+	// refreshed, bumping the expiry forward.
+	t2, tErr2 := GetUATExpiresAt()
+	if tErr2 == nil && time.Until(t2) < 60*time.Second {
+		if err := OAuthTokenRefresher(p); err != nil {
+			return uat, err
+		}
+		uat = p.UAT
+	}
+	return uat, nil
+}
+
 // ResolveCredentials returns the credentials for the given mode. If an OAK
 // token (prefix "oak_") is stored in the keyring and no explicit override is
 // active, it is preferred over the configured API key. For OAK tokens the
@@ -1030,20 +1058,9 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			return stripe.Credentials{}, err
 		}
 		if strings.HasPrefix(uat, "oak_") {
-			if OAuthTokenRefresher != nil {
-				if t, tErr := GetUATExpiresAt(); tErr == nil && time.Until(t) < 60*time.Second {
-					refreshMu.Lock()
-					// Re-check after acquiring the lock; another goroutine may have
-					// already refreshed, bumping the expiry forward.
-					if t2, tErr2 := GetUATExpiresAt(); tErr2 == nil && time.Until(t2) < 60*time.Second {
-						if refreshErr := OAuthTokenRefresher(p); refreshErr != nil {
-							refreshMu.Unlock()
-							return stripe.Credentials{}, refreshErr
-						}
-						uat = p.UAT
-					}
-					refreshMu.Unlock()
-				}
+			uat, err = RefreshUATIfNeeded(p, uat)
+			if err != nil {
+				return stripe.Credentials{}, err
 			}
 			ac, err := GetActiveContext()
 			if err != nil {
