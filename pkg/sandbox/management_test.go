@@ -17,6 +17,177 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
+func TestManagementClientCreateCopyLive(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+	requestsSeen := make([]string, 0, 3)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestsSeen = append(requestsSeen, r.Method+" "+r.URL.Path)
+		require.Equal(t, "Bearer oak_test_123", r.Header.Get("Authorization"))
+		require.Equal(t, "true", r.Header.Get("Stripe-Livemode"))
+
+		switch r.URL.Path {
+		case "/v1/stripecli/playground_context":
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "acct_live_123", r.Header.Get("Stripe-Context"))
+			_, _ = w.Write([]byte(`{"playground_id":"play_parent"}`))
+		case "/v1/stripecli/workspace_context":
+			require.Equal(t, http.MethodGet, r.Method)
+			require.Equal(t, "acct_live_123", r.Header.Get("Stripe-Context"))
+			_, _ = w.Write([]byte(`{"workspace_id":"wksp_live_parent"}`))
+		case "/v2/sandboxes":
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "play_parent", r.Header.Get("Stripe-Context"))
+			require.Empty(t, r.Header.Get("Stripe-Account"))
+			require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+			require.NotEmpty(t, r.Header.Get("Idempotency-Key"))
+
+			var body map[string]interface{}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]interface{}{
+				"name":             "Copied sandbox",
+				"activate_sandbox": true,
+				"replica_of":       "wksp_live_parent",
+			}, body)
+			for _, excluded := range []string{"target_compartment", "idempotency_token", "access_level", "objects"} {
+				require.NotContains(t, body, excluded)
+			}
+			_, _ = w.Write([]byte(`{"id":"wksp_test_internal","v1_account_id":"acct_created"}`))
+		default:
+			t.Fatalf("unexpected request path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	created, err := NewManagementClient(server.URL, profile).Create(context.Background(), CreateOptions{Name: "Copied sandbox"})
+	require.NoError(t, err)
+	require.Equal(t, CreatedSandbox{AccountID: "acct_created"}, created)
+	require.Equal(t, []string{
+		"GET /v1/stripecli/playground_context",
+		"GET /v1/stripecli/workspace_context",
+		"POST /v2/sandboxes",
+	}, requestsSeen)
+}
+
+func TestManagementClientCreateBlank(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/stripecli/playground_context":
+			_, _ = w.Write([]byte(`{"playground_id":"play_parent"}`))
+		case "/v2/sandboxes":
+			var body map[string]interface{}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]interface{}{
+				"name":              "Blank sandbox",
+				"activate_sandbox":  false,
+				"business_location": "CA",
+			}, body)
+			require.NotContains(t, body, "replica_of")
+			_, _ = w.Write([]byte(`{"v1_account_id":"acct_blank"}`))
+		case "/v1/stripecli/workspace_context":
+			t.Fatal("blank creation must not resolve the live workspace")
+		default:
+			t.Fatalf("unexpected request path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	created, err := NewManagementClient(server.URL, profile).Create(context.Background(), CreateOptions{
+		Name:    "Blank sandbox",
+		Blank:   true,
+		Country: "CA",
+	})
+	require.NoError(t, err)
+	require.Equal(t, CreatedSandbox{AccountID: "acct_blank"}, created)
+}
+
+func TestManagementClientCreateRejectsInvalidIdentifiers(t *testing.T) {
+	tests := []struct {
+		name               string
+		playgroundResponse string
+		workspaceResponse  string
+		createResponse     string
+		wantRequests       int
+	}{
+		{name: "playground", playgroundResponse: `{"playground_id":"acct_secret"}`, wantRequests: 1},
+		{name: "workspace", playgroundResponse: `{"playground_id":"play_parent"}`, workspaceResponse: `{"workspace_id":"wksp_test_secret"}`, wantRequests: 2},
+		{name: "created account", playgroundResponse: `{"playground_id":"play_parent"}`, workspaceResponse: `{"workspace_id":"wksp_live_parent"}`, createResponse: `{"v1_account_id":"play_secret"}`, wantRequests: 3},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+			requestCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				switch r.URL.Path {
+				case "/v1/stripecli/playground_context":
+					_, _ = w.Write([]byte(test.playgroundResponse))
+				case "/v1/stripecli/workspace_context":
+					_, _ = w.Write([]byte(test.workspaceResponse))
+				case "/v2/sandboxes":
+					_, _ = w.Write([]byte(test.createResponse))
+				default:
+					t.Fatalf("unexpected request path %q", r.URL.Path)
+				}
+			}))
+			defer server.Close()
+
+			created, err := NewManagementClient(server.URL, profile).Create(context.Background(), CreateOptions{Name: "test"})
+			require.Error(t, err)
+			require.Empty(t, created)
+			require.Equal(t, errorcategory.API, mustErrorCategory(t, err))
+			require.Equal(t, test.wantRequests, requestCount)
+			require.NotContains(t, err.Error(), "secret")
+			require.NotContains(t, err.Error(), "play_")
+			require.NotContains(t, err.Error(), "wksp_")
+		})
+	}
+}
+
+func TestManagementClientCreateRetryPreservesTargetAndIdempotency(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_123", true, "oak_initial")
+	refreshes := 0
+	config.OAuthTokenRefresher = func(p *config.Profile) error {
+		refreshes++
+		p.UAT = "oak_refreshed"
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte(p.UAT), "refreshed test token")
+	}
+
+	postHeaders := make([]http.Header, 0, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/stripecli/playground_context":
+			_, _ = w.Write([]byte(`{"playground_id":"play_parent"}`))
+		case "/v1/stripecli/workspace_context":
+			_, _ = w.Write([]byte(`{"workspace_id":"wksp_live_parent"}`))
+		case "/v2/sandboxes":
+			postHeaders = append(postHeaders, r.Header.Clone())
+			if len(postHeaders) == 1 {
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"error":{"code":"unauthorized","message":"expired"}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"v1_account_id":"acct_created"}`))
+		default:
+			t.Fatalf("unexpected request path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	created, err := NewManagementClient(server.URL, profile).Create(context.Background(), CreateOptions{Name: "Retry sandbox"})
+	require.NoError(t, err)
+	require.Equal(t, CreatedSandbox{AccountID: "acct_created"}, created)
+	require.Equal(t, 1, refreshes)
+	require.Len(t, postHeaders, 2)
+	require.Equal(t, "Bearer oak_initial", postHeaders[0].Get("Authorization"))
+	require.Equal(t, "Bearer oak_refreshed", postHeaders[1].Get("Authorization"))
+	require.Equal(t, "play_parent", postHeaders[0].Get("Stripe-Context"))
+	require.Equal(t, "play_parent", postHeaders[1].Get("Stripe-Context"))
+	require.NotEmpty(t, postHeaders[0].Get("Idempotency-Key"))
+	require.Equal(t, postHeaders[0].Get("Idempotency-Key"), postHeaders[1].Get("Idempotency-Key"))
+}
+
 func TestManagementClientListAccessible(t *testing.T) {
 	profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
