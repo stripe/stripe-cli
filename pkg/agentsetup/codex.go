@@ -15,16 +15,15 @@ const (
 	ClientCodex      = "codex"
 	CodexBinaryName  = "codex"
 	CodexPluginName  = "stripe"
-	CodexMarketplace = "openai-curated"
 	CodexDisplayName = "Codex CLI"
 
 	codexListTimeout = 5 * time.Second
 )
 
-// The first ID is the default when marketplace discovery is unavailable.
-var codexPluginIDs = [...]string{
-	"stripe@openai-curated",
-	"stripe@openai-api-curated",
+// The first marketplace is the default when discovery is unavailable.
+var codexMarketplaces = [...]string{
+	"openai-curated",
+	"openai-api-curated",
 }
 
 // RunOutputFunc runs a command and returns its standard output. It exists so
@@ -72,7 +71,7 @@ func (p CodexProvider) Detect() Status {
 	status.ExecutablePath = binPath
 	status.Status = StatusMissing
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*codexListTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(codexMarketplaces))*codexListTimeout)
 	defer cancel()
 
 	pluginID, version, ok, supportsPlugins := p.stripePluginStatus(ctx)
@@ -109,16 +108,16 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context) (id, version stri
 	if !ok {
 		// API-key logins use a different marketplace. Keep the original default
 		// if marketplace discovery is unavailable in this Codex version.
-		pluginID = codexPluginIDs[0]
+		pluginID = CodexPluginName + "@" + codexMarketplaces[0]
 		out, err = runOutput(ctx, CodexBinaryName, "plugin", "marketplace", "list", "--json")
 		var list struct {
 			Marketplaces []struct{ Name string } `json:"marketplaces"`
 		}
 		if err == nil && json.Unmarshal(out, &list) == nil {
-			for _, id := range codexPluginIDs {
+			for _, name := range codexMarketplaces {
 				for _, marketplace := range list.Marketplaces {
-					if CodexPluginName+"@"+marketplace.Name == id {
-						pluginID = id
+					if marketplace.Name == name {
+						pluginID = CodexPluginName + "@" + name
 					}
 				}
 			}
@@ -128,7 +127,7 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context) (id, version stri
 }
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
-	command := []string{CodexBinaryName, "plugin", "add", codexPluginIDs[0]}
+	command := []string{CodexBinaryName, "plugin", "add", CodexPluginName + "@" + codexMarketplaces[0]}
 	if status.Plugin.ID != "" {
 		command[3] = status.Plugin.ID
 	}
@@ -197,7 +196,8 @@ func findCodexStripePlugin(listJSON []byte) (id, version string, found bool) {
 	}
 
 	for _, plugin := range list.Installed {
-		for _, id := range codexPluginIDs {
+		for _, marketplace := range codexMarketplaces {
+			id := CodexPluginName + "@" + marketplace
 			if strings.EqualFold(plugin.PluginID, id) || strings.EqualFold(plugin.Name+"@"+plugin.Marketplace, id) {
 				return id, plugin.Version, true
 			}
