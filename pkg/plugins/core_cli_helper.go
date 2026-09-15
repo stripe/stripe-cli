@@ -447,6 +447,11 @@ func credentialsResult(creds stripe.Credentials, err error) (string, string, boo
 
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.
 // cwd sets the working directory for the plugin process; an empty string uses the current directory.
+//
+// This skips the auto-upgrade check. The user ran the calling plugin, not this one, and
+// is already waiting on it: interrupting its output to announce an upgrade of something
+// they did not name, and stalling it on the download, is not what they asked for. The
+// next time they run the peer directly, that run upgrades it.
 func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd string) error {
 	plugin, err := LookUpPlugin(h.ctx, h.config, h.fs, pluginName)
 	if err != nil {
@@ -456,7 +461,7 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 	if !ok {
 		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
-	return plugin.Run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL)
+	return plugin.run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL, false)
 }
 
 // SwitchContext switches the active authorized account/mode context, the same way

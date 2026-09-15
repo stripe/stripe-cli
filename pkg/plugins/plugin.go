@@ -643,7 +643,17 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 // so it can target the same non-default environment as the CLI that launched it. They should be
 // empty unless the user explicitly passed --api-base/--dashboard-base/--access-base; an empty
 // value tells the plugin to fall back to its own default rather than the CLI's resolved default.
+//
+// When the user turned `stripe plugin auto-update` on for the plugin, this upgrades it
+// before running it; see maybeAutoUpgrade.
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string) error {
+	return p.run(ctx, config, fs, args, cwd, versionOverride, apiBaseURL, dashboardBaseURL, accessBaseURL, true)
+}
+
+// run is Run with the auto-upgrade check made optional, so that the one caller who
+// reaches a plugin without the user having asked for it can leave it out. See
+// CoreCLIHelper.RunPeerPlugin.
+func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string, allowAutoUpgrade bool) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
@@ -688,6 +698,14 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			}
 
 			runPostInstallHook(ctx, config, fs, p, version, "", apiBaseURL, dashboardBaseURL, accessBaseURL)
+		} else if allowAutoUpgrade {
+			// Only this branch of the switch, and only when it found a version already on
+			// disk. The other two branches are asking for a specific version -- one the
+			// user named, or the local dev build -- and upgrading past either of those
+			// would be answering a question nobody asked. The install just above already
+			// resolved the newest release, so checking again there would only spend a
+			// second request to be told the same thing.
+			p, version = maybeAutoUpgrade(ctx, config, fs, p, version, apiBaseURL, dashboardBaseURL, accessBaseURL)
 		}
 	}
 
