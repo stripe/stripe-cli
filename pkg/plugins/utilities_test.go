@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1310,6 +1311,78 @@ func TestResolveInstallBaseURLs(t *testing.T) {
 		})
 	}
 }
+
+// The cheap half of cancellation: a context that is already done should not reach
+// the network at all.
+func TestFetchRemoteResourceDoesNotRequestWithCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+	}))
+	defer server.Close()
+
+	_, err := FetchRemoteResource(ctx, server.URL)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Zero(t, requestCount.Load())
+}
+
+// The half that matters for Ctrl+C. A plugin binary is large enough that a wait
+// worth abandoning is a wait that has already gotten past the response headers, so
+// this cancels mid-body and asserts the transfer is actually torn down rather than
+// running to completion behind an error return.
+func TestFetchRemoteResourceCancelsDownloadInFlight(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	tornDown := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Headers and a first chunk, so the client is inside the body read rather than
+		// still waiting to hear back.
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("the first bytes of a plugin binary"))
+		w.(http.Flusher).Flush()
+
+		// Stands in for the rest of the download never arriving. Bounded so a
+		// regression cannot wedge httptest's Close, which waits on its handlers.
+		cancel()
+		select {
+		case <-r.Context().Done():
+			close(tornDown)
+		case <-time.After(cancellationTestTimeout):
+		}
+	}))
+	defer server.Close()
+
+	// Off the test goroutine, and bounded, because the whole point of the assertion
+	// is that this call returns at all. Waiting on it directly would turn a
+	// regression into a hung package instead of a failed test.
+	fetched := make(chan error, 1)
+	go func() {
+		_, err := FetchRemoteResource(ctx, server.URL)
+		fetched <- err
+	}()
+
+	select {
+	case err := <-fetched:
+		require.Error(t, err)
+	case <-time.After(cancellationTestTimeout):
+		t.Fatal("canceling the context did not stop the download")
+	}
+
+	select {
+	case <-tornDown:
+	case <-time.After(cancellationTestTimeout):
+		t.Fatal("canceling the context left the connection open")
+	}
+}
+
+// Long enough that a loaded CI machine will not trip it, short enough that a
+// regression reports itself rather than running out the package's test timeout.
+const cancellationTestTimeout = 15 * time.Second
 
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()
