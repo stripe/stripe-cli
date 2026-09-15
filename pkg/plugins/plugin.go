@@ -469,6 +469,9 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 	if err != nil {
 		return err
 	}
+	if err := ValidatePluginBinaryName(p.Binary); err != nil {
+		return err
+	}
 	pluginFilePath := filepath.Join(pluginDir, p.Binary)
 	pluginFilePath += GetBinaryExtension()
 
@@ -571,6 +574,9 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 	pluginDir, err := p.getPluginInstallPath(config, version)
 	if err != nil {
 		return nil, nil, err
+	}
+	if err := ValidatePluginBinaryName(p.Binary); err != nil {
+		return err
 	}
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
