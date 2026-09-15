@@ -226,7 +226,7 @@ func Execute(ctx context.Context) {
 			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
 
 		default:
-			reporting.CaptureException(err)
+			reporting.CaptureException(updatedCtx, err)
 			fmt.Fprintln(os.Stderr, err)
 		}
 
