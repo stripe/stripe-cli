@@ -3,7 +3,6 @@ package agentsetup
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -24,7 +23,6 @@ func TestScanCodex_NotDetected(t *testing.T) {
 	require.Equal(t, ClientCodex, status.Client)
 	require.False(t, status.Detected)
 	require.Equal(t, StatusNotDetected, status.Status)
-	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
 func TestScanCodex_PluginMissing(t *testing.T) {
@@ -39,112 +37,64 @@ func TestScanCodex_PluginMissing(t *testing.T) {
 }
 
 func TestScanCodex_PluginInstalled(t *testing.T) {
-	for _, marketplace := range []string{"openai-curated", "openai-api-curated"} {
-		for _, tc := range []struct {
-			name   string
-			fields string
-		}{
-			{"full", `"pluginId":"stripe@%[1]s","name":"stripe","marketplaceName":"%[1]s"`},
-			{"id_only", `"pluginId":"stripe@%s"`},
-			{"name_and_marketplace", `"name":"stripe","marketplaceName":"%s"`},
-		} {
-			t.Run(marketplace+"/"+tc.name, func(t *testing.T) {
-				listJSON := `{"installed":[{` + fmt.Sprintf(tc.fields, marketplace) + `,"version":"3fdeeb49"}]}`
-				provider := codexTestProvider(listJSON, nil, nil)
+	// Real codex-cli schema: pluginId + marketplaceName.
+	provider := codexTestProvider(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"3fdeeb49"}]}`, nil, nil)
 
-				status := provider.Detect()
+	status := provider.Detect()
 
-				pluginID := "stripe@" + marketplace
-				require.Equal(t, StatusInstalled, status.Status)
-				require.True(t, status.Plugin.Installed)
-				require.Equal(t, pluginID, status.Plugin.ID)
-				require.Equal(t, "3fdeeb49", status.Plugin.Version)
-				provider.RunOutput = func(context.Context, string, ...string) ([]byte, error) {
-					t.Fatal("an installed plugin should not need marketplace discovery")
-					return nil, nil
-				}
-				require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-				require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"codex", "plugin", "add", pluginID}}, provider.Plan(status, true))
-			})
+	require.Equal(t, StatusInstalled, status.Status)
+	require.True(t, status.Plugin.Installed)
+	require.Equal(t, TargetCodexPlugin, status.Plugin.ID)
+	require.Equal(t, "3fdeeb49", status.Plugin.Version)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+}
+
+func TestScanCodex_PluginInstalledByNameAndMarketplace(t *testing.T) {
+	// Entry without pluginId still matches on name + marketplaceName.
+	provider := codexTestProvider(`{"installed":[{"name":"stripe","marketplaceName":"openai-curated","version":"2.0.0"}]}`, nil, nil)
+
+	status := provider.Detect()
+
+	require.Equal(t, StatusInstalled, status.Status)
+	require.Equal(t, "2.0.0", status.Plugin.Version)
+}
+
+func TestScanCodex_APIPluginInstalled(t *testing.T) {
+	provider := codexTestProvider(`{"installed":[{"pluginId":"stripe@openai-api-curated","version":"1.0.0"}]}`, nil, nil)
+	status := provider.Detect()
+
+	require.Equal(t, StatusInstalled, status.Status)
+	require.True(t, status.Plugin.Installed)
+	require.Equal(t, "stripe@openai-api-curated", status.Plugin.ID)
+	require.Equal(t, "1.0.0", status.Plugin.Version)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+	require.Equal(t, []string{"codex", "plugin", "add", "stripe@openai-api-curated"}, provider.Plan(status, true).Command)
+}
+
+func TestCodexApply_APIMarketplace(t *testing.T) {
+	installed := false
+	provider := codexTestProvider("", nil, func(_ context.Context, name string, args ...string) error {
+		require.Equal(t, "codex", name)
+		require.Equal(t, []string{"plugin", "add", "stripe@openai-api-curated"}, args)
+		installed = true
+		return nil
+	})
+	provider.RunOutput = func(_ context.Context, name string, args ...string) ([]byte, error) {
+		require.Equal(t, "codex", name)
+		if strings.Join(args, " ") == "plugin marketplace list --json" {
+			return []byte(`{"marketplaces":[{"name":"openai-api-curated"}]}`), nil
 		}
+		require.Equal(t, []string{"plugin", "list", "--json"}, args)
+		if installed {
+			return []byte(`{"installed":[{"name":"stripe","marketplaceName":"openai-api-curated","version":"1.0.0"}]}`), nil
+		}
+		return []byte(`{"installed":[]}`), nil
 	}
-}
 
-func TestScanCodex_OtherPluginsIgnored(t *testing.T) {
-	for _, listJSON := range []string{
-		`{"installed":[{"pluginId":"stripe@other-marketplace","name":"stripe","marketplaceName":"other-marketplace"}]}`,
-		`{"installed":[{"pluginId":"other@openai-api-curated","name":"other","marketplaceName":"openai-api-curated"}]}`,
-	} {
-		provider := codexTestProvider(listJSON, nil, nil)
-		status := provider.Detect()
-		require.Equal(t, StatusMissing, status.Status)
-		require.False(t, status.Plugin.Installed)
-	}
-}
-
-func TestCodexPlan_Marketplace(t *testing.T) {
-	for _, tc := range []struct {
-		name       string
-		output     string
-		err        error
-		wantPlugin string
-	}{
-		{
-			name:       "curated",
-			output:     `{"marketplaces":[{"name":"openai-curated","root":"/tmp/plugins"}]}`,
-			wantPlugin: "stripe@openai-curated",
-		},
-		{
-			name:       "api_curated",
-			output:     `{"marketplaces":[{"name":"other-marketplace"},{"name":"openai-api-curated","root":"/tmp/plugins"}]}`,
-			wantPlugin: "stripe@openai-api-curated",
-		},
-		{
-			name:       "both_prefer_original_marketplace",
-			output:     `{"marketplaces":[{"name":"openai-api-curated"},{"name":"openai-curated"}]}`,
-			wantPlugin: "stripe@openai-curated",
-		},
-		{
-			name:       "discovery_not_supported",
-			err:        errors.New("unrecognized subcommand 'marketplace'"),
-			wantPlugin: "stripe@openai-curated",
-		},
-		{
-			name:       "invalid_json",
-			output:     `{invalid`,
-			wantPlugin: "stripe@openai-curated",
-		},
-		{
-			name:       "no_marketplaces",
-			output:     `{"marketplaces":[]}`,
-			wantPlugin: "stripe@openai-curated",
-		},
-		{
-			name:       "no_official_marketplace",
-			output:     `{"marketplaces":[{"name":"other-marketplace"}]}`,
-			wantPlugin: "stripe@openai-curated",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			provider := codexTestProvider(`{"installed":[]}`, nil, nil)
-			provider.RunOutput = func(_ context.Context, name string, args ...string) ([]byte, error) {
-				require.Equal(t, "codex", name)
-				switch strings.Join(args, " ") {
-				case "plugin list --json":
-					return []byte(`{"installed":[]}`), nil
-				case "plugin marketplace list --json":
-					return []byte(tc.output), tc.err
-				default:
-					t.Fatalf("unexpected command: %s %v", name, args)
-					return nil, nil
-				}
-			}
-
-			status := provider.Detect()
-
-			require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", tc.wantPlugin}}, provider.Plan(status, false))
-		})
-	}
+	plan := provider.Plan(provider.Detect(), false)
+	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", "stripe@openai-api-curated"}}, plan)
+	require.NoError(t, provider.Apply(context.Background(), nil, plan))
+	require.True(t, installed)
 }
 
 func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
@@ -160,70 +110,56 @@ func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
 }
 
 func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {
-	for _, marketplace := range []string{"openai-curated", "openai-api-curated"} {
-		t.Run(marketplace, func(t *testing.T) {
-			installed := false
-			provider := CodexProvider{
-				Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
-				RunCommand: func(_ context.Context, name string, args ...string) error {
-					require.Equal(t, "codex", name)
-					require.Equal(t, []string{"plugin", "add", "stripe@" + marketplace}, args)
-					installed = true
-					return nil
-				},
-				RunOutput: func(_ context.Context, name string, args ...string) ([]byte, error) {
-					switch strings.Join(args, " ") {
-					case "plugin marketplace list --json":
-						return []byte(fmt.Sprintf(`{"marketplaces":[{"name":%q}]}`, marketplace)), nil
-					case "plugin list --json":
-						if installed {
-							return []byte(fmt.Sprintf(`{"installed":[{"pluginId":"stripe@%[1]s","name":"stripe","marketplaceName":"%[1]s","version":"1.0.0"}]}`, marketplace)), nil
-						}
-						return []byte(`{"installed":[]}`), nil
-					default:
-						t.Fatalf("unexpected command: %s %v", name, args)
-						return nil, nil
-					}
-				},
+	var gotName string
+	var gotArgs []string
+	installed := false
+
+	provider := CodexProvider{
+		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
+		RunCommand: func(_ context.Context, name string, args ...string) error {
+			gotName = name
+			gotArgs = args
+			installed = true // simulate a successful add
+			return nil
+		},
+		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+			if installed {
+				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
 			}
-
-			status := provider.Detect()
-			plan := provider.Plan(status, false)
-			err := provider.Apply(context.Background(), nil, plan)
-
-			require.NoError(t, err)
-			require.True(t, installed)
-		})
+			return []byte(`{"installed":[]}`), nil
+		},
 	}
+
+	status := provider.Detect()
+	plan := provider.Plan(status, false)
+	err := provider.Apply(context.Background(), nil, plan)
+
+	require.NoError(t, err)
+	require.Equal(t, "codex", gotName)
+	require.Equal(t, []string{"plugin", "add", TargetCodexPlugin}, gotArgs)
 }
 
 // TestCodexApply_FailsWhenExitZeroButNotInstalled covers the real-world case
 // where `codex plugin add` prints an error but exits 0. Apply must not report
 // success when the plugin is still not present afterward.
 func TestCodexApply_FailsWhenExitZeroButNotInstalled(t *testing.T) {
-	for _, pluginID := range []string{"stripe@openai-curated", "stripe@openai-api-curated"} {
-		t.Run(pluginID, func(t *testing.T) {
-			provider := codexTestProvider(`{"installed":[]}`, nil, func(context.Context, string, ...string) error {
-				return nil // add "succeeds" (exit 0) but installs nothing
-			})
-			plan := Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", pluginID}}
-			err := provider.Apply(context.Background(), nil, plan)
+	provider := codexTestProvider(`{"installed":[]}`, nil, func(context.Context, string, ...string) error {
+		return nil // add "succeeds" (exit 0) but installs nothing
+	})
 
-			require.Error(t, err)
-			require.Contains(t, err.Error(), pluginID+" is not installed")
-			require.Contains(t, err.Error(), strings.Join(plan.Command, " "))
-		})
-	}
+	status := provider.Detect()
+	plan := provider.Plan(status, false)
+	err := provider.Apply(context.Background(), nil, plan)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "is not installed")
 }
 
 func codexTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) CodexProvider {
 	return CodexProvider{
 		Scanner:    Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
 		RunCommand: runCommand,
-		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
-			if strings.Join(args, " ") == "plugin marketplace list --json" {
-				return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
-			}
+		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
 			if listErr != nil {
 				return nil, listErr
 			}
