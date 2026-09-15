@@ -33,7 +33,7 @@ func TestScanCodex_PluginMissing(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
-	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", TargetCodexPlugin}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", "stripe@openai-curated"}}, provider.Plan(status, false))
 }
 
 func TestScanCodex_PluginInstalled(t *testing.T) {
@@ -44,7 +44,7 @@ func TestScanCodex_PluginInstalled(t *testing.T) {
 
 	require.Equal(t, StatusInstalled, status.Status)
 	require.True(t, status.Plugin.Installed)
-	require.Equal(t, TargetCodexPlugin, status.Plugin.ID)
+	require.Equal(t, "stripe@openai-curated", status.Plugin.ID)
 	require.Equal(t, "3fdeeb49", status.Plugin.Version)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
@@ -136,7 +136,7 @@ func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "codex", gotName)
-	require.Equal(t, []string{"plugin", "add", TargetCodexPlugin}, gotArgs)
+	require.Equal(t, []string{"plugin", "add", "stripe@openai-curated"}, gotArgs)
 }
 
 // TestCodexApply_FailsWhenExitZeroButNotInstalled covers the real-world case
