@@ -105,7 +105,10 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category) {
 		ctx = stripe.WithEventMetadata(ctx, stripe.NewEventMetadata())
 	}
 
-	go telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(category))
+	// Sent synchronously (not fire-and-forget): callers on the error/panic
+	// path exit via os.Exit right after this, which would otherwise race
+	// the request and drop it nondeterministically.
+	telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(category))
 }
 
 // shouldCapture defines the reporting policy for classified errors. Auth covers

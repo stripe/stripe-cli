@@ -47,6 +47,13 @@ func main() {
 	}
 	ctx = stripe.WithTelemetryClient(ctx, telemetryClient)
 
+	// Attach event metadata here, before cmd.Execute, and let it populate the
+	// same pointer throughout the command run: that way a panic recovered
+	// below still sees the command path Execute set, instead of empty
+	// metadata freshly built from this pre-command ctx.
+	telemetryMetadata := stripe.NewEventMetadata()
+	ctx = stripe.WithEventMetadata(ctx, telemetryMetadata)
+
 	defer func() {
 		if r := recover(); r != nil {
 			reporting.RecoverAndReport(ctx, r)
