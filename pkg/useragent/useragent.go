@@ -70,7 +70,8 @@ func DetectTerminalProgram(getEnv func(string) string) string {
 // It accepts an environment getter function to allow testing without modifying the actual environment.
 //
 // Agent-specific variables are checked first. When none match it falls back to the two host
-// variables DetectAgentHost reads, which identify an agent surface and so imply the agent.
+// variables DetectAgentHost reads, which identify an agent surface and so imply the agent, and
+// finally to AI_AGENT itself, which some agents report through directly.
 func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
 		return "antigravity"
@@ -89,6 +90,9 @@ func DetectAIAgent(getEnv func(string) string) string {
 	}
 	if getEnv("GEMINI_CLI") != "" {
 		return "gemini_cli"
+	}
+	if getEnv("HERMES_AGENT") != "" {
+		return "hermes"
 	}
 	if getEnv("OPENCODE") != "" {
 		return "open_code"
@@ -112,6 +116,13 @@ func DetectAIAgent(getEnv func(string) string) string {
 	}
 	if getEnv("CODEX_INTERNAL_ORIGINATOR_OVERRIDE") != "" {
 		return "codex_cli"
+	}
+
+	// Last resort: AI_AGENT is a convention some agents report themselves through
+	// (see DetectAgentVersion), so a value here is itself evidence of an agent even
+	// when none of the specific variables above matched.
+	if aiAgent := strings.TrimSpace(getEnv("AI_AGENT")); aiAgent != "" {
+		return aiAgent
 	}
 
 	return ""

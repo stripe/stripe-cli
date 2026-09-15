@@ -179,6 +179,37 @@ func TestDetectAIAgent_InferredFromHost(t *testing.T) {
 	}
 }
 
+func TestDetectAIAgent_Hermes(t *testing.T) {
+	require.Equal(t, "hermes", DetectAIAgent(mapEnv(map[string]string{"HERMES_AGENT": "1"})))
+}
+
+// TestDetectAIAgent_AIAgentFallback covers the last-resort fallback: when no agent-specific
+// variable or inherited host names the agent, AI_AGENT itself is reported directly.
+func TestDetectAIAgent_AIAgentFallback(t *testing.T) {
+	tests := []struct {
+		name        string
+		envs        map[string]string
+		expected    string
+		description string
+	}{
+		{"reported when nothing else matches", map[string]string{"AI_AGENT": "goose_1-2-3"}, "goose_1-2-3", ""},
+		{"whitespace trimmed", map[string]string{"AI_AGENT": "  goose  "}, "goose", ""},
+		{
+			name:        "specific agent variable wins over AI_AGENT",
+			envs:        map[string]string{"CURSOR_AGENT": "1", "AI_AGENT": "goose"},
+			expected:    "cursor",
+			description: "AI_AGENT is checked last, so a direct signal still takes priority",
+		},
+		{"blank AI_AGENT reports nothing", map[string]string{"AI_AGENT": "   "}, "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, DetectAIAgent(mapEnv(tt.envs)), tt.description)
+		})
+	}
+}
+
 func TestDetectAgentVersion(t *testing.T) {
 	tests := []struct {
 		name     string
