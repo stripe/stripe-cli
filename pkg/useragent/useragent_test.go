@@ -184,7 +184,7 @@ func TestDetectAIAgent_Hermes(t *testing.T) {
 }
 
 // TestDetectAIAgent_AIAgentFallback covers the last-resort fallback: when no agent-specific
-// variable or inherited host names the agent, AI_AGENT itself is reported directly.
+// variable or inherited host names the agent, AI_AGENT and then AGENT are reported directly.
 func TestDetectAIAgent_AIAgentFallback(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -201,6 +201,18 @@ func TestDetectAIAgent_AIAgentFallback(t *testing.T) {
 			description: "AI_AGENT is checked last, so a direct signal still takes priority",
 		},
 		{"blank AI_AGENT reports nothing", map[string]string{"AI_AGENT": "   "}, "", ""},
+		{
+			name:        "AGENT used when AI_AGENT is absent",
+			envs:        map[string]string{"AGENT": "amp"},
+			expected:    "amp",
+			description: "AGENT is the same convention under the name Goose, Amp and Bun use",
+		},
+		{
+			name:        "AI_AGENT wins over AGENT",
+			envs:        map[string]string{"AI_AGENT": "goose", "AGENT": "amp"},
+			expected:    "goose",
+		},
+		{"blank AGENT reports nothing", map[string]string{"AGENT": "   "}, "", ""},
 	}
 
 	for _, tt := range tests {

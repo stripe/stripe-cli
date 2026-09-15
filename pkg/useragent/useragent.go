@@ -71,7 +71,7 @@ func DetectTerminalProgram(getEnv func(string) string) string {
 //
 // Agent-specific variables are checked first. When none match it falls back to the two host
 // variables DetectAgentHost reads, which identify an agent surface and so imply the agent, and
-// finally to AI_AGENT itself, which some agents report through directly.
+// finally to AI_AGENT and then AGENT, which some agents report through directly.
 func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
 		return "antigravity"
@@ -123,6 +123,10 @@ func DetectAIAgent(getEnv func(string) string) string {
 	// when none of the specific variables above matched.
 	if aiAgent := strings.TrimSpace(getEnv("AI_AGENT")); aiAgent != "" {
 		return aiAgent
+	}
+	// AGENT is the same convention under the name Goose, Amp and Bun use.
+	if agent := strings.TrimSpace(getEnv("AGENT")); agent != "" {
+		return agent
 	}
 
 	return ""
