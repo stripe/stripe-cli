@@ -79,7 +79,7 @@ func TestDetectAgentHost(t *testing.T) {
 		raw  string
 	}{
 		{"hermes desktop", map[string]string{"HERMES_DESKTOP": "true"}, "desktop", "hermes"},
-		{"hermes desktop, non-true value ignored", map[string]string{"HERMES_DESKTOP": "1"}, "", ""},
+		{"hermes desktop, any non-empty value counts", map[string]string{"HERMES_DESKTOP": "1"}, "desktop", "hermes"},
 		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop", "claude-desktop"},
 		// Both are desktop, and raw is the only thing that tells them apart.
 		{"claude desktop 3p", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop-3p"}, "desktop", "claude-desktop-3p"},

@@ -148,7 +148,7 @@ func DetectAIAgent(getEnv func(string) string) string {
 // One host is inferred rather than reported: Codex names every surface except the terminal,
 // so a detected Codex agent with no host is a terminal one. See the empty-host branch below.
 func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
-	if getEnv("HERMES_DESKTOP") == "true" {
+	if getEnv("HERMES_DESKTOP") != "" {
 		return "desktop", "hermes"
 	}
 
