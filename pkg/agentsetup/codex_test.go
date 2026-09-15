@@ -3,7 +3,6 @@ package agentsetup
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,29 +71,39 @@ func TestScanCodex_APIPluginInstalled(t *testing.T) {
 }
 
 func TestCodexApply_APIMarketplace(t *testing.T) {
-	installed := false
-	provider := codexTestProvider("", nil, func(_ context.Context, name string, args ...string) error {
-		require.Equal(t, "codex", name)
-		require.Equal(t, []string{"plugin", "add", "stripe@openai-api-curated"}, args)
-		installed = true
-		return nil
-	})
-	provider.RunOutput = func(_ context.Context, name string, args ...string) ([]byte, error) {
-		require.Equal(t, "codex", name)
-		if strings.Join(args, " ") == "plugin marketplace list --json" {
-			return []byte(`{"marketplaces":[{"name":"openai-api-curated"}]}`), nil
+	// Codex may fail with a nonzero exit or exit zero without installing anything.
+	for _, installErr := range []error{nil, errors.New("marketplace unavailable")} {
+		installed := false
+		var attempts []string
+		provider := codexTestProvider("", nil, func(_ context.Context, name string, args ...string) error {
+			require.Equal(t, "codex", name)
+			require.Equal(t, []string{"plugin", "add"}, args[:2])
+			attempts = append(attempts, args[2])
+			if args[2] == "stripe@openai-curated" {
+				return installErr
+			}
+			require.Equal(t, "stripe@openai-api-curated", args[2])
+			installed = true
+			return nil
+		})
+		provider.RunOutput = func(_ context.Context, name string, args ...string) ([]byte, error) {
+			require.Equal(t, "codex", name)
+			require.Equal(t, []string{"plugin", "list", "--json"}, args)
+			if installed {
+				return []byte(`{"installed":[{"name":"stripe","marketplaceName":"openai-api-curated","version":"1.0.0"}]}`), nil
+			}
+			return []byte(`{"installed":[]}`), nil
 		}
-		require.Equal(t, []string{"plugin", "list", "--json"}, args)
-		if installed {
-			return []byte(`{"installed":[{"name":"stripe","marketplaceName":"openai-api-curated","version":"1.0.0"}]}`), nil
-		}
-		return []byte(`{"installed":[]}`), nil
-	}
 
-	plan := provider.Plan(provider.Detect(), false)
-	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", "stripe@openai-api-curated"}}, plan)
-	require.NoError(t, provider.Apply(context.Background(), nil, plan))
-	require.True(t, installed)
+		plan := provider.Plan(provider.Detect(), false)
+		require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", "stripe@openai-curated"}}, plan)
+		require.NoError(t, provider.Apply(context.Background(), nil, plan))
+		require.Equal(t, []string{"stripe@openai-curated", "stripe@openai-api-curated"}, attempts)
+
+		attempts = nil
+		require.NoError(t, provider.Apply(context.Background(), nil, provider.Plan(provider.Detect(), true)))
+		require.Equal(t, []string{"stripe@openai-api-curated"}, attempts)
+	}
 }
 
 func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
@@ -117,6 +126,7 @@ func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {
 	provider := CodexProvider{
 		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
 		RunCommand: func(_ context.Context, name string, args ...string) error {
+			require.False(t, installed, "should stop after the first successful install")
 			gotName = name
 			gotArgs = args
 			installed = true // simulate a successful add
