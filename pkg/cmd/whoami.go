@@ -104,6 +104,10 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 		if err := stripe.ValidateAPIBaseURL(wc.apiBaseURL); err != nil {
 			return err
 		}
+		uat, err := config.RefreshUATIfNeeded(profile, uat)
+		if err != nil {
+			return err
+		}
 		return wc.runWhoamiOAuth(cmd, uat)
 	}
 

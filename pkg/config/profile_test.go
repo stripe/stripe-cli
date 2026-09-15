@@ -2,11 +2,13 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -636,6 +638,75 @@ func TestResolveCredentialsForAnyModeRetriesOnLivemodeMismatch(t *testing.T) {
 	creds, err := p.ResolveCredentialsForAnyMode(false)
 	require.NoError(t, err)
 	require.Equal(t, "oak_live_1234567890", creds.Token)
+}
+
+func TestRefreshUATIfNeededSkipsWhenNotExpiring(t *testing.T) {
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
+	require.NoError(t, SaveUATExpiresAt(time.Now().Add(time.Hour)))
+
+	previousRefresher := OAuthTokenRefresher
+	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
+	OAuthTokenRefresher = func(p *Profile) error {
+		t.Fatal("refresher should not be called when the token isn't near expiry")
+		return nil
+	}
+
+	p := &Profile{UAT: "oak_live_original"}
+	uat, err := RefreshUATIfNeeded(p, "oak_live_original")
+	require.NoError(t, err)
+	require.Equal(t, "oak_live_original", uat)
+}
+
+func TestRefreshUATIfNeededRefreshesWhenNearExpiry(t *testing.T) {
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
+	require.NoError(t, SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+
+	previousRefresher := OAuthTokenRefresher
+	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
+	OAuthTokenRefresher = func(p *Profile) error {
+		p.UAT = "oak_live_refreshed"
+		return nil
+	}
+
+	p := &Profile{UAT: "oak_live_original"}
+	uat, err := RefreshUATIfNeeded(p, "oak_live_original")
+	require.NoError(t, err)
+	require.Equal(t, "oak_live_refreshed", uat)
+}
+
+func TestRefreshUATIfNeededPropagatesRefreshError(t *testing.T) {
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
+	require.NoError(t, SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+
+	previousRefresher := OAuthTokenRefresher
+	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
+	refreshErr := errors.New("session expired")
+	OAuthTokenRefresher = func(p *Profile) error {
+		return refreshErr
+	}
+
+	p := &Profile{UAT: "oak_live_original"}
+	uat, err := RefreshUATIfNeeded(p, "oak_live_original")
+	require.ErrorIs(t, err, refreshErr)
+	require.Equal(t, "oak_live_original", uat)
+}
+
+func TestRefreshUATIfNeededNoopWithoutRefresher(t *testing.T) {
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
+	require.NoError(t, SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+
+	previousRefresher := OAuthTokenRefresher
+	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
+	OAuthTokenRefresher = nil
+
+	p := &Profile{UAT: "oak_live_original"}
+	uat, err := RefreshUATIfNeeded(p, "oak_live_original")
+	require.NoError(t, err)
+	require.Equal(t, "oak_live_original", uat)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
