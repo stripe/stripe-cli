@@ -3,7 +3,6 @@ package agentsetup
 import (
 	"context"
 	"errors"
-	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -92,16 +91,6 @@ func TestScanCodex_FallsBackAfterMarketplaceError(t *testing.T) {
 	require.Empty(t, status.Error)
 }
 
-func TestScanCodex_MarketplaceErrorsDoNotRequireUpgrade(t *testing.T) {
-	provider := codexTestProvider("", errors.New("marketplace unavailable"), nil)
-
-	status := provider.Detect()
-
-	require.True(t, status.Detected)
-	require.Empty(t, status.Error)
-	require.Equal(t, ActionInstall, provider.Plan(status, false).Action)
-}
-
 func TestCodexApply_APIMarketplace(t *testing.T) {
 	// Codex may fail with a nonzero exit or exit zero without installing anything.
 	for _, installErr := range []error{nil, errors.New("marketplace unavailable")} {
@@ -140,21 +129,15 @@ func TestCodexApply_APIMarketplace(t *testing.T) {
 }
 
 func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
-	for _, listErr := range []error{
-		errors.New("unrecognized subcommand 'plugin'"),
-		&exec.ExitError{Stderr: []byte("error: unrecognized subcommand 'plugin'")},
-		&exec.ExitError{Stderr: []byte("error: unexpected argument '--marketplace' found")},
-	} {
-		provider := codexTestProvider("", listErr, nil)
+	provider := codexTestProvider("", errors.New("unrecognized subcommand 'plugin'"), nil)
 
-		status := provider.Detect()
+	status := provider.Detect()
 
-		// Old Codex shows as detected but with an error hint — the TUI renders
-		// it as disabled (visible but not selectable).
-		require.True(t, status.Detected)
-		require.Equal(t, StatusMissing, status.Status)
-		require.Contains(t, status.Error, "upgrade Codex")
-	}
+	// Old Codex shows as detected but with an error hint — the TUI renders
+	// it as disabled (visible but not selectable).
+	require.True(t, status.Detected)
+	require.Equal(t, StatusMissing, status.Status)
+	require.Contains(t, status.Error, "upgrade Codex")
 }
 
 func TestCodexApply_RunsAddCommandAndVerifies(t *testing.T) {

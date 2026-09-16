@@ -74,12 +74,10 @@ func (p CodexProvider) Detect() Status {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(codexMarketplaces))*codexListTimeout)
 	defer cancel()
 
+	supportsPlugins := false
 	for _, marketplace := range codexMarketplaces {
-		version, ok, supportsPlugins := p.stripePluginStatus(ctx, marketplace)
-		if !supportsPlugins {
-			status.Error = "upgrade Codex to enable plugin support"
-			return status
-		}
+		version, ok, supported := p.stripePluginStatus(ctx, marketplace)
+		supportsPlugins = supportsPlugins || supported
 		if ok {
 			status.Plugin.Installed = true
 			status.Plugin.ID = CodexPluginName + "@" + marketplace
@@ -89,14 +87,17 @@ func (p CodexProvider) Detect() Status {
 			return status
 		}
 	}
+	if !supportsPlugins {
+		status.Error = "upgrade Codex to enable plugin support"
+	}
 
 	return status
 }
 
 // stripePluginStatus runs `codex plugin list --json` and reports whether (1)
 // the command is supported (supportsPlugins), and if so (2) whether the Stripe
-// plugin is installed and its version. Only an unsupported command or option
-// sets supportsPlugins to false; other lookup failures allow the next marketplace.
+// plugin is installed and its version. When the command fails (e.g. old Codex
+// version without plugin support), supportsPlugins is false.
 func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace string) (version string, installed bool, supportsPlugins bool) {
 	runOutput := p.RunOutput
 	if runOutput == nil {
@@ -105,16 +106,7 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 	// The unfiltered list can omit locally installed curated plugins.
 	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
 	if err != nil {
-		message := string(out) + err.Error()
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			message += string(exitErr.Stderr)
-		}
-		message = strings.ToLower(message)
-		unsupported := strings.Contains(message, "unrecognized subcommand") ||
-			strings.Contains(message, "unknown subcommand") ||
-			strings.Contains(message, "unexpected argument")
-		return "", false, !unsupported
+		return "", false, false
 	}
 	v, ok := findCodexStripePlugin(out, marketplace)
 	return v, ok, true
@@ -168,7 +160,8 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 		}
 		return nil
 	}
-	return errorcategory.Errorf(errorcategory.Internal, "failed to install the Stripe plugin from all marketplaces:\n%w", errors.Join(failures...))
+	return errorcategory.Errorf(errorcategory.Internal, "could not install the Stripe plugin from %s:\n%w",
+		strings.Join(codexMarketplaces[:], " or "), errors.Join(failures...))
 }
 
 // codexPluginList is the shape of `codex plugin list --json` output.
