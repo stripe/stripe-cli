@@ -3,7 +3,6 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"os/exec"
 	"strings"
@@ -32,8 +31,8 @@ type RunOutputFunc func(context.Context, string, ...string) ([]byte, error)
 
 // CodexProvider detects and installs the Stripe plugin for Codex CLI.
 //
-// Codex has a real plugin CLI, so detection runs `codex plugin list --json` and
-// installation tries `codex plugin add stripe@<marketplace>` until one succeeds.
+// Detection selects the first available supported marketplace, and installation
+// runs `codex plugin add stripe@<marketplace>` using that selection.
 type CodexProvider struct {
 	Scanner    Scanner
 	RunCommand RunCommandFunc
@@ -71,33 +70,34 @@ func (p CodexProvider) Detect() Status {
 	status.ExecutablePath = binPath
 	status.Status = StatusMissing
 
-	marketplaces, _ := p.marketplaces(context.Background())
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(marketplaces))*codexListTimeout)
+	marketplace, err := p.marketplace(context.Background())
+	if err != nil {
+		status.Status = StatusError
+		status.Error = err.Error()
+		return status
+	}
+	status.Plugin.ID = CodexPluginName + "@" + marketplace
+
+	ctx, cancel := context.WithTimeout(context.Background(), codexListTimeout)
 	defer cancel()
 
-	supportsPlugins := false
-	for _, marketplace := range marketplaces {
-		version, ok, supported := p.stripePluginStatus(ctx, marketplace)
-		supportsPlugins = supportsPlugins || supported
-		if ok {
-			status.Plugin.Installed = true
-			status.Plugin.ID = CodexPluginName + "@" + marketplace
-			status.Plugin.Version = version
-			status.Plugin.Scope = "user"
-			status.Status = StatusInstalled
-			return status
-		}
-	}
-	if len(marketplaces) > 0 && !supportsPlugins {
+	version, ok, supportsPlugins := p.stripePluginStatus(ctx, marketplace)
+	if !supportsPlugins {
 		status.Error = "upgrade Codex to enable plugin support"
+		return status
+	}
+	if ok {
+		status.Plugin.Installed = true
+		status.Plugin.Version = version
+		status.Plugin.Scope = "user"
+		status.Status = StatusInstalled
 	}
 
 	return status
 }
 
-// marketplaces selects available supported marketplaces in preference order.
-// If listing fails, try both and retain the reason in case installation fails.
-func (p CodexProvider) marketplaces(ctx context.Context) ([]string, []error) {
+// marketplace selects the first available supported marketplace.
+func (p CodexProvider) marketplace(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, codexListTimeout)
 	defer cancel()
 	runOutput := p.RunOutput
@@ -114,23 +114,17 @@ func (p CodexProvider) marketplaces(ctx context.Context) ([]string, []error) {
 		err = json.Unmarshal(out, &list)
 	}
 	if err != nil {
-		return codexMarketplaces[:], []error{errorcategory.Errorf(errorcategory.Internal, "listing Codex marketplaces: %w", err)}
+		return "", errorcategory.Errorf(errorcategory.Internal, "listing Codex marketplaces: %w", err)
 	}
 
-	available := make(map[string]bool, len(list.Marketplaces))
-	for _, marketplace := range list.Marketplaces {
-		available[marketplace.Name] = true
-	}
-	var selected []string
-	var failures []error
 	for _, marketplace := range codexMarketplaces {
-		if available[marketplace] {
-			selected = append(selected, marketplace)
-		} else {
-			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "%s: marketplace is not available", marketplace))
+		for _, available := range list.Marketplaces {
+			if available.Name == marketplace {
+				return marketplace, nil
+			}
 		}
 	}
-	return selected, failures
+	return "", errorcategory.Errorf(errorcategory.Internal, "no supported Codex marketplace is available; expected %s", strings.Join(codexMarketplaces[:], " or "))
 }
 
 // stripePluginStatus runs `codex plugin list --json` and reports whether (1)
@@ -152,7 +146,7 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 }
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
-	command := []string{CodexBinaryName, "plugin", "add", CodexPluginName + "@" + codexMarketplaces[0]}
+	command := []string{CodexBinaryName, "plugin", "add", status.Plugin.ID}
 
 	switch {
 	case status.Status == StatusError:
@@ -179,28 +173,20 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	command := append([]string(nil), plan.Command...)
-	marketplaces, failures := p.marketplaces(ctx)
-	for _, marketplace := range marketplaces {
-		pluginID := CodexPluginName + "@" + marketplace
-		command[len(command)-1] = pluginID
-		if err := runCommand(ctx, command[0], command[1:]...); err != nil {
-			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "%s: %w", marketplace, err))
-			continue
-		}
-
-		// `codex plugin add` exits 0 even when it fails (e.g. the marketplace is not
-		// configured), so the exit code cannot be trusted. Confirm the plugin is
-		// actually installed before reporting success.
-		if _, installed, _ := p.stripePluginStatus(ctx, marketplace); !installed {
-			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
-				pluginID, strings.Join(command, " ")))
-			continue
-		}
-		return nil
+	pluginID := plan.Command[len(plan.Command)-1]
+	_, marketplace, _ := strings.Cut(pluginID, "@")
+	if err := runCommand(ctx, plan.Command[0], plan.Command[1:]...); err != nil {
+		return errorcategory.Errorf(errorcategory.Internal, "could not install the Stripe plugin from %s: %w", marketplace, err)
 	}
-	return errorcategory.Errorf(errorcategory.Internal, "could not install the Stripe plugin from %s:\n%w",
-		strings.Join(codexMarketplaces[:], " or "), errors.Join(failures...))
+
+	// `codex plugin add` exits 0 even when it fails (e.g. the marketplace is not
+	// configured), so the exit code cannot be trusted. Confirm the plugin is
+	// actually installed before reporting success.
+	if _, installed, _ := p.stripePluginStatus(ctx, marketplace); !installed {
+		return errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
+			pluginID, strings.Join(plan.Command, " "))
+	}
+	return nil
 }
 
 // codexPluginList is the shape of `codex plugin list --json` output.

@@ -410,6 +410,12 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		plan := provider.Plan(status, asc.force)
 
 		fmt.Fprintf(out, "\n  %s\n", status.DisplayName)
+		if status.Status == agentsetup.StatusError {
+			fmt.Fprintf(out, "  %s error: %s\n", cross, status.Error)
+			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":error")
+			errCount++
+			continue
+		}
 		switch plan.Action {
 		case agentsetup.ActionNone:
 			fmt.Fprintln(out, "  already set up")

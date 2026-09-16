@@ -215,6 +215,39 @@ func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
 	require.Contains(t, result.Clients[0].Error, "upgrade Claude Code")
 }
 
+func TestAgentSetupCodexDiscoveryFailureReportsError(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		listErr   error
+		wantError string
+	}{
+		{"listing fails", errors.New("listing unavailable"), "listing Codex marketplaces: listing unavailable"},
+		{"no supported marketplace", nil, "no supported Codex marketplace is available"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			codex := codexMissingProvider(func(context.Context, string, ...string) error {
+				t.Fatal("must not install without a detected marketplace")
+				return nil
+			})
+			codex.RunOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				require.Equal(t, []string{"plugin", "marketplace", "list", "--json"}, args)
+				return []byte(`{"marketplaces":[]}`), tt.listErr
+			}
+			setup := testAgentSetupCmd()
+			setup.providers = map[string]agentsetup.Provider{codex.ID(): codex}
+			setup.callingAgent = func() string { return "" }
+			setup.cmd.SetContext(context.Background())
+
+			output, err := executeCommand(setup.cmd, "--client", "codex", "--yes")
+
+			require.ErrorContains(t, err, "1 item(s) failed to set up")
+			require.Contains(t, output, tt.wantError)
+			require.Contains(t, output, "0 installed, 0 updated, 0 skipped, 1 errors")
+			require.NotContains(t, output, "already set up")
+		})
+	}
+}
+
 func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
 	var called bool
 	setup := newTestAgentSetupCmdInstalled(t, func(ctx context.Context, name string, args ...string) error {
