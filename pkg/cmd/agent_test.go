@@ -430,7 +430,10 @@ func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProv
 			}
 			return nil
 		},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
+			if args[1] == "marketplace" {
+				return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
+			}
 			if installed {
 				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
 			}

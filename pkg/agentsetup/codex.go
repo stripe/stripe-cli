@@ -71,11 +71,12 @@ func (p CodexProvider) Detect() Status {
 	status.ExecutablePath = binPath
 	status.Status = StatusMissing
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(codexMarketplaces))*codexListTimeout)
+	marketplaces, _ := p.marketplaces(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(marketplaces))*codexListTimeout)
 	defer cancel()
 
 	supportsPlugins := false
-	for _, marketplace := range codexMarketplaces {
+	for _, marketplace := range marketplaces {
 		version, ok, supported := p.stripePluginStatus(ctx, marketplace)
 		supportsPlugins = supportsPlugins || supported
 		if ok {
@@ -87,11 +88,49 @@ func (p CodexProvider) Detect() Status {
 			return status
 		}
 	}
-	if !supportsPlugins {
+	if len(marketplaces) > 0 && !supportsPlugins {
 		status.Error = "upgrade Codex to enable plugin support"
 	}
 
 	return status
+}
+
+// marketplaces selects available supported marketplaces in preference order.
+// If listing fails, try both and retain the reason in case installation fails.
+func (p CodexProvider) marketplaces(ctx context.Context) ([]string, []error) {
+	ctx, cancel := context.WithTimeout(ctx, codexListTimeout)
+	defer cancel()
+	runOutput := p.RunOutput
+	if runOutput == nil {
+		runOutput = runCommandOutput
+	}
+	out, err := runOutput(ctx, CodexBinaryName, "plugin", "marketplace", "list", "--json")
+	var list struct {
+		Marketplaces []struct {
+			Name string `json:"name"`
+		} `json:"marketplaces"`
+	}
+	if err == nil {
+		err = json.Unmarshal(out, &list)
+	}
+	if err != nil {
+		return codexMarketplaces[:], []error{errorcategory.Errorf(errorcategory.Internal, "listing Codex marketplaces: %w", err)}
+	}
+
+	available := make(map[string]bool, len(list.Marketplaces))
+	for _, marketplace := range list.Marketplaces {
+		available[marketplace.Name] = true
+	}
+	var selected []string
+	var failures []error
+	for _, marketplace := range codexMarketplaces {
+		if available[marketplace] {
+			selected = append(selected, marketplace)
+		} else {
+			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "%s: marketplace is not available", marketplace))
+		}
+	}
+	return selected, failures
 }
 
 // stripePluginStatus runs `codex plugin list --json` and reports whether (1)
@@ -141,8 +180,8 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 		runCommand = RunCommand
 	}
 	command := append([]string(nil), plan.Command...)
-	var failures []error
-	for _, marketplace := range codexMarketplaces {
+	marketplaces, failures := p.marketplaces(ctx)
+	for _, marketplace := range marketplaces {
 		pluginID := CodexPluginName + "@" + marketplace
 		command[len(command)-1] = pluginID
 		if err := runCommand(ctx, command[0], command[1:]...); err != nil {
