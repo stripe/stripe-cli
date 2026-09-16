@@ -216,6 +216,7 @@ const (
 	CoreCLIHelper_ResolveCredentialsForAnyMode_FullMethodName = "/proto.CoreCLIHelper/ResolveCredentialsForAnyMode"
 	CoreCLIHelper_SwitchContext_FullMethodName                = "/proto.CoreCLIHelper/SwitchContext"
 	CoreCLIHelper_Login_FullMethodName                        = "/proto.CoreCLIHelper/Login"
+	CoreCLIHelper_ResolveOAuthCredentials_FullMethodName      = "/proto.CoreCLIHelper/ResolveOAuthCredentials"
 	CoreCLIHelper_BeginOrResumeLogin_FullMethodName           = "/proto.CoreCLIHelper/BeginOrResumeLogin"
 	CoreCLIHelper_CheckLogin_FullMethodName                   = "/proto.CoreCLIHelper/CheckLogin"
 )
@@ -248,6 +249,8 @@ type CoreCLIHelperClient interface {
 	// then runs the normal login flow, printing the same output and opening
 	// the browser only after the user presses enter.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	// OAuth-only resolution: never selects API keys or initiates browser login.
+	ResolveOAuthCredentials(ctx context.Context, in *ResolveOAuthCredentialsRequest, opts ...grpc.CallOption) (*ResolveOAuthCredentialsResponse, error)
 	// Begin or re-present the same durable OAuth handoff without waiting for a
 	// human, revoking credentials, or accepting plugin-supplied endpoints.
 	BeginOrResumeLogin(ctx context.Context, in *BeginOrResumeLoginRequest, opts ...grpc.CallOption) (*LoginHandoffResponse, error)
@@ -375,6 +378,16 @@ func (c *coreCLIHelperClient) Login(ctx context.Context, in *LoginRequest, opts 
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) ResolveOAuthCredentials(ctx context.Context, in *ResolveOAuthCredentialsRequest, opts ...grpc.CallOption) (*ResolveOAuthCredentialsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveOAuthCredentialsResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_ResolveOAuthCredentials_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *coreCLIHelperClient) BeginOrResumeLogin(ctx context.Context, in *BeginOrResumeLoginRequest, opts ...grpc.CallOption) (*LoginHandoffResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LoginHandoffResponse)
@@ -423,6 +436,8 @@ type CoreCLIHelperServer interface {
 	// then runs the normal login flow, printing the same output and opening
 	// the browser only after the user presses enter.
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	// OAuth-only resolution: never selects API keys or initiates browser login.
+	ResolveOAuthCredentials(context.Context, *ResolveOAuthCredentialsRequest) (*ResolveOAuthCredentialsResponse, error)
 	// Begin or re-present the same durable OAuth handoff without waiting for a
 	// human, revoking credentials, or accepting plugin-supplied endpoints.
 	BeginOrResumeLogin(context.Context, *BeginOrResumeLoginRequest) (*LoginHandoffResponse, error)
@@ -471,6 +486,9 @@ func (UnimplementedCoreCLIHelperServer) SwitchContext(context.Context, *SwitchCo
 }
 func (UnimplementedCoreCLIHelperServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) ResolveOAuthCredentials(context.Context, *ResolveOAuthCredentialsRequest) (*ResolveOAuthCredentialsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveOAuthCredentials not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) BeginOrResumeLogin(context.Context, *BeginOrResumeLoginRequest) (*LoginHandoffResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeginOrResumeLogin not implemented")
@@ -697,6 +715,24 @@ func _CoreCLIHelper_Login_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_ResolveOAuthCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveOAuthCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).ResolveOAuthCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_ResolveOAuthCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).ResolveOAuthCredentials(ctx, req.(*ResolveOAuthCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CoreCLIHelper_BeginOrResumeLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BeginOrResumeLoginRequest)
 	if err := dec(in); err != nil {
@@ -783,6 +819,10 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _CoreCLIHelper_Login_Handler,
+		},
+		{
+			MethodName: "ResolveOAuthCredentials",
+			Handler:    _CoreCLIHelper_ResolveOAuthCredentials_Handler,
 		},
 		{
 			MethodName: "BeginOrResumeLogin",

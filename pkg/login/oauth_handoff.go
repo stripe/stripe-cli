@@ -348,9 +348,7 @@ func installHandoffCompletion(ctx context.Context, cfg *config.Config, cont *oau
 	if err != nil {
 		return nil, err
 	}
-	canResumeInstallation := cont.InstallStarted && token == completion.Token.AccessToken &&
-		(snapshot.ContextHash == cont.InitialSnapshot.ContextHash || snapshot.ContextHash == cont.InstalledContextHash)
-	if snapshot != cont.InitialSnapshot && !canResumeInstallation {
+	if !canInstallHandoffCompletion(cont, completion, snapshot, token) {
 		return &LoginHandoff{State: LoginHandoffSuperseded, ID: cont.ID}, nil
 	}
 	// Finish local installation even if the polling caller has just disconnected.
@@ -476,4 +474,9 @@ func HasPendingLogin() (bool, error) {
 		return false, err
 	}
 	return cont != nil && cont.Version == 1 && cont.State == LoginHandoffPending, nil
+}
+
+func canInstallHandoffCompletion(cont *oauthContinuation, completion *oauthHandoffCompletion, snapshot oauthHandoffSnapshot, token string) bool {
+	return snapshot == cont.InitialSnapshot || cont.InstallStarted && token == completion.Token.AccessToken &&
+		(snapshot.ContextHash == cont.InitialSnapshot.ContextHash || snapshot.ContextHash == cont.InstalledContextHash)
 }

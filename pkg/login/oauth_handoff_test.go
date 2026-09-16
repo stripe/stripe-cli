@@ -50,6 +50,8 @@ type handoffFixture struct {
 	approved     atomic.Bool
 	accountsFail atomic.Bool
 	blocking     atomic.Bool
+	refreshError string
+	refreshed    atomic.Int32
 	tokenError   string
 }
 
@@ -78,6 +80,16 @@ func (f *handoffFixture) serve(w http.ResponseWriter, r *http.Request) {
 		n := f.issued.Add(1)
 		_ = json.NewEncoder(w).Encode(DeviceAuthResponse{DeviceCode: fmt.Sprintf("secret-device-%d", n), UserCode: fmt.Sprintf("CODE-%d", n), VerificationURI: "https://access.stripe.com/verify", ExpiresIn: 600, Interval: 5})
 	case accessAPNPath + "/token":
+		if r.FormValue("grant_type") == "refresh_token" {
+			f.refreshed.Add(1)
+			if f.refreshError != "" {
+				w.WriteHeader(400)
+				_ = json.NewEncoder(w).Encode(tokenErrorResponse{Error: f.refreshError})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(OAuthTokenResponse{AccessToken: "oak_fixture_renewed", RefreshToken: "fixture_renewed_refresh", TokenType: "Bearer", ExpiresIn: 3600})
+			return
+		}
 		f.polled.Add(1)
 		if f.blocking.Load() {
 			select {
