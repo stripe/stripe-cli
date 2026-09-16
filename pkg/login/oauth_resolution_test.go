@@ -142,3 +142,21 @@ func TestOAuthResolutionIncompleteInstallResumesBeforeSelectingContext(t *testin
 	assert.Equal(t, OAuthResolved, r.State)
 	assert.EqualValues(t, 1, f.polled.Load())
 }
+
+func TestOAuthResolutionPreservesOtherProfileContinuationOnRenewalFailure(t *testing.T) {
+	f := newHandoffFixture(t)
+	h := f.begin(t)
+	f.approved.Store(true)
+	_, err := CheckLogin(context.Background(), DefaultAccessBaseURL, f.cfg, h.ID)
+	require.NoError(t, err)
+	require.NoError(t, config.SaveUATExpiresAt(time.Now().Add(-time.Minute)))
+	f.cfg.Profile.ProfileName = "other"
+	f.refreshError = "invalid_grant"
+	r, err := ResolveOAuthCredentials(context.Background(), DefaultAccessBaseURL, f.cfg, OAuthResolutionOptions{Livemode: true, AllowRefresh: true})
+	require.NoError(t, err)
+	assert.Equal(t, OAuthLoginRequired, r.State)
+	cont, err := readOptionalPendingDeviceAuth()
+	require.NoError(t, err)
+	require.NotNil(t, cont)
+	assert.Equal(t, h.ID, cont.ID)
+}

@@ -144,7 +144,8 @@ func resolveRenewedOAuth(ctx context.Context, accessBaseURL string, cfg *config.
 			}
 			// Completed handoffs are no longer useful after terminal renewal
 			// failure. Preserve pending or incompatible continuations.
-			if cont != nil && cont.Version == 1 && cont.State == LoginHandoffAuthenticated {
+			if cont != nil && cont.Version == 1 && cont.State == LoginHandoffAuthenticated &&
+				cont.ProfileName == cfg.Profile.ProfileName && cont.AccessBaseURL == accessBaseURL {
 				if err := forgetPendingLoginLocked(); err != nil {
 					return state(OAuthStorageError)
 				}
