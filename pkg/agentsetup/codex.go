@@ -95,8 +95,8 @@ func (p CodexProvider) Detect() Status {
 
 // stripePluginStatus runs `codex plugin list --json` and reports whether (1)
 // the command is supported (supportsPlugins), and if so (2) whether the Stripe
-// plugin is installed and its version. When the command fails (e.g. old Codex
-// version without plugin support), supportsPlugins is false.
+// plugin is installed and its version. Only an unsupported command or option
+// sets supportsPlugins to false; other lookup failures allow the next marketplace.
 func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace string) (version string, installed bool, supportsPlugins bool) {
 	runOutput := p.RunOutput
 	if runOutput == nil {
@@ -105,7 +105,16 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 	// The unfiltered list can omit locally installed curated plugins.
 	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
 	if err != nil {
-		return "", false, false
+		message := string(out) + err.Error()
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			message += string(exitErr.Stderr)
+		}
+		message = strings.ToLower(message)
+		unsupported := strings.Contains(message, "unrecognized subcommand") ||
+			strings.Contains(message, "unknown subcommand") ||
+			strings.Contains(message, "unexpected argument")
+		return "", false, !unsupported
 	}
 	v, ok := findCodexStripePlugin(out, marketplace)
 	return v, ok, true
