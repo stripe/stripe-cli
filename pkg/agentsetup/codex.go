@@ -3,6 +3,7 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os/exec"
 	"strings"
@@ -12,15 +13,18 @@ import (
 )
 
 const (
-	ClientCodex       = "codex"
-	CodexBinaryName   = "codex"
-	CodexPluginName   = "stripe"
-	CodexMarketplace  = "openai-curated"
-	TargetCodexPlugin = "stripe@openai-curated"
-	CodexDisplayName  = "Codex CLI"
+	ClientCodex      = "codex"
+	CodexBinaryName  = "codex"
+	CodexPluginName  = "stripe"
+	CodexDisplayName = "Codex CLI"
 
 	codexListTimeout = 5 * time.Second
 )
+
+// Official Codex marketplaces for ChatGPT and API-key users, respectively:
+// https://github.com/openai/plugins/blob/main/.agents/plugins/marketplace.json#L2
+// https://github.com/openai/plugins/blob/main/.agents/plugins/api_marketplace.json
+var codexMarketplaces = [...]string{"openai-curated", "openai-api-curated"}
 
 // RunOutputFunc runs a command and returns its standard output. It exists so
 // Codex detection (which shells out to `codex plugin list --json`) is testable.
@@ -29,7 +33,7 @@ type RunOutputFunc func(context.Context, string, ...string) ([]byte, error)
 // CodexProvider detects and installs the Stripe plugin for Codex CLI.
 //
 // Codex has a real plugin CLI, so detection runs `codex plugin list --json` and
-// installation runs `codex plugin add stripe@openai-curated`.
+// installation tries `codex plugin add stripe@<marketplace>` until one succeeds.
 type CodexProvider struct {
 	Scanner    Scanner
 	RunCommand RunCommandFunc
@@ -67,20 +71,24 @@ func (p CodexProvider) Detect() Status {
 	status.ExecutablePath = binPath
 	status.Status = StatusMissing
 
-	ctx, cancel := context.WithTimeout(context.Background(), codexListTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(codexMarketplaces))*codexListTimeout)
 	defer cancel()
 
-	version, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	supportsPlugins := false
+	for _, marketplace := range codexMarketplaces {
+		version, ok, supported := p.stripePluginStatus(ctx, marketplace)
+		supportsPlugins = supportsPlugins || supported
+		if ok {
+			status.Plugin.Installed = true
+			status.Plugin.ID = CodexPluginName + "@" + marketplace
+			status.Plugin.Version = version
+			status.Plugin.Scope = "user"
+			status.Status = StatusInstalled
+			return status
+		}
+	}
 	if !supportsPlugins {
 		status.Error = "upgrade Codex to enable plugin support"
-		return status
-	}
-	if ok {
-		status.Plugin.Installed = true
-		status.Plugin.ID = TargetCodexPlugin
-		status.Plugin.Version = version
-		status.Plugin.Scope = "user"
-		status.Status = StatusInstalled
 	}
 
 	return status
@@ -90,21 +98,22 @@ func (p CodexProvider) Detect() Status {
 // the command is supported (supportsPlugins), and if so (2) whether the Stripe
 // plugin is installed and its version. When the command fails (e.g. old Codex
 // version without plugin support), supportsPlugins is false.
-func (p CodexProvider) stripePluginStatus(ctx context.Context) (version string, installed bool, supportsPlugins bool) {
+func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace string) (version string, installed bool, supportsPlugins bool) {
 	runOutput := p.RunOutput
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--json")
+	// The unfiltered list can omit locally installed curated plugins.
+	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
 	if err != nil {
 		return "", false, false
 	}
-	v, ok := findCodexStripePlugin(out)
+	v, ok := findCodexStripePlugin(out, marketplace)
 	return v, ok, true
 }
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
-	command := []string{CodexBinaryName, "plugin", "add", TargetCodexPlugin}
+	command := []string{CodexBinaryName, "plugin", "add", CodexPluginName + "@" + codexMarketplaces[0]}
 
 	switch {
 	case status.Status == StatusError:
@@ -131,18 +140,28 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	if err := runCommand(ctx, plan.Command[0], plan.Command[1:]...); err != nil {
-		return err
-	}
+	command := append([]string(nil), plan.Command...)
+	var failures []error
+	for _, marketplace := range codexMarketplaces {
+		pluginID := CodexPluginName + "@" + marketplace
+		command[len(command)-1] = pluginID
+		if err := runCommand(ctx, command[0], command[1:]...); err != nil {
+			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "%s: %w", marketplace, err))
+			continue
+		}
 
-	// `codex plugin add` exits 0 even when it fails (e.g. the marketplace is not
-	// configured), so the exit code cannot be trusted. Confirm the plugin is
-	// actually installed before reporting success.
-	if _, installed, _ := p.stripePluginStatus(ctx); !installed {
-		return errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
-			TargetCodexPlugin, strings.Join(plan.Command, " "))
+		// `codex plugin add` exits 0 even when it fails (e.g. the marketplace is not
+		// configured), so the exit code cannot be trusted. Confirm the plugin is
+		// actually installed before reporting success.
+		if _, installed, _ := p.stripePluginStatus(ctx, marketplace); !installed {
+			failures = append(failures, errorcategory.Errorf(errorcategory.Internal, "codex reported success but %s is not installed; run `%s` to see the underlying error",
+				pluginID, strings.Join(command, " ")))
+			continue
+		}
+		return nil
 	}
-	return nil
+	return errorcategory.Errorf(errorcategory.Internal, "could not install the Stripe plugin from %s:\n%w",
+		strings.Join(codexMarketplaces[:], " or "), errors.Join(failures...))
 }
 
 // codexPluginList is the shape of `codex plugin list --json` output.
@@ -163,26 +182,26 @@ type codexInstalledPlugin struct {
 
 // findCodexStripePlugin reports whether the Stripe plugin appears in the
 // installed list and returns its version when available.
-func findCodexStripePlugin(listJSON []byte) (string, bool) {
+func findCodexStripePlugin(listJSON []byte, marketplace string) (string, bool) {
 	var list codexPluginList
 	if err := json.Unmarshal(listJSON, &list); err != nil {
 		return "", false
 	}
 
 	for _, plugin := range list.Installed {
-		if codexPluginIsStripe(plugin) {
+		if codexPluginIsStripe(plugin, marketplace) {
 			return plugin.Version, true
 		}
 	}
 	return "", false
 }
 
-func codexPluginIsStripe(plugin codexInstalledPlugin) bool {
-	if strings.EqualFold(plugin.PluginID, TargetCodexPlugin) {
+func codexPluginIsStripe(plugin codexInstalledPlugin, marketplace string) bool {
+	if strings.EqualFold(plugin.PluginID, CodexPluginName+"@"+marketplace) {
 		return true
 	}
 	return strings.EqualFold(plugin.Name, CodexPluginName) &&
-		strings.EqualFold(plugin.Marketplace, CodexMarketplace)
+		strings.EqualFold(plugin.Marketplace, marketplace)
 }
 
 func runCommandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
