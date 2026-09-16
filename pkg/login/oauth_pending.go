@@ -128,10 +128,6 @@ func loadPendingDeviceAuth() (*oauthContinuation, error) {
 	return cont, nil
 }
 
-func clearPendingDeviceAuth() {
-	_ = removePendingDeviceAuth()
-}
-
 func removePendingDeviceAuth() error {
 	err := os.Remove(pendingDeviceAuthPath())
 	if errors.Is(err, os.ErrNotExist) {

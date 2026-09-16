@@ -2,6 +2,7 @@ package login
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -170,4 +171,51 @@ func TestHandoffProcessDeathReleasesKernelLock(t *testing.T) {
 	out, err := handoffProcess(t, root, server, "begin").CombinedOutput()
 	require.NoError(t, err, "%s", out)
 	assert.Equal(t, LoginHandoffPending, decodeProcessHandoff(t, string(out)).State)
+}
+
+func TestHandoffConcurrentProcessesCreateOneAuthorization(t *testing.T) {
+	f := newHandoffFixture(t)
+	root := t.TempDir()
+	server := accessSrvHTTPClient.Transport.(handoffTestTransport).target.String()
+	var commands []*exec.Cmd
+	var outputs []*bytes.Buffer
+	for i := 0; i < 4; i++ {
+		cmd := handoffProcess(t, root, server, "begin")
+		output := new(bytes.Buffer)
+		cmd.Stdout, cmd.Stderr = output, output
+		require.NoError(t, cmd.Start())
+		t.Cleanup(func() { _ = cmd.Process.Kill() })
+		commands = append(commands, cmd)
+		outputs = append(outputs, output)
+	}
+	var id string
+	for i, cmd := range commands {
+		err := cmd.Wait()
+		require.NoError(t, err, "%s", outputs[i])
+		handoff := decodeProcessHandoff(t, outputs[i].String())
+		if id == "" {
+			id = handoff.ID
+		}
+		assert.Equal(t, id, handoff.ID)
+	}
+	assert.EqualValues(t, 1, f.issued.Load())
+}
+
+func TestHandoffSeparateProcessesRecoverCheckpoint(t *testing.T) {
+	f := newHandoffFixture(t)
+	root := t.TempDir()
+	server := accessSrvHTTPClient.Transport.(handoffTestTransport).target.String()
+	f.approved.Store(true)
+	f.accountsFail.Store(true)
+	output, err := handoffProcess(t, root, server, "check").CombinedOutput()
+	require.Error(t, err)
+	require.Contains(t, string(output), "account_lookup_failed_resume_same_handoff")
+	f.accountsFail.Store(false)
+	output, err = handoffProcess(t, root, server, "check").CombinedOutput()
+	require.NoError(t, err, "%s", output)
+	result := decodeProcessHandoff(t, string(output))
+	assert.Equal(t, LoginHandoffAuthenticated, result.State)
+	assert.Equal(t, "acct_fixture", result.AccountID)
+	assert.EqualValues(t, 1, f.issued.Load())
+	assert.EqualValues(t, 1, f.polled.Load(), "a new process must install the checkpoint without redeeming again")
 }
