@@ -39,6 +39,10 @@ archives:
     files:
       - none*
 changelog:
+  # Only a fallback. The release workflow passes --release-notes, which makes
+  # GoReleaser publish that file and skip changelog generation entirely. Do not
+  # set `disable: true` here: that skips the pipe that reads --release-notes and
+  # publishes an empty body.
   use: github-native
 notarize:
   macos:
