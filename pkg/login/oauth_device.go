@@ -286,7 +286,7 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 		fmt.Printf("To authorize, visit %s\n\n", handoff.BrowserURL)
 		fmt.Println("When prompted, enter your verification code:")
 		fmt.Println(ansi.Purple(handoff.VerificationCode))
-		fmt.Println("This login survives an interrupted wait. Re-run 'stripe login' to resume it.")
+		fmt.Printf("This login survives an interrupted wait. Run %s to resume it.\n", pendingLoginCommand(cfg))
 		if !isSSH() && canOpenBrowser() {
 			fmt.Println("Press enter to open the browser (^C to stop waiting)")
 			go func() { fmt.Scanln(); _ = openBrowser(handoff.BrowserURL) }() //nolint:errcheck
@@ -301,7 +301,7 @@ func waitForLoginHandoff(ctx context.Context, accessBaseURL string, cfg *config.
 	for {
 		result, err := CheckLogin(waitCtx, accessBaseURL, cfg, id)
 		if waitCtx.Err() != nil {
-			fmt.Println("Stopped waiting. Complete the original browser link, then run 'stripe login --complete-device' to resume.")
+			fmt.Printf("Stopped waiting. Complete the original browser link, then run %s to resume.\n", pendingLoginCommand(cfg))
 			return nil
 		}
 		if err != nil {

@@ -430,7 +430,7 @@ func forgetPendingLoginLocked() error {
 }
 
 func handoffStateError(result *LoginHandoff) error {
-	return &HandoffError{Reason: fmt.Sprintf("%s; use an explicit new login to restart", result.State)}
+	return &HandoffError{Reason: fmt.Sprintf("%s; run 'stripe login --new-session' to restart", result.State)}
 }
 
 func authorizedHandoffContext(accounts []config.AuthorizedAccount, id string, live bool) bool {
