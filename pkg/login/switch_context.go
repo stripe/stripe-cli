@@ -75,6 +75,16 @@ func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, account
 }
 
 func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), handoffOperationTimeout)
+	defer cancel()
+	unlock, err := lockOAuthHandoff(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	if err := forgetPendingLoginLocked(); err != nil {
+		return err
+	}
 	livemode := mode == "live"
 	if err := config.SaveActiveContext(account.ID, livemode); err != nil {
 		return err

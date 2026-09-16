@@ -22,6 +22,17 @@ func init() {
 // and updates p in-place. On invalid_grant it clears all OAuth credentials so
 // the next ResolveCredentials call surfaces an actionable re-login error.
 func refreshOAuthToken(p *config.Profile) error {
+	ctx, cancel := context.WithTimeout(context.Background(), handoffOperationTimeout)
+	defer cancel()
+	unlock, err := lockOAuthHandoff(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return refreshOAuthTokenLocked(ctx, p)
+}
+
+func refreshOAuthTokenLocked(ctx context.Context, p *config.Profile) error {
 	if config.KeyRing == nil {
 		return errorcategory.New(errorcategory.Auth, "keyring unavailable; run 'stripe login' to re-authenticate")
 	}
@@ -40,7 +51,7 @@ func refreshOAuthToken(p *config.Profile) error {
 	}
 	clientID := clientIDForAccessBaseURL(accessBaseURL)
 
-	tokenResp, err := doRefreshToken(context.Background(), accessBaseURL, clientID, string(refreshTokenBytes))
+	tokenResp, err := doRefreshToken(ctx, accessBaseURL, clientID, string(refreshTokenBytes))
 	if err != nil {
 		var oauthErr *OAuthError
 		if errors.As(err, &oauthErr) && oauthErr.Code == "invalid_grant" {

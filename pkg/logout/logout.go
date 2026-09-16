@@ -15,6 +15,12 @@ import (
 // Logout clears credentials for the current profile. For OAuth sessions it
 // also revokes the token before clearing.
 func Logout(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
+	return login.MutateLoginCredentials(ctx, func(ctx context.Context) error {
+		return logout(ctx, accessBaseURL, cfg)
+	})
+}
+
+func logout(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
 	liveKey, _ := cfg.Profile.GetAPIKey(true)
 	testKey, _ := cfg.Profile.GetAPIKey(false)
 	uat, _ := cfg.Profile.GetUAT()
@@ -64,6 +70,12 @@ func hasStoredOAuthData() bool {
 
 // All clears credentials for all profiles.
 func All(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
+	return login.MutateLoginCredentials(ctx, func(ctx context.Context) error {
+		return logoutAll(ctx, accessBaseURL, cfg)
+	})
+}
+
+func logoutAll(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
 	uat, _ := cfg.Profile.GetUAT()
 	if strings.HasPrefix(uat, "oak_") {
 		if err := login.RevokeToken(ctx, accessBaseURL); err != nil {

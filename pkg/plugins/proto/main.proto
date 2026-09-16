@@ -1,4 +1,6 @@
 syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
 package proto;
 
 option go_package = "github.com/stripe/stripe-cli/plugins/proto";
@@ -92,6 +94,47 @@ service CoreCLIHelper {
   // then runs the normal login flow, printing the same output and opening
   // the browser only after the user presses enter.
   rpc Login(LoginRequest) returns (LoginResponse);
+  // Begin or re-present the same durable OAuth handoff without waiting for a
+  // human, revoking credentials, or accepting plugin-supplied endpoints.
+  rpc BeginOrResumeLogin(BeginOrResumeLoginRequest) returns (LoginHandoffResponse);
+  // Check an existing handoff once and durably install credentials on completion.
+  // Request cancellation never discards the pending authorization.
+  rpc CheckLogin(CheckLoginRequest) returns (LoginHandoffResponse);
+}
+
+message BeginOrResumeLoginRequest {}
+
+message CheckLoginRequest {
+  // An opaque local reference returned by BeginOrResumeLogin, not a device code.
+  string handoff_id = 1;
+}
+
+enum LoginHandoffState {
+  LOGIN_HANDOFF_STATE_UNSPECIFIED = 0;
+  LOGIN_HANDOFF_STATE_PENDING = 1;
+  LOGIN_HANDOFF_STATE_COMPLETING = 2;
+  LOGIN_HANDOFF_STATE_AUTHENTICATED = 3;
+  // Resolve OAuth through the normal resolver. This does not assert that a
+  // stored token has been verified or that the selected context is supported.
+  LOGIN_HANDOFF_STATE_SESSION_PRESENT = 4;
+  LOGIN_HANDOFF_STATE_EXPIRED = 5;
+  LOGIN_HANDOFF_STATE_DENIED = 6;
+  LOGIN_HANDOFF_STATE_SUPERSEDED = 7;
+  LOGIN_HANDOFF_STATE_RECOVERY_REQUIRED = 8;
+}
+
+message LoginHandoffResponse {
+  LoginHandoffState state = 1;
+  string handoff_id = 2;
+  // Display fields appear only while user action is pending. Do not log them.
+  string browser_url = 3;
+  string verification_code = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  int32 check_after_seconds = 6;
+  bool reused = 7;
+  // Populated only after durable credential and account-context installation.
+  string account_id = 8;
+  bool livemode = 9;
 }
 
 message EchoRequest {

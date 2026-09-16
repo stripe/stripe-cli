@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -103,53 +104,22 @@ func RequestDeviceCode(ctx context.Context, accessBaseURL, clientID string) (*De
 // Callers should create ctx with a deadline matching DeviceAuthResponse.ExpiresIn
 // to automatically stop polling when the device code expires.
 func PollDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode string, interval time.Duration) (*OAuthTokenResponse, error) {
-	endpoint := accessBaseURL + accessAPNPath + "/token"
-	data := url.Values{}
-	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
-	data.Set("client_id", clientID)
-	data.Set("device_code", deviceCode)
-
 	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
+		token, err := pollDeviceTokenOnce(ctx, accessBaseURL, clientID, deviceCode)
+		if err == nil {
+			return token, nil
 		}
-
-		resp, err := doPostForm(ctx, endpoint, data)
-		if err != nil {
+		var oauthErr *OAuthError
+		if !errors.As(err, &oauthErr) {
 			return nil, err
 		}
-
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.StatusCode == http.StatusOK {
-			var tokenResp OAuthTokenResponse
-			if err := json.Unmarshal(body, &tokenResp); err != nil {
-				return nil, fmt.Errorf("failed to parse token response: %w", err)
-			}
-			return &tokenResp, nil
-		}
-
-		var errResp tokenErrorResponse
-		if jsonErr := json.Unmarshal(body, &errResp); jsonErr != nil || errResp.Error == "" {
-			return nil, errorcategory.Errorf(errorcategory.Auth, "token request failed (status %d): %s", resp.StatusCode, string(body))
-		}
-
-		oauthErr := &OAuthError{Code: errResp.Error, Description: errResp.ErrorDescription, HTTPStatus: resp.StatusCode}
-
-		var wait time.Duration
-		switch errResp.Error {
+		wait := interval
+		switch oauthErr.Code {
 		case "authorization_pending":
-			wait = interval
 		case "slow_down":
 			wait = interval * 2
 		default:
-			return nil, oauthErr
+			return nil, err
 		}
 		t := time.NewTimer(wait)
 		select {
@@ -159,6 +129,36 @@ func PollDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode st
 		case <-t.C:
 		}
 	}
+}
+
+// pollDeviceTokenOnce does not wait on authorization_pending. Both the blocking
+// CLI and the resumable helper share the same OAuth request/response handling.
+func pollDeviceTokenOnce(ctx context.Context, accessBaseURL, clientID, deviceCode string) (*OAuthTokenResponse, error) {
+	data := url.Values{}
+	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
+	data.Set("client_id", clientID)
+	data.Set("device_code", deviceCode)
+	resp, err := doPostForm(ctx, accessBaseURL+accessAPNPath+"/token", data)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusOK {
+		var token OAuthTokenResponse
+		if err := json.Unmarshal(body, &token); err != nil {
+			return nil, fmt.Errorf("failed to parse token response: %w", err)
+		}
+		return &token, nil
+	}
+	var response tokenErrorResponse
+	if err := json.Unmarshal(body, &response); err != nil || response.Error == "" {
+		return nil, errorcategory.Errorf(errorcategory.Auth, "token request failed (status %d)", resp.StatusCode)
+	}
+	return nil, &OAuthError{Code: response.Error, Description: response.ErrorDescription, HTTPStatus: resp.StatusCode}
 }
 
 // clientIDForAccessBaseURL returns the OAuth client ID registered for the given
@@ -194,6 +194,23 @@ type DeviceCodeLoginResult struct {
 // progress to stdout, so callers with their own UX (e.g. the RPC service) can drive completion
 // themselves.
 func PollAndSaveDeviceCredentials(ctx context.Context, accessBaseURL, clientID, deviceCode string, interval time.Duration, cfg *config.Config) (*DeviceCodeLoginResult, error) {
+	// Fence the legacy completion against a login/logout that occurs while
+	// this process waits for browser approval. Never hold a lock during that wait.
+	lockCtx, cancelLock := context.WithTimeout(ctx, handoffOperationTimeout)
+	unlock, err := lockOAuthHandoff(lockCtx)
+	cancelLock()
+	if err != nil {
+		return nil, err
+	}
+	snapshot, _, snapshotErr := handoffSnapshot(cfg)
+	original, readErr := readOptionalPendingDeviceAuth()
+	unlock()
+	if snapshotErr != nil {
+		return nil, snapshotErr
+	}
+	if readErr != nil {
+		return nil, readErr
+	}
 	tokenResp, err := PollDeviceToken(ctx, accessBaseURL, clientID, deviceCode, interval)
 	if err != nil {
 		return nil, err
@@ -204,6 +221,29 @@ func PollAndSaveDeviceCredentials(ctx context.Context, accessBaseURL, clientID, 
 	// this exact moment shouldn't leave a valid token saved but the account list and active
 	// context unpopulated.
 	ctx = context.WithoutCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, handoffOperationTimeout)
+	defer cancel()
+	unlock, err = lockOAuthHandoff(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	current, _, err := handoffSnapshot(cfg)
+	if err != nil {
+		return nil, err
+	}
+	pending, err := readOptionalPendingDeviceAuth()
+	if err != nil {
+		return nil, err
+	}
+	sameAttempt := original == nil && pending == nil || original != nil && pending != nil &&
+		original.ID == pending.ID && original.DeviceCode == pending.DeviceCode
+	if current != snapshot || !sameAttempt {
+		return nil, &HandoffError{Reason: "legacy_completion_superseded"}
+	}
+	if err := forgetPendingLoginLocked(); err != nil {
+		return nil, err
+	}
 
 	// Clear all stale credentials before saving new ones, so this succeeds even if a
 	// previously stored credential is expired or revoked.
@@ -232,58 +272,59 @@ func PollAndSaveDeviceCredentials(ctx context.Context, accessBaseURL, clientID, 
 
 // LoginWithDeviceCode runs the full OAuth 2.1 device-code flow and saves credentials.
 func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
-	authResp, clientID, err := RequestDeviceCodeForAccessBase(ctx, accessBaseURL)
+	handoff, err := BeginOrResumeLogin(ctx, accessBaseURL, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to request device code: %w", err)
-	}
-	if err := validateBrowserURL(authResp.VerificationURI, accessBaseURL); err != nil {
 		return err
 	}
-
-	fmt.Printf("To authorize, visit %s\n\n", authResp.VerificationURI)
-	fmt.Println("When prompted, enter your verification code:")
-	fmt.Println()
-	fmt.Println(ansi.Purple(authResp.UserCode))
-	fmt.Println()
-
-	var browserOpened chan struct{}
-	if !isSSH() && canOpenBrowser() {
-		browserOpened = make(chan struct{})
-		fmt.Printf("Press enter to open the browser (^C to quit)\n")
-		go func() {
-			fmt.Scanln() //nolint:errcheck
-			if err := openBrowser(authResp.VerificationURI); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
-			}
-			close(browserOpened)
-		}()
+	if handoff.State == LoginHandoffAuthenticated {
+		return printCompletedHandoff(handoff)
 	}
-
-	interval := max(time.Duration(authResp.Interval)*time.Second, 5*time.Second)
-	expiresIn := max(time.Duration(authResp.ExpiresIn)*time.Second, 10*time.Minute)
-
-	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
-	defer cancel()
-	waitCtx, stop := signal.NotifyContext(pollCtx, os.Interrupt)
-	defer stop()
-
-	stopSpinner := startSpinnerAfterSignal("Waiting for confirmation...", os.Stdout, browserOpened)
-	result, err := PollAndSaveDeviceCredentials(waitCtx, accessBaseURL, clientID, authResp.DeviceCode, interval, cfg)
-	stopSpinner()
-	if err != nil {
-		switch {
-		case errors.Is(err, context.Canceled):
-			ansi.ClearLine(os.Stdout)
-			fmt.Println("Canceled. Run 'stripe login' to try again.")
-			return nil
-		case pollCtx.Err() != nil:
-			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login' again")
-		default:
-			return err
+	if handoff.State != LoginHandoffPending && handoff.State != LoginHandoffCompleting {
+		return handoffStateError(handoff)
+	}
+	if handoff.State == LoginHandoffPending {
+		fmt.Printf("To authorize, visit %s\n\n", handoff.BrowserURL)
+		fmt.Println("When prompted, enter your verification code:")
+		fmt.Println(ansi.Purple(handoff.VerificationCode))
+		fmt.Println("This login survives an interrupted wait. Re-run 'stripe login' to resume it.")
+		if !isSSH() && canOpenBrowser() {
+			fmt.Println("Press enter to open the browser (^C to stop waiting)")
+			go func() { fmt.Scanln(); _ = openBrowser(handoff.BrowserURL) }() //nolint:errcheck
 		}
 	}
+	return waitForLoginHandoff(ctx, accessBaseURL, cfg, handoff.ID)
+}
 
-	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
+func waitForLoginHandoff(ctx context.Context, accessBaseURL string, cfg *config.Config, id string) error {
+	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	for {
+		result, err := CheckLogin(waitCtx, accessBaseURL, cfg, id)
+		if waitCtx.Err() != nil {
+			fmt.Println("Stopped waiting. Complete the original browser link, then run 'stripe login --complete-device' to resume.")
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch result.State {
+		case LoginHandoffAuthenticated:
+			return printCompletedHandoff(result)
+		case LoginHandoffPending, LoginHandoffCompleting:
+		default:
+			return handoffStateError(result)
+		}
+		timer := time.NewTimer(time.Duration(max(result.CheckAfterSeconds, 1)) * time.Second)
+		select {
+		case <-waitCtx.Done():
+			timer.Stop()
+		case <-timer.C:
+		}
+	}
+}
+
+func printCompletedHandoff(result *LoginHandoff) error {
+	fmt.Printf("Done! Authenticated for %s (%s).\n", result.AccountID, displayMode(map[bool]string{true: "live", false: "test"}[result.Livemode]))
 	warnIfInsecureStorage()
 	return nil
 }
