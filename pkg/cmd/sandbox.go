@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -495,10 +497,10 @@ type sandboxListCmd struct {
 }
 
 type sandboxDeleteCmd struct {
-	cmd           *cobra.Command
-	stripeAccount string
-	apiBase       string
-	client        sandboxDeleteClient
+	cmd     *cobra.Command
+	yes     bool
+	apiBase string
+	client  sandboxDeleteClient
 }
 
 func newSandboxClaimCmd() *sandboxClaimCmd {
@@ -560,9 +562,11 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 func newSandboxNewCmd() *sandboxNewCmd {
 	snc := &sandboxNewCmd{}
 	snc.cmd = &cobra.Command{
-		Use:    "new <name>",
-		Short:  "Create a sandbox for the active live account",
-		Args:   cobra.ExactArgs(1),
+		Use:   "new <name>",
+		Short: "Create a sandbox for the active live account",
+		Example: `stripe sandbox new "My sandbox"
+  stripe sandbox new "My blank sandbox" --create-blank --country US`,
+		Args:   sandboxNameArgs,
 		RunE:   snc.runSandboxNewCmd,
 		Hidden: true,
 	}
@@ -573,6 +577,13 @@ func newSandboxNewCmd() *sandboxNewCmd {
 	_ = snc.cmd.Flags().MarkHidden("api-base")
 
 	return snc
+}
+
+func sandboxNameArgs(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox new \"My sandbox\"`")
+	}
+	return validators.ExactArgs(1)(cmd, args)
 }
 
 func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) error {
@@ -603,9 +614,9 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Created sandbox %q\n", name)
-	fmt.Fprintf(out, "  account: %s\n", created.AccountID)
-	fmt.Fprintln(out, "\nRun `stripe reauth` to authorize the CLI for the new sandbox.")
+	fmt.Fprintf(out, "Created sandbox %q\n\n", name)
+	fmt.Fprintf(out, "Account ID: %s\n", created.AccountID)
+	fmt.Fprintln(out, "\nNext step: Run `stripe reauth` to access this sandbox with the CLI.")
 	return nil
 }
 
@@ -680,20 +691,21 @@ func sandboxAccessLevelLabel(accessLevel sandbox.SandboxAccessLevel) (string, bo
 func newSandboxDeleteCmd() *sandboxDeleteCmd {
 	sdc := &sandboxDeleteCmd{}
 	sdc.cmd = &cobra.Command{
-		Use:   "delete",
-		Short: "Delete a sandbox by its account id",
+		Use:   "delete <account_id>",
+		Short: "Delete a sandbox by its account ID",
 		Long: `Delete a sandbox created for the logged-in account.
 
-Deletes the sandbox whose account (acct_...) you pass via --stripe-account (the
-ACCOUNT shown by ` + "`stripe sandbox list`" + `). This closes the sandbox's testmode
-workspace, mirroring the dashboard's delete action; it never touches your live account.`,
-		Args:   validators.NoArgs,
+Pass the sandbox account ID (acct_...) shown by ` + "`stripe sandbox list`" + `. This
+closes the sandbox's testmode workspace, mirroring the dashboard's delete action;
+it never touches your live account.`,
+		Example: `stripe sandbox delete acct_123
+  stripe sandbox delete acct_123 --yes`,
+		Args:   validators.ExactArgs(1),
 		RunE:   sdc.runSandboxDeleteCmd,
 		Hidden: true,
 	}
 
-	sdc.cmd.Flags().StringVar(&sdc.stripeAccount, "stripe-account", "", "Account (acct_...) of the sandbox to delete; see `stripe sandbox list`")
-	_ = sdc.cmd.MarkFlagRequired("stripe-account")
+	sdc.cmd.Flags().BoolVarP(&sdc.yes, "yes", "y", false, "Skip the confirmation prompt")
 
 	sdc.cmd.Flags().StringVar(&sdc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = sdc.cmd.Flags().MarkHidden("api-base")
@@ -702,16 +714,23 @@ workspace, mirroring the dashboard's delete action; it never touches your live a
 }
 
 func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []string) error {
-	// --stripe-account names the sandbox to delete (its acct_), consistent with the
-	// acct_-centric selector on `new`/`list`. Never an org.
-	stripeAccount := strings.TrimSpace(sdc.stripeAccount)
+	stripeAccount := strings.TrimSpace(args[0])
 	switch {
 	case stripeAccount == "":
-		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account is required (the acct_ of the sandbox to delete; see `stripe sandbox list`)")
+		return errorcategory.Errorf(errorcategory.UserInput, "account ID is required (the acct_ shown by `stripe sandbox list`)")
 	case strings.HasPrefix(stripeAccount, "org_"):
-		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account (acct_...), not an organization (org_...)")
+		return errorcategory.Errorf(errorcategory.UserInput, "account ID must be an account (acct_...), not an organization (org_...)")
 	case !strings.HasPrefix(stripeAccount, "acct_") || len(stripeAccount) == len("acct_"):
-		return errorcategory.Errorf(errorcategory.UserInput, "--stripe-account must be an account id (acct_...)")
+		return errorcategory.Errorf(errorcategory.UserInput, "account ID must start with acct_")
+	}
+
+	confirmed, err := sdc.confirmDelete(cmd, stripeAccount)
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		fmt.Fprintln(cmd.OutOrStdout(), "Aborted. No changes were made.")
+		return nil
 	}
 
 	client := sdc.client
@@ -730,6 +749,35 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 		fmt.Fprintf(out, "Deleted sandbox %s\n", deleted.AccountID)
 	}
 	return nil
+}
+
+func (sdc *sandboxDeleteCmd) confirmDelete(cmd *cobra.Command, accountID string) (bool, error) {
+	if sdc.yes {
+		return true, nil
+	}
+
+	if !sandboxDeleteIsInteractive(cmd) {
+		return false, errorcategory.Errorf(errorcategory.UserInput, "refusing to delete sandbox %s without confirmation; re-run with --yes", accountID)
+	}
+
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "Delete sandbox %s?\n", accountID)
+	fmt.Fprintln(out, "This action cannot be undone.")
+	fmt.Fprint(out, "Continue? [y/N]: ")
+
+	input, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+	input = strings.ToLower(strings.TrimSpace(input))
+	return input == "y" || input == "yes", nil
+}
+
+func sandboxDeleteIsInteractive(cmd *cobra.Command) bool {
+	if cmd.InOrStdin() != os.Stdin {
+		return true
+	}
+	return interactiveHuman(os.Getenv, term.IsTerminal(int(os.Stdin.Fd())))
 }
 
 type sandboxClaimStatusResponse struct {
