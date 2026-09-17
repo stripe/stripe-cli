@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -27,22 +29,142 @@ import (
 // command, but a large binary on a slow connection is not a failure to cut short.
 var autoUpgradeResolveTimeout = 3 * time.Second
 
+// autoUpgradeCheckInterval is how long one upgrade check stands before another is
+// worth making.
+//
+// Without a floor on how often it runs, an opted-in plugin spends a request on every
+// single command -- and, on a machine that cannot reach the endpoint, the whole
+// timeout above on every single command. What that buys is a slightly sooner upgrade,
+// which is not something the user is waiting for; they are waiting for the command
+// they typed.
+//
+// A few hours rather than a day: this should still land an upgrade the same working
+// session it ships, and one check per plugin per morning is already close to free.
+//
+// Best-effort, not a guarantee. Two CLIs launched close enough together can both find
+// the stamp expired before either has written it, and both check. Bounding it properly
+// would mean a lock file and a policy for when to steal one from a process that died
+// holding it -- machinery whose failure mode is "never checks again", to save at most
+// one duplicate request per concurrent invocation. The measure that matters is
+// requests per command, and that is already one per interval for anyone not running
+// two plugins at the same instant.
+//
+// What does deserve locking is the install itself, which is a separate and older
+// problem: cleanUpPluginPath deletes every version directory but the one it just
+// wrote, so any two processes installing at once can pull a binary out from under a
+// third, whether or not an auto-upgrade check is what set them off.
+var autoUpgradeCheckInterval = 4 * time.Hour
+
 // Swappable for test injection. These are every effect maybeAutoUpgrade has outside
 // its own package: the setting (global config state), the lookup (network), the
-// download (network and disk), and the plugin's own PostInstall hook (a subprocess).
+// download (network and disk), the plugin's own PostInstall hook (a subprocess), and
+// the clock the check interval is measured against.
 var (
 	pluginUpdatesEnabled   = config.PluginUpdatesEnabled
 	autoUpgradeResolver    = ResolvePluginForUpgrade
 	autoUpgradePostInstall = runPostInstallHook
+	autoUpgradeNow         = time.Now
 	autoUpgradeInstaller   = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
 		return resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL)
 	}
 )
 
+// autoUpgradeCheckStampPath returns the file recording when this plugin was last
+// checked for an upgrade.
+//
+// It sits beside the plugin's local metadata, which is already the directory for
+// per-plugin state the CLI keeps for itself, and is per-plugin because the setting is
+// too -- one plugin's check should not silence another's. Deliberately not a config
+// field: this is written on plugin commands the user runs all day, and viper rewrites
+// the entire config file per field.
+//
+// The extension keeps it out of getLocalPluginMetadataNames, which reads that
+// directory to enumerate installed plugins and counts only `.toml` entries.
+func autoUpgradeCheckStampPath(cfg config.IConfig, pluginName string) (string, error) {
+	if err := ValidatePluginShortname(pluginName); err != nil {
+		return "", err
+	}
+
+	return filepath.Join(getLocalPluginMetadataDir(cfg), pluginName+".last-upgrade-check"), nil
+}
+
+// removeAutoUpgradeCheckStamp deletes a plugin's check stamp, for an uninstall that
+// should not leave anything of the plugin behind.
+//
+// A missing stamp is not an error: most uninstalls are of plugins that never had one,
+// because the setting is off by default.
+func removeAutoUpgradeCheckStamp(cfg config.IConfig, fs afero.Fs, pluginName string) error {
+	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
+	if err != nil {
+		return err
+	}
+
+	if err := fs.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
+}
+
+// autoUpgradeCheckDue reports whether enough time has passed since the last upgrade
+// check to be worth spending another request on. See autoUpgradeCheckInterval.
+//
+// Anything unreadable counts as due. A missing stamp is a first run, and a corrupt one
+// is not worth refusing to upgrade over: being wrong in this direction costs the one
+// request the stamp exists to save, while being wrong in the other direction means
+// never upgrading again.
+func autoUpgradeCheckDue(cfg config.IConfig, fs afero.Fs, pluginName string) bool {
+	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
+	if err != nil {
+		return true
+	}
+
+	body, err := afero.ReadFile(fs, path)
+	if err != nil {
+		return true
+	}
+
+	lastCheck, err := time.Parse(time.RFC3339, strings.TrimSpace(string(body)))
+	if err != nil {
+		return true
+	}
+
+	// A stamp in the future is a clock that has moved backwards, most often a machine
+	// correcting its time. Waiting for the future to arrive could park the check for
+	// years, so treat it as due and let the next check overwrite it.
+	if now := autoUpgradeNow(); lastCheck.After(now) {
+		return true
+	} else if now.Sub(lastCheck) < autoUpgradeCheckInterval {
+		return false
+	}
+
+	return true
+}
+
+// recordAutoUpgradeCheck claims the current interval for a check about to be made.
+//
+// Stored as text rather than leaned on the file's mtime, so that `cat`-ing it while
+// working out why a plugin did or did not upgrade answers the question.
+func recordAutoUpgradeCheck(cfg config.IConfig, fs afero.Fs, pluginName string) error {
+	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
+	if err != nil {
+		return err
+	}
+
+	if err := fs.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+
+	return afero.WriteFile(fs, path, []byte(autoUpgradeNow().UTC().Format(time.RFC3339)+"\n"), 0644)
+}
+
 // maybeAutoUpgrade upgrades a plugin to the newest release available to this CLI
 // before it runs, when the user turned `stripe plugin auto-update` on for it. It
 // returns the plugin and version to run: the newly installed pair when it upgraded,
 // and the pair it was given every other time.
+//
+// Most calls return without looking anything up. It runs on every invocation of an
+// opted-in plugin, but only actually checks once per autoUpgradeCheckInterval.
 //
 // It returns no error, by design. The user asked to run a plugin, not to upgrade
 // one, so every way this can come up short -- a setting that is off, an endpoint
@@ -80,11 +202,35 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 		// Read before the lookup below so a user who left this off pays nothing for
 		// the feature, not even one request per plugin command.
 		return p, installedVersion
+	case !autoUpgradeCheckDue(cfg, fs, p.Shortname):
+		// Checked recently enough. Ordered after the setting because that read is free
+		// and this one touches the disk. See autoUpgradeCheckInterval.
+		logger.Debug("skipping auto-upgrade, checked for one recently")
+		return p, installedVersion
 	}
 
 	// Filled in here because the base URLs handed to Run carry only what the user
 	// explicitly passed, and a metadata request has to name a real host.
 	installAPIBaseURL, installDashboardBaseURL := resolveInstallBaseURLs(apiBaseURL, dashboardBaseURL)
+
+	// Stamped before the lookup rather than after it, and regardless of how it turns
+	// out. The request is the cost being rationed, so a lookup that fails or finds
+	// nothing has to count; claiming the interval up front is what keeps two CLIs
+	// started at once from both reading an expired stamp and both making the request,
+	// which stamping afterwards would leave a whole lookup's worth of room for.
+	//
+	// It narrows that window rather than closing it -- read and write are still two
+	// operations. See autoUpgradeCheckInterval for why that is where this stops.
+	//
+	// The cost of claiming first is that a process killed between here and the answer
+	// defers the check by an interval, having learned nothing. For an upgrade the user
+	// did not ask for, and can wait a few hours for, that is the safe direction to err
+	// in -- interrupting a plugin download is a supported thing to do.
+	if stampErr := recordAutoUpgradeCheck(cfg, fs, p.Shortname); stampErr != nil {
+		// Nothing to do about it beyond checking again next time, which is what the
+		// feature did before there was a stamp at all.
+		logger.Debugf("could not record the upgrade check: %s", stampErr)
+	}
 
 	resolveCtx, cancel := context.WithTimeout(ctx, autoUpgradeResolveTimeout)
 	defer cancel()
@@ -120,10 +266,17 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 	// first request.
 	//
 	// The cached-metadata fallback is what usually lands here: it can name a version
-	// but never a binary URL. Skipping it costs nothing, because auto-upgrade runs on
-	// every invocation and the next one starts a fresh budget. It also means an
-	// auto-upgrade only ever installs a release a live metadata response just
-	// offered, which is the guarantee ErrPluginRequiresNewerCLI's doc relies on.
+	// but never a binary URL. Skipping it defers the upgrade by an
+	// autoUpgradeCheckInterval, since the check it just declined is the one that got
+	// stamped -- acceptable for something the user did not ask for, and the price of
+	// not letting a machine that cannot reach the endpoint retry on every command. It
+	// also means an auto-upgrade only ever installs a release a live metadata response
+	// just offered, which is the guarantee ErrPluginRequiresNewerCLI's doc relies on.
+	//
+	// Nothing tells the user about the version named here, because the upgrade hint is
+	// suppressed for a plugin that auto-updates; see CheckLatestPluginVersion. A plugin
+	// that keeps landing here therefore stays quietly behind, which is worth reporting
+	// from this side one day rather than by putting the hint's request back.
 	if resolved.BinaryURL == "" {
 		logger.Debugf("skipping auto-upgrade to v%s, the lookup returned no binary URL", resolved.Version)
 		return p, installedVersion

@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/spf13/afero"
@@ -1192,6 +1193,53 @@ func TestUninstallSucceedsWithLocalMetadataOnly(t *testing.T) {
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))
+}
+
+// The check stamp is the one piece of per-plugin state that does not live in the
+// metadata file or the plugin directory, so nothing else in Uninstall reaches it.
+func TestUninstallRemovesTheAutoUpgradeCheckStamp(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	plugin := Plugin{
+		Shortname:        "sample-plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+	require.NoError(t, fs.MkdirAll("/plugins/sample-plugin/1.0.0", 0755))
+	writeAutoUpgradeCheckStamp(t, config, fs, "sample-plugin", time.Now())
+	require.True(t, autoUpgradeCheckStampExists(t, config, fs, "sample-plugin"))
+
+	require.NoError(t, plugin.Uninstall(context.Background(), config, fs))
+
+	require.False(t, autoUpgradeCheckStampExists(t, config, fs, "sample-plugin"))
+}
+
+// The ordinary case, since auto-update is off by default: there is no stamp to remove,
+// and an uninstall must not report that as a problem.
+func TestUninstallSucceedsWithoutAnAutoUpgradeCheckStamp(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+	plugin := Plugin{
+		Shortname:        "sample-plugin",
+		Binary:           "stripe-cli-sample-plugin",
+		MagicCookieValue: "SAMPLE-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	require.NoError(t, writeLocalPluginMetadata(config, fs, plugin))
+	require.NoError(t, fs.MkdirAll("/plugins/sample-plugin/1.0.0", 0755))
+	require.False(t, autoUpgradeCheckStampExists(t, config, fs, "sample-plugin"))
+
+	require.NoError(t, plugin.Uninstall(context.Background(), config, fs))
 }
 
 func TestUninstallRejectsInvalidPluginShortnames(t *testing.T) {

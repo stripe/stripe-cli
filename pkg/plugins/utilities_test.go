@@ -1247,8 +1247,9 @@ func TestCheckLatestPluginVersionSilentWhenPluginAutoUpdates(t *testing.T) {
 	require.Equal(t, []string{"myplugin"}, settingReads)
 	require.Empty(t, output)
 
-	// The point is the request, not just the message: the pre-run upgrade check already
-	// asked this question on this invocation.
+	// The point is the request, not just the message. A hint here would put a lookup on
+	// every command of an auto-updating plugin, which is the cost
+	// autoUpgradeCheckInterval exists to keep maybeAutoUpgrade from imposing.
 	require.Zero(t, resolveCalls)
 }
 

@@ -3,7 +3,9 @@ package plugins
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -48,6 +50,9 @@ type autoUpgradeStubs struct {
 	// blockUntilCanceled makes the resolver wait for its context instead of
 	// answering, so a test can prove the lookup is actually bounded.
 	blockUntilCanceled bool
+	// now is what maybeAutoUpgrade reads the clock as, pinned so a test can place a
+	// check stamp at an exact age instead of depending on the wall clock.
+	now time.Time
 
 	// Recorded calls.
 	settingReads     []string
@@ -59,12 +64,16 @@ type autoUpgradeStubs struct {
 func stubAutoUpgrade(t *testing.T) *autoUpgradeStubs {
 	t.Helper()
 
-	stubs := &autoUpgradeStubs{updatesEnabled: true}
+	stubs := &autoUpgradeStubs{
+		updatesEnabled: true,
+		now:            time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC),
+	}
 
 	origUpdatesEnabled := pluginUpdatesEnabled
 	origResolver := autoUpgradeResolver
 	origInstaller := autoUpgradeInstaller
 	origPostInstall := autoUpgradePostInstall
+	origNow := autoUpgradeNow
 	origPluginsPath := PluginsPath
 	// Every test here runs as a normal, non-local-dev install unless it says otherwise.
 	// Left set by another test in this package, it would skip auto-upgrade outright and
@@ -76,8 +85,11 @@ func stubAutoUpgrade(t *testing.T) *autoUpgradeStubs {
 		autoUpgradeResolver = origResolver
 		autoUpgradeInstaller = origInstaller
 		autoUpgradePostInstall = origPostInstall
+		autoUpgradeNow = origNow
 		PluginsPath = origPluginsPath
 	})
+
+	autoUpgradeNow = func() time.Time { return stubs.now }
 
 	pluginUpdatesEnabled = func(pluginName string) bool {
 		stubs.settingReads = append(stubs.settingReads, pluginName)
@@ -168,6 +180,45 @@ func autoUpgradeTestConfig() *cfgpkg.Config {
 	cfg.InitConfig()
 
 	return &cfg.Config
+}
+
+// writeAutoUpgradeCheckStamp records a check as having happened at the given time, in
+// the format maybeAutoUpgrade writes rather than by calling the writer, so a test that
+// breaks the reader cannot be rescued by a matching break in the writer.
+func writeAutoUpgradeCheckStamp(t *testing.T, cfg cfgpkg.IConfig, fs afero.Fs, pluginName string, at time.Time) {
+	t.Helper()
+
+	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
+	require.NoError(t, err)
+	require.NoError(t, fs.MkdirAll(filepath.Dir(path), 0755))
+	require.NoError(t, afero.WriteFile(fs, path, []byte(at.UTC().Format(time.RFC3339)+"\n"), 0644))
+}
+
+// readAutoUpgradeCheckStamp returns the recorded check time, and fails the test if
+// there is no stamp to read.
+func readAutoUpgradeCheckStamp(t *testing.T, cfg cfgpkg.IConfig, fs afero.Fs, pluginName string) time.Time {
+	t.Helper()
+
+	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
+	require.NoError(t, err)
+	body, err := afero.ReadFile(fs, path)
+	require.NoError(t, err)
+
+	at, err := time.Parse(time.RFC3339, strings.TrimSpace(string(body)))
+	require.NoError(t, err)
+
+	return at
+}
+
+func autoUpgradeCheckStampExists(t *testing.T, cfg cfgpkg.IConfig, fs afero.Fs, pluginName string) bool {
+	t.Helper()
+
+	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
+	require.NoError(t, err)
+	exists, err := afero.Exists(fs, path)
+	require.NoError(t, err)
+
+	return exists
 }
 
 func TestMaybeAutoUpgradeInstallsNewerRelease(t *testing.T) {
@@ -286,6 +337,9 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 		updatesDisabled  bool
 		resolved         *ResolvedPluginVersion
 		resolveErr       error
+		// lastCheckedAgo places a check stamp that far in the past. Zero leaves the
+		// plugin unstamped, which is how every case but the throttle one runs.
+		lastCheckedAgo time.Duration
 		// wantSettingRead is false for the checks that come before it, which is the
 		// point of ordering them that way.
 		wantSettingRead bool
@@ -314,6 +368,15 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 			name:             "updates turned off for the plugin",
 			installedVersion: "1.2.0",
 			updatesDisabled:  true,
+			wantSettingRead:  true,
+		},
+		{
+			// The other half of what the feature costs someone who left it on: one
+			// config read and one stat, for all but the first command in a few hours.
+			name:             "checked for an upgrade recently",
+			installedVersion: "1.2.0",
+			lastCheckedAgo:   autoUpgradeCheckInterval - time.Minute,
+			resolved:         autoUpgradeResolvedPlugin("1.3.0"),
 			wantSettingRead:  true,
 		},
 		{
@@ -393,12 +456,18 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 			stubs.resolveErr = tt.resolveErr
 			PluginsPath = tt.pluginsPath
 
+			cfg := autoUpgradeTestConfig()
+			fs := afero.NewMemMapFs()
+			if tt.lastCheckedAgo != 0 {
+				writeAutoUpgradeCheckStamp(t, cfg, fs, "apps", stubs.now.Add(-tt.lastCheckedAgo))
+			}
+
 			installed := autoUpgradeTestPlugin("1.2.0")
 
 			var gotPlugin *Plugin
 			var gotVersion string
 			output := captureStderr(t, func() {
-				gotPlugin, gotVersion = maybeAutoUpgrade(context.Background(), autoUpgradeTestConfig(), afero.NewMemMapFs(),
+				gotPlugin, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs,
 					installed, tt.installedVersion, "", "", "")
 			})
 
@@ -413,6 +482,11 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 
 			require.Equal(t, tt.wantSettingRead, len(stubs.settingReads) > 0)
 			require.Equal(t, tt.wantLookup, len(stubs.resolveCalls) > 0)
+
+			// A check that spent a request is stamped however it turned out; one that
+			// bailed before the lookup leaves the next command free to make it.
+			require.Equal(t, tt.wantLookup || tt.lastCheckedAgo != 0,
+				autoUpgradeCheckStampExists(t, cfg, fs, "apps"))
 		})
 	}
 }
@@ -481,4 +555,178 @@ func TestMaybeAutoUpgradeWithNilContext(t *testing.T) {
 	require.Equal(t, "1.3.0", gotVersion)
 	require.Len(t, stubs.resolveCalls, 1)
 	require.True(t, stubs.resolveCalls[0].hasDeadline)
+}
+
+// The throttle is meant to be forgotten about: once its interval is up, the check
+// happens exactly as it would have without one.
+func TestMaybeAutoUpgradeChecksAgainOnceTheIntervalIsUp(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+
+	cfg := autoUpgradeTestConfig()
+	fs := afero.NewMemMapFs()
+	lastCheck := stubs.now.Add(-autoUpgradeCheckInterval)
+	writeAutoUpgradeCheckStamp(t, cfg, fs, "apps", lastCheck)
+
+	var gotVersion string
+	captureStderr(t, func() {
+		_, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+	})
+
+	require.Equal(t, "1.3.0", gotVersion)
+	require.Len(t, stubs.resolveCalls, 1)
+
+	// Moved forward, not left at the previous check. A stamp that never advanced would
+	// leave the plugin permanently due and the throttle would do nothing at all.
+	require.Equal(t, stubs.now, readAutoUpgradeCheckStamp(t, cfg, fs, "apps").UTC())
+}
+
+// The case the throttle exists for. Without it, a machine that cannot reach the
+// metadata endpoint pays the full lookup timeout in front of every plugin command.
+func TestMaybeAutoUpgradeThrottlesAFailedCheck(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	stubs.resolveErr = errors.New("metadata endpoint unreachable")
+
+	cfg := autoUpgradeTestConfig()
+	fs := afero.NewMemMapFs()
+
+	captureStderr(t, func() {
+		for range 3 {
+			maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+		}
+	})
+
+	require.Len(t, stubs.resolveCalls, 1, "a failed check should be throttled like any other")
+	require.Equal(t, stubs.now, readAutoUpgradeCheckStamp(t, cfg, fs, "apps").UTC())
+}
+
+// A successful upgrade is throttled the same way, so that the command right after one
+// does not go straight back to the endpoint to be told it is up to date.
+func TestMaybeAutoUpgradeThrottlesAfterUpgrading(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+
+	cfg := autoUpgradeTestConfig()
+	fs := afero.NewMemMapFs()
+
+	var secondVersion string
+	captureStderr(t, func() {
+		maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+		// As Run would call it next time: the upgraded version is what is installed now.
+		_, secondVersion = maybeAutoUpgrade(context.Background(), cfg, fs, stubs.resolved.Plugin, "1.3.0", "", "", "")
+	})
+
+	require.Len(t, stubs.resolveCalls, 1)
+	require.Len(t, stubs.installCalls, 1)
+	require.Equal(t, "1.3.0", secondVersion)
+}
+
+// The stamp is state on disk that anything could have written, so every way of
+// reading it wrong has to fall the same way: check, rather than never check again.
+func TestMaybeAutoUpgradeChecksWhenTheStampIsUnusable(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "empty", body: ""},
+		{name: "not a timestamp", body: "yesterday\n"},
+		{name: "truncated", body: "2026-04-0"},
+		// A clock corrected backwards. Waiting for the recorded time to arrive could
+		// park the check for as long as the correction was large.
+		{name: "in the future", body: "2027-04-01T12:00:00Z\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stubs := stubAutoUpgrade(t)
+			stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+
+			cfg := autoUpgradeTestConfig()
+			fs := afero.NewMemMapFs()
+			path, err := autoUpgradeCheckStampPath(cfg, "apps")
+			require.NoError(t, err)
+			require.NoError(t, fs.MkdirAll(filepath.Dir(path), 0755))
+			require.NoError(t, afero.WriteFile(fs, path, []byte(tt.body), 0644))
+
+			var gotVersion string
+			captureStderr(t, func() {
+				_, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+			})
+
+			require.Equal(t, "1.3.0", gotVersion)
+			require.Len(t, stubs.resolveCalls, 1)
+			// Overwritten with something readable, so the throttle works from here on.
+			require.Equal(t, stubs.now, readAutoUpgradeCheckStamp(t, cfg, fs, "apps").UTC())
+		})
+	}
+}
+
+// A stamp that cannot be written is the throttle failing, not the upgrade failing.
+func TestMaybeAutoUpgradeUpgradesWhenTheStampCannotBeWritten(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+
+	cfg := autoUpgradeTestConfig()
+	fs := afero.NewReadOnlyFs(afero.NewMemMapFs())
+
+	var gotVersion string
+	captureStderr(t, func() {
+		_, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+	})
+
+	require.Equal(t, "1.3.0", gotVersion)
+	require.Len(t, stubs.installCalls, 1)
+}
+
+// The setting is per-plugin, so the throttle has to be too: one plugin's check must
+// not stand in for another's.
+func TestMaybeAutoUpgradeThrottlesEachPluginSeparately(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+
+	cfg := autoUpgradeTestConfig()
+	fs := afero.NewMemMapFs()
+	writeAutoUpgradeCheckStamp(t, cfg, fs, "apps", stubs.now)
+
+	other := autoUpgradeTestPlugin("1.2.0")
+	other.Shortname = "projects"
+
+	captureStderr(t, func() {
+		maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+		maybeAutoUpgrade(context.Background(), cfg, fs, other, "1.2.0", "", "", "")
+	})
+
+	require.Len(t, stubs.resolveCalls, 1)
+	require.Equal(t, "projects", stubs.resolveCalls[0].pluginName)
+	require.True(t, autoUpgradeCheckStampExists(t, cfg, fs, "projects"))
+}
+
+// The interval has to be claimed before the request goes out rather than when it comes
+// back. The gap between the two is what a concurrently starting CLI slips through, and
+// it is as wide as the lookup -- up to the whole resolve timeout.
+func TestMaybeAutoUpgradeClaimsTheIntervalBeforeLookingUp(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+
+	cfg := autoUpgradeTestConfig()
+	fs := afero.NewMemMapFs()
+
+	// Wrapping the stub rather than replacing it keeps its call recording intact.
+	// stubAutoUpgrade's cleanup restores this along with everything else.
+	recording := autoUpgradeResolver
+	var claimedDuringLookup bool
+	autoUpgradeResolver = func(ctx context.Context, c cfgpkg.IConfig, f afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		claimedDuringLookup = autoUpgradeCheckStampExists(t, cfg, fs, pluginName)
+		return recording(ctx, c, f, pluginName, apiBaseURL, dashboardBaseURL)
+	}
+
+	var gotVersion string
+	captureStderr(t, func() {
+		_, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+	})
+
+	require.Len(t, stubs.resolveCalls, 1)
+	require.Equal(t, "1.3.0", gotVersion, "claiming the interval must not cost the upgrade")
+	require.True(t, claimedDuringLookup,
+		"a second CLI starting while this lookup was in flight would have made the same request")
 }
