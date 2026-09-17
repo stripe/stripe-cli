@@ -114,7 +114,9 @@ func TestAPIListenForwardTo(t *testing.T) {
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
 	}))
 
-	listen, err := runner.RunBackground("listen", "--forward-to", server.URL)
+	// --forward-to requires an event subscription; subscribe to all snapshot
+	// events so the triggered customer.created is forwarded.
+	listen, err := runner.RunBackground("listen", "--all-snapshot", "--forward-to", server.URL)
 	if err != nil {
 		fatalf(t, "Failed to start listen: %v", err)
 	}
