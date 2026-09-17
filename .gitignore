@@ -6,6 +6,8 @@ coverage.txt
 /stripe-linux
 /stripe-windows.exe
 default_cassette.yaml
+# Written by the release workflow, and by anyone reproducing it locally
+/release-notes.md
 .vscode/*.log
 stripe-completion.bash
 stripe-completion.zsh
