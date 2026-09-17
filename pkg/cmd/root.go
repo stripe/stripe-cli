@@ -60,7 +60,6 @@ var rootCmd = &cobra.Command{
 		"trigger":   "webhooks",
 		"listen":    "webhooks",
 		"logs":      "stripe",
-		"status":    "stripe",
 		"resources": "resources",
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
 			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
@@ -362,6 +361,7 @@ func init() {
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd())
 	rootCmd.AddCommand(newServeCmd())
+	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newSwitchCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)

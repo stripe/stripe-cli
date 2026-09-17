@@ -50,3 +50,7 @@ func newServeCmd() *cobra.Command {
 	cmd.Aliases = []string{"srv"}
 	return cmd
 }
+
+func newStatusCmd() *cobra.Command {
+	return newDeprecatedCommand("status", "stripe status")
+}
