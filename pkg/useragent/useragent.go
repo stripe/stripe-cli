@@ -90,6 +90,9 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("GEMINI_CLI") != "" {
 		return "gemini_cli"
 	}
+	if getEnv("GROK_AGENT") != "" {
+		return "grok"
+	}
 	if getEnv("OPENCODE") != "" {
 		return "open_code"
 	}
@@ -130,8 +133,9 @@ func DetectAIAgent(getEnv func(string) string) string {
 // from a vendor's source, which matters because mapping one otherwise costs a code
 // change, a release, and users upgrading before it is even visible.
 //
-// One host is inferred rather than reported: Codex names every surface except the terminal,
-// so a detected Codex agent with no host is a terminal one. See the empty-host branch below.
+// Two hosts are inferred rather than reported: Codex names every surface except the
+// terminal, and Grok Build has no other surface at all today, so a detected agent of
+// either with no host is a terminal one. See the empty-host branch below.
 func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
 	if host == "" {
@@ -155,6 +159,15 @@ func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 		// Claude Code needs no equivalent because it names its terminal case "cli".
 		if DetectAIAgent(getEnv) == "codex_cli" {
 			return "terminal", "codex-cli"
+		}
+
+		// Grok Build's only documented surface is its terminal TUI (plus the
+		// xai-grok-shell integration, which runs inside it) -- no separate IDE
+		// extension, desktop app, SDK, or MCP server is described, and no host
+		// variable showed up alongside GROK_AGENT/GROK_SESSION_ID when checked
+		// against a real session. Revisit if Grok Build ever ships another surface.
+		if DetectAIAgent(getEnv) == "grok" {
+			return "terminal", "grok-cli"
 		}
 
 		return "", ""
