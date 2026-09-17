@@ -1001,199 +1001,91 @@ func TestSandboxListCmd_Surface(t *testing.T) {
 	}
 }
 
+type fakeSandboxDeleteClient struct {
+	deleted sandbox.DeletedSandbox
+	err     error
+	calls   []string
+}
+
+func (f *fakeSandboxDeleteClient) Delete(_ context.Context, accountID string) (sandbox.DeletedSandbox, error) {
+	f.calls = append(f.calls, accountID)
+	return f.deleted, f.err
+}
+
 func TestSandboxDeleteCmd_Success(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
+	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target", Name: "Target sandbox"}}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetArgs([]string{"--api-base=http://example.test", "--stripe-account=  acct_target  "})
 
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
 
-	// The sandbox to delete is identified by its acct_. The command resolves that
-	// acct_ to its testmode workspace (wksp_) via the live parent's sandbox list,
-	// then POSTs the close. Server serves user_accessible, user_accessible_sandboxes,
-	// and the close.
-	var closedPath string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
-			assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_live", "name": "Live", "merchant_id": "acct_live"},
-				},
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
-			if r.URL.RawQuery != "live_compartment_parent_id=wksp_live" {
-				t.Errorf("expected live_compartment_parent_id=wksp_live, got %s", r.URL.RawQuery)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces": []map[string]interface{}{
-					{"id": "wksp_test_a", "name": "sbxA", "merchant_id": "acct_a", "replica_of": "wksp_live"},
-					{"id": "wksp_test_b", "name": "sbxB", "merchant_id": "acct_b", "replica_of": "wksp_live"},
-				},
-			})
-		case r.Method == http.MethodPost && r.URL.Path == "/v2/workspaces/undocumented/testmode/wksp_test_a/close":
-			assert.Equal(t, "STRIPE-V2-SIG keyinfo_live_faketoken", r.Header.Get("Authorization"))
-			closedPath = r.URL.Path
-			json.NewEncoder(w).Encode(map[string]interface{}{"id": "wksp_test_a"})
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	output, err := executeCommand(
-		rootCmd,
-		"sandbox", "delete",
-		"--api-base="+server.URL,
-		"--stripe-account=acct_a",
-	)
-
-	require.NoError(t, err)
-	// Only the targeted sandbox's testmode workspace was closed.
-	assert.Equal(t, "/v2/workspaces/undocumented/testmode/wksp_test_a/close", closedPath)
-	assert.Contains(t, output, "Deleted")
-	assert.Contains(t, output, "acct_a")
-	assert.Contains(t, output, "sbxA")
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Equal(t, "Deleted sandbox \"Target sandbox\" (acct_target)\n", stdout.String())
+	require.Empty(t, stderr.String())
+	require.NotContains(t, stdout.String(), "wksp_")
 }
 
-func TestSandboxDeleteCmd_IgnoresNonTestWorkspace(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
+func TestSandboxDeleteCmd_ClientError(t *testing.T) {
+	client := &fakeSandboxDeleteClient{err: fmt.Errorf("safe delete failure")}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetArgs([]string{"--stripe-account=acct_target"})
 
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+	command.cmd.SilenceUsage = true
+	command.cmd.SilenceErrors = true
 
-	var closeRequested bool
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_live", "name": "Live", "merchant_id": "acct_live"},
-				},
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces": []map[string]interface{}{
-					{"id": "wksp_live_child", "name": "notTestmode", "merchant_id": "acct_a", "replica_of": "wksp_live"},
-				},
-			})
-		case r.Method == http.MethodPost:
-			closeRequested = true
-			w.WriteHeader(http.StatusOK)
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	_, err = executeCommand(
-		rootCmd,
-		"sandbox", "delete",
-		"--api-base="+server.URL,
-		"--stripe-account=acct_a",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no sandbox found")
-	assert.False(t, closeRequested)
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "safe delete failure")
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
 }
 
-func TestSandboxDeleteCmd_NotFound(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
+func TestSandboxDeleteCmd_RejectsInvalidInputBeforeCallingClient(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "missing account"},
+		{name: "empty account", args: []string{"--stripe-account="}},
+		{name: "organization", args: []string{"--stripe-account=org_123"}},
+		{name: "wrong prefix", args: []string{"--stripe-account=not_an_account"}},
+		{name: "missing account suffix", args: []string{"--stripe-account=acct_"}},
+	}
 
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := &fakeSandboxDeleteClient{}
+			command := newSandboxDeleteCmd()
+			command.client = client
+			command.cmd.SetArgs(test.args)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"standalone_workspaces": []map[string]interface{}{
-					{"id": "wksp_live", "name": "Live", "merchant_id": "acct_live"},
-				},
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v2/compartments/user_accessible_sandboxes":
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"workspaces": []map[string]interface{}{
-					{"id": "wksp_test_other", "name": "sbxOther", "merchant_id": "acct_other", "replica_of": "wksp_live"},
-				},
-			})
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	_, err = executeCommand(
-		rootCmd,
-		"sandbox", "delete",
-		"--api-base="+server.URL,
-		"--stripe-account=acct_missing",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no sandbox found")
+			require.Error(t, command.cmd.Execute())
+			require.Empty(t, client.calls)
+		})
+	}
 }
 
-func TestSandboxDeleteCmd_RejectsOrg(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
+func TestSandboxDeleteCmd_Surface(t *testing.T) {
+	command := newSandboxDeleteCmd()
+	require.True(t, command.cmd.Hidden)
+	require.NotNil(t, command.cmd.Flags().Lookup("stripe-account"))
+	require.NotNil(t, command.cmd.Flags().Lookup("api-base"))
+	require.Nil(t, command.cmd.Flags().Lookup("stripe-version"))
 
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
-
-	// Rejected client-side before any network call.
-	_, err = executeCommand(
-		rootCmd,
-		"sandbox", "delete",
-		"--stripe-account=org_123",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not an organization")
-}
-
-func TestSandboxDeleteCmd_RequiresAccount(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	err := config.KeyRing.Set(config.UATKeychainItemKey, []byte("keyinfo_live_faketoken"), "test uat")
-	require.NoError(t, err)
-
-	// Explicit empty value (Changed=true satisfies cobra's required-flag check, so the
-	// command's own emptiness guard is what fires here).
-	_, err = executeCommand(
-		rootCmd,
-		"sandbox", "delete",
-		"--stripe-account=",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "required")
-}
-
-func TestSandboxDeleteCmd_NoUAT(t *testing.T) {
-	cleanup := setupSandboxTestConfig(t)
-	defer cleanup()
-
-	// No UAT seeded — keyring is empty.
-	_, err := executeCommand(
-		rootCmd,
-		"sandbox", "delete",
-		"--stripe-account=acct_a",
-	)
-
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "stripe login")
+	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target"}}
+	command.client = client
+	command.cmd.SetArgs([]string{"--stripe-account=acct_target"})
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Equal(t, "Deleted sandbox acct_target\n", stdout.String())
 }
