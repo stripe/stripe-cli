@@ -32,6 +32,7 @@ var agentClientID = map[string]string{
 	"claude_code": agentsetup.ClientClaudeCode,
 	"codex_cli":   agentsetup.ClientCodex,
 	"cursor":      agentsetup.ClientCursor,
+	"grok":        agentsetup.ClientGrok,
 }
 
 // providerOrder is the canonical display order for known clients. Providers not
@@ -40,6 +41,7 @@ var providerOrder = []string{
 	agentsetup.ClientClaudeCode,
 	agentsetup.ClientCodex,
 	agentsetup.ClientCursor,
+	agentsetup.ClientGrok,
 }
 
 type agentCmd struct {
@@ -858,6 +860,7 @@ Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
+  • Grok Build    https://x.ai/build
 
 You can still install Stripe skills.
 `)
@@ -870,6 +873,7 @@ Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
+  • Grok Build    https://x.ai/build
 
 Once a client is installed, re-run: stripe agent setup
 `)
