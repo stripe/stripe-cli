@@ -39,6 +39,12 @@ type CreatedSandbox struct {
 	AccountID string
 }
 
+// DeletedSandbox is the public result returned after deletion is confirmed.
+type DeletedSandbox struct {
+	AccountID string
+	Name      string
+}
+
 // SandboxAccessLevel describes the sandbox's default team access setting.
 type SandboxAccessLevel int
 
@@ -207,6 +213,76 @@ func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox
 	}
 
 	return normalizeAccessibleSandboxes(parsed)
+}
+
+// Delete closes a sandbox beneath the active live OAuth account.
+func (c *ManagementClient) Delete(ctx context.Context, accountID string) (DeletedSandbox, error) {
+	accountID = strings.TrimSpace(accountID)
+	if !validAccountID(accountID) {
+		return DeletedSandbox{}, errorcategory.New(errorcategory.UserInput, "sandbox account must be an account id (acct_...)")
+	}
+
+	sandboxes, err := c.ListAccessible(ctx)
+	if err != nil {
+		return DeletedSandbox{}, err
+	}
+
+	matches := make([]ManagedSandbox, 0, 1)
+	for _, managedSandbox := range sandboxes {
+		if managedSandbox.AccountID == accountID {
+			matches = append(matches, managedSandbox)
+		}
+	}
+	if len(matches) == 0 {
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "no sandbox found under the active live account; run `stripe sandbox list` to see available sandboxes")
+	}
+	if len(matches) > 1 {
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not identify a unique target; run `stripe sandbox list` before retrying")
+	}
+
+	creds, err := c.resolveCredentials()
+	if err != nil {
+		return DeletedSandbox{}, err
+	}
+
+	managedSandbox := matches[0]
+	path := "/v2/workspaces/undocumented/testmode/" + url.PathEscape(managedSandbox.WorkspaceID) + "/close"
+	base := &requests.Base{
+		Profile:        c.Profile,
+		Method:         http.MethodPost,
+		SuppressOutput: true,
+		APIBaseURL:     c.APIBaseURL,
+		Livemode:       true,
+	}
+	response, err := base.MakeRequest(
+		ctx,
+		creds,
+		path,
+		&requests.RequestParameters{},
+		map[string]interface{}{},
+		true,
+		func(request *http.Request) error {
+			// Livemode: true keeps credential resolution and refresh anchored to the
+			// active live account, while the close itself targets the sandbox directly
+			// in test mode. This callback is reapplied after a reactive refresh.
+			request.Header.Del("Stripe-Account")
+			request.Header.Set("Stripe-Context", managedSandbox.AccountID)
+			request.Header.Set("Stripe-Livemode", "false")
+			return nil
+		},
+	)
+	if err != nil {
+		return DeletedSandbox{}, safeDeleteError(err)
+	}
+
+	var parsed struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(response, &parsed); err != nil || parsed.ID != managedSandbox.WorkspaceID {
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not be confirmed; run `stripe sandbox list` before retrying")
+	}
+
+	return DeletedSandbox{AccountID: managedSandbox.AccountID, Name: managedSandbox.Name}, nil
 }
 
 func (c *ManagementClient) resolveCredentials() (stripe.Credentials, error) {
@@ -381,6 +457,24 @@ func safeCreateError(err error) error {
 		category = errorcategory.Network
 	}
 	return errorcategory.New(category, "sandbox creation could not be confirmed; check Dashboard before retrying")
+}
+
+func safeDeleteError(err error) error {
+	if _, ok := requestStatusCode(err); ok {
+		return safeDependencyError("could not delete sandbox", err)
+	}
+
+	category := errorcategory.API
+	var urlErr *url.Error
+	var netErr net.Error
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+		errors.As(err, &urlErr) || errors.As(err, &netErr) {
+		category = errorcategory.Network
+	}
+
+	// A close request can reach the API before a transport or timeout failure. Ask
+	// the user to list before retrying so an unknown outcome is not repeated blindly.
+	return errorcategory.New(category, "sandbox deletion outcome is unknown; run `stripe sandbox list` before retrying")
 }
 
 func safeDependencyError(operation string, err error) error {
