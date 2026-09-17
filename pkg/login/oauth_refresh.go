@@ -22,6 +22,17 @@ func init() {
 // and updates p in-place. On invalid_grant it clears all OAuth credentials so
 // the next ResolveCredentials call surfaces an actionable re-login error.
 func refreshOAuthToken(p *config.Profile) error {
+	ctx, cancel := context.WithTimeout(context.Background(), handoffOperationTimeout)
+	defer cancel()
+	unlock, err := lockOAuthHandoff(ctx)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return refreshOAuthTokenLocked(ctx, p)
+}
+
+func refreshOAuthTokenLocked(ctx context.Context, p *config.Profile) error {
 	if config.KeyRing == nil {
 		return errorcategory.New(errorcategory.Auth, "keyring unavailable; run 'stripe login' to re-authenticate")
 	}
@@ -29,9 +40,9 @@ func refreshOAuthToken(p *config.Profile) error {
 	refreshTokenBytes, err := config.KeyRing.Get(config.OAuthRefreshTokenKeychainKey)
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
-			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
+			return &oauthLoginRequiredError{}
 		}
-		return err
+		return errorcategory.With(err, errorcategory.Filesystem)
 	}
 
 	accessBaseURL := p.OAuthAccessBaseURL
@@ -40,15 +51,17 @@ func refreshOAuthToken(p *config.Profile) error {
 	}
 	clientID := clientIDForAccessBaseURL(accessBaseURL)
 
-	tokenResp, err := doRefreshToken(context.Background(), accessBaseURL, clientID, string(refreshTokenBytes))
+	tokenResp, err := doRefreshToken(ctx, accessBaseURL, clientID, string(refreshTokenBytes))
 	if err != nil {
 		var oauthErr *OAuthError
 		if errors.As(err, &oauthErr) && oauthErr.Code == "invalid_grant" {
 			// Token is invalid or consumed; clear credentials so the user gets a
 			// clear "run stripe login" error on the next attempt rather than an
 			// opaque 401 from the Stripe API.
-			_ = clearOAuthCredentialsForProfile(p)
-			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
+			if err := clearOAuthCredentialsForProfile(p); err != nil {
+				return errorcategory.With(err, errorcategory.Filesystem)
+			}
+			return &oauthLoginRequiredError{}
 		}
 		return fmt.Errorf("failed to refresh session: %w", err)
 	}
@@ -56,24 +69,26 @@ func refreshOAuthToken(p *config.Profile) error {
 	p.UAT = tokenResp.AccessToken
 	preserveProfileMetadata(p)
 	if err := p.CreateProfile(); err != nil {
-		return err
+		return errorcategory.With(err, errorcategory.Filesystem)
 	}
 
 	if tokenResp.RefreshToken != "" {
 		if err := config.KeyRing.Set(config.OAuthRefreshTokenKeychainKey, []byte(tokenResp.RefreshToken), "Stripe CLI refresh token"); err != nil {
-			return err
+			return errorcategory.With(err, errorcategory.Filesystem)
 		}
 	} else {
 		// Per spec: no refresh token in response means the submitted token was
 		// consumed and no replacement was issued. Remove it so the next expiry
 		// triggers a re-login rather than another invalid_grant attempt.
-		_ = config.KeyRing.Remove(config.OAuthRefreshTokenKeychainKey)
+		if err := config.KeyRing.Remove(config.OAuthRefreshTokenKeychainKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+			return errorcategory.With(err, errorcategory.Filesystem)
+		}
 	}
 
 	if tokenResp.ExpiresIn > 0 {
 		expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
 		if err := config.SaveUATExpiresAt(expiresAt); err != nil {
-			return err
+			return errorcategory.With(err, errorcategory.Filesystem)
 		}
 	}
 

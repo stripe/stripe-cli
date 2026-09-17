@@ -1,4 +1,6 @@
 syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
 package proto;
 
 option go_package = "github.com/stripe/stripe-cli/plugins/proto";
@@ -92,6 +94,78 @@ service CoreCLIHelper {
   // then runs the normal login flow, printing the same output and opening
   // the browser only after the user presses enter.
   rpc Login(LoginRequest) returns (LoginResponse);
+  // OAuth-only resolution: never selects API keys or initiates browser login.
+  rpc ResolveOAuthCredentials(ResolveOAuthCredentialsRequest) returns (ResolveOAuthCredentialsResponse);
+  // Begin or re-present the same durable OAuth handoff without waiting for a
+  // human, revoking credentials, or accepting plugin-supplied endpoints.
+  rpc BeginOrResumeLogin(BeginOrResumeLoginRequest) returns (LoginHandoffResponse);
+  // Check an existing handoff once and durably install credentials on completion.
+  // Request cancellation never discards the pending authorization.
+  rpc CheckLogin(CheckLoginRequest) returns (LoginHandoffResponse);
+}
+
+message ResolveOAuthCredentialsRequest {
+  bool livemode = 1;
+  // Empty only for initial resolution; subsequent reads bind to this context.
+  string expected_context = 2;
+  // False is read-only, including when stored credentials need renewal.
+  bool allow_refresh = 3;
+}
+
+enum OAuthResolutionState {
+  OAUTH_RESOLUTION_STATE_UNSPECIFIED = 0;
+  OAUTH_RESOLUTION_STATE_RESOLVED = 1;
+  OAUTH_RESOLUTION_STATE_LOGIN_REQUIRED = 2;
+  OAUTH_RESOLUTION_STATE_COMPLETION_REQUIRED = 3;
+  OAUTH_RESOLUTION_STATE_CONTEXT_REQUIRED = 4;
+  OAUTH_RESOLUTION_STATE_MODE_MISMATCH = 5;
+  OAUTH_RESOLUTION_STATE_CONTEXT_CHANGED = 6;
+  OAUTH_RESOLUTION_STATE_STORAGE_ERROR = 7;
+  OAUTH_RESOLUTION_STATE_REFRESH_ERROR = 8;
+  OAUTH_RESOLUTION_STATE_REFRESH_REQUIRED = 9;
+}
+
+message ResolveOAuthCredentialsResponse {
+  OAuthResolutionState state = 1;
+  // Credential fields exist only for RESOLVED. Never print or log this response.
+  string token = 2;
+  string stripe_context = 3;
+  bool livemode = 4;
+}
+
+message BeginOrResumeLoginRequest {}
+
+message CheckLoginRequest {
+  // An opaque local reference returned by BeginOrResumeLogin, not a device code.
+  string handoff_id = 1;
+}
+
+enum LoginHandoffState {
+  LOGIN_HANDOFF_STATE_UNSPECIFIED = 0;
+  LOGIN_HANDOFF_STATE_PENDING = 1;
+  LOGIN_HANDOFF_STATE_COMPLETING = 2;
+  LOGIN_HANDOFF_STATE_AUTHENTICATED = 3;
+  // Resolve OAuth through the normal resolver. This does not assert that a
+  // stored token has been verified or that the selected context is supported.
+  LOGIN_HANDOFF_STATE_SESSION_PRESENT = 4;
+  LOGIN_HANDOFF_STATE_EXPIRED = 5;
+  LOGIN_HANDOFF_STATE_DENIED = 6;
+  LOGIN_HANDOFF_STATE_SUPERSEDED = 7;
+  LOGIN_HANDOFF_STATE_RECOVERY_REQUIRED = 8;
+}
+
+message LoginHandoffResponse {
+  LoginHandoffState state = 1;
+  string handoff_id = 2;
+  // Display fields appear only while user action is pending. Do not log them.
+  string browser_url = 3;
+  string verification_code = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  int32 check_after_seconds = 6;
+  bool reused = 7;
+  // Populated only after durable credential and account-context installation.
+  string account_id = 8;
+  bool livemode = 9;
 }
 
 message EchoRequest {

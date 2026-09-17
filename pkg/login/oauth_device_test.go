@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -259,10 +260,16 @@ func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	target, err := url.Parse(ts.URL)
+	require.NoError(t, err)
+	originalClient := accessSrvHTTPClient
+	accessSrvHTTPClient = &http.Client{Transport: handoffTestTransport{target: target, transport: ts.Client().Transport}}
+	t.Cleanup(func() { accessSrvHTTPClient = originalClient })
 
-	err := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
+	err = LoginWithDeviceCode(context.Background(), DefaultAccessBaseURL, cfg)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to fetch account info")
+	assert.Contains(t, err.Error(), "account_lookup_failed_resume_same_handoff")
 }
 
 func TestRefreshAccessToken_NoRefreshTokenInResponse(t *testing.T) {
