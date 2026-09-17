@@ -72,6 +72,7 @@ func ApplyIfPending() {
 
 	ClearMarker()
 	fmt.Fprintf(os.Stderr, "Updated successfully ✓\n")
+	fmt.Fprintf(os.Stderr, "Run 'stripe version --notes' to see what's new.\n")
 	sendTelemetryEvent("Auto-Update Succeeded", fmt.Sprintf("from=%s to=%s", current, target))
 
 	reexec(exe)

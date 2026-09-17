@@ -42,9 +42,36 @@ func needsToUpgrade(version, latest string) bool {
 	return latest != "" && (strings.TrimPrefix(latest, "v") != strings.TrimPrefix(version, "v"))
 }
 
+// newGithubClient is overridden in tests to point at a fake server instead of
+// the real GitHub API.
+var newGithubClient = func() *github.Client {
+	return github.NewClient(nil)
+}
+
+// GetReleaseNotesFn fetches the GitHub release notes for the given version
+// (with or without a leading "v"). Exposed as a var so callers outside this
+// package can stub it out in tests.
+var GetReleaseNotesFn = func(ver string) (string, error) {
+	release, _, err := newGithubClient().Repositories.GetReleaseByTag(context.Background(), "stripe", "stripe-cli", releaseTag(ver))
+	if err != nil {
+		return "", err
+	}
+
+	return release.GetBody(), nil
+}
+
+// releaseTag normalizes a version string into the "vX.Y.Z" tag GitHub releases
+// are published under.
+func releaseTag(ver string) string {
+	if strings.HasPrefix(ver, "v") {
+		return ver
+	}
+
+	return "v" + ver
+}
+
 func getLatestVersion() string {
-	client := github.NewClient(nil)
-	rep, _, err := client.Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
+	rep, _, err := newGithubClient().Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
 
 	l := log.StandardLogger()
 
