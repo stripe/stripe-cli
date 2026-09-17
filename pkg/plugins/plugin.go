@@ -443,6 +443,18 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
+	// Last, and deliberately not part of the rollback above. The stamp only rations how
+	// often the CLI asks about upgrades, so an uninstall that has already removed the
+	// binary and the metadata has succeeded whether or not this cache goes with it --
+	// and putting a whole uninstall back because a timestamp would not delete would be
+	// far worse than leaving the timestamp.
+	if err := removeAutoUpgradeCheckStamp(config, fs, p.Shortname); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Uninstall",
+			"plugin": p.Shortname,
+		}).Debugf("could not remove the upgrade check stamp: %s", err)
+	}
+
 	return nil
 }
 
