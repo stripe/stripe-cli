@@ -830,6 +830,136 @@ func TestRunVersionOverrideBypassesLocalBuildDev(t *testing.T) {
 	require.NotContains(t, err.Error(), "is not installed")
 }
 
+// runAutoUpgradeResolution is what the upgrade lookup returns for appA, at a version
+// the test manifest deliberately does not have. Resolving to a version only the
+// returned plugin's own metadata knows about is what lets a test tell "Run ran the
+// upgraded plugin" apart from "Run ran the old plugin under a new version number":
+// only the former can find a checksum.
+func runAutoUpgradeResolution(version string) *ResolvedPluginVersion {
+	return &ResolvedPluginVersion{
+		Plugin: &Plugin{
+			Shortname:        "appA",
+			Binary:           "stripe-cli-app-a",
+			MagicCookieValue: "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291",
+			Releases: []Release{
+				{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: version, Sum: "3c909ec628b7d32536a65fd15545db527a7509e734995d4ef4806694fbd89c3a"},
+			},
+		},
+		Version:   version,
+		BinaryURL: "https://artifacts.example/appA/" + version,
+	}
+}
+
+// setUpRunAutoUpgrade puts appA on disk at the given version and returns everything
+// the Run wiring tests below need to call it.
+func setUpRunAutoUpgrade(t *testing.T, installedVersion string) (*autoUpgradeStubs, *TestConfig, afero.Fs) {
+	t.Helper()
+
+	stubs := stubAutoUpgrade(t)
+	stubs.resolved = runAutoUpgradeResolution("3.0.0")
+
+	fs := setUpFS()
+	cfg := &TestConfig{}
+	cfg.InitConfig()
+
+	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+
+	installDir := filepath.Join("/plugins/appA", installedVersion)
+	require.NoError(t, fs.MkdirAll(installDir, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(installDir, "stripe-cli-app-a"+GetBinaryExtension()), []byte("bin"), 0755))
+
+	return stubs, cfg, fs
+}
+
+func TestRunAutoUpgradesTheInstalledVersion(t *testing.T) {
+	stubs, cfg, fs := setUpRunAutoUpgrade(t, "1.0.1")
+
+	plugin, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
+	require.NoError(t, err)
+
+	runErr := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "", "", "", "")
+
+	require.Equal(t, []string{"appA"}, stubs.settingReads)
+	require.Len(t, stubs.resolveCalls, 1)
+	require.Equal(t, "appA", stubs.resolveCalls[0].pluginName)
+
+	// 1.0.1 is what was on disk, so it is what the upgrade had to be told is installed
+	// -- both to decide 3.0.0 is newer and to tell the plugin what to migrate from.
+	require.Equal(t, []autoUpgradeInstallCall{{
+		version:          "3.0.0",
+		apiBaseURL:       "https://api.stripe.com",
+		dashboardBaseURL: "https://dashboard.stripe.com",
+	}}, stubs.installCalls)
+	require.Equal(t, []autoUpgradePostInstallCall{{version: "3.0.0", previousVersion: "1.0.1"}}, stubs.postInstallCalls)
+
+	// Run gets no further than launching the binary, because the stubbed install never
+	// wrote one. Which version it got that far with is the point: appA's own metadata
+	// has no 3.0.0 release, so failing anywhere later than the checksum lookup means
+	// Run took both the version and the plugin metadata the upgrade handed back.
+	require.Error(t, runErr)
+	require.NotContains(t, runErr.Error(), "could not locate a valid checksum")
+}
+
+func TestRunSkipsAutoUpgradeForPinnedVersion(t *testing.T) {
+	stubs, cfg, fs := setUpRunAutoUpgrade(t, "1.0.1")
+
+	plugin, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
+	require.NoError(t, err)
+
+	require.Error(t, plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "1.0.1", "", "", ""))
+
+	// Someone who named a version wants that version. The setting is not even read:
+	// there is nothing for it to decide here.
+	require.Empty(t, stubs.settingReads)
+	require.Empty(t, stubs.resolveCalls)
+	require.Empty(t, stubs.installCalls)
+}
+
+func TestRunSkipsAutoUpgradeForLocalDevelopmentBuild(t *testing.T) {
+	stubs, cfg, fs := setUpRunAutoUpgrade(t, localDevelopmentVersion)
+
+	plugin, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
+	require.NoError(t, err)
+
+	// A localdev build of the CLI, which is what PluginsPath marks. stubAutoUpgrade
+	// cleared it, and restores it on cleanup.
+	PluginsPath = "/plugins"
+
+	require.Error(t, plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "", "", "", ""))
+
+	// Replacing a plugin developer's own build with a published release would throw
+	// away the thing they are working on. Two things stop that -- the switch branch
+	// this takes has no upgrade check, and maybeAutoUpgrade refuses on PluginsPath
+	// regardless -- so this asserts the outcome rather than either mechanism.
+	require.Empty(t, stubs.settingReads)
+	require.Empty(t, stubs.resolveCalls)
+	require.Empty(t, stubs.installCalls)
+}
+
+func TestRunPeerPluginSkipsAutoUpgrade(t *testing.T) {
+	stubs, cfg, fs := setUpRunAutoUpgrade(t, "1.0.1")
+
+	// RunPeerPlugin needs a real *config.Config to run anything at all, and setUpFS
+	// wrote appA's metadata under TestConfig's folder, which is somewhere else. Without
+	// this the peer lookup fails and every assertion below passes for the wrong reason.
+	plugin, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
+	require.NoError(t, err)
+	require.NoError(t, writeLocalPluginMetadata(&cfg.Config, fs, plugin))
+
+	helper := NewCoreCLIHelper(context.Background(), &cfg.Config, fs, "", "", "")
+
+	runErr := helper.RunPeerPlugin("appA", nil, "")
+	require.Error(t, runErr)
+	require.NotContains(t, runErr.Error(), "not found")
+
+	// The user ran the plugin that called this one, and is waiting on it. Interrupting
+	// its output to announce a download of something they never named, and stalling it
+	// on that download, is not what they asked for.
+	require.Empty(t, stubs.settingReads)
+	require.Empty(t, stubs.resolveCalls)
+	require.Empty(t, stubs.installCalls)
+}
+
 func TestPostInstallSelectsSpecifiedVersion(t *testing.T) {
 	fs := setUpFS()
 	cfg := &TestConfig{}

@@ -1165,8 +1165,23 @@ func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 
 // CheckLatestPluginVersion prints an upgrade hint to stderr if live metadata
 // has a newer version of the plugin than what is currently installed.
+//
+// It stays quiet for a plugin that auto-updates. The upgrade check already ran before
+// the command, so this would be a second lookup of the same thing on the same
+// invocation, and the user would wait out both timeouts to be advised of an upgrade
+// the CLI already made for them.
+//
+// What that gives up: when the pre-run check resolves a newer version from cached
+// metadata, it declines to upgrade, but this would still have named that version. Such
+// a run now says nothing. Keeping the hint for it would charge every auto-updating
+// command an extra request, and a check that keeps declining is better reported by the
+// check itself than inferred from a hint here.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
 	if PluginsPath != "" {
+		return
+	}
+
+	if pluginUpdatesEnabled(plugin.Shortname) {
 		return
 	}
 
