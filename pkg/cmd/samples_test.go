@@ -27,17 +27,17 @@ func TestDeprecatedCommands(t *testing.T) {
 		{
 			name:     "samples",
 			args:     []string{"samples", "create", "checkout", "--force", "--integration", "react"},
-			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 		{
 			name:     "serve",
 			args:     []string{"serve", ".", "--port", "8080"},
-			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 		{
 			name:     "serve alias",
 			args:     []string{"srv", "."},
-			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 	}
 
@@ -62,27 +62,27 @@ func TestDeprecatedCommandHelp(t *testing.T) {
 		{
 			name:     "samples",
 			args:     []string{"help", "samples"},
-			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 		{
 			name:     "samples help flag",
 			args:     []string{"samples", "--help"},
-			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 		{
 			name:     "samples help shorthand",
 			args:     []string{"samples", "-h"},
-			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe samples` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 		{
 			name:     "serve",
 			args:     []string{"help", "serve"},
-			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 		{
 			name:     "serve help flag",
 			args:     []string{"serve", "--help"},
-			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.\n",
+			expected: "The `stripe serve` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
 	}
 

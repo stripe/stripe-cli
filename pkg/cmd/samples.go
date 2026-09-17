@@ -8,14 +8,14 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-// errCommandRemoved is returned by the shims for commands removed in v1.60.0.
+// errCommandRemoved is returned by the shims for commands removed in v1.51.0.
 // root.go recognizes this sentinel to suppress duplicate error output and error
 // reporting while still exiting non-zero, so callers that scripted a removed
 // command see a failure rather than a silent no-op.
 var errCommandRemoved = errorcategory.New(errorcategory.UserInput, "command removed")
 
 func deprecatedCommandMessage(command string) string {
-	return fmt.Sprintf("The `%s` command is no longer available in Stripe CLI v1.60.0 and later. To use it, install a version earlier than v1.60.0.", command)
+	return fmt.Sprintf("The `%s` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.", command)
 }
 
 func newDeprecatedCommand(use, command string) *cobra.Command {
