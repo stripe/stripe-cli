@@ -222,8 +222,18 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string, sk
 			"prefix": "pluginTemplateCmd.runPluginCmd",
 		}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
 
-		// We can't return err because the plugin will have already printed the error message at
-		// this point, and we can't return nil because the host will exit with code 0.
+		// A plugin that started and then failed has already printed why, so printing
+		// it again would duplicate it. Anything else failed before the plugin was
+		// ever launched -- an install that failed, a plugin too old to read the
+		// config file, a handshake that never completed -- and nothing has printed
+		// it, so exiting silently here is the difference between an actionable
+		// message and a bare exit code 1.
+		if !plugins.PluginAlreadyReported(err) {
+			fmt.Fprintln(os.Stderr, err)
+		}
+
+		// We can't return err because it is either already printed or printed just
+		// above, and we can't return nil because the host would exit with code 0.
 		os.Exit(1)
 	}
 

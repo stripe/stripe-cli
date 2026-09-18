@@ -761,17 +761,17 @@ func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	case Dispatcher:
 		logger.Debug("negotiated net/rpc with plugin process")
 		if _, err = d.RunCommand(args); err != nil {
-			return err
+			return pluginReportedError{err}
 		}
 	case DispatcherGRPC:
 		logger.Debug("negotiated gRPC with plugin process")
 		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args); err != nil {
-			return err
+			return pluginReportedError{err}
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
 		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
-			return err
+			return pluginReportedError{err}
 		}
 	default:
 		return errorcategory.New(errorcategory.Internal, "dispensed an unknown plugin interface")
