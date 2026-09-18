@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
@@ -751,6 +753,121 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	// Require that we did not delete the initial version of the plugin
 	fileExists, _ = afero.Exists(fs, file)
 	require.True(t, fileExists, "Did not expect the original version of the plugin to be deleted.")
+}
+
+// captureLogOutput redirects the logger this package writes to -- the logrus standard one --
+// for the length of the test, at the level the CLI runs at by default.
+func captureLogOutput(t *testing.T) *bytes.Buffer {
+	t.Helper()
+
+	previousOut := log.StandardLogger().Out
+	previousLevel := log.GetLevel()
+	t.Cleanup(func() {
+		log.SetOutput(previousOut)
+		log.SetLevel(previousLevel)
+	})
+
+	var captured bytes.Buffer
+	log.SetOutput(&captured)
+	log.SetLevel(log.InfoLevel)
+
+	return &captured
+}
+
+func TestCleanUpPluginPathRemovesEveryOtherVersion(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	plugin := &Plugin{Shortname: "appA"}
+
+	// Three to remove rather than one. With one there is nothing after it, so a walk that
+	// gives up once it has removed a directory still looks like it worked --  which is the
+	// shape TestInstallCleansOtherVersionsOfPlugin has, and why it passed throughout.
+	keep := "2.0.1"
+	stale := []string{"0.0.1", "1.0.0", "1.1.0"}
+
+	for _, version := range append([]string{keep}, stale...) {
+		require.NoError(t, fs.MkdirAll(filepath.Join("/plugins/appA", version), 0755))
+		require.NoError(t, afero.WriteFile(fs, filepath.Join("/plugins/appA", version, "stripe-cli-app-a"), []byte("binary"), 0755))
+	}
+
+	require.NoError(t, plugin.cleanUpPluginPath(config, fs, keep))
+
+	for _, version := range stale {
+		exists, err := afero.DirExists(fs, filepath.Join("/plugins/appA", version))
+		require.NoError(t, err)
+		require.False(t, exists, "expected version %s to be removed", version)
+	}
+
+	kept, err := afero.Exists(fs, filepath.Join("/plugins/appA", keep, "stripe-cli-app-a"))
+	require.NoError(t, err)
+	require.True(t, kept, "expected version %s to be left alone", keep)
+}
+
+func TestCleanUpPluginPathReportsWhatItCouldNotRemove(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	plugin := &Plugin{Shortname: "appA"}
+
+	for _, version := range []string{"0.0.1", "1.0.0", "2.0.1"} {
+		require.NoError(t, fs.MkdirAll(filepath.Join("/plugins/appA", version), 0755))
+	}
+
+	// What Windows does when a process is holding the old binary.
+	locked := errors.New("locked by another process")
+	failingFS := &failRemoveAllFs{Fs: fs, path: "/plugins/appA/0.0.1", err: locked}
+
+	cleanUpErr := plugin.cleanUpPluginPath(config, failingFS, "2.0.1")
+	require.ErrorIs(t, cleanUpErr, locked)
+	require.Contains(t, cleanUpErr.Error(), "/plugins/appA/0.0.1")
+
+	stillThere, err := afero.DirExists(fs, "/plugins/appA/0.0.1")
+	require.NoError(t, err)
+	require.True(t, stillThere)
+
+	// The version that would not go does not get to keep the rest company.
+	removed, err := afero.DirExists(fs, "/plugins/appA/1.0.0")
+	require.NoError(t, err)
+	require.False(t, removed)
+
+	kept, err := afero.DirExists(fs, "/plugins/appA/2.0.1")
+	require.NoError(t, err)
+	require.True(t, kept)
+}
+
+func TestInstallWarnsButSucceedsWhenAnOlderVersionCannotBeRemoved(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer testServers.CloseAll()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	require.NoError(t, plugin.Install(context.Background(), config, fs, "0.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL))
+
+	locked := errors.New("locked by another process")
+	failingFS := &failRemoveAllFs{Fs: fs, path: "/plugins/appA/0.0.1", err: locked}
+
+	logged := captureLogOutput(t)
+
+	// Not an error: everything the install was asked for has happened by the time cleanup
+	// runs, so this reports the install that worked rather than the deletion that did not.
+	require.NoError(t, plugin.Install(context.Background(), config, failingFS, "2.0.1", testServers.StripeServer.URL, testServers.StripeServer.URL))
+
+	newFile := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	installed, err := afero.Exists(fs, newFile)
+	require.NoError(t, err)
+	require.True(t, installed)
+	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+
+	leftover, err := afero.DirExists(fs, "/plugins/appA/0.0.1")
+	require.NoError(t, err)
+	require.True(t, leftover)
+
+	// Said out loud, at the level the CLI runs at without being asked. This used to be the
+	// same output as a clean upgrade.
+	require.Contains(t, logged.String(), "could not remove every older version")
+	require.Contains(t, logged.String(), "/plugins/appA/0.0.1")
 }
 
 func TestRunVersionOverrideNotInstalled(t *testing.T) {
