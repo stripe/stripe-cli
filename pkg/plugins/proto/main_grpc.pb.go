@@ -216,6 +216,9 @@ const (
 	CoreCLIHelper_ResolveCredentialsForAnyMode_FullMethodName = "/proto.CoreCLIHelper/ResolveCredentialsForAnyMode"
 	CoreCLIHelper_SwitchContext_FullMethodName                = "/proto.CoreCLIHelper/SwitchContext"
 	CoreCLIHelper_Login_FullMethodName                        = "/proto.CoreCLIHelper/Login"
+	CoreCLIHelper_OAuthInitiateLogin_FullMethodName           = "/proto.CoreCLIHelper/OAuthInitiateLogin"
+	CoreCLIHelper_OAuthFindPendingLogin_FullMethodName        = "/proto.CoreCLIHelper/OAuthFindPendingLogin"
+	CoreCLIHelper_OAuthCheckLoginStatus_FullMethodName        = "/proto.CoreCLIHelper/OAuthCheckLoginStatus"
 )
 
 // CoreCLIHelperClient is the client API for CoreCLIHelper service.
@@ -246,6 +249,32 @@ type CoreCLIHelperClient interface {
 	// then runs the normal login flow, printing the same output and opening
 	// the browser only after the user presses enter.
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	// The OAuth-prefixed RPCs below (OAuthInitiateLogin, OAuthFindPendingLogin,
+	// OAuthCheckLoginStatus) are low-level building blocks for a non-interactive,
+	// resumable login flow. Prefer Login unless you specifically need
+	// non-blocking, resumable behavior (e.g. driving your own retry loop).
+	// OAuthInitiateLogin starts (or resumes) a non-interactive OAuth
+	// device-code login: it returns immediately with a browser URL and
+	// verification code for the plugin to present, instead of blocking until
+	// the user completes it like Login does. Calling it again before the
+	// previous attempt completes or expires returns the same browser URL and
+	// verification code rather than minting a new device code, so a plugin (or
+	// an agent driving it) can safely retry without orphaning an in-flight
+	// login - unlike `stripe login --non-interactive`, which always mints a
+	// fresh device code. Call OAuthCheckLoginStatus to check whether the user
+	// has completed it.
+	OAuthInitiateLogin(ctx context.Context, in *OAuthInitiateLoginRequest, opts ...grpc.CallOption) (*OAuthInitiateLoginResponse, error)
+	// OAuthFindPendingLogin looks for an OAuth device-code login already in
+	// progress - started by this call chain, another plugin, or
+	// `stripe login --non-interactive` - without starting a new one. Useful
+	// for a non-interactive caller to check whether it should resume an
+	// existing attempt instead of calling OAuthInitiateLogin.
+	OAuthFindPendingLogin(ctx context.Context, in *OAuthFindPendingLoginRequest, opts ...grpc.CallOption) (*OAuthFindPendingLoginResponse, error)
+	// OAuthCheckLoginStatus makes a single, non-blocking check on whether the
+	// login started by OAuthInitiateLogin has completed. It does not wait for
+	// the user; call it again later (e.g. on your own poll loop) to keep
+	// checking.
+	OAuthCheckLoginStatus(ctx context.Context, in *OAuthCheckLoginStatusRequest, opts ...grpc.CallOption) (*OAuthCheckLoginStatusResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -367,6 +396,36 @@ func (c *coreCLIHelperClient) Login(ctx context.Context, in *LoginRequest, opts 
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) OAuthInitiateLogin(ctx context.Context, in *OAuthInitiateLoginRequest, opts ...grpc.CallOption) (*OAuthInitiateLoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthInitiateLoginResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_OAuthInitiateLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) OAuthFindPendingLogin(ctx context.Context, in *OAuthFindPendingLoginRequest, opts ...grpc.CallOption) (*OAuthFindPendingLoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthFindPendingLoginResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_OAuthFindPendingLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) OAuthCheckLoginStatus(ctx context.Context, in *OAuthCheckLoginStatusRequest, opts ...grpc.CallOption) (*OAuthCheckLoginStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OAuthCheckLoginStatusResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_OAuthCheckLoginStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
@@ -395,6 +454,32 @@ type CoreCLIHelperServer interface {
 	// then runs the normal login flow, printing the same output and opening
 	// the browser only after the user presses enter.
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	// The OAuth-prefixed RPCs below (OAuthInitiateLogin, OAuthFindPendingLogin,
+	// OAuthCheckLoginStatus) are low-level building blocks for a non-interactive,
+	// resumable login flow. Prefer Login unless you specifically need
+	// non-blocking, resumable behavior (e.g. driving your own retry loop).
+	// OAuthInitiateLogin starts (or resumes) a non-interactive OAuth
+	// device-code login: it returns immediately with a browser URL and
+	// verification code for the plugin to present, instead of blocking until
+	// the user completes it like Login does. Calling it again before the
+	// previous attempt completes or expires returns the same browser URL and
+	// verification code rather than minting a new device code, so a plugin (or
+	// an agent driving it) can safely retry without orphaning an in-flight
+	// login - unlike `stripe login --non-interactive`, which always mints a
+	// fresh device code. Call OAuthCheckLoginStatus to check whether the user
+	// has completed it.
+	OAuthInitiateLogin(context.Context, *OAuthInitiateLoginRequest) (*OAuthInitiateLoginResponse, error)
+	// OAuthFindPendingLogin looks for an OAuth device-code login already in
+	// progress - started by this call chain, another plugin, or
+	// `stripe login --non-interactive` - without starting a new one. Useful
+	// for a non-interactive caller to check whether it should resume an
+	// existing attempt instead of calling OAuthInitiateLogin.
+	OAuthFindPendingLogin(context.Context, *OAuthFindPendingLoginRequest) (*OAuthFindPendingLoginResponse, error)
+	// OAuthCheckLoginStatus makes a single, non-blocking check on whether the
+	// login started by OAuthInitiateLogin has completed. It does not wait for
+	// the user; call it again later (e.g. on your own poll loop) to keep
+	// checking.
+	OAuthCheckLoginStatus(context.Context, *OAuthCheckLoginStatusRequest) (*OAuthCheckLoginStatusResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -437,6 +522,15 @@ func (UnimplementedCoreCLIHelperServer) SwitchContext(context.Context, *SwitchCo
 }
 func (UnimplementedCoreCLIHelperServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) OAuthInitiateLogin(context.Context, *OAuthInitiateLoginRequest) (*OAuthInitiateLoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method OAuthInitiateLogin not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) OAuthFindPendingLogin(context.Context, *OAuthFindPendingLoginRequest) (*OAuthFindPendingLoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method OAuthFindPendingLogin not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) OAuthCheckLoginStatus(context.Context, *OAuthCheckLoginStatusRequest) (*OAuthCheckLoginStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method OAuthCheckLoginStatus not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -657,6 +751,60 @@ func _CoreCLIHelper_Login_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_OAuthInitiateLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OAuthInitiateLoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).OAuthInitiateLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_OAuthInitiateLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).OAuthInitiateLogin(ctx, req.(*OAuthInitiateLoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_OAuthFindPendingLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OAuthFindPendingLoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).OAuthFindPendingLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_OAuthFindPendingLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).OAuthFindPendingLogin(ctx, req.(*OAuthFindPendingLoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_OAuthCheckLoginStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OAuthCheckLoginStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).OAuthCheckLoginStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_OAuthCheckLoginStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).OAuthCheckLoginStatus(ctx, req.(*OAuthCheckLoginStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -707,6 +855,18 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _CoreCLIHelper_Login_Handler,
+		},
+		{
+			MethodName: "OAuthInitiateLogin",
+			Handler:    _CoreCLIHelper_OAuthInitiateLogin_Handler,
+		},
+		{
+			MethodName: "OAuthFindPendingLogin",
+			Handler:    _CoreCLIHelper_OAuthFindPendingLogin_Handler,
+		},
+		{
+			MethodName: "OAuthCheckLoginStatus",
+			Handler:    _CoreCLIHelper_OAuthCheckLoginStatus_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

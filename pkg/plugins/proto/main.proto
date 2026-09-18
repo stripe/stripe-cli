@@ -92,6 +92,32 @@ service CoreCLIHelper {
   // then runs the normal login flow, printing the same output and opening
   // the browser only after the user presses enter.
   rpc Login(LoginRequest) returns (LoginResponse);
+  // The OAuth-prefixed RPCs below (OAuthInitiateLogin, OAuthFindPendingLogin,
+  // OAuthCheckLoginStatus) are low-level building blocks for a non-interactive,
+  // resumable login flow. Prefer Login unless you specifically need
+  // non-blocking, resumable behavior (e.g. driving your own retry loop).
+  // OAuthInitiateLogin starts (or resumes) a non-interactive OAuth
+  // device-code login: it returns immediately with a browser URL and
+  // verification code for the plugin to present, instead of blocking until
+  // the user completes it like Login does. Calling it again before the
+  // previous attempt completes or expires returns the same browser URL and
+  // verification code rather than minting a new device code, so a plugin (or
+  // an agent driving it) can safely retry without orphaning an in-flight
+  // login - unlike `stripe login --non-interactive`, which always mints a
+  // fresh device code. Call OAuthCheckLoginStatus to check whether the user
+  // has completed it.
+  rpc OAuthInitiateLogin(OAuthInitiateLoginRequest) returns (OAuthInitiateLoginResponse);
+  // OAuthFindPendingLogin looks for an OAuth device-code login already in
+  // progress - started by this call chain, another plugin, or
+  // `stripe login --non-interactive` - without starting a new one. Useful
+  // for a non-interactive caller to check whether it should resume an
+  // existing attempt instead of calling OAuthInitiateLogin.
+  rpc OAuthFindPendingLogin(OAuthFindPendingLoginRequest) returns (OAuthFindPendingLoginResponse);
+  // OAuthCheckLoginStatus makes a single, non-blocking check on whether the
+  // login started by OAuthInitiateLogin has completed. It does not wait for
+  // the user; call it again later (e.g. on your own poll loop) to keep
+  // checking.
+  rpc OAuthCheckLoginStatus(OAuthCheckLoginStatusRequest) returns (OAuthCheckLoginStatusResponse);
 }
 
 message EchoRequest {
@@ -194,5 +220,43 @@ message LoginResponse {
   // completing; in that case the other fields are empty. Calling Login
   // again starts a brand new login attempt (a new device code and browser
   // URL), not a resumption of this one.
+  bool logged_in = 4;
+}
+
+message OAuthInitiateLoginRequest {
+}
+
+message OAuthInitiateLoginResponse {
+  string browser_url = 1;
+  string verification_code = 2;
+  // expires_in is the number of seconds remaining before the browser_url/
+  // verification_code expire and a new OAuthInitiateLogin call is required.
+  int32 expires_in = 3;
+}
+
+message OAuthFindPendingLoginRequest {
+}
+
+message OAuthFindPendingLoginResponse {
+  // found is false if there is no pending login attempt, or it has
+  // expired; in that case the other fields are empty.
+  bool found = 1;
+  string browser_url = 2;
+  string verification_code = 3;
+  // expires_in is the number of seconds remaining before the browser_url/
+  // verification_code expire and a new OAuthInitiateLogin call is required.
+  int32 expires_in = 4;
+}
+
+message OAuthCheckLoginStatusRequest {
+}
+
+message OAuthCheckLoginStatusResponse {
+  string account_id = 1;
+  string account_name = 2;
+  bool livemode = 3;
+  // logged_in is false if the user hasn't completed authentication yet; in
+  // that case the other fields are empty and callers should call
+  // OAuthCheckLoginStatus again later to keep checking.
   bool logged_in = 4;
 }
