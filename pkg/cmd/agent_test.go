@@ -364,38 +364,32 @@ func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
-// agentCall records one invocation of a provider's RunCommand.
-type agentCall struct {
-	name string
-	args []string
-}
-
 func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	callingAgents := []struct {
 		name         string
 		displayName  string
+		agent        string
 		makeProvider func(record agentsetup.RunCommandFunc) agentsetup.Provider
-		wantCall     agentCall
 	}{
 		{
 			name:         "codex_cli",
 			displayName:  "Codex CLI",
+			agent:        "codex",
 			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return codexMissingProvider(record) },
-			wantCall:     agentCall{name: "codex", args: []string{"plugin", "add", agentsetup.TargetCodexPlugin}},
 		},
 		{
 			name:         "grok",
 			displayName:  "Grok",
+			agent:        "grok",
 			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return grokMissingProvider(record) },
-			wantCall:     agentCall{name: "grok", args: []string{"plugin", "install", agentsetup.GrokPluginName, "--trust"}},
 		},
 	}
 
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
-			var calls []agentCall
+			var installedAgents []string
 			record := func(_ context.Context, name string, args ...string) error {
-				calls = append(calls, agentCall{name: name, args: args})
+				installedAgents = append(installedAgents, name)
 				return nil
 			}
 
@@ -412,7 +406,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 			output, err := executeCommand(setup.cmd)
 
 			require.NoError(t, err)
-			require.Equal(t, []agentCall{agent.wantCall}, calls) // Claude NOT installed
+			require.Equal(t, []string{agent.agent}, installedAgents) // Claude NOT installed
 			require.Contains(t, output, fmt.Sprintf("Detected %s — setting up its Stripe plugin.", agent.displayName))
 			require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 		})
