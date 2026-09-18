@@ -863,9 +863,15 @@ func setUpRunAutoUpgrade(t *testing.T, installedVersion string) (*autoUpgradeStu
 	cfg := &TestConfig{}
 	cfg.InitConfig()
 
-	t.Setenv("STRIPE_PLUGINS_PATH", "/plugins")
+	// Run takes a *config.Config, so TestConfig's "/" config folder does not apply inside
+	// it and the plugins directory has to be moved onto the memory filesystem some other
+	// way. XDG_CONFIG_HOME rather than STRIPE_PLUGINS_PATH: the latter is an overridden
+	// plugins directory, which maybeAutoUpgrade now refuses to install into, so every
+	// test here would pass for the wrong reason. This moves the whole config folder,
+	// which is what a real machine does too.
+	t.Setenv("XDG_CONFIG_HOME", "/xdg")
 
-	installDir := filepath.Join("/plugins/appA", installedVersion)
+	installDir := filepath.Join(getPluginsDir(&cfg.Config), "appA", installedVersion)
 	require.NoError(t, fs.MkdirAll(installDir, 0755))
 	require.NoError(t, afero.WriteFile(fs, filepath.Join(installDir, "stripe-cli-app-a"+GetBinaryExtension()), []byte("bin"), 0755))
 

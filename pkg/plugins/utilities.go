@@ -108,22 +108,34 @@ func GetBinaryExtension() string {
 	return ""
 }
 
-// getPluginsDir computes where plugins are installed locally
-func getPluginsDir(config config.IConfig) string {
-	var pluginsDir string
-	tempEnvPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH")
-
-	switch {
-	case tempEnvPluginsPath != "":
-		pluginsDir = tempEnvPluginsPath
-	case PluginsPath != "":
-		pluginsDir = PluginsPath
-	default:
-		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		pluginsDir = filepath.Join(configPath, "plugins")
+// pluginsDirOverride returns the directory plugins have been pointed at instead of the
+// CLI's own, or "" when they have not been.
+//
+// There are two ways to do that -- the STRIPE_PLUGINS_PATH environment variable, and
+// PluginsPath compiled in by a `localdev` build -- and anything deciding what the CLI may
+// do to a plugin directory has to ask about both. Checking only PluginsPath is what let
+// auto-upgrade overwrite a plugin under STRIPE_PLUGINS_PATH: the same directory, with
+// none of the protection, because the guard knew only the other spelling of it.
+//
+// The env var wins where both are set, matching the order these have always resolved in:
+// a variable set for one invocation is a narrower statement than one baked into a binary.
+func pluginsDirOverride() string {
+	if envPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH"); envPluginsPath != "" {
+		return envPluginsPath
 	}
 
-	return pluginsDir
+	return PluginsPath
+}
+
+// getPluginsDir computes where plugins are installed locally
+func getPluginsDir(config config.IConfig) string {
+	if override := pluginsDirOverride(); override != "" {
+		return override
+	}
+
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+
+	return filepath.Join(configPath, "plugins")
 }
 
 func getLocalPluginMetadataDir(config config.IConfig) string {
@@ -1179,6 +1191,11 @@ func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 // every auto-updating command a request to say it, and a check that keeps declining is
 // better reported by the check itself than inferred from a hint here.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
+	// PluginsPath alone, deliberately narrower than the same-looking guard in
+	// maybeAutoUpgrade: a `localdev` build has no published release to be behind, but
+	// someone who merely relocated their plugins with STRIPE_PLUGINS_PATH still wants to
+	// hear about upgrades. Printing a line can only be wrong; installing over the
+	// directory can delete a build, which is why that side asks the broader question.
 	if PluginsPath != "" {
 		return
 	}

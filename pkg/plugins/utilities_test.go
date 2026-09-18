@@ -1157,6 +1157,107 @@ func TestCheckLatestPluginVersionSilentWhenLookupTimesOut(t *testing.T) {
 	}
 }
 
+// TestCheckLatestPluginVersionStillHintsUnderAnEnvironmentPluginsPath pins the one place
+// the two plugins-path guards deliberately disagree. maybeAutoUpgrade refuses to install
+// into a directory the user pointed the CLI at, whichever way they pointed it; the hint
+// only goes quiet for a localdev build, which has no published release to be behind.
+// Someone who relocated ordinary installs with the environment variable still wants to
+// hear that an upgrade exists -- all the more so now that they will not get it silently.
+func TestCheckLatestPluginVersionStillHintsUnderAnEnvironmentPluginsPath(t *testing.T) {
+	origPluginsPath := PluginsPath
+	origResolver := checkLatestPluginVersionResolver
+	PluginsPath = ""
+	t.Setenv("STRIPE_PLUGINS_PATH", "/somewhere/else")
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+				},
+			},
+			Version: "1.1.0",
+		}, nil
+	}
+	defer func() {
+		PluginsPath = origPluginsPath
+		checkLatestPluginVersionResolver = origResolver
+	}()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/somewhere/else/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+}
+
+func TestGetPluginsDirOverrides(t *testing.T) {
+	// TestConfig's config folder is "/", which is why every other test in this package
+	// finds plugins at /plugins without arranging anything. Joined rather than written
+	// out because this is the one case getPluginsDir builds a path for, and Windows
+	// builds it with the other separator. The overrides below are handed back verbatim,
+	// so they are the same string everywhere.
+	defaultPluginsDir := filepath.Join("/", "plugins")
+
+	tests := []struct {
+		name           string
+		pluginsPathEnv string
+		pluginsPath    string
+		want           string
+	}{
+		{
+			name: "neither, so the CLI's own config folder",
+			want: defaultPluginsDir,
+		},
+		{
+			name:           "the environment variable",
+			pluginsPathEnv: "/from/the/environment",
+			want:           "/from/the/environment",
+		},
+		{
+			name:        "a path compiled into a localdev build",
+			pluginsPath: "/compiled/in",
+			want:        "/compiled/in",
+		},
+		{
+			// The order these have always resolved in, kept because a variable set for
+			// one invocation is a narrower statement than one baked into a binary.
+			name:           "both, so the environment variable",
+			pluginsPathEnv: "/from/the/environment",
+			pluginsPath:    "/compiled/in",
+			want:           "/from/the/environment",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origPluginsPath := PluginsPath
+			PluginsPath = tt.pluginsPath
+			t.Setenv("STRIPE_PLUGINS_PATH", tt.pluginsPathEnv)
+			defer func() { PluginsPath = origPluginsPath }()
+
+			require.Equal(t, tt.want, getPluginsDir(&TestConfig{}))
+
+			// What the auto-upgrade guard reads. Anything but the config folder is a
+			// directory the CLI was pointed at and must not install over.
+			require.Equal(t, tt.want != defaultPluginsDir, pluginsDirOverride() != "")
+		})
+	}
+}
+
 func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
 	origPluginsPath := PluginsPath
 	origResolver := checkLatestPluginVersionResolver

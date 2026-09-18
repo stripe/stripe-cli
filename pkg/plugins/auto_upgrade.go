@@ -188,9 +188,21 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 	}
 
 	switch {
-	case PluginsPath != "":
-		// A plugin loaded from a local path is not something the metadata endpoint
-		// knows about, and overwriting it would throw away what was built there.
+	case pluginsDirOverride() != "":
+		// A plugin loaded from a directory the user pointed the CLI at is not something
+		// the metadata endpoint knows about, and installing over it would throw away
+		// whatever was built there -- not just overwrite the one version, since the
+		// install then deletes every other version directory beside it.
+		//
+		// Asked of both ways to point the CLI somewhere else, not just the compiled-in
+		// one. A plugin developer working under STRIPE_PLUGINS_PATH is the likeliest
+		// person here, and their build is the likeliest thing to lose.
+		//
+		// This is broader than it strictly has to be: someone using that variable to
+		// relocate ordinary installs, rather than to develop a plugin, gives up
+		// automatic upgrades for them. That is the safe direction -- they still get the
+		// upgrade hint, and `stripe plugin install` still upgrades on request, whereas
+		// guessing wrong the other way destroys work with no way to get it back.
 		return p, installedVersion
 	case installedVersion == "":
 		// Nothing to upgrade. Run's auto-install handles a missing binary before
