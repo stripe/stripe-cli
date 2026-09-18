@@ -22,6 +22,8 @@ type migrationHarness struct {
 	reloaded     bool
 	migratedPath string
 	upgrades     []string
+	stamped      bool
+	stampedPath  string
 }
 
 func newMigrationHarness(t *testing.T) *migrationHarness {
@@ -46,6 +48,12 @@ func newMigrationHarness(t *testing.T) *migrationHarness {
 			h.migratedPath = path
 
 			return true, nil
+		},
+		stampNew: func(path string) error {
+			h.stamped = true
+			h.stampedPath = path
+
+			return nil
 		},
 		reload: func() error {
 			h.reloaded = true
@@ -194,4 +202,69 @@ func TestMigrationSafeCommand(t *testing.T) {
 	require.False(t, migrationSafeCommand(completion))
 	require.False(t, migrationSafeCommand(completionZsh))
 	require.False(t, migrationSafeCommand(help))
+}
+
+// A config file that does not exist yet has nothing to migrate, but it still has a
+// layout to choose. Recording v2 now means the first write -- usually a login --
+// lands in the new layout, instead of writing the flat layout and migrating it on
+// the next command, which would leave a backup holding a copy of the credentials
+// just written.
+func TestRunStampsAConfigFileThatDoesNotExistYet(t *testing.T) {
+	h := newMigrationHarness(t)
+	h.migration.profilesFile = filepath.Join(t.TempDir(), "absent", "config.toml")
+
+	h.migration.run()
+
+	require.True(t, h.stamped, "a new config file should record the v2 layout")
+	require.Equal(t, h.migration.profilesFile, h.stampedPath)
+	require.True(t, h.reloaded, "viper has to see the stamped file")
+	require.False(t, h.migrated, "there is nothing to migrate")
+
+	// A brand-new user has not run anything yet; a status line here would be the
+	// first thing they ever see from the CLI.
+	require.Empty(t, h.out.String())
+}
+
+// Gated for the same reason the migration is: once a profile is written under the
+// profiles table, a plugin too old to look there cannot find it. Nothing is at
+// risk, so the file just keeps the flat layout.
+func TestRunDoesNotStampWhenAPluginCannotReadV2(t *testing.T) {
+	h := newMigrationHarness(t)
+	h.migration.profilesFile = filepath.Join(t.TempDir(), "absent", "config.toml")
+	h.migration.incompatibilities = func() ([]plugins.ConfigV2Incompatibility, error) {
+		return []plugins.ConfigV2Incompatibility{{
+			Plugin:           "apps",
+			InstalledVersion: "1.19.0",
+		}}, nil
+	}
+
+	h.migration.run()
+
+	require.False(t, h.stamped)
+	require.Empty(t, h.out.String(), "nothing to upgrade for, so say nothing")
+}
+
+func TestRunDoesNotStampBeforeAnyPluginReleaseIsKnown(t *testing.T) {
+	h := newMigrationHarness(t)
+	h.migration.profilesFile = filepath.Join(t.TempDir(), "absent", "config.toml")
+	h.migration.pluginsReady = func() bool { return false }
+
+	h.migration.run()
+
+	require.False(t, h.stamped)
+}
+
+func TestRunWritesNothingInV2WhileTheMinimumVersionMapIsEmpty(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "absent", "config.toml")
+	migration := newConfigMigration(&config.Config{ProfilesFile: profilesFile}, t.Context())
+
+	require.False(t, migration.pluginsReady(), "configV2MinimumVersions is empty, so the gate has to be closed")
+
+	// The only stub, and it opens a gate rather than closing one: there is no config
+	// file here, so this is what gets run() as far as the stamp.
+	migration.needsMigration = func() bool { return true }
+
+	migration.run()
+
+	require.NoFileExists(t, profilesFile)
 }
