@@ -384,10 +384,10 @@ func TestObservedAgentSessions(t *testing.T) {
 // TestObservedAgentSessions_NoSensitiveValuesReported can assert none of them reach a
 // reported field.
 const (
-	sensitiveSessionID     = "SESSIONID-1111"
-	sensitiveHostID        = "HOSTID-2222"
-	sensitiveThreadID      = "THREADID-3333"
-	sensitiveScopes        = "SCOPES-4444"
+	sensitiveSessionID = "SESSIONID-1111"
+	sensitiveHostID    = "HOSTID-2222"
+	sensitiveThreadID  = "THREADID-3333"
+	sensitiveScopes    = "SCOPES-4444"
 )
 
 func TestObservedAgentSessions_NoSensitiveValuesReported(t *testing.T) {
