@@ -397,6 +397,12 @@ func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
+// agentCall records one invocation of a provider's RunCommand.
+type agentCall struct {
+	name string
+	args []string
+}
+
 func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	callingAgents := []struct {
 		name         string
