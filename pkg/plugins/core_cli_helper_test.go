@@ -676,6 +676,164 @@ func TestLoginPropagatesError(t *testing.T) {
 	require.Empty(t, accountName)
 }
 
+func TestOAuthInitiateLoginSuccess(t *testing.T) {
+	originalInitiate := loginInitiateOAuthLogin
+	t.Cleanup(func() { loginInitiateOAuthLogin = originalInitiate })
+
+	loginInitiateOAuthLogin = func(ctx context.Context, accessBaseURL string) (*login.OAuthLoginSession, error) {
+		require.Equal(t, login.DefaultAccessBaseURL, accessBaseURL)
+		return &login.OAuthLoginSession{
+			BrowserURL:       "https://access.stripe.com/verify",
+			VerificationCode: "ABCD-EFGH",
+			ExpiresIn:        300,
+		}, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	browserURL, verificationCode, expiresIn, err := coreCLIHelper.OAuthInitiateLogin()
+	require.NoError(t, err)
+	require.Equal(t, "https://access.stripe.com/verify", browserURL)
+	require.Equal(t, "ABCD-EFGH", verificationCode)
+	require.Equal(t, int32(300), expiresIn)
+}
+
+func TestOAuthInitiateLoginPropagatesError(t *testing.T) {
+	originalInitiate := loginInitiateOAuthLogin
+	t.Cleanup(func() { loginInitiateOAuthLogin = originalInitiate })
+
+	expectedErr := errors.New("boom")
+	loginInitiateOAuthLogin = func(ctx context.Context, accessBaseURL string) (*login.OAuthLoginSession, error) {
+		return nil, expectedErr
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	browserURL, verificationCode, expiresIn, err := coreCLIHelper.OAuthInitiateLogin()
+	require.ErrorIs(t, err, expectedErr)
+	require.Empty(t, browserURL)
+	require.Empty(t, verificationCode)
+	require.Zero(t, expiresIn)
+}
+
+func TestOAuthFindPendingLoginFound(t *testing.T) {
+	originalFind := loginFindPendingOAuthLogin
+	t.Cleanup(func() { loginFindPendingOAuthLogin = originalFind })
+
+	loginFindPendingOAuthLogin = func(accessBaseURL string) (*login.OAuthLoginSession, error) {
+		require.Equal(t, login.DefaultAccessBaseURL, accessBaseURL)
+		return &login.OAuthLoginSession{
+			BrowserURL:       "https://access.stripe.com/verify",
+			VerificationCode: "ABCD-EFGH",
+			ExpiresIn:        300,
+		}, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	found, browserURL, verificationCode, expiresIn, err := coreCLIHelper.OAuthFindPendingLogin()
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, "https://access.stripe.com/verify", browserURL)
+	require.Equal(t, "ABCD-EFGH", verificationCode)
+	require.Equal(t, int32(300), expiresIn)
+}
+
+func TestOAuthFindPendingLoginNotFound(t *testing.T) {
+	originalFind := loginFindPendingOAuthLogin
+	t.Cleanup(func() { loginFindPendingOAuthLogin = originalFind })
+
+	loginFindPendingOAuthLogin = func(accessBaseURL string) (*login.OAuthLoginSession, error) {
+		return nil, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	found, browserURL, verificationCode, expiresIn, err := coreCLIHelper.OAuthFindPendingLogin()
+	require.NoError(t, err)
+	require.False(t, found)
+	require.Empty(t, browserURL)
+	require.Empty(t, verificationCode)
+	require.Zero(t, expiresIn)
+}
+
+func TestOAuthFindPendingLoginPropagatesError(t *testing.T) {
+	originalFind := loginFindPendingOAuthLogin
+	t.Cleanup(func() { loginFindPendingOAuthLogin = originalFind })
+
+	expectedErr := errors.New("boom")
+	loginFindPendingOAuthLogin = func(accessBaseURL string) (*login.OAuthLoginSession, error) {
+		return nil, expectedErr
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	found, browserURL, verificationCode, expiresIn, err := coreCLIHelper.OAuthFindPendingLogin()
+	require.ErrorIs(t, err, expectedErr)
+	require.False(t, found)
+	require.Empty(t, browserURL)
+	require.Empty(t, verificationCode)
+	require.Zero(t, expiresIn)
+}
+
+func TestOAuthCheckLoginStatusReturnsConfigTypeMismatchError(t *testing.T) {
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), nil, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.OAuthCheckLoginStatus()
+	require.Error(t, err)
+	require.False(t, loggedIn)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
+func TestOAuthCheckLoginStatusSuccess(t *testing.T) {
+	originalCheck := loginCheckPendingOAuthLogin
+	t.Cleanup(func() { loginCheckPendingOAuthLogin = originalCheck })
+
+	loginCheckPendingOAuthLogin = func(ctx context.Context, cfg *config.Config) (*login.DeviceCodeLoginResult, error) {
+		return &login.DeviceCodeLoginResult{
+			ActiveAccountID:   "acct_123",
+			ActiveDisplayName: "Acme Inc",
+			ActiveLivemode:    true,
+		}, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, livemode, loggedIn, err := coreCLIHelper.OAuthCheckLoginStatus()
+	require.NoError(t, err)
+	require.True(t, loggedIn)
+	require.Equal(t, "acct_123", accountID)
+	require.Equal(t, "Acme Inc", accountName)
+	require.True(t, livemode)
+}
+
+func TestOAuthCheckLoginStatusNotYetLoggedIn(t *testing.T) {
+	originalCheck := loginCheckPendingOAuthLogin
+	t.Cleanup(func() { loginCheckPendingOAuthLogin = originalCheck })
+
+	loginCheckPendingOAuthLogin = func(ctx context.Context, cfg *config.Config) (*login.DeviceCodeLoginResult, error) {
+		return nil, nil
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.OAuthCheckLoginStatus()
+	require.NoError(t, err)
+	require.False(t, loggedIn)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
+func TestOAuthCheckLoginStatusPropagatesError(t *testing.T) {
+	originalCheck := loginCheckPendingOAuthLogin
+	t.Cleanup(func() { loginCheckPendingOAuthLogin = originalCheck })
+
+	expectedErr := errors.New("boom")
+	loginCheckPendingOAuthLogin = func(ctx context.Context, cfg *config.Config) (*login.DeviceCodeLoginResult, error) {
+		return nil, expectedErr
+	}
+
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	accountID, accountName, _, loggedIn, err := coreCLIHelper.OAuthCheckLoginStatus()
+	require.ErrorIs(t, err, expectedErr)
+	require.False(t, loggedIn)
+	require.Empty(t, accountID)
+	require.Empty(t, accountName)
+}
+
 func TestSendAnalyticsWithTelemetryClient(t *testing.T) {
 	// Test with a NoOp telemetry client
 	ctx := context.Background()

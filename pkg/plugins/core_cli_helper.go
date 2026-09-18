@@ -45,6 +45,32 @@ type CoreCLIHelper interface {
 	// Calling Login again starts a brand new login attempt (a new device code and browser URL),
 	// not a resumption of this one.
 	Login(timeoutSeconds int32) (accountID string, accountName string, livemode bool, loggedIn bool, err error)
+	// The OAuth-prefixed methods below (OAuthInitiateLogin, OAuthFindPendingLogin,
+	// OAuthCheckLoginStatus) are low-level building blocks for a non-interactive, resumable
+	// login flow. Prefer Login unless you specifically need non-blocking, resumable behavior
+	// (e.g. driving your own retry loop).
+	// OAuthInitiateLogin starts a non-interactive OAuth device-code login: it returns
+	// immediately with a browser URL and verification code for the plugin to present to the
+	// user (or open itself), instead of blocking until the user completes it like Login does.
+	// Calling it again before the previous attempt is completed or has expired returns the
+	// same browser URL and verification code rather than minting a new device code, so a
+	// plugin (or an agent driving it) can safely retry without orphaning an in-flight login -
+	// unlike `stripe login --non-interactive`, which always mints a fresh device code and does
+	// not resume. Call OAuthCheckLoginStatus to check whether the user has completed it.
+	OAuthInitiateLogin() (browserURL string, verificationCode string, expiresIn int32, err error)
+	// OAuthFindPendingLogin looks for an OAuth device-code login already in progress - started
+	// by this call chain, another plugin, or `stripe login --non-interactive` - without
+	// starting a new one. found is false if there is no pending login attempt or it has
+	// expired, in which case the other return values are empty.
+	OAuthFindPendingLogin() (found bool, browserURL string, verificationCode string, expiresIn int32, err error)
+	// OAuthCheckLoginStatus makes a single, non-blocking check on whether the login started by
+	// OAuthInitiateLogin has completed - it does not wait for the user, so callers that want to
+	// wait should call this repeatedly on their own schedule. loggedIn is false without error
+	// if the user hasn't completed authentication yet, in which case the other return values
+	// are empty and callers should call this again later to keep checking. Returns an error if
+	// the device code expired or the user denied authorization, in which case a new
+	// OAuthInitiateLogin call is required to try again.
+	OAuthCheckLoginStatus() (accountID string, accountName string, livemode bool, loggedIn bool, err error)
 }
 
 type CoreCLIHelperClient struct {
@@ -134,6 +160,30 @@ func (c *CoreCLIHelperClient) SwitchContext(accountID string, livemode bool) (st
 
 func (c *CoreCLIHelperClient) Login(timeoutSeconds int32) (string, string, bool, bool, error) {
 	resp, err := c.client.Login(context.Background(), &proto.LoginRequest{TimeoutSeconds: timeoutSeconds})
+	if err != nil {
+		return "", "", false, false, err
+	}
+	return resp.AccountId, resp.AccountName, resp.Livemode, resp.LoggedIn, nil
+}
+
+func (c *CoreCLIHelperClient) OAuthInitiateLogin() (string, string, int32, error) {
+	resp, err := c.client.OAuthInitiateLogin(context.Background(), &proto.OAuthInitiateLoginRequest{})
+	if err != nil {
+		return "", "", 0, err
+	}
+	return resp.BrowserUrl, resp.VerificationCode, resp.ExpiresIn, nil
+}
+
+func (c *CoreCLIHelperClient) OAuthFindPendingLogin() (bool, string, string, int32, error) {
+	resp, err := c.client.OAuthFindPendingLogin(context.Background(), &proto.OAuthFindPendingLoginRequest{})
+	if err != nil {
+		return false, "", "", 0, err
+	}
+	return resp.Found, resp.BrowserUrl, resp.VerificationCode, resp.ExpiresIn, nil
+}
+
+func (c *CoreCLIHelperClient) OAuthCheckLoginStatus() (string, string, bool, bool, error) {
+	resp, err := c.client.OAuthCheckLoginStatus(context.Background(), &proto.OAuthCheckLoginStatusRequest{})
 	if err != nil {
 		return "", "", false, false, err
 	}
@@ -233,6 +283,30 @@ func (s *CoreCLIHelperServer) Login(ctx context.Context, req *proto.LoginRequest
 	return &proto.LoginResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, LoggedIn: loggedIn}, nil
 }
 
+func (s *CoreCLIHelperServer) OAuthInitiateLogin(ctx context.Context, req *proto.OAuthInitiateLoginRequest) (*proto.OAuthInitiateLoginResponse, error) {
+	browserURL, verificationCode, expiresIn, err := s.Impl.OAuthInitiateLogin()
+	if err != nil {
+		return nil, err
+	}
+	return &proto.OAuthInitiateLoginResponse{BrowserUrl: browserURL, VerificationCode: verificationCode, ExpiresIn: expiresIn}, nil
+}
+
+func (s *CoreCLIHelperServer) OAuthFindPendingLogin(ctx context.Context, req *proto.OAuthFindPendingLoginRequest) (*proto.OAuthFindPendingLoginResponse, error) {
+	found, browserURL, verificationCode, expiresIn, err := s.Impl.OAuthFindPendingLogin()
+	if err != nil {
+		return nil, err
+	}
+	return &proto.OAuthFindPendingLoginResponse{Found: found, BrowserUrl: browserURL, VerificationCode: verificationCode, ExpiresIn: expiresIn}, nil
+}
+
+func (s *CoreCLIHelperServer) OAuthCheckLoginStatus(ctx context.Context, req *proto.OAuthCheckLoginStatusRequest) (*proto.OAuthCheckLoginStatusResponse, error) {
+	accountID, accountName, livemode, loggedIn, err := s.Impl.OAuthCheckLoginStatus()
+	if err != nil {
+		return nil, err
+	}
+	return &proto.OAuthCheckLoginStatusResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, LoggedIn: loggedIn}, nil
+}
+
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
 type coreCLIHelper struct {
 	ctx    context.Context
@@ -323,6 +397,16 @@ var loginSwitchContext = login.SwitchContext
 var (
 	loginRevokeToken = login.RevokeToken
 	loginLogin       = login.Login
+)
+
+// loginInitiateOAuthLogin, loginFindPendingOAuthLogin, and loginCheckPendingOAuthLogin are
+// package variables so tests can stub out the network/keychain calls made by
+// coreCLIHelper.OAuthInitiateLogin, coreCLIHelper.OAuthFindPendingLogin, and
+// coreCLIHelper.OAuthCheckLoginStatus.
+var (
+	loginInitiateOAuthLogin     = login.InitiateOAuthLogin
+	loginFindPendingOAuthLogin  = login.FindPendingOAuthLogin
+	loginCheckPendingOAuthLogin = login.CheckPendingOAuthLogin
 )
 
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
@@ -528,4 +612,56 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 		livemode = ac.Livemode
 	}
 	return cfg.Profile.AccountID, cfg.Profile.DisplayName, livemode, true, nil
+}
+
+// OAuthInitiateLogin starts (or resumes) a non-interactive OAuth device-code login, the same
+// way `stripe login --non-interactive` does, without printing anything or blocking on
+// completion.
+func (h *coreCLIHelper) OAuthInitiateLogin() (string, string, int32, error) {
+	accessBaseURL := h.accessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+
+	session, err := loginInitiateOAuthLogin(h.ctx, accessBaseURL)
+	if err != nil {
+		return "", "", 0, err
+	}
+	return session.BrowserURL, session.VerificationCode, int32(session.ExpiresIn), nil
+}
+
+// OAuthFindPendingLogin looks for an OAuth device-code login already in progress, without
+// starting a new one.
+func (h *coreCLIHelper) OAuthFindPendingLogin() (bool, string, string, int32, error) {
+	accessBaseURL := h.accessBaseURL
+	if accessBaseURL == "" {
+		accessBaseURL = login.DefaultAccessBaseURL
+	}
+
+	session, err := loginFindPendingOAuthLogin(accessBaseURL)
+	if err != nil {
+		return false, "", "", 0, err
+	}
+	if session == nil {
+		return false, "", "", 0, nil
+	}
+	return true, session.BrowserURL, session.VerificationCode, int32(session.ExpiresIn), nil
+}
+
+// OAuthCheckLoginStatus makes a single, non-blocking check on whether the login started by
+// OAuthInitiateLogin has completed.
+func (h *coreCLIHelper) OAuthCheckLoginStatus() (string, string, bool, bool, error) {
+	cfg, ok := h.config.(*config.Config)
+	if !ok {
+		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not log in: config type mismatch")
+	}
+
+	result, err := loginCheckPendingOAuthLogin(h.ctx, cfg)
+	if err != nil {
+		return "", "", false, false, err
+	}
+	if result == nil {
+		return "", "", false, false, nil
+	}
+	return result.ActiveAccountID, result.ActiveDisplayName, result.ActiveLivemode, true, nil
 }
