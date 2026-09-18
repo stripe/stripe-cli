@@ -90,7 +90,7 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("GEMINI_CLI") != "" {
 		return "gemini_cli"
 	}
-	if getEnv("GROK_AGENT") != "" {
+	if getEnv("GROK_AGENT") != "" || getEnv("GROK_SESSION_ID") != "" {
 		return "grok"
 	}
 	if getEnv("OPENCODE") != "" {
@@ -134,8 +134,8 @@ func DetectAIAgent(getEnv func(string) string) string {
 // change, a release, and users upgrading before it is even visible.
 //
 // Two hosts are inferred rather than reported: Codex names every surface except the
-// terminal, and Grok Build has no other surface at all today, so a detected agent of
-// either with no host is a terminal one. See the empty-host branch below.
+// terminal, and Grok Build names neither of its two surfaces, so a detected agent of
+// either with no host is inferred from other signals. See the empty-host branch below.
 func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
 	if host == "" {
@@ -161,13 +161,15 @@ func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 			return "terminal", "codex-cli"
 		}
 
-		// Grok Build's only documented surface is its terminal TUI (plus the
-		// xai-grok-shell integration, which runs inside it) -- no separate IDE
-		// extension, desktop app, SDK, or MCP server is described, and no host
-		// variable showed up alongside GROK_AGENT/GROK_SESSION_ID when checked
-		// against a real session. Revisit if Grok Build ever ships another surface.
+		// Grok Build also has an ACP surface for IDE integration (`grok agent
+		// stdio`), and neither surface sets a dedicated host variable the way
+		// Claude/Codex do. The only signal separating them is that GROK_AGENT is set for
+		// the terminal TUI and absent (with only GROK_SESSION_ID present) under ACP.
 		if DetectAIAgent(getEnv) == "grok" {
-			return "terminal", "grok-cli"
+			if getEnv("GROK_AGENT") != "" {
+				return "terminal", "grok-cli"
+			}
+			return "ide", "grok-acp"
 		}
 
 		return "", ""
