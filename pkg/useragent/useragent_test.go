@@ -78,6 +78,8 @@ func TestDetectAgentHost(t *testing.T) {
 		kind string
 		raw  string
 	}{
+		{"hermes desktop", map[string]string{"HERMES_DESKTOP": "true"}, "desktop", "hermes"},
+		{"hermes desktop, any non-empty value counts", map[string]string{"HERMES_DESKTOP": "1"}, "desktop", "hermes"},
 		{"claude desktop", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop"}, "desktop", "claude-desktop"},
 		// Both are desktop, and raw is the only thing that tells them apart.
 		{"claude desktop 3p", map[string]string{"CLAUDE_CODE_ENTRYPOINT": "claude-desktop-3p"}, "desktop", "claude-desktop-3p"},
@@ -170,6 +172,49 @@ func TestDetectAIAgent_InferredFromHost(t *testing.T) {
 			description: "nested agents inherit an entrypoint from the session that launched them",
 		},
 		{"no agent and no host", map[string]string{}, "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, DetectAIAgent(mapEnv(tt.envs)), tt.description)
+		})
+	}
+}
+
+func TestDetectAIAgent_Hermes(t *testing.T) {
+	require.Equal(t, "hermes", DetectAIAgent(mapEnv(map[string]string{"HERMES_AGENT": "1"})))
+}
+
+// TestDetectAIAgent_AIAgentFallback covers the last-resort fallback: when no agent-specific
+// variable or inherited host names the agent, AI_AGENT and then AGENT are reported directly.
+func TestDetectAIAgent_AIAgentFallback(t *testing.T) {
+	tests := []struct {
+		name        string
+		envs        map[string]string
+		expected    string
+		description string
+	}{
+		{"reported when nothing else matches", map[string]string{"AI_AGENT": "goose_1-2-3"}, "goose_1-2-3", ""},
+		{"whitespace trimmed", map[string]string{"AI_AGENT": "  goose  "}, "goose", ""},
+		{
+			name:        "specific agent variable wins over AI_AGENT",
+			envs:        map[string]string{"CURSOR_AGENT": "1", "AI_AGENT": "goose"},
+			expected:    "cursor",
+			description: "AI_AGENT is checked last, so a direct signal still takes priority",
+		},
+		{"blank AI_AGENT reports nothing", map[string]string{"AI_AGENT": "   "}, "", ""},
+		{
+			name:        "AGENT used when AI_AGENT is absent",
+			envs:        map[string]string{"AGENT": "amp"},
+			expected:    "amp",
+			description: "AGENT is the same convention under the name Goose, Amp and Bun use",
+		},
+		{
+			name:     "AI_AGENT wins over AGENT",
+			envs:     map[string]string{"AI_AGENT": "goose", "AGENT": "amp"},
+			expected: "goose",
+		},
+		{"blank AGENT reports nothing", map[string]string{"AGENT": "   "}, "", ""},
 	}
 
 	for _, tt := range tests {
