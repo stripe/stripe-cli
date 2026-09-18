@@ -937,6 +937,22 @@ func TestRunSkipsAutoUpgradeForLocalDevelopmentBuild(t *testing.T) {
 	require.Empty(t, stubs.installCalls)
 }
 
+func TestRunWithoutAutoUpgradeSkipsTheCheck(t *testing.T) {
+	stubs, cfg, fs := setUpRunAutoUpgrade(t, "1.0.1")
+
+	plugin, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
+	require.NoError(t, err)
+
+	require.Error(t, plugin.RunWithoutAutoUpgrade(context.Background(), &cfg.Config, fs, []string{"--help"}, "", "", "", "", ""))
+
+	// Not even the setting is read. Both callers of this reach a plugin with nothing to
+	// gain from the check -- printing help, or running something whose install just
+	// resolved the newest release -- so neither should pay a request for it.
+	require.Empty(t, stubs.settingReads)
+	require.Empty(t, stubs.resolveCalls)
+	require.Empty(t, stubs.installCalls)
+}
+
 func TestRunPeerPluginSkipsAutoUpgrade(t *testing.T) {
 	stubs, cfg, fs := setUpRunAutoUpgrade(t, "1.0.1")
 

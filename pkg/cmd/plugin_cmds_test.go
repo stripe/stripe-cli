@@ -186,9 +186,11 @@ func TestGeneratedPluginSubcommandStubUsesExecutingCommand(t *testing.T) {
 
 	var capturedCmd *cobra.Command
 	var capturedArgs []string
-	ptc.runPluginCmdFn = func(cmd *cobra.Command, args []string) error {
+	var capturedSkipAutoUpgrade bool
+	ptc.runPluginCmdFn = func(cmd *cobra.Command, args []string, skipAutoUpgrade bool) error {
 		capturedCmd = cmd
 		capturedArgs = append([]string(nil), args...)
+		capturedSkipAutoUpgrade = skipAutoUpgrade
 		return sentinelErr
 	}
 
@@ -207,6 +209,91 @@ func TestGeneratedPluginSubcommandStubUsesExecutingCommand(t *testing.T) {
 	assert.Equal(t, "catalog", capturedCmd.Name())
 	assert.Equal(t, []string{"catalog"}, capturedArgs)
 	assert.Equal(t, "sentinel", capturedCmd.Context().Value(ctxKey{}))
+	assert.False(t, capturedSkipAutoUpgrade, "a subcommand the user asked to run gets the upgrade check")
+}
+
+// TestPluginHelpDoesNotRunAsACommand covers every way the user can ask a plugin for help.
+// All of them run the plugin binary, because the plugin owns its help text, and none of
+// them should be treated as the user asking the plugin to do work -- most concretely,
+// none should trigger an auto-upgrade. See Plugin.RunWithoutAutoUpgrade.
+func TestPluginHelpDoesNotRunAsACommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		argv     []string
+		wantArgs []string
+	}{
+		{
+			name:     "--help on the plugin",
+			argv:     []string{"stripe", "projects", "--help"},
+			wantArgs: []string{"--help"},
+		},
+		{
+			name:     "-h on the plugin",
+			argv:     []string{"stripe", "projects", "-h"},
+			wantArgs: []string{"-h"},
+		},
+		{
+			// Cobra hands its help func down to subcommands, so the stubs are covered
+			// by the same opt-out rather than needing one of their own.
+			//
+			// The subcommand name being dropped here is a separate, pre-existing bug --
+			// the help func slices argv after the command it was called on, which for a
+			// stub is the subcommand itself -- so the plugin prints its top-level help.
+			// Pinned as-is rather than fixed, since what this test is about is that the
+			// handoff happens without an upgrade.
+			name:     "--help on a subcommand stub",
+			argv:     []string{"stripe", "projects", "catalog", "--help"},
+			wantArgs: []string{"--help"},
+		},
+		{
+			// The other spelling, which arrives through cobra's own help command with
+			// no args of its own, so the help func rebuilds them from os.Args.
+			name:     "the help command",
+			argv:     []string{"stripe", "help", "projects"},
+			wantArgs: []string{"--help"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plugin := plugins.Plugin{
+				Shortname:        "projects",
+				Shortdesc:        "Projects plugin",
+				Binary:           "stripe-cli-projects",
+				MagicCookieValue: "magic",
+				Commands: []plugins.CommandInfo{
+					{Name: "catalog", Desc: "Browse the projects catalog"},
+				},
+			}
+
+			ptc := newPluginTemplateCmd(&Config, &plugin)
+
+			var calls int
+			var capturedArgs []string
+			var capturedSkipAutoUpgrade bool
+			ptc.runPluginCmdFn = func(cmd *cobra.Command, args []string, skipAutoUpgrade bool) error {
+				calls++
+				capturedArgs = append([]string(nil), args...)
+				capturedSkipAutoUpgrade = skipAutoUpgrade
+				return nil
+			}
+
+			root := &cobra.Command{Use: "stripe"}
+			root.AddCommand(ptc.cmd)
+
+			oldArgs := os.Args
+			os.Args = tt.argv
+			defer func() { os.Args = oldArgs }()
+
+			root.SetArgs(tt.argv[1:])
+			require.NoError(t, root.ExecuteContext(context.Background()))
+
+			require.Equal(t, 1, calls, "the plugin should be asked for its help text exactly once")
+			assert.Equal(t, tt.wantArgs, capturedArgs)
+			require.True(t, capturedSkipAutoUpgrade,
+				"asking what a command does would auto-upgrade the plugin, and could install a new binary")
+		})
+	}
 }
 
 func TestCommandContextOrBackgroundUsesCommandContext(t *testing.T) {
