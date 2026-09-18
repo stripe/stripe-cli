@@ -648,6 +648,13 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	}
 
+	// Plugins read the config file themselves, so one too old to understand the v2
+	// layout would start up and find no profiles at all. Fail with something the
+	// user can act on instead.
+	if err := p.refuseIfConfigTooNew(version); err != nil {
+		return err
+	}
+
 	pluginDir, err := p.getPluginInstallPath(config, version)
 	if err != nil {
 		return err

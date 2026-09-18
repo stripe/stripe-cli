@@ -121,6 +121,12 @@ For agents and scripts, use the two-step non-interactive flow:
 }
 
 func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
+	// Reject an invalid profile name before authenticating, so the user is not
+	// sent through a browser flow whose result cannot be saved.
+	if err := Config.Profile.ValidateProfileNameForWrite(); err != nil {
+		return err
+	}
+
 	if err := stripe.ValidateDashboardBaseURL(lc.dashboardBaseURL); err != nil {
 		return err
 	}

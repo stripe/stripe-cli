@@ -69,6 +69,12 @@ var rootCmd = &cobra.Command{
 			fullHelpMode = true
 		}
 
+		// Move the config file to the v2 layout before the command reads anything
+		// out of it. This lives here rather than in InitConfig because Go plugins
+		// call InitConfig directly, and would otherwise rewrite the user's config
+		// file themselves at arbitrary times.
+		migrateConfigIfNeeded(cmd)
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())

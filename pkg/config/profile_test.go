@@ -11,6 +11,200 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
+const dottedNameError = `profile name "example.project" cannot contain a period; use a hyphen or underscore instead`
+
+// setupProfileConfig writes contents to a temp config file and initializes the
+// global viper from it, so tests exercise the same read path as the CLI rather
+// than viper's override layer, which nests keys by splitting on ".".
+func setupProfileConfig(t *testing.T, contents string) (*Config, string) {
+	t.Helper()
+
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte(contents), 0600))
+
+	if KeyRing == nil {
+		KeyRing = keyring.NewMemoryStore(nil)
+	}
+	t.Cleanup(func() {
+		KeyRing = nil
+		viper.Reset()
+	})
+
+	c := &Config{LogLevel: "info", ProfilesFile: profilesFile}
+	c.InitConfig()
+
+	return c, profilesFile
+}
+
+func TestValidateProfileName(t *testing.T) {
+	tests := []struct {
+		name        string
+		profileName string
+		wantError   string
+	}{
+		{name: "hyphenated", profileName: "example-project"},
+		{name: "underscored", profileName: "example_project"},
+		// Every character other than "." round-trips correctly through viper and
+		// TOML, so the rule stays as narrow as the actual constraint.
+		{name: "spaces", profileName: "example project"},
+		{name: "whitespace only", profileName: " "},
+		{name: "double quote", profileName: `example"project`},
+		{name: "single quote", profileName: "example'project"},
+		{name: "equals", profileName: "example=project"},
+		{name: "hash", profileName: "example#project"},
+		{name: "brackets", profileName: "example[project]"},
+		{name: "slashes", profileName: `example/\project`},
+		{name: "unicode", profileName: "ünïcode"},
+		{name: "uppercase", profileName: "ExampleProject"},
+
+		{name: "dotted", profileName: "example.project", wantError: dottedNameError},
+		{name: "leading dot", profileName: ".example", wantError: `profile name ".example" cannot contain a period; use a hyphen or underscore instead`},
+		// An empty name produces a ".<field>" key, which viper drops silently, so
+		// every write to it is discarded without an error.
+		{name: "empty", profileName: "", wantError: "profile name cannot be empty"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateProfileName(tt.profileName)
+			if tt.wantError == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			require.EqualError(t, err, tt.wantError)
+		})
+	}
+}
+
+func TestValidateProfileNameForWriteAllowsExistingProfiles(t *testing.T) {
+	tests := []struct {
+		name        string
+		profileName string
+		contents    string
+		wantExists  bool
+		wantError   string
+	}{
+		{
+			name:        "new dotted profile is rejected",
+			profileName: "example.project",
+			contents:    "[default]\ndisplay_name = 'Default'\n",
+			wantError:   dottedNameError,
+		},
+		{
+			name:        "existing dotted profile is allowed",
+			profileName: "example.project",
+			contents:    "[\"example.project\"]\ndisplay_name = 'Existing profile'\n",
+			wantExists:  true,
+		},
+		{
+			// A dotted profile written before this rule existed may have no
+			// display_name. It must still be recognized as existing, or it becomes
+			// unreachable: not writable, not listable, and not removable.
+			name:        "existing dotted profile without display_name is allowed",
+			profileName: "example.project",
+			contents:    "[\"example.project\"]\ncolor = 'on'\n",
+			wantExists:  true,
+		},
+		{
+			name:        "already-nested form is allowed",
+			profileName: "example.project",
+			contents:    "[example]\n[example.project]\ncolor = 'on'\n",
+			wantExists:  true,
+		},
+		{
+			name:        "space-separated profile is not equivalent",
+			profileName: "example.project",
+			contents:    "['example project']\ndisplay_name = 'Existing profile'\n",
+			wantError:   dottedNameError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setupProfileConfig(t, tt.contents)
+
+			p := Profile{ProfileName: tt.profileName}
+			require.Equal(t, tt.wantExists, p.profileExists())
+
+			err := p.ValidateProfileNameForWrite()
+			if tt.wantError == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			require.EqualError(t, err, tt.wantError)
+		})
+	}
+}
+
+func TestCreateProfileRejectsNewDottedNameBeforeMutation(t *testing.T) {
+	initialConfig := "[default]\ndisplay_name = 'Default'\n"
+
+	KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		"example.project.live_mode_api_key": []byte("existing-value"),
+	})
+	_, profilesFile := setupProfileConfig(t, initialConfig)
+
+	p := Profile{
+		ProfileName:    "example.project",
+		DisplayName:    "New profile",
+		LiveModeAPIKey: "new-value",
+	}
+	require.EqualError(t, p.CreateProfile(), dottedNameError)
+
+	require.Equal(t, []byte(initialConfig), helperLoadBytes(t, profilesFile))
+	storedValue, err := KeyRing.Get("example.project.live_mode_api_key")
+	require.NoError(t, err)
+	require.Equal(t, []byte("existing-value"), storedValue)
+}
+
+// WriteConfigField is a separate write path from CreateProfile, reached by
+// `stripe config --set`, docs preferences, and the Terminal quickstart. It must
+// enforce the same rule, otherwise the ban can be bypassed entirely.
+func TestWriteConfigFieldRejectsNewDottedName(t *testing.T) {
+	initialConfig := "[default]\ndisplay_name = 'Default'\n"
+	_, profilesFile := setupProfileConfig(t, initialConfig)
+
+	p := Profile{ProfileName: "example.project"}
+	require.EqualError(t, p.WriteConfigField("color", "off"), dottedNameError)
+
+	require.Equal(t, []byte(initialConfig), helperLoadBytes(t, profilesFile))
+}
+
+func TestWriteConfigFieldRejectsEmptyProfileName(t *testing.T) {
+	initialConfig := "[default]\ndisplay_name = 'Default'\n"
+	_, profilesFile := setupProfileConfig(t, initialConfig)
+
+	p := Profile{ProfileName: ""}
+	require.EqualError(t, p.WriteConfigField("color", "off"), "profile name cannot be empty")
+
+	require.Equal(t, []byte(initialConfig), helperLoadBytes(t, profilesFile))
+}
+
+// A dotted profile that predates this rule must stay writable, or it becomes
+// permanently stuck: unusable and unfixable.
+func TestCreateProfileAllowsExistingDottedName(t *testing.T) {
+	setupProfileConfig(t, "[\"example.project\"]\ndisplay_name = 'Existing profile'\n")
+
+	p := Profile{
+		ProfileName: "example.project",
+		DisplayName: "Updated profile",
+		DeviceName:  "test-device",
+	}
+	require.NoError(t, p.CreateProfile())
+	require.Equal(t, "Updated profile", viper.GetString("example.project.display_name"))
+	require.Equal(t, "test-device", viper.GetString("example.project.device_name"))
+}
+
+func TestWriteConfigFieldAllowsExistingDottedNameWithoutDisplayName(t *testing.T) {
+	setupProfileConfig(t, "[example]\n[example.project]\ncolor = 'on'\n")
+
+	p := Profile{ProfileName: "example.project"}
+	require.NoError(t, p.WriteConfigField("device_name", "test-device"))
+	require.Equal(t, "test-device", viper.GetString("example.project.device_name"))
+}
+
 func TestWriteProfile(t *testing.T) {
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	p := Profile{

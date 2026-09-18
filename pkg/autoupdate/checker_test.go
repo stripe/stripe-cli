@@ -3,6 +3,7 @@ package autoupdate
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -33,6 +34,50 @@ func TestIsMajorVersionChange(t *testing.T) {
 	}
 }
 
+// The expected names are the ones the .goreleaser archive templates produce. An
+// asset name that does not match one of them is not a download that fails
+// loudly — fetchLatestRelease finds no matching asset and gives up silently, so
+// auto-update simply never happens on that platform.
+func TestBinaryAssetNameFor(t *testing.T) {
+	tests := []struct {
+		goos     string
+		goarch   string
+		expected string
+	}{
+		{"darwin", "amd64", "stripe_1.24.0_mac-os_x86_64.tar.gz"},
+		{"darwin", "arm64", "stripe_1.24.0_mac-os_arm64.tar.gz"},
+		{"linux", "amd64", "stripe_1.24.0_linux_x86_64.tar.gz"},
+		{"linux", "arm64", "stripe_1.24.0_linux_arm64.tar.gz"},
+		{"linux", "386", "stripe_1.24.0_linux_i386.tar.gz"},
+		{"windows", "amd64", "stripe_1.24.0_windows_x86_64.zip"},
+		{"windows", "386", "stripe_1.24.0_windows_i386.zip"},
+		// No arm64 Windows build is published; that machine runs the x64 one.
+		{"windows", "arm64", "stripe_1.24.0_windows_x86_64.zip"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.goos+"/"+tt.goarch, func(t *testing.T) {
+			assert.Equal(t, tt.expected, binaryAssetNameFor("1.24.0", tt.goos, tt.goarch))
+		})
+	}
+}
+
+func TestBinaryAssetNameUsesTheRunningPlatform(t *testing.T) {
+	assert.Equal(t, binaryAssetNameFor("1.24.0", runtime.GOOS, runtime.GOARCH), binaryAssetName("1.24.0"))
+}
+
+func TestChecksumAssetName(t *testing.T) {
+	// The checksums file the release publishes for this platform, which is where
+	// the archive's expected digest is read from.
+	expected := map[string]string{
+		"darwin":  "stripe-mac-checksums.txt",
+		"linux":   "stripe-linux-checksums.txt",
+		"windows": "stripe-windows-checksums.txt",
+	}[runtime.GOOS]
+
+	assert.Equal(t, expected, checksumAssetName())
+}
+
 func TestMarkerReadWrite(t *testing.T) {
 	tmpDir := t.TempDir()
 	original := GetStateDirFn
@@ -55,6 +100,39 @@ func TestMarkerReadWrite(t *testing.T) {
 
 	ClearMarker()
 	assert.Nil(t, ReadMarker())
+}
+
+func TestMarkerReadWriteWithReleaseNotes(t *testing.T) {
+	tmpDir := t.TempDir()
+	original := GetStateDirFn
+	defer func() { GetStateDirFn = original }()
+	GetStateDirFn = func() string { return tmpDir }
+
+	notes := "## Changes\n\n- Added one thing\n- Fixed another thing"
+	WriteMarker(UpdateMarker{
+		Version:      "1.24.0",
+		DownloadURL:  "https://example.com/stripe.tar.gz",
+		Checksum:     "abc123",
+		ReleaseNotes: notes,
+	})
+
+	got := ReadMarker()
+	require.NotNil(t, got)
+	assert.Equal(t, notes, got.ReleaseNotes)
+}
+
+func TestReadMarkerWithoutReleaseNotes(t *testing.T) {
+	tmpDir := t.TempDir()
+	original := GetStateDirFn
+	defer func() { GetStateDirFn = original }()
+	GetStateDirFn = func() string { return tmpDir }
+
+	marker := `{"version":"1.24.0","download_url":"https://example.com/stripe.tar.gz","checksum":"abc123"}`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "update-available"), []byte(marker), 0644))
+
+	got := ReadMarker()
+	require.NotNil(t, got)
+	assert.Empty(t, got.ReleaseNotes)
 }
 
 func TestRecordLastCheck(t *testing.T) {

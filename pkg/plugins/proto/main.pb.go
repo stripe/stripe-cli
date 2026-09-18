@@ -1069,6 +1069,11 @@ func (*RunPeerPluginResponse) Descriptor() ([]byte, []int) {
 
 // OutputBlock is a single unit of plugin output. All output types are
 // expressed as blocks, and the rendering engine dispatches on the variant.
+//
+// A variant this core does not know decodes to an empty block rather than an
+// error, so the renderer reports unknown blocks instead of dropping them
+// silently. Prefer a new DataBlock type over a new variant: type is a string,
+// so it needs no protocol change at all.
 type OutputBlock struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Block:
@@ -1340,9 +1345,14 @@ func (x *ProgressBlock) GetSuccess() bool {
 }
 
 type SendCommandOutputRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
-	Blocks        []*OutputBlock         `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Command string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	Blocks  []*OutputBlock         `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	// final marks the request that ends the command's output. The renderer uses
+	// it to tear down spinners before printing, and to close the JSON envelope.
+	// It is explicit rather than inferred from the block kinds so that a command
+	// emitting data mid-run is not mistaken for a finished one.
+	Final         bool `protobuf:"varint,3,opt,name=final,proto3" json:"final,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1389,6 +1399,13 @@ func (x *SendCommandOutputRequest) GetBlocks() []*OutputBlock {
 		return x.Blocks
 	}
 	return nil
+}
+
+func (x *SendCommandOutputRequest) GetFinal() bool {
+	if x != nil {
+		return x.Final
+	}
+	return false
 }
 
 type SendCommandOutputResponse struct {
@@ -1608,10 +1625,11 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12'\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x13.proto.ProgressTypeR\x04type\x12\x18\n" +
-	"\asuccess\x18\x04 \x01(\bR\asuccess\"`\n" +
+	"\asuccess\x18\x04 \x01(\bR\asuccess\"v\n" +
 	"\x18SendCommandOutputRequest\x12\x18\n" +
 	"\acommand\x18\x01 \x01(\tR\acommand\x12*\n" +
-	"\x06blocks\x18\x02 \x03(\v2\x12.proto.OutputBlockR\x06blocks\"\x1b\n" +
+	"\x06blocks\x18\x02 \x03(\v2\x12.proto.OutputBlockR\x06blocks\x12\x14\n" +
+	"\x05final\x18\x03 \x01(\bR\x05final\"\x1b\n" +
 	"\x19SendCommandOutputResponse\"\x8f\x01\n" +
 	"\rPromptRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12%\n" +

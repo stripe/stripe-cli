@@ -26,6 +26,12 @@ import (
 
 var thinEventPattern = regexp.MustCompile(`^v\d+\.`)
 
+var validEventsFromValues = map[string]bool{
+	"@self":     true,
+	"@accounts": true,
+	"all":       true,
+}
+
 const (
 	webhooksWebSocketFeature     = "webhooks"
 	destinationsWebSocketFeature = "v2_events"
@@ -72,7 +78,9 @@ Stripe account.`,
 		Example: `stripe listen
   stripe listen --all-snapshot --forward-to localhost:3000/events
   stripe listen --all-thin --forward-to localhost:3000/events
-  stripe listen --events charge.captured,v1.billing.meter.no_meter_found \
+  stripe listen --events charge.captured,customer.created \
+    --forward-to localhost:3000/events
+  stripe listen --events v1.billing.meter.no_meter_found \
     --forward-to localhost:3000/events
   stripe listen --all-thin --events-from @accounts \
     --forward-to localhost:3000/events`,
@@ -139,6 +147,10 @@ Stripe account.`,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	if err := lc.checkRemovedFlags(); err != nil {
+		return err
+	}
+
+	if err := lc.validateEventsFrom(); err != nil {
 		return err
 	}
 
@@ -451,6 +463,13 @@ func isThinEvent(eventType string) bool {
 	return thinEventPattern.MatchString(eventType)
 }
 
+func (lc *listenCmd) validateEventsFrom() error {
+	if !validEventsFromValues[lc.eventsFrom] {
+		return fmt.Errorf("invalid --events-from value %q: must be one of '@self', '@accounts', or 'all'", lc.eventsFrom)
+	}
+	return nil
+}
+
 // resolveForwardURLs determines the direct and connect forwarding URLs based on
 // the --events-from flag and the --forward-to / --forward-connect-to flags.
 func (lc *listenCmd) resolveForwardURLs() (directURL, connectURL string) {
@@ -491,10 +510,10 @@ func (lc *listenCmd) validateForwardingConfig(snapshotEvents, thinEvents []strin
 	hasThin := len(thinEvents) > 0
 	if hasSnapshot && hasThin {
 		if directURL != "" && directURL == forwardThinURL {
-			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination; use --all-snapshot or --all-thin to subscribe to only one type")
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same destination")
 		}
 		if connectURL != "" && connectURL == forwardThinConnectURL {
-			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination; use --all-snapshot or --all-thin to subscribe to only one type")
+			return fmt.Errorf("cannot forward both snapshot and thin events to the same connect destination")
 		}
 	}
 
