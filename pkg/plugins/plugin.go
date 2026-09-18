@@ -113,6 +113,18 @@ func isLocalDevelopmentVersion(version string) bool {
 	return version == localDevelopmentVersion
 }
 
+// lookUpInstalledVersion reports which installed version of the plugin the CLI should
+// treat as the one that is installed.
+//
+// A local development build shadows every release: someone who put one there is working on
+// it, and nothing published should be picked over it.
+//
+// Failing that, the newest version wins. More than one release directory is not supposed to
+// be there at all -- an install finishes by calling cleanUpPluginPath to leave only the
+// version it just wrote -- but an interrupted or concurrent install can leave several
+// behind, and that invariant is not something this can assume while being the function that
+// answers what is installed. Taking whichever entry came back first would downgrade
+// silently: glob order is lexical, which puts 1.0.0 ahead of 2.0.0.
 func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (string, error) {
 	localDevPath, err := p.getPluginInstallPath(config, localDevelopmentVersion)
 	if err != nil {
@@ -131,11 +143,28 @@ func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (str
 	if err != nil {
 		return "", err
 	}
-	if len(existingLocalPlugin) == 0 {
-		return "", nil
+	newest := ""
+	for _, pluginPath := range existingLocalPlugin {
+		// A version is a directory holding the binary. The glob matches on the two dots in
+		// the name alone, so it would also match a file that happened to be sitting there;
+		// nothing puts one there, and this is what keeps that true.
+		isDir, err := afero.IsDir(fs, pluginPath)
+		if err != nil {
+			return "", err
+		}
+		if !isDir {
+			continue
+		}
+
+		// comparePluginVersions ranks anything above "", so the first candidate takes the
+		// slot without needing a separate case, and a directory name that is not a version
+		// still loses to one that is rather than winning on position.
+		if version := filepath.Base(pluginPath); comparePluginVersions(version, newest) > 0 {
+			newest = version
+		}
 	}
 
-	return filepath.Base(existingLocalPlugin[0]), nil
+	return newest, nil
 }
 
 // cleanUpPluginPath empties the plugin folder except for the version specified
@@ -267,24 +296,22 @@ func (p *Plugin) IsVersionInstalled(config config.IConfig, fs afero.Fs, version 
 }
 
 // InstalledVersion returns the currently installed version of the plugin, or empty string if none.
+//
+// This is the question lookUpInstalledVersion answers, so it is asked of it rather than
+// worked out a second time here. Two walks of the same directory had drifted into two
+// different answers: this one returned the first entry it came across, which is the older
+// of two installed versions, and -- because it had no notion of a local build -- named a
+// published version whenever one sat beside a build the CLI would actually run.
+//
+// That reached further than a wrong string. Callers hand this to a plugin's PostInstall
+// hook as the version being migrated from, and to uninstall as the version to remove.
 func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
-	pluginDir, err := p.getPluginInstallPath(config, "")
+	version, err := p.lookUpInstalledVersion(config, fs)
 	if err != nil {
 		return ""
 	}
 
-	entries, err := afero.ReadDir(fs, pluginDir)
-	if err != nil {
-		return ""
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			return entry.Name()
-		}
-	}
-
-	return ""
+	return version
 }
 
 // Install installs the plugin of the given version.
