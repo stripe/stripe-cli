@@ -425,3 +425,92 @@ func TestStampNewConfigFileRefusesAnExistingFile(t *testing.T) {
 	require.Error(t, StampNewConfigFile(path))
 	require.Contains(t, string(helperLoadBytes(t, path)), "display_name = 'Acme'")
 }
+
+// `stripe login --project-name installed_plugins` is allowed, so a profile can sit
+// on a settings key. Moving it out is what keeps the next plugin install from
+// overwriting it.
+func TestMigrateConfigFileMovesProfileNamedAfterAReservedKey(t *testing.T) {
+	for _, name := range []string{"installed_plugins", "plugin_configs", "color", "user_info", "project-name"} {
+		t.Run(name, func(t *testing.T) {
+			path := writeConfigFileForMigration(t, "["+name+"]\n"+
+				"  display_name = 'Collided Account'\n"+
+				"  test_mode_api_key = 'sk_test_collided_key'\n")
+
+			changed, err := MigrateConfigFile(path)
+			require.NoError(t, err)
+			require.True(t, changed)
+
+			v := viper.New()
+			v.SetConfigFile(path)
+			require.NoError(t, v.ReadInConfig())
+
+			require.Equal(t, "sk_test_collided_key",
+				v.GetString(ProfilesTableName+"."+name+".test_mode_api_key"))
+			require.False(t, v.IsSet(name+".test_mode_api_key"))
+		})
+	}
+}
+
+// The flip side: a settings key holding its real value has no profile field in it,
+// so it stays at the top level.
+func TestMigrateConfigFileLeavesRealReservedSettingsAlone(t *testing.T) {
+	path := writeConfigFileForMigration(t, `installed_plugins = ['apps']
+machine_uuid = 'uuid-reserved'
+
+[plugin_configs.__global]
+  updates = 'on'
+
+[user_info]
+  compartments = []
+
+[default]
+  display_name = 'Acme'
+  test_mode_api_key = 'sk_test_acme_key'
+`)
+
+	changed, err := MigrateConfigFile(path)
+	require.NoError(t, err)
+	require.True(t, changed)
+
+	v := viper.New()
+	v.SetConfigFile(path)
+	require.NoError(t, v.ReadInConfig())
+
+	require.Equal(t, []string{"apps"}, v.GetStringSlice("installed_plugins"))
+	require.Equal(t, "on", v.GetString("plugin_configs.__global.updates"))
+	require.True(t, v.IsSet("user_info"))
+	require.False(t, v.IsSet(ProfilesTableName+".plugin_configs"))
+	require.False(t, v.IsSet(ProfilesTableName+".user_info"))
+	require.Equal(t, "sk_test_acme_key", v.GetString(ProfilesTableName+".default.test_mode_api_key"))
+}
+
+// NeedsMigration has to agree with the migration about what counts as work, or the
+// file never converges.
+func TestNeedsMigrationSeesProfileNamedAfterAReservedKey(t *testing.T) {
+	setupProfileConfig(t, `config_version = 2
+
+[profiles.default]
+  display_name = 'Acme'
+
+[installed_plugins]
+  display_name = 'Collided Account'
+  test_mode_api_key = 'sk_test_collided_key'
+`)
+
+	require.True(t, NeedsMigration())
+}
+
+// ...while a fully migrated file with only real settings at the top level is done.
+func TestNeedsMigrationIsFalseForAMigratedFile(t *testing.T) {
+	setupProfileConfig(t, `config_version = 2
+installed_plugins = ['apps']
+
+[plugin_configs.__global]
+  updates = 'on'
+
+[profiles.default]
+  display_name = 'Acme'
+`)
+
+	require.False(t, NeedsMigration())
+}
