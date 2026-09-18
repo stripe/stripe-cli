@@ -63,6 +63,7 @@ func (p GrokProvider) Detect() Status {
 	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
 	if !supportsPlugins {
 		status.Error = "upgrade Grok Build to enable plugin support"
+		status.Status = StatusError
 		return status
 	}
 	if ok {
