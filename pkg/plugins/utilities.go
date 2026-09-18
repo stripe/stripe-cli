@@ -108,22 +108,34 @@ func GetBinaryExtension() string {
 	return ""
 }
 
-// getPluginsDir computes where plugins are installed locally
-func getPluginsDir(config config.IConfig) string {
-	var pluginsDir string
-	tempEnvPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH")
-
-	switch {
-	case tempEnvPluginsPath != "":
-		pluginsDir = tempEnvPluginsPath
-	case PluginsPath != "":
-		pluginsDir = PluginsPath
-	default:
-		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		pluginsDir = filepath.Join(configPath, "plugins")
+// pluginsDirOverride returns the directory plugins have been pointed at instead of the
+// CLI's own, or "" when they have not been.
+//
+// There are two ways to do that -- the STRIPE_PLUGINS_PATH environment variable, and
+// PluginsPath compiled in by a `localdev` build -- and anything deciding what the CLI may
+// do to a plugin directory has to ask about both. Checking only PluginsPath is what let
+// auto-upgrade overwrite a plugin under STRIPE_PLUGINS_PATH: the same directory, with
+// none of the protection, because the guard knew only the other spelling of it.
+//
+// The env var wins where both are set, matching the order these have always resolved in:
+// a variable set for one invocation is a narrower statement than one baked into a binary.
+func pluginsDirOverride() string {
+	if envPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH"); envPluginsPath != "" {
+		return envPluginsPath
 	}
 
-	return pluginsDir
+	return PluginsPath
+}
+
+// getPluginsDir computes where plugins are installed locally
+func getPluginsDir(config config.IConfig) string {
+	if override := pluginsDirOverride(); override != "" {
+		return override
+	}
+
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+
+	return filepath.Join(configPath, "plugins")
 }
 
 func getLocalPluginMetadataDir(config config.IConfig) string {
@@ -1167,7 +1179,8 @@ func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 // has a newer version of the plugin than what is currently installed.
 //
 // It stays quiet for a plugin that auto-updates, whose owner asked the CLI to handle
-// upgrades rather than be told about them. Where maybeAutoUpgrade already ran this
+// upgrades rather than be told about them -- for as long as the CLI can actually handle
+// them, which the guard below is about. Where maybeAutoUpgrade already ran this
 // invocation, this is a second lookup of the same thing, ending in advice about an
 // upgrade the CLI just made. Where it did not run -- which is most invocations, since
 // it checks at most once per autoUpgradeCheckInterval -- this would spend exactly the
@@ -1179,11 +1192,30 @@ func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 // every auto-updating command a request to say it, and a check that keeps declining is
 // better reported by the check itself than inferred from a hint here.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
+	// PluginsPath alone, deliberately narrower than the same-looking guard in
+	// maybeAutoUpgrade: a `localdev` build has no published release to be behind, but
+	// someone who merely relocated their plugins with STRIPE_PLUGINS_PATH still wants to
+	// hear about upgrades. Printing a line can only be wrong; installing over the
+	// directory can delete a build, which is why that side asks the broader question.
 	if PluginsPath != "" {
 		return
 	}
 
-	if pluginUpdatesEnabled(plugin.Shortname) {
+	// Handing the job to the pre-run check, but only where that check will take it.
+	// maybeAutoUpgrade refuses a plugins directory the user pointed the CLI at, so
+	// deferring to it there would leave a plugin that auto-updates under
+	// STRIPE_PLUGINS_PATH with no upgrade and no word that one exists -- silently behind,
+	// on the strength of a setting asking for the opposite.
+	//
+	// Not the same as deferring across the throttle, which this still does: that decline
+	// is for the current invocation and some later one will upgrade, so the silence costs
+	// a few hours. An overridden directory is refused on every invocation there will ever
+	// be, so nothing arrives to break it.
+	//
+	// Asked of pluginsDirOverride rather than the environment directly, even though the
+	// guard above has already returned for the compiled-in half of it, so that this and
+	// maybeAutoUpgrade keep reading the same answer from the same place.
+	if pluginsDirOverride() == "" && pluginUpdatesEnabled(plugin.Shortname) {
 		return
 	}
 

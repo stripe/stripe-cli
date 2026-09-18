@@ -76,9 +76,11 @@ func stubAutoUpgrade(t *testing.T) *autoUpgradeStubs {
 	origNow := autoUpgradeNow
 	origPluginsPath := PluginsPath
 	// Every test here runs as a normal, non-local-dev install unless it says otherwise.
-	// Left set by another test in this package, it would skip auto-upgrade outright and
-	// every assertion below would pass for the wrong reason.
+	// Left set by another test in this package, either of these would skip auto-upgrade
+	// outright and every assertion below would pass for the wrong reason. Both spellings,
+	// because the guard now asks about both.
 	PluginsPath = ""
+	t.Setenv("STRIPE_PLUGINS_PATH", "")
 
 	t.Cleanup(func() {
 		pluginUpdatesEnabled = origUpdatesEnabled
@@ -333,6 +335,7 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 	tests := []struct {
 		name             string
 		pluginsPath      string
+		pluginsPathEnv   string
 		installedVersion string
 		updatesDisabled  bool
 		resolved         *ResolvedPluginVersion
@@ -351,6 +354,24 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 			name:             "a plugin loaded from a local path",
 			pluginsPath:      "/some/local/dev/path",
 			installedVersion: "1.2.0",
+		},
+		{
+			// The same thing said the other way. A plugin developer is far more likely to
+			// point the CLI at their build with this than to compile a path into it, and
+			// the check used to miss them entirely -- installing over the directory, and
+			// deleting every other version in it on the way out.
+			name:             "a plugin loaded from a local path set in the environment",
+			pluginsPathEnv:   "/some/local/dev/path",
+			installedVersion: "1.2.0",
+		},
+		{
+			// Whichever way it is set, before the setting is read: it costs nothing, and
+			// a developer who once turned updates on for a plugin they now have a build of
+			// should not have that decision reach it.
+			name:             "a local path with updates turned on",
+			pluginsPathEnv:   "/some/local/dev/path",
+			installedVersion: "1.2.0",
+			resolved:         autoUpgradeResolvedPlugin("1.3.0"),
 		},
 		{
 			// Run's auto-install already handles a missing binary, and resolves the
@@ -455,6 +476,9 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 			stubs.resolved = tt.resolved
 			stubs.resolveErr = tt.resolveErr
 			PluginsPath = tt.pluginsPath
+			if tt.pluginsPathEnv != "" {
+				t.Setenv("STRIPE_PLUGINS_PATH", tt.pluginsPathEnv)
+			}
 
 			cfg := autoUpgradeTestConfig()
 			fs := afero.NewMemMapFs()
