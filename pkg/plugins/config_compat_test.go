@@ -3,6 +3,8 @@ package plugins
 import (
 	"testing"
 
+	goversion "github.com/hashicorp/go-version"
+
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -20,13 +22,27 @@ func withConfigV2MinimumVersions(t *testing.T, versions map[string]string) {
 	})
 }
 
-// Until plugin releases that read the v2 layout exist, the CLI cannot tell a
-// compatible plugin from an incompatible one, so it must not migrate at all.
+// With no known versions the CLI cannot tell a compatible plugin from an
+// incompatible one, so it must not migrate at all.
 func TestConfigV2NotReadyWithoutKnownVersions(t *testing.T) {
+	withConfigV2MinimumVersions(t, map[string]string{})
 	require.False(t, ConfigV2Ready())
 
 	withConfigV2MinimumVersions(t, map[string]string{"apps": "1.5.0"})
 	require.True(t, ConfigV2Ready())
+}
+
+// A blank or unparseable minimum is indistinguishable from an unmapped plugin:
+// readsConfigV2 reports false either way, so the plugin is treated as
+// incompatible and its owner is told to upgrade to a version that cannot be
+// resolved. Guard the shipped map against that.
+func TestConfigV2MinimumVersionsAreResolvable(t *testing.T) {
+	for plugin, minimum := range configV2MinimumVersions {
+		require.NotEmpty(t, minimum, "plugin %q has a blank minimum version", plugin)
+
+		_, err := goversion.NewVersion(minimum)
+		require.NoError(t, err, "plugin %q has an unparseable minimum version %q", plugin, minimum)
+	}
 }
 
 func TestReadsConfigV2(t *testing.T) {
@@ -132,6 +148,7 @@ func TestRefuseIfConfigTooNew(t *testing.T) {
 func TestRefuseIfConfigTooNewIsInertUntilVersionsAreKnown(t *testing.T) {
 	t.Cleanup(viper.Reset)
 	viper.Set(config.ConfigVersionName, config.ConfigVersionV2)
+	withConfigV2MinimumVersions(t, map[string]string{})
 
 	plugin := Plugin{Shortname: "apps"}
 	require.NoError(t, plugin.refuseIfConfigTooNew("1.4.0"))
