@@ -36,10 +36,12 @@ func DefaultProviders() map[string]Provider {
 	claude := NewClaudeProvider(scanner, RunCommand)
 	cursor := NewCursorProvider(scanner, RunCommand)
 	codex := NewCodexProvider(scanner, RunCommand)
+	grok := NewGrokProvider(scanner, RunCommand)
 	return map[string]Provider{
 		claude.ID(): claude,
 		cursor.ID(): cursor,
 		codex.ID():  codex,
+		grok.ID():   grok,
 	}
 }
 

@@ -112,6 +112,10 @@ func TestDetectAgentHost(t *testing.T) {
 		// originator is a terminal one. This is the only inferred host.
 		{"codex terminal inferred from sandbox signal", map[string]string{"CODEX_SANDBOX": "1"}, "terminal", "codex-cli"},
 		{"codex terminal inferred from thread signal", map[string]string{"CODEX_THREAD_ID": "thread-abc"}, "terminal", "codex-cli"},
+		// Grok Build sets GROK_AGENT for its terminal TUI but not for its ACP/IDE
+		// surface, which sets only GROK_SESSION_ID
+		{"grok terminal inferred from agent signal", map[string]string{"GROK_AGENT": "1"}, "terminal", "grok-cli"},
+		{"grok acp inferred from session signal without agent", map[string]string{"GROK_SESSION_ID": "01a0b015-bf40-7673-a055-afee8019dc33"}, "ide", "grok-acp"},
 		// The inference is gated on the agent, so it does not fire for anyone else. Claude
 		// Code without an entrypoint has no host, rather than a guessed terminal.
 		{"claude code without entrypoint stays hostless", map[string]string{"CLAUDECODE": "1"}, "", ""},
@@ -303,6 +307,19 @@ func TestObservedAgentSessions(t *testing.T) {
 			description: "Codex sets no originator from a terminal, so the terminal host is " +
 				"inferred from its absence; every other Codex surface names itself",
 		},
+		{
+			name: "grok build",
+			envs: map[string]string{
+				"GROK_AGENT":      "1",
+				"GROK_SESSION_ID": sensitiveSessionID,
+			},
+			agent:    "grok",
+			hostKind: "terminal",
+			hostRaw:  "grok-cli",
+			version:  "",
+			description: "Grok Build's terminal TUI sets GROK_AGENT alongside GROK_SESSION_ID, and " +
+				"reports no version through the AI_AGENT/AGENT convention",
+		},
 	}
 
 	for _, tt := range tests {
@@ -342,6 +359,8 @@ func TestObservedAgentSessions_NoSensitiveValuesReported(t *testing.T) {
 		"CODEX_THREAD_ID":                    sensitiveThreadID,
 		"CODEX_INTERNAL_ORIGINATOR_OVERRIDE": "Codex Desktop",
 		"CODEX_PERMISSION_PROFILE":           ":read-only",
+		"GROK_AGENT":                         "1",
+		"GROK_SESSION_ID":                    sensitiveSessionID,
 	}
 	getEnv := mapEnv(envs)
 
