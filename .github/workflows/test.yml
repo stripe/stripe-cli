@@ -1,6 +1,7 @@
 on:
   push:
   pull_request:
+  merge_group:
 name: Test
 permissions:
   contents: read

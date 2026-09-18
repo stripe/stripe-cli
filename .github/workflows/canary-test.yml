@@ -2,9 +2,11 @@ name: Canary Tests
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, v2]
   push:
-    branches: [master]
+    branches: [master, v2]
+  merge_group:
+    branches: [master, v2]
   workflow_call:
     inputs:
       run_api_tests:
