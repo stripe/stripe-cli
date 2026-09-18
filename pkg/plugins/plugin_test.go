@@ -1027,12 +1027,107 @@ func TestLookUpInstalledVersionFallsBackToInstalledRelease(t *testing.T) {
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 
-	require.NoError(t, fs.MkdirAll("/plugins/appA/1.0.1", 0755))
+	// One version, so what this pins is only that a release is found with no local build
+	// present. It used to install two and expect the lower of them, which made it a test
+	// of glob ordering wearing this name.
 	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
 
 	version, err := plugin.lookUpInstalledVersion(config, fs)
 	require.NoError(t, err)
+	require.Equal(t, "2.0.1", version)
+}
+
+// TestLookUpInstalledVersionPrefersTheNewestRelease covers a plugin directory holding more
+// than one version. Installing is supposed to leave exactly one -- cleanUpPluginPath
+// deletes the rest -- but an interrupted or concurrent install can leave several, and this
+// is the function every caller trusts to say which one is installed.
+func TestLookUpInstalledVersionPrefersTheNewestRelease(t *testing.T) {
+	tests := []struct {
+		name      string
+		installed []string
+		want      string
+	}{
+		{
+			// The old behavior, and a downgrade: glob order is lexical, so 1.0.1 came
+			// back first and was reported as the installed version over 2.0.1.
+			name:      "a newer version alongside an older one",
+			installed: []string{"1.0.1", "2.0.1"},
+			want:      "2.0.1",
+		},
+		{
+			// Ordered as versions rather than as strings, which is a different answer
+			// here: 1.9.0 is the lexically greater of the two.
+			name:      "a double-digit patch series",
+			installed: []string{"1.9.0", "1.10.0"},
+			want:      "1.10.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := setUpFS()
+			config := &TestConfig{}
+
+			plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+			for _, installed := range tt.installed {
+				require.NoError(t, fs.MkdirAll(filepath.Join("/plugins/appA", installed), 0755))
+			}
+
+			version, err := plugin.lookUpInstalledVersion(config, fs)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, version)
+
+			// The same question, so the same answer. These were two separate walks of this
+			// directory that disagreed, and InstalledVersion is the one handed to a
+			// plugin's PostInstall hook as the version being migrated from.
+			require.Equal(t, tt.want, plugin.InstalledVersion(config, fs))
+		})
+	}
+}
+
+// TestInstalledVersionReportsALocalDevelopmentBuild pins the half of that disagreement with
+// teeth in it. InstalledVersion had no notion of a local build, so with one sitting beside a
+// release it named the release -- a version the CLI would not run, offered to the upgrade
+// hint as the thing to compare against, telling a plugin developer their own build was out
+// of date.
+func TestInstalledVersionReportsALocalDevelopmentBuild(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/2.0.1", 0755))
+	require.NoError(t, fs.MkdirAll("/plugins/appA/"+localDevelopmentVersion, 0755))
+
+	require.Equal(t, localDevelopmentVersion, plugin.InstalledVersion(config, fs))
+}
+
+// TestLookUpInstalledVersionIgnoresFiles pins the directory check. The glob this walks keys
+// on the two dots in a name, not on being a directory, and InstalledVersion used to screen
+// for directories itself before it was folded into here.
+func TestLookUpInstalledVersionIgnoresFiles(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.NoError(t, fs.MkdirAll("/plugins/appA/1.0.1", 0755))
+	require.NoError(t, afero.WriteFile(fs, "/plugins/appA/9.9.9", []byte("not a version"), 0644))
+
+	version, err := plugin.lookUpInstalledVersion(config, fs)
+	require.NoError(t, err)
 	require.Equal(t, "1.0.1", version)
+	require.Equal(t, "1.0.1", plugin.InstalledVersion(config, fs))
+}
+
+func TestInstalledVersionEmptyWithNothingInstalled(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+
+	require.Empty(t, plugin.InstalledVersion(config, fs))
 }
 
 func TestCommandInfoParsedFromManifest(t *testing.T) {
