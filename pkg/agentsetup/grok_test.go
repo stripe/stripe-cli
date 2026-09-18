@@ -51,7 +51,6 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.True(t, status.Plugin.Installed)
 	require.Equal(t, "stripe", status.Plugin.ID)
 	require.Equal(t, "0.7.1", status.Plugin.Version)
-	require.Equal(t, "xAI Official", status.Plugin.Scope)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }

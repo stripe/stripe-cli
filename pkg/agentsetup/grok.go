@@ -63,13 +63,13 @@ func (p GrokProvider) Detect() Status {
 	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
 	if !supportsPlugins {
 		status.Error = "upgrade Grok Build to enable plugin support"
+		status.Status = StatusError
 		return status
 	}
 	if ok {
 		status.Plugin.Installed = true
 		status.Plugin.ID = plugin.Name
 		status.Plugin.Version = plugin.Version
-		status.Plugin.Scope = plugin.Marketplace
 		status.Plugin.StatePath = plugin.Path
 		status.Status = StatusInstalled
 	}
@@ -93,11 +93,7 @@ func (p GrokProvider) stripePluginStatus(ctx context.Context) (plugin grokInstal
 	return plugin, ok, true
 }
 
-// grokInstalledPlugin is an entry in `grok plugin list --json` output, e.g.:
-//
-//	{"status":"installed","name":"stripe","repo_key":"plugin-760cfec9",
-//	 "version":"0.7.1","path":"/Users/x/.grok/installed-plugins/plugin-760cfec9",
-//	 "source":"https://github.com/stripe/ai.git","marketplace":"xAI Official"}
+// grokInstalledPlugin is an entry in `grok plugin list --json` output
 type grokInstalledPlugin struct {
 	Status      string `json:"status"`
 	Name        string `json:"name"`
