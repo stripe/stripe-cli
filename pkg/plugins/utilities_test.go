@@ -1297,6 +1297,11 @@ func TestCheckLatestPluginVersionSilentWhenPluginAutoUpdates(t *testing.T) {
 	origUpdatesEnabled := pluginUpdatesEnabled
 	origResolver := checkLatestPluginVersionResolver
 	PluginsPath = ""
+	// A plugins directory the CLI has not been pointed at, which is what makes deferring
+	// to the pre-run check the right thing to do here. Pinned rather than assumed: the
+	// suppression this asserts is now conditional on it, so a stray variable in the
+	// environment running the tests would turn the whole test into its own opposite.
+	t.Setenv("STRIPE_PLUGINS_PATH", "")
 
 	var settingReads []string
 	pluginUpdatesEnabled = func(pluginName string) bool {
@@ -1352,6 +1357,74 @@ func TestCheckLatestPluginVersionSilentWhenPluginAutoUpdates(t *testing.T) {
 	// every command of an auto-updating plugin, which is the cost
 	// autoUpgradeCheckInterval exists to keep maybeAutoUpgrade from imposing.
 	require.Zero(t, resolveCalls)
+}
+
+// TestCheckLatestPluginVersionHintsWhenAutoUpgradeWillNotRun covers the one state where
+// both halves of the feature could go quiet at once: auto-update is on for the plugin, so
+// the hint would hand the job to the pre-run check, while the plugins directory is
+// overridden, so that check refuses it outright. Deferring to something that never runs
+// leaves the plugin silently out of date -- the single outcome neither guard is willing to
+// own, and the reason the suppression above asks whether the upgrade can happen at all.
+//
+// Distinct from the throttle, which is also a decline: that one is for this invocation and
+// the next one may well upgrade, so staying quiet costs nothing but a few hours. An
+// overridden directory is refused on every invocation, forever.
+func TestCheckLatestPluginVersionHintsWhenAutoUpgradeWillNotRun(t *testing.T) {
+	origPluginsPath := PluginsPath
+	origUpdatesEnabled := pluginUpdatesEnabled
+	origResolver := checkLatestPluginVersionResolver
+	PluginsPath = ""
+	t.Setenv("STRIPE_PLUGINS_PATH", "/somewhere/else")
+
+	var settingReads []string
+	pluginUpdatesEnabled = func(pluginName string) bool {
+		settingReads = append(settingReads, pluginName)
+		return true
+	}
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+				},
+			},
+			Version: "1.1.0",
+		}, nil
+	}
+	defer func() {
+		PluginsPath = origPluginsPath
+		pluginUpdatesEnabled = origUpdatesEnabled
+		checkLatestPluginVersionResolver = origResolver
+	}()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/somewhere/else/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+
+	// The setting is not read at all. Under an overridden directory it has nothing left to
+	// decide, and asserting that rules out passing for the neighboring reason -- a hint
+	// printed because the setting happened to be off rather than because the override
+	// took precedence over it.
+	require.Empty(t, settingReads)
 }
 
 func TestIsPluginCommand(t *testing.T) {
