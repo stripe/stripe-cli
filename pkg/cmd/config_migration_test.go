@@ -34,11 +34,10 @@ func newMigrationHarness(t *testing.T) *migrationHarness {
 
 	h := &migrationHarness{out: &bytes.Buffer{}}
 	h.migration = configMigration{
-		profilesFile:         profilesFile,
-		needsMigration:       func() bool { return true },
-		pluginsReady:         func() bool { return true },
-		incompatibilities:    func() ([]plugins.ConfigV2Incompatibility, error) { return nil, nil },
-		installedPluginCount: func() int { return 3 },
+		profilesFile:      profilesFile,
+		needsMigration:    func() bool { return true },
+		pluginsReady:      func() bool { return true },
+		incompatibilities: func() ([]plugins.ConfigV2Incompatibility, error) { return nil, nil },
 		upgradePlugin: func(incompatibility plugins.ConfigV2Incompatibility) (string, error) {
 			h.upgrades = append(h.upgrades, incompatibility.Plugin)
 			return "1.2.0", nil
@@ -66,6 +65,9 @@ func newMigrationHarness(t *testing.T) *migrationHarness {
 	return h
 }
 
+// The common case, and the whole point of the quiet contract: the file is
+// reorganized and the user sees nothing about it. They asked to run a command,
+// nothing about it changed, and there is nothing for them to decide.
 func TestConfigMigrationRunsWhenNeeded(t *testing.T) {
 	h := newMigrationHarness(t)
 
@@ -74,9 +76,7 @@ func TestConfigMigrationRunsWhenNeeded(t *testing.T) {
 	require.True(t, h.migrated)
 	require.True(t, h.reloaded)
 	require.Equal(t, h.migration.profilesFile, h.migratedPath)
-	require.Contains(t, h.out.String(), "checking installed plugins... all 3 are compatible.")
-	require.Contains(t, h.out.String(), "✔ updated "+h.migration.profilesFile+" to the new config format")
-	require.Contains(t, h.out.String(), "backup saved to config.toml"+config.ConfigBackupSuffix)
+	require.Empty(t, h.out.String())
 }
 
 func TestNewConfigMigrationUsesEffectiveConfigPath(t *testing.T) {
@@ -134,9 +134,10 @@ func TestConfigMigrationUpgradesAPluginThatIsTooOld(t *testing.T) {
 
 	require.Equal(t, []string{"projects"}, h.upgrades)
 	require.True(t, h.migrated)
-	require.Contains(t, h.out.String(), "checking installed plugins...")
-	require.Contains(t, h.out.String(), "✔ upgraded projects from v0.8.2 to v1.2.0.")
-	require.Contains(t, h.out.String(), "✔ updated "+h.migration.profilesFile+" to the new config format")
+
+	// The one thing worth saying out loud, and it is said before the download rather
+	// than reported after it, because the point is to explain the wait.
+	require.Equal(t, "Upgrading the projects plugin so it can read the updated config file.\n", h.out.String())
 }
 
 func TestConfigMigrationDoesNotMigrateWhenPluginUpgradeFails(t *testing.T) {
@@ -155,9 +156,7 @@ func TestConfigMigrationDoesNotMigrateWhenPluginUpgradeFails(t *testing.T) {
 	h.migration.run()
 
 	require.False(t, h.migrated)
-	require.Contains(t, h.out.String(), "! could not upgrade projects to the minimum required version (1.2.0).")
-	require.Contains(t, h.out.String(), "run `stripe plugin upgrade projects`, then try again.")
-	require.Contains(t, h.out.String(), "your config file was not changed.")
+	require.Equal(t, "Upgrading the projects plugin so it can read the updated config file.\n", h.out.String())
 }
 
 func TestConfigMigrationSkipsUntilPluginVersionsAreKnown(t *testing.T) {
@@ -171,8 +170,8 @@ func TestConfigMigrationSkipsUntilPluginVersionsAreKnown(t *testing.T) {
 }
 
 // A migration that fails has already restored the original file, and the command
-// the user asked for still runs.
-func TestConfigMigrationReportsFailureWithoutFailingTheCommand(t *testing.T) {
+// the user asked for still runs against it -- so there is nothing to report.
+func TestConfigMigrationStaysQuietWhenTheMigrationFails(t *testing.T) {
 	h := newMigrationHarness(t)
 	h.migration.migrate = func(string) (bool, error) {
 		return false, os.ErrPermission
@@ -181,8 +180,7 @@ func TestConfigMigrationReportsFailureWithoutFailingTheCommand(t *testing.T) {
 	h.migration.run()
 
 	require.False(t, h.reloaded)
-	require.Contains(t, h.out.String(), "Could not update")
-	require.Contains(t, h.out.String(), "still reads it")
+	require.Empty(t, h.out.String())
 }
 
 // Help and completion output is read by other programs, so a status line in the
