@@ -480,3 +480,36 @@ func writeAndSync(file *os.File, contents []byte) error {
 
 	return file.Sync()
 }
+
+// StampNewConfigFile creates a config file that records the v2 layout, so that the
+// first write into it nests profiles under the profiles table instead of writing
+// the flat layout and needing a migration on the next command.
+//
+// The document is the one encodePlan produces for an empty plan, so a file created
+// here is indistinguishable from one the migration would have produced.
+//
+// It refuses to touch a file that already exists: picking the layout of a file that
+// already holds something is MigrateConfigFile's job, and it has a backup and a
+// verification pass for exactly that reason.
+func StampNewConfigFile(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return errorcategory.Errorf(errorcategory.Filesystem,
+			"refusing to stamp %s: the file already exists", path)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	if err := makePath(path); err != nil {
+		return err
+	}
+
+	contents, err := encodePlan(&migrationPlan{
+		profiles: make(map[string]map[string]interface{}),
+		settings: make(map[string]interface{}),
+	})
+	if err != nil {
+		return err
+	}
+
+	return writeFileSync(path, contents)
+}
