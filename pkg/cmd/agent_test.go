@@ -404,7 +404,7 @@ type agentCall struct {
 }
 
 func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
-	calling_agents := []struct {
+	callingAgents := []struct {
 		name         string
 		displayName  string
 		makeProvider func(record agentsetup.RunCommandFunc) agentsetup.Provider
@@ -424,7 +424,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 		},
 	}
 
-	for _, agent := range calling_agents {
+	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
 			var calls []agentCall
 			record := func(_ context.Context, name string, args ...string) error {
