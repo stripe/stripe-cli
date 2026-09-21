@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1156,6 +1157,107 @@ func TestCheckLatestPluginVersionSilentWhenLookupTimesOut(t *testing.T) {
 	}
 }
 
+// TestCheckLatestPluginVersionStillHintsUnderAnEnvironmentPluginsPath pins the one place
+// the two plugins-path guards deliberately disagree. maybeAutoUpgrade refuses to install
+// into a directory the user pointed the CLI at, whichever way they pointed it; the hint
+// only goes quiet for a localdev build, which has no published release to be behind.
+// Someone who relocated ordinary installs with the environment variable still wants to
+// hear that an upgrade exists -- all the more so now that they will not get it silently.
+func TestCheckLatestPluginVersionStillHintsUnderAnEnvironmentPluginsPath(t *testing.T) {
+	origPluginsPath := PluginsPath
+	origResolver := checkLatestPluginVersionResolver
+	PluginsPath = ""
+	t.Setenv("STRIPE_PLUGINS_PATH", "/somewhere/else")
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+				},
+			},
+			Version: "1.1.0",
+		}, nil
+	}
+	defer func() {
+		PluginsPath = origPluginsPath
+		checkLatestPluginVersionResolver = origResolver
+	}()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/somewhere/else/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+}
+
+func TestGetPluginsDirOverrides(t *testing.T) {
+	// TestConfig's config folder is "/", which is why every other test in this package
+	// finds plugins at /plugins without arranging anything. Joined rather than written
+	// out because this is the one case getPluginsDir builds a path for, and Windows
+	// builds it with the other separator. The overrides below are handed back verbatim,
+	// so they are the same string everywhere.
+	defaultPluginsDir := filepath.Join("/", "plugins")
+
+	tests := []struct {
+		name           string
+		pluginsPathEnv string
+		pluginsPath    string
+		want           string
+	}{
+		{
+			name: "neither, so the CLI's own config folder",
+			want: defaultPluginsDir,
+		},
+		{
+			name:           "the environment variable",
+			pluginsPathEnv: "/from/the/environment",
+			want:           "/from/the/environment",
+		},
+		{
+			name:        "a path compiled into a localdev build",
+			pluginsPath: "/compiled/in",
+			want:        "/compiled/in",
+		},
+		{
+			// The order these have always resolved in, kept because a variable set for
+			// one invocation is a narrower statement than one baked into a binary.
+			name:           "both, so the environment variable",
+			pluginsPathEnv: "/from/the/environment",
+			pluginsPath:    "/compiled/in",
+			want:           "/from/the/environment",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			origPluginsPath := PluginsPath
+			PluginsPath = tt.pluginsPath
+			t.Setenv("STRIPE_PLUGINS_PATH", tt.pluginsPathEnv)
+			defer func() { PluginsPath = origPluginsPath }()
+
+			require.Equal(t, tt.want, getPluginsDir(&TestConfig{}))
+
+			// What the auto-upgrade guard reads. Anything but the config folder is a
+			// directory the CLI was pointed at and must not install over.
+			require.Equal(t, tt.want != defaultPluginsDir, pluginsDirOverride() != "")
+		})
+	}
+}
+
 func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
 	origPluginsPath := PluginsPath
 	origResolver := checkLatestPluginVersionResolver
@@ -1188,6 +1290,141 @@ func TestCheckLatestPluginVersionSilentInDevMode(t *testing.T) {
 	})
 
 	require.Empty(t, output)
+}
+
+func TestCheckLatestPluginVersionSilentWhenPluginAutoUpdates(t *testing.T) {
+	origPluginsPath := PluginsPath
+	origUpdatesEnabled := pluginUpdatesEnabled
+	origResolver := checkLatestPluginVersionResolver
+	PluginsPath = ""
+	// A plugins directory the CLI has not been pointed at, which is what makes deferring
+	// to the pre-run check the right thing to do here. Pinned rather than assumed: the
+	// suppression this asserts is now conditional on it, so a stray variable in the
+	// environment running the tests would turn the whole test into its own opposite.
+	t.Setenv("STRIPE_PLUGINS_PATH", "")
+
+	var settingReads []string
+	pluginUpdatesEnabled = func(pluginName string) bool {
+		settingReads = append(settingReads, pluginName)
+		return true
+	}
+	resolveCalls := 0
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		resolveCalls++
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+				},
+			},
+			Version: "1.1.0",
+		}, nil
+	}
+	defer func() {
+		PluginsPath = origPluginsPath
+		pluginUpdatesEnabled = origUpdatesEnabled
+		checkLatestPluginVersionResolver = origResolver
+	}()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/plugins/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	// This setup is exactly TestCheckLatestPluginVersionPrintsWhenUpgradeAvailable --
+	// 1.0.0 installed, 1.1.0 offered -- so the setting is the only thing keeping it
+	// quiet, and the hint text is not what is being suppressed here anyway.
+	require.Equal(t, []string{"myplugin"}, settingReads)
+	require.Empty(t, output)
+
+	// The point is the request, not just the message. A hint here would put a lookup on
+	// every command of an auto-updating plugin, which is the cost
+	// autoUpgradeCheckInterval exists to keep maybeAutoUpgrade from imposing.
+	require.Zero(t, resolveCalls)
+}
+
+// TestCheckLatestPluginVersionHintsWhenAutoUpgradeWillNotRun covers the one state where
+// both halves of the feature could go quiet at once: auto-update is on for the plugin, so
+// the hint would hand the job to the pre-run check, while the plugins directory is
+// overridden, so that check refuses it outright. Deferring to something that never runs
+// leaves the plugin silently out of date -- the single outcome neither guard is willing to
+// own, and the reason the suppression above asks whether the upgrade can happen at all.
+//
+// Distinct from the throttle, which is also a decline: that one is for this invocation and
+// the next one may well upgrade, so staying quiet costs nothing but a few hours. An
+// overridden directory is refused on every invocation, forever.
+func TestCheckLatestPluginVersionHintsWhenAutoUpgradeWillNotRun(t *testing.T) {
+	origPluginsPath := PluginsPath
+	origUpdatesEnabled := pluginUpdatesEnabled
+	origResolver := checkLatestPluginVersionResolver
+	PluginsPath = ""
+	t.Setenv("STRIPE_PLUGINS_PATH", "/somewhere/else")
+
+	var settingReads []string
+	pluginUpdatesEnabled = func(pluginName string) bool {
+		settingReads = append(settingReads, pluginName)
+		return true
+	}
+	checkLatestPluginVersionResolver = func(ctx context.Context, cfg cfgpkg.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+		return &ResolvedPluginVersion{
+			Plugin: &Plugin{
+				Shortname: "myplugin",
+				Releases: []Release{
+					{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.1.0", Sum: "abc123"},
+				},
+			},
+			Version: "1.1.0",
+		}, nil
+	}
+	defer func() {
+		PluginsPath = origPluginsPath
+		pluginUpdatesEnabled = origUpdatesEnabled
+		checkLatestPluginVersionResolver = origResolver
+	}()
+
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+
+	plugin := Plugin{
+		Shortname:        "myplugin",
+		Binary:           "stripe-cli-myplugin",
+		MagicCookieValue: "MY-COOKIE",
+		Releases: []Release{
+			{Arch: runtime.GOARCH, OS: runtime.GOOS, Version: "1.0.0", Sum: "abc123"},
+		},
+	}
+
+	pluginBinaryPath := fmt.Sprintf("/somewhere/else/myplugin/1.0.0/stripe-cli-myplugin%s", GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("binary"), 0755))
+
+	output := captureStderr(t, func() {
+		CheckLatestPluginVersion(context.Background(), config, fs, plugin, stripe.DefaultAPIBaseURL, "")
+	})
+
+	require.Contains(t, output, "A newer version of the myplugin plugin is available")
+
+	// The setting is not read at all. Under an overridden directory it has nothing left to
+	// decide, and asserting that rules out passing for the neighboring reason -- a hint
+	// printed because the setting happened to be off rather than because the override
+	// took precedence over it.
+	require.Empty(t, settingReads)
 }
 
 func TestIsPluginCommand(t *testing.T) {
@@ -1262,6 +1499,126 @@ func testListEndpointResponseJSON() []byte {
   ]
 }`, runtime.GOOS, runtime.GOARCH))
 }
+
+func TestResolveInstallBaseURLs(t *testing.T) {
+	tests := []struct {
+		name             string
+		apiBaseURL       string
+		dashboardBaseURL string
+		wantAPI          string
+		wantDashboard    string
+	}{
+		{
+			// What Run is handed when the user passed no base URL flags at all, which is
+			// the usual case. An empty pair has to become a real host, not stay empty.
+			name:          "both empty fall back to this CLI's defaults",
+			wantAPI:       "https://api.stripe.com",
+			wantDashboard: "https://dashboard.stripe.com",
+		},
+		{
+			// The dashboard has to follow the API base URL. If it didn't, an --api-base
+			// pointed at QA would pair with production's dashboard.
+			name:          "dashboard follows an overridden api base",
+			apiBaseURL:    "https://qa-api.stripe.com",
+			wantAPI:       "https://qa-api.stripe.com",
+			wantDashboard: "https://qa-dashboard.stripe.com",
+		},
+		{
+			name:             "dashboard override stands on its own",
+			dashboardBaseURL: "https://qa-dashboard.stripe.com",
+			wantAPI:          "https://api.stripe.com",
+			wantDashboard:    "https://qa-dashboard.stripe.com",
+		},
+		{
+			name:             "both overrides pass through untouched",
+			apiBaseURL:       "https://qa-api.stripe.com",
+			dashboardBaseURL: "https://custom-dashboard.stripe.com",
+			wantAPI:          "https://qa-api.stripe.com",
+			wantDashboard:    "https://custom-dashboard.stripe.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotAPI, gotDashboard := resolveInstallBaseURLs(tt.apiBaseURL, tt.dashboardBaseURL)
+
+			require.Equal(t, tt.wantAPI, gotAPI)
+			require.Equal(t, tt.wantDashboard, gotDashboard)
+		})
+	}
+}
+
+// The cheap half of cancellation: a context that is already done should not reach
+// the network at all.
+func TestFetchRemoteResourceDoesNotRequestWithCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+	}))
+	defer server.Close()
+
+	_, err := FetchRemoteResource(ctx, server.URL)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Zero(t, requestCount.Load())
+}
+
+// The half that matters for Ctrl+C. A plugin binary is large enough that a wait
+// worth abandoning is a wait that has already gotten past the response headers, so
+// this cancels mid-body and asserts the transfer is actually torn down rather than
+// running to completion behind an error return.
+func TestFetchRemoteResourceCancelsDownloadInFlight(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	tornDown := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Headers and a first chunk, so the client is inside the body read rather than
+		// still waiting to hear back.
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("the first bytes of a plugin binary"))
+		w.(http.Flusher).Flush()
+
+		// Stands in for the rest of the download never arriving. Bounded so a
+		// regression cannot wedge httptest's Close, which waits on its handlers.
+		cancel()
+		select {
+		case <-r.Context().Done():
+			close(tornDown)
+		case <-time.After(cancellationTestTimeout):
+		}
+	}))
+	defer server.Close()
+
+	// Off the test goroutine, and bounded, because the whole point of the assertion
+	// is that this call returns at all. Waiting on it directly would turn a
+	// regression into a hung package instead of a failed test.
+	fetched := make(chan error, 1)
+	go func() {
+		_, err := FetchRemoteResource(ctx, server.URL)
+		fetched <- err
+	}()
+
+	select {
+	case err := <-fetched:
+		require.Error(t, err)
+	case <-time.After(cancellationTestTimeout):
+		t.Fatal("canceling the context did not stop the download")
+	}
+
+	select {
+	case <-tornDown:
+	case <-time.After(cancellationTestTimeout):
+		t.Fatal("canceling the context left the connection open")
+	}
+}
+
+// Long enough that a loaded CI machine will not trip it, short enough that a
+// regression reports itself rather than running out the package's test timeout.
+const cancellationTestTimeout = 15 * time.Second
 
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()

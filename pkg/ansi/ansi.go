@@ -191,6 +191,17 @@ func StopSpinner(s *spinner.Spinner, msg string, w io.Writer) {
 	s.Stop()
 }
 
+// ClearLine erases the current line and returns the cursor to its start, if
+// the writer is a terminal that supports it. Useful for erasing a stray ^C
+// the terminal driver echoed on interrupt before printing a replacement
+// message. It's a no-op otherwise.
+func ClearLine(w io.Writer) {
+	if !isTerminal(w) || !shouldUseColors(w) {
+		return
+	}
+	fmt.Fprint(w, "\r\x1b[K")
+}
+
 // StrikeThrough returns struck though text if the writer supports colors
 func StrikeThrough(text string) string {
 	color := Color(os.Stdout)

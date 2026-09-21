@@ -1,7 +1,8 @@
-// Package reporting provides error reporting via Sentry.
+// Package reporting provides error reporting via Sentry and telemetry.
 package reporting
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -10,7 +11,15 @@ import (
 	sentry "github.com/getsentry/sentry-go"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+// errorTelemetryEventName is the telemetry event used to mirror errors
+// reported to Sentry, so error rates can be tracked in Prometheus without
+// Sentry access. The event value is just the category (e.g. "api",
+// "internal") — never the error message, which is unbounded free text and
+// would blow up tag cardinality downstream.
+const errorTelemetryEventName = "CLI Error"
 
 var accountIDProvider func() (string, error)
 
@@ -39,11 +48,27 @@ func Init(dsn, release string) error {
 	})
 }
 
-// CaptureException reports err to the error reporting backend.
-func CaptureException(err error) {
+// CaptureException reports err to the error reporting backends (Sentry and
+// telemetry).
+func CaptureException(ctx context.Context, err error) {
 	category := classifyError(err)
 	if !shouldCapture(category) {
 		return
+	}
+
+	// Walk to the root cause so wrapped context ("failed to create customer:
+	// EOF") doesn't prevent grouping on the underlying error.
+	root := err
+	for e := errors.Unwrap(root); e != nil; e = errors.Unwrap(e) {
+		root = e
+	}
+
+	// Include the call site so that identical generic errors (e.g.
+	// *errors.errorString "EOF") from different code paths land in separate
+	// Sentry issues without requiring callers to use custom error types.
+	caller := "unknown"
+	if _, file, line, ok := runtime.Caller(1); ok {
+		caller = fmt.Sprintf("%s:%d", file, line)
 	}
 
 	sentry.WithScope(func(scope *sentry.Scope) {
@@ -56,22 +81,34 @@ func CaptureException(err error) {
 		if commandPath != "" {
 			scope.SetTag("command", commandPath)
 		}
-		// Walk to the root cause so wrapped context ("failed to create customer:
-		// EOF") doesn't prevent grouping on the underlying error.
-		root := err
-		for e := errors.Unwrap(root); e != nil; e = errors.Unwrap(e) {
-			root = e
-		}
-		// Include the call site so that identical generic errors (e.g.
-		// *errors.errorString "EOF") from different code paths land in separate
-		// Sentry issues without requiring callers to use custom error types.
-		caller := "unknown"
-		if _, file, line, ok := runtime.Caller(1); ok {
-			caller = fmt.Sprintf("%s:%d", file, line)
-		}
 		scope.SetFingerprint([]string{caller, fmt.Sprintf("%T", root), root.Error()})
 		sentry.CaptureException(err)
 	})
+
+	sendErrorTelemetry(ctx, category)
+}
+
+// sendErrorTelemetry mirrors a captured Sentry event's category to
+// telemetry. The value is the bare category string (e.g. "api") so that AEL
+// can key a Prometheus tag directly off it with a fixed values allowlist —
+// nothing free-form (error message, call site) is sent, since that would be
+// unbounded cardinality if ever wired into a tag/gauge/set.
+func sendErrorTelemetry(ctx context.Context, category errorcategory.Category) {
+	telemetryClient := stripe.GetTelemetryClient(ctx)
+	if telemetryClient == nil {
+		return
+	}
+	if stripe.GetEventMetadata(ctx) == nil {
+		// CaptureException always runs with metadata already on ctx (set once
+		// in cmd.Execute). RecoverAndReport can run before that, e.g. a panic
+		// during setup, so fall back to freshly built metadata.
+		ctx = stripe.WithEventMetadata(ctx, stripe.NewEventMetadata())
+	}
+
+	// Sent synchronously (not fire-and-forget): callers on the error/panic
+	// path exit via os.Exit right after this, which would otherwise race
+	// the request and drop it nondeterministically.
+	telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(category))
 }
 
 // shouldCapture defines the reporting policy for classified errors. Auth covers
@@ -90,11 +127,13 @@ func shouldCapture(category errorcategory.Category) bool {
 
 // RecoverAndReport captures a recovered panic value to the error reporting backend.
 // The caller is responsible for re-panicking and calling Flush before the process exits.
-func RecoverAndReport(r any) {
+func RecoverAndReport(ctx context.Context, r any) {
 	sentry.CurrentHub().WithScope(func(scope *sentry.Scope) {
 		scope.SetTag("error_category", string(errorcategory.Panic))
 		sentry.CurrentHub().Recover(r)
 	})
+
+	sendErrorTelemetry(ctx, errorcategory.Panic)
 }
 
 // Flush blocks until all buffered events are delivered or the timeout elapses.

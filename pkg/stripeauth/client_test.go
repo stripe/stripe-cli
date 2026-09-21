@@ -3,6 +3,7 @@ package stripeauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -154,6 +155,59 @@ func TestAuthorizeClientError(t *testing.T) {
 	require.Equal(t, `{"error":"too_many_requests"}`, clientError.Body)
 }
 
+func TestAuthorizeMorePermissionsRequiredError(t *testing.T) {
+	body := `{"error":{"code":"more_permissions_required","message":"The provided key does not have the required permissions for this endpoint.","request_log_url":"https://dashboard.stripe.com/acct_123/workbench/logs?object=req_123","type":"invalid_request_error"}}`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(body))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := NewClient(&stripe.Client{Credentials: stripe.NewAPIKeyCredentials("sk_test_123"), BaseURL: baseURL}, nil)
+
+	_, err := client.Authorize(context.Background(), CreateSessionRequest{
+		DeviceName:        "my-device",
+		WebSocketFeatures: []string{"webhooks"},
+	})
+
+	require.Error(t, err)
+	require.True(t, IsMorePermissionsRequiredError(err))
+
+	clientError, ok := IsAuthorizationClientError(err)
+	require.True(t, ok)
+	require.Equal(t, http.StatusForbidden, clientError.StatusCode)
+	require.Equal(t, "more_permissions_required", clientError.ErrorCode)
+	require.False(t, clientError.HasOAKContext)
+	require.Equal(t, "The provided key does not have the required permissions for this endpoint.", clientError.Message)
+}
+
+func TestAuthorizeMorePermissionsRequiredError_OAKCredentials(t *testing.T) {
+	body := `{"error":{"code":"more_permissions_required","message":"The provided key does not have the required permissions for this endpoint.","type":"invalid_request_error"}}`
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(body))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := NewClient(&stripe.Client{Credentials: stripe.NewOAKCredentials("oak_test_123", "acct_a", false), BaseURL: baseURL}, nil)
+
+	_, err := client.Authorize(context.Background(), CreateSessionRequest{
+		DeviceName:        "my-device",
+		WebSocketFeatures: []string{"webhooks"},
+	})
+
+	require.Error(t, err)
+	require.True(t, IsMorePermissionsRequiredError(err))
+
+	clientError, ok := IsAuthorizationClientError(err)
+	require.True(t, ok)
+	require.True(t, clientError.HasOAKContext)
+}
+
 func TestAuthorizeServerError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -174,4 +228,12 @@ func TestAuthorizeServerError(t *testing.T) {
 	clientError, ok := IsAuthorizationClientError(err)
 	require.False(t, ok)
 	require.Nil(t, clientError)
+}
+
+func TestIsMorePermissionsRequiredError(t *testing.T) {
+	require.False(t, IsMorePermissionsRequiredError(nil))
+	require.False(t, IsMorePermissionsRequiredError(errors.New("other")))
+	require.False(t, IsMorePermissionsRequiredError(&AuthorizeHTTPError{StatusCode: http.StatusTooManyRequests, ErrorCode: "too_many_requests"}))
+	require.False(t, IsMorePermissionsRequiredError(&AuthorizeHTTPError{StatusCode: http.StatusInternalServerError, ErrorCode: "more_permissions_required"}))
+	require.True(t, IsMorePermissionsRequiredError(&AuthorizeHTTPError{StatusCode: http.StatusForbidden, ErrorCode: "more_permissions_required"}))
 }

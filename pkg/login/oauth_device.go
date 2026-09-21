@@ -3,11 +3,13 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 
@@ -244,13 +246,16 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	fmt.Println(ansi.Purple(authResp.UserCode))
 	fmt.Println()
 
+	var browserOpened chan struct{}
 	if !isSSH() && canOpenBrowser() {
+		browserOpened = make(chan struct{})
 		fmt.Printf("Press enter to open the browser (^C to quit)\n")
 		go func() {
 			fmt.Scanln() //nolint:errcheck
 			if err := openBrowser(authResp.VerificationURI); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
 			}
+			close(browserOpened)
 		}()
 	}
 
@@ -259,13 +264,23 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)
 	defer cancel()
+	waitCtx, stop := signal.NotifyContext(pollCtx, os.Interrupt)
+	defer stop()
 
-	result, err := PollAndSaveDeviceCredentials(pollCtx, accessBaseURL, clientID, authResp.DeviceCode, interval, cfg)
+	stopSpinner := startSpinnerAfterSignal("Waiting for confirmation...", os.Stdout, browserOpened)
+	result, err := PollAndSaveDeviceCredentials(waitCtx, accessBaseURL, clientID, authResp.DeviceCode, interval, cfg)
+	stopSpinner()
 	if err != nil {
-		if pollCtx.Err() != nil {
+		switch {
+		case errors.Is(err, context.Canceled):
+			ansi.ClearLine(os.Stdout)
+			fmt.Println("Canceled. Run 'stripe login' to try again.")
+			return nil
+		case pollCtx.Err() != nil:
 			return errorcategory.Errorf(errorcategory.Auth, "device code expired; please run 'stripe login' again")
+		default:
+			return err
 		}
-		return err
 	}
 
 	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
@@ -310,20 +325,19 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 	rows := buildContextRows(accounts, activeID, activeLivemode)
 
 	if len(rows) == 0 {
-		fmt.Printf("%s Done! The Stripe CLI is configured with your OAuth credentials.\n", color.Green("✓"))
+		fmt.Printf("%s Done! The Stripe CLI is configured with your credentials.\n", color.Green("✓"))
 		return
 	}
 
 	if len(rows) == 1 {
 		r := rows[0]
 		ctx := fmt.Sprintf("%s · %s", r.name, displayMode(r.mode))
-		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n", color.Green("✓"), ctx, r.id)
-		fmt.Printf("  Active context: %s\n\n", ctx)
-		fmt.Println("Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
+		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n\n", color.Green("✓"), ctx, r.id)
+		fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 		return
 	}
 
-	fmt.Printf("%s Done! The Stripe CLI is authorized for %d contexts.\n\n", color.Green("✓"), len(rows))
+	fmt.Printf("%s Done! The Stripe CLI is authorized for:\n\n", color.Green("✓"))
 
 	nameW, modeW, idW := 0, 0, 0
 	for _, r := range rows {
@@ -338,9 +352,11 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 		}
 	}
 
+	var active contextRow
 	for _, r := range rows {
 		mode := displayMode(r.mode)
 		if r.active {
+			active = r
 			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, mode, idW, r.id, color.Green("●"))
 		} else {
 			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, mode, r.id)
@@ -348,8 +364,9 @@ func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string
 	}
 
 	fmt.Println()
-	fmt.Println("Run 'stripe switch context' to change your active context.")
-	fmt.Println("Run 'stripe reauth' to change permissions or authorize access to additional accounts or sandboxes.")
+	fmt.Printf("Currently active: %s · %s (%s)\n\n", active.name, displayMode(active.mode), active.id)
+	fmt.Println("Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
+	fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 }
 
 // RefreshAccessToken exchanges a refresh token for a new access token.

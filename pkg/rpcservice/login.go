@@ -22,7 +22,7 @@ func (srv *RPCService) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.L
 		return nil, err
 	}
 	if useOAuth {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "OAuth login required; use 'stripe login' in a terminal to complete browser authorization")
+		return nil, errorcategory.Errorf(errorcategory.Auth, "valid session required; use 'stripe login' in a terminal to complete browser authorization")
 	}
 
 	return &rpc.LoginResponse{

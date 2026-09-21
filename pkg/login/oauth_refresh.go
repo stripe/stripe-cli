@@ -60,7 +60,7 @@ func refreshOAuthToken(p *config.Profile) error {
 	}
 
 	if tokenResp.RefreshToken != "" {
-		if err := config.KeyRing.Set(config.OAuthRefreshTokenKeychainKey, []byte(tokenResp.RefreshToken), "Stripe CLI OAuth refresh token"); err != nil {
+		if err := config.KeyRing.Set(config.OAuthRefreshTokenKeychainKey, []byte(tokenResp.RefreshToken), "Stripe CLI refresh token"); err != nil {
 			return err
 		}
 	} else {

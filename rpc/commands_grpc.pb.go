@@ -25,9 +25,6 @@ const (
 	StripeCLI_Login_FullMethodName                 = "/rpc.StripeCLI/Login"
 	StripeCLI_LoginStatus_FullMethodName           = "/rpc.StripeCLI/LoginStatus"
 	StripeCLI_LogsTail_FullMethodName              = "/rpc.StripeCLI/LogsTail"
-	StripeCLI_SampleConfigs_FullMethodName         = "/rpc.StripeCLI/SampleConfigs"
-	StripeCLI_SampleCreate_FullMethodName          = "/rpc.StripeCLI/SampleCreate"
-	StripeCLI_SamplesList_FullMethodName           = "/rpc.StripeCLI/SamplesList"
 	StripeCLI_Trigger_FullMethodName               = "/rpc.StripeCLI/Trigger"
 	StripeCLI_TriggersList_FullMethodName          = "/rpc.StripeCLI/TriggersList"
 	StripeCLI_Version_FullMethodName               = "/rpc.StripeCLI/Version"
@@ -53,12 +50,6 @@ type StripeCLIClient interface {
 	LoginStatus(ctx context.Context, in *LoginStatusRequest, opts ...grpc.CallOption) (*LoginStatusResponse, error)
 	// Get a realtime stream of API logs. Like `stripe logs tail`.
 	LogsTail(ctx context.Context, in *LogsTailRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogsTailResponse], error)
-	// Get a list of available configs for a given Stripe sample.
-	SampleConfigs(ctx context.Context, in *SampleConfigsRequest, opts ...grpc.CallOption) (*SampleConfigsResponse, error)
-	// Clone a Stripe sample. Like `stripe samples create`.
-	SampleCreate(ctx context.Context, in *SampleCreateRequest, opts ...grpc.CallOption) (*SampleCreateResponse, error)
-	// Get a list of available Stripe samples. Like `stripe samples list`.
-	SamplesList(ctx context.Context, in *SamplesListRequest, opts ...grpc.CallOption) (*SamplesListResponse, error)
 	// Trigger a webhook event. Like `stripe trigger`.
 	Trigger(ctx context.Context, in *TriggerRequest, opts ...grpc.CallOption) (*TriggerResponse, error)
 	// Get a list of supported events for `Trigger`.
@@ -157,36 +148,6 @@ func (c *stripeCLIClient) LogsTail(ctx context.Context, in *LogsTailRequest, opt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StripeCLI_LogsTailClient = grpc.ServerStreamingClient[LogsTailResponse]
 
-func (c *stripeCLIClient) SampleConfigs(ctx context.Context, in *SampleConfigsRequest, opts ...grpc.CallOption) (*SampleConfigsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SampleConfigsResponse)
-	err := c.cc.Invoke(ctx, StripeCLI_SampleConfigs_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *stripeCLIClient) SampleCreate(ctx context.Context, in *SampleCreateRequest, opts ...grpc.CallOption) (*SampleCreateResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SampleCreateResponse)
-	err := c.cc.Invoke(ctx, StripeCLI_SampleCreate_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *stripeCLIClient) SamplesList(ctx context.Context, in *SamplesListRequest, opts ...grpc.CallOption) (*SamplesListResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SamplesListResponse)
-	err := c.cc.Invoke(ctx, StripeCLI_SamplesList_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *stripeCLIClient) Trigger(ctx context.Context, in *TriggerRequest, opts ...grpc.CallOption) (*TriggerResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TriggerResponse)
@@ -255,12 +216,6 @@ type StripeCLIServer interface {
 	LoginStatus(context.Context, *LoginStatusRequest) (*LoginStatusResponse, error)
 	// Get a realtime stream of API logs. Like `stripe logs tail`.
 	LogsTail(*LogsTailRequest, grpc.ServerStreamingServer[LogsTailResponse]) error
-	// Get a list of available configs for a given Stripe sample.
-	SampleConfigs(context.Context, *SampleConfigsRequest) (*SampleConfigsResponse, error)
-	// Clone a Stripe sample. Like `stripe samples create`.
-	SampleCreate(context.Context, *SampleCreateRequest) (*SampleCreateResponse, error)
-	// Get a list of available Stripe samples. Like `stripe samples list`.
-	SamplesList(context.Context, *SamplesListRequest) (*SamplesListResponse, error)
 	// Trigger a webhook event. Like `stripe trigger`.
 	Trigger(context.Context, *TriggerRequest) (*TriggerResponse, error)
 	// Get a list of supported events for `Trigger`.
@@ -297,15 +252,6 @@ func (UnimplementedStripeCLIServer) LoginStatus(context.Context, *LoginStatusReq
 }
 func (UnimplementedStripeCLIServer) LogsTail(*LogsTailRequest, grpc.ServerStreamingServer[LogsTailResponse]) error {
 	return status.Error(codes.Unimplemented, "method LogsTail not implemented")
-}
-func (UnimplementedStripeCLIServer) SampleConfigs(context.Context, *SampleConfigsRequest) (*SampleConfigsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SampleConfigs not implemented")
-}
-func (UnimplementedStripeCLIServer) SampleCreate(context.Context, *SampleCreateRequest) (*SampleCreateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SampleCreate not implemented")
-}
-func (UnimplementedStripeCLIServer) SamplesList(context.Context, *SamplesListRequest) (*SamplesListResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SamplesList not implemented")
 }
 func (UnimplementedStripeCLIServer) Trigger(context.Context, *TriggerRequest) (*TriggerResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Trigger not implemented")
@@ -436,60 +382,6 @@ func _StripeCLI_LogsTail_Handler(srv interface{}, stream grpc.ServerStream) erro
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StripeCLI_LogsTailServer = grpc.ServerStreamingServer[LogsTailResponse]
 
-func _StripeCLI_SampleConfigs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SampleConfigsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StripeCLIServer).SampleConfigs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StripeCLI_SampleConfigs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StripeCLIServer).SampleConfigs(ctx, req.(*SampleConfigsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _StripeCLI_SampleCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SampleCreateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StripeCLIServer).SampleCreate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StripeCLI_SampleCreate_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StripeCLIServer).SampleCreate(ctx, req.(*SampleCreateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _StripeCLI_SamplesList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SamplesListRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StripeCLIServer).SamplesList(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: StripeCLI_SamplesList_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StripeCLIServer).SamplesList(ctx, req.(*SamplesListRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _StripeCLI_Trigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TriggerRequest)
 	if err := dec(in); err != nil {
@@ -602,18 +494,6 @@ var StripeCLI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "LoginStatus",
 			Handler:    _StripeCLI_LoginStatus_Handler,
-		},
-		{
-			MethodName: "SampleConfigs",
-			Handler:    _StripeCLI_SampleConfigs_Handler,
-		},
-		{
-			MethodName: "SampleCreate",
-			Handler:    _StripeCLI_SampleCreate_Handler,
-		},
-		{
-			MethodName: "SamplesList",
-			Handler:    _StripeCLI_SamplesList_Handler,
 		},
 		{
 			MethodName: "Trigger",

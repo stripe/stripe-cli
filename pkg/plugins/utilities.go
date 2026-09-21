@@ -108,22 +108,34 @@ func GetBinaryExtension() string {
 	return ""
 }
 
-// getPluginsDir computes where plugins are installed locally
-func getPluginsDir(config config.IConfig) string {
-	var pluginsDir string
-	tempEnvPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH")
-
-	switch {
-	case tempEnvPluginsPath != "":
-		pluginsDir = tempEnvPluginsPath
-	case PluginsPath != "":
-		pluginsDir = PluginsPath
-	default:
-		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		pluginsDir = filepath.Join(configPath, "plugins")
+// pluginsDirOverride returns the directory plugins have been pointed at instead of the
+// CLI's own, or "" when they have not been.
+//
+// There are two ways to do that -- the STRIPE_PLUGINS_PATH environment variable, and
+// PluginsPath compiled in by a `localdev` build -- and anything deciding what the CLI may
+// do to a plugin directory has to ask about both. Checking only PluginsPath is what let
+// auto-upgrade overwrite a plugin under STRIPE_PLUGINS_PATH: the same directory, with
+// none of the protection, because the guard knew only the other spelling of it.
+//
+// The env var wins where both are set, matching the order these have always resolved in:
+// a variable set for one invocation is a narrower statement than one baked into a binary.
+func pluginsDirOverride() string {
+	if envPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH"); envPluginsPath != "" {
+		return envPluginsPath
 	}
 
-	return pluginsDir
+	return PluginsPath
+}
+
+// getPluginsDir computes where plugins are installed locally
+func getPluginsDir(config config.IConfig) string {
+	if override := pluginsDirOverride(); override != "" {
+		return override
+	}
+
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+
+	return filepath.Join(configPath, "plugins")
 }
 
 func getLocalPluginMetadataDir(config config.IConfig) string {
@@ -716,6 +728,28 @@ func mergePluginMetadata(primary, fallback *Plugin) *Plugin {
 	return &pluginCopy
 }
 
+// resolveInstallBaseURLs fills in this CLI's own defaults for a download that
+// this package starts on its own, such as Run's auto-install.
+//
+// The base URLs threaded through Run hold only what the user explicitly passed,
+// because an empty value is what tells a plugin to fall back to its own default
+// instead of inheriting the CLI's. That convention does not survive a metadata
+// request, which has to name a real host. So the gaps are filled here rather
+// than in Run's arguments, leaving what gets forwarded to the plugin alone.
+func resolveInstallBaseURLs(apiBaseURL, dashboardBaseURL string) (resolvedAPIBaseURL, resolvedDashboardBaseURL string) {
+	resolvedAPIBaseURL = apiBaseURL
+	if resolvedAPIBaseURL == "" {
+		resolvedAPIBaseURL = stripe.DefaultAPIBaseURL
+	}
+
+	resolvedDashboardBaseURL = dashboardBaseURL
+	if resolvedDashboardBaseURL == "" {
+		resolvedDashboardBaseURL = stripe.DashboardBaseURLForAPIBaseURL(resolvedAPIBaseURL)
+	}
+
+	return resolvedAPIBaseURL, resolvedDashboardBaseURL
+}
+
 // resolvePluginForAutoInstall resolves the version to re-download for a plugin
 // that is already installed but whose binary is missing. This repairs a broken
 // install rather than adding a plugin the user never asked for, so it is
@@ -1093,11 +1127,16 @@ func (e *ErrPluginNotFound) Error() string {
 	return fmt.Sprintf("no plugin named %q exists", e.Name)
 }
 
-// FetchRemoteResource returns the remote resource body
-func FetchRemoteResource(url string) ([]byte, error) {
+// FetchRemoteResource returns the remote resource body.
+//
+// The context covers the body transfer, not just getting a response, because the
+// resource this fetches is a plugin binary: by the time the wait is long enough to
+// be worth abandoning, the download has already started. Canceling only the
+// handshake would leave Ctrl+C with nothing to interrupt.
+func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 	t := &requests.TracedTransport{}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		return nil, err
@@ -1138,8 +1177,45 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 // CheckLatestPluginVersion prints an upgrade hint to stderr if live metadata
 // has a newer version of the plugin than what is currently installed.
+//
+// It stays quiet for a plugin that auto-updates, whose owner asked the CLI to handle
+// upgrades rather than be told about them -- for as long as the CLI can actually handle
+// them, which the guard below is about. Where maybeAutoUpgrade already ran this
+// invocation, this is a second lookup of the same thing, ending in advice about an
+// upgrade the CLI just made. Where it did not run -- which is most invocations, since
+// it checks at most once per autoUpgradeCheckInterval -- this would spend exactly the
+// per-command request that throttle exists to avoid, and undo it from the other end.
+//
+// What that gives up is every case where the pre-run check knows a newer version exists
+// but declines to install it: a resolution from cached metadata, or the whole interval
+// after such a decline. Those runs now say nothing at all. The alternative is charging
+// every auto-updating command a request to say it, and a check that keeps declining is
+// better reported by the check itself than inferred from a hint here.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
+	// PluginsPath alone, deliberately narrower than the same-looking guard in
+	// maybeAutoUpgrade: a `localdev` build has no published release to be behind, but
+	// someone who merely relocated their plugins with STRIPE_PLUGINS_PATH still wants to
+	// hear about upgrades. Printing a line can only be wrong; installing over the
+	// directory can delete a build, which is why that side asks the broader question.
 	if PluginsPath != "" {
+		return
+	}
+
+	// Handing the job to the pre-run check, but only where that check will take it.
+	// maybeAutoUpgrade refuses a plugins directory the user pointed the CLI at, so
+	// deferring to it there would leave a plugin that auto-updates under
+	// STRIPE_PLUGINS_PATH with no upgrade and no word that one exists -- silently behind,
+	// on the strength of a setting asking for the opposite.
+	//
+	// Not the same as deferring across the throttle, which this still does: that decline
+	// is for the current invocation and some later one will upgrade, so the silence costs
+	// a few hours. An overridden directory is refused on every invocation there will ever
+	// be, so nothing arrives to break it.
+	//
+	// Asked of pluginsDirOverride rather than the environment directly, even though the
+	// guard above has already returned for the compiled-in half of it, so that this and
+	// maybeAutoUpgrade keep reading the same answer from the same place.
+	if pluginsDirOverride() == "" && pluginUpdatesEnabled(plugin.Shortname) {
 		return
 	}
 

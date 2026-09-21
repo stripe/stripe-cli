@@ -60,9 +60,9 @@ func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	value := "off"
+	value := config.PluginConfigOff
 	if ac.enable {
-		value = "on"
+		value = config.PluginConfigOn
 	}
 
 	return ac.cfg.WriteConfigField(config.PluginConfigKey(scope, config.PluginConfigUpdatesField), value)

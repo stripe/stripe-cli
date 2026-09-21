@@ -91,7 +91,10 @@ jobs:
     - id: install_test
       shell: powershell
       run: bash scripts/install-test.sh scoop
-  winget:
+  # winget install failures are often specific to the runner's local WinGet
+  # source/cache state, so a failure retries on a brand-new windows-latest
+  # runner rather than just rerunning the install inside the same VM.
+  winget-attempt-1:
     runs-on: windows-latest
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}
@@ -105,6 +108,58 @@ jobs:
     - id: install_test
       shell: powershell
       run: bash scripts/install-test.sh winget
+
+  winget-attempt-2:
+    needs: winget-attempt-1
+    if: needs.winget-attempt-1.outputs.install_test_result == 'failure'
+    runs-on: windows-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      with:
+        sparse-checkout: |
+          scripts/install-test.sh
+        sparse-checkout-cone-mode: false
+        persist-credentials: false
+    - id: install_test
+      shell: powershell
+      run: bash scripts/install-test.sh winget
+
+  winget-attempt-3:
+    needs: winget-attempt-2
+    if: always() && needs.winget-attempt-2.outputs.install_test_result == 'failure'
+    runs-on: windows-latest
+    outputs:
+      install_test_result: ${{ steps.install_test.outcome }}
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      with:
+        sparse-checkout: |
+          scripts/install-test.sh
+        sparse-checkout-cone-mode: false
+        persist-credentials: false
+    - id: install_test
+      shell: powershell
+      run: bash scripts/install-test.sh winget
+
+  winget:
+    needs: [winget-attempt-1, winget-attempt-2, winget-attempt-3]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      install_test_result: ${{ steps.result.outputs.result }}
+    steps:
+    - id: result
+      run: |
+        if [ "${{ needs.winget-attempt-1.outputs.install_test_result }}" = "success" ] || \
+           [ "${{ needs.winget-attempt-2.outputs.install_test_result }}" = "success" ] || \
+           [ "${{ needs.winget-attempt-3.outputs.install_test_result }}" = "success" ]; then
+          echo "result=success" >> "$GITHUB_OUTPUT"
+        else
+          echo "result=failure" >> "$GITHUB_OUTPUT"
+        fi
+
   docker:
     runs-on: ubuntu-latest
     # Deliberately unpinned: this canary exists to verify that the *currently

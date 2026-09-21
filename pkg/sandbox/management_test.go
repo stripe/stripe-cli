@@ -566,7 +566,7 @@ func TestManagementClientRequiresActiveLiveOAuth(t *testing.T) {
 				return managementTestProfile(t, "acct_test_123", false, "oak_test_123")
 			},
 			category:    errorcategory.UserInput,
-			messagePart: "switch context",
+			messagePart: "stripe switch",
 		},
 		{
 			name: "missing account context",

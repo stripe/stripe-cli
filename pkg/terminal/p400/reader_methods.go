@@ -7,13 +7,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // TerminalSessionContext is a type that contains important context most methods need to know to complete the quickstart flow
 // one copy of this is passed around a lot and is mutable for whenever a property needs to change
 type TerminalSessionContext struct {
-	APIKey             string
+	Creds              stripe.Credentials
 	IPAddress          string
 	BaseURL            string
 	LocationID         string

@@ -35,7 +35,7 @@ func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config
 		return nil, err
 	}
 	if !strings.HasPrefix(uat, "oak_") {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in with OAuth; run 'stripe login' first")
+		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in; run 'stripe login' first")
 	}
 
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, uat)
@@ -257,7 +257,8 @@ func (m switchContextModel) View() tea.View {
 		}
 	}
 
-	sb.WriteString("\n↑↓ to navigate · enter to select · esc to cancel")
+	sb.WriteString("\nRun 'stripe login' to authorize additional accounts or sandboxes.\n\n")
+	sb.WriteString("↑↓ to navigate · enter to select · esc to cancel")
 	return tea.NewView(sb.String())
 }
 

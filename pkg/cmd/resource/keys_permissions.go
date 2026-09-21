@@ -43,9 +43,8 @@ func NewKeysPermissionsCmd(parentCmd *cobra.Command, cfg *config.Config) {
 		Long:  `Given one or more API endpoints (e.g. "GET /v1/customers"), resolves the minimal set of restricted key permissions required.`,
 		Example: `  stripe keys permissions "GET /v1/customers" "GET /v1/balance"
     stripe keys permissions "GET /v1/charges/:id"`,
-		Args:   cobra.MinimumNArgs(1),
-		RunE:   kpc.runKeysPermissionsCmd,
-		Hidden: true,
+		Args: cobra.MinimumNArgs(1),
+		RunE: kpc.runKeysPermissionsCmd,
 	}
 
 	kpc.cmd.Flags().StringVar(&kpc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -134,6 +133,7 @@ func AddKeysSubCmds(rootCmd *cobra.Command, cfg *config.Config) {
 		}
 		rootCmd.AddCommand(keysCmd)
 	}
+	keysCmd.Hidden = true
 
 	NewKeysPermissionsCmd(keysCmd, cfg)
 }

@@ -117,6 +117,9 @@ type Config struct {
 
 	// LoggedInAccountID is the currently logged-in account ID
 	LoggedInAccountID string
+
+	// EventsFrom filters events by source: "@self", "@accounts", or "all"
+	EventsFrom string
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -162,7 +165,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		session, err := p.createSession(ctx)
 		if err != nil {
 			p.cfg.OutCh <- websocket.ErrorElement{
-				Error: errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %v", err),
+				Error: errorcategory.Errorf(errorcategory.Auth, "Error while authenticating with Stripe: %w", err),
 			}
 			return err
 		}
@@ -362,14 +365,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 
 	if len(cfg.ThinEvents) > 0 {
 		for _, event := range cfg.ThinEvents {
+			if event == "*" {
+				cfg.Log.Infof("Subscribing to all thin events is only supported in the CLI; thin event destinations do not support selecting all event types")
+				continue
+			}
 			if _, found := validThinEvents[event]; !found {
-				// If not found in validThinEvents, check in validPreviewThinEvents
 				if _, foundInPreview := validPreviewThinEvents[event]; !foundInPreview {
-					if event == "*" {
-						cfg.Log.Infof("* is only supported in the CLI, thin event destinations do not support selecting all event types\n")
-					} else {
-						cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
-					}
+					cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
 				}
 			}
 		}
@@ -391,11 +393,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	var endpointRoutes []EndpointRoute
 	if cfg.UseConfiguredWebhooks {
 		// build from user's API config
-		endpoints := getEndpointsFromAPI(ctx, cfg.Client)
+		endpoints, err := getEndpointsFromAPI(ctx, cfg.Client)
+		if err != nil {
+			return nil, err
+		}
 		if len(endpoints.Data) == 0 {
 			return nil, errorcategory.New(errorcategory.UserInput, "you have not defined any webhook endpoints on your account, go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
-		var err error
 		endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
 		if err != nil {
 			return nil, err
@@ -453,6 +457,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		SkipVerify:          cfg.SkipVerify,
 		Timeout:             cfg.Timeout,
 		LoggedInAccountID:   cfg.LoggedInAccountID,
+		EventsFrom:          cfg.EventsFrom,
 	}
 
 	p := &Proxy{
@@ -583,7 +588,7 @@ func parseURL(url string) string {
 	return url
 }
 
-func getEndpointsFromAPI(ctx context.Context, client stripe.RequestPerformer) requests.WebhookEndpointList {
+func getEndpointsFromAPI(ctx context.Context, client stripe.RequestPerformer) (requests.WebhookEndpointList, error) {
 	return requests.WebhookEndpointsListWithClient(ctx, client, stripe.APIVersion, &config.Profile{})
 }
 

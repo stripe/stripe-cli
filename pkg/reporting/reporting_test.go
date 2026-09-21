@@ -4,15 +4,66 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"sync"
 	"testing"
+	"time"
 
 	sentry "github.com/getsentry/sentry-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+// syncTelemetryClient records SendEvent calls and lets tests block until the
+// CaptureException/RecoverAndReport goroutine has delivered its event.
+type syncTelemetryClient struct {
+	mu     sync.Mutex
+	events []struct{ name, value string }
+	done   chan struct{}
+}
+
+func newSyncTelemetryClient() *syncTelemetryClient {
+	return &syncTelemetryClient{done: make(chan struct{}, 8)}
+}
+
+func (c *syncTelemetryClient) SendAPIRequestEvent(_ context.Context, _ string, _ bool) (*http.Response, error) {
+	return nil, nil
+}
+
+func (c *syncTelemetryClient) SendEvent(_ context.Context, eventName string, eventValue string) {
+	c.mu.Lock()
+	c.events = append(c.events, struct{ name, value string }{eventName, eventValue})
+	c.mu.Unlock()
+	c.done <- struct{}{}
+}
+
+func (c *syncTelemetryClient) waitForEvent(t *testing.T) {
+	t.Helper()
+	select {
+	case <-c.done:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for a telemetry event to be sent")
+	}
+}
+
+func (c *syncTelemetryClient) lastEvent() (name string, value string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.events) == 0 {
+		return "", ""
+	}
+	last := c.events[len(c.events)-1]
+	return last.name, last.value
+}
+
+func telemetryContext(client *syncTelemetryClient) context.Context {
+	ctx := stripe.WithTelemetryClient(context.Background(), client)
+	return stripe.WithEventMetadata(ctx, stripe.NewEventMetadata())
+}
 
 func TestCaptureExceptionSuppressesExpectedCategories(t *testing.T) {
 	tests := []struct {
@@ -32,10 +83,12 @@ func TestCaptureExceptionSuppressesExpectedCategories(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			transport, restore := bindTestClient(t)
 			defer restore()
+			telemetryClient := newSyncTelemetryClient()
 
-			CaptureException(test.err)
+			CaptureException(telemetryContext(telemetryClient), test.err)
 
 			require.Empty(t, transport.Events())
+			require.Empty(t, telemetryClient.events, "suppressed categories must not be mirrored to telemetry either")
 		})
 	}
 }
@@ -52,12 +105,18 @@ func TestCaptureExceptionCapturesActionableCategories(t *testing.T) {
 		t.Run(string(category), func(t *testing.T) {
 			transport, restore := bindTestClient(t)
 			defer restore()
+			telemetryClient := newSyncTelemetryClient()
 
-			CaptureException(errorcategory.With(errors.New("actionable error"), category))
+			CaptureException(telemetryContext(telemetryClient), errorcategory.With(errors.New("actionable error"), category))
 
 			events := transport.Events()
 			require.Len(t, events, 1)
 			require.Equal(t, string(category), events[0].Tags["error_category"])
+
+			telemetryClient.waitForEvent(t)
+			eventName, eventValue := telemetryClient.lastEvent()
+			require.Equal(t, errorTelemetryEventName, eventName)
+			require.Equal(t, string(category), eventValue, "telemetry value must be the bare category, never the error message")
 		})
 	}
 }
@@ -69,7 +128,7 @@ func TestCaptureExceptionTitlesExceptionsWithTheCategory(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
 
-	CaptureException(errorcategory.With(errors.New("actionable error"), errorcategory.API))
+	CaptureException(telemetryContext(newSyncTelemetryClient()), errorcategory.With(errors.New("actionable error"), errorcategory.API))
 
 	events := transport.Events()
 	require.Len(t, events, 1)
@@ -84,7 +143,7 @@ func TestCaptureExceptionLeavesUncategorizedExceptionTypes(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
 
-	CaptureException(&os.PathError{Op: "open", Path: "config.toml", Err: errors.New("permission denied")})
+	CaptureException(telemetryContext(newSyncTelemetryClient()), &os.PathError{Op: "open", Path: "config.toml", Err: errors.New("permission denied")})
 
 	events := transport.Events()
 	require.Len(t, events, 1)
@@ -98,11 +157,23 @@ func TestCaptureExceptionCapturesUnknownErrorsAsInternal(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
 
-	CaptureException(errors.New("unknown error"))
+	CaptureException(telemetryContext(newSyncTelemetryClient()), errors.New("unknown error"))
 
 	events := transport.Events()
 	require.Len(t, events, 1)
 	require.Equal(t, string(errorcategory.Internal), events[0].Tags["error_category"])
+}
+
+func TestCaptureExceptionNeverSendsTheErrorMessageToTelemetry(t *testing.T) {
+	_, restore := bindTestClient(t)
+	defer restore()
+	telemetryClient := newSyncTelemetryClient()
+
+	CaptureException(telemetryContext(telemetryClient), errors.New("failed for account acct_1abcDEF at https://example.com/secret-path?token=xyz"))
+
+	telemetryClient.waitForEvent(t)
+	_, eventValue := telemetryClient.lastEvent()
+	require.Equal(t, string(errorcategory.Internal), eventValue)
 }
 
 func TestShouldCapture(t *testing.T) {
@@ -131,14 +202,22 @@ func TestShouldCapture(t *testing.T) {
 func TestRecoverAndReportSetsIsolatedPanicCategory(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
+	telemetryClient := newSyncTelemetryClient()
+	ctx := telemetryContext(telemetryClient)
 
-	RecoverAndReport("panic value")
-	CaptureException(errors.New("ordinary error"))
+	RecoverAndReport(ctx, "panic value")
+	CaptureException(ctx, errors.New("ordinary error"))
 
 	events := transport.Events()
 	require.Len(t, events, 2)
 	require.Equal(t, string(errorcategory.Panic), events[0].Tags["error_category"])
 	require.Equal(t, string(errorcategory.Internal), events[1].Tags["error_category"])
+
+	telemetryClient.waitForEvent(t)
+	telemetryClient.waitForEvent(t)
+	require.Len(t, telemetryClient.events, 2)
+	require.Equal(t, string(errorcategory.Panic), telemetryClient.events[0].value)
+	require.Equal(t, string(errorcategory.Internal), telemetryClient.events[1].value)
 }
 
 func bindTestClient(t *testing.T) (*sentry.MockTransport, func()) {

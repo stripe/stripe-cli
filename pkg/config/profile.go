@@ -919,7 +919,7 @@ func SaveActiveContext(accountID string, livemode bool) error {
 	if err != nil {
 		return err
 	}
-	return KeyRing.Set(OAuthActiveContextKeychainKey, data, "Stripe CLI OAuth active context")
+	return KeyRing.Set(OAuthActiveContextKeychainKey, data, "Stripe CLI active context")
 }
 
 // SaveUATExpiresAt persists the UAT expiry time in the keyring.
@@ -927,7 +927,7 @@ func SaveUATExpiresAt(t time.Time) error {
 	if KeyRing == nil {
 		return nil
 	}
-	return KeyRing.Set(OAuthUATExpiresAtKeychainKey, []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI OAuth token expiry")
+	return KeyRing.Set(OAuthUATExpiresAtKeychainKey, []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI token expiry")
 }
 
 // GetUATExpiresAt retrieves the stored UAT expiry time from the keyring.
@@ -1011,9 +1011,37 @@ type ActiveContextLivemodeMismatchError struct {
 
 func (e *ActiveContextLivemodeMismatchError) Error() string {
 	if e.ActiveLivemode {
-		return "You're in live mode. Run 'stripe switch context' to select a sandbox."
+		return "You're in live mode. Run 'stripe switch' to select a sandbox."
 	}
-	return "You're in a sandbox. Run 'stripe switch context' to select a live account."
+	return "You're in a sandbox. Run 'stripe switch' to select a live account."
+}
+
+// RefreshUATIfNeeded returns uat as-is unless it's expired or about to expire
+// (within 60 seconds), in which case it refreshes the token via
+// OAuthTokenRefresher and returns the new value. Callers that read the UAT
+// outside of ResolveCredentials (e.g. whoami) should route it through here so
+// an expired token doesn't surface as an opaque auth failure.
+func RefreshUATIfNeeded(p *Profile, uat string) (string, error) {
+	if OAuthTokenRefresher == nil {
+		return uat, nil
+	}
+	t, tErr := GetUATExpiresAt()
+	if tErr != nil || time.Until(t) >= 60*time.Second {
+		return uat, nil
+	}
+
+	refreshMu.Lock()
+	defer refreshMu.Unlock()
+	// Re-check after acquiring the lock; another goroutine may have already
+	// refreshed, bumping the expiry forward.
+	t2, tErr2 := GetUATExpiresAt()
+	if tErr2 == nil && time.Until(t2) < 60*time.Second {
+		if err := OAuthTokenRefresher(p); err != nil {
+			return uat, err
+		}
+		uat = p.UAT
+	}
+	return uat, nil
 }
 
 // ResolveCredentials returns the credentials for the given mode. If an OAK
@@ -1030,20 +1058,9 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			return stripe.Credentials{}, err
 		}
 		if strings.HasPrefix(uat, "oak_") {
-			if OAuthTokenRefresher != nil {
-				if t, tErr := GetUATExpiresAt(); tErr == nil && time.Until(t) < 60*time.Second {
-					refreshMu.Lock()
-					// Re-check after acquiring the lock; another goroutine may have
-					// already refreshed, bumping the expiry forward.
-					if t2, tErr2 := GetUATExpiresAt(); tErr2 == nil && time.Until(t2) < 60*time.Second {
-						if refreshErr := OAuthTokenRefresher(p); refreshErr != nil {
-							refreshMu.Unlock()
-							return stripe.Credentials{}, refreshErr
-						}
-						uat = p.UAT
-					}
-					refreshMu.Unlock()
-				}
+			uat, err = RefreshUATIfNeeded(p, uat)
+			if err != nil {
+				return stripe.Credentials{}, err
 			}
 			ac, err := GetActiveContext()
 			if err != nil {

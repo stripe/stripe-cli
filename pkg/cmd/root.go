@@ -31,6 +31,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -59,7 +60,6 @@ var rootCmd = &cobra.Command{
 		"trigger":   "webhooks",
 		"listen":    "webhooks",
 		"logs":      "stripe",
-		"status":    "stripe",
 		"resources": "resources",
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
 			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
@@ -162,7 +162,13 @@ func Execute(ctx context.Context) {
 
 	reporting.SetAccountIDProvider(Config.Profile.GetAccountID)
 
-	telemetryMetadata := stripe.NewEventMetadata()
+	// Reuse metadata the caller already attached to ctx (main.go does this so
+	// a panic recovered outside Execute still shares the same populated
+	// metadata pointer) rather than always creating a fresh one.
+	telemetryMetadata := stripe.GetEventMetadata(ctx)
+	if telemetryMetadata == nil {
+		telemetryMetadata = stripe.NewEventMetadata()
+	}
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
 
 	rootCmd.SetUsageTemplate(getUsageTemplate())
@@ -190,8 +196,12 @@ func Execute(ctx context.Context) {
 		switch {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
+		case errors.Is(err, errCommandRemoved):
+			// the shim already printed the downgrade guidance; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
+		case isMorePermissionsRequiredError(err):
+			fmt.Fprintln(os.Stderr, morePermissionsRequiredMessage(err))
 		case isLoginRequiredError && projectNameFlag != "default":
 			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
@@ -218,10 +228,10 @@ func Execute(ctx context.Context) {
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
-			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
+			recordUnknownCommand(updatedCtx, sanitizeUnknownCommand(os.Args[1:]))
 
 		default:
-			reporting.CaptureException(err)
+			reporting.CaptureException(updatedCtx, err)
 			fmt.Fprintln(os.Stderr, err)
 		}
 
@@ -243,6 +253,36 @@ func apiKeyExpiredMessage(profileName string) string {
 	}
 	return fmt.Sprintf("The API key for profile %q has expired. Run `stripe login --project-name=%s` to re-authenticate.", profileName, profileName)
 }
+
+// isMorePermissionsRequiredError reports whether err was caused by a Stripe
+// API request failing because the API key's role lacks the permissions
+// required for that request. Requests made through pkg/requests surface this
+// as a requests.RequestError; the websocket session-auth flows used by
+// `stripe listen` and `stripe logs tail` surface it as a
+// stripeauth.AuthorizeHTTPError instead.
+func isMorePermissionsRequiredError(err error) bool {
+	return requests.IsMorePermissionsRequiredError(err) || stripeauth.IsMorePermissionsRequiredError(err)
+}
+
+// morePermissionsRequiredMessage returns the message to show the user for a
+// more_permissions_required error. Requests authenticated with a plain API
+// key have no notion of "role", so the raw message from the Stripe API is
+// shown instead of the role-reassignment message.
+func morePermissionsRequiredMessage(err error) string {
+	var reqErr requests.RequestError
+	if errors.As(err, &reqErr) && !reqErr.HasOAKContext {
+		return reqErr.Message
+	}
+
+	var authErr *stripeauth.AuthorizeHTTPError
+	if errors.As(err, &authErr) && !authErr.HasOAKContext {
+		return authErr.Message
+	}
+
+	return morePermissionsRequiredRoleMessage
+}
+
+const morePermissionsRequiredRoleMessage = "You don't have permission to do this with your current role. Ask an account administrator to assign you a different role with more permissions."
 
 var keysToReBind []string
 
@@ -275,7 +315,7 @@ func bindEnv(key, envKey string) {
 func init() {
 	cobra.OnInitialize(Config.InitConfig, ReBindKeys)
 
-	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command")
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command, instead of your logged in session. Overridden by the STRIPE_API_KEY environment variable, if set")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
 	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
@@ -315,16 +355,14 @@ func init() {
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)
-	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
+	rootCmd.AddCommand(newReauthCmd().cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
-	rootCmd.AddCommand(newSamplesCmd().cmd)
-	rootCmd.AddCommand(newServeCmd().cmd)
+	rootCmd.AddCommand(newSamplesCmd())
+	rootCmd.AddCommand(newServeCmd())
+	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newSwitchCmd().cmd)
-	// current stripe status site is being deprecated
-	// hide status command until status site v2 is released
-	// rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newWhoamiCmd().cmd)

@@ -33,14 +33,9 @@ func main() {
 
 	reporting.Init(sentryDSN, version.Version) //nolint:errcheck
 	defer reporting.Flush()
-	defer func() {
-		if r := recover(); r != nil {
-			reporting.RecoverAndReport(r)
-			panic(r)
-		}
-	}()
 
-	// Set up the telemetry client and add it to the context.
+	// Set up the telemetry client and add it to the context before installing
+	// the panic handler below, so a recovered panic can also report telemetry.
 	httpClient := &http.Client{
 		Timeout: time.Second * 3,
 	}
@@ -50,9 +45,23 @@ func main() {
 			telemetryClient.BaseURL = parsed
 		}
 	}
-	contextWithTelemetry := stripe.WithTelemetryClient(ctx, telemetryClient)
+	ctx = stripe.WithTelemetryClient(ctx, telemetryClient)
 
-	cmd.Execute(contextWithTelemetry)
+	// Attach event metadata here, before cmd.Execute, and let it populate the
+	// same pointer throughout the command run: that way a panic recovered
+	// below still sees the command path Execute set, instead of empty
+	// metadata freshly built from this pre-command ctx.
+	telemetryMetadata := stripe.NewEventMetadata()
+	ctx = stripe.WithEventMetadata(ctx, telemetryMetadata)
+
+	defer func() {
+		if r := recover(); r != nil {
+			reporting.RecoverAndReport(ctx, r)
+			panic(r)
+		}
+	}()
+
+	cmd.Execute(ctx)
 
 	// Wait for all telemetry calls to finish before exiting the process.
 	telemetryClient.Wait()
