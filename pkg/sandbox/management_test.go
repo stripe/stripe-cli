@@ -222,6 +222,29 @@ func TestManagementClientDelete(t *testing.T) {
 	require.Equal(t, &config.ActiveContext{AccountID: "acct_live_parent", Livemode: true}, activeContext)
 }
 
+func TestManagementClientDeleteRejectsLegacyTestmodeBeforeClose(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_initial")
+	closeRequested := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveDeleteDiscoveryResponse(t, w, r, "acct_live_parent", "oak_initial", `{"workspaces":[{
+  "id":"wksp_test_legacy",
+  "merchant_id":"acct_live_parent",
+  "name":"Acme",
+  "is_legacy_testmode_compartment":true
+}]}`) {
+			return
+		}
+		closeRequested = true
+	}))
+	defer server.Close()
+
+	deleted, err := NewManagementClient(server.URL, profile).Delete(context.Background(), "acct_live_parent")
+	require.EqualError(t, err, "test mode cannot be deleted")
+	require.Empty(t, deleted)
+	require.Equal(t, errorcategory.UserInput, mustErrorCategory(t, err))
+	require.False(t, closeRequested)
+}
+
 func TestManagementClientDeleteRefreshPreservesTarget(t *testing.T) {
 	profile := managementTestProfile(t, "acct_live_parent", true, "oak_initial")
 	refreshes := 0
@@ -430,14 +453,15 @@ func TestManagementClientListAccessible(t *testing.T) {
 			require.Empty(t, body)
 			_, _ = w.Write([]byte(`{"workspace_id":"wksp_live_parent"}`))
 		case accessibleSandboxesPath:
-			require.Equal(t, "check_user_sandbox_management_actions=false&include_is_dashboard_accessible=false&include_legacy_testmode=false&live_compartment_parent_id=wksp_live_parent&recursively_resolve=false", r.URL.RawQuery)
+			require.Equal(t, "check_user_sandbox_management_actions=false&include_is_dashboard_accessible=false&include_legacy_testmode=true&live_compartment_parent_id=wksp_live_parent&recursively_resolve=false", r.URL.RawQuery)
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
 			require.Empty(t, body)
 			_, _ = w.Write([]byte(`{
   "workspaces": [
     {"id":"wksp_test_z","merchant_id":"acct_z","name":"Zeta","access_level":"direct_access","compartment_labels":[]},
-    {"id":"wksp_test_b","merchant_id":"acct_b","name":"Alpha","access_level":"direct_access","compartment_labels":[{"usage_type":"sandbox_access_level_global"}]}
+    {"id":"wksp_test_b","merchant_id":"acct_b","name":"Alpha","access_level":"direct_access","compartment_labels":[{"usage_type":"sandbox_access_level_global"}]},
+    {"id":"wksp_test_ltm","merchant_id":"acct_ltm","name":"Acme","access_level":"direct_access","compartment_labels":[],"is_legacy_testmode_compartment":true}
   ],
   "organizations": [{
     "access_level":"direct_access",
@@ -457,6 +481,7 @@ func TestManagementClientListAccessible(t *testing.T) {
 	got, err := client.ListAccessible(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, []ManagedSandbox{
+		{WorkspaceID: "wksp_test_ltm", AccountID: "acct_ltm", Name: "Acme", AccessLevel: SandboxAccessLevelPrivate, IsLegacyTestmode: true},
 		{WorkspaceID: "wksp_test_a", AccountID: "acct_a", Name: "alpha", AccessLevel: SandboxAccessLevelGlobal},
 		{WorkspaceID: "wksp_test_b", AccountID: "acct_b", Name: "Alpha", AccessLevel: SandboxAccessLevelGlobal},
 		{WorkspaceID: "wksp_test_z", AccountID: "acct_z", Name: "Zeta", AccessLevel: SandboxAccessLevelPrivate},
@@ -654,6 +679,10 @@ func TestManagementClientRejectsInvalidSandboxResponses(t *testing.T) {
 		{name: "conflicting duplicate", response: `{"workspaces":[
   {"id":"wksp_test_1","merchant_id":"acct_1","name":"one"},
   {"id":"wksp_test_1","merchant_id":"acct_2","name":"one"}
+]}`},
+		{name: "conflicting legacy marker", response: `{"workspaces":[
+  {"id":"wksp_test_1","merchant_id":"acct_1","name":"one","is_legacy_testmode_compartment":false},
+  {"id":"wksp_test_1","merchant_id":"acct_1","name":"one","is_legacy_testmode_compartment":true}
 ]}`},
 	}
 

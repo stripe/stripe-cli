@@ -1122,6 +1122,7 @@ func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
 			{WorkspaceID: "wksp_test_z", AccountID: "acct_z", Name: "Zeta", AccessLevel: sandbox.SandboxAccessLevelPrivate},
 			{WorkspaceID: "wksp_test_a", AccountID: "acct_a", Name: "Alpha", AccessLevel: sandbox.SandboxAccessLevelGlobal},
 			{WorkspaceID: "wksp_test_b", AccountID: "acct_b", Name: "Beta", AccessLevel: sandbox.SandboxAccessLevelDeveloper},
+			{WorkspaceID: "wksp_test_ltm", AccountID: "acct_ltm", Name: "Acme", AccessLevel: sandbox.SandboxAccessLevelPrivate, IsLegacyTestmode: true},
 		},
 	}
 
@@ -1132,12 +1133,14 @@ func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
 	require.NoError(t, cmd.cmd.Execute())
 
 	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	require.Len(t, lines, 4)
+	require.Len(t, lines, 5)
 	assert.Equal(t, []string{"NAME", "ACCOUNT", "ACCESS"}, strings.Fields(lines[0]))
 	assert.Equal(t, []string{"Zeta", "acct_z", "Private"}, strings.Fields(lines[1]))
 	assert.Equal(t, []string{"Alpha", "acct_a", "All", "team", "members"}, strings.Fields(lines[2]))
 	assert.Equal(t, []string{"Beta", "acct_b", "Developer"}, strings.Fields(lines[3]))
+	assert.Equal(t, []string{"Acme", "acct_ltm", "Private"}, strings.Fields(lines[4]))
 	assert.NotContains(t, stdout.String(), "wksp_")
+	assert.NotContains(t, stdout.String(), "TYPE")
 	assert.Empty(t, stderr.String())
 }
 

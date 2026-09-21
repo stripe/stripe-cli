@@ -58,10 +58,11 @@ const (
 // delete. WorkspaceID is retained for later targeting but must not be shown to
 // users.
 type ManagedSandbox struct {
-	WorkspaceID string
-	AccountID   string
-	Name        string
-	AccessLevel SandboxAccessLevel
+	WorkspaceID      string
+	AccountID        string
+	Name             string
+	AccessLevel      SandboxAccessLevel
+	IsLegacyTestmode bool
 }
 
 // ManagementClient discovers sandboxes authorized by the active live OAuth
@@ -196,7 +197,7 @@ func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox
 		map[string]interface{}{
 			"live_compartment_parent_id":            workspaceContext.WorkspaceID,
 			"recursively_resolve":                   false,
-			"include_legacy_testmode":               false,
+			"include_legacy_testmode":               true,
 			"check_user_sandbox_management_actions": false,
 			"include_is_dashboard_accessible":       false,
 		},
@@ -240,12 +241,16 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not identify a unique target; run `stripe sandbox list` before retrying")
 	}
 
+	managedSandbox := matches[0]
+	if managedSandbox.IsLegacyTestmode {
+		return DeletedSandbox{}, errorcategory.New(errorcategory.UserInput, "test mode cannot be deleted")
+	}
+
 	creds, err := c.resolveCredentials()
 	if err != nil {
 		return DeletedSandbox{}, err
 	}
 
-	managedSandbox := matches[0]
 	path := "/v2/workspaces/undocumented/testmode/" + url.PathEscape(managedSandbox.WorkspaceID) + "/close"
 	base := &requests.Base{
 		Profile:        c.Profile,
@@ -323,6 +328,7 @@ type accessibleSandbox struct {
 	WorkspaceID       string             `json:"id"`
 	AccountID         string             `json:"merchant_id"`
 	Name              string             `json:"name"`
+	IsLegacyTestmode  bool               `json:"is_legacy_testmode_compartment"`
 	CompartmentLabels []compartmentLabel `json:"compartment_labels"`
 }
 
@@ -369,10 +375,11 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 		}
 
 		validated = append(validated, ManagedSandbox{
-			WorkspaceID: record.sandbox.WorkspaceID,
-			AccountID:   record.sandbox.AccountID,
-			Name:        record.sandbox.Name,
-			AccessLevel: sandboxAccessLevelFromLabels(record.accessLabels),
+			WorkspaceID:      record.sandbox.WorkspaceID,
+			AccountID:        record.sandbox.AccountID,
+			Name:             record.sandbox.Name,
+			AccessLevel:      sandboxAccessLevelFromLabels(record.accessLabels),
+			IsLegacyTestmode: record.sandbox.IsLegacyTestmode,
 		})
 	}
 
