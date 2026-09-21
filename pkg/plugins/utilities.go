@@ -82,6 +82,28 @@ func ValidatePluginShortname(pluginName string) error {
 	}
 }
 
+// ValidatePluginBinaryName rejects binary names from the server manifest that
+// could escape the plugin install directory when joined onto local filesystem
+// paths.
+func ValidatePluginBinaryName(binaryName string) error {
+	switch {
+	case binaryName == "":
+		return errors.New("plugin binary name cannot be empty")
+	case binaryName == "." || binaryName == "..":
+		return fmt.Errorf("invalid plugin binary name %q", binaryName)
+	case filepath.IsAbs(binaryName):
+		return fmt.Errorf("invalid plugin binary name %q", binaryName)
+	case strings.ContainsAny(binaryName, `/\`):
+		return fmt.Errorf("invalid plugin binary name %q", binaryName)
+	case filepath.Clean(binaryName) != binaryName:
+		return fmt.Errorf("invalid plugin binary name %q", binaryName)
+	case filepath.Base(binaryName) != binaryName:
+		return fmt.Errorf("invalid plugin binary name %q", binaryName)
+	default:
+		return nil
+	}
+}
+
 // Install installs the resolved plugin version. If the metadata lookup already
 // resolved a concrete binary URL, it reuses that result and skips a second
 // metadata request. Otherwise it retries metadata during install so cached
