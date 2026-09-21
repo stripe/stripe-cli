@@ -39,6 +39,18 @@ type reauthResponse struct {
 // for the authorized-accounts list to change before printing the updated list
 // of authorized contexts.
 func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
+	return reauth(ctx, accessBaseURL, accessToken, false)
+}
+
+// ReauthImmediately fetches a reauthentication URL for the active OAuth session
+// and opens it without waiting for an additional Enter confirmation. It then
+// waits for the authorized-accounts list to change before printing the updated
+// list of authorized contexts.
+func ReauthImmediately(ctx context.Context, accessBaseURL, accessToken string) error {
+	return reauth(ctx, accessBaseURL, accessToken, true)
+}
+
+func reauth(ctx context.Context, accessBaseURL, accessToken string, openImmediately bool) error {
 	before, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
 		return err
@@ -52,14 +64,30 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 		return err
 	}
 
+	browserOpened := presentReauthURL(reauthURL, openImmediately, func() {
+		fmt.Scanln() //nolint:errcheck
+	})
+
+	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil)
+}
+
+func presentReauthURL(reauthURL string, openImmediately bool, waitForEnter func()) <-chan struct{} {
 	var browserOpened chan struct{}
 	fmt.Println()
 	if !isSSH() && canOpenBrowser() {
 		browserOpened = make(chan struct{})
 		fmt.Printf("To authorize more accounts in live mode or a sandbox, visit %s\n\n", reauthURL)
+		if openImmediately {
+			if err := openBrowser(reauthURL); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
+			}
+			close(browserOpened)
+			return browserOpened
+		}
+
 		fmt.Println("Press enter to open the browser (^C to quit)")
 		go func() {
-			fmt.Scanln() //nolint:errcheck
+			waitForEnter()
 			if err := openBrowser(reauthURL); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
 			}
@@ -69,7 +97,7 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 		fmt.Printf("Visit the following URL to re-authorize the CLI:\n  %s\n", reauthURL)
 	}
 
-	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil)
+	return browserOpened
 }
 
 type reauthSessionOutput struct {
