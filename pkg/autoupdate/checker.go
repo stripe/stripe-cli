@@ -1,0 +1,328 @@
+package autoupdate
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/go-github/v72/github"
+	semver "github.com/hashicorp/go-version"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/stripe/stripe-cli/pkg/version"
+)
+
+const httpTimeout = 10 * time.Second
+
+const checkInterval = 24 * time.Hour
+
+// UpdateMarker represents a staged update ready to be applied.
+type UpdateMarker struct {
+	Version      string `json:"version"`
+	DownloadURL  string `json:"download_url"`
+	Checksum     string `json:"checksum"`
+	ReleaseNotes string `json:"release_notes"`
+}
+
+// CheckForUpdate checks for a newer CLI version and writes a marker file
+// if an update is available. Skips major version changes. This is called
+// synchronously after command execution, rate-limited to once per day.
+func CheckForUpdate() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Debugf("autoupdate check panicked: %v", r)
+		}
+	}()
+
+	if !shouldCheck() {
+		return
+	}
+
+	latest, url, checksum, releaseNotes := fetchLatestRelease()
+	if latest == "" {
+		return
+	}
+
+	current := strings.TrimPrefix(version.Version, "v")
+	latestClean := strings.TrimPrefix(latest, "v")
+
+	if current == latestClean {
+		recordLastCheck()
+		return
+	}
+
+	if isMajorVersionChange(current, latestClean) {
+		log.Debugf("autoupdate: skipping major version change %s → %s", current, latestClean)
+		recordLastCheck()
+		return
+	}
+
+	WriteMarker(UpdateMarker{
+		Version:      latestClean,
+		DownloadURL:  url,
+		Checksum:     checksum,
+		ReleaseNotes: releaseNotes,
+	})
+	sendTelemetryEvent("Auto-Update Available", fmt.Sprintf("from=%s to=%s", current, latestClean))
+}
+
+func isMajorVersionChange(current, latest string) bool {
+	cur, err := semver.NewVersion(current)
+	if err != nil {
+		return false
+	}
+	lat, err := semver.NewVersion(latest)
+	if err != nil {
+		return false
+	}
+	return cur.Segments()[0] != lat.Segments()[0]
+}
+
+func shouldCheck() bool {
+	if version.Version == "master" {
+		return false
+	}
+	if IsOptedOut() {
+		return false
+	}
+	if !IsCurlInstall() {
+		return false
+	}
+
+	stateDir := GetStateDir()
+	if stateDir == "" {
+		return false
+	}
+
+	lastCheckFile := filepath.Join(stateDir, "last_update_check")
+	data, err := os.ReadFile(lastCheckFile)
+	if err != nil {
+		return true
+	}
+
+	ts, err := strconv.ParseInt(strings.TrimSpace(string(data)), 10, 64)
+	if err != nil {
+		return true
+	}
+
+	return time.Since(time.Unix(ts, 0)) >= checkInterval
+}
+
+func fetchLatestRelease() (ver string, downloadURL string, checksum string, releaseNotes string) {
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+	defer cancel()
+
+	client := github.NewClient(nil)
+	release, _, err := client.Repositories.GetLatestRelease(ctx, "stripe", "stripe-cli")
+	if err != nil {
+		log.Debug("autoupdate: failed to fetch latest release: ", err)
+		return "", "", "", ""
+	}
+
+	ver = release.GetTagName()
+	releaseNotes = release.GetBody()
+	assetName := binaryAssetName(strings.TrimPrefix(ver, "v"))
+	checksumAsset := checksumAssetName()
+
+	var binaryURL, checksumURL string
+	for _, asset := range release.Assets {
+		name := asset.GetName()
+		if name == assetName {
+			binaryURL = asset.GetBrowserDownloadURL()
+		}
+		if name == checksumAsset {
+			checksumURL = asset.GetBrowserDownloadURL()
+		}
+	}
+
+	if binaryURL == "" {
+		log.Debug("autoupdate: binary asset not found: ", assetName)
+		return "", "", "", ""
+	}
+
+	if checksumURL != "" {
+		checksum = fetchChecksumForAsset(checksumURL, assetName)
+	}
+
+	return ver, binaryURL, checksum, releaseNotes
+}
+
+func fetchChecksumForAsset(checksumURL, assetName string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, checksumURL, nil)
+	if err != nil {
+		log.Debug("autoupdate: failed to create checksum request: ", err)
+		return ""
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Debug("autoupdate: failed to fetch checksums: ", err)
+		return ""
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	for _, line := range strings.Split(string(body), "\n") {
+		parts := strings.Fields(line)
+		if len(parts) == 2 && parts[1] == assetName {
+			return parts[0]
+		}
+	}
+	return ""
+}
+
+func binaryAssetName(ver string) string {
+	return binaryAssetNameFor(ver, runtime.GOOS, runtime.GOARCH)
+}
+
+// binaryAssetNameFor is the release archive published for a platform.
+//
+// The names come from the archive templates in .goreleaser/, which do not use
+// the Go names for either half: darwin is published as "mac-os" and amd64 as
+// "x86_64". Passing runtime.GOOS straight through asks for an asset that does
+// not exist, and a missing asset stops the update silently.
+func binaryAssetNameFor(ver, goos, goarch string) string {
+	osLabel := goos
+	ext := "tar.gz"
+
+	switch goos {
+	case "darwin":
+		osLabel = "mac-os"
+	case "windows":
+		ext = "zip"
+	}
+
+	return fmt.Sprintf("stripe_%s_%s_%s.%s", ver, osLabel, archAssetLabel(goos, goarch), ext)
+}
+
+func archAssetLabel(goos, goarch string) string {
+	switch goarch {
+	case "amd64":
+		return "x86_64"
+	case "386":
+		return "i386"
+	case "arm64":
+		// .goreleaser/windows.yml builds amd64 and 386 only. Windows on ARM runs
+		// the x64 binary under emulation, so that is the archive to fetch.
+		if goos == "windows" {
+			return "x86_64"
+		}
+
+		return "arm64"
+	default:
+		return goarch
+	}
+}
+
+func checksumAssetName() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "stripe-mac-checksums.txt"
+	case "linux":
+		return "stripe-linux-checksums.txt"
+	case "windows":
+		return "stripe-windows-checksums.txt"
+	default:
+		return ""
+	}
+}
+
+// WriteMarker writes an update marker to the state directory.
+func WriteMarker(m UpdateMarker) {
+	stateDir := GetStateDir()
+	if stateDir == "" {
+		return
+	}
+
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		return
+	}
+
+	content, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+
+	markerPath := filepath.Join(stateDir, "update-available")
+	_ = os.WriteFile(markerPath, content, 0644)
+
+	recordLastCheck()
+}
+
+func recordLastCheck() {
+	stateDir := GetStateDir()
+	if stateDir == "" {
+		return
+	}
+	if err := os.MkdirAll(stateDir, 0755); err != nil {
+		return
+	}
+	now := strconv.FormatInt(time.Now().Unix(), 10)
+	_ = os.WriteFile(filepath.Join(stateDir, "last_update_check"), []byte(now), 0644)
+}
+
+// ReadMarker reads a pending update marker, or returns nil if none exists.
+func ReadMarker() *UpdateMarker {
+	stateDir := GetStateDir()
+	if stateDir == "" {
+		return nil
+	}
+
+	data, err := os.ReadFile(filepath.Join(stateDir, "update-available"))
+	if err != nil {
+		return nil
+	}
+
+	var m UpdateMarker
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil
+	}
+	return &m
+}
+
+// ClearMarker removes the pending update marker.
+func ClearMarker() {
+	stateDir := GetStateDir()
+	if stateDir == "" {
+		return
+	}
+	_ = os.Remove(filepath.Join(stateDir, "update-available"))
+}
+
+// VerifyChecksum verifies the SHA256 checksum of a file.
+func VerifyChecksum(filePath, expected string) bool {
+	if expected == "" {
+		return true
+	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return false
+	}
+
+	actual := hex.EncodeToString(h.Sum(nil))
+	return strings.EqualFold(actual, expected)
+}
