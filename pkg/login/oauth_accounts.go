@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -50,6 +51,39 @@ func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken str
 		return nil, fmt.Errorf("failed to parse accounts response: %w", err)
 	}
 	return result.Accounts, nil
+}
+
+// AuthorizedAccountsResult bundles the accounts a user has authorized with which account and
+// mode are currently active.
+type AuthorizedAccountsResult struct {
+	Accounts        []config.AuthorizedAccount
+	ActiveAccountID string
+	ActiveLivemode  bool
+}
+
+// ListAuthorizedAccountsForActiveSession fetches the accounts authorized for cfg's stored OAuth
+// session, along with which account and mode are currently active. Returns an error if cfg
+// isn't logged in via OAuth.
+func ListAuthorizedAccountsForActiveSession(ctx context.Context, accessBaseURL string, cfg *config.Config) (*AuthorizedAccountsResult, error) {
+	uat, err := cfg.Profile.GetUAT()
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasPrefix(uat, "oak_") {
+		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in; run 'stripe login' first")
+	}
+
+	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, uat)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch authorized accounts: %w", err)
+	}
+
+	result := &AuthorizedAccountsResult{Accounts: accounts}
+	if ac, _ := config.GetActiveContext(); ac != nil {
+		result.ActiveAccountID = ac.AccountID
+		result.ActiveLivemode = ac.Livemode
+	}
+	return result, nil
 }
 
 // PrintAuthorizedContexts fetches the authorized accounts for accessToken and

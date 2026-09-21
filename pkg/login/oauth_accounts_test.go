@@ -56,3 +56,35 @@ func TestListAuthorizedAccounts_returnsRealDataWhenAvailable(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
 }
+
+func TestListAuthorizedAccountsForActiveSession_NotLoggedIn(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	_, err := ListAuthorizedAccountsForActiveSession(context.Background(), "https://access.example", cfg)
+	assert.ErrorContains(t, err, "not logged in")
+}
+
+func TestListAuthorizedAccountsForActiveSession_ReturnsAccountsAndActiveContext(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	want := []config.AuthorizedAccount{
+		{ID: "acct_123", Name: "Test Co", Modes: []string{"test"}},
+		{ID: "acct_456", Name: "Live Co", Modes: []string{"live", "test"}},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(listAccountsResponse{Accounts: want}) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_test"), ""))
+	require.NoError(t, config.SaveActiveContext("acct_456", true))
+
+	result, err := ListAuthorizedAccountsForActiveSession(context.Background(), srv.URL, cfg)
+	require.NoError(t, err)
+	assert.Equal(t, want, result.Accounts)
+	assert.Equal(t, "acct_456", result.ActiveAccountID)
+	assert.True(t, result.ActiveLivemode)
+}

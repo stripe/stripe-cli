@@ -97,18 +97,50 @@ func RequestDeviceCode(ctx context.Context, accessBaseURL, clientID string) (*De
 	return &authResp, nil
 }
 
-// PollDeviceToken polls the token endpoint until the user approves, ctx is
-// canceled or times out, or a terminal error is returned.
-//
-// Callers should create ctx with a deadline matching DeviceAuthResponse.ExpiresIn
-// to automatically stop polling when the device code expires.
-func PollDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode string, interval time.Duration) (*OAuthTokenResponse, error) {
+// CheckDeviceToken makes a single, non-blocking request to the token endpoint and returns
+// immediately with whatever the server reports right now - unlike PollDeviceToken, it never
+// loops or sleeps waiting for the user to complete authentication. A non-nil *OAuthError with
+// Code "authorization_pending" or "slow_down" means the user hasn't completed authentication
+// yet, not that the device code is dead.
+func CheckDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode string) (*OAuthTokenResponse, error) {
 	endpoint := accessBaseURL + accessAPNPath + "/token"
 	data := url.Values{}
 	data.Set("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
 	data.Set("client_id", clientID)
 	data.Set("device_code", deviceCode)
 
+	resp, err := doPostForm(ctx, endpoint, data)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		var tokenResp OAuthTokenResponse
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			return nil, fmt.Errorf("failed to parse token response: %w", err)
+		}
+		return &tokenResp, nil
+	}
+
+	var errResp tokenErrorResponse
+	if jsonErr := json.Unmarshal(body, &errResp); jsonErr != nil || errResp.Error == "" {
+		return nil, errorcategory.Errorf(errorcategory.Auth, "token request failed (status %d): %s", resp.StatusCode, string(body))
+	}
+	return nil, &OAuthError{Code: errResp.Error, Description: errResp.ErrorDescription, HTTPStatus: resp.StatusCode}
+}
+
+// PollDeviceToken polls the token endpoint until the user approves, ctx is
+// canceled or times out, or a terminal error is returned.
+//
+// Callers should create ctx with a deadline matching DeviceAuthResponse.ExpiresIn
+// to automatically stop polling when the device code expires.
+func PollDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode string, interval time.Duration) (*OAuthTokenResponse, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -116,34 +148,18 @@ func PollDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode st
 		default:
 		}
 
-		resp, err := doPostForm(ctx, endpoint, data)
-		if err != nil {
+		tokenResp, err := CheckDeviceToken(ctx, accessBaseURL, clientID, deviceCode)
+		if err == nil {
+			return tokenResp, nil
+		}
+
+		var oauthErr *OAuthError
+		if !errors.As(err, &oauthErr) {
 			return nil, err
 		}
-
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, err
-		}
-
-		if resp.StatusCode == http.StatusOK {
-			var tokenResp OAuthTokenResponse
-			if err := json.Unmarshal(body, &tokenResp); err != nil {
-				return nil, fmt.Errorf("failed to parse token response: %w", err)
-			}
-			return &tokenResp, nil
-		}
-
-		var errResp tokenErrorResponse
-		if jsonErr := json.Unmarshal(body, &errResp); jsonErr != nil || errResp.Error == "" {
-			return nil, errorcategory.Errorf(errorcategory.Auth, "token request failed (status %d): %s", resp.StatusCode, string(body))
-		}
-
-		oauthErr := &OAuthError{Code: errResp.Error, Description: errResp.ErrorDescription, HTTPStatus: resp.StatusCode}
 
 		var wait time.Duration
-		switch errResp.Error {
+		switch oauthErr.Code {
 		case "authorization_pending":
 			wait = interval
 		case "slow_down":
@@ -203,8 +219,13 @@ func PollAndSaveDeviceCredentials(ctx context.Context, accessBaseURL, clientID, 
 	// cancellation/deadline: a caller-side timeout (or the natural device-code expiry) firing at
 	// this exact moment shouldn't leave a valid token saved but the account list and active
 	// context unpopulated.
-	ctx = context.WithoutCancel(ctx)
+	return saveDeviceCredentials(context.WithoutCancel(ctx), accessBaseURL, tokenResp, cfg)
+}
 
+// saveDeviceCredentials persists a token endpoint response as the active credentials: it clears
+// any stale credentials, saves the new OAuth tokens, fetches the authorized accounts, and
+// populates cfg's profile with the active account/mode.
+func saveDeviceCredentials(ctx context.Context, accessBaseURL string, tokenResp *OAuthTokenResponse, cfg *config.Config) (*DeviceCodeLoginResult, error) {
 	// Clear all stale credentials before saving new ones, so this succeeds even if a
 	// previously stored credential is expired or revoked.
 	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
