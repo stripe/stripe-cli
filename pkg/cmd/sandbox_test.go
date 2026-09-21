@@ -31,7 +31,7 @@ import (
 
 func setupSandboxTestConfig(t *testing.T) func() {
 	t.Helper()
-	resetSandboxNewFlagsForTest(t)
+	resetSandboxCreateFlagsForTest(t)
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 
 	origProfilesFile := Config.ProfilesFile
@@ -74,15 +74,21 @@ func setupSandboxTestConfig(t *testing.T) func() {
 	}
 }
 
-func resetSandboxNewFlagsForTest(t *testing.T) {
+func resetSandboxCreateFlagsForTest(t *testing.T) {
 	t.Helper()
-	cmd, _, err := rootCmd.Find([]string{"sandbox", "new"})
+	cmd, _, err := rootCmd.Find([]string{"sandbox", "create"})
 	require.NoError(t, err)
 
 	for _, name := range []string{
+		"base-url",
 		"create-blank",
 		"country",
 		"api-base",
+		"dashboard-base",
+		"email",
+		"from-git",
+		"full-name",
+		"non-interactive",
 	} {
 		flag := cmd.Flags().Lookup(name)
 		require.NotNil(t, flag)
@@ -810,45 +816,75 @@ func TestSandboxCreateCmd_ExistingSandboxStatusErrorFallsBackToClaimGuidance(t *
 }
 
 type fakeSandboxCreateClient struct {
-	created sandbox.CreatedSandbox
-	err     error
-	calls   []sandbox.CreateOptions
+	created      sandbox.CreatedSandbox
+	err          error
+	calls        []sandbox.CreateOptions
+	beforeReturn func()
 }
 
 type sandboxTestContextKey struct{}
 
 func (f *fakeSandboxCreateClient) Create(_ context.Context, options sandbox.CreateOptions) (sandbox.CreatedSandbox, error) {
 	f.calls = append(f.calls, options)
+	if f.beforeReturn != nil {
+		f.beforeReturn()
+	}
 	return f.created, f.err
 }
 
-func TestSandboxNewCmdSurface(t *testing.T) {
-	command := newSandboxNewCmd()
-	require.True(t, command.cmd.Hidden)
-	require.Equal(t, "new <name>", command.cmd.Use)
+func setSandboxCreateOAuthContext(t *testing.T) {
+	t.Helper()
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_live", Livemode: true})
+	require.NoError(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_live_test"),
+		config.OAuthActiveContextKeychainKey: activeContext,
+	})
+}
+
+func TestSandboxCreateCmdSurfaceIncludesAuthenticatedCreation(t *testing.T) {
+	command := newSandboxCreateCmd()
+	require.Equal(t, "create [name]", command.cmd.Use)
 
 	var flags []string
 	command.cmd.Flags().VisitAll(func(flag *pflag.Flag) {
 		flags = append(flags, flag.Name)
 	})
-	require.ElementsMatch(t, []string{"api-base", "country", "create-blank"}, flags)
-	require.True(t, command.cmd.Flags().Lookup("api-base").Hidden)
-	for _, obsolete := range []string{"name", "copy-live-account", "business-location", "stripe-account", "activate", "batch", "stripe-version"} {
-		require.Nil(t, command.cmd.Flags().Lookup(obsolete), obsolete)
+	require.ElementsMatch(t, []string{
+		"api-base",
+		"base-url",
+		"country",
+		"create-blank",
+		"dashboard-base",
+		"email",
+		"from-git",
+		"full-name",
+		"non-interactive",
+	}, flags)
+	for _, hidden := range []string{"api-base", "base-url", "dashboard-base"} {
+		require.True(t, command.cmd.Flags().Lookup(hidden).Hidden, hidden)
 	}
 }
 
-func TestSandboxNewCmdMissingNameExplainsUsage(t *testing.T) {
-	command := newSandboxNewCmd()
-	command.cmd.SetArgs(nil)
+func TestSandboxCmdDoesNotRegisterNew(t *testing.T) {
+	command := newSandboxCmd()
+	for _, child := range command.cmd.Commands() {
+		require.NotEqual(t, "new", child.Name())
+	}
 
-	err := command.cmd.Execute()
-	require.EqualError(t, err, "sandbox name is required; for example: `stripe sandbox new \"My sandbox\"`")
+	for _, name := range []string{"new", "does-not-exist"} {
+		err := command.cmd.RunE(command.cmd, []string{name})
+		require.EqualError(t, err, fmt.Sprintf("unknown command %q for %q", name, command.cmd.CommandPath()))
+	}
 }
 
-func TestSandboxNewCmdCreatesCopyLiveByDefault(t *testing.T) {
+func TestSandboxCreateCmdOAuthCreatesCopyLiveByDefault(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
 	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
-	command := newSandboxNewCmd()
+	command := newSandboxCreateCmd()
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return false }
 	command.cmd.SetArgs([]string{"  Copied sandbox  "})
@@ -858,13 +894,113 @@ func TestSandboxNewCmdCreatesCopyLiveByDefault(t *testing.T) {
 
 	require.NoError(t, command.cmd.Execute())
 	require.Equal(t, []sandbox.CreateOptions{{Name: "Copied sandbox"}}, client.calls)
-	require.Equal(t, "Created sandbox \"Copied sandbox\"\n\nAccount ID: acct_created\n\nNext step: Run `stripe login` to access this sandbox with the CLI.\n", stdout.String())
-	require.NotContains(t, stdout.String(), "play_")
-	require.NotContains(t, stdout.String(), "wksp_")
+	require.Contains(t, stdout.String(), "Created sandbox \"Copied sandbox\"")
+	require.Contains(t, stdout.String(), "Account ID: acct_created")
+	require.Contains(t, stdout.String(), "stripe login")
 	require.Empty(t, stderr.String())
 }
 
-func TestSandboxNewCmd_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
+func TestSandboxCreateCmdOAuthWinsOverConfiguredLegacyKey(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+	require.NoError(t, Config.Profile.WriteConfigField(config.TestModeAPIKeyName, "sk_test_configured"))
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "OAuth sandbox"}}, client.calls)
+}
+
+func TestSandboxCreateCmdStaleOAuthDoesNotFallBackToAnonymousProvisioning(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_live_stale"),
+	})
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	command := newSandboxCreateCmd()
+	command.apiBaseURL = server.URL
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	err := command.cmd.Execute()
+	require.ErrorContains(t, err, "stripe login")
+	require.Zero(t, requestCount)
+}
+
+func TestSandboxCreateCmdExplicitAPIKeyOverrideWinsOverOAuth(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+	Config.Profile.APIKey = "sk_test_explicit"
+
+	client := &fakeSandboxCreateClient{}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	err := command.cmd.Execute()
+	require.ErrorContains(t, err, "sandbox name is only valid with an active live OAuth account")
+	require.Empty(t, client.calls)
+}
+
+func TestSandboxCreateCmdRejectsRouteSpecificInputsBeforeSideEffects(t *testing.T) {
+	t.Run("OAuth rejects anonymous identity flags", func(t *testing.T) {
+		cleanup := setupSandboxTestConfig(t)
+		defer cleanup()
+		setSandboxCreateOAuthContext(t)
+
+		client := &fakeSandboxCreateClient{}
+		command := newSandboxCreateCmd()
+		command.client = client
+		command.cmd.SetArgs([]string{"OAuth sandbox", "--email", "test@stripe.com"})
+
+		err := command.cmd.Execute()
+		require.ErrorContains(t, err, "--email is only valid for anonymous sandbox provisioning")
+		require.Empty(t, client.calls)
+	})
+
+	t.Run("anonymous rejects management flags", func(t *testing.T) {
+		cleanup := setupSandboxTestConfig(t)
+		defer cleanup()
+
+		client := &fakeSandboxCreateClient{}
+		command := newSandboxCreateCmd()
+		command.client = client
+		command.cmd.SetArgs([]string{"--email", "test@stripe.com", "--create-blank", "--country", "US"})
+
+		err := command.cmd.Execute()
+		require.ErrorContains(t, err, "--create-blank is only valid with an active live OAuth account")
+		require.Empty(t, client.calls)
+	})
+}
+
+func TestSandboxCreateCmdOAuthRequiresName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{}
+	command := newSandboxCreateCmd()
+	command.client = client
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
+	require.Empty(t, client.calls)
+}
+
+func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
 
@@ -872,9 +1008,12 @@ func TestSandboxNewCmd_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
 	rootAccessBaseURL = login.QAAccessBaseURL
 	t.Cleanup(func() { rootAccessBaseURL = previousAccessBase })
 
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_live", Livemode: true})
+	require.NoError(t, err)
 	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
-		config.UATKeychainItemKey:           []byte("oak_original"),
-		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
+		config.UATKeychainItemKey:            []byte("oak_original"),
+		config.OAuthUATExpiresAtKeychainKey:  []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
+		config.OAuthActiveContextKeychainKey: activeContext,
 	})
 	previousRefresher := config.OAuthTokenRefresher
 	t.Cleanup(func() { config.OAuthTokenRefresher = previousRefresher })
@@ -887,7 +1026,7 @@ func TestSandboxNewCmd_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
 	}
 
 	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
-	command := newSandboxNewCmd()
+	command := newSandboxCreateCmd()
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return true }
 
@@ -923,14 +1062,15 @@ func TestSandboxNewCmd_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
 	assert.Empty(t, stderr.String())
 }
 
-func TestSandboxNewCmd_InteractiveDeclinesWithoutReauth(t *testing.T) {
+func TestSandboxCreateCmdOAuth_InteractiveDeclinesWithoutReauth(t *testing.T) {
 	for _, input := range []string{"\n", "n\n", "no\n", "maybe\n", ""} {
 		t.Run(fmt.Sprintf("input_%q", input), func(t *testing.T) {
 			cleanup := setupSandboxTestConfig(t)
 			defer cleanup()
+			setSandboxCreateOAuthContext(t)
 
 			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
-			command := newSandboxNewCmd()
+			command := newSandboxCreateCmd()
 			command.client = client
 			command.isInteractive = func(*cobra.Command) bool { return true }
 			command.cmd.SetIn(strings.NewReader(input))
@@ -955,9 +1095,13 @@ func TestSandboxNewCmd_InteractiveDeclinesWithoutReauth(t *testing.T) {
 	}
 }
 
-func TestSandboxNewCmd_NonInteractiveDoesNotPrompt(t *testing.T) {
+func TestSandboxCreateCmdOAuth_NonInteractiveDoesNotPrompt(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
 	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
-	command := newSandboxNewCmd()
+	command := newSandboxCreateCmd()
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return false }
 	command.cmd.SetArgs([]string{"Created sandbox"})
@@ -977,20 +1121,24 @@ func TestSandboxNewCmd_NonInteractiveDoesNotPrompt(t *testing.T) {
 	assert.Empty(t, stderr.String())
 }
 
-func TestSandboxNewCmd_InvalidUATWarnsWithoutReauth(t *testing.T) {
+func TestSandboxCreateCmdOAuth_InvalidUATAfterCreationWarnsWithoutReauth(t *testing.T) {
 	for _, uat := range []string{"", "sk_test_not_oak"} {
 		t.Run(fmt.Sprintf("uat_%q", uat), func(t *testing.T) {
 			cleanup := setupSandboxTestConfig(t)
 			defer cleanup()
+			setSandboxCreateOAuthContext(t)
 
-			initial := map[string][]byte{}
-			if uat != "" {
-				initial[config.UATKeychainItemKey] = []byte(uat)
+			client := &fakeSandboxCreateClient{
+				created: sandbox.CreatedSandbox{AccountID: "acct_created"},
+				beforeReturn: func() {
+					initial := map[string][]byte{}
+					if uat != "" {
+						initial[config.UATKeychainItemKey] = []byte(uat)
+					}
+					config.KeyRing = keyring.NewMemoryStore(initial)
+				},
 			}
-			config.KeyRing = keyring.NewMemoryStore(initial)
-
-			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
-			command := newSandboxNewCmd()
+			command := newSandboxCreateCmd()
 			command.client = client
 			command.isInteractive = func(*cobra.Command) bool { return true }
 			command.cmd.SetIn(strings.NewReader("y\n"))
@@ -1016,16 +1164,13 @@ func TestSandboxNewCmd_InvalidUATWarnsWithoutReauth(t *testing.T) {
 	}
 }
 
-func TestSandboxNewCmd_ReauthFailurePreservesCreationSuccess(t *testing.T) {
+func TestSandboxCreateCmdOAuth_ReauthFailurePreservesCreationSuccess(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
-
-	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
-		config.UATKeychainItemKey: []byte("oak_valid"),
-	})
+	setSandboxCreateOAuthContext(t)
 
 	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
-	command := newSandboxNewCmd()
+	command := newSandboxCreateCmd()
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return true }
 	command.cmd.SetIn(strings.NewReader("yes\n"))
@@ -1045,10 +1190,15 @@ func TestSandboxNewCmd_ReauthFailurePreservesCreationSuccess(t *testing.T) {
 	assert.NotContains(t, stderr.String(), "sandbox new")
 }
 
-func TestSandboxNewCmdCreatesBlankWithNormalizedCountry(t *testing.T) {
+func TestSandboxCreateCmdOAuthCreatesBlankWithNormalizedCountry(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
 	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_blank"}}
-	command := newSandboxNewCmd()
+	command := newSandboxCreateCmd()
 	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
 	command.cmd.SetArgs([]string{"Blank sandbox", "--create-blank", "--country", " us "})
 	var stdout bytes.Buffer
 	command.cmd.SetOut(&stdout)
@@ -1058,7 +1208,7 @@ func TestSandboxNewCmdCreatesBlankWithNormalizedCountry(t *testing.T) {
 	require.Contains(t, stdout.String(), "acct_blank")
 }
 
-func TestSandboxNewCmdRejectsInvalidInputBeforeCallingClient(t *testing.T) {
+func TestSandboxCreateCmdOAuthRejectsInvalidInputBeforeCallingClient(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -1075,8 +1225,12 @@ func TestSandboxNewCmdRejectsInvalidInputBeforeCallingClient(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
 			client := &fakeSandboxCreateClient{}
-			command := newSandboxNewCmd()
+			command := newSandboxCreateCmd()
 			command.client = client
 			command.cmd.SetArgs(test.args)
 
@@ -1086,9 +1240,13 @@ func TestSandboxNewCmdRejectsInvalidInputBeforeCallingClient(t *testing.T) {
 	}
 }
 
-func TestSandboxNewCmdReturnsClientErrorWithoutSuccessOutput(t *testing.T) {
+func TestSandboxCreateCmdOAuthReturnsClientErrorWithoutSuccessOutput(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
 	client := &fakeSandboxCreateClient{err: fmt.Errorf("safe create failure")}
-	command := newSandboxNewCmd()
+	command := newSandboxCreateCmd()
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return true }
 	command.cmd.SetIn(strings.NewReader("yes\n"))

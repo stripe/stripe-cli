@@ -51,10 +51,14 @@ type sandboxCreateCmd struct {
 	fromGit        bool
 	name           string
 	nonInteractive bool
+	createBlank    bool
+	country        string
 	baseURL        string
 	apiBaseURL     string
 	dashboardURL   string
-	accessBaseURL  string
+	client         sandboxCreateClient
+	reauth         func(context.Context, string, string) error
+	isInteractive  func(*cobra.Command) bool
 }
 
 func newSandboxCmd() *sandboxCmd {
@@ -62,15 +66,20 @@ func newSandboxCmd() *sandboxCmd {
 	sc.cmd = &cobra.Command{
 		Use:   "sandbox",
 		Short: "Manage Stripe sandbox environments",
-		Args:  validators.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				return errorcategory.Errorf(errorcategory.UserInput, "unknown command %q for %q", args[0], cmd.CommandPath())
+			}
+			return cmd.Help()
+		},
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  For new integrations, use separate general sandboxes to isolate settings and test data from live mode. Use the test mode sandbox only for existing integrations or features that require it.\n" +
 				"  Use separate sandboxes for local development and continuous integration (CI) as this avoids undesired interaction between your test environments.\n" +
 				"  Reuse sandboxes across test runs.\n" +
+				"  With an active live OAuth account, use `stripe sandbox create \"My sandbox\"`.\n" +
 				"  Use `stripe sandbox create --from-git` to provision a sandbox using your git email.\n" +
 				"  Use `stripe sandbox create --email [you@example.com](mailto:you@example.com)` to provision with an explicit email.\n" +
-				"  If provisioning fails, falls back to browser login (like stripe login).\n" +
-				"  If already logged in, opens the sandbox management page.",
+				"  If anonymous provisioning fails, falls back to browser login (like stripe login).",
 		},
 	}
 
@@ -78,39 +87,39 @@ func newSandboxCmd() *sandboxCmd {
 	claimCmd := newSandboxClaimCmd()
 	sc.cmd.AddCommand(createCmd.cmd)
 	sc.cmd.AddCommand(claimCmd.cmd)
-
-	// `sandbox new` is an experimental POC. It stays Hidden (kept out of
-	// help/completion) but is always registered — this ships only to the
-	// long-lived sandboxes-cli feature branch, never to master pre-GA, so no
-	// client-side env gate is needed. The authoritative access gate remains
-	// server-side (the UAT allowlist + hzn_sandbox_create), not the client.
-	sc.cmd.AddCommand(newSandboxNewCmd().cmd)
 	sc.cmd.AddCommand(newSandboxListCmd().cmd)
 	sc.cmd.AddCommand(newSandboxDeleteCmd().cmd)
 	return sc
 }
 
 func newSandboxCreateCmd() *sandboxCreateCmd {
-	scc := &sandboxCreateCmd{}
+	scc := &sandboxCreateCmd{
+		reauth:        login.ReauthImmediately,
+		isInteractive: sandboxCommandIsInteractive,
+	}
 	scc.cmd = &cobra.Command{
-		Use:   "create",
+		Use:   "create [name]",
 		Short: "Provision a new sandbox environment",
-		Long: `Create a new Stripe sandbox with test API keys.
+		Long: `Create a new Stripe sandbox.
 
-If you are already logged in (have a configured API key), opens the
-sandbox management page in your browser instead.
+With an active live OAuth account, provide a name to create a sandbox under
+that account. By default, settings and data are copied from the live account;
+pass --create-blank and --country to create a blank sandbox instead.
 
-Otherwise, uses a proof-of-work challenge to provision a temporary sandbox
-without authentication. If that fails, automatically falls back to
-browser-based signup/login.
+Without OAuth, use --email or --from-git to provision a temporary claimable
+sandbox with test API keys. If that fails, the command falls back to
+browser-based signup or login.
 
-Keys are saved to the current CLI profile so subsequent stripe commands
-work immediately.`,
-		Example: `stripe sandbox create --email you@example.com
+For a claimable sandbox, keys are saved to the current CLI profile so
+subsequent stripe commands work immediately.`,
+		Example: `stripe sandbox create "My sandbox"
+  stripe sandbox create "My blank sandbox" --create-blank --country US
+  stripe sandbox create --email you@example.com
   stripe sandbox create --from-git`,
-		Args: validators.NoArgs,
+		Args: validators.MaximumNArgs(1),
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Provisions a sandbox and saves keys to the current CLI profile.\n" +
+			AIAgentHelpAnnotationKey: "  With an active live OAuth account, pass a name to create a managed sandbox.\n" +
+				"  Without OAuth, provisions a claimable sandbox and saves keys to the current CLI profile.\n" +
 				"  Pass --from-git to resolve your email from git config user.email.\n" +
 				"  Pass --email to provide an explicit email address.\n" +
 				"  Falls back to browser login on server errors.",
@@ -122,6 +131,8 @@ work immediately.`,
 	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email and full name from git config")
 	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", "Your full name (optional)")
 	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
+	scc.cmd.Flags().BoolVar(&scc.createBlank, "create-blank", false, "Create a blank sandbox instead of copying the active live account")
+	scc.cmd.Flags().StringVar(&scc.country, "country", "", "Two-letter country code for a blank sandbox")
 
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
@@ -131,20 +142,41 @@ work immediately.`,
 
 	scc.cmd.Flags().StringVar(&scc.dashboardURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	_ = scc.cmd.Flags().MarkHidden("dashboard-base")
-	scc.cmd.Flags().StringVar(&scc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
-	_ = scc.cmd.Flags().MarkHidden("access-base")
 
 	return scc
 }
 
 func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []string) error {
-	// Reject an invalid profile name before provisioning, so we never create a
-	// sandbox whose keys cannot be saved.
-	if err := Config.Profile.ValidateProfileNameForWrite(); err != nil {
+	if err := login.ValidateAccessBaseURL(rootAccessBaseURL); err != nil {
 		return err
 	}
 
-	if err := login.ValidateAccessBaseURL(scc.accessBaseURL); err != nil {
+	if !Config.Profile.HasOverrideAPIKey() {
+		uat, err := Config.Profile.GetUAT()
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(uat, "oak_") {
+			return scc.runAuthenticatedSandboxCreateCmd(cmd, args)
+		}
+	}
+
+	if len(args) > 0 {
+		return errorcategory.New(errorcategory.UserInput, "sandbox name is only valid with an active live OAuth account; run `stripe login` first")
+	}
+	for _, flagName := range []string{"create-blank", "country"} {
+		if cmd.Flags().Changed(flagName) {
+			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid with an active live OAuth account; run `stripe login` first", flagName)
+		}
+	}
+
+	return scc.runAnonymousSandboxCreateCmd(cmd)
+}
+
+func (scc *sandboxCreateCmd) runAnonymousSandboxCreateCmd(cmd *cobra.Command) error {
+	// Reject an invalid profile name before provisioning, so we never create a
+	// sandbox whose keys cannot be saved.
+	if err := Config.Profile.ValidateProfileNameForWrite(); err != nil {
 		return err
 	}
 
@@ -311,9 +343,9 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	}
 
 	if scc.nonInteractive {
-		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
+		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, rootAccessBaseURL, &Config)
 	}
-	return login.Login(cmd.Context(), scc.dashboardURL, scc.accessBaseURL, &Config)
+	return login.Login(cmd.Context(), scc.dashboardURL, rootAccessBaseURL, &Config)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
@@ -473,16 +505,6 @@ type sandboxClaimCmd struct {
 	apiBaseURL     string
 }
 
-type sandboxNewCmd struct {
-	cmd           *cobra.Command
-	createBlank   bool
-	country       string
-	apiBase       string
-	client        sandboxCreateClient
-	reauth        func(context.Context, string, string) error
-	isInteractive func(*cobra.Command) bool
-}
-
 type sandboxCreateClient interface {
 	Create(context.Context, sandbox.CreateOptions) (sandbox.CreatedSandbox, error)
 }
@@ -564,57 +586,36 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 	return nil
 }
 
-func newSandboxNewCmd() *sandboxNewCmd {
-	snc := &sandboxNewCmd{
-		reauth:        login.ReauthImmediately,
-		isInteractive: sandboxCommandIsInteractive,
+func (scc *sandboxCreateCmd) runAuthenticatedSandboxCreateCmd(cmd *cobra.Command, args []string) error {
+	for _, flagName := range []string{"email", "from-git", "full-name", "non-interactive", "base-url", "dashboard-base"} {
+		if cmd.Flags().Changed(flagName) {
+			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid for anonymous sandbox provisioning", flagName)
+		}
 	}
-	snc.cmd = &cobra.Command{
-		Use:   "new <name>",
-		Short: "Create a sandbox for the active live account",
-		Example: `stripe sandbox new "My sandbox"
-  stripe sandbox new "My blank sandbox" --create-blank --country US`,
-		Args:   sandboxNameArgs,
-		RunE:   snc.runSandboxNewCmd,
-		Hidden: true,
-	}
-
-	snc.cmd.Flags().BoolVar(&snc.createBlank, "create-blank", false, "Create a blank sandbox instead of copying the active live account")
-	snc.cmd.Flags().StringVar(&snc.country, "country", "", "Two-letter country code for a blank sandbox")
-	snc.cmd.Flags().StringVar(&snc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
-	_ = snc.cmd.Flags().MarkHidden("api-base")
-
-	return snc
-}
-
-func sandboxNameArgs(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox new \"My sandbox\"`")
+		return errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
 	}
-	return validators.ExactArgs(1)(cmd, args)
-}
 
-func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) error {
 	name := strings.TrimSpace(args[0])
 	if name == "" {
 		return errorcategory.New(errorcategory.UserInput, "sandbox name cannot be blank")
 	}
 
-	country := strings.ToUpper(strings.TrimSpace(snc.country))
+	country := strings.ToUpper(strings.TrimSpace(scc.country))
 	switch {
-	case snc.createBlank && !validSandboxCountryCode(country):
+	case scc.createBlank && !validSandboxCountryCode(country):
 		return errorcategory.New(errorcategory.UserInput, "--create-blank requires --country with a two-letter country code")
-	case !snc.createBlank && country != "":
+	case !scc.createBlank && country != "":
 		return errorcategory.New(errorcategory.UserInput, "--country is only valid with --create-blank")
 	}
 
-	client := snc.client
+	client := scc.client
 	if client == nil {
-		client = sandbox.NewManagementClient(snc.apiBase, Config.GetProfile())
+		client = sandbox.NewManagementClient(scc.apiBaseURL, Config.GetProfile())
 	}
 	created, err := client.Create(cmd.Context(), sandbox.CreateOptions{
 		Name:    name,
-		Blank:   snc.createBlank,
+		Blank:   scc.createBlank,
 		Country: country,
 	})
 	if err != nil {
@@ -625,12 +626,12 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	fmt.Fprintf(out, "Created sandbox %q\n\n", name)
 	fmt.Fprintf(out, "Account ID: %s\n", created.AccountID)
 	fmt.Fprintln(out, "\nNext step: Run `stripe login` to access this sandbox with the CLI.")
-	snc.authorizeCreatedSandbox(cmd)
+	scc.authorizeCreatedSandbox(cmd)
 	return nil
 }
 
-func (snc *sandboxNewCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
-	isInteractive := snc.isInteractive
+func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
+	isInteractive := scc.isInteractive
 	if isInteractive == nil {
 		isInteractive = sandboxCommandIsInteractive
 	}
@@ -644,7 +645,7 @@ func (snc *sandboxNewCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 		if errors.Is(err, io.EOF) {
 			return
 		}
-		snc.warnAuthorizationFailure(cmd, err)
+		scc.warnAuthorizationFailure(cmd, err)
 		return
 	}
 	input = strings.ToLower(strings.TrimSpace(input))
@@ -654,25 +655,25 @@ func (snc *sandboxNewCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 
 	uat, err := Config.Profile.GetUAT()
 	if err != nil {
-		snc.warnAuthorizationFailure(cmd, err)
+		scc.warnAuthorizationFailure(cmd, err)
 		return
 	}
 	uat, err = config.RefreshUATIfNeeded(&Config.Profile, uat)
 	if err != nil {
-		snc.warnAuthorizationFailure(cmd, err)
+		scc.warnAuthorizationFailure(cmd, err)
 		return
 	}
 	if !strings.HasPrefix(uat, "oak_") {
-		snc.warnAuthorizationFailure(cmd, errorcategory.New(errorcategory.Auth, "no valid OAuth session is available"))
+		scc.warnAuthorizationFailure(cmd, errorcategory.New(errorcategory.Auth, "no valid OAuth session is available"))
 		return
 	}
 
-	reauth := snc.reauth
+	reauth := scc.reauth
 	if reauth == nil {
 		reauth = login.ReauthImmediately
 	}
 	if err := reauth(cmd.Context(), rootAccessBaseURL, uat); err != nil {
-		snc.warnAuthorizationFailure(cmd, err)
+		scc.warnAuthorizationFailure(cmd, err)
 	}
 }
 
@@ -680,7 +681,7 @@ func (snc *sandboxNewCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 // OAuth session needs recovery, or the browser/polling flow is interrupted.
 // Creation has already succeeded, so keep the warning actionable and return
 // success to avoid prompting the caller to create a duplicate sandbox.
-func (snc *sandboxNewCmd) warnAuthorizationFailure(cmd *cobra.Command, err error) {
+func (scc *sandboxCreateCmd) warnAuthorizationFailure(cmd *cobra.Command, err error) {
 	fmt.Fprintf(cmd.ErrOrStderr(), "Warning: sandbox creation succeeded, but CLI authorization was not completed: %s\n", err)
 	fmt.Fprintln(cmd.ErrOrStderr(), "Run `stripe login` to authorize the existing sandbox.")
 }
