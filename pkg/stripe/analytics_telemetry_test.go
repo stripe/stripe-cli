@@ -107,6 +107,10 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "plugin_name=apps")
+		require.Contains(t, bodyString, "plugin_version=0.40.0")
+		require.Contains(t, bodyString, "command=status")
+		require.Contains(t, bodyString, "outcome=success")
+		require.Contains(t, bodyString, "duration_ms=123")
 		require.Contains(t, bodyString, "request_id=req_zzz")
 		require.Contains(t, bodyString, "terminal_program=iTerm.app")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
@@ -123,6 +127,10 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		OS:                "darwin",
 		CommandPath:       "stripe test",
 		PluginName:        "apps",
+		PluginVersion:     "0.40.0",
+		PluginCommand:     "status",
+		PluginOutcome:     "success",
+		PluginDurationMS:  "123",
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 		InTmux:            true,
