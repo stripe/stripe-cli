@@ -70,7 +70,8 @@ func DetectTerminalProgram(getEnv func(string) string) string {
 // It accepts an environment getter function to allow testing without modifying the actual environment.
 //
 // Agent-specific variables are checked first. When none match it falls back to the two host
-// variables DetectAgentHost reads, which identify an agent surface and so imply the agent.
+// variables DetectAgentHost reads, which identify an agent surface and so imply the agent, and
+// finally to AI_AGENT and then AGENT, which some agents report through directly.
 func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
 		return "antigravity"
@@ -89,6 +90,9 @@ func DetectAIAgent(getEnv func(string) string) string {
 	}
 	if getEnv("GEMINI_CLI") != "" {
 		return "gemini_cli"
+	}
+	if getEnv("HERMES_AGENT") != "" {
+		return "hermes"
 	}
 	if getEnv("GROK_AGENT") != "" || getEnv("GROK_SESSION_ID") != "" {
 		return "grok"
@@ -117,6 +121,17 @@ func DetectAIAgent(getEnv func(string) string) string {
 		return "codex_cli"
 	}
 
+	// Last resort: AI_AGENT is a convention some agents report themselves through
+	// (see DetectAgentVersion), so a value here is itself evidence of an agent even
+	// when none of the specific variables above matched.
+	if aiAgent := strings.TrimSpace(getEnv("AI_AGENT")); aiAgent != "" {
+		return aiAgent
+	}
+	// AGENT is the same convention under the name Goose, Amp and Bun use.
+	if agent := strings.TrimSpace(getEnv("AGENT")); agent != "" {
+		return agent
+	}
+
 	return ""
 }
 
@@ -137,6 +152,10 @@ func DetectAIAgent(getEnv func(string) string) string {
 // terminal, and Grok Build names neither of its two surfaces, so a detected agent of
 // either with no host is inferred from other signals. See the empty-host branch below.
 func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
+	if getEnv("HERMES_DESKTOP") != "" {
+		return "desktop", "hermes"
+	}
+	
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
 	if host == "" {
 		// Codex Desktop sets this alongside the generic Codex signals, and it is
