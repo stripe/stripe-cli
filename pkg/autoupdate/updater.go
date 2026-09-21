@@ -16,6 +16,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -86,7 +87,7 @@ func downloadAndReplace(marker *UpdateMarker, exePath string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download returned status %d", resp.StatusCode)
+		return errorcategory.Errorf(errorcategory.Network, "download returned status %d", resp.StatusCode)
 	}
 
 	tmpArchive, err := os.CreateTemp(filepath.Dir(exePath), "stripe-update-archive-*")
@@ -103,7 +104,7 @@ func downloadAndReplace(marker *UpdateMarker, exePath string) error {
 	tmpArchive.Close()
 
 	if marker.Checksum != "" && !VerifyChecksum(tmpArchivePath, marker.Checksum) {
-		return fmt.Errorf("checksum verification failed")
+		return errorcategory.Errorf(errorcategory.Network, "checksum verification failed")
 	}
 
 	tmpBinary, err := os.CreateTemp(filepath.Dir(exePath), "stripe-update-*")
@@ -219,7 +220,7 @@ func extractFromTarGz(archivePath, destPath string) error {
 			return out.Close()
 		}
 	}
-	return fmt.Errorf("stripe binary not found in archive")
+	return errorcategory.Errorf(errorcategory.Internal, "stripe binary not found in archive")
 }
 
 func extractFromZip(archivePath, destPath string) error {
@@ -253,5 +254,5 @@ func extractFromZip(archivePath, destPath string) error {
 		return out.Close()
 	}
 
-	return fmt.Errorf("stripe binary not found in archive")
+	return errorcategory.Errorf(errorcategory.Internal, "stripe binary not found in archive")
 }
