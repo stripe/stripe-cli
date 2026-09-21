@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -592,7 +593,12 @@ func TestLoginRevokesExistingOAuthSession(t *testing.T) {
 	})
 	t.Cleanup(func() { config.KeyRing = nil })
 
-	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
+	cfg := &config.Config{LogLevel: "info", Profile: config.Profile{ProfileName: "default"}, ProfilesFile: filepath.Join(t.TempDir(), "config.toml")}
+	cfg.InitConfig()
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{config.UATKeychainItemKey: []byte("oak_previous_uat")})
+	cfg.Profile.UAT = "oak_previous_uat"
+	require.NoError(t, cfg.Profile.CreateProfile())
+	coreCLIHelper := NewCoreCLIHelper(context.Background(), cfg, afero.NewMemMapFs(), "", "", "")
 	accountID, _, _, loggedIn, err := coreCLIHelper.Login(0)
 	require.NoError(t, err)
 	require.True(t, loggedIn)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -201,7 +202,37 @@ func (s *fileStore) save(m map[string]string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, data, 0600)
+	// Credential installation may be resumed from a checkpoint in this store.
+	// Never truncate that checkpoint in place during another credential write:
+	// process death must leave either the old or new complete JSON document.
+	f, err := os.CreateTemp(filepath.Dir(s.path), ".credentials-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(f.Name(), s.path); err != nil {
+		return err
+	}
+	if runtime.GOOS != "windows" {
+		dir, err := os.Open(filepath.Dir(s.path))
+		if err != nil {
+			return err
+		}
+		defer dir.Close()
+		return dir.Sync()
+	}
+	return nil
 }
 
 func (s *fileStore) Get(key string) ([]byte, error) {

@@ -196,7 +196,24 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if lc.completeURL != "" {
 		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
 	}
+	if lc.newSession {
+		if err := login.ForgetPendingLogin(cmd.Context()); err != nil {
+			return err
+		}
+	}
 
+	if !lc.newSession {
+		pending, err := login.HasPendingLogin()
+		if err != nil {
+			return err
+		}
+		if pending {
+			if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+				return initiateLogin(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+			}
+			return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+		}
+	}
 	uat, _ := Config.Profile.GetUAT()
 	if !lc.newSession {
 		if strings.HasPrefix(uat, "oak_") {
@@ -206,7 +223,13 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 				// change permissions or authorize additional accounts/sandboxes.
 				return lc.reauthorizeSession(cmd, refreshedUAT)
 			}
-			// The session and its refresh token have both expired; fall through to a fresh login below.
+			// The existing CLI command has confirmed this session unusable.
+			// The additive helper never makes this decision on the caller's behalf.
+			if err := login.MutateLoginCredentials(cmd.Context(), func(context.Context) error {
+				return Config.RemoveAuthFields(Config.Profile.ProfileName)
+			}); err != nil {
+				return err
+			}
 		}
 	} else if strings.HasPrefix(uat, "oak_") {
 		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
@@ -215,6 +238,11 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		}
 		if !lc.nonInteractive {
 			fmt.Fprintf(cmd.OutOrStdout(), "%s Logged out of your previous session.\n", ansi.Color(os.Stdout).Green("✓"))
+		}
+		if err := login.MutateLoginCredentials(cmd.Context(), func(context.Context) error {
+			return Config.RemoveAuthFields(Config.Profile.ProfileName)
+		}); err != nil {
+			return err
 		}
 	}
 

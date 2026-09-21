@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/kballard/go-shellquote"
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -34,17 +35,21 @@ func warnIfInsecureStorage() {
 // instead of the legacy RAK flow. accessBaseURL controls which access-srv
 // environment is used (production by default; QA via --access-base).
 func Login(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	if cont, err := readOptionalPendingDeviceAuth(); err != nil {
+		return err
+	} else if cont != nil && cont.Version == 1 {
+		return LoginWithDeviceCode(ctx, accessBaseURL, cfg)
+	}
 	links, useOAuth, err := GetLinks(ctx, dashboardBaseURL, cfg.Profile.DeviceName, cfg.GetMachineUUID())
 	if err != nil {
 		return err
 	}
 
-	// Clear all stale credentials before saving new ones, regardless of flow.
-	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
-
 	if useOAuth {
 		return LoginWithDeviceCode(ctx, accessBaseURL, cfg)
 	}
+	// The legacy flow retains its existing replacement behavior.
+	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
 
 	configurer := keys.NewRAKConfigurer(cfg, afero.NewOsFs())
 	rt := keys.NewRAKTransfer(configurer)
@@ -53,9 +58,12 @@ func Login(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *con
 }
 
 type loginSessionOutput struct {
-	BrowserURL       string `json:"browser_url"`
-	VerificationCode string `json:"verification_code"`
-	NextStep         string `json:"next_step"`
+	BrowserURL       string     `json:"browser_url"`
+	VerificationCode string     `json:"verification_code"`
+	NextStep         string     `json:"next_step"`
+	HandoffID        string     `json:"handoff_id,omitempty"`
+	ExpiresAt        *time.Time `json:"expires_at,omitempty"`
+	Reused           bool       `json:"reused"`
 }
 
 // InitiateLogin prints JSON with browser_url, verification_code, and a
@@ -63,6 +71,11 @@ type loginSessionOutput struct {
 // use. For the OAuth device-code flow it saves pending state to disk and emits
 // `stripe login --complete-device` as the next_step.
 func InitiateLogin(ctx context.Context, baseURL, accessBaseURL string, cfg *config.Config) error {
+	if cont, err := readOptionalPendingDeviceAuth(); err != nil {
+		return err
+	} else if cont != nil {
+		return initiateOAuthDeviceLogin(ctx, accessBaseURL, cfg)
+	}
 	deviceName, err := cfg.Profile.GetDeviceName()
 	if err != nil {
 		return err
@@ -74,7 +87,7 @@ func InitiateLogin(ctx context.Context, baseURL, accessBaseURL string, cfg *conf
 	}
 
 	if useOAuth {
-		return initiateOAuthDeviceLogin(ctx, accessBaseURL)
+		return initiateOAuthDeviceLogin(ctx, accessBaseURL, cfg)
 	}
 
 	out := loginSessionOutput{
@@ -92,30 +105,18 @@ func InitiateLogin(ctx context.Context, baseURL, accessBaseURL string, cfg *conf
 
 // initiateOAuthDeviceLogin calls the device authorization endpoint, saves the
 // pending state to disk, and prints the JSON session output.
-func initiateOAuthDeviceLogin(ctx context.Context, accessBaseURL string) error {
-	clientID := clientIDForAccessBaseURL(accessBaseURL)
-	authResp, err := RequestDeviceCode(ctx, accessBaseURL, clientID)
+func initiateOAuthDeviceLogin(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
+	result, err := BeginOrResumeLogin(ctx, accessBaseURL, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to request device code: %w", err)
-	}
-	if err := validateBrowserURL(authResp.VerificationURI, accessBaseURL); err != nil {
 		return err
 	}
-
-	cont := &oauthContinuation{
-		DeviceCode:    authResp.DeviceCode,
-		Interval:      authResp.Interval,
-		ExpiresIn:     authResp.ExpiresIn,
-		AccessBaseURL: accessBaseURL,
+	if result.State != LoginHandoffPending && result.State != LoginHandoffCompleting {
+		return handoffStateError(result)
 	}
-	if err := savePendingDeviceAuth(cont); err != nil {
-		return fmt.Errorf("failed to save pending auth state: %w", err)
-	}
-
 	out := loginSessionOutput{
-		BrowserURL:       authResp.VerificationURI,
-		VerificationCode: authResp.UserCode,
-		NextStep:         "stripe login --complete-device",
+		BrowserURL: result.BrowserURL, VerificationCode: result.VerificationCode,
+		NextStep: pendingLoginCommand(cfg), HandoffID: result.ID,
+		ExpiresAt: &result.ExpiresAt, Reused: result.Reused,
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
@@ -160,8 +161,12 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	// Remove the pending file whether polling succeeds or fails.
-	defer clearPendingDeviceAuth()
+	if cont.Version == 1 {
+		return waitForLoginHandoff(ctx, cont.AccessBaseURL, cfg, cont.ID)
+	}
+	if cont.Version != 0 {
+		return &HandoffError{Reason: "unsupported_continuation"}
+	}
 
 	if err := ValidateAccessBaseURL(cont.AccessBaseURL); err != nil {
 		return err
@@ -195,4 +200,15 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
 	warnIfInsecureStorage()
 	return nil
+}
+
+func pendingLoginCommand(cfg *config.Config) string {
+	args := []string{"stripe", "login", "--complete-device"}
+	if cfg.Profile.ProfileName != "" && cfg.Profile.ProfileName != "default" {
+		args = append(args, "--project-name", cfg.Profile.ProfileName)
+	}
+	if cfg.ProfilesFile != "" {
+		args = append(args, "--config", cfg.ProfilesFile)
+	}
+	return shellquote.Join(args...)
 }

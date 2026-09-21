@@ -2,6 +2,7 @@ package keyring
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -239,4 +240,25 @@ func TestIsUsingInsecureStorageTrueWhenFallbackUsed(t *testing.T) {
 
 func TestIsUsingInsecureStorageFalseForNonFallbackStore(t *testing.T) {
 	assert.False(t, IsUsingInsecureStorage(NewMemoryStore(nil)))
+}
+
+func TestFileStoreUpdatesReplaceCompleteSnapshot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow replacement while this read handle is open")
+	}
+	store := newTestFileStore(t)
+	require.NoError(t, store.Set("checkpoint", []byte("received"), ""))
+	previous, err := os.Open(store.path)
+	require.NoError(t, err)
+	defer previous.Close()
+	require.NoError(t, store.Set("installed", []byte("complete"), ""))
+	oldData, err := io.ReadAll(previous)
+	require.NoError(t, err)
+	assert.NotContains(t, string(oldData), "installed", "a pre-existing reader sees a complete immutable snapshot")
+	checkpoint, err := store.Get("checkpoint")
+	require.NoError(t, err)
+	assert.Equal(t, "received", string(checkpoint))
+	installed, err := store.Get("installed")
+	require.NoError(t, err)
+	assert.Equal(t, "complete", string(installed))
 }

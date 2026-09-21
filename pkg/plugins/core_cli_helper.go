@@ -492,6 +492,9 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	if !ok {
 		return "", "", false, false, errorcategory.Errorf(errorcategory.Internal, "could not log in: config type mismatch")
 	}
+	if err := login.ForgetPendingLogin(h.ctx); err != nil {
+		return "", "", false, false, err
+	}
 	dashboardBaseURL := h.dashboardBaseURL
 	if dashboardBaseURL == "" {
 		dashboardBaseURL = stripe.DefaultDashboardBaseURL
@@ -513,6 +516,11 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	if uat, _ := cfg.Profile.GetUAT(); strings.HasPrefix(uat, "oak_") {
 		if err := loginRevokeToken(ctx, accessBaseURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
+		}
+		if err := login.MutateLoginCredentials(ctx, func(context.Context) error {
+			return cfg.RemoveAuthFields(cfg.Profile.ProfileName)
+		}); err != nil {
+			return "", "", false, false, err
 		}
 	}
 
