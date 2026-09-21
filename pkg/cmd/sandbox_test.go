@@ -1022,7 +1022,7 @@ func TestSandboxDeleteCmd_Success(t *testing.T) {
 	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target", Name: "Target sandbox"}}
 	command := newSandboxDeleteCmd()
 	command.client = client
-	command.cmd.SetArgs([]string{"--api-base=http://example.test", "--yes", "  acct_target  "})
+	command.cmd.SetArgs([]string{"--api-base=http://example.test", "--confirm", "  acct_target  "})
 
 	var stdout, stderr bytes.Buffer
 	command.cmd.SetOut(&stdout)
@@ -1039,7 +1039,7 @@ func TestSandboxDeleteCmd_ClientError(t *testing.T) {
 	client := &fakeSandboxDeleteClient{err: fmt.Errorf("safe delete failure")}
 	command := newSandboxDeleteCmd()
 	command.client = client
-	command.cmd.SetArgs([]string{"acct_target", "--yes"})
+	command.cmd.SetArgs([]string{"acct_target", "--confirm"})
 
 	var stdout, stderr bytes.Buffer
 	command.cmd.SetOut(&stdout)
@@ -1060,11 +1060,11 @@ func TestSandboxDeleteCmd_RejectsInvalidInputBeforeCallingClient(t *testing.T) {
 		args []string
 	}{
 		{name: "missing account"},
-		{name: "empty account", args: []string{"   ", "--yes"}},
-		{name: "organization", args: []string{"org_123", "--yes"}},
-		{name: "wrong prefix", args: []string{"not_an_account", "--yes"}},
-		{name: "missing account suffix", args: []string{"acct_", "--yes"}},
-		{name: "extra account", args: []string{"acct_one", "acct_two", "--yes"}},
+		{name: "empty account", args: []string{"   ", "--confirm"}},
+		{name: "organization", args: []string{"org_123", "--confirm"}},
+		{name: "wrong prefix", args: []string{"not_an_account", "--confirm"}},
+		{name: "missing account suffix", args: []string{"acct_", "--confirm"}},
+		{name: "extra account", args: []string{"acct_one", "acct_two", "--confirm"}},
 	}
 
 	for _, test := range tests {
@@ -1085,14 +1085,19 @@ func TestSandboxDeleteCmd_Surface(t *testing.T) {
 	require.True(t, command.cmd.Hidden)
 	require.Equal(t, "delete <account_id>", command.cmd.Use)
 	require.Nil(t, command.cmd.Flags().Lookup("stripe-account"))
-	require.NotNil(t, command.cmd.Flags().Lookup("yes"))
+	require.NotNil(t, command.cmd.Flags().Lookup("confirm"))
+	require.Nil(t, command.cmd.Flags().Lookup("yes"))
+	require.NotNil(t, command.cmd.Flags().ShorthandLookup("c"))
+	require.Nil(t, command.cmd.Flags().ShorthandLookup("y"))
 	require.NotNil(t, command.cmd.Flags().Lookup("api-base"))
 	require.Nil(t, command.cmd.Flags().Lookup("stripe-version"))
 	require.NotContains(t, command.cmd.UsageString(), "--stripe-account stripe sandbox list")
+	require.Contains(t, command.cmd.UsageString(), "--confirm")
+	require.NotContains(t, command.cmd.UsageString(), "--yes")
 
 	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target"}}
 	command.client = client
-	command.cmd.SetArgs([]string{"acct_target", "--yes"})
+	command.cmd.SetArgs([]string{"acct_target", "-c"})
 	var stdout bytes.Buffer
 	command.cmd.SetOut(&stdout)
 	require.NoError(t, command.cmd.Execute())
@@ -1108,7 +1113,7 @@ func TestSandboxDeleteCmd_RequiresConfirmationWhenNonInteractive(t *testing.T) {
 	command.cmd.SetArgs([]string{"acct_target"})
 
 	err := command.cmd.Execute()
-	require.EqualError(t, err, "refusing to delete sandbox acct_target without confirmation; re-run with --yes")
+	require.EqualError(t, err, "refusing to delete sandbox acct_target without confirmation; re-run with --confirm")
 	require.Empty(t, client.calls)
 }
 

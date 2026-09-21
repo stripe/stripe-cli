@@ -501,7 +501,7 @@ type sandboxListCmd struct {
 
 type sandboxDeleteCmd struct {
 	cmd     *cobra.Command
-	yes     bool
+	confirm bool
 	apiBase string
 	client  sandboxDeleteClient
 }
@@ -702,13 +702,13 @@ Pass the sandbox account ID (acct_...) shown by ` + "`stripe sandbox list`" + `.
 closes the sandbox's testmode workspace, mirroring the dashboard's delete action;
 it never touches your live account.`,
 		Example: `stripe sandbox delete acct_123
-  stripe sandbox delete acct_123 --yes`,
+  stripe sandbox delete acct_123 --confirm`,
 		Args:   validators.ExactArgs(1),
 		RunE:   sdc.runSandboxDeleteCmd,
 		Hidden: true,
 	}
 
-	sdc.cmd.Flags().BoolVarP(&sdc.yes, "yes", "y", false, "Skip the confirmation prompt")
+	sdc.cmd.Flags().BoolVarP(&sdc.confirm, "confirm", "c", false, "Skip the confirmation prompt")
 
 	sdc.cmd.Flags().StringVar(&sdc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = sdc.cmd.Flags().MarkHidden("api-base")
@@ -755,12 +755,12 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 }
 
 func (sdc *sandboxDeleteCmd) confirmDelete(cmd *cobra.Command, accountID string) (bool, error) {
-	if sdc.yes {
+	if sdc.confirm {
 		return true, nil
 	}
 
 	if !sandboxDeleteIsInteractive(cmd) {
-		return false, errorcategory.Errorf(errorcategory.UserInput, "refusing to delete sandbox %s without confirmation; re-run with --yes", accountID)
+		return false, errorcategory.Errorf(errorcategory.UserInput, "refusing to delete sandbox %s without confirmation; re-run with --confirm", accountID)
 	}
 
 	out := cmd.OutOrStdout()
