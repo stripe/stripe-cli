@@ -474,11 +474,13 @@ type sandboxClaimCmd struct {
 }
 
 type sandboxNewCmd struct {
-	cmd         *cobra.Command
-	createBlank bool
-	country     string
-	apiBase     string
-	client      sandboxCreateClient
+	cmd           *cobra.Command
+	createBlank   bool
+	country       string
+	apiBase       string
+	client        sandboxCreateClient
+	reauth        func(context.Context, string, string) error
+	isInteractive func(*cobra.Command) bool
 }
 
 type sandboxCreateClient interface {
@@ -563,7 +565,10 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 }
 
 func newSandboxNewCmd() *sandboxNewCmd {
-	snc := &sandboxNewCmd{}
+	snc := &sandboxNewCmd{
+		reauth:        login.ReauthImmediately,
+		isInteractive: sandboxCommandIsInteractive,
+	}
 	snc.cmd = &cobra.Command{
 		Use:   "new <name>",
 		Short: "Create a sandbox for the active live account",
@@ -619,8 +624,65 @@ func (snc *sandboxNewCmd) runSandboxNewCmd(cmd *cobra.Command, args []string) er
 	out := cmd.OutOrStdout()
 	fmt.Fprintf(out, "Created sandbox %q\n\n", name)
 	fmt.Fprintf(out, "Account ID: %s\n", created.AccountID)
-	fmt.Fprintln(out, "\nNext step: Run `stripe reauth` to access this sandbox with the CLI.")
+	fmt.Fprintln(out, "\nNext step: Run `stripe login` to access this sandbox with the CLI.")
+	snc.authorizeCreatedSandbox(cmd)
 	return nil
+}
+
+func (snc *sandboxNewCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
+	isInteractive := snc.isInteractive
+	if isInteractive == nil {
+		isInteractive = sandboxCommandIsInteractive
+	}
+	if !isInteractive(cmd) {
+		return
+	}
+
+	fmt.Fprint(cmd.OutOrStdout(), "Authorize this sandbox with the CLI now? [y/N]: ")
+	input, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return
+		}
+		snc.warnAuthorizationFailure(cmd, err)
+		return
+	}
+	input = strings.ToLower(strings.TrimSpace(input))
+	if input != "y" && input != "yes" {
+		return
+	}
+
+	uat, err := Config.Profile.GetUAT()
+	if err != nil {
+		snc.warnAuthorizationFailure(cmd, err)
+		return
+	}
+	uat, err = config.RefreshUATIfNeeded(&Config.Profile, uat)
+	if err != nil {
+		snc.warnAuthorizationFailure(cmd, err)
+		return
+	}
+	if !strings.HasPrefix(uat, "oak_") {
+		snc.warnAuthorizationFailure(cmd, errorcategory.New(errorcategory.Auth, "no valid OAuth session is available"))
+		return
+	}
+
+	reauth := snc.reauth
+	if reauth == nil {
+		reauth = login.ReauthImmediately
+	}
+	if err := reauth(cmd.Context(), rootAccessBaseURL, uat); err != nil {
+		snc.warnAuthorizationFailure(cmd, err)
+	}
+}
+
+// Follow-up authorization can fail because the keyring is unavailable, the
+// OAuth session needs recovery, or the browser/polling flow is interrupted.
+// Creation has already succeeded, so keep the warning actionable and return
+// success to avoid prompting the caller to create a duplicate sandbox.
+func (snc *sandboxNewCmd) warnAuthorizationFailure(cmd *cobra.Command, err error) {
+	fmt.Fprintf(cmd.ErrOrStderr(), "Warning: sandbox creation succeeded, but CLI authorization was not completed: %s\n", err)
+	fmt.Fprintln(cmd.ErrOrStderr(), "Run `stripe login` to authorize the existing sandbox.")
 }
 
 func validSandboxCountryCode(country string) bool {
@@ -759,7 +821,7 @@ func (sdc *sandboxDeleteCmd) confirmDelete(cmd *cobra.Command, accountID string)
 		return true, nil
 	}
 
-	if !sandboxDeleteIsInteractive(cmd) {
+	if !sandboxCommandIsInteractive(cmd) {
 		return false, errorcategory.Errorf(errorcategory.UserInput, "refusing to delete sandbox %s without confirmation; re-run with --confirm", accountID)
 	}
 
@@ -776,7 +838,7 @@ func (sdc *sandboxDeleteCmd) confirmDelete(cmd *cobra.Command, accountID string)
 	return input == "y" || input == "yes", nil
 }
 
-func sandboxDeleteIsInteractive(cmd *cobra.Command) bool {
+func sandboxCommandIsInteractive(cmd *cobra.Command) bool {
 	if cmd.InOrStdin() != os.Stdin {
 		return true
 	}

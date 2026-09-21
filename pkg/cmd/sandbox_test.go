@@ -15,7 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -813,6 +815,8 @@ type fakeSandboxCreateClient struct {
 	calls   []sandbox.CreateOptions
 }
 
+type sandboxTestContextKey struct{}
+
 func (f *fakeSandboxCreateClient) Create(_ context.Context, options sandbox.CreateOptions) (sandbox.CreatedSandbox, error) {
 	f.calls = append(f.calls, options)
 	return f.created, f.err
@@ -846,6 +850,7 @@ func TestSandboxNewCmdCreatesCopyLiveByDefault(t *testing.T) {
 	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
 	command := newSandboxNewCmd()
 	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
 	command.cmd.SetArgs([]string{"  Copied sandbox  "})
 	var stdout, stderr bytes.Buffer
 	command.cmd.SetOut(&stdout)
@@ -853,10 +858,191 @@ func TestSandboxNewCmdCreatesCopyLiveByDefault(t *testing.T) {
 
 	require.NoError(t, command.cmd.Execute())
 	require.Equal(t, []sandbox.CreateOptions{{Name: "Copied sandbox"}}, client.calls)
-	require.Equal(t, "Created sandbox \"Copied sandbox\"\n\nAccount ID: acct_created\n\nNext step: Run `stripe reauth` to access this sandbox with the CLI.\n", stdout.String())
+	require.Equal(t, "Created sandbox \"Copied sandbox\"\n\nAccount ID: acct_created\n\nNext step: Run `stripe login` to access this sandbox with the CLI.\n", stdout.String())
 	require.NotContains(t, stdout.String(), "play_")
 	require.NotContains(t, stdout.String(), "wksp_")
 	require.Empty(t, stderr.String())
+}
+
+func TestSandboxNewCmd_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	previousAccessBase := rootAccessBaseURL
+	rootAccessBaseURL = login.QAAccessBaseURL
+	t.Cleanup(func() { rootAccessBaseURL = previousAccessBase })
+
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:           []byte("oak_original"),
+		config.OAuthUATExpiresAtKeychainKey: []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
+	})
+	previousRefresher := config.OAuthTokenRefresher
+	t.Cleanup(func() { config.OAuthTokenRefresher = previousRefresher })
+
+	refreshCalls := 0
+	config.OAuthTokenRefresher = func(profile *config.Profile) error {
+		refreshCalls++
+		profile.UAT = "oak_refreshed"
+		return nil
+	}
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxNewCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+
+	ctx := context.WithValue(context.Background(), sandboxTestContextKey{}, "sandbox-test")
+	command.cmd.SetContext(ctx)
+	command.cmd.SetIn(strings.NewReader("  YeS  \n"))
+
+	var reauthContext context.Context
+	var reauthAccessBaseURL string
+	var reauthAccessToken string
+	reauthCalls := 0
+	command.reauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		reauthCalls++
+		reauthContext = ctx
+		reauthAccessBaseURL = accessBaseURL
+		reauthAccessToken = accessToken
+		return nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+	command.cmd.SetArgs([]string{"Created sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Equal(t, 1, refreshCalls)
+	assert.Equal(t, 1, reauthCalls)
+	assert.Equal(t, ctx, reauthContext)
+	assert.Equal(t, login.QAAccessBaseURL, reauthAccessBaseURL)
+	assert.Equal(t, "oak_refreshed", reauthAccessToken)
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now? [y/N]:")
+	assert.Contains(t, stdout.String(), "stripe login")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxNewCmd_InteractiveDeclinesWithoutReauth(t *testing.T) {
+	for _, input := range []string{"\n", "n\n", "no\n", "maybe\n", ""} {
+		t.Run(fmt.Sprintf("input_%q", input), func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+
+			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+			command := newSandboxNewCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetIn(strings.NewReader(input))
+			command.cmd.SetArgs([]string{"Created sandbox"})
+
+			reauthCalls := 0
+			command.reauth = func(context.Context, string, string) error {
+				reauthCalls++
+				return nil
+			}
+
+			var stdout, stderr bytes.Buffer
+			command.cmd.SetOut(&stdout)
+			command.cmd.SetErr(&stderr)
+
+			require.NoError(t, command.cmd.Execute())
+			assert.Equal(t, 0, reauthCalls)
+			assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now? [y/N]:")
+			assert.Contains(t, stdout.String(), "stripe login")
+			assert.Empty(t, stderr.String())
+		})
+	}
+}
+
+func TestSandboxNewCmd_NonInteractiveDoesNotPrompt(t *testing.T) {
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxNewCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetArgs([]string{"Created sandbox"})
+
+	command.reauth = func(context.Context, string, string) error {
+		t.Fatal("reauth should not run for a non-interactive caller")
+		return nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	assert.NotContains(t, stdout.String(), "Authorize this sandbox")
+	assert.Contains(t, stdout.String(), "stripe login")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxNewCmd_InvalidUATWarnsWithoutReauth(t *testing.T) {
+	for _, uat := range []string{"", "sk_test_not_oak"} {
+		t.Run(fmt.Sprintf("uat_%q", uat), func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+
+			initial := map[string][]byte{}
+			if uat != "" {
+				initial[config.UATKeychainItemKey] = []byte(uat)
+			}
+			config.KeyRing = keyring.NewMemoryStore(initial)
+
+			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+			command := newSandboxNewCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetIn(strings.NewReader("y\n"))
+			command.cmd.SetArgs([]string{"Created sandbox"})
+
+			reauthCalls := 0
+			command.reauth = func(context.Context, string, string) error {
+				reauthCalls++
+				return nil
+			}
+
+			var stdout, stderr bytes.Buffer
+			command.cmd.SetOut(&stdout)
+			command.cmd.SetErr(&stderr)
+
+			require.NoError(t, command.cmd.Execute())
+			assert.Equal(t, 0, reauthCalls)
+			assert.Contains(t, stdout.String(), "Created sandbox")
+			assert.Contains(t, stderr.String(), "sandbox creation succeeded")
+			assert.Contains(t, stderr.String(), "stripe login")
+			assert.NotContains(t, stderr.String(), "sandbox new")
+		})
+	}
+}
+
+func TestSandboxNewCmd_ReauthFailurePreservesCreationSuccess(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_valid"),
+	})
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxNewCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("yes\n"))
+	command.cmd.SetArgs([]string{"Created sandbox"})
+	command.reauth = func(context.Context, string, string) error {
+		return fmt.Errorf("reauth failed")
+	}
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Contains(t, stdout.String(), "Created sandbox")
+	assert.Contains(t, stderr.String(), "sandbox creation succeeded")
+	assert.Contains(t, stderr.String(), "stripe login")
+	assert.NotContains(t, stderr.String(), "sandbox new")
 }
 
 func TestSandboxNewCmdCreatesBlankWithNormalizedCountry(t *testing.T) {
@@ -904,6 +1090,12 @@ func TestSandboxNewCmdReturnsClientErrorWithoutSuccessOutput(t *testing.T) {
 	client := &fakeSandboxCreateClient{err: fmt.Errorf("safe create failure")}
 	command := newSandboxNewCmd()
 	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("yes\n"))
+	command.reauth = func(context.Context, string, string) error {
+		t.Fatal("reauth should not run when creation fails")
+		return nil
+	}
 	command.cmd.SetArgs([]string{"Failed sandbox"})
 	var stdout bytes.Buffer
 	command.cmd.SetOut(&stdout)
