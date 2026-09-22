@@ -930,6 +930,30 @@ func TestSandboxCmdDoesNotRegisterNew(t *testing.T) {
 	}
 }
 
+func TestSandboxCmdPublicSurface(t *testing.T) {
+	command := newSandboxCmd()
+	commands := make(map[string]*cobra.Command)
+	for _, child := range command.cmd.Commands() {
+		commands[child.Name()] = child
+	}
+
+	for _, name := range []string{"create", "claim", "list", "delete"} {
+		child, ok := commands[name]
+		require.True(t, ok, name)
+		require.False(t, child.Hidden, name)
+	}
+
+	assert.Contains(t, command.cmd.UsageString(), "list")
+	assert.Contains(t, command.cmd.UsageString(), "delete")
+	assert.NotContains(t, command.cmd.UsageString(), "sandbox new")
+
+	for _, name := range []string{"list", "delete"} {
+		child := commands[name]
+		assert.Nil(t, child.Flags().Lookup("json"), name)
+		assert.Nil(t, child.Flags().Lookup("format"), name)
+	}
+}
+
 func TestSandboxCreateCmdOAuthCreatesCopyLiveByDefault(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
@@ -1565,10 +1589,17 @@ func TestSandboxListCmd_ClientError(t *testing.T) {
 
 func TestSandboxListCmd_Surface(t *testing.T) {
 	cmd := newSandboxListCmd()
-	assert.True(t, cmd.cmd.Hidden)
+	assert.False(t, cmd.cmd.Hidden)
+	assert.Equal(t, "List the sandboxes available to your account", cmd.cmd.Short)
+	assert.Contains(t, cmd.cmd.Long, "active live account")
+	assert.Contains(t, cmd.cmd.Long, "stripe login")
+	assert.Equal(t, "stripe sandbox list", cmd.cmd.Example)
+	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "stripe sandbox delete")
 	require.NotNil(t, cmd.cmd.Flags().Lookup("api-base"))
 	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-account"))
 	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-version"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("json"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("format"))
 
 	var stdout, stderr bytes.Buffer
 	cmd.client = fakeSandboxListClient{}
@@ -1666,8 +1697,14 @@ func TestSandboxDeleteCmd_RejectsInvalidInputBeforeCallingClient(t *testing.T) {
 
 func TestSandboxDeleteCmd_Surface(t *testing.T) {
 	command := newSandboxDeleteCmd()
-	require.True(t, command.cmd.Hidden)
+	require.False(t, command.cmd.Hidden)
 	require.Equal(t, "delete <account_id>", command.cmd.Use)
+	require.Equal(t, "Permanently delete a sandbox", command.cmd.Short)
+	require.Contains(t, command.cmd.Long, "does not affect your live account")
+	require.Contains(t, command.cmd.Long, "cannot be undone")
+	require.Contains(t, command.cmd.Long, "stripe sandbox list")
+	require.Equal(t, "stripe sandbox delete acct_123\n  stripe sandbox delete acct_123 --confirm", command.cmd.Example)
+	require.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "stripe sandbox list")
 	require.Nil(t, command.cmd.Flags().Lookup("stripe-account"))
 	require.NotNil(t, command.cmd.Flags().Lookup("confirm"))
 	require.Nil(t, command.cmd.Flags().Lookup("yes"))
@@ -1675,6 +1712,8 @@ func TestSandboxDeleteCmd_Surface(t *testing.T) {
 	require.Nil(t, command.cmd.Flags().ShorthandLookup("y"))
 	require.NotNil(t, command.cmd.Flags().Lookup("api-base"))
 	require.Nil(t, command.cmd.Flags().Lookup("stripe-version"))
+	require.Nil(t, command.cmd.Flags().Lookup("json"))
+	require.Nil(t, command.cmd.Flags().Lookup("format"))
 	require.NotContains(t, command.cmd.UsageString(), "--stripe-account stripe sandbox list")
 	require.Contains(t, command.cmd.UsageString(), "--confirm")
 	require.NotContains(t, command.cmd.UsageString(), "--yes")

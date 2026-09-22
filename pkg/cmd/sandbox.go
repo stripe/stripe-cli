@@ -69,6 +69,13 @@ func newSandboxCmd() *sandboxCmd {
 	sc.cmd = &cobra.Command{
 		Use:   "sandbox",
 		Short: "Manage Stripe sandbox environments",
+		Long: `Create and manage Stripe sandbox environments.
+
+Use sandbox create to create a sandbox, sandbox list to view the sandboxes
+available to your account, and sandbox delete to permanently remove one.`,
+		Example: `stripe sandbox create "My sandbox"
+  stripe sandbox list
+  stripe sandbox delete acct_123 --confirm`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return errorcategory.Errorf(errorcategory.UserInput, "unknown command %q for %q", args[0], cmd.CommandPath())
@@ -80,6 +87,8 @@ func newSandboxCmd() *sandboxCmd {
 				"  Use separate sandboxes for local development and continuous integration (CI) as this avoids undesired interaction between your test environments.\n" +
 				"  Reuse sandboxes across test runs.\n" +
 				"  With an active live OAuth account, use `stripe sandbox create \"My sandbox\"`.\n" +
+				"  Run `stripe sandbox list` to see the sandboxes available under the active live account.\n" +
+				"  Run `stripe sandbox delete <account_id>` to permanently remove an authorized sandbox; get the account ID from `stripe sandbox list` and use `--confirm` for approved non-interactive deletion.\n" +
 				"  Use `stripe sandbox create --from-git` to provision a sandbox using your git email.\n" +
 				"  Use `stripe sandbox create --email [you@example.com](mailto:you@example.com)` to provision with an explicit email.\n" +
 				"  If anonymous provisioning fails, falls back to browser login (like stripe login).",
@@ -709,11 +718,20 @@ func validSandboxCountryCode(country string) bool {
 func newSandboxListCmd() *sandboxListCmd {
 	slc := &sandboxListCmd{}
 	slc.cmd = &cobra.Command{
-		Use:    "list",
-		Short:  "List the sandboxes under a live account",
-		Args:   validators.NoArgs,
-		RunE:   slc.runSandboxListCmd,
-		Hidden: true,
+		Use:   "list",
+		Short: "List the sandboxes available to your account",
+		Long: `List the Stripe sandboxes available under your active live account.
+
+This command requires an active live account. Run stripe login first if needed.
+The output includes each sandbox's name, account ID, and access setting.`,
+		Example: `stripe sandbox list`,
+		Args:    validators.NoArgs,
+		RunE:    slc.runSandboxListCmd,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Run `stripe sandbox list` after `stripe login` to inspect the sandboxes available to the active live account.\n" +
+				"  The ACCOUNT value can be passed to `stripe sandbox delete`.\n" +
+				"  Output is a table with NAME, ACCOUNT, and ACCESS columns.",
+		},
 	}
 
 	slc.cmd.Flags().StringVar(&slc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
@@ -772,17 +790,19 @@ func newSandboxDeleteCmd() *sandboxDeleteCmd {
 	sdc := &sandboxDeleteCmd{}
 	sdc.cmd = &cobra.Command{
 		Use:   "delete <account_id>",
-		Short: "Delete a sandbox by its account ID",
-		Long: `Delete a sandbox created for the logged-in account.
-
-Pass the sandbox account ID (acct_...) shown by ` + "`stripe sandbox list`" + `. This
-closes the sandbox's testmode workspace, mirroring the dashboard's delete action;
-it never touches your live account.`,
+		Short: "Permanently delete a sandbox",
+		Long: "Permanently delete a Stripe sandbox.\n\n" +
+			"Pass the sandbox account ID shown by `stripe sandbox list`. This command requires an active live account that can manage the sandbox.\n\n" +
+			"The command asks for confirmation before deleting. Deleting a sandbox cannot be undone and does not affect your live account. Use `--confirm` for approved non-interactive use.",
 		Example: `stripe sandbox delete acct_123
   stripe sandbox delete acct_123 --confirm`,
-		Args:   validators.ExactArgs(1),
-		RunE:   sdc.runSandboxDeleteCmd,
-		Hidden: true,
+		Args: validators.ExactArgs(1),
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Use an ACCOUNT value from `stripe sandbox list`.\n" +
+				"  Deletion is permanent and does not affect the live account.\n" +
+				"  Use `--confirm` only for approved non-interactive deletion.",
+		},
+		RunE: sdc.runSandboxDeleteCmd,
 	}
 
 	sdc.cmd.Flags().BoolVarP(&sdc.confirm, "confirm", "c", false, "Skip the confirmation prompt")
