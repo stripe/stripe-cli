@@ -46,21 +46,16 @@ func (p ClaudeProvider) ID() string {
 }
 
 func (p ClaudeProvider) Detect() Status {
-	scanner := p.Scanner.withDefaults()
-
-	status := Status{
-		Client:      ClientClaudeCode,
-		DisplayName: ClaudeDisplayName,
-		Status:      StatusNotDetected,
-	}
-
-	binPath, err := scanner.LookPath(ClaudeBinaryName)
-	if err != nil {
+	status, detected := detectExecutable(
+		p.Scanner.withDefaults(),
+		ClientClaudeCode,
+		ClaudeDisplayName,
+		ClaudeBinaryName,
+		StatusMissing,
+	)
+	if !detected {
 		return status
 	}
-	status.Detected = true
-	status.ExecutablePath = binPath
-	status.Status = StatusMissing
 
 	ctx, cancel := context.WithTimeout(context.Background(), claudeListTimeout)
 	defer cancel()
@@ -84,19 +79,7 @@ func (p ClaudeProvider) Detect() Status {
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
 	name, args := ClaudeInstallCommand()
 	command := append([]string{name}, args...)
-
-	switch {
-	case status.Status == StatusError:
-		return Plan{Action: ActionNone}
-	case !status.Detected:
-		return Plan{Action: ActionNone}
-	case status.Plugin.Installed && force:
-		return Plan{Action: ActionReinstall, Command: command}
-	case status.Plugin.Installed:
-		return Plan{Action: ActionNone}
-	default:
-		return Plan{Action: ActionInstall, Command: command}
-	}
+	return standardPlan(status, force, command, command)
 }
 
 // Apply installs the Stripe Claude Code plugin. On failure it silently refreshes

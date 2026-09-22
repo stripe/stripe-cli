@@ -54,21 +54,16 @@ func NewCodexProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 func (p CodexProvider) ID() string { return ClientCodex }
 
 func (p CodexProvider) Detect() Status {
-	scanner := p.Scanner.withDefaults()
-
-	status := Status{
-		Client:      ClientCodex,
-		DisplayName: CodexDisplayName,
-		Status:      StatusNotDetected,
-	}
-
-	binPath, err := scanner.LookPath(CodexBinaryName)
-	if err != nil {
+	status, detected := detectExecutable(
+		p.Scanner.withDefaults(),
+		ClientCodex,
+		CodexDisplayName,
+		CodexBinaryName,
+		StatusMissing,
+	)
+	if !detected {
 		return status
 	}
-	status.Detected = true
-	status.ExecutablePath = binPath
-	status.Status = StatusMissing
 
 	marketplace, err := p.marketplace(context.Background())
 	if err != nil {
@@ -147,19 +142,7 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
 	command := []string{CodexBinaryName, "plugin", "add", status.Plugin.ID}
-
-	switch {
-	case status.Status == StatusError:
-		return Plan{Action: ActionNone}
-	case !status.Detected:
-		return Plan{Action: ActionNone}
-	case status.Plugin.Installed && force:
-		return Plan{Action: ActionReinstall, Command: command}
-	case status.Plugin.Installed:
-		return Plan{Action: ActionNone}
-	default:
-		return Plan{Action: ActionInstall, Command: command}
-	}
+	return standardPlan(status, force, command, command)
 }
 
 func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {

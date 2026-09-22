@@ -41,21 +41,16 @@ func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 func (p GrokProvider) ID() string { return ClientGrok }
 
 func (p GrokProvider) Detect() Status {
-	s := p.Scanner.withDefaults()
-
-	status := Status{
-		Client:      ClientGrok,
-		DisplayName: GrokDisplayName,
-		Status:      StatusNotDetected,
-	}
-
-	binPath, err := s.LookPath(GrokBinaryName)
-	if err != nil {
+	status, detected := detectExecutable(
+		p.Scanner.withDefaults(),
+		ClientGrok,
+		GrokDisplayName,
+		GrokBinaryName,
+		StatusMissing,
+	)
+	if !detected {
 		return status
 	}
-	status.Detected = true
-	status.ExecutablePath = binPath
-	status.Status = StatusMissing
 
 	ctx, cancel := context.WithTimeout(context.Background(), grokListTimeout)
 	defer cancel()
@@ -124,22 +119,13 @@ func grokPluginIsStripe(plugin grokInstalledPlugin) bool {
 }
 
 func (p GrokProvider) Plan(status Status, force bool) Plan {
-	switch {
-	case status.Status == StatusError:
-		return Plan{Action: ActionNone}
-	case !status.Detected:
-		return Plan{Action: ActionNone}
-	case status.Plugin.Installed && force:
-		// `grok plugin install` is idempotent when already installed — it
-		// prints "Plugin stripe is already installed ... Run `grok plugin
-		// update stripe` to update it" rather than reinstalling, so a forced
-		// refresh has to go through `update` instead.
-		return Plan{Action: ActionReinstall, Command: []string{GrokBinaryName, "plugin", "update", GrokPluginName}}
-	case status.Plugin.Installed:
-		return Plan{Action: ActionNone}
-	default:
-		return Plan{Action: ActionInstall, Command: []string{GrokBinaryName, "plugin", "install", GrokPluginName, "--trust"}}
-	}
+	installCommand := []string{GrokBinaryName, "plugin", "install", GrokPluginName, "--trust"}
+	// `grok plugin install` is idempotent when already installed — it prints
+	// "Plugin stripe is already installed ... Run `grok plugin update stripe`
+	// to update it" rather than reinstalling, so a forced refresh has to go
+	// through `update` instead.
+	reinstallCommand := []string{GrokBinaryName, "plugin", "update", GrokPluginName}
+	return standardPlan(status, force, installCommand, reinstallCommand)
 }
 
 // Apply installs (or updates) the Stripe Grok plugin. Unlike Codex's
