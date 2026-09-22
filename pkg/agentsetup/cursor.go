@@ -37,21 +37,16 @@ func NewCursorProvider(scanner Scanner, _ RunCommandFunc) Provider {
 func (p CursorProvider) ID() string { return ClientCursor }
 
 func (p CursorProvider) Detect() Status {
-	s := p.Scanner.withDefaults()
-
-	status := Status{
-		Client:      ClientCursor,
-		DisplayName: CursorDisplayName,
-		Status:      StatusNotDetected,
-	}
-
-	binPath, err := s.LookPath(CursorBinaryName)
-	if err != nil {
+	status, detected := detectExecutable(
+		p.Scanner.withDefaults(),
+		ClientCursor,
+		CursorDisplayName,
+		CursorBinaryName,
+		StatusUnknown,
+	)
+	if !detected {
 		return status
 	}
-	status.Detected = true
-	status.ExecutablePath = binPath
-	status.Status = StatusUnknown
 	// Signal to the TUI that this row is not actionable from the CLI.
 	status.Error = "run /add-plugin stripe inside Cursor agent"
 	return status
