@@ -1,0 +1,57 @@
+name: Notify developer-products review
+
+on:
+  pull_request_target:
+    types: [review_requested]
+
+permissions: {}
+
+jobs:
+  notify:
+    if: >-
+      github.event.requested_team.slug == 'developer-products' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPOSITORY: ${{ github.repository }}
+          SLACK_GROUP_ID: ${{ vars.SLACK_STRIPE_CLI_ENG_GROUP_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_STRIPE_CLI_PRS_WEBHOOK_URL }}
+        shell: bash
+        run: |
+          payload="$(
+            jq --null-input \
+              --arg author "$PR_AUTHOR" \
+              --arg group_id "$SLACK_GROUP_ID" \
+              --arg number "$PR_NUMBER" \
+              --arg repository "$REPOSITORY" \
+              --arg title "$PR_TITLE" \
+              --arg url "$PR_URL" \
+              '
+                def slack_text:
+                  gsub("&"; "&amp;")
+                  | gsub("<"; "&lt;")
+                  | gsub(">"; "&gt;")
+                  | gsub("[\\r\\n]+"; " ");
+
+                {
+                  text: (
+                    "<!subteam^" + $group_id + "> Developer Products review requested.\n" +
+                    "*" + ($repository | slack_text) + "#" + $number + "* — " +
+                    "<" + $url + "|" + ($title | slack_text) + ">\n" +
+                    "Author: `" + ($author | slack_text) + "`"
+                  )
+                }
+              '
+          )"
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
