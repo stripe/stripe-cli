@@ -9,8 +9,6 @@ on: # zizmor: ignore[dangerous-triggers] justified below
   # value through `env:` + `jq --arg` rather than `${{ }}` inside `run:`.
   pull_request_target:
     types: [review_requested]
-    # Without this, a PR targeting any branch runs that branch's copy of this
-    # workflow with the webhook secret, bypassing review on master.
     branches: [master]
 
 permissions: {}
