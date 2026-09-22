@@ -1,19 +1,376 @@
-# Stub: registers this workflow on the default branch so it can be dispatched
-# to v2 via `gh workflow run autoupgrade-test.yml --ref v2`.
-# The real implementation lives on the v2 branch.
-name: Auto-upgrade canary test
-
 on:
   workflow_dispatch:
-
+    inputs:
+      dryrun:
+        description: 'Skip PagerDuty alert on failure'
+        type: boolean
+        default: true
+name: Auto-upgrade test
 permissions:
   contents: read
-
 jobs:
-  notice:
+  resolve-versions:
     runs-on: ubuntu-latest
+    outputs:
+      latest: ${{ steps.versions.outputs.latest }}
     steps:
-      - run: |
-          echo "This workflow should be dispatched with --ref v2."
-          echo "The real implementation lives on the v2 branch."
+      - name: Fetch latest release version
+        id: versions
+        run: |
+          for i in 1 2 3; do
+            LATEST=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/stripe/stripe-cli/releases/latest" | \
+              sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+            if [ -n "$LATEST" ]; then
+              echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+              echo "Latest: $LATEST"
+              exit 0
+            fi
+            echo "Attempt $i: failed to fetch version, retrying in 10s..."
+            sleep 10
+          done
+          echo "Error: could not determine latest version after 3 attempts"
           exit 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  upgrade-macos:
+    runs-on: macos-latest
+    needs: [resolve-versions]
+    outputs:
+      failed_step: ${{ steps.result.outputs.failed_step }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.26.0'
+
+      - name: Build binary with fake old version
+        id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
+        run: |
+          go generate ./...
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$HOME/.stripe/bin/stripe" ./cmd/stripe
+          chmod +x "$HOME/.stripe/bin/stripe"
+          export PATH="$HOME/.stripe/bin:$PATH"
+          INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
+            exit 1
+          fi
+          echo "Built binary with version v$INSTALLED"
+
+      - name: Stage update marker
+        id: update-check
+        run: |
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_NAME="x86_64" ;;
+            arm64|aarch64) ARCH_NAME="arm64" ;;
+            *) ARCH_NAME="$ARCH" ;;
+          esac
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_mac-os_${ARCH_NAME}.tar.gz"
+
+          # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
+          mkdir -p "$HOME/.stripe/state"
+          printf '{"version":"%s","download_url":"%s","checksum":"","release_notes":""}' \
+            "$LATEST" "$URL" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
+
+      - name: Verify auto-upgrade
+        id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
+        run: |
+          export PATH="$HOME/.stripe/bin:$PATH"
+          OUTPUT=$(stripe --version 2>&1)
+          echo "$OUTPUT"
+          UPGRADED=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          if [ "$UPGRADED" != "${{ needs.resolve-versions.outputs.latest }}" ]; then
+            echo "Error: expected upgrade to v${{ needs.resolve-versions.outputs.latest }}, got v$UPGRADED"
+            exit 1
+          fi
+          echo "Successfully upgraded to v$UPGRADED"
+
+      - name: Record failed step
+        id: result
+        if: failure()
+        run: |
+          if [ "${{ steps.build.outcome }}" = "failure" ]; then
+            echo "failed_step=build" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.update-check.outcome }}" = "failure" ]; then
+            echo "failed_step=update-check" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.upgrade.outcome }}" = "failure" ]; then
+            echo "failed_step=auto-upgrade" >> "$GITHUB_OUTPUT"
+          fi
+
+  upgrade-linux:
+    runs-on: ubuntu-latest
+    needs: [resolve-versions]
+    outputs:
+      failed_step: ${{ steps.result.outputs.failed_step }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.26.0'
+
+      - name: Build binary with fake old version
+        id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
+        run: |
+          go generate ./...
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$HOME/.stripe/bin/stripe" ./cmd/stripe
+          chmod +x "$HOME/.stripe/bin/stripe"
+          export PATH="$HOME/.stripe/bin:$PATH"
+          INSTALLED=$(stripe --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
+            exit 1
+          fi
+          echo "Built binary with version v$INSTALLED"
+
+      - name: Stage update marker
+        id: update-check
+        run: |
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64) ARCH_NAME="x86_64" ;;
+            arm64|aarch64) ARCH_NAME="arm64" ;;
+            *) ARCH_NAME="$ARCH" ;;
+          esac
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_linux_${ARCH_NAME}.tar.gz"
+
+          # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
+          mkdir -p "$HOME/.stripe/state"
+          printf '{"version":"%s","download_url":"%s","checksum":"","release_notes":""}' \
+            "$LATEST" "$URL" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
+
+      - name: Verify auto-upgrade
+        id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
+        run: |
+          export PATH="$HOME/.stripe/bin:$PATH"
+          OUTPUT=$(stripe --version 2>&1)
+          echo "$OUTPUT"
+          UPGRADED=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          if [ "$UPGRADED" != "${{ needs.resolve-versions.outputs.latest }}" ]; then
+            echo "Error: expected upgrade to v${{ needs.resolve-versions.outputs.latest }}, got v$UPGRADED"
+            exit 1
+          fi
+          echo "Successfully upgraded to v$UPGRADED"
+
+      - name: Record failed step
+        id: result
+        if: failure()
+        run: |
+          if [ "${{ steps.build.outcome }}" = "failure" ]; then
+            echo "failed_step=build" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.update-check.outcome }}" = "failure" ]; then
+            echo "failed_step=update-check" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.upgrade.outcome }}" = "failure" ]; then
+            echo "failed_step=auto-upgrade" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Windows earns a few steps the other two do not need. The outgoing binary
+  # cannot be deleted while a process is running from it, so an update there moves
+  # it aside instead and a later invocation clears it — which is the part of the
+  # sequence that leaves a trace on disk, and so the part worth asserting on.
+  upgrade-windows:
+    runs-on: windows-latest
+    needs: [resolve-versions]
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      failed_step: ${{ steps.result.outputs.failed_step }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Install Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.26.0'
+
+      - name: Build binary with fake old version
+        id: build
+        env:
+          STRIPE_NO_AUTO_UPDATE: "1"
+        run: |
+          go generate ./...
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$HOME/.stripe/bin/stripe.exe" ./cmd/stripe
+          INSTALLED=$("$HOME/.stripe/bin/stripe.exe" --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ "$INSTALLED" != "1.0.0" ]; then
+            echo "Error: expected version 1.0.0, got $INSTALLED"
+            exit 1
+          fi
+          echo "Built binary with version v$INSTALLED"
+
+      - name: Stage update marker
+        id: update-check
+        run: |
+          LATEST="${{ needs.resolve-versions.outputs.latest }}"
+          # .goreleaser/windows.yml publishes x86_64 and i386 only; a Windows ARM
+          # machine runs the x64 archive under emulation, and the runners are x64.
+          URL="https://github.com/stripe/stripe-cli/releases/download/v${LATEST}/stripe_${LATEST}_windows_x86_64.zip"
+
+          # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
+          mkdir -p "$HOME/.stripe/state"
+          printf '{"version":"%s","download_url":"%s","checksum":"","release_notes":""}' \
+            "$LATEST" "$URL" > "$HOME/.stripe/state/update-available"
+          echo "Wrote update marker:"
+          cat "$HOME/.stripe/state/update-available"
+
+      - name: Verify auto-upgrade
+        id: upgrade
+        env:
+          STRIPE_INSTALL_METHOD: curl
+        run: |
+          OUTPUT=$("$HOME/.stripe/bin/stripe.exe" --version 2>&1)
+          echo "$OUTPUT"
+          UPGRADED=$(echo "$OUTPUT" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -1)
+          if [ "$UPGRADED" != "${{ needs.resolve-versions.outputs.latest }}" ]; then
+            echo "Error: expected upgrade to v${{ needs.resolve-versions.outputs.latest }}, got v$UPGRADED"
+            exit 1
+          fi
+          echo "Successfully upgraded to v$UPGRADED"
+
+      - name: Verify the moved-aside binary is cleaned up
+        id: cleanup
+        env:
+          STRIPE_INSTALL_METHOD: curl
+        run: |
+          STRIPE="$HOME/.stripe/bin/stripe.exe"
+
+          # Windows could not delete the moved-aside image: the process doing the
+          # update was still running from it, and the one it re-exec'd could not
+          # delete it either while its parent lived.
+          if [ ! -f "$STRIPE.old" ]; then
+            echo "Error: expected $STRIPE.old to be left behind by the update"
+            ls -la "$HOME/.stripe/bin"
+            exit 1
+          fi
+
+          # A later invocation is what clears it. The release just installed
+          # predates the cleanup, so put a build that has it back in place.
+          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
+            -o "$STRIPE" ./cmd/stripe
+
+          # Opted out, so that this also covers the cleanup running ahead of the
+          # opt-out check: turning auto-update off must not park the outgoing
+          # binary next to the new one forever.
+          STRIPE_NO_AUTO_UPDATE=1 "$STRIPE" --version
+
+          if [ -f "$STRIPE.old" ]; then
+            echo "Error: $STRIPE.old was not cleaned up"
+            ls -la "$HOME/.stripe/bin"
+            exit 1
+          fi
+          echo "Moved-aside binary was cleaned up"
+
+      - name: Record failed step
+        id: result
+        if: failure()
+        run: |
+          if [ "${{ steps.build.outcome }}" = "failure" ]; then
+            echo "failed_step=build" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.update-check.outcome }}" = "failure" ]; then
+            echo "failed_step=update-check" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.upgrade.outcome }}" = "failure" ]; then
+            echo "failed_step=auto-upgrade" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.cleanup.outcome }}" = "failure" ]; then
+            echo "failed_step=cleanup" >> "$GITHUB_OUTPUT"
+          fi
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [resolve-versions, upgrade-macos, upgrade-linux, upgrade-windows]
+    if: always()
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        if: needs.resolve-versions.result == 'success'
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/notify.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Build failure summary
+        id: summary
+        if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
+        run: |
+          PLATFORMS=(macOS Linux Windows)
+          STEPS=(
+            "${{ needs.upgrade-macos.outputs.failed_step }}"
+            "${{ needs.upgrade-linux.outputs.failed_step }}"
+            "${{ needs.upgrade-windows.outputs.failed_step }}"
+          )
+
+          # One clause per failing step, naming every platform that failed in it, so
+          # that the same breakage everywhere stays a single clause. sort -u to keep
+          # the order the message is built in independent of which platform failed.
+          MSG=""
+          for STEP in $(printf '%s\n' "${STEPS[@]}" | sed '/^$/d' | sort -u); do
+            WHERE=""
+            for i in "${!PLATFORMS[@]}"; do
+              if [ "${STEPS[$i]}" = "$STEP" ]; then
+                WHERE="${WHERE:+$WHERE, }${PLATFORMS[$i]}"
+              fi
+            done
+            MSG="${MSG:+$MSG; }Step '${STEP}' failed on ${WHERE}"
+          done
+
+          echo "msg=${MSG:-Unknown failure}" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger PagerDuty alert
+        if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
+        run: bash scripts/notify.sh
+        env:
+          OVERALL_RESULT: failure
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-autoupgrade-test
+          PAGERDUTY_SUMMARY: "Auto-upgrade test failed: ${{ steps.summary.outputs.msg }}. Investigate: https://github.com/stripe/stripe-cli/actions/workflows/autoupgrade-test.yml"
+          PAGERDUTY_RESOLVE_SUMMARY: "Auto-upgrade test is passing again"
+          PAGERDUTY_SEVERITY: critical
+          DRYRUN: "true" # TODO: switch to ${{ inputs.dryrun }} once confirmed stable
+
+      - name: Resolve PagerDuty alert
+        if: needs.upgrade-macos.result == 'success' && needs.upgrade-linux.result == 'success' && needs.upgrade-windows.result == 'success'
+        run: bash scripts/notify.sh
+        env:
+          OVERALL_RESULT: success
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          PAGERDUTY_DEDUP_KEY: gh-actions-stripe-cli-autoupgrade-test
+          PAGERDUTY_SUMMARY: "unused"
+          PAGERDUTY_RESOLVE_SUMMARY: "Auto-upgrade test is passing again"
+          PAGERDUTY_SEVERITY: critical
+          DRYRUN: "true" # TODO: switch to ${{ inputs.dryrun }} once confirmed stable
+
+      - name: Skip notification (setup failure)
+        if: needs.resolve-versions.result == 'failure'
+        run: echo "Setup job (version resolution) failed — likely transient GitHub API issue. Skipping PagerDuty alert."

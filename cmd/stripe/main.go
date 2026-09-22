@@ -9,6 +9,7 @@ import (
 
 	goversion "github.com/hashicorp/go-version"
 
+	"github.com/stripe/stripe-cli/pkg/autoupdate"
 	"github.com/stripe/stripe-cli/pkg/cmd"
 	"github.com/stripe/stripe-cli/pkg/reporting"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -18,6 +19,16 @@ import (
 const sentryDSN = "https://0e1c83fa780a5946e14bfc0f6d0a7ddd@errors.stripe.com/11762"
 
 func main() {
+	// Apply a pending update before anything else: this re-execs the new binary,
+	// so the command the user typed runs on the version they are being moved to.
+	autoupdate.ApplyIfPending()
+
+	// Check for the next update after the command has run, so the network call
+	// never delays it. Deferred rather than called at the end of main because
+	// every branch below returns early, and the check has to happen on all of
+	// them. This still does not cover cmd.Execute's os.Exit on command failure.
+	defer autoupdate.CheckForUpdate()
+
 	ctx := context.Background()
 
 	if stripe.TelemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) || stripe.TelemetryOptedOut(os.Getenv("DO_NOT_TRACK")) {
