@@ -51,6 +51,35 @@ func TestSelectModel_NoAgentsPreselectsSkills(t *testing.T) {
 	require.True(t, m.rows[0].selected)
 }
 
+func TestSelectModel_SkillsClientSelectsOneSharedSkillsInstall(t *testing.T) {
+	statuses := []agentsetup.Status{
+		{
+			Client:      agentsetup.ClientGrok,
+			DisplayName: agentsetup.GrokDisplayName,
+			Detected:    true,
+			Setup:       agentsetup.SetupSkills,
+			Status:      agentsetup.StatusMissing,
+		},
+		{
+			Client:      agentsetup.ClientKimi,
+			DisplayName: agentsetup.KimiDisplayName,
+			Detected:    true,
+			Setup:       agentsetup.SetupSkills,
+			Status:      agentsetup.StatusMissing,
+		},
+	}
+
+	m := newSelectModel(statuses, testSkillsScopes())
+
+	require.Len(t, m.rows, 2)
+	require.Equal(t, rowAgent, m.rows[0].kind)
+	require.Equal(t, "uses shared Stripe skills", m.rows[0].detail)
+	require.True(t, m.rows[0].selected)
+	require.Equal(t, rowAgent, m.rows[1].kind)
+	require.True(t, m.rows[1].selected)
+	require.True(t, m.selection().InstallSkills)
+}
+
 func TestSelectModel_SelectionSeparatesAgentsAndSkills(t *testing.T) {
 	m := newSelectModel(testStatuses(), testSkillsScopes())
 
