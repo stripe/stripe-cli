@@ -34,6 +34,9 @@ const (
 	defaultSandboxBaseURL        = "https://ai.stripe.com"
 	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to authenticate with your claimed account."
 	sandboxExpiredMessage        = "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one."
+	sandboxCreateRouteEventName  = "Sandbox Create Routed"
+	sandboxCreateOAuthRoute      = "oauth"
+	sandboxCreateAnonymousRoute  = "anonymous"
 	// RetrieveClaimableSandboxStatus shipped in the 2026-08-26 snapshot.
 	sandboxClaimStatusVersion = "2026-08-26.preview"
 )
@@ -173,6 +176,15 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	return scc.runAnonymousSandboxCreateCmd(cmd)
 }
 
+func sendSandboxCreateRouteEvent(ctx context.Context, route string) {
+	if route != sandboxCreateOAuthRoute && route != sandboxCreateAnonymousRoute {
+		return
+	}
+	if telemetryClient := stripe.GetTelemetryClient(ctx); telemetryClient != nil {
+		go telemetryClient.SendEvent(ctx, sandboxCreateRouteEventName, route)
+	}
+}
+
 func (scc *sandboxCreateCmd) runAnonymousSandboxCreateCmd(cmd *cobra.Command) error {
 	// Reject an invalid profile name before provisioning, so we never create a
 	// sandbox whose keys cannot be saved.
@@ -252,6 +264,7 @@ func (scc *sandboxCreateCmd) runAnonymousSandboxCreateCmd(cmd *cobra.Command) er
 	} else if scc.fromGit {
 		name = sandbox.GitConfigFunc("user.name")
 	}
+	sendSandboxCreateRouteEvent(cmd.Context(), sandboxCreateAnonymousRoute)
 
 	// Primary path: proof-of-work provisioning against ai.stripe.com.
 	// This gives the user a temporary sandbox without any browser interaction.
@@ -609,6 +622,7 @@ func (scc *sandboxCreateCmd) runAuthenticatedSandboxCreateCmd(cmd *cobra.Command
 		return errorcategory.New(errorcategory.UserInput, "--country is only valid with --create-blank")
 	}
 
+	sendSandboxCreateRouteEvent(cmd.Context(), sandboxCreateOAuthRoute)
 	client := scc.client
 	if client == nil {
 		client = sandbox.NewManagementClient(scc.apiBaseURL, Config.GetProfile())
