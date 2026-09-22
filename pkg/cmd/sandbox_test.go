@@ -842,6 +842,16 @@ func setSandboxCreateOAuthContext(t *testing.T) {
 	})
 }
 
+func setSandboxTestModeOAuthContext(t *testing.T) {
+	t.Helper()
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_test_active", Livemode: false})
+	require.NoError(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_test_active"),
+		config.OAuthActiveContextKeychainKey: activeContext,
+	})
+}
+
 func TestSandboxCreateCmdSurfaceIncludesAuthenticatedCreation(t *testing.T) {
 	command := newSandboxCreateCmd()
 	require.Equal(t, "create [name]", command.cmd.Use)
@@ -937,6 +947,67 @@ func TestSandboxCreateCmdStaleOAuthDoesNotFallBackToAnonymousProvisioning(t *tes
 	err := command.cmd.Execute()
 	require.ErrorContains(t, err, "stripe login")
 	require.Zero(t, requestCount)
+}
+
+func TestSandboxManagementCommandsRejectActiveTestModeOAuth(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(string) error
+	}{
+		{
+			name: "create",
+			run: func(apiBaseURL string) error {
+				command := newSandboxCreateCmd()
+				command.apiBaseURL = apiBaseURL
+				command.cmd.SetArgs([]string{"Test mode sandbox"})
+				return command.cmd.Execute()
+			},
+		},
+		{
+			name: "list",
+			run: func(apiBaseURL string) error {
+				command := newSandboxListCmd()
+				command.apiBase = apiBaseURL
+				return command.cmd.Execute()
+			},
+		},
+		{
+			name: "delete with confirm",
+			run: func(apiBaseURL string) error {
+				command := newSandboxDeleteCmd()
+				command.apiBase = apiBaseURL
+				command.cmd.SetArgs([]string{"acct_target", "--confirm"})
+				return command.cmd.Execute()
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxTestModeOAuthContext(t)
+
+			requestCount := 0
+			mutationCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				if r.Method != http.MethodGet {
+					mutationCount++
+				}
+				t.Errorf("unexpected HTTP request: %s %s", r.Method, r.URL.Path)
+				w.WriteHeader(http.StatusInternalServerError)
+			}))
+			defer server.Close()
+
+			err := test.run(server.URL)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "You're in a sandbox.")
+			assert.Contains(t, err.Error(), "stripe switch")
+			assert.Zero(t, requestCount)
+			assert.Zero(t, mutationCount)
+		})
+	}
 }
 
 func TestSandboxCreateCmdExplicitAPIKeyOverrideWinsOverOAuth(t *testing.T) {
