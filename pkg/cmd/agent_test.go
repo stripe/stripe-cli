@@ -398,28 +398,52 @@ func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
 }
 
 func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
-	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
-		installed = append(installed, name)
-		return nil
+	callingAgents := []struct {
+		name         string
+		displayName  string
+		agent        string
+		makeProvider func(record agentsetup.RunCommandFunc) agentsetup.Provider
+	}{
+		{
+			name:         "codex_cli",
+			displayName:  "Codex CLI",
+			agent:        "codex",
+			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return codexMissingProvider(record) },
+		},
+		{
+			name:         "grok",
+			displayName:  "Grok",
+			agent:        "grok",
+			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return grokMissingProvider(record) },
+		},
 	}
 
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
-	codex := codexMissingProvider(record)
+	for _, agent := range callingAgents {
+		t.Run(agent.name, func(t *testing.T) {
+			var installedAgents []string
+			record := func(_ context.Context, name string, args ...string) error {
+				installedAgents = append(installedAgents, name)
+				return nil
+			}
 
-	setup := testAgentSetupCmd()
-	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
-	// Simulate being invoked by Codex CLI — only its plugin should install,
-	// even though Claude is also detected, and with no --client flag.
-	setup.callingAgent = func() string { return "codex_cli" }
-	setup.cmd.SetContext(context.Background())
+			claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+			provider := agent.makeProvider(record)
 
-	output, err := executeCommand(setup.cmd)
+			setup := testAgentSetupCmd()
+			setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, provider.ID(): provider}
+			// Simulate being invoked by the calling agent — only its plugin should
+			// install, even though Claude is also detected, and with no --client flag.
+			setup.callingAgent = func() string { return agent.name }
+			setup.cmd.SetContext(context.Background())
 
-	require.NoError(t, err)
-	require.Equal(t, []string{"codex"}, installed) // Claude NOT installed
-	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
-	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+			output, err := executeCommand(setup.cmd)
+
+			require.NoError(t, err)
+			require.Equal(t, []string{agent.agent}, installedAgents) // Claude NOT installed
+			require.Contains(t, output, fmt.Sprintf("Detected %s — setting up its Stripe plugin.", agent.displayName))
+			require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+		})
+	}
 }
 
 func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
@@ -471,6 +495,18 @@ func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProv
 				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
 			}
 			return []byte(`{"installed":[]}`), nil
+		},
+	}
+}
+
+// grokMissingProvider returns a Grok provider that detects the binary, starts
+// with the Stripe plugin not installed, and records install commands via record.
+func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvider {
+	return agentsetup.GrokProvider{
+		Scanner:    agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }},
+		RunCommand: record,
+		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+			return []byte(`[]`), nil
 		},
 	}
 }

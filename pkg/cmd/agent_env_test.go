@@ -14,6 +14,8 @@ func clearAgentEnv(t *testing.T) {
 	t.Helper()
 
 	for _, key := range []string{
+		"AI_AGENT",
+		"AGENT",
 		"ANTIGRAVITY_CLI_ALIAS",
 		"CLAUDECODE",
 		"CLAUDE_CODE_ENTRYPOINT",
@@ -25,6 +27,9 @@ func clearAgentEnv(t *testing.T) {
 		"CODEX_THREAD_ID",
 		"CURSOR_AGENT",
 		"GEMINI_CLI",
+		"GROK_AGENT",
+		"GROK_SESSION_ID",
+		"HERMES_AGENT",
 		"OPENCLAW_SHELL",
 		"OPENCODE",
 	} {
