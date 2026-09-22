@@ -35,6 +35,7 @@ import (
 type RequestParameters struct {
 	data          []string
 	expand        []string
+	headers       []string
 	startingAfter string
 	endingBefore  string
 	idempotency   string
@@ -52,6 +53,11 @@ func (r *RequestParameters) AppendData(data []string) {
 // AppendExpand appends fields to the expand parameter.
 func (r *RequestParameters) AppendExpand(fields []string) {
 	r.expand = append(r.expand, fields...)
+}
+
+// AppendHeaders appends custom headers to the request parameters.
+func (r *RequestParameters) AppendHeaders(headers []string) {
+	r.headers = append(r.headers, headers...)
 }
 
 // SetIdempotency sets the value for the `Idempotency-Key` header.
@@ -214,6 +220,7 @@ func (rb *Base) InitFlags() {
 
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.headers, "request-header", "H", []string{}, "Set a custom request header (format: name=value)")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
@@ -338,11 +345,23 @@ func credentialsFromPerformer(client stripe.RequestPerformer) stripe.Credentials
 }
 
 func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+	customHeaders, err := parseCustomHeaders(params.headers)
+	if err != nil {
+		return []byte{}, err
+	}
+	if stripeClient, ok := client.(*stripe.Client); ok && len(customHeaders) > 0 {
+		if stripeClient.VerbosePrintableHeaders == nil {
+			stripeClient.VerbosePrintableHeaders = stripe.DefaultPrintableHeaders()
+		}
+		stripeClient.VerbosePrintableHeaders = append(stripeClient.VerbosePrintableHeaders, headerNames(customHeaders)...)
+	}
+
 	creds := credentialsFromPerformer(client)
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		creds.ApplyAccountContextHeaders(req.Header, params.stripeAccount, params.stripeContext)
 		rb.setVersionHeader(req, params, path)
+		setCustomHeaders(req.Header, customHeaders)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
 				return err
@@ -520,6 +539,14 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 		headers["Authorization"] = "Bearer " + config.RedactAPIKey(creds.Token)
 	} else if creds.Token != "" {
 		headers["Authorization"] = "Bearer " + creds.Token
+	}
+
+	customHeaders, err := parseCustomHeaders(params.headers)
+	if err != nil {
+		return nil, err
+	}
+	for name, values := range customHeaders {
+		headers[name] = values[len(values)-1]
 	}
 
 	return &DryRunOutput{
@@ -943,6 +970,53 @@ func (rb *Base) computeVersionHeader(params *RequestParameters, path string) str
 		return StripeVersionHeaderValue
 	}
 	return ""
+}
+
+func parseCustomHeaders(headers []string) (http.Header, error) {
+	parsed := make(http.Header)
+	for _, header := range headers {
+		name, value, ok := strings.Cut(header, "=")
+		if !ok {
+			return nil, errorcategory.New(errorcategory.UserInput, "invalid header: expected name=value")
+		}
+		if !isValidHeaderName(name) {
+			return nil, errorcategory.New(errorcategory.UserInput, "invalid header name")
+		}
+		if strings.ContainsAny(value, "\r\n") {
+			return nil, errorcategory.New(errorcategory.UserInput, "invalid header value")
+		}
+		parsed.Set(name, value)
+	}
+	return parsed, nil
+}
+
+func isValidHeaderName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, char := range name {
+		if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9') || strings.ContainsRune("!#$%&'*+-.^_`|~", char) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func setCustomHeaders(destination, custom http.Header) {
+	for name, values := range custom {
+		for _, value := range values {
+			destination.Set(name, value)
+		}
+	}
+}
+
+func headerNames(headers http.Header) []string {
+	names := make([]string, 0, len(headers))
+	for name := range headers {
+		names = append(names, name)
+	}
+	return names
 }
 
 func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
