@@ -33,15 +33,16 @@ import (
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
 type RequestParameters struct {
-	data          []string
-	expand        []string
-	startingAfter string
-	endingBefore  string
-	idempotency   string
-	limit         string
-	version       string
-	stripeAccount string
-	stripeContext string
+	data                       []string
+	expand                     []string
+	startingAfter              string
+	endingBefore               string
+	idempotency                string
+	limit                      string
+	version                    string
+	stripeAccount              string
+	stripeContext              string
+	stripeCustomObjectVersions string
 }
 
 // AppendData appends data to the request parameters.
@@ -67,6 +68,11 @@ func (r *RequestParameters) SetStripeAccount(value string) {
 // SetStripeContext sets the value for the `Stripe-Context` header.
 func (r *RequestParameters) SetStripeContext(value string) {
 	r.stripeContext = value
+}
+
+// SetStripeCustomObjectVersions sets the value for the `Stripe-Custom-Object-Versions` header.
+func (r *RequestParameters) SetStripeCustomObjectVersions(value string) {
+	r.stripeCustomObjectVersions = value
 }
 
 // SetVersion sets the value for the `Stripe-Version` header.
@@ -218,6 +224,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeCustomObjectVersions, "stripe-custom-object-versions", "", "Set the custom object versions for the request")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
@@ -342,6 +349,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		creds.ApplyAccountContextHeaders(req.Header, params.stripeAccount, params.stripeContext)
+		rb.setStripeCustomObjectVersionsHeader(req, params)
 		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
@@ -504,6 +512,9 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 
 	if params.idempotency != "" {
 		headers["Idempotency-Key"] = params.idempotency
+	}
+	if params.stripeCustomObjectVersions != "" {
+		headers["Stripe-Custom-Object-Versions"] = params.stripeCustomObjectVersions
 	}
 	accountContextHeaders := make(http.Header)
 	creds.ApplyAccountContextHeaders(accountContextHeaders, params.stripeAccount, params.stripeContext)
@@ -943,6 +954,12 @@ func (rb *Base) computeVersionHeader(params *RequestParameters, path string) str
 		return StripeVersionHeaderValue
 	}
 	return ""
+}
+
+func (rb *Base) setStripeCustomObjectVersionsHeader(request *http.Request, params *RequestParameters) {
+	if params.stripeCustomObjectVersions != "" {
+		request.Header.Set("Stripe-Custom-Object-Versions", params.stripeCustomObjectVersions)
+	}
 }
 
 func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {

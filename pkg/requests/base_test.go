@@ -98,6 +98,7 @@ func TestMakeRequest(t *testing.T) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/foo/bar", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.Equal(t, "support_tickets@1.0.0", r.Header.Get("Stripe-Custom-Object-Versions"))
 		require.NotEmpty(t, r.UserAgent())
 		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
 		require.Equal(t, "bender=robot&fry=human&expand[]=futurama.employees&expand[]=futurama.ships", r.URL.RawQuery)
@@ -109,8 +110,9 @@ func TestMakeRequest(t *testing.T) {
 	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
-		data:   []string{"bender=robot", "fry=human"},
-		expand: []string{"futurama.employees", "futurama.ships"},
+		data:                       []string{"bender=robot", "fry=human"},
+		expand:                     []string{"futurama.employees", "futurama.ships"},
+		stripeCustomObjectVersions: "support_tickets@1.0.0",
 	}
 
 	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, make(map[string]interface{}), true, nil)
@@ -704,6 +706,16 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 			"Stripe-Context":  "ctx_456",
 		},
 	}}, *output)
+}
+
+func TestBuildDryRunOutput_StripeCustomObjectVersions(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{}
+	params.SetStripeCustomObjectVersions("support_tickets@1.0.0")
+
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, "support_tickets@1.0.0", output.DryRun.Headers["Stripe-Custom-Object-Versions"])
 }
 
 func TestBuildDryRunOutput_OAKStripeAccount(t *testing.T) {
