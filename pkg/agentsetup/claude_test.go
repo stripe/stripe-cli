@@ -94,6 +94,55 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 	require.False(t, status.Plugin.Installed)
 }
 
+func TestClaude_PlanActions(t *testing.T) {
+	provider := ClaudeProvider{}
+	command := []string{"claude", "plugin", "install", TargetClaudePlugin}
+
+	tests := []struct {
+		name   string
+		status Status
+		force  bool
+		want   Plan
+	}{
+		{name: "not detected", status: Status{}, want: Plan{Action: ActionNone}},
+		{name: "error", status: Status{Detected: true, Status: StatusError}, force: true, want: Plan{Action: ActionNone}},
+		{name: "missing", status: Status{Detected: true, Status: StatusMissing}, want: Plan{Action: ActionInstall, Command: command}},
+		{name: "installed", status: Status{Detected: true, Status: StatusInstalled, Plugin: PluginStatus{Installed: true}}, want: Plan{Action: ActionNone}},
+		{name: "forced", status: Status{Detected: true, Status: StatusInstalled, Plugin: PluginStatus{Installed: true}}, force: true, want: Plan{Action: ActionReinstall, Command: command}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, provider.Plan(tt.status, tt.force))
+		})
+	}
+}
+
+func TestClaudeApply_RetriesAfterMarketplaceUpdate(t *testing.T) {
+	installErr := errors.New("stale marketplace")
+	var calls [][]string
+	provider := ClaudeProvider{
+		RunCommand: func(_ context.Context, name string, args ...string) error {
+			call := append([]string{name}, args...)
+			calls = append(calls, call)
+			if len(calls) == 1 {
+				return installErr
+			}
+			return nil
+		},
+	}
+	plan := Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", TargetClaudePlugin}}
+
+	err := provider.Apply(context.Background(), nil, plan)
+
+	require.NoError(t, err)
+	require.Equal(t, [][]string{
+		{"claude", "plugin", "install", TargetClaudePlugin},
+		{"claude", "plugin", "marketplace", "update", ClaudeMarketplace},
+		{"claude", "plugin", "install", TargetClaudePlugin},
+	}, calls)
+}
+
 func mustJSON(t *testing.T, v interface{}) []byte {
 	t.Helper()
 	b, err := json.Marshal(v)
