@@ -111,7 +111,7 @@ jobs:
 
   winget-attempt-2:
     needs: winget-attempt-1
-    if: needs.winget-attempt-1.outputs.install_test_result == 'failure'
+    if: always() && needs.winget-attempt-1.outputs.install_test_result == 'failure'
     runs-on: windows-latest
     outputs:
       install_test_result: ${{ steps.install_test.outcome }}

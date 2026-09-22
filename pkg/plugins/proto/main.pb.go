@@ -1367,6 +1367,165 @@ func (x *SwitchContextResponse) GetSwitched() bool {
 	return false
 }
 
+type ListAuthorizedAccountsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAuthorizedAccountsRequest) Reset() {
+	*x = ListAuthorizedAccountsRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAuthorizedAccountsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAuthorizedAccountsRequest) ProtoMessage() {}
+
+func (x *ListAuthorizedAccountsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAuthorizedAccountsRequest.ProtoReflect.Descriptor instead.
+func (*ListAuthorizedAccountsRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{27}
+}
+
+type AuthorizedAccount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// modes lists the API mode(s) ("test", "live") this account grants access to.
+	Modes         []string `protobuf:"bytes,3,rep,name=modes,proto3" json:"modes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuthorizedAccount) Reset() {
+	*x = AuthorizedAccount{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizedAccount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizedAccount) ProtoMessage() {}
+
+func (x *AuthorizedAccount) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizedAccount.ProtoReflect.Descriptor instead.
+func (*AuthorizedAccount) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AuthorizedAccount) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AuthorizedAccount) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AuthorizedAccount) GetModes() []string {
+	if x != nil {
+		return x.Modes
+	}
+	return nil
+}
+
+type ListAuthorizedAccountsResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Accounts []*AuthorizedAccount   `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	// active_account_id and active_livemode identify which authorized account and mode are
+	// currently active; empty/false if none is active yet.
+	ActiveAccountId string `protobuf:"bytes,2,opt,name=active_account_id,json=activeAccountId,proto3" json:"active_account_id,omitempty"`
+	ActiveLivemode  bool   `protobuf:"varint,3,opt,name=active_livemode,json=activeLivemode,proto3" json:"active_livemode,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ListAuthorizedAccountsResponse) Reset() {
+	*x = ListAuthorizedAccountsResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAuthorizedAccountsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAuthorizedAccountsResponse) ProtoMessage() {}
+
+func (x *ListAuthorizedAccountsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAuthorizedAccountsResponse.ProtoReflect.Descriptor instead.
+func (*ListAuthorizedAccountsResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ListAuthorizedAccountsResponse) GetAccounts() []*AuthorizedAccount {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
+func (x *ListAuthorizedAccountsResponse) GetActiveAccountId() string {
+	if x != nil {
+		return x.ActiveAccountId
+	}
+	return ""
+}
+
+func (x *ListAuthorizedAccountsResponse) GetActiveLivemode() bool {
+	if x != nil {
+		return x.ActiveLivemode
+	}
+	return false
+}
+
 type LoginRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// timeout_seconds bounds how long Login waits for the user to complete
@@ -1379,7 +1538,7 @@ type LoginRequest struct {
 
 func (x *LoginRequest) Reset() {
 	*x = LoginRequest{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1391,7 +1550,7 @@ func (x *LoginRequest) String() string {
 func (*LoginRequest) ProtoMessage() {}
 
 func (x *LoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[27]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1404,7 +1563,7 @@ func (x *LoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginRequest.ProtoReflect.Descriptor instead.
 func (*LoginRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{27}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *LoginRequest) GetTimeoutSeconds() int32 {
@@ -1430,7 +1589,7 @@ type LoginResponse struct {
 
 func (x *LoginResponse) Reset() {
 	*x = LoginResponse{}
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1442,7 +1601,7 @@ func (x *LoginResponse) String() string {
 func (*LoginResponse) ProtoMessage() {}
 
 func (x *LoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_plugins_proto_main_proto_msgTypes[28]
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1455,7 +1614,7 @@ func (x *LoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LoginResponse.ProtoReflect.Descriptor instead.
 func (*LoginResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{28}
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *LoginResponse) GetAccountId() string {
@@ -1480,6 +1639,319 @@ func (x *LoginResponse) GetLivemode() bool {
 }
 
 func (x *LoginResponse) GetLoggedIn() bool {
+	if x != nil {
+		return x.LoggedIn
+	}
+	return false
+}
+
+type OAuthInitiateLoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthInitiateLoginRequest) Reset() {
+	*x = OAuthInitiateLoginRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthInitiateLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthInitiateLoginRequest) ProtoMessage() {}
+
+func (x *OAuthInitiateLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthInitiateLoginRequest.ProtoReflect.Descriptor instead.
+func (*OAuthInitiateLoginRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{32}
+}
+
+type OAuthInitiateLoginResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	BrowserUrl       string                 `protobuf:"bytes,1,opt,name=browser_url,json=browserUrl,proto3" json:"browser_url,omitempty"`
+	VerificationCode string                 `protobuf:"bytes,2,opt,name=verification_code,json=verificationCode,proto3" json:"verification_code,omitempty"`
+	// expires_in is the number of seconds remaining before the browser_url/
+	// verification_code expire and a new OAuthInitiateLogin call is required.
+	ExpiresIn     int32 `protobuf:"varint,3,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthInitiateLoginResponse) Reset() {
+	*x = OAuthInitiateLoginResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthInitiateLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthInitiateLoginResponse) ProtoMessage() {}
+
+func (x *OAuthInitiateLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthInitiateLoginResponse.ProtoReflect.Descriptor instead.
+func (*OAuthInitiateLoginResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *OAuthInitiateLoginResponse) GetBrowserUrl() string {
+	if x != nil {
+		return x.BrowserUrl
+	}
+	return ""
+}
+
+func (x *OAuthInitiateLoginResponse) GetVerificationCode() string {
+	if x != nil {
+		return x.VerificationCode
+	}
+	return ""
+}
+
+func (x *OAuthInitiateLoginResponse) GetExpiresIn() int32 {
+	if x != nil {
+		return x.ExpiresIn
+	}
+	return 0
+}
+
+type OAuthFindPendingLoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthFindPendingLoginRequest) Reset() {
+	*x = OAuthFindPendingLoginRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthFindPendingLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthFindPendingLoginRequest) ProtoMessage() {}
+
+func (x *OAuthFindPendingLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthFindPendingLoginRequest.ProtoReflect.Descriptor instead.
+func (*OAuthFindPendingLoginRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{34}
+}
+
+type OAuthFindPendingLoginResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// found is false if there is no pending login attempt, or it has
+	// expired; in that case the other fields are empty.
+	Found            bool   `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	BrowserUrl       string `protobuf:"bytes,2,opt,name=browser_url,json=browserUrl,proto3" json:"browser_url,omitempty"`
+	VerificationCode string `protobuf:"bytes,3,opt,name=verification_code,json=verificationCode,proto3" json:"verification_code,omitempty"`
+	// expires_in is the number of seconds remaining before the browser_url/
+	// verification_code expire and a new OAuthInitiateLogin call is required.
+	ExpiresIn     int32 `protobuf:"varint,4,opt,name=expires_in,json=expiresIn,proto3" json:"expires_in,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthFindPendingLoginResponse) Reset() {
+	*x = OAuthFindPendingLoginResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthFindPendingLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthFindPendingLoginResponse) ProtoMessage() {}
+
+func (x *OAuthFindPendingLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthFindPendingLoginResponse.ProtoReflect.Descriptor instead.
+func (*OAuthFindPendingLoginResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *OAuthFindPendingLoginResponse) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *OAuthFindPendingLoginResponse) GetBrowserUrl() string {
+	if x != nil {
+		return x.BrowserUrl
+	}
+	return ""
+}
+
+func (x *OAuthFindPendingLoginResponse) GetVerificationCode() string {
+	if x != nil {
+		return x.VerificationCode
+	}
+	return ""
+}
+
+func (x *OAuthFindPendingLoginResponse) GetExpiresIn() int32 {
+	if x != nil {
+		return x.ExpiresIn
+	}
+	return 0
+}
+
+type OAuthCheckLoginStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthCheckLoginStatusRequest) Reset() {
+	*x = OAuthCheckLoginStatusRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthCheckLoginStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthCheckLoginStatusRequest) ProtoMessage() {}
+
+func (x *OAuthCheckLoginStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthCheckLoginStatusRequest.ProtoReflect.Descriptor instead.
+func (*OAuthCheckLoginStatusRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{36}
+}
+
+type OAuthCheckLoginStatusResponse struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AccountId   string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountName string                 `protobuf:"bytes,2,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	Livemode    bool                   `protobuf:"varint,3,opt,name=livemode,proto3" json:"livemode,omitempty"`
+	// logged_in is false if the user hasn't completed authentication yet; in
+	// that case the other fields are empty and callers should call
+	// OAuthCheckLoginStatus again later to keep checking.
+	LoggedIn      bool `protobuf:"varint,4,opt,name=logged_in,json=loggedIn,proto3" json:"logged_in,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OAuthCheckLoginStatusResponse) Reset() {
+	*x = OAuthCheckLoginStatusResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OAuthCheckLoginStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OAuthCheckLoginStatusResponse) ProtoMessage() {}
+
+func (x *OAuthCheckLoginStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OAuthCheckLoginStatusResponse.ProtoReflect.Descriptor instead.
+func (*OAuthCheckLoginStatusResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *OAuthCheckLoginStatusResponse) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *OAuthCheckLoginStatusResponse) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *OAuthCheckLoginStatusResponse) GetLivemode() bool {
+	if x != nil {
+		return x.Livemode
+	}
+	return false
+}
+
+func (x *OAuthCheckLoginStatusResponse) GetLoggedIn() bool {
 	if x != nil {
 		return x.LoggedIn
 	}
@@ -1570,10 +2042,41 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
 	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
 	"\blivemode\x18\x03 \x01(\bR\blivemode\x12\x1a\n" +
-	"\bswitched\x18\x04 \x01(\bR\bswitched\"7\n" +
+	"\bswitched\x18\x04 \x01(\bR\bswitched\"\x1f\n" +
+	"\x1dListAuthorizedAccountsRequest\"M\n" +
+	"\x11AuthorizedAccount\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05modes\x18\x03 \x03(\tR\x05modes\"\xab\x01\n" +
+	"\x1eListAuthorizedAccountsResponse\x124\n" +
+	"\baccounts\x18\x01 \x03(\v2\x18.proto.AuthorizedAccountR\baccounts\x12*\n" +
+	"\x11active_account_id\x18\x02 \x01(\tR\x0factiveAccountId\x12'\n" +
+	"\x0factive_livemode\x18\x03 \x01(\bR\x0eactiveLivemode\"7\n" +
 	"\fLoginRequest\x12'\n" +
 	"\x0ftimeout_seconds\x18\x01 \x01(\x05R\x0etimeoutSeconds\"\x8a\x01\n" +
 	"\rLoginResponse\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
+	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
+	"\blivemode\x18\x03 \x01(\bR\blivemode\x12\x1b\n" +
+	"\tlogged_in\x18\x04 \x01(\bR\bloggedIn\"\x1b\n" +
+	"\x19OAuthInitiateLoginRequest\"\x89\x01\n" +
+	"\x1aOAuthInitiateLoginResponse\x12\x1f\n" +
+	"\vbrowser_url\x18\x01 \x01(\tR\n" +
+	"browserUrl\x12+\n" +
+	"\x11verification_code\x18\x02 \x01(\tR\x10verificationCode\x12\x1d\n" +
+	"\n" +
+	"expires_in\x18\x03 \x01(\x05R\texpiresIn\"\x1e\n" +
+	"\x1cOAuthFindPendingLoginRequest\"\xa2\x01\n" +
+	"\x1dOAuthFindPendingLoginResponse\x12\x14\n" +
+	"\x05found\x18\x01 \x01(\bR\x05found\x12\x1f\n" +
+	"\vbrowser_url\x18\x02 \x01(\tR\n" +
+	"browserUrl\x12+\n" +
+	"\x11verification_code\x18\x03 \x01(\tR\x10verificationCode\x12\x1d\n" +
+	"\n" +
+	"expires_in\x18\x04 \x01(\x05R\texpiresIn\"\x1e\n" +
+	"\x1cOAuthCheckLoginStatusRequest\"\x9a\x01\n" +
+	"\x1dOAuthCheckLoginStatusResponse\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
 	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
@@ -1583,7 +2086,8 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\n" +
 	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse\x12D\n" +
 	"\vPostInstall\x12\x19.proto.PostInstallRequest\x1a\x1a.proto.PostInstallResponse\x12G\n" +
-	"\fPreUninstall\x12\x1a.proto.PreUninstallRequest\x1a\x1b.proto.PreUninstallResponse2\xaa\a\n" +
+	"\fPreUninstall\x12\x1a.proto.PreUninstallRequest\x1a\x1b.proto.PreUninstallResponse2\xb4\n" +
+	"\n" +
 	"\rCoreCLIHelper\x12/\n" +
 	"\x04Echo\x12\x12.proto.EchoRequest\x1a\x13.proto.EchoResponse\x12J\n" +
 	"\rSendAnalytics\x12\x1b.proto.SendAnalyticsRequest\x1a\x1c.proto.SendAnalyticsResponse\x12\\\n" +
@@ -1594,8 +2098,12 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\rRunPeerPlugin\x12\x1b.proto.RunPeerPluginRequest\x1a\x1c.proto.RunPeerPluginResponse\x12Y\n" +
 	"\x12ResolveCredentials\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponse\x12c\n" +
 	"\x1cResolveCredentialsForAnyMode\x12 .proto.ResolveCredentialsRequest\x1a!.proto.ResolveCredentialsResponse\x12J\n" +
-	"\rSwitchContext\x12\x1b.proto.SwitchContextRequest\x1a\x1c.proto.SwitchContextResponse\x122\n" +
-	"\x05Login\x12\x13.proto.LoginRequest\x1a\x14.proto.LoginResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
+	"\rSwitchContext\x12\x1b.proto.SwitchContextRequest\x1a\x1c.proto.SwitchContextResponse\x12e\n" +
+	"\x16ListAuthorizedAccounts\x12$.proto.ListAuthorizedAccountsRequest\x1a%.proto.ListAuthorizedAccountsResponse\x122\n" +
+	"\x05Login\x12\x13.proto.LoginRequest\x1a\x14.proto.LoginResponse\x12Y\n" +
+	"\x12OAuthInitiateLogin\x12 .proto.OAuthInitiateLoginRequest\x1a!.proto.OAuthInitiateLoginResponse\x12b\n" +
+	"\x15OAuthFindPendingLogin\x12#.proto.OAuthFindPendingLoginRequest\x1a$.proto.OAuthFindPendingLoginResponse\x12b\n" +
+	"\x15OAuthCheckLoginStatus\x12#.proto.OAuthCheckLoginStatusRequest\x1a$.proto.OAuthCheckLoginStatusResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
 
 var (
 	file_pkg_plugins_proto_main_proto_rawDescOnce sync.Once
@@ -1609,7 +2117,7 @@ func file_pkg_plugins_proto_main_proto_rawDescGZIP() []byte {
 	return file_pkg_plugins_proto_main_proto_rawDescData
 }
 
-var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_pkg_plugins_proto_main_proto_goTypes = []any{
 	(*RunCommandRequest)(nil),               // 0: proto.RunCommandRequest
 	(*RunCommandResponse)(nil),              // 1: proto.RunCommandResponse
@@ -1638,8 +2146,17 @@ var file_pkg_plugins_proto_main_proto_goTypes = []any{
 	(*ResolveCredentialsResponse)(nil),      // 24: proto.ResolveCredentialsResponse
 	(*SwitchContextRequest)(nil),            // 25: proto.SwitchContextRequest
 	(*SwitchContextResponse)(nil),           // 26: proto.SwitchContextResponse
-	(*LoginRequest)(nil),                    // 27: proto.LoginRequest
-	(*LoginResponse)(nil),                   // 28: proto.LoginResponse
+	(*ListAuthorizedAccountsRequest)(nil),   // 27: proto.ListAuthorizedAccountsRequest
+	(*AuthorizedAccount)(nil),               // 28: proto.AuthorizedAccount
+	(*ListAuthorizedAccountsResponse)(nil),  // 29: proto.ListAuthorizedAccountsResponse
+	(*LoginRequest)(nil),                    // 30: proto.LoginRequest
+	(*LoginResponse)(nil),                   // 31: proto.LoginResponse
+	(*OAuthInitiateLoginRequest)(nil),       // 32: proto.OAuthInitiateLoginRequest
+	(*OAuthInitiateLoginResponse)(nil),      // 33: proto.OAuthInitiateLoginResponse
+	(*OAuthFindPendingLoginRequest)(nil),    // 34: proto.OAuthFindPendingLoginRequest
+	(*OAuthFindPendingLoginResponse)(nil),   // 35: proto.OAuthFindPendingLoginResponse
+	(*OAuthCheckLoginStatusRequest)(nil),    // 36: proto.OAuthCheckLoginStatusRequest
+	(*OAuthCheckLoginStatusResponse)(nil),   // 37: proto.OAuthCheckLoginStatusResponse
 }
 var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	6,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
@@ -1647,39 +2164,48 @@ var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
 	6,  // 2: proto.PreUninstallRequest.additional_info:type_name -> proto.AdditionalInfo
 	7,  // 3: proto.AdditionalInfo.is_terminal:type_name -> proto.IsTerminal
 	8,  // 4: proto.AdditionalInfo.terminal_dimensions:type_name -> proto.TerminalDimensions
-	0,  // 5: proto.Main.RunCommand:input_type -> proto.RunCommandRequest
-	2,  // 6: proto.Main.PostInstall:input_type -> proto.PostInstallRequest
-	4,  // 7: proto.Main.PreUninstall:input_type -> proto.PreUninstallRequest
-	9,  // 8: proto.CoreCLIHelper.Echo:input_type -> proto.EchoRequest
-	11, // 9: proto.CoreCLIHelper.SendAnalytics:input_type -> proto.SendAnalyticsRequest
-	13, // 10: proto.CoreCLIHelper.KeychainGetPassword:input_type -> proto.KeychainGetPasswordRequest
-	15, // 11: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
-	17, // 12: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
-	19, // 13: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
-	21, // 14: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
-	23, // 15: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
-	23, // 16: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
-	25, // 17: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
-	27, // 18: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
-	1,  // 19: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
-	3,  // 20: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
-	5,  // 21: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
-	10, // 22: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
-	12, // 23: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
-	14, // 24: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
-	16, // 25: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
-	18, // 26: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
-	20, // 27: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
-	22, // 28: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
-	24, // 29: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
-	24, // 30: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
-	26, // 31: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
-	28, // 32: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
-	19, // [19:33] is the sub-list for method output_type
-	5,  // [5:19] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	28, // 5: proto.ListAuthorizedAccountsResponse.accounts:type_name -> proto.AuthorizedAccount
+	0,  // 6: proto.Main.RunCommand:input_type -> proto.RunCommandRequest
+	2,  // 7: proto.Main.PostInstall:input_type -> proto.PostInstallRequest
+	4,  // 8: proto.Main.PreUninstall:input_type -> proto.PreUninstallRequest
+	9,  // 9: proto.CoreCLIHelper.Echo:input_type -> proto.EchoRequest
+	11, // 10: proto.CoreCLIHelper.SendAnalytics:input_type -> proto.SendAnalyticsRequest
+	13, // 11: proto.CoreCLIHelper.KeychainGetPassword:input_type -> proto.KeychainGetPasswordRequest
+	15, // 12: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
+	17, // 13: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
+	19, // 14: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
+	21, // 15: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
+	23, // 16: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
+	23, // 17: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
+	25, // 18: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
+	27, // 19: proto.CoreCLIHelper.ListAuthorizedAccounts:input_type -> proto.ListAuthorizedAccountsRequest
+	30, // 20: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
+	32, // 21: proto.CoreCLIHelper.OAuthInitiateLogin:input_type -> proto.OAuthInitiateLoginRequest
+	34, // 22: proto.CoreCLIHelper.OAuthFindPendingLogin:input_type -> proto.OAuthFindPendingLoginRequest
+	36, // 23: proto.CoreCLIHelper.OAuthCheckLoginStatus:input_type -> proto.OAuthCheckLoginStatusRequest
+	1,  // 24: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
+	3,  // 25: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
+	5,  // 26: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
+	10, // 27: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
+	12, // 28: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
+	14, // 29: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
+	16, // 30: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
+	18, // 31: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
+	20, // 32: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
+	22, // 33: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
+	24, // 34: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
+	24, // 35: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
+	26, // 36: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
+	29, // 37: proto.CoreCLIHelper.ListAuthorizedAccounts:output_type -> proto.ListAuthorizedAccountsResponse
+	31, // 38: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
+	33, // 39: proto.CoreCLIHelper.OAuthInitiateLogin:output_type -> proto.OAuthInitiateLoginResponse
+	35, // 40: proto.CoreCLIHelper.OAuthFindPendingLogin:output_type -> proto.OAuthFindPendingLoginResponse
+	37, // 41: proto.CoreCLIHelper.OAuthCheckLoginStatus:output_type -> proto.OAuthCheckLoginStatusResponse
+	24, // [24:42] is the sub-list for method output_type
+	6,  // [6:24] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_pkg_plugins_proto_main_proto_init() }
@@ -1693,7 +2219,7 @@ func file_pkg_plugins_proto_main_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_plugins_proto_main_proto_rawDesc), len(file_pkg_plugins_proto_main_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
