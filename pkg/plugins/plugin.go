@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -138,7 +139,11 @@ func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (str
 	return filepath.Base(existingLocalPlugin[0]), nil
 }
 
-// cleanUpPluginPath empties the plugin folder except for the version specified
+// cleanUpPluginPath empties the plugin folder except for the version specified.
+//
+// It reports what it could not remove. It used to return nil no matter what happened, which
+// is the one answer that guarantees the caller has nothing to say: a version directory that
+// would not delete looked exactly like a folder with one version left in it.
 func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionToKeep string) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.cleanUpPluginPath",
@@ -154,9 +159,17 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 		return err
 	}
 
-	afero.Walk(fs, pluginPath, filepath.WalkFunc(func(path string, info os.FileInfo, err error) error {
+	// Collected rather than returned at the first one, because returning from the walk
+	// function abandons the entries it has not reached yet, and one version that will not go
+	// is no reason to keep the others.
+	var problems []error
+
+	walkErr := afero.Walk(fs, pluginPath, filepath.WalkFunc(func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			problems = append(problems, err)
+			// nil, so the walk carries on to the sibling entries. info is nil when err is
+			// set, which the switch below would dereference.
+			return nil
 		}
 
 		switch {
@@ -169,12 +182,28 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 			return filepath.SkipDir
 		default:
 			logger.Debugf("Removing old plugin: %s", path)
-			fs.RemoveAll(path)
+			if err := fs.RemoveAll(path); err != nil {
+				problems = append(problems, fmt.Errorf("could not remove %s: %w", path, err))
+			}
+
+			if info.IsDir() {
+				// Whether or not the removal worked, there is no descending into this.
+				// Gone, and the walk would fail to list it -- which is what used to end
+				// the walk, leaving every later version directory in place; each install
+				// cleared exactly one. Still there, and emptying it file by file would
+				// leave a version directory holding no binary, which reads to
+				// lookUpInstalledVersion as an installed version.
+				return filepath.SkipDir
+			}
+
 			return nil
 		}
 	}))
+	if walkErr != nil {
+		problems = append(problems, walkErr)
+	}
 
-	return nil
+	return errors.Join(problems...)
 }
 
 // getChecksum does what it says on the tin - it returns the checksum for a specific plugin version
@@ -381,9 +410,27 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
-	p.cleanUpPluginPath(cfg, fs, version)
+	cleanUpErr := p.cleanUpPluginPath(cfg, fs, version)
 
 	ansi.StopSpinner(spinner, "", os.Stderr)
+
+	// Said rather than returned. Everything the install was asked to do has happened by now
+	// -- downloaded, checksum matched, written, recorded -- so failing here would report a
+	// failed install for one that worked, and send the user to retry an operation whose only
+	// remaining step is the one that just would not go.
+	//
+	// Not silence either. What is left behind is disk, and on Windows it is routine: the old
+	// binary cannot be deleted while a process holds it, so an upgrade that leaves the
+	// previous version sitting there has looked identical to a clean one.
+	//
+	// After the spinner rather than before, so this lands on a settled terminal instead of
+	// into the middle of a line the spinner is still redrawing.
+	if cleanUpErr != nil {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Install",
+			"plugin": p.Shortname,
+		}).Warnf("installed version %s but could not remove every older version, which is still on disk: %s", version, cleanUpErr)
+	}
 
 	return nil
 }
