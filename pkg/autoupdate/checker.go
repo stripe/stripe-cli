@@ -32,24 +32,36 @@ type UpdateMarker struct {
 	DownloadURL  string `json:"download_url"`
 	Checksum     string `json:"checksum"`
 	ReleaseNotes string `json:"release_notes"`
+
+	// StagedAt is when the check wrote this marker, as a Unix timestamp. The
+	// gap between it and the moment the update is applied is how long a user
+	// sat on a version we already knew was old, which is the number that says
+	// whether auto-update is actually keeping the fleet current.
+	//
+	// Omitted when empty so that a marker written by hand -- as the
+	// auto-upgrade canary does -- stays valid, and reported only when set.
+	StagedAt int64 `json:"staged_at,omitempty"`
 }
 
 // CheckForUpdate checks for a newer CLI version and writes a marker file
 // if an update is available. Skips major version changes. This is called
 // synchronously after command execution, rate-limited to once per day.
 func CheckForUpdate() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Debugf("autoupdate check panicked: %v", r)
-		}
-	}()
+	defer recoverAndReport("check")
 
 	if !shouldCheck() {
 		return
 	}
 
-	latest, url, checksum, releaseNotes := fetchLatestRelease()
+	latest, url, checksum, releaseNotes, checkErr := fetchLatestRelease()
 	if latest == "" {
+		// Reported rather than only debug-logged: the GitHub API this calls is
+		// unauthenticated and rate-limited per source IP, so a NAT'd or CI
+		// population can stop checking entirely with nothing else to show it.
+		// Not rate-limited, because a failed check deliberately writes no
+		// timestamp so it can retry immediately -- so this fires once per
+		// invocation while the failure lasts, which is the volume worth seeing.
+		sendEvent(eventCheckFailed, map[string]string{"reason": checkErr})
 		return
 	}
 
@@ -64,6 +76,11 @@ func CheckForUpdate() {
 	if isMajorVersionChange(current, latestClean) {
 		log.Debugf("autoupdate: skipping major version change %s → %s", current, latestClean)
 		recordLastCheck()
+		sendEvent(eventSkipped, map[string]string{
+			"reason": reasonMajorVersion,
+			"from":   current,
+			"to":     latestClean,
+		})
 		return
 	}
 
@@ -73,7 +90,27 @@ func CheckForUpdate() {
 		Checksum:     checksum,
 		ReleaseNotes: releaseNotes,
 	})
-	sendTelemetryEvent("Auto-Update Available", fmt.Sprintf("from=%s to=%s", current, latestClean))
+	sendEvent(eventAvailable, map[string]string{"from": current, "to": latestClean})
+}
+
+// recoverAndReport swallows a panic out of the update path and reports that it
+// happened.
+//
+// Swallowing is the point: neither half of auto-update is work the user asked
+// for, so neither may take down the command they did ask for. That makes a panic
+// here invisible by construction, which is why it is also reported -- a crash
+// loop in the updater would otherwise show up as nothing at all.
+func recoverAndReport(phase string) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	log.Debugf("autoupdate %s panicked: %v", phase, r)
+	sendEvent(eventPanicked, map[string]string{
+		"phase": phase,
+		"panic": fmt.Sprintf("%v", r),
+	})
 }
 
 func isMajorVersionChange(current, latest string) bool {
@@ -118,7 +155,10 @@ func shouldCheck() bool {
 	return time.Since(time.Unix(ts, 0)) >= checkInterval
 }
 
-func fetchLatestRelease() (ver string, downloadURL string, checksum string, releaseNotes string) {
+// fetchLatestRelease resolves the release to update to. On failure every value
+// is empty except failureReason, which names which step gave up so the caller
+// can report it.
+func fetchLatestRelease() (ver string, downloadURL string, checksum string, releaseNotes string, failureReason string) {
 	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
 	defer cancel()
 
@@ -126,7 +166,7 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string, rele
 	release, _, err := client.Repositories.GetLatestRelease(ctx, "stripe", "stripe-cli")
 	if err != nil {
 		log.Debug("autoupdate: failed to fetch latest release: ", err)
-		return "", "", "", ""
+		return "", "", "", "", reasonReleaseFetch
 	}
 
 	ver = release.GetTagName()
@@ -147,7 +187,7 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string, rele
 
 	if binaryURL == "" {
 		log.Debug("autoupdate: binary asset not found: ", assetName)
-		return "", "", "", ""
+		return "", "", "", "", reasonAssetMissing
 	}
 
 	if checksumURL != "" {
@@ -162,10 +202,10 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string, rele
 	// to stage costs a day: the next check tries again.
 	if checksum == "" {
 		log.Debug("autoupdate: no checksum published for ", assetName, "; refusing to stage an unverifiable update")
-		return "", "", "", ""
+		return "", "", "", "", reasonChecksumMissing
 	}
 
-	return ver, binaryURL, checksum, releaseNotes
+	return ver, binaryURL, checksum, releaseNotes, ""
 }
 
 func fetchChecksumForAsset(checksumURL, assetName string) string {
@@ -264,6 +304,13 @@ func WriteMarker(m UpdateMarker) {
 
 	if err := os.MkdirAll(stateDir, 0755); err != nil {
 		return
+	}
+
+	// Stamped here rather than by the caller, so that "when was this staged" is
+	// true of any marker this function writes. A caller that already set it --
+	// a test, or a rewrite of an existing marker -- keeps its value.
+	if m.StagedAt == 0 {
+		m.StagedAt = time.Now().Unix()
 	}
 
 	content, err := json.Marshal(m)

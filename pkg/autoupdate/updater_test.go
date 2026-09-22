@@ -194,8 +194,9 @@ func TestDownloadAndReplace(t *testing.T) {
 		Checksum:    checksum,
 	}
 
-	err = downloadAndReplace(marker, exePath)
+	reason, err := downloadAndReplace(marker, exePath)
 	require.NoError(t, err)
+	assert.Empty(t, reason, "a successful update reports no failure reason")
 
 	got, err := os.ReadFile(exePath)
 	require.NoError(t, err)
@@ -237,7 +238,9 @@ func TestDownloadAndReplace_Zip(t *testing.T) {
 		Checksum:    sha256sum(archivePath),
 	}
 
-	require.NoError(t, downloadAndReplace(marker, exePath))
+	reason, err := downloadAndReplace(marker, exePath)
+	require.NoError(t, err)
+	assert.Empty(t, reason)
 
 	got, err := os.ReadFile(exePath)
 	require.NoError(t, err)
@@ -265,9 +268,10 @@ func TestDownloadAndReplace_BadChecksum(t *testing.T) {
 		Checksum:    "0000000000000000000000000000000000000000000000000000000000000000",
 	}
 
-	err = downloadAndReplace(marker, exePath)
+	reason, err := downloadAndReplace(marker, exePath)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "checksum verification failed")
+	assert.Equal(t, reasonChecksum, reason)
 
 	got, _ := os.ReadFile(exePath)
 	assert.Equal(t, []byte("old binary"), got, "original binary should be unchanged")
@@ -288,9 +292,10 @@ func TestDownloadAndReplace_ServerError(t *testing.T) {
 		DownloadURL: server.URL + "/stripe.tar.gz",
 	}
 
-	err := downloadAndReplace(marker, exePath)
+	reason, err := downloadAndReplace(marker, exePath)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "status 500")
+	assert.Equal(t, reasonStatus, reason)
 }
 
 func TestApplyIfPending_NoMarker(t *testing.T) {
@@ -351,9 +356,10 @@ func TestDownloadAndReplace_StalledDownloadTimesOut(t *testing.T) {
 	marker := &UpdateMarker{Version: "1.43.8", DownloadURL: server.URL + "/stripe.tar.gz"}
 
 	start := time.Now()
-	err := downloadAndReplace(marker, exePath)
+	reason, err := downloadAndReplace(marker, exePath)
 
 	assert.Error(t, err)
+	assert.Equal(t, reasonDownload, reason, "a timed-out transfer is a download failure")
 	assert.Less(t, time.Since(start), 30*time.Second, "must give up on the deadline, not hang")
 
 	// The binary the user is running is untouched, and nothing staged is left.
