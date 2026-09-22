@@ -1,14 +1,24 @@
 name: Notify developer-products review
 
-on:
+on: # zizmor: ignore[dangerous-triggers] justified below
+  # `pull_request_target` is required here: this workflow needs the Slack
+  # webhook secret, which GitHub withholds from `pull_request` runs on fork
+  # PRs, and fork PRs do request developer-products review. It is safe because
+  # it never checks out or executes PR-controlled code (no `checkout`, no
+  # `uses:`), runs with `permissions: {}`, and passes every attacker-controlled
+  # value through `env:` + `jq --arg` rather than `${{ }}` inside `run:`.
   pull_request_target:
     types: [review_requested]
+    # Without this, a PR targeting any branch runs that branch's copy of this
+    # workflow with the webhook secret, bypassing review on master.
+    branches: [master]
 
 permissions: {}
 
 jobs:
   notify:
     if: >-
+      github.repository == 'stripe/stripe-cli' &&
       github.event.requested_team.slug == 'developer-products' &&
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
