@@ -27,6 +27,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func setupSandboxTestConfig(t *testing.T) func() {
@@ -822,6 +823,47 @@ type fakeSandboxCreateClient struct {
 	beforeReturn func()
 }
 
+type sandboxTelemetryEvent struct {
+	name  string
+	value string
+}
+
+type fakeSandboxTelemetryClient struct {
+	events chan sandboxTelemetryEvent
+}
+
+func newFakeSandboxTelemetryClient() *fakeSandboxTelemetryClient {
+	return &fakeSandboxTelemetryClient{events: make(chan sandboxTelemetryEvent, 4)}
+}
+
+func (f *fakeSandboxTelemetryClient) SendAPIRequestEvent(context.Context, string, bool) (*http.Response, error) {
+	return nil, nil
+}
+
+func (f *fakeSandboxTelemetryClient) SendEvent(_ context.Context, name, value string) {
+	f.events <- sandboxTelemetryEvent{name: name, value: value}
+}
+
+func (f *fakeSandboxTelemetryClient) waitForEvent(t *testing.T) sandboxTelemetryEvent {
+	t.Helper()
+	select {
+	case event := <-f.events:
+		return event
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for sandbox telemetry event")
+		return sandboxTelemetryEvent{}
+	}
+}
+
+func (f *fakeSandboxTelemetryClient) assertNoEvent(t *testing.T) {
+	t.Helper()
+	select {
+	case event := <-f.events:
+		t.Fatalf("unexpected sandbox telemetry event: %#v", event)
+	default:
+	}
+}
+
 type sandboxTestContextKey struct{}
 
 func (f *fakeSandboxCreateClient) Create(_ context.Context, options sandbox.CreateOptions) (sandbox.CreatedSandbox, error) {
@@ -908,6 +950,124 @@ func TestSandboxCreateCmdOAuthCreatesCopyLiveByDefault(t *testing.T) {
 	require.Contains(t, stdout.String(), "Account ID: acct_created")
 	require.Contains(t, stdout.String(), "stripe login")
 	require.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuthRoutesTelemetryOnce(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	telemetry := newFakeSandboxTelemetryClient()
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	event := telemetry.waitForEvent(t)
+	assert.Equal(t, "Sandbox Create Routed", event.name)
+	assert.Equal(t, "oauth", event.value)
+	telemetry.assertNoEvent(t)
+}
+
+func TestSandboxCreateCmdAnonymousRoutesTelemetryOnce(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	telemetry := newFakeSandboxTelemetryClient()
+	ctx, cancel := context.WithCancel(stripe.WithTelemetryClient(context.Background(), telemetry))
+	cancel()
+	command := newSandboxCreateCmd()
+	command.cmd.SetContext(ctx)
+	command.cmd.SetArgs([]string{"--email", "alice@example.com"})
+
+	err := command.cmd.Execute()
+	require.ErrorIs(t, err, context.Canceled)
+	event := telemetry.waitForEvent(t)
+	assert.Equal(t, "Sandbox Create Routed", event.name)
+	assert.Equal(t, "anonymous", event.value)
+	telemetry.assertNoEvent(t)
+}
+
+func TestSandboxCreateCmdInvalidRouteDoesNotSendTelemetry(t *testing.T) {
+	tests := []struct {
+		name      string
+		setup     func(*testing.T)
+		args      []string
+		wantInErr string
+	}{
+		{
+			name: "OAuth missing name",
+			setup: func(t *testing.T) {
+				setSandboxCreateOAuthContext(t)
+			},
+			wantInErr: "sandbox name is required",
+		},
+		{
+			name:      "anonymous invalid email",
+			args:      []string{"--email", "not-an-email"},
+			wantInErr: "invalid email",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			if test.setup != nil {
+				test.setup(t)
+			}
+
+			telemetry := newFakeSandboxTelemetryClient()
+			command := newSandboxCreateCmd()
+			command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+			command.cmd.SetArgs(test.args)
+
+			err := command.cmd.Execute()
+			require.ErrorContains(t, err, test.wantInErr)
+			telemetry.assertNoEvent(t)
+		})
+	}
+}
+
+func TestSandboxCreateCmdNilTelemetryClientDoesNotChangeBehavior(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetContext(context.Background())
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Equal(t, []sandbox.CreateOptions{{Name: "OAuth sandbox"}}, client.calls)
+}
+
+func TestSandboxCreateCmdRouteTelemetryIsPrivacySafe(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	telemetry := newFakeSandboxTelemetryClient()
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_sensitive"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+	command.cmd.SetArgs([]string{"Alice acct_sensitive alice@example.com"})
+
+	require.NoError(t, command.cmd.Execute())
+	event := telemetry.waitForEvent(t)
+	assert.Equal(t, "Sandbox Create Routed", event.name)
+	assert.Equal(t, "oauth", event.value)
+	for _, sensitiveValue := range []string{"Alice", "acct_sensitive", "alice@example.com", "sk_", "--create-blank"} {
+		assert.NotContains(t, event.value, sensitiveValue)
+	}
 }
 
 func TestSandboxCreateCmdOAuthWinsOverConfiguredLegacyKey(t *testing.T) {
