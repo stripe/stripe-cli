@@ -257,9 +257,9 @@ func TestMaybeAutoUpgradeInstallsNewerRelease(t *testing.T) {
 	require.Equal(t, []recordedTelemetryEvent{{name: "Plugin Upgraded", value: "1.3.0"}}, client.events)
 	require.Equal(t, "1.3.0", metadata.PluginVersion)
 
-	// The user did not ask for this and is waiting on it, so it has to say what it is
-	// doing and how to stop it doing it.
-	require.Contains(t, output, "Upgrading the apps plugin to v1.3.0")
+	// The user did not ask for this, so it has to say what it did and how to stop it
+	// doing it again.
+	require.Contains(t, output, "Updated the apps plugin to v1.3.0")
 	require.Contains(t, output, "stripe plugin auto-update apps --disable")
 }
 
@@ -528,7 +528,7 @@ func TestMaybeAutoUpgradeKeepsInstalledVersionWhenInstallFails(t *testing.T) {
 
 	var gotPlugin *Plugin
 	var gotVersion string
-	captureStderr(t, func() {
+	output := captureStderr(t, func() {
 		gotPlugin, gotVersion = maybeAutoUpgrade(ctx, autoUpgradeTestConfig(), afero.NewMemMapFs(), installed, "1.2.0", "", "", "")
 	})
 
@@ -537,9 +537,10 @@ func TestMaybeAutoUpgradeKeepsInstalledVersionWhenInstallFails(t *testing.T) {
 
 	require.Len(t, stubs.installCalls, 1)
 	// Nothing was installed, so nothing should have run the new version's hook or
-	// reported an upgrade that did not happen.
+	// reported an upgrade that did not happen. install says what went wrong itself.
 	require.Empty(t, stubs.postInstallCalls)
 	require.Empty(t, client.events)
+	require.NotContains(t, output, "Updated the apps plugin")
 }
 
 // The lookup runs before the command the user typed, so a metadata endpoint that
