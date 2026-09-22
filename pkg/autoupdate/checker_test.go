@@ -1,6 +1,8 @@
 package autoupdate
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -160,4 +162,46 @@ func TestVerifyChecksum(t *testing.T) {
 	assert.False(t, VerifyChecksum(tmpFile, "0000000000000000000000000000000000000000000000000000000000000000"))
 	// Empty expected = skip verification
 	assert.True(t, VerifyChecksum(tmpFile, ""))
+}
+
+// fetchChecksumForAsset returning "" is what makes an update unverifiable, and
+// fetchLatestRelease now refuses to stage in that case. These are the ways it
+// comes back empty.
+func TestFetchChecksumForAsset(t *testing.T) {
+	const want = "816023515eead49134c165e949d21d56fd61050f689a53f0fd77d07ca41ec1c6"
+	body := want + "  stripe_1.51.1_linux_arm64.tar.gz\n" +
+		"aaaa  stripe_1.51.1_linux_x86_64.tar.gz\n"
+
+	for _, tt := range []struct {
+		name    string
+		handler http.HandlerFunc
+		asset   string
+		want    string
+	}{
+		{
+			name:    "asset listed",
+			handler: func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(body)) },
+			asset:   "stripe_1.51.1_linux_arm64.tar.gz",
+			want:    want,
+		},
+		{
+			name:    "asset not listed",
+			handler: func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(body)) },
+			asset:   "stripe_1.51.1_plan9_arm64.tar.gz",
+			want:    "",
+		},
+		{
+			name:    "checksums file unavailable",
+			handler: func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) },
+			asset:   "stripe_1.51.1_linux_arm64.tar.gz",
+			want:    "",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(tt.handler)
+			defer server.Close()
+
+			assert.Equal(t, tt.want, fetchChecksumForAsset(server.URL, tt.asset))
+		})
+	}
 }
