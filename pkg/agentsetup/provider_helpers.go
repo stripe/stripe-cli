@@ -1,8 +1,8 @@
 package agentsetup
 
-// detectAgentExecutable checks if the executable for the agent is available. detectedStatus is the default status to report for the plugin when the
+// detectAgentExecutable checks if the executable for the agent is available. defaultPluginStatus is the default status to report for the plugin when the
 // executable exists.
-func detectAgentExecutable(providerConfig ProviderConfig, detectedStatus string) (Status, bool) {
+func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus string) (Status, bool) {
 	scanner := providerConfig.Scanner.withDefaults()
 
 	status := Status{
@@ -18,7 +18,7 @@ func detectAgentExecutable(providerConfig ProviderConfig, detectedStatus string)
 
 	status.Detected = true
 	status.ExecutablePath = path
-	status.Status = detectedStatus
+	status.Status = defaultPluginStatus
 	return status, true
 }
 
