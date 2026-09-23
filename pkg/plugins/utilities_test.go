@@ -747,6 +747,8 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	require.Equal(t, localPlugin, *resolvedPlugin.Plugin)
 	require.Equal(t, "0.1.25", resolvedPlugin.Version)
 	require.Empty(t, resolvedPlugin.BinaryURL)
+	require.Error(t, resolvedPlugin.MetadataError)
+	require.Contains(t, resolvedPlugin.MetadataError.Error(), "status=500")
 }
 
 func TestResolvePluginForUpgradePrefersFresherCachedManifestWhenEndpointFails(t *testing.T) {

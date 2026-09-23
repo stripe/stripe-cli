@@ -1,7 +1,9 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -11,7 +13,9 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -74,6 +78,9 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	}
 	plugin := resolvedPlugin.Plugin
 	version := resolvedPlugin.Version
+	if resolvedPlugin.MetadataError != nil {
+		return pluginUpdateCheckError(plugin, uc.cfg, uc.fs, resolvedPlugin.MetadataError)
+	}
 
 	color := ansi.Color(os.Stdout)
 
@@ -111,4 +118,19 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	postinstall.PrintTips(os.Stdout, plugin.Shortname)
 
 	return nil
+}
+
+func pluginUpdateCheckError(plugin *plugins.Plugin, cfg config.IConfig, fs afero.Fs, err error) error {
+	installedVersion := plugin.InstalledVersion(cfg, fs)
+	installed := ""
+	if installedVersion != "" {
+		installed = fmt.Sprintf(" Installed version: v%s.", installedVersion)
+	}
+
+	var requestErr requests.RequestError
+	if errors.As(err, &requestErr) && requestErr.StatusCode == http.StatusUnauthorized {
+		return errorcategory.Errorf(errorcategory.Auth, "could not check for plugin updates: authentication failed; run 'stripe login' or provide a valid API key, then retry.%s", installed)
+	}
+
+	return fmt.Errorf("could not check for plugin updates.%s: %w", installed, err)
 }

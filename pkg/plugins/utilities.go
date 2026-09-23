@@ -46,6 +46,11 @@ type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
+	// MetadataError records why a resolution fell back to cached metadata. Callers
+	// that need to prove they checked the latest release, such as the explicit
+	// upgrade command, must surface this error instead of treating the cached
+	// version as current.
+	MetadataError error
 	// AutoInstall carries the metadata endpoint's answer to "may this machine
 	// install this plugin without being asked?". It is only ever true for a
 	// resolution that came from a live metadata response: a resolution that fell
@@ -603,8 +608,9 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		}
 
 		return &ResolvedPluginVersion{
-			Plugin:  cachedPlugin,
-			Version: version,
+			Plugin:        cachedPlugin,
+			Version:       version,
+			MetadataError: endpointErr,
 		}, nil
 	}
 

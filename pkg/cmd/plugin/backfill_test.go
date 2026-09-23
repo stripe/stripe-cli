@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -71,6 +72,37 @@ func TestRunUpgradeCmdBackfillsLocalMetadataWhenAlreadyInstalled(t *testing.T) {
 
 	require.NoError(t, uc.runUpgradeCmd(uc.Cmd, []string{"appA"}))
 	assertLocalMetadataBackfilled(t, cfg, fs, configPath)
+}
+
+func TestRunUpgradeCmdFailsWhenLatestVersionCheckUsesCachedMetadata(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+
+	servers := newPluginRegistryServers(t, testPluginManifest())
+	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginBinaryPath := filepath.Join(configPath, "plugins", "appA", "2.0.1", "stripe-cli-app-a"+plugins.GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("already installed"), 0755))
+
+	uc := NewUpgradeCmd(cfg)
+	uc.fs = fs
+	uc.apiBaseURL = servers.stripe.URL
+	uc.Cmd.SetContext(context.Background())
+	require.NoError(t, uc.runUpgradeCmd(uc.Cmd, []string{"appA"}))
+	servers.Close()
+
+	unauthorizedServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusUnauthorized)
+		_, _ = res.Write([]byte(`{"error":{"message":"Invalid API Key provided"}}`))
+	}))
+	defer unauthorizedServer.Close()
+	uc.apiBaseURL = unauthorizedServer.URL
+
+	err := uc.runUpgradeCmd(uc.Cmd, []string{"appA"})
+	require.EqualError(t, err, "could not check for plugin updates: authentication failed; run 'stripe login' or provide a valid API key, then retry. Installed version: v2.0.1.")
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.Auth, category)
 }
 
 func setupPluginCommandTest(t *testing.T) (*config.Config, afero.Fs, func()) {
