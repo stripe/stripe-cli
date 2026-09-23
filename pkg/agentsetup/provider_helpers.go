@@ -1,7 +1,6 @@
 package agentsetup
 
-// detectExecutable initializes a provider status and checks whether its
-// executable is available. detectedStatus is the status to report when the
+// detectExecutable checks if the executable for the provider is available. detectedStatus is the status to report when the
 // executable exists but provider-specific detection has not completed yet.
 func detectExecutable(scanner Scanner, client, displayName, binaryName, detectedStatus string) (Status, bool) {
 	status := Status{
@@ -21,7 +20,7 @@ func detectExecutable(scanner Scanner, client, displayName, binaryName, detected
 	return status, true
 }
 
-// standardPlan returns the common install plan for CLI-configurable providers
+// standardPlan returns the common install plan for providers
 func standardPlan(status Status, force bool, installCommand []string, reinstallCommand []string) Plan {
 	switch {
 	case status.Status == StatusError:
