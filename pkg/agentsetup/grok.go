@@ -25,15 +25,15 @@ type GrokProvider struct {
 }
 
 // NewGrokProvider returns a Grok Build setup provider.
-func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) GrokProvider {
+func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
 	config := ProviderConfig{
-		scanner:     scanner,
-		client:      ClientGrok,
-		binaryName:  GrokBinaryName,
-		displayName: GrokDisplayName,
+		Scanner:     scanner,
+		Client:      ClientGrok,
+		BinaryName:  GrokBinaryName,
+		DisplayName: GrokDisplayName,
 	}
 	return GrokProvider{
 		ProviderConfig: ProviderConfig{

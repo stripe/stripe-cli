@@ -179,5 +179,5 @@ func mustJSON(t *testing.T, v interface{}) []byte {
 }
 
 func claudeProviderConfig(scanner Scanner) ProviderConfig {
-	return ProviderConfig{scanner: scanner, client: ClientClaudeCode, binaryName: ClaudeBinaryName, displayName: ClaudeDisplayName}
+	return ProviderConfig{Scanner: scanner, Client: ClientClaudeCode, BinaryName: ClaudeBinaryName, DisplayName: ClaudeDisplayName}
 }
