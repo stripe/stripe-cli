@@ -37,7 +37,7 @@ type CodexProvider struct {
 }
 
 // NewCodexProvider returns a Codex CLI setup provider.
-func NewCodexProvider(scanner Scanner, runCommand RunCommandFunc) CodexProvider {
+func NewCodexProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 	if runCommand == nil {
 		runCommand = RunCommand
 	}

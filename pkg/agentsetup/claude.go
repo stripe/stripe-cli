@@ -33,10 +33,10 @@ func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 		runCommand = RunCommand
 	}
 	config := ProviderConfig{
-		scanner:     scanner,
-		client:      ClientClaudeCode,
-		binaryName:  ClaudeBinaryName,
-		displayName: ClaudeDisplayName,
+		Scanner:     scanner,
+		Client:      ClientClaudeCode,
+		BinaryName:  ClaudeBinaryName,
+		DisplayName: ClaudeDisplayName,
 	}
 	return ClaudeProvider{
 		ProviderConfig: ProviderConfig{
