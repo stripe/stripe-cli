@@ -19,6 +19,7 @@ func TestClaude_NotDetected(t *testing.T) {
 	require.Equal(t, ClientClaudeCode, status.Client)
 	require.False(t, status.Detected)
 	require.Equal(t, StatusNotDetected, status.Status)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
 func TestClaude_DetectedNoPluginSupport(t *testing.T) {
@@ -47,6 +48,7 @@ func TestClaude_DetectedPluginMissing(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
+	require.Equal(t, Plan{Action: ActionInstall, Command:[]string{"claude", "plugin", "install", "stripe@claude-plugins-official"}}, provider.Plan(status, false))
 }
 
 func TestClaude_OfficialPluginInstalled(t *testing.T) {
@@ -65,6 +67,8 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	require.Equal(t, TargetClaudePlugin, status.Plugin.ID)
 	require.Equal(t, "2.4.1", status.Plugin.Version)
 	require.Equal(t, "user", status.Plugin.Scope)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionReinstall, Command:[]string{"claude", "plugin", "install", "stripe@claude-plugins-official"}}, provider.Plan(status, true))
 }
 
 func TestClaude_MalformedJSON(t *testing.T) {
@@ -92,33 +96,10 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
+	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", "stripe@claude-plugins-official"}}, provider.Plan(status, false))
 }
 
-func TestClaude_PlanActions(t *testing.T) {
-	provider := ClaudeProvider{}
-	command := []string{"claude", "plugin", "install", TargetClaudePlugin}
-
-	tests := []struct {
-		name   string
-		status Status
-		force  bool
-		want   Plan
-	}{
-		{name: "not detected", status: Status{}, want: Plan{Action: ActionNone}},
-		{name: "error", status: Status{Detected: true, Status: StatusError}, force: true, want: Plan{Action: ActionNone}},
-		{name: "missing", status: Status{Detected: true, Status: StatusMissing}, want: Plan{Action: ActionInstall, Command: command}},
-		{name: "installed", status: Status{Detected: true, Status: StatusInstalled, Plugin: PluginStatus{Installed: true}}, want: Plan{Action: ActionNone}},
-		{name: "forced", status: Status{Detected: true, Status: StatusInstalled, Plugin: PluginStatus{Installed: true}}, force: true, want: Plan{Action: ActionReinstall, Command: command}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, provider.Plan(tt.status, tt.force))
-		})
-	}
-}
-
-func TestClaudeApply_RetriesAfterMarketplaceUpdate(t *testing.T) {
+func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 	installErr := errors.New("stale marketplace")
 	var calls [][]string
 	provider := ClaudeProvider{
