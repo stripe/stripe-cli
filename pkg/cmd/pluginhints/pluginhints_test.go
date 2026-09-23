@@ -295,6 +295,7 @@ func runViaCobra(t *testing.T, p *pluginHintCmd, aliases []string, argv []string
 	root := &cobra.Command{Use: "stripe", SilenceUsage: true, SilenceErrors: true}
 	// Stand in for the host's persistent flags, which Cobra consumes before RunE.
 	root.PersistentFlags().String("log-level", "", "")
+	root.PersistentFlags().StringP("project-name", "p", "", "")
 	root.AddCommand(p.Command)
 	root.SetArgs(argv[1:])
 	root.SetOut(p.stdout)
@@ -355,6 +356,21 @@ func TestRun_AutoInstall_ForwardsArgsToPlugin(t *testing.T) {
 			name:     "plugin flags after the plugin name are forwarded",
 			argv:     []string{"stripe", "directory", "search", "x", "--limit", "5"},
 			wantArgs: []string{"search", "x", "--limit", "5"},
+		},
+		{
+			name:     "profile value matching the plugin name is not the command",
+			argv:     []string{"stripe", "--project-name", "directory", "directory", "search", "directory"},
+			wantArgs: []string{"search", "directory"},
+		},
+		{
+			name:     "short profile flag with a separate value",
+			argv:     []string{"stripe", "-p", "directory", "directory", "search"},
+			wantArgs: []string{"search"},
+		},
+		{
+			name:     "short profile flag with an attached value",
+			argv:     []string{"stripe", "-pdirectory", "directory", "search"},
+			wantArgs: []string{"search"},
 		},
 		{
 			name:     "bare invocation forwards no args",
@@ -759,6 +775,16 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 		{
 			name:     "help subcommand with a plugin subcommand",
 			argv:     []string{"stripe", "help", "directory", "search"},
+			wantArgs: []string{"search", "--help"},
+		},
+		{
+			name:     "help flag with a profile named after the plugin",
+			argv:     []string{"stripe", "--project-name", "directory", "directory", "search", "--help"},
+			wantArgs: []string{"search", "--help", "--help"},
+		},
+		{
+			name:     "help subcommand with a profile named after the plugin",
+			argv:     []string{"stripe", "-p", "directory", "help", "directory", "search"},
 			wantArgs: []string{"search", "--help"},
 		},
 	}

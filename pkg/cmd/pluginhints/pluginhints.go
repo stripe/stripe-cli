@@ -15,10 +15,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
-	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -294,7 +294,11 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 	if lookupErr == nil {
 		switch {
 		case p.autoInstallEnabled(resolved) && p.invokedByName(cmd):
-			return p.autoInstallAndRun(ctx, cmd, p.pluginArgs())
+			pluginArgs, err := p.pluginArgs()
+			if err != nil {
+				return err
+			}
+			return p.autoInstallAndRun(ctx, cmd, pluginArgs)
 		default:
 			return p.promptInstall(ctx)
 		}
@@ -382,7 +386,11 @@ func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command) (bool, error) {
 		return false, nil
 	}
 
-	if err := p.autoInstallAndRun(ctx, cmd, p.helpArgs()); err != nil {
+	pluginArgs, err := p.helpArgs()
+	if err != nil {
+		return false, err
+	}
+	if err := p.autoInstallAndRun(ctx, cmd, pluginArgs); err != nil {
 		return false, err
 	}
 
@@ -444,15 +452,46 @@ func (p *pluginHintCmd) autoInstallOptedOut() bool {
 	return err == nil && optedOut
 }
 
-// pluginArgs recovers the arguments intended for the plugin from the raw process
-// arguments. Cobra has already consumed the flags and the plugin name it
-// recognizes, so read them back from argv instead:
-// "stripe [host_flags...] directory [plugin_args...]" => "[plugin_args...]".
-//
-// Only the auto-install path forwards arguments, and invokedByName gates that on
-// the plugin's own name appearing in argv, so slicing after p.name is enough.
-func (p *pluginHintCmd) pluginArgs() []string {
-	return cmdutil.ArgsAfter(p.argvFn(), p.name)
+// commandArgs removes leading host flags using their definitions, so a flag value
+// equal to a plugin name cannot be mistaken for the command. Parsing stops at the
+// first positional argument and never sets flag values again.
+func (p *pluginHintCmd) commandArgs() ([]string, error) {
+	argv := p.argvFn()
+	if len(argv) == 0 {
+		return nil, nil
+	}
+	flags := pflag.NewFlagSet(p.name, pflag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.SetInterspersed(false)
+	flags.ParseErrorsAllowlist.UnknownFlags = p.FParseErrWhitelist.UnknownFlags
+	flags.AddFlagSet(p.Flags())
+	flags.AddFlagSet(p.InheritedFlags())
+	flags.AddFlagSet(p.Root().Flags())
+	flags.AddFlagSet(p.Root().PersistentFlags())
+	ignoreValue := func(*pflag.Flag, string) error { return nil }
+	if err := flags.ParseAll(argv[1:], ignoreValue); err != nil {
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "could not parse command arguments: %s", err)
+	}
+	args := flags.Args()
+	if len(args) > 0 && args[0] == "help" {
+		if err := flags.ParseAll(args[1:], ignoreValue); err != nil {
+			return nil, errorcategory.Errorf(errorcategory.UserInput, "could not parse help arguments: %s", err)
+		}
+		args = flags.Args()
+	}
+	return args, nil
+}
+
+// pluginArgs recovers the plugin's arguments without consuming its unknown flags.
+func (p *pluginHintCmd) pluginArgs() ([]string, error) {
+	args, err := p.commandArgs()
+	if err != nil {
+		return nil, err
+	}
+	if len(args) == 0 || args[0] != p.name {
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "could not locate the %q plugin command", p.name)
+	}
+	return append([]string{}, args[1:]...), nil
 }
 
 // invokedByName reports whether the user reached this command by the plugin's real
@@ -467,19 +506,23 @@ func (p *pluginHintCmd) invokedByName(cmd *cobra.Command) bool {
 
 	// Cobra records no CalledAs on the target of `stripe help <cmd>`, so read the
 	// name the user typed back from argv.
-	return slices.Contains(p.argvFn(), p.name)
+	args, err := p.commandArgs()
+	return err == nil && len(args) > 0 && args[0] == p.name
 }
 
 // helpArgs explicitly requests help even when the original help flag preceded the
 // plugin name and was stripped by pluginArgs. Put it last among the flags, before
 // any "--" separator, so it overrides an earlier --help=false and stays a flag.
-func (p *pluginHintCmd) helpArgs() []string {
-	args := p.pluginArgs()
+func (p *pluginHintCmd) helpArgs() ([]string, error) {
+	args, err := p.pluginArgs()
+	if err != nil {
+		return nil, err
+	}
 	endOfFlags := slices.Index(args, "--")
 	if endOfFlags == -1 {
 		endOfFlags = len(args)
 	}
-	return slices.Insert(args, endOfFlags, "--help")
+	return slices.Insert(args, endOfFlags, "--help"), nil
 }
 
 // commandContext returns the command's context, falling back to a background one
