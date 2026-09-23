@@ -502,6 +502,7 @@ func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProv
 			},
 		},
 	}
+	return provider
 }
 
 // grokMissingProvider returns a Grok provider that detects the binary, starts
@@ -519,6 +520,7 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 			},
 		},
 	}
+	return provider
 }
 
 func TestAgentSetupUnsupportedAgentInstallsSkillsToLocal(t *testing.T) {
