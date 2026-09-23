@@ -154,6 +154,17 @@ func fetchLatestRelease() (ver string, downloadURL string, checksum string, rele
 		checksum = fetchChecksumForAsset(checksumURL, assetName)
 	}
 
+	// No checksum, no update. Both ways of ending up without one -- the release
+	// publishing no checksums file, or the fetch for it failing -- used to leave
+	// checksum empty and stage the update anyway, and VerifyChecksum treats an
+	// empty expectation as a pass. A single failed HTTP request was therefore
+	// enough to turn integrity checking off for that update, silently. Refusing
+	// to stage costs a day: the next check tries again.
+	if checksum == "" {
+		log.Debug("autoupdate: no checksum published for ", assetName, "; refusing to stage an unverifiable update")
+		return "", "", "", ""
+	}
+
 	return ver, binaryURL, checksum, releaseNotes
 }
 

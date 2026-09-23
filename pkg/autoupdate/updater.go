@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,12 +14,25 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
+
+// downloadTimeout bounds the whole download, headers through last byte. A var so
+// that tests can shorten it rather than wait out the real value.
+//
+// This runs before the command the user typed, so the question is not how slow a
+// connection we can tolerate but how long we are willing to make someone wait for
+// work they did not ask for. Abandoning the attempt is cheap: the marker stays
+// staged for the next invocation, and their command runs now on the version they
+// already have. Without a bound, a connection that accepts and then stalls hangs
+// that command indefinitely -- net/http's default transport limits the dial and
+// the TLS handshake, but not reading the body.
+var downloadTimeout = 2 * time.Minute
 
 // ApplyIfPending checks for a pending update marker and applies it.
 // If an update is applied, it re-execs the current process with the new binary.
@@ -80,7 +94,17 @@ func ApplyIfPending() {
 }
 
 func downloadAndReplace(marker *UpdateMarker, exePath string) error {
-	resp, err := http.Get(marker.DownloadURL) //nolint:gosec
+	// Canceled when this function returns, which is after the body has been read,
+	// so the deadline covers the transfer and not just the response headers.
+	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, marker.DownloadURL, nil)
+	if err != nil {
+		return fmt.Errorf("cannot create download request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}

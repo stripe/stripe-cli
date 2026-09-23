@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -318,4 +319,48 @@ func TestApplyIfPending_SameVersion(t *testing.T) {
 
 	// Marker should still exist since version.Version is "master" and we return early
 	// (the "master" check happens before reading the marker)
+}
+
+// A server that accepts the request and then stalls is the case net/http's
+// default transport does not cover: it bounds the dial and the TLS handshake, but
+// not reading the body. Before the deadline, this hung the user's command.
+func TestDownloadAndReplace_StalledDownloadTimesOut(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1000000")
+		w.WriteHeader(http.StatusOK)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		_, _ = w.Write([]byte("partial"))
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		<-release // never send the rest until the test is done
+	}))
+	defer func() { close(release); server.Close() }()
+
+	original := downloadTimeout
+	downloadTimeout = 300 * time.Millisecond
+	defer func() { downloadTimeout = original }()
+
+	dir := t.TempDir()
+	exePath := filepath.Join(dir, binaryName())
+	require.NoError(t, os.WriteFile(exePath, []byte("old binary"), 0755))
+
+	marker := &UpdateMarker{Version: "1.43.8", DownloadURL: server.URL + "/stripe.tar.gz"}
+
+	start := time.Now()
+	err := downloadAndReplace(marker, exePath)
+
+	assert.Error(t, err)
+	assert.Less(t, time.Since(start), 30*time.Second, "must give up on the deadline, not hang")
+
+	// The binary the user is running is untouched, and nothing staged is left.
+	got, readErr := os.ReadFile(exePath)
+	require.NoError(t, readErr)
+	assert.Equal(t, []byte("old binary"), got)
+	entries, readErr := os.ReadDir(dir)
+	require.NoError(t, readErr)
+	assert.Len(t, entries, 1)
 }
