@@ -110,9 +110,7 @@ func TestInstallUsesPluginMetadataEndpointWhenAPIKeyAvailable(t *testing.T) {
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/v1/stripecli/get-plugin-metadata":
-			// The server keys the auto-install rollout on this, so every metadata
-			// request has to carry it.
-			require.Equal(t, TestMachineUUID, req.URL.Query().Get("machine_uuid"))
+			require.False(t, req.URL.Query().Has("machine_uuid"))
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
 				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
@@ -155,9 +153,7 @@ func TestInstallUsesAnonymousPluginMetadataEndpointWhenAPIKeyUnavailable(t *test
 	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/ajax/stripecli/plugins_metadata":
-			// The anonymous endpoint keys the auto-install rollout on this too, and it
-			// is the only identifier it gets.
-			require.Equal(t, TestMachineUUID, req.URL.Query().Get("machine_uuid"))
+			require.False(t, req.URL.Query().Has("machine_uuid"))
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      fmt.Sprintf("%s/appA/2.0.1/%s/%s/stripe-cli-app-a", artifactoryServer.URL, runtime.GOOS, runtime.GOARCH),
 				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),

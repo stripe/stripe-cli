@@ -46,8 +46,8 @@ type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
-	// AutoInstall carries the metadata endpoint's answer to "may this machine
-	// install this plugin without being asked?". It is only ever true for a
+	// AutoInstall carries the backend's per-plugin setting for installing on first
+	// use without prompting. It is only ever true for a
 	// resolution that came from a live metadata response: a resolution that fell
 	// back to cached metadata leaves it false, so a machine that cannot reach the
 	// endpoint keeps prompting rather than installing on a stale answer.
@@ -842,7 +842,7 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		basePlugin = &cachedPlugin
 	}
 
-	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, config.GetMachineUUID())
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		// Translated here rather than left to normalizePluginMetadataError, which only
 		// runs once the cached lookup has failed too. The endpoint is the only thing that

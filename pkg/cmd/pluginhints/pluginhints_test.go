@@ -21,9 +21,7 @@ import (
 )
 
 // pluginFound and pluginAutoInstallable stand in for the metadata lookup. The
-// resolved version carries the server's answer to whether the auto-install
-// rollout has reached this machine, so a test picks which side of that rollout it
-// is running on by picking between these two.
+// resolved version carries the backend's per-plugin auto-install setting.
 func pluginFound(context.Context) (*plugins.ResolvedPluginVersion, error) {
 	return &plugins.ResolvedPluginVersion{}, nil
 }
@@ -43,24 +41,21 @@ func pluginLookupFails(message string) pluginResolver {
 // By default accountIDFn reports a logged-in account; override in tests that
 // need to simulate an unauthenticated user.
 func newTestCmd(name string, opts ...option) *pluginHintCmd {
-	p := &pluginHintCmd{
-		name:          name,
-		description:   "Test description.",
-		stdout:        &bytes.Buffer{},
-		stderr:        &bytes.Buffer{},
-		stdin:         strings.NewReader(""),
-		accountIDFn:   func() (string, error) { return "acct_test", nil },
-		loginFn:       func(ctx context.Context) error { return nil },
-		accessBaseURL: login.DefaultAccessBaseURL,
-		argvFn:        func() []string { return []string{"stripe", name} },
-		lookupEnvFn:   func(string) string { return "" },
-	}
-	for _, opt := range opts {
-		opt(p)
-	}
-	// Use the production command wiring so flag and help handling can't drift from
-	// what a real invocation gets.
-	p.initCommand()
+	return newTestCmdWithRunner(name, nil, opts...)
+}
+
+func newTestCmdWithRunner(name string, runPlugin PluginRunner, opts ...option) *pluginHintCmd {
+	p := newPluginHintCmd(&config.Config{}, name, "Test description.", runPlugin, opts...)
+	p.stdout = &bytes.Buffer{}
+	p.stderr = &bytes.Buffer{}
+	p.stdin = strings.NewReader("")
+	p.accountIDFn = func() (string, error) { return "acct_test", nil }
+	p.loginFn = func(ctx context.Context) error { return nil }
+	p.argvFn = func() []string { return []string{"stripe", name} }
+	p.lookupEnvFn = func(string) string { return "" }
+	// Fail immediately if a test forgets to mock a side effect.
+	p.lookupFn = pluginLookupFails("unexpected metadata lookup")
+	p.installFn = func(context.Context) error { return errors.New("unexpected install") }
 	// The host normally points Cobra at stdout; do the same so help rendered by
 	// Cobra lands in the same buffer as this command's own output.
 	p.SetOut(p.stdout)
@@ -261,6 +256,7 @@ func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
 			stdout:         os.Stdout,
 			stdin:          strings.NewReader(""),
 			accessBaseURL:  login.DefaultAccessBaseURL,
+			lookupEnvFn:    func(string) string { return "" },
 		}
 		p.Command = &cobra.Command{Use: "generate", RunE: p.run}
 		p.lookupFn = pluginLookupFails("not found")
@@ -299,6 +295,7 @@ func runViaCobra(t *testing.T, p *pluginHintCmd, aliases []string, argv []string
 	root := &cobra.Command{Use: "stripe", SilenceUsage: true, SilenceErrors: true}
 	// Stand in for the host's persistent flags, which Cobra consumes before RunE.
 	root.PersistentFlags().String("log-level", "", "")
+	root.PersistentFlags().StringP("project-name", "p", "", "")
 	root.AddCommand(p.Command)
 	root.SetArgs(argv[1:])
 	root.SetOut(p.stdout)
@@ -308,8 +305,7 @@ func runViaCobra(t *testing.T, p *pluginHintCmd, aliases []string, argv []string
 }
 
 // newAutoInstallTestCmd builds a command whose metadata lookup reports that the
-// auto-install rollout has reached this machine, which is what makes the
-// auto-install paths below reachable at all.
+// backend has enabled auto-install for the plugin.
 func newAutoInstallTestCmd(name string, opts ...option) *pluginHintCmd {
 	p := newTestCmd(name, opts...)
 	p.lookupFn = pluginAutoInstallable
@@ -318,7 +314,7 @@ func newAutoInstallTestCmd(name string, opts ...option) *pluginHintCmd {
 }
 
 func TestRun_AutoInstall_InstallsAndRunsWithoutPrompting(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 	var ranWith []string
@@ -362,6 +358,21 @@ func TestRun_AutoInstall_ForwardsArgsToPlugin(t *testing.T) {
 			wantArgs: []string{"search", "x", "--limit", "5"},
 		},
 		{
+			name:     "profile value matching the plugin name is not the command",
+			argv:     []string{"stripe", "--project-name", "directory", "directory", "search", "directory"},
+			wantArgs: []string{"search", "directory"},
+		},
+		{
+			name:     "short profile flag with a separate value",
+			argv:     []string{"stripe", "-p", "directory", "directory", "search"},
+			wantArgs: []string{"search"},
+		},
+		{
+			name:     "short profile flag with an attached value",
+			argv:     []string{"stripe", "-pdirectory", "directory", "search"},
+			wantArgs: []string{"search"},
+		},
+		{
 			name:     "bare invocation forwards no args",
 			argv:     []string{"stripe", "directory"},
 			wantArgs: []string{},
@@ -370,7 +381,7 @@ func TestRun_AutoInstall_ForwardsArgsToPlugin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p := newAutoInstallTestCmd("directory")
 			var ranWith []string
 			p.runPluginFn = func(cmd *cobra.Command, args []string) error { ranWith = args; return nil }
 
@@ -412,7 +423,7 @@ func TestRun_AutoInstall_AliasPromptsInsteadOfInstalling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p := newAutoInstallTestCmd("directory")
 			// Declining at the prompt is how this test tells the two paths apart:
 			// auto-install never reads stdin.
 			p.stdin = strings.NewReader("no\n")
@@ -436,7 +447,7 @@ func TestRun_AutoInstall_AliasPromptsInsteadOfInstalling(t *testing.T) {
 }
 
 func TestRun_AutoInstall_InstallErrorSkipsPluginRun(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.installFn = func(ctx context.Context) error { return errors.New("install failed") }
 	runCalled := false
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error { runCalled = true; return nil }
@@ -448,7 +459,7 @@ func TestRun_AutoInstall_InstallErrorSkipsPluginRun(t *testing.T) {
 }
 
 func TestRun_AutoInstall_PropagatesPluginError(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error { return errors.New("plugin blew up") }
 
 	err := p.run(p.Command, nil)
@@ -457,7 +468,7 @@ func TestRun_AutoInstall_PropagatesPluginError(t *testing.T) {
 }
 
 func TestRun_AutoInstall_PrintsNextStepsBeforeRunningPlugin(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	var errOutputAtRunTime string
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error {
 		errOutputAtRunTime = p.errOutput()
@@ -478,7 +489,7 @@ func TestRun_AutoInstall_PrintsNextStepsBeforeRunningPlugin(t *testing.T) {
 // anything parsing the output: installing on demand must not prepend human-readable
 // setup chatter to the stream the plugin's own result arrives on.
 func TestRun_AutoInstall_LeavesStdoutToThePlugin(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	var stdoutAtRunTime string
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error {
 		stdoutAtRunTime = p.output()
@@ -496,7 +507,7 @@ func TestRun_AutoInstall_LeavesStdoutToThePlugin(t *testing.T) {
 }
 
 func TestRun_AutoInstall_NoRunnerPrintsNextSteps(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 
@@ -509,54 +520,56 @@ func TestRun_AutoInstall_NoRunnerPrintsNextSteps(t *testing.T) {
 }
 
 func TestRun_AutoInstall_OptedOutDoesNotInstallOrPrompt(t *testing.T) {
-	for _, value := range []string{"1", "true", "TRUE"} {
-		t.Run(value, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
-			p.lookupEnvFn = func(key string) string {
-				if key == AutoInstallOptOutEnvVar {
-					return value
+	for _, name := range []string{"directory", "apps", "generate", "projects", "pay", "tools"} {
+		for _, value := range []string{"1", "true", "TRUE"} {
+			t.Run(name+"/"+value, func(t *testing.T) {
+				p := newAutoInstallTestCmd(name)
+				p.lookupEnvFn = func(key string) string {
+					if key == AutoInstallOptOutEnvVar {
+						return value
+					}
+					return ""
 				}
-				return ""
-			}
-			lookupCalled := false
-			p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
-				lookupCalled = true
-				return nil, errors.New("lookup unavailable")
-			}
-			p.accountIDFn = func() (string, error) { return "", nil }
-			installCalled := false
-			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
-			runCalled := false
-			p.runPluginFn = func(cmd *cobra.Command, args []string) error { runCalled = true; return nil }
-			loginCalled := false
-			p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
-			stdin := strings.NewReader("unread\n")
-			p.stdin = stdin
+				lookupCalled := false
+				p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
+					lookupCalled = true
+					return nil, errors.New("lookup unavailable")
+				}
+				p.accountIDFn = func() (string, error) { return "", nil }
+				installCalled := false
+				p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
+				runCalled := false
+				p.runPluginFn = func(cmd *cobra.Command, args []string) error { runCalled = true; return nil }
+				loginCalled := false
+				p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
+				stdin := strings.NewReader("unread\n")
+				p.stdin = stdin
 
-			err := p.run(p.Command, nil)
+				err := p.run(p.Command, nil)
 
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "stripe plugin install directory")
-			assert.Contains(t, err.Error(), AutoInstallOptOutEnvVar)
-			assert.False(t, lookupCalled)
-			assert.False(t, installCalled)
-			assert.False(t, runCalled)
-			assert.False(t, loginCalled)
-			// The host prints the error, so repeating it on either stream would say
-			// the same thing twice.
-			assert.Empty(t, p.output())
-			assert.Empty(t, p.errOutput())
-			remaining, readErr := io.ReadAll(stdin)
-			require.NoError(t, readErr)
-			assert.Equal(t, "unread\n", string(remaining))
-		})
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "stripe plugin install "+name)
+				assert.Contains(t, err.Error(), AutoInstallOptOutEnvVar)
+				assert.False(t, lookupCalled)
+				assert.False(t, installCalled)
+				assert.False(t, runCalled)
+				assert.False(t, loginCalled)
+				// The host prints the error, so repeating it on either stream would say
+				// the same thing twice.
+				assert.Empty(t, p.output())
+				assert.Empty(t, p.errOutput())
+				remaining, readErr := io.ReadAll(stdin)
+				require.NoError(t, readErr)
+				assert.Equal(t, "unread\n", string(remaining))
+			})
+		}
 	}
 }
 
 func TestRun_AutoInstall_UnsetOrFalsyOptOutStillInstalls(t *testing.T) {
 	for _, value := range []string{"", "0", "false", "nonsense"} {
 		t.Run(value, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p := newAutoInstallTestCmd("directory")
 			p.lookupEnvFn = func(string) string { return value }
 			installCalled := false
 			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
@@ -572,7 +585,7 @@ func TestRun_AutoInstall_UnsetOrFalsyOptOutStillInstalls(t *testing.T) {
 
 func TestRun_AutoInstall_LookupFailureStillFallsBackToHints(t *testing.T) {
 	// Auto-install must not mask the not-available and login paths.
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.lookupFn = pluginLookupFails("not found")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
@@ -620,10 +633,8 @@ func TestRun_PluginRequiresNewerCLI_ReportsVersionInsteadOfHints(t *testing.T) {
 	}
 }
 
-// TestRun_AutoInstall_ServerDecisionGatesInstalling pins that opting a plugin into
-// auto-install only makes it eligible: the metadata endpoint decides per machine,
-// so a machine the rollout has not reached gets the same prompt as every other
-// not-yet-installed plugin.
+// TestRun_AutoInstall_ServerDecisionGatesInstalling verifies that only an explicit
+// backend opt-in skips the installation prompt.
 func TestRun_AutoInstall_ServerDecisionGatesInstalling(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -631,12 +642,12 @@ func TestRun_AutoInstall_ServerDecisionGatesInstalling(t *testing.T) {
 		wantInstall bool
 	}{
 		{
-			name:        "rollout reached this machine",
+			name:        "backend enabled auto-install",
 			lookupFn:    pluginAutoInstallable,
 			wantInstall: true,
 		},
 		{
-			name:     "rollout has not reached this machine",
+			name:     "backend disabled auto-install",
 			lookupFn: pluginFound,
 		},
 		{
@@ -651,7 +662,7 @@ func TestRun_AutoInstall_ServerDecisionGatesInstalling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p := newAutoInstallTestCmd("directory")
 			p.lookupFn = tt.lookupFn
 			// Declining at the prompt is how this test tells the two paths apart:
 			// auto-install never reads stdin.
@@ -672,21 +683,63 @@ func TestRun_AutoInstall_ServerDecisionGatesInstalling(t *testing.T) {
 			}
 
 			assert.EqualError(t, err, "installation canceled")
-			assert.False(t, installed, "the server did not opt this machine in")
+			assert.False(t, installed, "the backend did not enable auto-install")
 			assert.False(t, ran)
 			assert.Contains(t, p.output(), "press Enter to install")
 		})
 	}
 }
 
-func TestRun_WithoutAutoInstall_StillPrompts(t *testing.T) {
-	p := newAutoInstallTestCmd("apps")
-	p.stdin = strings.NewReader("\n")
+func TestAutoInstall_BackendControlsEveryPlugin(t *testing.T) {
+	for _, name := range []string{"apps", "generate", "projects", "pay", "directory", "tools"} {
+		for _, enabled := range []bool{true, false} {
+			for _, help := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/auto_install=%t/help=%t", name, enabled, help), func(t *testing.T) {
+					installed, ran := false, false
+					pluginArgs := []string{"subcommand", "--format", "json"}
+					if help {
+						pluginArgs = []string{"subcommand", "--help"}
+					}
+					p := newTestCmdWithRunner(name, func(cmd *cobra.Command, pluginName string, args []string) error {
+						assert.True(t, installed)
+						assert.Equal(t, name, pluginName)
+						wantArgs := pluginArgs
+						if help {
+							wantArgs = append(append([]string{}, pluginArgs...), "--help")
+						}
+						assert.Equal(t, wantArgs, args)
+						ran = true
+						return nil
+					}, withPrivatePreview())
+					p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+						return &plugins.ResolvedPluginVersion{AutoInstall: enabled}, nil
+					}
+					p.installFn = func(context.Context) error { installed = true; return nil }
+					stdin := strings.NewReader("no\n")
+					p.stdin = stdin
 
-	err := p.run(p.Command, nil)
+					err := runViaCobra(t, p, nil, append([]string{"stripe", name}, pluginArgs...))
 
-	require.NoError(t, err)
-	assert.Contains(t, p.output(), "press Enter to install")
+					if !enabled && !help {
+						require.EqualError(t, err, "installation canceled")
+						assert.Contains(t, p.output(), "press Enter to install")
+					} else {
+						require.NoError(t, err)
+						assert.NotContains(t, p.output(), "press Enter")
+						remaining, readErr := io.ReadAll(stdin)
+						require.NoError(t, readErr)
+						assert.Equal(t, "no\n", string(remaining))
+					}
+					assert.Equal(t, enabled, installed)
+					assert.Equal(t, enabled, ran)
+					if !enabled && help {
+						assert.Contains(t, p.output(), "Test description.")
+						assert.Empty(t, p.errOutput())
+					}
+				})
+			}
+		}
+	}
 }
 
 // --- auto-install help ---
@@ -701,17 +754,17 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 		{
 			name:     "help flag",
 			argv:     []string{"stripe", "directory", "--help"},
-			wantArgs: []string{"--help"},
+			wantArgs: []string{"--help", "--help"},
 		},
 		{
 			name:     "short help flag is forwarded as typed",
 			argv:     []string{"stripe", "directory", "-h"},
-			wantArgs: []string{"-h"},
+			wantArgs: []string{"-h", "--help"},
 		},
 		{
 			name:     "help flag on a plugin subcommand",
 			argv:     []string{"stripe", "directory", "search", "--help"},
-			wantArgs: []string{"search", "--help"},
+			wantArgs: []string{"search", "--help", "--help"},
 		},
 		{
 			name: "help subcommand",
@@ -724,11 +777,21 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 			argv:     []string{"stripe", "help", "directory", "search"},
 			wantArgs: []string{"search", "--help"},
 		},
+		{
+			name:     "help flag with a profile named after the plugin",
+			argv:     []string{"stripe", "--project-name", "directory", "directory", "search", "--help"},
+			wantArgs: []string{"search", "--help", "--help"},
+		},
+		{
+			name:     "help subcommand with a profile named after the plugin",
+			argv:     []string{"stripe", "-p", "directory", "help", "directory", "search"},
+			wantArgs: []string{"search", "--help"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p := newAutoInstallTestCmd("directory")
 			installCalled := false
 			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 			var ranWith []string
@@ -747,6 +810,57 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 	}
 }
 
+func TestHelp_AutoInstall_NeverRunsPluginAction(t *testing.T) {
+	tests := []struct {
+		name string
+		argv []string
+	}{
+		{
+			name: "help flag before the plugin name",
+			argv: []string{"stripe", "--help=true", "apps", "upload"},
+		},
+		{
+			name: "short help flag before the plugin name",
+			argv: []string{"stripe", "-h=true", "apps", "upload"},
+		},
+		{
+			name: "help flag before the plugin name with positional arguments",
+			argv: []string{"stripe", "--help=true", "apps", "upload", "--", "payload"},
+		},
+		{
+			name: "help subcommand with a disabled help flag",
+			argv: []string{"stripe", "help", "apps", "upload", "--help=false"},
+		},
+		{
+			name: "help subcommand with positional arguments",
+			argv: []string{"stripe", "help", "apps", "upload", "--", "payload"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newAutoInstallTestCmd("apps")
+			helpShown, uploadCalled := false, false
+			p.runPluginFn = func(cmd *cobra.Command, args []string) error {
+				pluginCmd := &cobra.Command{Use: "apps"}
+				pluginCmd.AddCommand(&cobra.Command{
+					Use: "upload",
+					Run: func(cmd *cobra.Command, args []string) { uploadCalled = true },
+				})
+				pluginCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) { helpShown = true })
+				pluginCmd.SetArgs(args)
+				return pluginCmd.Execute()
+			}
+
+			err := runViaCobra(t, p, nil, tt.argv)
+
+			require.NoError(t, err)
+			assert.True(t, helpShown, "the plugin must receive a help request")
+			assert.False(t, uploadCalled, "a help request must never execute the plugin action")
+		})
+	}
+}
+
 // TestHelp_AutoInstall_AliasShowsPlaceholderHelpWithoutInstalling is the help-side
 // half of the rule in TestRun_AutoInstall_AliasPromptsInsteadOfInstalling: asking an
 // alias what it does must not download anything.
@@ -761,7 +875,7 @@ func TestHelp_AutoInstall_AliasShowsPlaceholderHelpWithoutInstalling(t *testing.
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+			p := newAutoInstallTestCmd("directory")
 			installCalled := false
 			p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 			p.runPluginFn = func(cmd *cobra.Command, args []string) error { return nil }
@@ -777,7 +891,7 @@ func TestHelp_AutoInstall_AliasShowsPlaceholderHelpWithoutInstalling(t *testing.
 }
 
 func TestHelp_AutoInstall_OptedOutShowsPlaceholderHelpWithoutInstalling(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.lookupEnvFn = func(string) string { return "1" }
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
@@ -798,7 +912,7 @@ func TestHelp_AutoInstall_OptedOutShowsPlaceholderHelpWithoutInstalling(t *testi
 }
 
 func TestHelp_AutoInstall_LookupFailureShowsPlaceholderHelp(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.lookupFn = pluginLookupFails("no metadata")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
@@ -813,7 +927,7 @@ func TestHelp_AutoInstall_LookupFailureShowsPlaceholderHelp(t *testing.T) {
 }
 
 func TestHelp_AutoInstall_InstallFailureShowsPlaceholderHelp(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.installFn = func(ctx context.Context) error { return errors.New("install failed") }
 	runCalled := false
 	p.runPluginFn = func(cmd *cobra.Command, args []string) error { runCalled = true; return nil }
@@ -836,7 +950,7 @@ func TestHelp_AutoInstall_InstallFailureShowsPlaceholderHelp(t *testing.T) {
 }
 
 func TestHelp_AutoInstall_NoRunnerShowsPlaceholderHelpWithoutInstalling(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 
@@ -850,11 +964,10 @@ func TestHelp_AutoInstall_NoRunnerShowsPlaceholderHelpWithoutInstalling(t *testi
 }
 
 // TestHelp_AutoInstall_ServerOptOutShowsPlaceholderHelpQuietly is the help-side half
-// of TestRun_AutoInstall_ServerDecisionGatesInstalling. The rollout is not the user's
-// business, so a machine it has not reached sees the plain placeholder help with no
-// explanation of why the plugin did not document itself.
+// of TestRun_AutoInstall_ServerDecisionGatesInstalling. A plugin without auto-install
+// enabled shows the placeholder help without an explanation.
 func TestHelp_AutoInstall_ServerOptOutShowsPlaceholderHelpQuietly(t *testing.T) {
-	p := newAutoInstallTestCmd("directory", withAutoInstall(nil))
+	p := newAutoInstallTestCmd("directory")
 	p.lookupFn = pluginFound
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
@@ -874,6 +987,8 @@ func TestHelp_AutoInstall_ServerOptOutShowsPlaceholderHelpQuietly(t *testing.T) 
 
 func TestHelp_WithoutAutoInstall_ShowsPlaceholderHelp(t *testing.T) {
 	p := newAutoInstallTestCmd("apps")
+	p.lookupFn = pluginFound
+	p.runPluginFn = func(cmd *cobra.Command, args []string) error { return nil }
 	installCalled := false
 	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
 
