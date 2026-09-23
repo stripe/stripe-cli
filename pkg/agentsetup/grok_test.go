@@ -23,6 +23,7 @@ func TestGrok_NotDetected(t *testing.T) {
 	require.Equal(t, "Grok", status.DisplayName)
 	require.False(t, status.Detected)
 	require.Equal(t, StatusNotDetected, status.Status)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
 func TestGrok_PluginMissing(t *testing.T) {
@@ -53,6 +54,7 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.Equal(t, "0.7.1", status.Plugin.Version)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"grok", "plugin", "update", GrokPluginName}}, provider.Plan(status, true))
 }
 
 func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
@@ -63,16 +65,6 @@ func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.Contains(t, status.Error, "upgrade Grok Build")
-}
-
-func TestGrok_PlanReinstallWhenForced(t *testing.T) {
-	status := Status{Detected: true, Plugin: PluginStatus{Installed: true}}
-	provider := GrokProvider{}
-
-	plan := provider.Plan(status, true)
-
-	require.Equal(t, ActionReinstall, plan.Action)
-	require.Equal(t, []string{"grok", "plugin", "update", GrokPluginName}, plan.Command)
 }
 
 func TestGrokApply_RunsInstallCommand(t *testing.T) {
