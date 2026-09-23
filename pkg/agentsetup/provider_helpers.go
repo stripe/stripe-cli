@@ -20,8 +20,8 @@ func detectExecutable(scanner Scanner, client, displayName, binaryName, detected
 	return status, true
 }
 
-// standardPlan returns the common install plan for providers
-func standardPlan(status Status, force bool, installCommand []string, reinstallCommand []string) Plan {
+// determinePlan returns the common install plan for providers
+func determinePlan(status Status, force bool, installCommand []string, reinstallCommand []string) Plan {
 	switch {
 	case status.Status == StatusError:
 		return Plan{Action: ActionNone}
