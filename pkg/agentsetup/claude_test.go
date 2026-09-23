@@ -177,3 +177,7 @@ func mustJSON(t *testing.T, v interface{}) []byte {
 	require.NoError(t, err)
 	return b
 }
+
+func claudeProviderConfig(scanner Scanner) ProviderConfig {
+	return ProviderConfig{scanner: scanner, client: ClientClaudeCode, binaryName: ClaudeBinaryName, displayName: ClaudeDisplayName}
+}
