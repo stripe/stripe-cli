@@ -146,7 +146,7 @@ func TestClaude_PlanActions(t *testing.T) {
 	}
 }
 
-func TestClaudeApply_RetriesAfterMarketplaceUpdate(t *testing.T) {
+func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 	installErr := errors.New("stale marketplace")
 	var calls [][]string
 	provider := ClaudeProvider{
