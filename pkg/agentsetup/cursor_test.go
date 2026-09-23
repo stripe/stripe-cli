@@ -9,7 +9,7 @@ import (
 
 func TestCursor_NotDetected(t *testing.T) {
 	provider := CursorProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
+		config: ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, client: ClientCursor, binaryName: CursorBinaryName, displayName: CursorDisplayName},
 	}
 
 	status := provider.Detect()
@@ -22,7 +22,7 @@ func TestCursor_NotDetected(t *testing.T) {
 
 func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 	provider := CursorProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }},
+		config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -35,7 +35,7 @@ func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 
 func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 	provider := CursorProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }},
+		config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -47,7 +47,7 @@ func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 
 func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
 	provider := CursorProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
+		config: ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, client: ClientCursor, binaryName: CursorBinaryName, displayName: CursorDisplayName},
 	}
 
 	status := provider.Detect()
@@ -58,7 +58,7 @@ func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
 
 func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 	provider := CursorProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }},
+		config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -70,10 +70,14 @@ func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 
 func TestCursor_ErrorHintForTUIDisable(t *testing.T) {
 	provider := CursorProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }},
+		config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
 
 	require.Contains(t, status.Error, "/add-plugin stripe")
+}
+
+func cursorProviderConfig() ProviderConfig {
+	return ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}, client: ClientCursor, binaryName: CursorBinaryName, displayName: CursorDisplayName}
 }

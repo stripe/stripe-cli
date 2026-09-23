@@ -24,24 +24,27 @@ const (
 // detects the plugin from disk and, when it is missing, points the user at the
 // in-app command rather than shelling out.
 type CursorProvider struct {
-	Scanner Scanner
+	config ProviderConfig
 }
 
 // NewCursorProvider returns a Cursor setup provider. The RunCommandFunc argument
 // is accepted for signature parity with the other providers but is unused,
 // because Cursor has no CLI installer.
-func NewCursorProvider(scanner Scanner, _ RunCommandFunc) Provider {
-	return CursorProvider{Scanner: scanner}
+func NewCursorProvider(scanner Scanner, _ RunCommandFunc) CursorProvider {
+	config := ProviderConfig{
+		scanner:     scanner,
+		client:      ClientCursor,
+		binaryName:  CursorBinaryName,
+		displayName: CursorDisplayName,
+	}
+	return CursorProvider{config: config}
 }
 
-func (p CursorProvider) ID() string { return ClientCursor }
+func (p CursorProvider) ID() string { return p.config.client }
 
 func (p CursorProvider) Detect() Status {
-	status, detected := detectExecutable(
-		p.Scanner.withDefaults(),
-		ClientCursor,
-		CursorDisplayName,
-		CursorBinaryName,
+	status, detected := detectAgentExecutable(
+		p.config,
 		StatusUnknown,
 	)
 	if !detected {
