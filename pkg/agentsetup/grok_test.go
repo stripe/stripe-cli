@@ -10,7 +10,7 @@ import (
 
 func TestGrok_NotDetected(t *testing.T) {
 	provider := GrokProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
+		config: ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, client: ClientGrok, binaryName: GrokBinaryName, displayName: GrokDisplayName},
 		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
 			t.Fatal("plugin list should not run when Grok is not detected")
 			return nil, nil
@@ -102,7 +102,7 @@ func TestGrokApply_NoneIsNoop(t *testing.T) {
 
 func grokTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) GrokProvider {
 	return GrokProvider{
-		Scanner:    Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }},
+		config:     ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}, client: ClientGrok, binaryName: GrokBinaryName, displayName: GrokDisplayName},
 		RunCommand: runCommand,
 		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
 			if listErr != nil {

@@ -34,33 +34,38 @@ type RunOutputFunc func(context.Context, string, ...string) ([]byte, error)
 // Detection selects the first available supported marketplace, and installation
 // runs `codex plugin add stripe@<marketplace>` using that selection.
 type CodexProvider struct {
-	Scanner    Scanner
 	RunCommand RunCommandFunc
 	RunOutput  RunOutputFunc
+	config     ProviderConfig
 }
 
 // NewCodexProvider returns a Codex CLI setup provider.
-func NewCodexProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
+func NewCodexProvider(scanner Scanner, runCommand RunCommandFunc) CodexProvider {
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
+
+	config := ProviderConfig{
+		scanner:     scanner,
+		client:      ClientCodex,
+		binaryName:  CodexBinaryName,
+		displayName: CodexDisplayName,
+	}
 	return CodexProvider{
-		Scanner:    scanner,
 		RunCommand: runCommand,
 		RunOutput:  runCommandOutput,
+		config:     config,
 	}
 }
 
-func (p CodexProvider) ID() string { return ClientCodex }
+func (p CodexProvider) ID() string { return p.config.client }
 
 func (p CodexProvider) Detect() Status {
-	status, detected := detectExecutable(
-		p.Scanner.withDefaults(),
-		ClientCodex,
-		CodexDisplayName,
-		CodexBinaryName,
+	status, detected := detectAgentExecutable(
+		p.config,
 		StatusMissing,
 	)
+
 	if !detected {
 		return status
 	}
@@ -99,7 +104,7 @@ func (p CodexProvider) marketplace(ctx context.Context) (string, error) {
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, CodexBinaryName, "plugin", "marketplace", "list", "--json")
+	out, err := runOutput(ctx, p.config.binaryName, "plugin", "marketplace", "list", "--json")
 	var list struct {
 		Marketplaces []struct {
 			Name string `json:"name"`
@@ -132,7 +137,7 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 		runOutput = runCommandOutput
 	}
 	// The unfiltered list can omit locally installed curated plugins.
-	out, err := runOutput(ctx, CodexBinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
+	out, err := runOutput(ctx, p.config.binaryName, "plugin", "list", "--marketplace", marketplace, "--json")
 	if err != nil {
 		return "", false, false
 	}
@@ -141,8 +146,8 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 }
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
-	command := []string{CodexBinaryName, "plugin", "add", status.Plugin.ID}
-	return determinePlan(status, force, command, command)
+	installOrReinstallcommand := []string{p.config.binaryName, "plugin", "add", status.Plugin.ID}
+	return determinePlan(status, force, installOrReinstallcommand, installOrReinstallcommand)
 }
 
 func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {

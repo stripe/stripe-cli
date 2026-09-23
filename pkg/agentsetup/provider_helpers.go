@@ -1,15 +1,17 @@
 package agentsetup
 
-// detectExecutable checks if the executable for the provider is available. detectedStatus is the status to report when the
-// executable exists but provider-specific detection has not completed yet.
-func detectExecutable(scanner Scanner, client, displayName, binaryName, detectedStatus string) (Status, bool) {
+// detectAgentExecutable checks if the executable for the agent is available. detectedStatus is the default status to report for the plugin when the
+// executable exists.
+func detectAgentExecutable(providerConfig ProviderConfig, detectedStatus string) (Status, bool) {
+	scanner := providerConfig.scanner.withDefaults()
+
 	status := Status{
-		Client:      client,
-		DisplayName: displayName,
+		Client:      providerConfig.client,
+		DisplayName: providerConfig.displayName,
 		Status:      StatusNotDetected,
 	}
 
-	path, err := scanner.LookPath(binaryName)
+	path, err := scanner.LookPath(providerConfig.binaryName)
 	if err != nil {
 		return status, false
 	}

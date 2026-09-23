@@ -24,9 +24,9 @@ const (
 
 // ClaudeProvider detects and configures the Stripe plugin for Claude Code.
 type ClaudeProvider struct {
-	Scanner    Scanner
 	RunCommand RunCommandFunc
 	RunOutput  RunOutputFunc
+	config     ProviderConfig
 }
 
 // NewClaudeProvider returns a Claude Code setup provider.
@@ -34,23 +34,26 @@ func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) ClaudeProvide
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
+	config := ProviderConfig{
+		scanner:     scanner,
+		client:      ClientClaudeCode,
+		binaryName:  ClaudeBinaryName,
+		displayName: ClaudeDisplayName,
+	}
 	return ClaudeProvider{
-		Scanner:    scanner,
 		RunCommand: runCommand,
 		RunOutput:  runCommandOutput,
+		config:     config,
 	}
 }
 
 func (p ClaudeProvider) ID() string {
-	return ClientClaudeCode
+	return p.config.client
 }
 
 func (p ClaudeProvider) Detect() Status {
-	status, detected := detectExecutable(
-		p.Scanner.withDefaults(),
-		ClientClaudeCode,
-		ClaudeDisplayName,
-		ClaudeBinaryName,
+	status, detected := detectAgentExecutable(
+		p.config,
 		StatusMissing,
 	)
 	if !detected {
@@ -78,8 +81,8 @@ func (p ClaudeProvider) Detect() Status {
 
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
 	name, args := ClaudeInstallCommand()
-	command := append([]string{name}, args...)
-	return determinePlan(status, force, command, command)
+	installOrReinstallcommand := append([]string{name}, args...)
+	return determinePlan(status, force, installOrReinstallcommand, installOrReinstallcommand)
 }
 
 // Apply installs the Stripe Claude Code plugin. On failure it silently refreshes
@@ -112,7 +115,7 @@ func (p ClaudeProvider) stripePluginStatus(ctx context.Context) (id, version, sc
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, ClaudeBinaryName, "plugin", "list", "--json")
+	out, err := runOutput(ctx, p.config.binaryName, "plugin", "list", "--json")
 	if err != nil {
 		return "", "", "", false, false
 	}

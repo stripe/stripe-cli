@@ -13,7 +13,7 @@ const codexTestMarketplaceList = `{"marketplaces":[{"name":"openai-curated"},{"n
 
 func TestScanCodex_NotDetected(t *testing.T) {
 	provider := CodexProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
+		config: ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, client: ClientCodex, binaryName: CodexBinaryName, displayName: CodexDisplayName},
 		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
 			t.Fatal("plugin list should not run when Codex is not detected")
 			return nil, nil
@@ -277,7 +277,7 @@ func TestScanCodex_MarketplaceDiscoveryFailures(t *testing.T) {
 
 func codexTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) CodexProvider {
 	return CodexProvider{
-		Scanner:    Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
+		config:     ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }}, client: ClientCodex, binaryName: CodexBinaryName, displayName: CodexDisplayName},
 		RunCommand: runCommand,
 		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
 			if listErr != nil {
