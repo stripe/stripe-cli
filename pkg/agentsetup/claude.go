@@ -26,7 +26,7 @@ const (
 type ClaudeProvider struct {
 	RunCommand RunCommandFunc
 	RunOutput  RunOutputFunc
-	config     ProviderConfig
+	Config     ProviderConfig
 }
 
 // NewClaudeProvider returns a Claude Code setup provider.
@@ -35,25 +35,25 @@ func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) ClaudeProvide
 		runCommand = RunCommand
 	}
 	config := ProviderConfig{
-		scanner:     scanner,
-		client:      ClientClaudeCode,
-		binaryName:  ClaudeBinaryName,
-		displayName: ClaudeDisplayName,
+		Scanner:     scanner,
+		Client:      ClientClaudeCode,
+		BinaryName:  ClaudeBinaryName,
+		DisplayName: ClaudeDisplayName,
 	}
 	return ClaudeProvider{
 		RunCommand: runCommand,
 		RunOutput:  runCommandOutput,
-		config:     config,
+		Config:     config,
 	}
 }
 
 func (p ClaudeProvider) ID() string {
-	return p.config.client
+	return p.Config.Client
 }
 
 func (p ClaudeProvider) Detect() Status {
 	status, detected := detectAgentExecutable(
-		p.config,
+		p.Config,
 		StatusMissing,
 	)
 	if !detected {
@@ -115,7 +115,7 @@ func (p ClaudeProvider) stripePluginStatus(ctx context.Context) (id, version, sc
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, p.config.binaryName, "plugin", "list", "--json")
+	out, err := runOutput(ctx, p.Config.BinaryName, "plugin", "list", "--json")
 	if err != nil {
 		return "", "", "", false, false
 	}

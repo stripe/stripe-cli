@@ -478,34 +478,47 @@ func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
 // post-install verification the provider performs).
 func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProvider {
 	installed := false
-	provider := agentsetup.NewCodexProvider(agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }}, nil)
-	provider.RunCommand = func(ctx context.Context, name string, args ...string) error {
-		installed = true
-		if record != nil {
-			return record(ctx, name, args...)
-		}
-		return nil
+	return agentsetup.CodexProvider{
+		Config: agentsetup.ProviderConfig{
+			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
+			Client:      agentsetup.ClientCodex,
+			BinaryName:  agentsetup.CodexBinaryName,
+			DisplayName: agentsetup.CodexDisplayName,
+		},
+		RunCommand: func(ctx context.Context, name string, args ...string) error {
+			installed = true
+			if record != nil {
+				return record(ctx, name, args...)
+			}
+			return nil
+		},
+		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
+			if args[1] == "marketplace" {
+				return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
+			}
+			if installed {
+				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
+			}
+			return []byte(`{"installed":[]}`), nil
+		},
 	}
-	provider.RunOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
-		if args[1] == "marketplace" {
-			return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
-		}
-		if installed {
-			return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
-		}
-		return []byte(`{"installed":[]}`), nil
-	}
-	return provider
 }
 
 // grokMissingProvider returns a Grok provider that detects the binary, starts
 // with the Stripe plugin not installed, and records install commands via record.
 func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvider {
-	provider := agentsetup.NewGrokProvider(agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}, record)
-	provider.RunOutput = func(context.Context, string, ...string) ([]byte, error) {
-		return []byte(`[]`), nil
+	return agentsetup.GrokProvider{
+		Config: agentsetup.ProviderConfig{
+			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }},
+			Client:      agentsetup.ClientGrok,
+			BinaryName:  agentsetup.GrokBinaryName,
+			DisplayName: agentsetup.GrokDisplayName,
+		},
+		RunCommand: record,
+		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+			return []byte(`[]`), nil
+		},
 	}
-	return provider
 }
 
 func TestAgentSetupUnsupportedAgentInstallsSkillsToLocal(t *testing.T) {

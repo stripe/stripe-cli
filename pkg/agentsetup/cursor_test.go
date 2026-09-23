@@ -9,7 +9,7 @@ import (
 
 func TestCursor_NotDetected(t *testing.T) {
 	provider := CursorProvider{
-		config: ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, client: ClientCursor, binaryName: CursorBinaryName, displayName: CursorDisplayName},
+		Config: ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, Client: ClientCursor, BinaryName: CursorBinaryName, DisplayName: CursorDisplayName},
 	}
 
 	status := provider.Detect()
@@ -22,7 +22,7 @@ func TestCursor_NotDetected(t *testing.T) {
 
 func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 	provider := CursorProvider{
-		config: cursorProviderConfig(),
+		Config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -35,7 +35,7 @@ func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 
 func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 	provider := CursorProvider{
-		config: cursorProviderConfig(),
+		Config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -47,7 +47,7 @@ func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 
 func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
 	provider := CursorProvider{
-		config: ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, client: ClientCursor, binaryName: CursorBinaryName, displayName: CursorDisplayName},
+		Config: ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, Client: ClientCursor, BinaryName: CursorBinaryName, DisplayName: CursorDisplayName},
 	}
 
 	status := provider.Detect()
@@ -58,7 +58,7 @@ func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
 
 func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 	provider := CursorProvider{
-		config: cursorProviderConfig(),
+		Config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -70,7 +70,7 @@ func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 
 func TestCursor_ErrorHintForTUIDisable(t *testing.T) {
 	provider := CursorProvider{
-		config: cursorProviderConfig(),
+		Config: cursorProviderConfig(),
 	}
 
 	status := provider.Detect()
@@ -79,5 +79,5 @@ func TestCursor_ErrorHintForTUIDisable(t *testing.T) {
 }
 
 func cursorProviderConfig() ProviderConfig {
-	return ProviderConfig{scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}, client: ClientCursor, binaryName: CursorBinaryName, displayName: CursorDisplayName}
+	return ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}, Client: ClientCursor, BinaryName: CursorBinaryName, DisplayName: CursorDisplayName}
 }

@@ -32,10 +32,10 @@ type Provider interface {
 
 // ProviderConfig holds the configuration for a provider.
 type ProviderConfig struct {
-	scanner     Scanner
-	client      string
-	binaryName  string
-	displayName string
+	Scanner     Scanner
+	Client      string
+	BinaryName  string
+	DisplayName string
 }
 
 // DefaultProviders returns production setup providers keyed by client id.
