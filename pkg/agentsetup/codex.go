@@ -142,7 +142,7 @@ func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace strin
 
 func (p CodexProvider) Plan(status Status, force bool) Plan {
 	command := []string{CodexBinaryName, "plugin", "add", status.Plugin.ID}
-	return standardPlan(status, force, command, command)
+	return determinePlan(status, force, command, command)
 }
 
 func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
