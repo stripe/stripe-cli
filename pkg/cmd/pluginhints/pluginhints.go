@@ -342,7 +342,7 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 			return
 		}
 
-		handedOff, err := p.autoInstallHelp(cmd, args)
+		handedOff, err := p.autoInstallHelp(cmd)
 		if handedOff {
 			return
 		}
@@ -363,7 +363,7 @@ func (p *pluginHintCmd) setAutoInstallHelpFunc() {
 // reports whether the plugin answered the help request; when it did not, a
 // non-nil error means the caller should explain why, and a nil error means the
 // placeholder help is the whole answer and nothing needs explaining.
-func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) (bool, error) {
+func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command) (bool, error) {
 	// The caller prints the install command, so this only has to say why the plugin
 	// was not fetched.
 	if p.autoInstallOptedOut() {
@@ -382,7 +382,7 @@ func (p *pluginHintCmd) autoInstallHelp(cmd *cobra.Command, cobraArgs []string) 
 		return false, nil
 	}
 
-	if err := p.autoInstallAndRun(ctx, cmd, p.helpArgs(cobraArgs)); err != nil {
+	if err := p.autoInstallAndRun(ctx, cmd, p.helpArgs()); err != nil {
 		return false, err
 	}
 
@@ -470,20 +470,16 @@ func (p *pluginHintCmd) invokedByName(cmd *cobra.Command) bool {
 	return slices.Contains(p.argvFn(), p.name)
 }
 
-// helpArgs builds the arguments that make the plugin print the help the user asked
-// for. Cobra passes the raw arguments through when help was requested with a flag,
-// but passes none when it came from the `help` subcommand — and in that case argv
-// holds no help flag for the plugin to act on, so one has to be added.
-func (p *pluginHintCmd) helpArgs(cobraArgs []string) []string {
+// helpArgs explicitly requests help even when the original help flag preceded the
+// plugin name and was stripped by pluginArgs. Put it last among the flags, before
+// any "--" separator, so it overrides an earlier --help=false and stays a flag.
+func (p *pluginHintCmd) helpArgs() []string {
 	args := p.pluginArgs()
-
-	if len(cobraArgs) == 0 {
-		// "stripe help directory [plugin_subcommands...]" => "[plugin_subcommands...] --help"
-		return append(args, "--help")
+	endOfFlags := slices.Index(args, "--")
+	if endOfFlags == -1 {
+		endOfFlags = len(args)
 	}
-
-	// "stripe directory [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
-	return args
+	return slices.Insert(args, endOfFlags, "--help")
 }
 
 // commandContext returns the command's context, falling back to a background one

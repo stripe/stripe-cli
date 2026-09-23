@@ -687,7 +687,11 @@ func TestAutoInstall_BackendControlsEveryPlugin(t *testing.T) {
 					p := newTestCmdWithRunner(name, func(cmd *cobra.Command, pluginName string, args []string) error {
 						assert.True(t, installed)
 						assert.Equal(t, name, pluginName)
-						assert.Equal(t, pluginArgs, args)
+						wantArgs := pluginArgs
+						if help {
+							wantArgs = append(append([]string{}, pluginArgs...), "--help")
+						}
+						assert.Equal(t, wantArgs, args)
 						ran = true
 						return nil
 					}, withPrivatePreview())
@@ -734,17 +738,17 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 		{
 			name:     "help flag",
 			argv:     []string{"stripe", "directory", "--help"},
-			wantArgs: []string{"--help"},
+			wantArgs: []string{"--help", "--help"},
 		},
 		{
 			name:     "short help flag is forwarded as typed",
 			argv:     []string{"stripe", "directory", "-h"},
-			wantArgs: []string{"-h"},
+			wantArgs: []string{"-h", "--help"},
 		},
 		{
 			name:     "help flag on a plugin subcommand",
 			argv:     []string{"stripe", "directory", "search", "--help"},
-			wantArgs: []string{"search", "--help"},
+			wantArgs: []string{"search", "--help", "--help"},
 		},
 		{
 			name: "help subcommand",
@@ -776,6 +780,57 @@ func TestHelp_AutoInstall_InstallsAndForwardsHelpToPlugin(t *testing.T) {
 			assert.NotContains(t, p.output(), "Test description.")
 			assert.Contains(t, p.errOutput(), "one-time setup")
 			assert.Contains(t, p.errOutput(), "directory@stripe.com")
+		})
+	}
+}
+
+func TestHelp_AutoInstall_NeverRunsPluginAction(t *testing.T) {
+	tests := []struct {
+		name string
+		argv []string
+	}{
+		{
+			name: "help flag before the plugin name",
+			argv: []string{"stripe", "--help=true", "apps", "upload"},
+		},
+		{
+			name: "short help flag before the plugin name",
+			argv: []string{"stripe", "-h=true", "apps", "upload"},
+		},
+		{
+			name: "help flag before the plugin name with positional arguments",
+			argv: []string{"stripe", "--help=true", "apps", "upload", "--", "payload"},
+		},
+		{
+			name: "help subcommand with a disabled help flag",
+			argv: []string{"stripe", "help", "apps", "upload", "--help=false"},
+		},
+		{
+			name: "help subcommand with positional arguments",
+			argv: []string{"stripe", "help", "apps", "upload", "--", "payload"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newAutoInstallTestCmd("apps")
+			helpShown, uploadCalled := false, false
+			p.runPluginFn = func(cmd *cobra.Command, args []string) error {
+				pluginCmd := &cobra.Command{Use: "apps"}
+				pluginCmd.AddCommand(&cobra.Command{
+					Use: "upload",
+					Run: func(cmd *cobra.Command, args []string) { uploadCalled = true },
+				})
+				pluginCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) { helpShown = true })
+				pluginCmd.SetArgs(args)
+				return pluginCmd.Execute()
+			}
+
+			err := runViaCobra(t, p, nil, tt.argv)
+
+			require.NoError(t, err)
+			assert.True(t, helpShown, "the plugin must receive a help request")
+			assert.False(t, uploadCalled, "a help request must never execute the plugin action")
 		})
 	}
 }
