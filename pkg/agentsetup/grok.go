@@ -29,12 +29,6 @@ func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	config := ProviderConfig{
-		Scanner:     scanner,
-		Client:      ClientGrok,
-		BinaryName:  GrokBinaryName,
-		DisplayName: GrokDisplayName,
-	}
 	return GrokProvider{
 		ProviderConfig: ProviderConfig{
 			Scanner:     scanner,

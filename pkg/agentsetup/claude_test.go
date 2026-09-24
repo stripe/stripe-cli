@@ -149,16 +149,15 @@ func TestClaude_PlanActions(t *testing.T) {
 func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 	installErr := errors.New("stale marketplace")
 	var calls [][]string
-	provider := ClaudeProvider{
-		RunCommand: func(_ context.Context, name string, args ...string) error {
-			call := append([]string{name}, args...)
-			calls = append(calls, call)
-			if len(calls) == 1 {
-				return installErr
-			}
-			return nil
-		},
+	runCommand := func(_ context.Context, name string, args ...string) error {
+		call := append([]string{name}, args...)
+		calls = append(calls, call)
+		if len(calls) == 1 {
+			return installErr
+		}
+		return nil
 	}
+	provider := NewClaudeProvider(Scanner{}, runCommand)
 	plan := Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", TargetClaudePlugin}}
 
 	err := provider.Apply(context.Background(), nil, plan)
@@ -176,8 +175,4 @@ func mustJSON(t *testing.T, v interface{}) []byte {
 	b, err := json.Marshal(v)
 	require.NoError(t, err)
 	return b
-}
-
-func claudeProviderConfig(scanner Scanner) ProviderConfig {
-	return ProviderConfig{Scanner: scanner, Client: ClientClaudeCode, BinaryName: ClaudeBinaryName, DisplayName: ClaudeDisplayName}
 }
