@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/google/uuid"
 
@@ -25,6 +26,9 @@ const (
 	testmodeWorkspacePrefix = "wksp_test_"
 	accountIDPrefix         = "acct_"
 	playgroundIDPrefix      = "play_"
+	maxSandboxNameLength    = 100
+	maxSandboxesCreatedCode = "max_sandboxes_created"
+	maxSandboxesCreatedCopy = "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one."
 )
 
 // CreateOptions describes one authenticated sandbox creation request.
@@ -83,6 +87,14 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 	name := strings.TrimSpace(options.Name)
 	if name == "" {
 		return CreatedSandbox{}, errorcategory.New(errorcategory.UserInput, "sandbox name cannot be blank")
+	}
+	// Dashboard uses JavaScript String.length for this limit, so count UTF-16
+	// code units instead of Go bytes to keep the two creation surfaces aligned.
+	if len(utf16.Encode([]rune(name))) > maxSandboxNameLength {
+		return CreatedSandbox{}, errorcategory.New(errorcategory.UserInput, "sandbox name must be 100 characters or fewer")
+	}
+	if normalizedName := strings.ToLower(name); normalizedName == "test mode" || normalizedName == "testmode" {
+		return CreatedSandbox{}, errorcategory.New(errorcategory.UserInput, `sandbox name cannot be "Test mode"; choose a different name`)
 	}
 	if options.Blank {
 		if !validCountryCode(options.Country) {
@@ -452,7 +464,10 @@ func validCountryCode(country string) bool {
 }
 
 func safeCreateError(err error) error {
-	if _, ok := requestStatusCode(err); ok {
+	if requestErr, ok := requestError(err); ok {
+		if requestErr.ErrorCode == maxSandboxesCreatedCode {
+			return errorcategory.New(errorcategory.API, maxSandboxesCreatedCopy)
+		}
 		return safeDependencyError("could not create sandbox", err)
 	}
 
@@ -518,13 +533,21 @@ func safeDependencyError(operation string, err error) error {
 }
 
 func requestStatusCode(err error) (int, bool) {
+	requestErr, ok := requestError(err)
+	if !ok {
+		return 0, false
+	}
+	return requestErr.StatusCode, true
+}
+
+func requestError(err error) (requests.RequestError, bool) {
 	var value requests.RequestError
 	if errors.As(err, &value) {
-		return value.StatusCode, true
+		return value, true
 	}
 	var pointer *requests.RequestError
 	if errors.As(err, &pointer) && pointer != nil {
-		return pointer.StatusCode, true
+		return *pointer, true
 	}
-	return 0, false
+	return requests.RequestError{}, false
 }
