@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -258,14 +260,17 @@ func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
 	defer cleanup()
 
 	cmd := newSandboxCreateCmd()
+	cmd.isInteractive = func(*cobra.Command) bool { return true }
 	cmd.cmd.SetArgs([]string{})
 
-	var stderr bytes.Buffer
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
 	cmd.cmd.SetErr(&stderr)
 
 	err := cmd.cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "email is required")
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
 }
 
 func TestSandboxCreateCmd_EmailAndFromGitMutuallyExclusive(t *testing.T) {
@@ -1249,10 +1254,148 @@ func TestSandboxCreateCmdOAuthRequiresName(t *testing.T) {
 	client := &fakeSandboxCreateClient{}
 	command := newSandboxCreateCmd()
 	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
 
 	err := command.cmd.Execute()
 	require.EqualError(t, err, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
 	require.Empty(t, client.calls)
+}
+
+func TestSandboxCreateCmdOAuthPromptsForMissingName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("  Prompted sandbox  \n"))
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Prompted sandbox"}}, client.calls)
+	assert.Contains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Created sandbox \"Prompted sandbox\"")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuthPromptsForMissingBlankSandboxName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Blank sandbox\n"))
+	command.cmd.SetArgs([]string{"--create-blank", "--country", " us "})
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Blank sandbox", Blank: true, Country: "US"}}, client.calls)
+}
+
+func TestSandboxCreateCmdOAuthPositionalNameDoesNotPrompt(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("no\n"))
+	command.cmd.SetArgs([]string{"Positional sandbox"})
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Positional sandbox"}}, client.calls)
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now?")
+}
+
+func TestSandboxCreateCmdOAuthRejectsInvalidPromptInput(t *testing.T) {
+	tests := []struct {
+		name  string
+		setIn func(*cobra.Command)
+		want  string
+	}{
+		{
+			name: "blank",
+			setIn: func(cmd *cobra.Command) {
+				cmd.SetIn(strings.NewReader("  \n"))
+			},
+			want: "sandbox name cannot be blank",
+		},
+		{
+			name: "EOF",
+			setIn: func(cmd *cobra.Command) {
+				cmd.SetIn(strings.NewReader(""))
+			},
+			want: "sandbox name cannot be blank",
+		},
+		{
+			name: "read error",
+			setIn: func(cmd *cobra.Command) {
+				cmd.SetIn(iotest.ErrReader(errors.New("read failed")))
+			},
+			want: "failed to read sandbox name",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			telemetry := newFakeSandboxTelemetryClient()
+			client := &fakeSandboxCreateClient{}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+			test.setIn(command.cmd)
+
+			err := command.cmd.Execute()
+			require.ErrorContains(t, err, test.want)
+			require.Empty(t, client.calls)
+			telemetry.assertNoEvent(t)
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuthPromptedNameThenAuthorizes(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Prompted sandbox\nyes\n"))
+
+	reauthCalls := 0
+	command.reauth = func(context.Context, string, string) error {
+		reauthCalls++
+		return nil
+	}
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Prompted sandbox"}}, client.calls)
+	assert.Equal(t, 1, reauthCalls)
+	assert.Contains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now?")
 }
 
 func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
