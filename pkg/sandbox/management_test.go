@@ -196,6 +196,7 @@ func TestManagementClientCreateExplainsSandboxLimit(t *testing.T) {
 		name         string
 		options      CreateOptions
 		wantRequests []string
+		errorBody    string
 	}{
 		{
 			name:    "copy live",
@@ -205,6 +206,7 @@ func TestManagementClientCreateExplainsSandboxLimit(t *testing.T) {
 				"GET /v1/stripecli/workspace_context",
 				"POST /v2/sandboxes",
 			},
+			errorBody: `{"error":{"code":"max_sandboxes_created","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`,
 		},
 		{
 			name:    "blank",
@@ -213,6 +215,16 @@ func TestManagementClientCreateExplainsSandboxLimit(t *testing.T) {
 				"GET /v1/stripecli/playground_context",
 				"POST /v2/sandboxes",
 			},
+			errorBody: `{"error":{"code":"max_sandboxes_created","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`,
+		},
+		{
+			name:    "blank current QA response",
+			options: CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
+			wantRequests: []string{
+				"GET /v1/stripecli/playground_context",
+				"POST /v2/sandboxes",
+			},
+			errorBody: `{"error":{"message":"Sandbox could not be created: An account can only have up to 5 sandboxes.","user_message":"Sandbox could not be created: An account can only have up to 5 sandboxes.","request_log_url":"https://dashboard.stripe.com/test/logs/sentinel"}}`,
 		},
 	}
 
@@ -229,7 +241,7 @@ func TestManagementClientCreateExplainsSandboxLimit(t *testing.T) {
 					_, _ = w.Write([]byte(`{"workspace_id":"wksp_live_parent"}`))
 				case createSandboxPath:
 					w.WriteHeader(http.StatusBadRequest)
-					_, _ = w.Write([]byte(`{"error":{"code":"max_sandboxes_created","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`))
+					_, _ = w.Write([]byte(test.errorBody))
 				default:
 					t.Fatalf("unexpected request path %q", r.URL.Path)
 				}
@@ -360,6 +372,36 @@ func TestSafeCreateError(t *testing.T) {
 			err:          fmt.Errorf("wrapped: %w", &limitError),
 			wantCategory: errorcategory.API,
 			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
+		},
+		{
+			name: "current QA limit response without code",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Sandbox could not be created: An account can only have up to 5 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
+		},
+		{
+			name: "QA limit message on wrong status",
+			err: requests.RequestError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "Sandbox could not be created: An account can only have up to 5 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name: "nearby unstructured message",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Sandbox could not be created: An account can only have up to 6 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
 		},
 		{
 			name: "unrelated bad request",

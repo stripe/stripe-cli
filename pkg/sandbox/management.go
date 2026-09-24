@@ -20,15 +20,16 @@ import (
 )
 
 const (
-	accessibleSandboxesPath = "/v2/compartments/user_accessible_sandboxes"
-	createSandboxPath       = "/v2/sandboxes"
-	workspaceIDPrefix       = "wksp_"
-	testmodeWorkspacePrefix = "wksp_test_"
-	accountIDPrefix         = "acct_"
-	playgroundIDPrefix      = "play_"
-	maxSandboxNameLength    = 100
-	maxSandboxesCreatedCode = "max_sandboxes_created"
-	maxSandboxesCreatedCopy = "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one."
+	accessibleSandboxesPath               = "/v2/compartments/user_accessible_sandboxes"
+	createSandboxPath                     = "/v2/sandboxes"
+	workspaceIDPrefix                     = "wksp_"
+	testmodeWorkspacePrefix               = "wksp_test_"
+	accountIDPrefix                       = "acct_"
+	playgroundIDPrefix                    = "play_"
+	maxSandboxNameLength                  = 100
+	maxSandboxesCreatedCode               = "max_sandboxes_created"
+	maxSandboxesCreatedCopy               = "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one."
+	maxSandboxesCreatedMessageWithoutCode = "Sandbox could not be created: An account can only have up to 5 sandboxes."
 )
 
 // CreateOptions describes one authenticated sandbox creation request.
@@ -465,7 +466,7 @@ func validCountryCode(country string) bool {
 
 func safeCreateError(err error) error {
 	if requestErr, ok := requestError(err); ok {
-		if requestErr.ErrorCode == maxSandboxesCreatedCode {
+		if isMaxSandboxesCreatedError(requestErr) {
 			return errorcategory.New(errorcategory.API, maxSandboxesCreatedCopy)
 		}
 		return safeDependencyError("could not create sandbox", err)
@@ -479,6 +480,19 @@ func safeCreateError(err error) error {
 		category = errorcategory.Network
 	}
 	return errorcategory.New(category, "sandbox creation could not be confirmed; check Dashboard before retrying")
+}
+
+func isMaxSandboxesCreatedError(requestErr requests.RequestError) bool {
+	if requestErr.ErrorCode == maxSandboxesCreatedCode {
+		return true
+	}
+
+	// The current API bridge omits the declared V2 error code for this downstream
+	// limit response. Keep the compatibility match exact and status-scoped so no
+	// other server message is trusted or surfaced.
+	return requestErr.StatusCode == http.StatusBadRequest &&
+		requestErr.ErrorCode == "" &&
+		requestErr.Message == maxSandboxesCreatedMessageWithoutCode
 }
 
 func safeDeleteError(err error) error {
