@@ -98,7 +98,7 @@ func TestMakeRequest(t *testing.T) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/foo/bar", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
-		require.Equal(t, "value=with-equals", r.Header.Get("X-Test-Header"))
+		require.Equal(t, "value:with:colons", r.Header.Get("X-Test-Header"))
 		require.NotEmpty(t, r.UserAgent())
 		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
 		require.Equal(t, "bender=robot&fry=human&expand[]=futurama.employees&expand[]=futurama.ships", r.URL.RawQuery)
@@ -112,7 +112,7 @@ func TestMakeRequest(t *testing.T) {
 	params := &RequestParameters{
 		data:    []string{"bender=robot", "fry=human"},
 		expand:  []string{"futurama.employees", "futurama.ships"},
-		headers: []string{"X-Test-Header=value=with-equals"},
+		headers: []string{"X-Test-Header: value:with:colons"},
 	}
 
 	_, err := rb.MakeRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, make(map[string]interface{}), true, nil)
@@ -121,9 +121,9 @@ func TestMakeRequest(t *testing.T) {
 
 func TestParseCustomHeaders(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
-		headers, err := parseCustomHeaders([]string{"x-test-header=value=with-equals", "X-Other=other"})
+		headers, err := parseCustomHeaders([]string{"x-test-header: value:with:colons", "X-Other: other"})
 		require.NoError(t, err)
-		require.Equal(t, "value=with-equals", headers.Get("X-Test-Header"))
+		require.Equal(t, "value:with:colons", headers.Get("X-Test-Header"))
 		require.Equal(t, "other", headers.Get("X-Other"))
 	})
 
@@ -132,9 +132,9 @@ func TestParseCustomHeaders(t *testing.T) {
 		header string
 	}{
 		{name: "missing separator", header: "X-Test-Header"},
-		{name: "empty name", header: "=value"},
-		{name: "invalid name", header: "Test Header=value"},
-		{name: "invalid value", header: "X-Test-Header=line1\nline2"},
+		{name: "empty name", header: ": value"},
+		{name: "invalid name", header: "Test Header: value"},
+		{name: "invalid value", header: "X-Test-Header: line1\nline2"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			_, err := parseCustomHeaders([]string{testCase.header})
@@ -735,7 +735,7 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 func TestBuildDryRunOutput_CustomHeaders(t *testing.T) {
 	rb := Base{Method: http.MethodPost}
 	params := &RequestParameters{}
-	params.AppendHeaders([]string{"X-Test-Header=first", "X-Other-Header=value", "X-Test-Header=last"})
+	params.AppendHeaders([]string{"X-Test-Header: first", "X-Other-Header: value", "X-Test-Header: last"})
 
 	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
 	require.NoError(t, err)

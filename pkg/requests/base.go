@@ -220,7 +220,7 @@ func (rb *Base) InitFlags() {
 
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.headers, "request-header", "H", []string{}, "Set a custom request header (format: name=value)")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.headers, "request-header", "H", []string{}, "Set a custom request header (format: name: value)")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
@@ -975,9 +975,9 @@ func (rb *Base) computeVersionHeader(params *RequestParameters, path string) str
 func parseCustomHeaders(headers []string) (http.Header, error) {
 	parsed := make(http.Header)
 	for _, header := range headers {
-		name, value, ok := strings.Cut(header, "=")
+		name, value, ok := strings.Cut(header, ":")
 		if !ok {
-			return nil, errorcategory.New(errorcategory.UserInput, "invalid header: expected name=value")
+			return nil, errorcategory.New(errorcategory.UserInput, "invalid header: expected name: value")
 		}
 		if !isValidHeaderName(name) {
 			return nil, errorcategory.New(errorcategory.UserInput, "invalid header name")
@@ -985,6 +985,7 @@ func parseCustomHeaders(headers []string) (http.Header, error) {
 		if strings.ContainsAny(value, "\r\n") {
 			return nil, errorcategory.New(errorcategory.UserInput, "invalid header value")
 		}
+		value = strings.Trim(value, " \t")
 		parsed.Set(name, value)
 	}
 	return parsed, nil
