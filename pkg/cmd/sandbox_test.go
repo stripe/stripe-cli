@@ -1199,6 +1199,33 @@ func TestSandboxManagementCommandsRejectActiveTestModeOAuth(t *testing.T) {
 	}
 }
 
+func TestSandboxCreateCmdRejectsActiveTestModeOAuthBeforePrompt(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxTestModeOAuthContext(t)
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	command := newSandboxCreateCmd()
+	command.apiBaseURL = server.URL
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Should not be read\n"))
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	err := command.cmd.Execute()
+	require.ErrorContains(t, err, "You're in a sandbox")
+	assert.Contains(t, err.Error(), "stripe switch")
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
+	assert.Zero(t, requestCount)
+}
+
 func TestSandboxCreateCmdExplicitAPIKeyOverrideWinsOverOAuth(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()

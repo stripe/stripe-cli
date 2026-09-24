@@ -661,6 +661,10 @@ func (scc *sandboxCreateCmd) resolveAuthenticatedSandboxName(cmd *cobra.Command,
 		return name, nil
 	}
 
+	if _, err := Config.Profile.ResolveCredentials(true); err != nil {
+		return "", err
+	}
+
 	isInteractive := scc.isInteractive
 	if isInteractive == nil {
 		isInteractive = sandboxCommandIsInteractive
