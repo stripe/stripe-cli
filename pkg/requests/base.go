@@ -353,7 +353,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 		if stripeClient.VerbosePrintableHeaders == nil {
 			stripeClient.VerbosePrintableHeaders = stripe.DefaultPrintableHeaders()
 		}
-		stripeClient.VerbosePrintableHeaders = append(stripeClient.VerbosePrintableHeaders, headerNames(customHeaders)...)
+		stripeClient.VerbosePrintableHeaders = appendUniqueHeaderNames(stripeClient.VerbosePrintableHeaders, customHeaders)
 	}
 
 	creds := credentialsFromPerformer(client)
@@ -1012,10 +1012,18 @@ func setCustomHeaders(destination, custom http.Header) {
 	}
 }
 
-func headerNames(headers http.Header) []string {
-	names := make([]string, 0, len(headers))
+func appendUniqueHeaderNames(names []string, headers http.Header) []string {
+	seen := make(map[string]struct{}, len(names)+len(headers))
+	for _, name := range names {
+		seen[strings.ToLower(name)] = struct{}{}
+	}
 	for name := range headers {
+		key := strings.ToLower(name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
 		names = append(names, name)
+		seen[key] = struct{}{}
 	}
 	return names
 }

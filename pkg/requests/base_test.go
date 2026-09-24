@@ -143,6 +143,15 @@ func TestParseCustomHeaders(t *testing.T) {
 	}
 }
 
+func TestAppendUniqueHeaderNames(t *testing.T) {
+	names := appendUniqueHeaderNames(
+		[]string{"Stripe-Version", "X-Existing"},
+		http.Header{"stripe-version": []string{"2020-08-27"}, "X-New": []string{"value"}},
+	)
+
+	require.Equal(t, []string{"Stripe-Version", "X-Existing", "X-New"}, names)
+}
+
 func TestMakeRequest_RefusesWriteThroughPDFSymlink(t *testing.T) {
 	tempDir := t.TempDir()
 	oldWD, err := os.Getwd()
