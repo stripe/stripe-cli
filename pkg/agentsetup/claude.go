@@ -79,7 +79,7 @@ func (p ClaudeProvider) Detect() Status {
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
 	name, args := p.installCommand()
 	installOrReinstallCommand := append([]string{name}, args...)
-	return determinePlan(status, force, installOrReinstallCommand, installOrReinstallCommand)
+	return getPlanByStatus(status, force, installOrReinstallCommand, installOrReinstallCommand)
 }
 
 // Apply installs the Stripe Claude Code plugin. On failure it silently refreshes
