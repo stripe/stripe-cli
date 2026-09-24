@@ -27,8 +27,8 @@ func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus st
 	return status
 }
 
-// determinePlan returns the common install plan for providers
-func determinePlan(status Status, force bool, installCommand []string, reinstallCommand []string) Plan {
+// getPlanByStatus returns the common install plan for providers
+func getPlanByStatus(status Status, force bool, installCommand []string, reinstallCommand []string) Plan {
 	switch {
 	case status.Status == StatusError:
 		return Plan{Action: ActionNone}

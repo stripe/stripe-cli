@@ -125,7 +125,7 @@ func (p GrokProvider) Plan(status Status, force bool) Plan {
 	// to update it" rather than reinstalling, so a forced refresh has to go
 	// through `update` instead.
 	reinstallCommand := []string{p.BinaryName, "plugin", "update", GrokPluginName}
-	return determinePlan(status, force, installCommand, reinstallCommand)
+	return getPlanByStatus(status, force, installCommand, reinstallCommand)
 }
 
 // Apply installs (or updates) the Stripe Grok plugin. Unlike Codex's
