@@ -205,3 +205,34 @@ func TestFetchChecksumForAsset(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkerStagedAt(t *testing.T) {
+	dir := t.TempDir()
+	original := GetStateDirFn
+	GetStateDirFn = func() string { return dir }
+	defer func() { GetStateDirFn = original }()
+
+	WriteMarker(UpdateMarker{Version: "1.51.1", DownloadURL: "https://example.test/a.tar.gz"})
+
+	got := ReadMarker()
+	require.NotNil(t, got)
+	assert.NotZero(t, got.StagedAt, "the check stamps when it staged the update")
+	assert.LessOrEqual(t, got.StagedAt, time.Now().Unix())
+}
+
+func TestMarkerWithoutStagedAtStaysValid(t *testing.T) {
+	dir := t.TempDir()
+	original := GetStateDirFn
+	GetStateDirFn = func() string { return dir }
+	defer func() { GetStateDirFn = original }()
+
+	// The auto-upgrade canary writes this JSON by hand and does not set
+	// staged_at. Such a marker must still apply; it just reports no duration.
+	raw := `{"version":"1.51.1","download_url":"https://example.test/a.tar.gz","checksum":"","release_notes":""}`
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "update-available"), []byte(raw), 0644))
+
+	got := ReadMarker()
+	require.NotNil(t, got)
+	assert.Equal(t, "1.51.1", got.Version)
+	assert.Zero(t, got.StagedAt)
+}
