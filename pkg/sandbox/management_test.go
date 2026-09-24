@@ -3,9 +3,13 @@ package sandbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestManagementClientCreateCopyLive(t *testing.T) {
@@ -99,6 +104,161 @@ func TestManagementClientCreateBlank(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, CreatedSandbox{AccountID: "acct_blank"}, created)
+}
+
+func TestManagementClientCreateValidatesOptionsBeforeRequest(t *testing.T) {
+	tests := []struct {
+		name    string
+		options CreateOptions
+		wantErr string
+	}{
+		{
+			name:    "blank name",
+			options: CreateOptions{Name: "  "},
+			wantErr: "sandbox name cannot be blank",
+		},
+		{
+			name:    "name exceeds Dashboard limit",
+			options: CreateOptions{Name: strings.Repeat("a", 101)},
+			wantErr: "sandbox name must be 100 characters or fewer",
+		},
+		{
+			name:    "reserved test mode name",
+			options: CreateOptions{Name: "  TeSt MoDe  "},
+			wantErr: `sandbox name cannot be "Test mode"; choose a different name`,
+		},
+		{
+			name:    "reserved testmode name",
+			options: CreateOptions{Name: "TESTMODE"},
+			wantErr: `sandbox name cannot be "Test mode"; choose a different name`,
+		},
+		{
+			name:    "blank creation without country",
+			options: CreateOptions{Name: "Blank sandbox", Blank: true},
+			wantErr: "blank sandbox creation requires a two-letter country code",
+		},
+		{
+			name:    "copy creation with country",
+			options: CreateOptions{Name: "Copied sandbox", Country: "US"},
+			wantErr: "country is only valid for blank sandbox creation",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+			requestCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+			}))
+			defer server.Close()
+
+			created, err := NewManagementClient(server.URL, profile).Create(context.Background(), test.options)
+
+			require.EqualError(t, err, test.wantErr)
+			require.Empty(t, created)
+			require.Equal(t, errorcategory.UserInput, mustErrorCategory(t, err))
+			require.Zero(t, requestCount)
+		})
+	}
+}
+
+func TestManagementClientCreateAcceptsHundredCharacterName(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+	wantName := strings.Repeat("a", 100)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/stripecli/playground_context":
+			_, _ = w.Write([]byte(`{"playground_id":"play_parent"}`))
+		case createSandboxPath:
+			var body map[string]interface{}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, wantName, body["name"])
+			_, _ = w.Write([]byte(`{"v1_account_id":"acct_created"}`))
+		default:
+			t.Fatalf("unexpected request path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	created, err := NewManagementClient(server.URL, profile).Create(context.Background(), CreateOptions{
+		Name:    wantName,
+		Blank:   true,
+		Country: "US",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, CreatedSandbox{AccountID: "acct_created"}, created)
+}
+
+func TestManagementClientCreateExplainsSandboxLimit(t *testing.T) {
+	tests := []struct {
+		name         string
+		options      CreateOptions
+		wantRequests []string
+		errorBody    string
+	}{
+		{
+			name:    "copy live",
+			options: CreateOptions{Name: "Copied sandbox"},
+			wantRequests: []string{
+				"GET /v1/stripecli/playground_context",
+				"GET /v1/stripecli/workspace_context",
+				"POST /v2/sandboxes",
+			},
+			errorBody: `{"error":{"code":"max_sandboxes_created","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`,
+		},
+		{
+			name:    "blank",
+			options: CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
+			wantRequests: []string{
+				"GET /v1/stripecli/playground_context",
+				"POST /v2/sandboxes",
+			},
+			errorBody: `{"error":{"code":"max_sandboxes_created","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`,
+		},
+		{
+			name:    "blank current QA response",
+			options: CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
+			wantRequests: []string{
+				"GET /v1/stripecli/playground_context",
+				"POST /v2/sandboxes",
+			},
+			errorBody: `{"error":{"message":"Sandbox could not be created: An account can only have up to 5 sandboxes.","user_message":"Sandbox could not be created: An account can only have up to 5 sandboxes.","request_log_url":"https://dashboard.stripe.com/test/logs/sentinel"}}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+			requestsSeen := make([]string, 0, len(test.wantRequests))
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestsSeen = append(requestsSeen, r.Method+" "+r.URL.Path)
+				switch r.URL.Path {
+				case "/v1/stripecli/playground_context":
+					_, _ = w.Write([]byte(`{"playground_id":"play_parent"}`))
+				case "/v1/stripecli/workspace_context":
+					_, _ = w.Write([]byte(`{"workspace_id":"wksp_live_parent"}`))
+				case createSandboxPath:
+					w.WriteHeader(http.StatusBadRequest)
+					_, _ = w.Write([]byte(test.errorBody))
+				default:
+					t.Fatalf("unexpected request path %q", r.URL.Path)
+				}
+			}))
+			defer server.Close()
+
+			created, err := NewManagementClient(server.URL, profile).Create(context.Background(), test.options)
+
+			require.EqualError(t, err, "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.")
+			require.Empty(t, created)
+			require.Equal(t, errorcategory.API, mustErrorCategory(t, err))
+			require.Equal(t, test.wantRequests, requestsSeen)
+			for _, secret := range []string{"sentinel", "oak_secret", "acct_secret", "wksp_secret", "body_secret"} {
+				require.NotContains(t, err.Error(), secret)
+			}
+		})
+	}
 }
 
 func TestManagementClientCreateRejectsInvalidIdentifiers(t *testing.T) {
@@ -186,6 +346,149 @@ func TestManagementClientCreateRetryPreservesTargetAndIdempotency(t *testing.T) 
 	require.Equal(t, "play_parent", postHeaders[1].Get("Stripe-Context"))
 	require.NotEmpty(t, postHeaders[0].Get("Idempotency-Key"))
 	require.Equal(t, postHeaders[0].Get("Idempotency-Key"), postHeaders[1].Get("Idempotency-Key"))
+}
+
+func TestSafeCreateError(t *testing.T) {
+	limitError := requests.RequestError{
+		StatusCode: http.StatusBadRequest,
+		ErrorCode:  "max_sandboxes_created",
+		Message:    "sentinel acct_secret wksp_secret oak_secret",
+		Body:       `{"private":"body_secret"}`,
+	}
+	tests := []struct {
+		name         string
+		err          error
+		wantCategory errorcategory.Category
+		wantMessage  string
+	}{
+		{
+			name:         "sandbox limit value",
+			err:          limitError,
+			wantCategory: errorcategory.API,
+			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
+		},
+		{
+			name:         "sandbox limit wrapped pointer",
+			err:          fmt.Errorf("wrapped: %w", &limitError),
+			wantCategory: errorcategory.API,
+			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
+		},
+		{
+			name: "current QA limit response without code",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Sandbox could not be created: An account can only have up to 5 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
+		},
+		{
+			name: "QA limit message on wrong status",
+			err: requests.RequestError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "Sandbox could not be created: An account can only have up to 5 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name: "nearby unstructured message",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "Sandbox could not be created: An account can only have up to 6 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name: "unrelated bad request",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				ErrorCode:  "parameter_invalid",
+				Message:    "sentinel max sandbox message",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name: "limit message without code",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				Message:    "max_sandboxes_created sentinel",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name:         "unauthorized",
+			err:          requests.RequestError{StatusCode: http.StatusUnauthorized, Message: "sentinel", Body: "body_secret"},
+			wantCategory: errorcategory.Auth,
+			wantMessage:  "could not create sandbox: OAuth authorization is no longer valid; run `stripe login` or reauthorize the CLI",
+		},
+		{
+			name:         "forbidden",
+			err:          requests.RequestError{StatusCode: http.StatusForbidden, Message: "sentinel", Body: "body_secret"},
+			wantCategory: errorcategory.Auth,
+			wantMessage:  "could not create sandbox: the active OAuth account is not authorized; switch context or reauthorize the CLI",
+		},
+		{
+			name:         "rate limited",
+			err:          requests.RequestError{StatusCode: http.StatusTooManyRequests, Message: "sentinel", Body: "body_secret"},
+			wantCategory: errorcategory.RateLimit,
+			wantMessage:  "could not create sandbox: too many requests; try again later",
+		},
+		{
+			name:         "unavailable",
+			err:          requests.RequestError{StatusCode: http.StatusServiceUnavailable, Message: "sentinel", Body: "body_secret"},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name:         "canceled",
+			err:          context.Canceled,
+			wantCategory: errorcategory.Network,
+			wantMessage:  "sandbox creation could not be confirmed; check Dashboard before retrying",
+		},
+		{
+			name:         "deadline exceeded",
+			err:          context.DeadlineExceeded,
+			wantCategory: errorcategory.Network,
+			wantMessage:  "sandbox creation could not be confirmed; check Dashboard before retrying",
+		},
+		{
+			name: "URL error",
+			err: &url.Error{
+				Op:  "Post",
+				URL: "https://sentinel.example/acct_secret",
+				Err: errors.New("network body_secret"),
+			},
+			wantCategory: errorcategory.Network,
+			wantMessage:  "sandbox creation could not be confirmed; check Dashboard before retrying",
+		},
+		{
+			name:         "unknown error",
+			err:          errors.New("sentinel body_secret"),
+			wantCategory: errorcategory.API,
+			wantMessage:  "sandbox creation could not be confirmed; check Dashboard before retrying",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := safeCreateError(test.err)
+
+			require.EqualError(t, err, test.wantMessage)
+			require.Equal(t, test.wantCategory, mustErrorCategory(t, err))
+			for _, secret := range []string{"sentinel", "acct_secret", "wksp_secret", "oak_secret", "body_secret"} {
+				require.NotContains(t, err.Error(), secret)
+			}
+		})
+	}
 }
 
 func TestManagementClientDelete(t *testing.T) {
