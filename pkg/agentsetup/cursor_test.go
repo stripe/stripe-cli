@@ -8,9 +8,8 @@ import (
 )
 
 func TestCursor_NotDetected(t *testing.T) {
-	provider := CursorProvider{
-		Config: ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, Client: ClientCursor, BinaryName: CursorBinaryName, DisplayName: CursorDisplayName},
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	provider := NewCursorProvider(scanner, nil)
 
 	status := provider.Detect()
 
@@ -21,9 +20,7 @@ func TestCursor_NotDetected(t *testing.T) {
 }
 
 func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
-	provider := CursorProvider{
-		Config: cursorProviderConfig(),
-	}
+	provider := cursorTestProvider()
 
 	status := provider.Detect()
 
@@ -34,9 +31,7 @@ func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 }
 
 func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
-	provider := CursorProvider{
-		Config: cursorProviderConfig(),
-	}
+	provider := cursorTestProvider()
 
 	status := provider.Detect()
 	plan := provider.Plan(status, false)
@@ -46,9 +41,8 @@ func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 }
 
 func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
-	provider := CursorProvider{
-		Config: ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, Client: ClientCursor, BinaryName: CursorBinaryName, DisplayName: CursorDisplayName},
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	provider := NewCursorProvider(scanner, nil)
 
 	status := provider.Detect()
 	plan := provider.Plan(status, false)
@@ -57,9 +51,7 @@ func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
 }
 
 func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
-	provider := CursorProvider{
-		Config: cursorProviderConfig(),
-	}
+	provider := cursorTestProvider()
 
 	status := provider.Detect()
 	status.Plugin.Installed = true
@@ -69,15 +61,14 @@ func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 }
 
 func TestCursor_ErrorHintForTUIDisable(t *testing.T) {
-	provider := CursorProvider{
-		Config: cursorProviderConfig(),
-	}
+	provider := cursorTestProvider()
 
 	status := provider.Detect()
 
 	require.Contains(t, status.Error, "/add-plugin stripe")
 }
 
-func cursorProviderConfig() ProviderConfig {
-	return ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}, Client: ClientCursor, BinaryName: CursorBinaryName, DisplayName: CursorDisplayName}
+func cursorTestProvider() Provider {
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}
+	return NewCursorProvider(scanner, nil)
 }

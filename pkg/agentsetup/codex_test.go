@@ -12,13 +12,13 @@ import (
 const codexTestMarketplaceList = `{"marketplaces":[{"name":"openai-curated"},{"name":"openai-api-curated"}]}`
 
 func TestScanCodex_NotDetected(t *testing.T) {
-	provider := CodexProvider{
-		Config: ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, Client: ClientCodex, BinaryName: CodexBinaryName, DisplayName: CodexDisplayName},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			t.Fatal("plugin list should not run when Codex is not detected")
-			return nil, nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("plugin list should not run when Codex is not detected")
+		return nil, nil
 	}
+	provider := NewCodexProvider(scanner, nil).(CodexProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -276,17 +276,17 @@ func TestScanCodex_MarketplaceDiscoveryFailures(t *testing.T) {
 }
 
 func codexTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) CodexProvider {
-	return CodexProvider{
-		Config:     ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }}, Client: ClientCodex, BinaryName: CodexBinaryName, DisplayName: CodexDisplayName},
-		RunCommand: runCommand,
-		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
-			if listErr != nil {
-				return nil, listErr
-			}
-			if args[1] == "marketplace" {
-				return []byte(codexTestMarketplaceList), nil
-			}
-			return []byte(listOutput), nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }}
+	runOutput := func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if listErr != nil {
+			return nil, listErr
+		}
+		if args[1] == "marketplace" {
+			return []byte(codexTestMarketplaceList), nil
+		}
+		return []byte(listOutput), nil
 	}
+	provider := NewCodexProvider(scanner, runCommand).(CodexProvider)
+	provider.RunOutput = runOutput
+	return provider
 }

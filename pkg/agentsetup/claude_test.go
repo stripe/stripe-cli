@@ -10,9 +10,8 @@ import (
 )
 
 func TestClaude_NotDetected(t *testing.T) {
-	provider := ClaudeProvider{
-		Config: claudeProviderConfig(Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}),
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	provider := NewClaudeProvider(scanner, nil)
 
 	status := provider.Detect()
 
@@ -23,12 +22,12 @@ func TestClaude_NotDetected(t *testing.T) {
 }
 
 func TestClaude_DetectedNoPluginSupport(t *testing.T) {
-	provider := ClaudeProvider{
-		Config: claudeProviderConfig(Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}),
-		RunOutput: func(_ context.Context, _ string, _ ...string) ([]byte, error) {
-			return nil, errors.New("unknown command")
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
+	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+		return nil, errors.New("unknown command")
 	}
+	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -38,10 +37,10 @@ func TestClaude_DetectedNoPluginSupport(t *testing.T) {
 }
 
 func TestClaude_DetectedPluginMissing(t *testing.T) {
-	provider := ClaudeProvider{
-		Config:    claudeProviderConfig(Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}),
-		RunOutput: func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`[]`), nil },
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
+	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`[]`), nil }
+	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -55,10 +54,10 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	listJSON := mustJSON(t, []claudeInstalledPlugin{
 		{ID: "stripe@claude-plugins-official", Version: "2.4.1", Scope: "user", Enabled: true},
 	})
-	provider := ClaudeProvider{
-		Config:    claudeProviderConfig(Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}),
-		RunOutput: func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil },
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
+	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
+	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -72,10 +71,10 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 }
 
 func TestClaude_MalformedJSON(t *testing.T) {
-	provider := ClaudeProvider{
-		Config:    claudeProviderConfig(Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}),
-		RunOutput: func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`{nope`), nil },
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
+	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`{nope`), nil }
+	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -87,10 +86,10 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 	listJSON := mustJSON(t, []claudeInstalledPlugin{
 		{ID: "other-plugin@marketplace", Version: "1.0.0", Scope: "user", Enabled: true},
 	})
-	provider := ClaudeProvider{
-		Config:    claudeProviderConfig(Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}),
-		RunOutput: func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil },
-	}
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
+	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
+	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -102,16 +101,15 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 	installErr := errors.New("stale marketplace")
 	var calls [][]string
-	provider := ClaudeProvider{
-		RunCommand: func(_ context.Context, name string, args ...string) error {
-			call := append([]string{name}, args...)
-			calls = append(calls, call)
-			if len(calls) == 1 {
-				return installErr
-			}
-			return nil
-		},
+	runCommand := func(_ context.Context, name string, args ...string) error {
+		call := append([]string{name}, args...)
+		calls = append(calls, call)
+		if len(calls) == 1 {
+			return installErr
+		}
+		return nil
 	}
+	provider := NewClaudeProvider(Scanner{}, runCommand)
 	plan := Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", TargetClaudePlugin}}
 
 	err := provider.Apply(context.Background(), nil, plan)
@@ -129,8 +127,4 @@ func mustJSON(t *testing.T, v interface{}) []byte {
 	b, err := json.Marshal(v)
 	require.NoError(t, err)
 	return b
-}
-
-func claudeProviderConfig(scanner Scanner) ProviderConfig {
-	return ProviderConfig{Scanner: scanner, Client: ClientClaudeCode, BinaryName: ClaudeBinaryName, DisplayName: ClaudeDisplayName}
 }

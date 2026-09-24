@@ -196,7 +196,7 @@ func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
 	setup := testAgentSetupCmd()
 	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
-	}, nil)
+	}, nil).(agentsetup.ClaudeProvider)
 	claude.RunOutput = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
 		return nil, errors.New("unknown command")
 	}
@@ -479,27 +479,27 @@ func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
 func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProvider {
 	installed := false
 	return agentsetup.CodexProvider{
-		Config: agentsetup.ProviderConfig{
+		ProviderConfig: agentsetup.ProviderConfig{
 			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
 			Client:      agentsetup.ClientCodex,
 			BinaryName:  agentsetup.CodexBinaryName,
 			DisplayName: agentsetup.CodexDisplayName,
-		},
-		RunCommand: func(ctx context.Context, name string, args ...string) error {
-			installed = true
-			if record != nil {
-				return record(ctx, name, args...)
-			}
-			return nil
-		},
-		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
-			if args[1] == "marketplace" {
-				return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
-			}
-			if installed {
-				return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
-			}
-			return []byte(`{"installed":[]}`), nil
+			RunCommand: func(ctx context.Context, name string, args ...string) error {
+				installed = true
+				if record != nil {
+					return record(ctx, name, args...)
+				}
+				return nil
+			},
+			RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				if args[1] == "marketplace" {
+					return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
+				}
+				if installed {
+					return []byte(`{"installed":[{"pluginId":"stripe@openai-curated","name":"stripe","marketplaceName":"openai-curated","version":"1.0.0"}]}`), nil
+				}
+				return []byte(`{"installed":[]}`), nil
+			},
 		},
 	}
 }
@@ -508,15 +508,15 @@ func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProv
 // with the Stripe plugin not installed, and records install commands via record.
 func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvider {
 	return agentsetup.GrokProvider{
-		Config: agentsetup.ProviderConfig{
+		ProviderConfig: agentsetup.ProviderConfig{
 			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }},
 			Client:      agentsetup.ClientGrok,
 			BinaryName:  agentsetup.GrokBinaryName,
 			DisplayName: agentsetup.GrokDisplayName,
-		},
-		RunCommand: record,
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			return []byte(`[]`), nil
+			RunCommand:  record,
+			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+				return []byte(`[]`), nil
+			},
 		},
 	}
 }
@@ -893,7 +893,7 @@ func TestAgentSetupSkillsUpdateWhenOutOfDate(t *testing.T) {
 func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
 	t.Helper()
 	setup := testAgentSetupCmd()
-	claude := agentsetup.NewClaudeProvider(scanner, runInstall)
+	claude := agentsetup.NewClaudeProvider(scanner, runInstall).(agentsetup.ClaudeProvider)
 	claude.RunOutput = claudeListEmpty
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
 	setup.callingAgent = func() string { return "" }
@@ -907,7 +907,7 @@ func newTestAgentSetupCmdInstalled(t *testing.T, runInstall agentsetup.RunComman
 	setup := testAgentSetupCmd()
 	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
-	}, runInstall)
+	}, runInstall).(agentsetup.ClaudeProvider)
 	claude.RunOutput = claudeListInstalled
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
 	setup.callingAgent = func() string { return "" }
