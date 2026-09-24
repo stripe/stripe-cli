@@ -50,6 +50,7 @@ type sandboxCmd struct {
 
 type sandboxCreateCmd struct {
 	cmd            *cobra.Command
+	inputReader    *bufio.Reader
 	email          string
 	fromGit        bool
 	name           string
@@ -116,7 +117,8 @@ func newSandboxCreateCmd() *sandboxCreateCmd {
 
 With an active live OAuth account, provide a name to create a sandbox under
 that account. By default, settings and data are copied from the live account;
-pass --create-blank and --country to create a blank sandbox instead.
+pass --create-blank and --country to create a blank sandbox instead. When run
+interactively, the command prompts for a name if one is not provided.
 
 Without OAuth, use --email or --from-git to provision a temporary claimable
 sandbox with test API keys. If that fails, the command falls back to
@@ -614,13 +616,10 @@ func (scc *sandboxCreateCmd) runAuthenticatedSandboxCreateCmd(cmd *cobra.Command
 			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid for anonymous sandbox provisioning", flagName)
 		}
 	}
-	if len(args) == 0 {
-		return errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
-	}
 
-	name := strings.TrimSpace(args[0])
-	if name == "" {
-		return errorcategory.New(errorcategory.UserInput, "sandbox name cannot be blank")
+	name, err := scc.resolveAuthenticatedSandboxName(cmd, args)
+	if err != nil {
+		return err
 	}
 
 	country := strings.ToUpper(strings.TrimSpace(scc.country))
@@ -653,6 +652,48 @@ func (scc *sandboxCreateCmd) runAuthenticatedSandboxCreateCmd(cmd *cobra.Command
 	return nil
 }
 
+func (scc *sandboxCreateCmd) resolveAuthenticatedSandboxName(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) > 0 {
+		name := strings.TrimSpace(args[0])
+		if name == "" {
+			return "", errorcategory.New(errorcategory.UserInput, "sandbox name cannot be blank")
+		}
+		return name, nil
+	}
+
+	if _, err := Config.Profile.ResolveCredentials(true); err != nil {
+		return "", err
+	}
+
+	isInteractive := scc.isInteractive
+	if isInteractive == nil {
+		isInteractive = sandboxCommandIsInteractive
+	}
+	if !isInteractive(cmd) {
+		return "", errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
+	}
+
+	fmt.Fprint(cmd.OutOrStdout(), "Sandbox name: ")
+	input, err := scc.readInputLine(cmd)
+	// This can fail if stdin closes or the terminal errors mid-prompt. Check
+	// terminal input and retry with a positional name to bypass the prompt.
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", errorcategory.Errorf(errorcategory.UserInput, "failed to read sandbox name: %v", err)
+	}
+	name := strings.TrimSpace(input)
+	if name == "" {
+		return "", errorcategory.New(errorcategory.UserInput, "sandbox name cannot be blank")
+	}
+	return name, nil
+}
+
+func (scc *sandboxCreateCmd) readInputLine(cmd *cobra.Command) (string, error) {
+	if scc.inputReader == nil {
+		scc.inputReader = bufio.NewReader(cmd.InOrStdin())
+	}
+	return scc.inputReader.ReadString('\n')
+}
+
 func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 	isInteractive := scc.isInteractive
 	if isInteractive == nil {
@@ -663,7 +704,7 @@ func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 	}
 
 	fmt.Fprint(cmd.OutOrStdout(), "Authorize this sandbox with the CLI now? [y/N]: ")
-	input, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	input, err := scc.readInputLine(cmd)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return
