@@ -24,39 +24,36 @@ const (
 
 // ClaudeProvider detects and configures the Stripe plugin for Claude Code.
 type ClaudeProvider struct {
-	RunCommand RunCommandFunc
-	RunOutput  RunOutputFunc
-	Config     ProviderConfig
+	ProviderConfig
 }
 
 // NewClaudeProvider returns a Claude Code setup provider.
-func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) ClaudeProvider {
+func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	config := ProviderConfig{
-		Scanner:     scanner,
-		Client:      ClientClaudeCode,
-		BinaryName:  ClaudeBinaryName,
-		DisplayName: ClaudeDisplayName,
-	}
 	return ClaudeProvider{
-		RunCommand: runCommand,
-		RunOutput:  runCommandOutput,
-		Config:     config,
+		ProviderConfig: ProviderConfig{
+			Scanner:     scanner,
+			Client:      ClientClaudeCode,
+			BinaryName:  ClaudeBinaryName,
+			DisplayName: ClaudeDisplayName,
+			RunCommand:  runCommand,
+			RunOutput:   runCommandOutput,
+		},
 	}
 }
 
 func (p ClaudeProvider) ID() string {
-	return p.Config.Client
+	return p.Client
 }
 
 func (p ClaudeProvider) Detect() Status {
-	status, detected := detectAgentExecutable(
-		p.Config,
+	status := detectAgentExecutable(
+		p.ProviderConfig,
 		StatusMissing,
 	)
-	if !detected {
+	if !status.Detected {
 		return status
 	}
 
@@ -80,9 +77,9 @@ func (p ClaudeProvider) Detect() Status {
 }
 
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
-	name, args := ClaudeInstallCommand()
-	installOrReinstallcommand := append([]string{name}, args...)
-	return determinePlan(status, force, installOrReinstallcommand, installOrReinstallcommand)
+	name, args := p.installCommand()
+	installOrReinstallCommand := append([]string{name}, args...)
+	return determinePlan(status, force, installOrReinstallCommand, installOrReinstallCommand)
 }
 
 // Apply installs the Stripe Claude Code plugin. On failure it silently refreshes
@@ -100,7 +97,7 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 		return nil
 	}
 
-	updateName, updateArgs := ClaudeMarketplaceUpdateCommand()
+	updateName, updateArgs := p.marketplaceUpdateCommand()
 	if updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
 		return updateErr
 	}
@@ -115,7 +112,7 @@ func (p ClaudeProvider) stripePluginStatus(ctx context.Context) (id, version, sc
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, p.Config.BinaryName, "plugin", "list", "--json")
+	out, err := runOutput(ctx, p.BinaryName, "plugin", "list", "--json")
 	if err != nil {
 		return "", "", "", false, false
 	}
@@ -151,14 +148,14 @@ func claudePluginIsStripe(plugin claudeInstalledPlugin) bool {
 	return strings.EqualFold(plugin.ID, TargetClaudePlugin)
 }
 
-// ClaudeInstallCommand returns the command used to install the Stripe Claude
-// Code plugin.
-func ClaudeInstallCommand() (string, []string) {
-	return ClaudeBinaryName, []string{"plugin", "install", TargetClaudePlugin}
+// installCommand returns the command used to install the Stripe Claude Code
+// plugin.
+func (p ClaudeProvider) installCommand() (string, []string) {
+	return p.BinaryName, []string{"plugin", "install", TargetClaudePlugin}
 }
 
-// ClaudeMarketplaceUpdateCommand returns the command used to refresh Claude's
+// marketplaceUpdateCommand returns the command used to refresh Claude's
 // official plugin marketplace metadata.
-func ClaudeMarketplaceUpdateCommand() (string, []string) {
-	return ClaudeBinaryName, []string{"plugin", "marketplace", "update", ClaudeMarketplace}
+func (p ClaudeProvider) marketplaceUpdateCommand() (string, []string) {
+	return p.BinaryName, []string{"plugin", "marketplace", "update", ClaudeMarketplace}
 }

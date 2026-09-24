@@ -21,9 +21,7 @@ const (
 
 // GrokProvider detects and installs the Stripe plugin for Grok Build (xAI).
 type GrokProvider struct {
-	RunCommand RunCommandFunc
-	RunOutput  RunOutputFunc
-	Config     ProviderConfig
+	ProviderConfig
 }
 
 // NewGrokProvider returns a Grok Build setup provider.
@@ -31,27 +29,26 @@ func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	config := ProviderConfig{
-		Scanner:     scanner,
-		Client:      ClientGrok,
-		BinaryName:  GrokBinaryName,
-		DisplayName: GrokDisplayName,
-	}
 	return GrokProvider{
-		RunCommand: runCommand,
-		RunOutput:  runCommandOutput,
-		Config:     config,
+		ProviderConfig: ProviderConfig{
+			Scanner:     scanner,
+			Client:      ClientGrok,
+			BinaryName:  GrokBinaryName,
+			DisplayName: GrokDisplayName,
+			RunCommand:  runCommand,
+			RunOutput:   runCommandOutput,
+		},
 	}
 }
 
-func (p GrokProvider) ID() string { return p.Config.Client }
+func (p GrokProvider) ID() string { return p.Client }
 
 func (p GrokProvider) Detect() Status {
-	status, detected := detectAgentExecutable(
-		p.Config,
+	status := detectAgentExecutable(
+		p.ProviderConfig,
 		StatusMissing,
 	)
-	if !detected {
+	if !status.Detected {
 		return status
 	}
 
@@ -82,7 +79,7 @@ func (p GrokProvider) stripePluginStatus(ctx context.Context) (plugin grokInstal
 	if runOutput == nil {
 		runOutput = runCommandOutput
 	}
-	out, err := runOutput(ctx, p.Config.BinaryName, "plugin", "list", "--json")
+	out, err := runOutput(ctx, p.BinaryName, "plugin", "list", "--json")
 	if err != nil {
 		return grokInstalledPlugin{}, false, false
 	}
@@ -122,12 +119,12 @@ func grokPluginIsStripe(plugin grokInstalledPlugin) bool {
 }
 
 func (p GrokProvider) Plan(status Status, force bool) Plan {
-	installCommand := []string{p.Config.BinaryName, "plugin", "install", GrokPluginName, "--trust"}
+	installCommand := []string{p.BinaryName, "plugin", "install", GrokPluginName, "--trust"}
 	// `grok plugin install` is idempotent when already installed — it prints
 	// "Plugin stripe is already installed ... Run `grok plugin update stripe`
 	// to update it" rather than reinstalling, so a forced refresh has to go
 	// through `update` instead.
-	reinstallCommand := []string{p.Config.BinaryName, "plugin", "update", GrokPluginName}
+	reinstallCommand := []string{p.BinaryName, "plugin", "update", GrokPluginName}
 	return determinePlan(status, force, installCommand, reinstallCommand)
 }
 

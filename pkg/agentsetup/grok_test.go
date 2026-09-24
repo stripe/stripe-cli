@@ -9,13 +9,13 @@ import (
 )
 
 func TestGrok_NotDetected(t *testing.T) {
-	provider := GrokProvider{
-		Config: ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}, Client: ClientGrok, BinaryName: GrokBinaryName, DisplayName: GrokDisplayName},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			t.Fatal("plugin list should not run when Grok is not detected")
-			return nil, nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("plugin list should not run when Grok is not detected")
+		return nil, nil
 	}
+	provider := NewGrokProvider(scanner, nil).(GrokProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -70,14 +70,12 @@ func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
 func TestGrokApply_RunsInstallCommand(t *testing.T) {
 	var gotName string
 	var gotArgs []string
-
-	provider := GrokProvider{
-		RunCommand: func(_ context.Context, name string, args ...string) error {
-			gotName = name
-			gotArgs = args
-			return nil
-		},
+	runCommand := func(_ context.Context, name string, args ...string) error {
+		gotName = name
+		gotArgs = args
+		return nil
 	}
+	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
 	plan := Plan{Action: ActionInstall, Command: []string{"grok", "plugin", "install", GrokPluginName, "--trust"}}
 	err := provider.Apply(context.Background(), nil, plan)
@@ -88,12 +86,11 @@ func TestGrokApply_RunsInstallCommand(t *testing.T) {
 }
 
 func TestGrokApply_NoneIsNoop(t *testing.T) {
-	provider := GrokProvider{
-		RunCommand: func(context.Context, string, ...string) error {
-			t.Fatal("RunCommand should not run for ActionNone")
-			return nil
-		},
+	runCommand := func(context.Context, string, ...string) error {
+		t.Fatal("RunCommand should not run for ActionNone")
+		return nil
 	}
+	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionNone})
 
@@ -101,14 +98,14 @@ func TestGrokApply_NoneIsNoop(t *testing.T) {
 }
 
 func grokTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) GrokProvider {
-	return GrokProvider{
-		Config:     ProviderConfig{Scanner: Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}, Client: ClientGrok, BinaryName: GrokBinaryName, DisplayName: GrokDisplayName},
-		RunCommand: runCommand,
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			if listErr != nil {
-				return nil, listErr
-			}
-			return []byte(listOutput), nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}
+	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+		if listErr != nil {
+			return nil, listErr
+		}
+		return []byte(listOutput), nil
 	}
+	provider := NewGrokProvider(scanner, runCommand).(GrokProvider)
+	provider.RunOutput = runOutput
+	return provider
 }
