@@ -87,7 +87,7 @@ func (p OpenclawProvider) stripePluginStatus(ctx context.Context) (plugin opencl
 	}
 	out, err := runOutput(ctx, p.BinaryName, "plugins", "list", "--json")
 	if err != nil {
-		fmt.Println("Error running openclaw plugins list:", err)
+		fmt.Println("Error running openclaw plugins list:", err) // TESTING
 		return openclawInstalledPlugin{}, false, false
 	}
 	plugin, ok := findOpenclawStripePlugin(out)
@@ -111,8 +111,8 @@ func findOpenclawStripePlugin(listJSON []byte) (openclawInstalledPlugin, bool) {
 	}
 
 	for _, plugin := range plugins {
-		fmt.Println(plugin)
-		fmt.Println(openclawPluginIsStripe(plugin))
+		fmt.Println(plugin) // TESTING
+		fmt.Println(openclawPluginIsStripe(plugin)) // TESTING
 		if openclawPluginIsStripe(plugin) {
 			return plugin, true
 		}
@@ -144,6 +144,9 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 			Manual: fmt.Sprintf("Could not resolve home directory: %s", err),
 		}
 	}
+
+	fmt.Println("repoPath:", repoPath) //TESTING
+	p.Detect() //TESTING
 
 	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 
