@@ -24,34 +24,33 @@ const (
 // detects the plugin from disk and, when it is missing, points the user at the
 // in-app command rather than shelling out.
 type CursorProvider struct {
-	Scanner Scanner
+	ProviderConfig
 }
 
 // NewCursorProvider returns a Cursor setup provider. The RunCommandFunc argument
 // is accepted for signature parity with the other providers but is unused,
 // because Cursor has no CLI installer.
 func NewCursorProvider(scanner Scanner, _ RunCommandFunc) Provider {
-	return CursorProvider{Scanner: scanner}
+	return CursorProvider{
+		ProviderConfig: ProviderConfig{
+			Scanner:     scanner,
+			Client:      ClientCursor,
+			BinaryName:  CursorBinaryName,
+			DisplayName: CursorDisplayName,
+		},
+	}
 }
 
-func (p CursorProvider) ID() string { return ClientCursor }
+func (p CursorProvider) ID() string { return p.Client }
 
 func (p CursorProvider) Detect() Status {
-	s := p.Scanner.withDefaults()
-
-	status := Status{
-		Client:      ClientCursor,
-		DisplayName: CursorDisplayName,
-		Status:      StatusNotDetected,
-	}
-
-	binPath, err := s.LookPath(CursorBinaryName)
-	if err != nil {
+	status := detectAgentExecutable(
+		p.ProviderConfig,
+		StatusUnknown,
+	)
+	if !status.Detected {
 		return status
 	}
-	status.Detected = true
-	status.ExecutablePath = binPath
-	status.Status = StatusUnknown
 	// Signal to the TUI that this row is not actionable from the CLI.
 	status.Error = "run /add-plugin stripe inside Cursor agent"
 	return status

@@ -9,13 +9,13 @@ import (
 )
 
 func TestGrok_NotDetected(t *testing.T) {
-	provider := GrokProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			t.Fatal("plugin list should not run when Grok is not detected")
-			return nil, nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("plugin list should not run when Grok is not detected")
+		return nil, nil
 	}
+	provider := NewGrokProvider(scanner, nil).(GrokProvider)
+	provider.RunOutput = runOutput
 
 	status := provider.Detect()
 
@@ -23,6 +23,7 @@ func TestGrok_NotDetected(t *testing.T) {
 	require.Equal(t, "Grok", status.DisplayName)
 	require.False(t, status.Detected)
 	require.Equal(t, StatusNotDetected, status.Status)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
 func TestGrok_PluginMissing(t *testing.T) {
@@ -53,6 +54,7 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.Equal(t, "0.7.1", status.Plugin.Version)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"grok", "plugin", "update", GrokPluginName}}, provider.Plan(status, true))
 }
 
 func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
@@ -65,27 +67,15 @@ func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
 	require.Contains(t, status.Error, "upgrade Grok Build")
 }
 
-func TestGrok_PlanReinstallWhenForced(t *testing.T) {
-	status := Status{Detected: true, Plugin: PluginStatus{Installed: true}}
-	provider := GrokProvider{}
-
-	plan := provider.Plan(status, true)
-
-	require.Equal(t, ActionReinstall, plan.Action)
-	require.Equal(t, []string{"grok", "plugin", "update", GrokPluginName}, plan.Command)
-}
-
 func TestGrokApply_RunsInstallCommand(t *testing.T) {
 	var gotName string
 	var gotArgs []string
-
-	provider := GrokProvider{
-		RunCommand: func(_ context.Context, name string, args ...string) error {
-			gotName = name
-			gotArgs = args
-			return nil
-		},
+	runCommand := func(_ context.Context, name string, args ...string) error {
+		gotName = name
+		gotArgs = args
+		return nil
 	}
+	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
 	plan := Plan{Action: ActionInstall, Command: []string{"grok", "plugin", "install", GrokPluginName, "--trust"}}
 	err := provider.Apply(context.Background(), nil, plan)
@@ -96,12 +86,11 @@ func TestGrokApply_RunsInstallCommand(t *testing.T) {
 }
 
 func TestGrokApply_NoneIsNoop(t *testing.T) {
-	provider := GrokProvider{
-		RunCommand: func(context.Context, string, ...string) error {
-			t.Fatal("RunCommand should not run for ActionNone")
-			return nil
-		},
+	runCommand := func(context.Context, string, ...string) error {
+		t.Fatal("RunCommand should not run for ActionNone")
+		return nil
 	}
+	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionNone})
 
@@ -109,14 +98,14 @@ func TestGrokApply_NoneIsNoop(t *testing.T) {
 }
 
 func grokTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) GrokProvider {
-	return GrokProvider{
-		Scanner:    Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }},
-		RunCommand: runCommand,
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			if listErr != nil {
-				return nil, listErr
-			}
-			return []byte(listOutput), nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}
+	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+		if listErr != nil {
+			return nil, listErr
+		}
+		return []byte(listOutput), nil
 	}
+	provider := NewGrokProvider(scanner, runCommand).(GrokProvider)
+	provider.RunOutput = runOutput
+	return provider
 }
