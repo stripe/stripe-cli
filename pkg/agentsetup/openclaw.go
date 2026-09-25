@@ -1,6 +1,5 @@
 package agentsetup
 
-import "fmt"
 
 import (
 	"context"
@@ -8,7 +7,7 @@ import (
 	"io"
 	"strings"
 	"time"
-
+	"fmt"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
