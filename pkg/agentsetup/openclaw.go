@@ -87,10 +87,8 @@ func (p OpenclawProvider) stripePluginStatus(ctx context.Context) (plugin opencl
 	}
 	out, err := runOutput(ctx, p.BinaryName, "plugins", "list", "--json")
 	if err != nil {
-		fmt.Println("Error running openclaw plugins list:", err) // TESTING
 		return openclawInstalledPlugin{}, false, false
 	}
-	fmt.Println("Output of openclaw plugins list:", string(out)) // TESTING
 	plugin, ok := findOpenclawStripePlugin(out)
 	return plugin, ok, true
 }
@@ -103,17 +101,19 @@ type openclawInstalledPlugin struct {
 	Format  string `json:"format"` // Whether a plugin is a built-in Openclaw plugin or a third-party "bundled plugin"
 }
 
+type openclawPluginsListOutput struct {
+	Plugins []openclawInstalledPlugin `json:"plugins"`
+}
+
 // findOpenclawStripePlugin reports whether the Stripe plugin appears in the
 // output of `openclaw plugins list --json`.
 func findOpenclawStripePlugin(listJSON []byte) (openclawInstalledPlugin, bool) {
-	var plugins []openclawInstalledPlugin
-	if err := json.Unmarshal(listJSON, &plugins); err != nil {
+	var output openclawPluginsListOutput
+	if err := json.Unmarshal(listJSON, &output); err != nil {
 		return openclawInstalledPlugin{}, false
 	}
 
-	for _, plugin := range plugins {
-		fmt.Println(plugin) // TESTING
-		fmt.Println(openclawPluginIsStripe(plugin)) // TESTING
+	for _, plugin := range output.Plugins {
 		if openclawPluginIsStripe(plugin) {
 			return plugin, true
 		}
@@ -124,7 +124,7 @@ func findOpenclawStripePlugin(listJSON []byte) (openclawInstalledPlugin, bool) {
 func openclawPluginIsStripe(plugin openclawInstalledPlugin) bool {
 	// We have the user install our plugin directly from our GitHub repo, so we want to make sure
 	// this doesn't get confused with a native Openclaw plugin
-	return strings.EqualFold(plugin.Name, OpenclawPluginName)
+	return strings.EqualFold(plugin.Name, OpenclawPluginName) && strings.EqualFold(plugin.Format, "bundle")
 }
 
 func (p OpenclawProvider) repoPath() (string, error) {
@@ -145,10 +145,6 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 			Manual: fmt.Sprintf("Could not resolve home directory: %s", err),
 		}
 	}
-
-	//TESTING
-	// TESTING ENDS
-
 
 	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 

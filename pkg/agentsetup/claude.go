@@ -8,6 +8,7 @@ import (
 	"io"
 	"strings"
 	"time"
+
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 

@@ -31,7 +31,7 @@ func TestOpenclaw_NotDetected(t *testing.T) {
 }
 
 func TestOpenclaw_PluginMissing(t *testing.T) {
-	provider := openclawTestProvider(`[]`, nil, nil)
+	provider := openclawTestProvider(`{"plugins": [], "registry": []}`, nil, nil)
 
 	status := provider.Detect()
 
@@ -48,10 +48,15 @@ func TestOpenclaw_PluginMissing(t *testing.T) {
 }
 
 func TestOpenclaw_PluginInstalled(t *testing.T) {
-	provider := openclawTestProvider(`[
-		{"id":"plugin-1","name":"stripe","version":"0.7.1",
-		 "source":"https://github.com/stripe/ai.git","format":"bundle"}
-	]`, nil, nil)
+	provider := openclawTestProvider(`{
+		"plugins": [
+			{"id":"xai","name":"@openclaw/xai-plugin","version":"2026.9.6",
+			 "source":"/opt/homebrew/lib/node_modules/openclaw/dist/extensions/xai/index.js","format":"openclaw"},
+			{"id":"plugin-1","name":"stripe","version":"0.7.1",
+			 "source":"https://github.com/stripe/ai.git","format":"bundle"}
+		],
+		"registry": []
+	}`, nil, nil)
 
 	status := provider.Detect()
 
