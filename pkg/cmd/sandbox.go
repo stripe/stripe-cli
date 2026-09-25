@@ -33,7 +33,7 @@ import (
 const (
 	defaultSandboxBaseURL        = "https://ai.stripe.com"
 	sandboxAlreadyClaimedMessage = "This sandbox has already been claimed. Run `stripe login` to authenticate with your claimed account."
-	sandboxExpiredMessage        = "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandbox create` again to create a new one."
+	sandboxExpiredMessage        = "Your sandbox session has expired.\nRun `stripe login` to continue with a claimed sandbox, or run `stripe sandboxes create` again to create a new one."
 	sandboxCreateRouteEventName  = "Sandbox Create Routed"
 	sandboxCreateOAuthRoute      = "oauth"
 	sandboxCreateAnonymousRoute  = "anonymous"
@@ -68,15 +68,16 @@ type sandboxCreateCmd struct {
 func newSandboxCmd() *sandboxCmd {
 	sc := &sandboxCmd{}
 	sc.cmd = &cobra.Command{
-		Use:   "sandbox",
-		Short: "Manage Stripe sandbox environments",
+		Use:     "sandboxes",
+		Aliases: []string{"sandbox"},
+		Short:   "Manage Stripe sandbox environments",
 		Long: `Create and manage Stripe sandbox environments.
 
-Use sandbox create to create a sandbox, sandbox list to view sandboxes authorized
-to the CLI under the active live account, and sandbox delete to permanently remove one.`,
-		Example: `stripe sandbox create "My sandbox"
-  stripe sandbox list
-  stripe sandbox delete acct_123 --confirm`,
+Use sandboxes create to create a sandbox, sandboxes list to view sandboxes authorized
+to the CLI under the active live account, and sandboxes delete to permanently remove one.`,
+		Example: `stripe sandboxes create "My sandbox"
+  stripe sandboxes list
+  stripe sandboxes delete acct_123 --confirm`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				return errorcategory.Errorf(errorcategory.UserInput, "unknown command %q for %q", args[0], cmd.CommandPath())
@@ -87,11 +88,11 @@ to the CLI under the active live account, and sandbox delete to permanently remo
 			AIAgentHelpAnnotationKey: "  For new integrations, use separate general sandboxes to isolate settings and test data from live mode. Use the test mode sandbox only for existing integrations or features that require it.\n" +
 				"  Use separate sandboxes for local development and continuous integration (CI) as this avoids undesired interaction between your test environments.\n" +
 				"  Reuse sandboxes across test runs.\n" +
-				"  With an active live OAuth account, use `stripe sandbox create \"My sandbox\"`.\n" +
-				"  Run `stripe sandbox list` to see the sandboxes authorized to the CLI under the active live account.\n" +
-				"  Run `stripe sandbox delete <account_id>` to permanently remove an authorized sandbox; get the account ID from `stripe sandbox list` and use `--confirm` for approved non-interactive deletion.\n" +
-				"  Use `stripe sandbox create --from-git` to provision a sandbox using your git email.\n" +
-				"  Use `stripe sandbox create --email [you@example.com](mailto:you@example.com)` to provision with an explicit email.\n" +
+				"  With an active live OAuth account, use `stripe sandboxes create \"My sandbox\"`.\n" +
+				"  Run `stripe sandboxes list` to see the sandboxes authorized to the CLI under the active live account.\n" +
+				"  Run `stripe sandboxes delete <account_id>` to permanently remove an authorized sandbox; get the account ID from `stripe sandboxes list` and use `--confirm` for approved non-interactive deletion.\n" +
+				"  Use `stripe sandboxes create --from-git` to provision a sandbox using your git email.\n" +
+				"  Use `stripe sandboxes create --email [you@example.com](mailto:you@example.com)` to provision with an explicit email.\n" +
 				"  If anonymous provisioning fails, falls back to browser login (like stripe login).",
 		},
 	}
@@ -119,6 +120,8 @@ With an active live OAuth account, provide a name to create a sandbox under
 that account. By default, settings and data are copied from the live account;
 pass --create-blank and --country to create a blank sandbox instead. When run
 interactively, the command prompts for a name if one is not provided.
+Use --non-interactive with a name to skip prompts, then run stripe login
+when you want to authorize CLI access to the new sandbox.
 
 Without OAuth, use --email or --from-git to provision a temporary claimable
 sandbox with test API keys. If that fails, the command falls back to
@@ -126,10 +129,11 @@ browser-based signup or login.
 
 For a claimable sandbox, keys are saved to the current CLI profile so
 subsequent stripe commands work immediately.`,
-		Example: `stripe sandbox create "My sandbox"
-  stripe sandbox create "My blank sandbox" --create-blank --country US
-  stripe sandbox create --email you@example.com
-  stripe sandbox create --from-git`,
+		Example: `stripe sandboxes create "My sandbox"
+  stripe sandboxes create "My sandbox" --non-interactive
+  stripe sandboxes create "My blank sandbox" --create-blank --country US
+  stripe sandboxes create --email you@example.com
+  stripe sandboxes create --from-git`,
 		Args: validators.MaximumNArgs(1),
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  With an active live OAuth account, pass a name to create a managed sandbox.\n" +
@@ -256,9 +260,9 @@ func (scc *sandboxCreateCmd) runAnonymousSandboxCreateCmd(cmd *cobra.Command) er
 
 		expiresAt := Config.Profile.ReadProfileString(config.SandboxExpiresAtName)
 		if expiresAt != "" {
-			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandbox claim`.\n", expiresAt)
+			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandboxes claim`.\n", expiresAt)
 		} else {
-			fmt.Printf("\nRun `stripe sandbox claim` when you're ready to claim your sandbox.\n")
+			fmt.Printf("\nRun `stripe sandboxes claim` when you're ready to claim your sandbox.\n")
 		}
 		return nil
 	}
@@ -398,9 +402,9 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Auror
 
 	fmt.Printf("\nUse the keys above to start building your integration.\n")
 	if result.GetExpiresAt() != "" {
-		fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandbox claim`.\n", result.GetExpiresAt())
+		fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandboxes claim`.\n", result.GetExpiresAt())
 	} else {
-		fmt.Printf("\nClaim your sandbox by using the above claim_url or running `stripe sandbox claim`.\n")
+		fmt.Printf("\nClaim your sandbox by using the above claim_url or running `stripe sandboxes claim`.\n")
 	}
 
 	return nil
@@ -572,7 +576,7 @@ func newSandboxClaimCmd() *sandboxClaimCmd {
 func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string) error {
 	claimURL := Config.Profile.ReadProfileString(config.SandboxClaimURLName)
 	if claimURL == "" {
-		fmt.Printf("No active sandbox. Run `stripe sandbox create` to get started.\n")
+		fmt.Printf("No active sandbox. Run `stripe sandboxes create` to get started.\n")
 		return nil
 	}
 
@@ -666,7 +670,7 @@ func (scc *sandboxCreateCmd) resolveAuthenticatedSandboxName(cmd *cobra.Command,
 	}
 
 	if !scc.isAuthenticatedSandboxCreateInteractive(cmd) {
-		return "", errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
+		return "", errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandboxes create \"My sandbox\"`")
 	}
 
 	fmt.Fprint(cmd.OutOrStdout(), "Sandbox name: ")
@@ -769,12 +773,12 @@ func newSandboxListCmd() *sandboxListCmd {
 This list can be narrower than the sandboxes you can access in Dashboard.
 Run stripe login to authorize additional sandboxes. The command requires an active live account.
 The output includes each sandbox's name, account ID, and access setting.`,
-		Example: `stripe sandbox list`,
+		Example: `stripe sandboxes list`,
 		Args:    validators.NoArgs,
 		RunE:    slc.runSandboxListCmd,
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Run `stripe sandbox list` after `stripe login` to inspect sandboxes authorized to the CLI under the active live account.\n" +
-				"  The ACCOUNT value can be passed to `stripe sandbox delete`.\n" +
+			AIAgentHelpAnnotationKey: "  Run `stripe sandboxes list` after `stripe login` to inspect sandboxes authorized to the CLI under the active live account.\n" +
+				"  The ACCOUNT value can be passed to `stripe sandboxes delete`.\n" +
 				"  Output is a table with NAME, ACCOUNT, and ACCESS columns.",
 		},
 	}
@@ -837,13 +841,13 @@ func newSandboxDeleteCmd() *sandboxDeleteCmd {
 		Use:   "delete <account_id>",
 		Short: "Permanently delete a sandbox",
 		Long: "Permanently delete a Stripe sandbox.\n\n" +
-			"Pass the sandbox account ID shown by `stripe sandbox list`. This command requires an active live account that can manage the sandbox.\n\n" +
+			"Pass the sandbox account ID shown by `stripe sandboxes list`. This command requires an active live account that can manage the sandbox.\n\n" +
 			"The command asks for confirmation before deleting. Deleting a sandbox cannot be undone and does not affect your live account. Use `--confirm` for approved non-interactive use.",
-		Example: `stripe sandbox delete acct_123
-  stripe sandbox delete acct_123 --confirm`,
+		Example: `stripe sandboxes delete acct_123
+  stripe sandboxes delete acct_123 --confirm`,
 		Args: validators.ExactArgs(1),
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Use an ACCOUNT value from `stripe sandbox list`.\n" +
+			AIAgentHelpAnnotationKey: "  Use an ACCOUNT value from `stripe sandboxes list`.\n" +
 				"  Deletion is permanent and does not affect the live account.\n" +
 				"  Use `--confirm` only for approved non-interactive deletion.",
 		},
@@ -862,7 +866,7 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 	stripeAccount := strings.TrimSpace(args[0])
 	switch {
 	case stripeAccount == "":
-		return errorcategory.Errorf(errorcategory.UserInput, "account ID is required (the acct_ shown by `stripe sandbox list`)")
+		return errorcategory.Errorf(errorcategory.UserInput, "account ID is required (the acct_ shown by `stripe sandboxes list`)")
 	case strings.HasPrefix(stripeAccount, "org_"):
 		return errorcategory.Errorf(errorcategory.UserInput, "account ID must be an account (acct_...), not an organization (org_...)")
 	case !strings.HasPrefix(stripeAccount, "acct_") || len(stripeAccount) == len("acct_"):

@@ -71,7 +71,13 @@ func TestSandboxVisibleInHelp(t *testing.T) {
 
 	output, err := executeCommand(rootCmd, "--help")
 	require.NoError(t, err)
-	require.Contains(t, output, "sandbox")
+	require.Contains(t, output, "sandboxes")
+	parent, _, err := rootCmd.Find([]string{"sandboxes"})
+	require.NoError(t, err)
+	require.Equal(t, "sandboxes", parent.Name())
+	alias, _, err := rootCmd.Find([]string{"sandbox"})
+	require.NoError(t, err)
+	require.Same(t, parent, alias)
 }
 
 func TestExampleCommands(t *testing.T) {
