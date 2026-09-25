@@ -3,7 +3,6 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
@@ -65,6 +64,15 @@ func (p OpenclawProvider) Detect() Status {
 		status.Error = "upgrade Openclaw Build to enable plugin support"
 		return status
 	}
+
+	// If home directory cannot be resolved and plugin is not found, return an error status. This is a prerequisite for Openclaw plugin installation.
+	_, err := p.Scanner.withDefaults().HomeDir()
+	if err != nil && !ok {
+		status.Error = "Could not resolve home directory for Openclaw plugin installation"
+		status.Status = StatusError
+		return status
+	}
+
 	if ok {
 		status.Plugin.Installed = true
 		status.Plugin.ID = plugin.Name
@@ -138,13 +146,7 @@ func (p OpenclawProvider) repoPath() (string, error) {
 // Plan for Openclaw, installing and updating the plugin requires either cloning or pulling the repo beforehand,
 // however installing the plugin after uses the same command `openclaw plugins install`.
 func (p OpenclawProvider) Plan(status Status, force bool) Plan {
-	repoPath, err := p.repoPath()
-	if err != nil {
-		return Plan{
-			Action: ActionManual,
-			Manual: fmt.Sprintf("Could not resolve home directory: %s", err),
-		}
-	}
+	repoPath, _ := p.repoPath() // The error is already handled in Detect, so we can ignore it here.
 
 	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 
