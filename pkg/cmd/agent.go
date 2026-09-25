@@ -33,6 +33,7 @@ var agentClientID = map[string]string{
 	"codex_cli":   agentsetup.ClientCodex,
 	"cursor":      agentsetup.ClientCursor,
 	"grok":        agentsetup.ClientGrok,
+	"openclaw":    agentsetup.ClientOpenclaw,
 }
 
 // providerOrder is the canonical display order for known clients. Providers not
@@ -42,6 +43,7 @@ var providerOrder = []string{
 	agentsetup.ClientCodex,
 	agentsetup.ClientCursor,
 	agentsetup.ClientGrok,
+	agentsetup.ClientOpenclaw,
 }
 
 type agentCmd struct {
@@ -659,14 +661,14 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		}
 		if skillsScopeNeedsUpdate(view.scopes.Local) || skillsScopeNeedsUpdate(view.scopes.Global) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
-				Action:  "update_skills",
-				Command: []string{"stripe", "agent", "setup"},
+				Action:   "update_skills",
+				Commands: [][]string{{"stripe", "agent", "setup"}},
 			})
 		} else if view.allowInstall && !skillsScopesHasInstalled(view.scopes) &&
 			(skillsScopeNeedsInstall(view.scopes.Local) || skillsScopeNeedsInstall(view.scopes.Global)) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
-				Action:  "install_skills",
-				Command: []string{"stripe", "agent", "setup"},
+				Action:   "install_skills",
+				Commands: [][]string{{"stripe", "agent", "setup"}},
 			})
 		}
 	}
@@ -867,6 +869,7 @@ Supported clients for automatic setup:
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
   • Grok Build    https://x.ai/build
+  • Openclaw      https://openclaw.ai
 
 You can still install Stripe skills.
 `)
@@ -880,6 +883,7 @@ Supported clients for automatic setup:
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
   • Grok Build    https://x.ai/build
+  • Openclaw      https://openclaw.ai
 
 Once a client is installed, re-run: stripe agent setup
 `)

@@ -5,6 +5,10 @@ import (
 	"os/exec"
 )
 
+const (
+	gitBinaryName = "git"
+)
+
 // detectAgentExecutable checks if the executable for the agent is available. defaultPluginStatus is the
 // default status to report for the plugin when the executable exists.
 func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus string) Status {
@@ -28,18 +32,18 @@ func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus st
 }
 
 // getPlanByStatus returns the common install plan for providers
-func getPlanByStatus(status Status, force bool, installCommand []string, reinstallCommand []string) Plan {
+func getPlanByStatus(status Status, force bool, installCommands [][]string, reinstallCommands [][]string) Plan {
 	switch {
 	case status.Status == StatusError:
 		return Plan{Action: ActionNone}
 	case !status.Detected:
 		return Plan{Action: ActionNone}
 	case status.Plugin.Installed && force:
-		return Plan{Action: ActionReinstall, Command: reinstallCommand}
+		return Plan{Action: ActionReinstall, Commands: reinstallCommands}
 	case status.Plugin.Installed:
 		return Plan{Action: ActionNone}
 	default:
-		return Plan{Action: ActionInstall, Command: installCommand}
+		return Plan{Action: ActionInstall, Commands: installCommands}
 	}
 }
 

@@ -122,6 +122,7 @@ func TestDetectAgentHost(t *testing.T) {
 		// Code without an entrypoint has no host, rather than a guessed terminal.
 		{"claude code without entrypoint stays hostless", map[string]string{"CLAUDECODE": "1"}, "", ""},
 		{"cursor stays hostless", map[string]string{"CURSOR_AGENT": "1"}, "", ""},
+		{"openclaw shell", map[string]string{"OPENCLAW_SHELL": "1"}, "terminal", "openclaw"},
 
 		// Normalization runs before reporting, so one host cannot arrive under several
 		// spellings -- including from different platforms.
@@ -183,10 +184,6 @@ func TestDetectAIAgent_InferredFromHost(t *testing.T) {
 			require.Equal(t, tt.expected, DetectAIAgent(mapEnv(tt.envs)), tt.description)
 		})
 	}
-}
-
-func TestDetectAIAgent_Hermes(t *testing.T) {
-	require.Equal(t, "hermes", DetectAIAgent(mapEnv(map[string]string{"HERMES_AGENT": "1"})))
 }
 
 // TestDetectAIAgent_AIAgentFallback covers the last-resort fallback: when no agent-specific

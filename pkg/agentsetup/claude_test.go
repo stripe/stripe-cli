@@ -47,7 +47,7 @@ func TestClaude_DetectedPluginMissing(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
-	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", "stripe@claude-plugins-official"}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, false))
 }
 
 func TestClaude_OfficialPluginInstalled(t *testing.T) {
@@ -67,7 +67,7 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	require.Equal(t, "2.4.1", status.Plugin.Version)
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"claude", "plugin", "install", "stripe@claude-plugins-official"}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, true))
 }
 
 func TestClaude_MalformedJSON(t *testing.T) {
@@ -95,7 +95,7 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
-	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", "stripe@claude-plugins-official"}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, false))
 }
 
 func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
@@ -110,7 +110,7 @@ func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 		return nil
 	}
 	provider := NewClaudeProvider(Scanner{}, runCommand)
-	plan := Plan{Action: ActionInstall, Command: []string{"claude", "plugin", "install", TargetClaudePlugin}}
+	plan := Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", TargetClaudePlugin}}}
 
 	err := provider.Apply(context.Background(), nil, plan)
 
