@@ -8,7 +8,6 @@ import (
 	"io"
 	"strings"
 	"time"
-
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
@@ -91,8 +90,7 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 	if len(plan.Commands) == 0 {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
-
-	command = plan.Commands[0]
+	command := plan.Commands[0]
 	name, installArgs := command[0], command[1:]
 	if err := p.RunCommand(ctx, name, installArgs...); err == nil {
 		return nil
