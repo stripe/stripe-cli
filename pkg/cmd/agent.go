@@ -661,14 +661,14 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		}
 		if skillsScopeNeedsUpdate(view.scopes.Local) || skillsScopeNeedsUpdate(view.scopes.Global) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
-				Action:  "update_skills",
-				Command: []string{"stripe", "agent", "setup"},
+				Action:   "update_skills",
+				Commands: [][]string{{"stripe", "agent", "setup"}},
 			})
 		} else if view.allowInstall && !skillsScopesHasInstalled(view.scopes) &&
 			(skillsScopeNeedsInstall(view.scopes.Local) || skillsScopeNeedsInstall(view.scopes.Global)) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
-				Action:  "install_skills",
-				Command: []string{"stripe", "agent", "setup"},
+				Action:   "install_skills",
+				Commands: [][]string{{"stripe", "agent", "setup"}},
 			})
 		}
 	}

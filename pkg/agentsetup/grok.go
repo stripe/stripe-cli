@@ -119,12 +119,12 @@ func grokPluginIsStripe(plugin grokInstalledPlugin) bool {
 }
 
 func (p GrokProvider) Plan(status Status, force bool) Plan {
-	installCommand := []string{p.BinaryName, "plugin", "install", GrokPluginName, "--trust"}
+	installCommand := [][]string{{p.BinaryName, "plugin", "install", GrokPluginName, "--trust"}}
 	// `grok plugin install` is idempotent when already installed — it prints
 	// "Plugin stripe is already installed ... Run `grok plugin update stripe`
 	// to update it" rather than reinstalling, so a forced refresh has to go
 	// through `update` instead.
-	reinstallCommand := []string{p.BinaryName, "plugin", "update", GrokPluginName}
+	reinstallCommand := [][]string{{p.BinaryName, "plugin", "update", GrokPluginName}}
 	return getPlanByStatus(status, force, installCommand, reinstallCommand)
 }
 
@@ -136,8 +136,9 @@ func (p GrokProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
 	if plan.Action == ActionNone {
 		return nil
 	}
-	if len(plan.Command) == 0 {
+	if len(plan.Commands) == 0 {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
-	return p.RunCommand(ctx, plan.Command[0], plan.Command[1:]...)
+	command := plan.Commands[0]
+	return p.RunCommand(ctx, command[0], command[1:]...)
 }
