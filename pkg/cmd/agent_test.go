@@ -416,13 +416,21 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 			agent:        "grok",
 			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return grokMissingProvider(record) },
 		},
+		{
+			name:         "openclaw",
+			displayName:  "Openclaw",
+			agent:        "openclaw",
+			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(record) },
+		},
 	}
 
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
 			record := func(_ context.Context, name string, args ...string) error {
-				installedAgents = append(installedAgents, name)
+				if name != "git" { // git is not an agent being installed, so ignore it
+					installedAgents = append(installedAgents, name)
+				}
 				return nil
 			}
 
@@ -513,6 +521,21 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 			Client:      agentsetup.ClientGrok,
 			BinaryName:  agentsetup.GrokBinaryName,
 			DisplayName: agentsetup.GrokDisplayName,
+			RunCommand:  record,
+			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+				return []byte(`[]`), nil
+			},
+		},
+	}
+}
+
+func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
+	return agentsetup.OpenclawProvider{
+		ProviderConfig: agentsetup.ProviderConfig{
+			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil }},
+			Client:      agentsetup.ClientOpenclaw,
+			BinaryName:  agentsetup.OpenclawBinaryName,
+			DisplayName: agentsetup.OpenclawDisplayName,
 			RunCommand:  record,
 			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
 				return []byte(`[]`), nil

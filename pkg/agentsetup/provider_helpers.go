@@ -5,6 +5,10 @@ import (
 	"os/exec"
 )
 
+const (
+	gitBinaryName = "git"
+)
+
 // detectAgentExecutable checks if the executable for the agent is available. defaultPluginStatus is the
 // default status to report for the plugin when the executable exists.
 func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus string) Status {

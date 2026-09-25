@@ -47,11 +47,13 @@ func DefaultProviders() map[string]Provider {
 	cursor := NewCursorProvider(scanner, RunCommand)
 	codex := NewCodexProvider(scanner, RunCommand)
 	grok := NewGrokProvider(scanner, RunCommand)
+	openclaw := NewOpenclawProvider(scanner, RunCommand)
 	return map[string]Provider{
-		claude.ID(): claude,
-		cursor.ID(): cursor,
-		codex.ID():  codex,
-		grok.ID():   grok,
+		claude.ID():   claude,
+		cursor.ID():   cursor,
+		codex.ID():    codex,
+		grok.ID():     grok,
+		openclaw.ID(): openclaw,
 	}
 }
 

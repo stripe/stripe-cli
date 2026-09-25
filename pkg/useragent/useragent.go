@@ -156,6 +156,10 @@ func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 		return "desktop", "hermes"
 	}
 
+	if getEnv("OPENCLAW_SHELL") != "" {
+		return "terminal", "openclaw"
+	}
+
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
 	if host == "" {
 		// Codex Desktop sets this alongside the generic Codex signals, and it is
