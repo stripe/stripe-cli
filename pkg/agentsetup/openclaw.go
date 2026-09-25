@@ -123,7 +123,7 @@ func findOpenclawStripePlugin(listJSON []byte) (openclawInstalledPlugin, bool) {
 func openclawPluginIsStripe(plugin openclawInstalledPlugin) bool {
 	// We have the user install our plugin directly from our GitHub repo, so we want to make sure
 	// this doesn't get confused with a native Openclaw plugin
-	return strings.EqualFold(plugin.Name, OpenclawPluginName) && strings.EqualFold(plugin.Format, "bundle")
+	return strings.EqualFold(plugin.Name, OpenclawPluginName)
 }
 
 func (p OpenclawProvider) repoPath() (string, error) {
@@ -145,7 +145,7 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 		}
 	}
 
-	installCommand := []string{p.BinaryName, "plugins", "install", repoPath}
+	installCommand := []string{p.BinaryName, "plugins", "install", "--force", repoPath}
 
 	makeRepoDirectoryCommand := []string{"mkdir", "-p", repoPath}
 	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath}
