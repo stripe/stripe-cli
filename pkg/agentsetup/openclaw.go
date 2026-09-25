@@ -90,6 +90,7 @@ func (p OpenclawProvider) stripePluginStatus(ctx context.Context) (plugin opencl
 		fmt.Println("Error running openclaw plugins list:", err) // TESTING
 		return openclawInstalledPlugin{}, false, false
 	}
+	fmt.Println("Output of openclaw plugins list:", string(out)) // TESTING
 	plugin, ok := findOpenclawStripePlugin(out)
 	return plugin, ok, true
 }
@@ -145,8 +146,13 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 		}
 	}
 
-	fmt.Println("repoPath:", repoPath) //TESTING
-	p.Detect() //TESTING
+	//TESTING
+	ctx, cancel := context.WithTimeout(context.Background(), openclawListTimeout)
+	defer cancel()
+
+	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	// TESTING ENDS
+
 
 	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 
