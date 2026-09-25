@@ -89,8 +89,9 @@ type PluginStatus struct {
 
 // Plan describes the next setup action for a provider.
 type Plan struct {
-	Action  string   `json:"action"`
-	Command []string `json:"command,omitempty"`
+	Action string `json:"action"`
+	// Commands holds the commands to run based on the Action
+	Commands [][]string `json:"commands,omitempty"`
 	// Manual holds the instruction shown for ActionManual plans.
 	Manual string `json:"manual,omitempty"`
 }

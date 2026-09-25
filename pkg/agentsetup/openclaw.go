@@ -1,5 +1,7 @@
 package agentsetup
 
+import "fmt"
+
 import (
 	"context"
 	"encoding/json"
@@ -106,6 +108,8 @@ func findOpenclawStripePlugin(listJSON []byte) (openclawInstalledPlugin, bool) {
 	}
 
 	for _, plugin := range plugins {
+		fmt.Println(plugin)
+		fmt.Println(openclawPluginIsStripe(plugin))
 		if openclawPluginIsStripe(plugin) {
 			return plugin, true
 		}
@@ -123,23 +127,27 @@ func openclawPluginIsStripe(plugin openclawInstalledPlugin) bool {
 // however installing the plugin after uses the same command `openclaw plugins install`.
 // So, Plan should instead return the appropriate git command to run first depending on the Action
 func (p OpenclawProvider) Plan(status Status, force bool) Plan {
+	makeRepoDirectoryCommand := []string{"mkdir", "-p", openclawClonedRepoPath}
 	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath}
-	gitReinstallCommand := []string{gitBinaryName, "pull", "-C", openclawClonedRepoPath}
+	preInstallCommands := [][]string{makeRepoDirectoryCommand, gitInstallCommand}
 
-	return getPlanByStatus(status, force, gitInstallCommand, gitReinstallCommand)
+	gitReinstallCommands := [][]string{{gitBinaryName, "pull", "-C", openclawClonedRepoPath}}
+
+	return getPlanByStatus(status, force, preInstallCommands, gitReinstallCommands)
 }
 
 func (p OpenclawProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
 	if plan.Action == ActionNone {
 		return nil
 	}
-	if len(plan.Command) == 0 {
+	if len(plan.Commands) == 0 {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
 
-	gitName, gitArgs := plan.Command[0], plan.Command[1:]
-	if gitError := p.RunCommand(ctx, gitName, gitArgs...); gitError != nil {
-		return gitError
+	for _, command := range plan.Commands {
+		if err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
+			return err
+		}
 	}
 
 	installName, installArgs := p.installCommand()
@@ -150,8 +158,3 @@ func (p OpenclawProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) err
 func (p OpenclawProvider) installCommand() (string, []string) {
 	return p.BinaryName, []string{"plugins", "install", openclawClonedRepoPath}
 }
-
-// clone plugin dir into ./openclaw in a new folder (maybe smth like repos) (wherever .openclaw is located)
-// clone with "git clone --branch plugins/agent-plugin --depth 1 https://github.com/stripe/ai.git <.openclaw/repos/stripe>"
-// INSTALL COMMAND IS "openclaw plugins install ~/.openclaw/repos/stripe"
-// update is git pull in ~/.openclaw/repos/stripe (use -C flag to specify which directory youre pulling for) and then run install command again

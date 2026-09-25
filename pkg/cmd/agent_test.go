@@ -170,7 +170,7 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.False(t, result.Clients[0].Plugin.Installed)
 	require.Len(t, result.Actions, 1)
 	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
-	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
+	require.Equal(t, [][]string{{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}}, result.Actions[0].Commands)
 	require.Nil(t, result.Skills)
 }
 
@@ -428,7 +428,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
 			record := func(_ context.Context, name string, args ...string) error {
-				if name != "git" { // git is not an agent being installed, so ignore it
+				if name != "git" && name != "mkdir" { // openclaw's pre-install steps are not the agent being installed, so ignore them
 					installedAgents = append(installedAgents, name)
 				}
 				return nil

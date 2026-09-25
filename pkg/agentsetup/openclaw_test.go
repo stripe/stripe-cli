@@ -30,9 +30,9 @@ func TestOpenclaw_PluginMissing(t *testing.T) {
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
 	require.Equal(t,
-		Plan{Action: ActionInstall, Command: []string{
-			"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1",
-			"https://github.com/stripe/ai.git", openclawClonedRepoPath,
+		Plan{Action: ActionInstall, Commands: [][]string{
+			{"mkdir", "-p", openclawClonedRepoPath},
+			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath},
 		}},
 		provider.Plan(status, false))
 }
@@ -53,7 +53,7 @@ func TestOpenclaw_PluginInstalled(t *testing.T) {
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 	require.Equal(t,
-		Plan{Action: ActionReinstall, Command: []string{"git", "pull", "-C", openclawClonedRepoPath}},
+		Plan{Action: ActionReinstall, Commands: [][]string{{"git", "pull", "-C", openclawClonedRepoPath}}},
 		provider.Plan(status, true))
 }
 
@@ -77,18 +77,21 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 	}
 	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
 
-	plan := Plan{Action: ActionInstall, Command: []string{
-		"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1",
-		"https://github.com/stripe/ai.git", openclawClonedRepoPath,
-	}}
+	preInstallCommands := [][]string{
+		{"mkdir", "-p", openclawClonedRepoPath},
+		{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath},
+	}
+
+	plan := Plan{Action: ActionInstall, Commands: preInstallCommands}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"git", "openclaw"}, commandNames)
+	require.Equal(t, []string{"mkdir", "git", "openclaw"}, commandNames)
+	require.Equal(t, []string{"-p", openclawClonedRepoPath}, commandArgs[0])
 	require.Equal(t,
 		[]string{"clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath},
-		commandArgs[0])
-	require.Equal(t, []string{"plugins", "install", openclawClonedRepoPath}, commandArgs[1])
+		commandArgs[1])
+	require.Equal(t, []string{"plugins", "install", openclawClonedRepoPath}, commandArgs[2])
 }
 
 func TestOpenclawApply_ReinstallPullsThenInstalls(t *testing.T) {
@@ -99,7 +102,7 @@ func TestOpenclawApply_ReinstallPullsThenInstalls(t *testing.T) {
 	}
 	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
 
-	plan := Plan{Action: ActionReinstall, Command: []string{"git", "pull", "-C", openclawClonedRepoPath}}
+	plan := Plan{Action: ActionReinstall, Commands: [][]string{{"git", "pull", "-C", openclawClonedRepoPath}}}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)
@@ -128,10 +131,10 @@ func TestOpenclawApply_StopsWhenCloneFails(t *testing.T) {
 	}
 	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
 
-	plan := Plan{Action: ActionInstall, Command: []string{
+	plan := Plan{Action: ActionInstall, Commands: [][]string{{
 		"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1",
 		"https://github.com/stripe/ai.git", openclawClonedRepoPath,
-	}}
+	}}}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.ErrorIs(t, err, cloneErr)
