@@ -248,10 +248,10 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		}
 	}
 	if len(matches) == 0 {
-		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "no sandbox found under the active live account; run `stripe sandbox list` to see available sandboxes")
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "no sandbox found under the active live account; run `stripe sandboxes list` to see available sandboxes")
 	}
 	if len(matches) > 1 {
-		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not identify a unique target; run `stripe sandbox list` before retrying")
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not identify a unique target; run `stripe sandboxes list` before retrying")
 	}
 
 	managedSandbox := matches[0]
@@ -297,7 +297,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(response, &parsed); err != nil || parsed.ID != managedSandbox.WorkspaceID {
-		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not be confirmed; run `stripe sandbox list` before retrying")
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not be confirmed; run `stripe sandboxes list` before retrying")
 	}
 
 	return DeletedSandbox{AccountID: managedSandbox.AccountID, Name: managedSandbox.Name}, nil
@@ -510,7 +510,7 @@ func safeDeleteError(err error) error {
 
 	// A close request can reach the API before a transport or timeout failure. Ask
 	// the user to list before retrying so an unknown outcome is not repeated blindly.
-	return errorcategory.New(category, "sandbox deletion outcome is unknown; run `stripe sandbox list` before retrying")
+	return errorcategory.New(category, "sandbox deletion outcome is unknown; run `stripe sandboxes list` before retrying")
 }
 
 func safeDependencyError(operation string, err error) error {

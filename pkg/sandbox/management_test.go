@@ -629,7 +629,7 @@ func TestManagementClientDeleteDoesNotSearchOutsideActiveParent(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, deleted)
 	require.Equal(t, errorcategory.API, mustErrorCategory(t, err))
-	require.Contains(t, err.Error(), "sandbox list")
+	require.Contains(t, err.Error(), "stripe sandboxes list")
 	require.False(t, closeRequested)
 }
 
@@ -651,7 +651,7 @@ func TestManagementClientDeleteRejectsAmbiguousTarget(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, deleted)
 	require.Equal(t, errorcategory.API, mustErrorCategory(t, err))
-	require.Contains(t, err.Error(), "sandbox list")
+	require.Contains(t, err.Error(), "stripe sandboxes list")
 	require.False(t, closeRequested)
 }
 
@@ -715,7 +715,7 @@ func TestManagementClientDeleteRequiresConfirmation(t *testing.T) {
 			require.Error(t, err)
 			require.Empty(t, deleted)
 			require.Equal(t, errorcategory.API, mustErrorCategory(t, err))
-			require.Contains(t, err.Error(), "sandbox list")
+			require.Contains(t, err.Error(), "stripe sandboxes list")
 			require.NotContains(t, err.Error(), "wksp_")
 		})
 	}
@@ -737,7 +737,7 @@ func TestManagementClientDeleteTransportFailureIsAmbiguous(t *testing.T) {
 	require.Error(t, err)
 	require.Empty(t, deleted)
 	require.Equal(t, errorcategory.Network, mustErrorCategory(t, err))
-	require.Contains(t, err.Error(), "sandbox list")
+	require.Contains(t, err.Error(), "stripe sandboxes list")
 }
 
 func TestManagementClientListAccessible(t *testing.T) {
