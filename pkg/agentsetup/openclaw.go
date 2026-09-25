@@ -1,13 +1,14 @@
 package agentsetup
 
-
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
-	"fmt"
+
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
@@ -17,8 +18,10 @@ const (
 	OpenclawPluginName  = "stripe"
 	OpenclawDisplayName = "Openclaw"
 
-	openclawClonedRepoPath = "~/.openclaw/repos/stripe" // repos is a new folder we create within .openclaw that none of .openclaw's functionality is reliant on
-	openclawListTimeout    = 5 * time.Second
+	// openclawRepoDir is relative to $HOME. repos is a new folder we create within
+	// .openclaw that none of .openclaw's functionality is reliant on.
+	openclawRepoDir     = ".openclaw/repos/stripe"
+	openclawListTimeout = 5 * time.Second
 )
 
 // OpenclawProvider detects and installs the Stripe plugin for Openclaw.
@@ -123,19 +126,40 @@ func openclawPluginIsStripe(plugin openclawInstalledPlugin) bool {
 	return strings.EqualFold(plugin.Name, OpenclawPluginName) && strings.EqualFold(plugin.Format, "bundle")
 }
 
-// Plan for Openclaw, installing and updating the plugin requires either cloning or pulling the repo beforehand,
-// however installing the plugin after uses the same command `openclaw plugins install`.
-// So, Plan should instead return the appropriate git command to run first depending on the Action
-func (p OpenclawProvider) Plan(status Status, force bool) Plan {
-	makeRepoDirectoryCommand := []string{"mkdir", "-p", openclawClonedRepoPath}
-	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath}
-	preInstallCommands := [][]string{makeRepoDirectoryCommand, gitInstallCommand}
-
-	gitReinstallCommands := [][]string{{gitBinaryName, "pull", "-C", openclawClonedRepoPath}}
-
-	return getPlanByStatus(status, force, preInstallCommands, gitReinstallCommands)
+func (p OpenclawProvider) repoPath() (string, error) {
+	home, err := p.Scanner.withDefaults().HomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, openclawRepoDir), nil
 }
 
+// Plan for Openclaw, installing and updating the plugin requires either cloning or pulling the repo beforehand,
+// however installing the plugin after uses the same command `openclaw plugins install`.
+func (p OpenclawProvider) Plan(status Status, force bool) Plan {
+	repoPath, err := p.repoPath()
+	if err != nil {
+		return Plan{
+			Action: ActionManual,
+			Manual: fmt.Sprintf("Could not resolve home directory: %s", err),
+		}
+	}
+
+	installCommand := []string{p.BinaryName, "plugins", "install", repoPath}
+
+	makeRepoDirectoryCommand := []string{"mkdir", "-p", repoPath}
+	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath}
+	installCommands := [][]string{makeRepoDirectoryCommand, gitInstallCommand, installCommand}
+
+	gitPullCommand := []string{gitBinaryName, "pull", "-C", repoPath}
+	reinstallCommands := [][]string{gitPullCommand, installCommand}
+
+	return getPlanByStatus(status, force, installCommands, reinstallCommands)
+}
+
+// Apply runs each command in the plan in order. The install step is already
+// the last entry in plan.Commands (see Plan), so there is nothing left to run
+// after this loop.
 func (p OpenclawProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
 	if plan.Action == ActionNone {
 		return nil
@@ -150,11 +174,5 @@ func (p OpenclawProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) err
 		}
 	}
 
-	installName, installArgs := p.installCommand()
-	return p.RunCommand(ctx, installName, installArgs...)
-}
-
-// installCommand returns the command to install the Stripe plugin for Openclaw using a local directory.
-func (p OpenclawProvider) installCommand() (string, []string) {
-	return p.BinaryName, []string{"plugins", "install", openclawClonedRepoPath}
+	return nil
 }

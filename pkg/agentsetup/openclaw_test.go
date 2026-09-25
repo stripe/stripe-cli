@@ -3,10 +3,19 @@ package agentsetup
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+const testOpenclawHomeDir = "/home/test-user"
+
+var testOpenclawRepoPath = filepath.Join(testOpenclawHomeDir, openclawRepoDir)
+
+func testOpenclawHomeDirFunc() (string, error) {
+	return testOpenclawHomeDir, nil
+}
 
 func TestOpenclaw_NotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
@@ -31,8 +40,9 @@ func TestOpenclaw_PluginMissing(t *testing.T) {
 	require.False(t, status.Plugin.Installed)
 	require.Equal(t,
 		Plan{Action: ActionInstall, Commands: [][]string{
-			{"mkdir", "-p", openclawClonedRepoPath},
-			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath},
+			{"mkdir", "-p", testOpenclawRepoPath},
+			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
+			{"openclaw", "plugins", "install", testOpenclawRepoPath},
 		}},
 		provider.Plan(status, false))
 }
@@ -53,7 +63,10 @@ func TestOpenclaw_PluginInstalled(t *testing.T) {
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 	require.Equal(t,
-		Plan{Action: ActionReinstall, Commands: [][]string{{"git", "pull", "-C", openclawClonedRepoPath}}},
+		Plan{Action: ActionReinstall, Commands: [][]string{
+			{"git", "pull", "-C", testOpenclawRepoPath},
+			{"openclaw", "plugins", "install", testOpenclawRepoPath},
+		}},
 		provider.Plan(status, true))
 }
 
@@ -75,11 +88,12 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 		commandArgs = append(commandArgs, args)
 		return nil
 	}
-	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
 
 	preInstallCommands := [][]string{
-		{"mkdir", "-p", openclawClonedRepoPath},
-		{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath},
+		{"mkdir", "-p", testOpenclawRepoPath},
+		{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
+		{"openclaw", "plugins", "install", testOpenclawRepoPath},
 	}
 
 	plan := Plan{Action: ActionInstall, Commands: preInstallCommands}
@@ -87,11 +101,11 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, []string{"mkdir", "git", "openclaw"}, commandNames)
-	require.Equal(t, []string{"-p", openclawClonedRepoPath}, commandArgs[0])
+	require.Equal(t, []string{"-p", testOpenclawRepoPath}, commandArgs[0])
 	require.Equal(t,
-		[]string{"clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawClonedRepoPath},
+		[]string{"clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
 		commandArgs[1])
-	require.Equal(t, []string{"plugins", "install", openclawClonedRepoPath}, commandArgs[2])
+	require.Equal(t, []string{"plugins", "install", testOpenclawRepoPath}, commandArgs[2])
 }
 
 func TestOpenclawApply_ReinstallPullsThenInstalls(t *testing.T) {
@@ -100,14 +114,17 @@ func TestOpenclawApply_ReinstallPullsThenInstalls(t *testing.T) {
 		commandArgs = append(commandArgs, args)
 		return nil
 	}
-	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
 
-	plan := Plan{Action: ActionReinstall, Commands: [][]string{{"git", "pull", "-C", openclawClonedRepoPath}}}
+	plan := Plan{Action: ActionReinstall, Commands: [][]string{
+		{"git", "pull", "-C", testOpenclawRepoPath},
+		{"openclaw", "plugins", "install", testOpenclawRepoPath},
+	}}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"pull", "-C", openclawClonedRepoPath}, commandArgs[0])
-	require.Equal(t, []string{"plugins", "install", openclawClonedRepoPath}, commandArgs[1])
+	require.Equal(t, []string{"pull", "-C", testOpenclawRepoPath}, commandArgs[0])
+	require.Equal(t, []string{"plugins", "install", testOpenclawRepoPath}, commandArgs[1])
 }
 
 func TestOpenclawApply_NoneIsNoop(t *testing.T) {
@@ -115,7 +132,7 @@ func TestOpenclawApply_NoneIsNoop(t *testing.T) {
 		t.Fatal("RunCommand should not run for ActionNone")
 		return nil
 	}
-	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionNone})
 
@@ -129,11 +146,11 @@ func TestOpenclawApply_StopsWhenCloneFails(t *testing.T) {
 		commandsRan = append(commandsRan, name)
 		return cloneErr
 	}
-	provider := NewOpenclawProvider(Scanner{}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
 
 	plan := Plan{Action: ActionInstall, Commands: [][]string{{
 		"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1",
-		"https://github.com/stripe/ai.git", openclawClonedRepoPath,
+		"https://github.com/stripe/ai.git", testOpenclawRepoPath,
 	}}}
 	err := provider.Apply(context.Background(), nil, plan)
 
@@ -142,7 +159,7 @@ func TestOpenclawApply_StopsWhenCloneFails(t *testing.T) {
 }
 
 func TestOpenclawApply_MissingCommand(t *testing.T) {
-	provider := NewOpenclawProvider(Scanner{}, func(context.Context, string, ...string) error {
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, func(context.Context, string, ...string) error {
 		t.Fatal("RunCommand should not run without a command")
 		return nil
 	}).(OpenclawProvider)
@@ -153,7 +170,10 @@ func TestOpenclawApply_MissingCommand(t *testing.T) {
 }
 
 func openclawTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) OpenclawProvider {
-	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil }}
+	scanner := Scanner{
+		LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil },
+		HomeDir:  testOpenclawHomeDirFunc,
+	}
 	runOutput := func(context.Context, string, ...string) ([]byte, error) {
 		if listErr != nil {
 			return nil, listErr
