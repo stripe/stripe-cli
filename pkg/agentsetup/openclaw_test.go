@@ -30,6 +30,28 @@ func TestOpenclaw_NotDetected(t *testing.T) {
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
+func TestOpenclaw_HomeDirUnresolvable(t *testing.T) {
+	homeDirErr := errors.New("cannot resolve home directory")
+	scanner := Scanner{
+		LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil },
+		HomeDir:  func() (string, error) { return "", homeDirErr },
+	}
+	provider := NewOpenclawProvider(scanner, func(context.Context, string, ...string) error {
+		t.Fatal("RunCommand should not run when home directory cannot be resolved")
+		return nil
+	}).(OpenclawProvider)
+	provider.RunOutput = func(context.Context, string, ...string) ([]byte, error) {
+		return []byte(`{"plugins": [], "registry": []}`), nil
+	}
+
+	status := provider.Detect()
+
+	require.Equal(t, StatusError, status.Status)
+	require.Equal(t, "Could not resolve home directory for Openclaw plugin installation", status.Error)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, true))
+}
+
 func TestOpenclaw_PluginMissing(t *testing.T) {
 	provider := openclawTestProvider(`{"plugins": [], "registry": []}`, nil, nil)
 
