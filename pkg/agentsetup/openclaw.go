@@ -147,10 +147,6 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 	}
 
 	//TESTING
-	ctx, cancel := context.WithTimeout(context.Background(), openclawListTimeout)
-	defer cancel()
-
-	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
 	// TESTING ENDS
 
 
