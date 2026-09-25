@@ -145,7 +145,7 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 		}
 	}
 
-	installCommand := []string{p.BinaryName, "plugins", "install", "--force", repoPath}
+	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 
 	makeRepoDirectoryCommand := []string{"mkdir", "-p", repoPath}
 	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath}
