@@ -950,6 +950,8 @@ func TestSandboxCmdPublicSurface(t *testing.T) {
 
 	assert.Contains(t, command.cmd.UsageString(), "list")
 	assert.Contains(t, command.cmd.UsageString(), "delete")
+	assert.Contains(t, command.cmd.Long, "authorized")
+	assert.Contains(t, command.cmd.Long, "active live account")
 	assert.NotContains(t, command.cmd.UsageString(), "sandbox new")
 
 	for _, name := range []string{"list", "delete"} {
@@ -1760,10 +1762,13 @@ func TestSandboxListCmd_ClientError(t *testing.T) {
 func TestSandboxListCmd_Surface(t *testing.T) {
 	cmd := newSandboxListCmd()
 	assert.False(t, cmd.cmd.Hidden)
-	assert.Equal(t, "List the sandboxes available to your account", cmd.cmd.Short)
+	assert.Equal(t, "List sandboxes authorized to the CLI", cmd.cmd.Short)
 	assert.Contains(t, cmd.cmd.Long, "active live account")
+	assert.Contains(t, cmd.cmd.Long, "authorized to this CLI session")
+	assert.Contains(t, cmd.cmd.Long, "authorize additional sandboxes")
 	assert.Contains(t, cmd.cmd.Long, "stripe login")
 	assert.Equal(t, "stripe sandbox list", cmd.cmd.Example)
+	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "authorized to the CLI")
 	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "stripe sandbox delete")
 	require.NotNil(t, cmd.cmd.Flags().Lookup("api-base"))
 	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-account"))

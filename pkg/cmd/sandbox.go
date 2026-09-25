@@ -72,8 +72,8 @@ func newSandboxCmd() *sandboxCmd {
 		Short: "Manage Stripe sandbox environments",
 		Long: `Create and manage Stripe sandbox environments.
 
-Use sandbox create to create a sandbox, sandbox list to view the sandboxes
-available to your account, and sandbox delete to permanently remove one.`,
+Use sandbox create to create a sandbox, sandbox list to view sandboxes authorized
+to the CLI under the active live account, and sandbox delete to permanently remove one.`,
 		Example: `stripe sandbox create "My sandbox"
   stripe sandbox list
   stripe sandbox delete acct_123 --confirm`,
@@ -88,7 +88,7 @@ available to your account, and sandbox delete to permanently remove one.`,
 				"  Use separate sandboxes for local development and continuous integration (CI) as this avoids undesired interaction between your test environments.\n" +
 				"  Reuse sandboxes across test runs.\n" +
 				"  With an active live OAuth account, use `stripe sandbox create \"My sandbox\"`.\n" +
-				"  Run `stripe sandbox list` to see the sandboxes available under the active live account.\n" +
+				"  Run `stripe sandbox list` to see the sandboxes authorized to the CLI under the active live account.\n" +
 				"  Run `stripe sandbox delete <account_id>` to permanently remove an authorized sandbox; get the account ID from `stripe sandbox list` and use `--confirm` for approved non-interactive deletion.\n" +
 				"  Use `stripe sandbox create --from-git` to provision a sandbox using your git email.\n" +
 				"  Use `stripe sandbox create --email [you@example.com](mailto:you@example.com)` to provision with an explicit email.\n" +
@@ -760,16 +760,17 @@ func newSandboxListCmd() *sandboxListCmd {
 	slc := &sandboxListCmd{}
 	slc.cmd = &cobra.Command{
 		Use:   "list",
-		Short: "List the sandboxes available to your account",
-		Long: `List the Stripe sandboxes available under your active live account.
+		Short: "List sandboxes authorized to the CLI",
+		Long: `List the Stripe sandboxes authorized to this CLI session under your active live account.
 
-This command requires an active live account. Run stripe login first if needed.
+This list can be narrower than the sandboxes you can access in Dashboard.
+Run stripe login to authorize additional sandboxes. The command requires an active live account.
 The output includes each sandbox's name, account ID, and access setting.`,
 		Example: `stripe sandbox list`,
 		Args:    validators.NoArgs,
 		RunE:    slc.runSandboxListCmd,
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Run `stripe sandbox list` after `stripe login` to inspect the sandboxes available to the active live account.\n" +
+			AIAgentHelpAnnotationKey: "  Run `stripe sandbox list` after `stripe login` to inspect sandboxes authorized to the CLI under the active live account.\n" +
 				"  The ACCOUNT value can be passed to `stripe sandbox delete`.\n" +
 				"  Output is a table with NAME, ACCOUNT, and ACCESS columns.",
 		},
