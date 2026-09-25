@@ -1290,6 +1290,26 @@ func TestSandboxCreateCmdOAuthRequiresName(t *testing.T) {
 	require.Empty(t, client.calls)
 }
 
+func TestSandboxCreateCmdOAuthNonInteractiveRequiresNameBeforeCreation(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetArgs([]string{"--non-interactive"})
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
+	require.Empty(t, client.calls)
+}
+
 func TestSandboxCreateCmdOAuthPromptsForMissingName(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
@@ -1546,6 +1566,77 @@ func TestSandboxCreateCmdOAuth_NonInteractiveDoesNotPrompt(t *testing.T) {
 	assert.NotContains(t, stdout.String(), "Authorize this sandbox")
 	assert.Contains(t, stdout.String(), "stripe login")
 	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuthExplicitNonInteractiveDoesNotPrompt(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantCall sandbox.CreateOptions
+	}{
+		{
+			name:     "copy live",
+			args:     []string{"Created sandbox", "--non-interactive"},
+			wantCall: sandbox.CreateOptions{Name: "Created sandbox"},
+		},
+		{
+			name:     "blank",
+			args:     []string{"Blank sandbox", "--create-blank", "--country", "US", "--non-interactive"},
+			wantCall: sandbox.CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetIn(iotest.ErrReader(errors.New("stdin should not be read")))
+			command.cmd.SetArgs(test.args)
+			command.reauth = func(context.Context, string, string) error {
+				t.Fatal("reauth should not run for an explicitly non-interactive caller")
+				return nil
+			}
+
+			var stdout, stderr bytes.Buffer
+			command.cmd.SetOut(&stdout)
+			command.cmd.SetErr(&stderr)
+
+			require.NoError(t, command.cmd.Execute())
+			assert.Equal(t, []sandbox.CreateOptions{test.wantCall}, client.calls)
+			assert.Contains(t, stdout.String(), "Created sandbox")
+			assert.Contains(t, stdout.String(), "stripe login")
+			assert.NotContains(t, stdout.String(), "Sandbox name:")
+			assert.NotContains(t, stdout.String(), "Authorize this sandbox")
+			assert.Empty(t, stderr.String())
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuthNonInteractiveFalseRetainsTerminalPrompts(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Prompted sandbox\nno\n"))
+	command.cmd.SetArgs([]string{"--non-interactive=false"})
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Equal(t, []sandbox.CreateOptions{{Name: "Prompted sandbox"}}, client.calls)
+	assert.Contains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now?")
 }
 
 func TestSandboxCreateCmdOAuth_InvalidUATAfterCreationWarnsWithoutReauth(t *testing.T) {

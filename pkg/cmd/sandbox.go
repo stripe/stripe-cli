@@ -611,7 +611,7 @@ func (scc *sandboxClaimCmd) runSandboxClaimCmd(cmd *cobra.Command, args []string
 }
 
 func (scc *sandboxCreateCmd) runAuthenticatedSandboxCreateCmd(cmd *cobra.Command, args []string) error {
-	for _, flagName := range []string{"email", "from-git", "full-name", "non-interactive", "base-url", "dashboard-base"} {
+	for _, flagName := range []string{"email", "from-git", "full-name", "base-url", "dashboard-base"} {
 		if cmd.Flags().Changed(flagName) {
 			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid for anonymous sandbox provisioning", flagName)
 		}
@@ -665,11 +665,7 @@ func (scc *sandboxCreateCmd) resolveAuthenticatedSandboxName(cmd *cobra.Command,
 		return "", err
 	}
 
-	isInteractive := scc.isInteractive
-	if isInteractive == nil {
-		isInteractive = sandboxCommandIsInteractive
-	}
-	if !isInteractive(cmd) {
+	if !scc.isAuthenticatedSandboxCreateInteractive(cmd) {
 		return "", errorcategory.New(errorcategory.UserInput, "sandbox name is required; for example: `stripe sandbox create \"My sandbox\"`")
 	}
 
@@ -694,12 +690,19 @@ func (scc *sandboxCreateCmd) readInputLine(cmd *cobra.Command) (string, error) {
 	return scc.inputReader.ReadString('\n')
 }
 
-func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
+func (scc *sandboxCreateCmd) isAuthenticatedSandboxCreateInteractive(cmd *cobra.Command) bool {
+	if scc.nonInteractive {
+		return false
+	}
 	isInteractive := scc.isInteractive
 	if isInteractive == nil {
 		isInteractive = sandboxCommandIsInteractive
 	}
-	if !isInteractive(cmd) {
+	return isInteractive(cmd)
+}
+
+func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
+	if !scc.isAuthenticatedSandboxCreateInteractive(cmd) {
 		return
 	}
 
