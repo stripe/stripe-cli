@@ -84,6 +84,7 @@ func (p OpenclawProvider) stripePluginStatus(ctx context.Context) (plugin opencl
 	}
 	out, err := runOutput(ctx, p.BinaryName, "plugins", "list", "--json")
 	if err != nil {
+		fmt.Println("Error running openclaw plugins list:", err)
 		return openclawInstalledPlugin{}, false, false
 	}
 	plugin, ok := findOpenclawStripePlugin(out)
