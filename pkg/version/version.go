@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v72/github"
 	log "github.com/sirupsen/logrus"
@@ -24,17 +25,23 @@ var Version = "master"
 // Template for the version string.
 var Template = fmt.Sprintf("stripe version %s\n", Version)
 
+// releaseGracePeriod is how long after a release is published on GitHub before
+// the upgrade notice mentions it. Package managers (Homebrew, npm, Scoop, ...)
+// pick up a release hours after GitHub does, so announcing it right away tells
+// users to run an upgrade command that cannot find the new version yet.
+const releaseGracePeriod = 24 * time.Hour
+
 // CheckLatestVersion makes a request to the GitHub API to pull the latest
 // release of the CLI
 func CheckLatestVersion() {
 	// master is the dev version, we don't want to check against that every time
 	if Version != "master" {
 		s := ansi.StartNewSpinner("Checking for new versions...", os.Stdout)
-		latest := getLatestVersion()
+		latest, publishedAt := getLatestVersion()
 
 		ansi.StopSpinner(s, "", os.Stdout)
 
-		if needsToUpgrade(Version, latest) {
+		if needsToUpgrade(Version, latest) && releaseIsSettled(publishedAt, time.Now()) {
 			method := installmethod.Detect(installmethod.OSEnv())
 			if notice := upgradeNotice(latest, installmethod.UpgradeAdvice(method, runtime.GOOS)); notice != "" {
 				fmt.Println(notice)
@@ -67,7 +74,15 @@ func needsToUpgrade(version, latest string) bool {
 	return latest != "" && (strings.TrimPrefix(latest, "v") != strings.TrimPrefix(version, "v"))
 }
 
-func getLatestVersion() string {
+// releaseIsSettled reports whether a release published at publishedAt has been
+// out long enough for package managers to carry it. A missing publish time is
+// treated as settled, so the notice degrades to its old behavior rather than
+// going silent.
+func releaseIsSettled(publishedAt, now time.Time) bool {
+	return publishedAt.IsZero() || now.Sub(publishedAt) >= releaseGracePeriod
+}
+
+func getLatestVersion() (string, time.Time) {
 	client := github.NewClient(nil)
 	rep, _, err := client.Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
 
@@ -77,8 +92,8 @@ func getLatestVersion() string {
 		// We don't want to fail any functionality or display errors for this
 		// so fail silently and output to debug log
 		l.Debug(err)
-		return ""
+		return "", time.Time{}
 	}
 
-	return *rep.TagName
+	return rep.GetTagName(), rep.GetPublishedAt().Time
 }
