@@ -8,8 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/stripe/stripe-cli/pkg/version"
 	"golang.org/x/term"
+
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 //
