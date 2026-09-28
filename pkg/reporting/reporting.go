@@ -98,12 +98,16 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category) {
 	if telemetryClient == nil {
 		return
 	}
-	if stripe.GetEventMetadata(ctx) == nil {
+	metadata := stripe.GetEventMetadata(ctx)
+	if metadata == nil {
 		// CaptureException always runs with metadata already on ctx (set once
 		// in cmd.Execute). RecoverAndReport can run before that, e.g. a panic
 		// during setup, so fall back to freshly built metadata.
-		ctx = stripe.WithEventMetadata(ctx, stripe.NewEventMetadata())
+		metadata = stripe.NewEventMetadata()
 	}
+	bucketedMetadata := *metadata
+	bucketedMetadata.CommandPath = commandBucket(metadata)
+	ctx = stripe.WithEventMetadata(ctx, &bucketedMetadata)
 
 	// Sent synchronously (not fire-and-forget): callers on the error/panic
 	// path exit via os.Exit right after this, which would otherwise race

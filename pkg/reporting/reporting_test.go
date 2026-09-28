@@ -22,7 +22,7 @@ import (
 // CaptureException/RecoverAndReport goroutine has delivered its event.
 type syncTelemetryClient struct {
 	mu     sync.Mutex
-	events []struct{ name, value string }
+	events []struct{ name, value, commandPath string }
 	done   chan struct{}
 }
 
@@ -34,9 +34,13 @@ func (c *syncTelemetryClient) SendAPIRequestEvent(_ context.Context, _ string, _
 	return nil, nil
 }
 
-func (c *syncTelemetryClient) SendEvent(_ context.Context, eventName string, eventValue string) {
+func (c *syncTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) {
+	commandPath := ""
+	if metadata := stripe.GetEventMetadata(ctx); metadata != nil {
+		commandPath = metadata.CommandPath
+	}
 	c.mu.Lock()
-	c.events = append(c.events, struct{ name, value string }{eventName, eventValue})
+	c.events = append(c.events, struct{ name, value, commandPath string }{eventName, eventValue, commandPath})
 	c.mu.Unlock()
 	c.done <- struct{}{}
 }
@@ -50,14 +54,14 @@ func (c *syncTelemetryClient) waitForEvent(t *testing.T) {
 	}
 }
 
-func (c *syncTelemetryClient) lastEvent() (name string, value string) {
+func (c *syncTelemetryClient) lastEvent() (name string, value string, commandPath string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.events) == 0 {
-		return "", ""
+		return "", "", ""
 	}
 	last := c.events[len(c.events)-1]
-	return last.name, last.value
+	return last.name, last.value, last.commandPath
 }
 
 func telemetryContext(client *syncTelemetryClient) context.Context {
@@ -114,9 +118,10 @@ func TestCaptureExceptionCapturesActionableCategories(t *testing.T) {
 			require.Equal(t, string(category), events[0].Tags["error_category"])
 
 			telemetryClient.waitForEvent(t)
-			eventName, eventValue := telemetryClient.lastEvent()
+			eventName, eventValue, commandPath := telemetryClient.lastEvent()
 			require.Equal(t, errorTelemetryEventName, eventName)
 			require.Equal(t, string(category), eventValue, "telemetry value must be the bare category, never the error message")
+			require.Equal(t, otherCommandBucket, commandPath)
 		})
 	}
 }
@@ -172,8 +177,44 @@ func TestCaptureExceptionNeverSendsTheErrorMessageToTelemetry(t *testing.T) {
 	CaptureException(telemetryContext(telemetryClient), errors.New("failed for account acct_1abcDEF at https://example.com/secret-path?token=xyz"))
 
 	telemetryClient.waitForEvent(t)
-	_, eventValue := telemetryClient.lastEvent()
+	_, eventValue, _ := telemetryClient.lastEvent()
 	require.Equal(t, string(errorcategory.Internal), eventValue)
+}
+
+func TestCaptureExceptionBucketsTelemetryCommandWithoutMutatingMetadata(t *testing.T) {
+	_, restore := bindTestClient(t)
+	defer restore()
+	telemetryClient := newSyncTelemetryClient()
+	metadata := stripe.NewEventMetadata()
+	metadata.CommandPath = "stripe logs tail"
+	ctx := stripe.WithTelemetryClient(context.Background(), telemetryClient)
+	ctx = stripe.WithEventMetadata(ctx, metadata)
+
+	CaptureException(ctx, errors.New("actionable error"))
+
+	telemetryClient.waitForEvent(t)
+	_, _, commandPath := telemetryClient.lastEvent()
+	require.Equal(t, "logs_tail", commandPath)
+	require.Equal(t, "stripe logs tail", metadata.CommandPath)
+	require.Same(t, metadata, stripe.GetEventMetadata(ctx))
+}
+
+func TestCaptureExceptionBucketsGeneratedResourceTelemetry(t *testing.T) {
+	_, restore := bindTestClient(t)
+	defer restore()
+	telemetryClient := newSyncTelemetryClient()
+	metadata := stripe.NewEventMetadata()
+	metadata.CommandPath = "stripe customers create"
+	metadata.GeneratedResource = true
+	ctx := stripe.WithTelemetryClient(context.Background(), telemetryClient)
+	ctx = stripe.WithEventMetadata(ctx, metadata)
+
+	CaptureException(ctx, errors.New("actionable error"))
+
+	telemetryClient.waitForEvent(t)
+	_, _, commandPath := telemetryClient.lastEvent()
+	require.Equal(t, "resources", commandPath)
+	require.Equal(t, "stripe customers create", metadata.CommandPath)
 }
 
 func TestShouldCapture(t *testing.T) {
@@ -203,7 +244,7 @@ func TestRecoverAndReportSetsIsolatedPanicCategory(t *testing.T) {
 	transport, restore := bindTestClient(t)
 	defer restore()
 	telemetryClient := newSyncTelemetryClient()
-	ctx := telemetryContext(telemetryClient)
+	ctx := stripe.WithTelemetryClient(context.Background(), telemetryClient)
 
 	RecoverAndReport(ctx, "panic value")
 	CaptureException(ctx, errors.New("ordinary error"))
@@ -217,7 +258,9 @@ func TestRecoverAndReportSetsIsolatedPanicCategory(t *testing.T) {
 	telemetryClient.waitForEvent(t)
 	require.Len(t, telemetryClient.events, 2)
 	require.Equal(t, string(errorcategory.Panic), telemetryClient.events[0].value)
+	require.Equal(t, otherCommandBucket, telemetryClient.events[0].commandPath)
 	require.Equal(t, string(errorcategory.Internal), telemetryClient.events[1].value)
+	require.Equal(t, otherCommandBucket, telemetryClient.events[1].commandPath)
 }
 
 func bindTestClient(t *testing.T) (*sentry.MockTransport, func()) {

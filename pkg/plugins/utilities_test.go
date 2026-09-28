@@ -380,9 +380,7 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 		switch req.URL.Path {
 		case "/ajax/stripecli/plugins_metadata":
 			metadataLookups++
-			// The anonymous endpoint keys the auto-install rollout on this, and it is
-			// the only identifier it gets.
-			require.Equal(t, TestMachineUUID, req.URL.Query().Get("machine_uuid"))
+			require.False(t, req.URL.Query().Has("machine_uuid"))
 			body, err := json.Marshal(requests.PluginMetadata{
 				BinaryURL:      "https://example.test/appA/2.0.1",
 				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
@@ -447,21 +445,30 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(
 
 func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
 	optedIn, optedOut := true, false
+	manifest := fmt.Sprintf(`[[Plugin]]
+  Shortname = "appA"
+  Binary = "stripe-cli-app-a"
+  MagicCookieValue = "APP-A-COOKIE"
+  [[Plugin.Release]]
+    Arch = "%s"
+    OS = "%s"
+    Version = "2.0.1"
+    Sum = "abc123"
+`, runtime.GOARCH, runtime.GOOS)
 
 	tests := []struct {
 		name string
-		// autoInstall is what the response says; nil leaves the field out entirely,
-		// as an older server would.
+		// nil leaves the field out entirely, as an older server would.
 		autoInstall     *bool
 		wantAutoInstall bool
 	}{
 		{
-			name:            "server opted this machine in",
+			name:            "backend enabled auto-install",
 			autoInstall:     &optedIn,
 			wantAutoInstall: true,
 		},
 		{
-			name:        "server opted this machine out",
+			name:        "backend disabled auto-install",
 			autoInstall: &optedOut,
 		},
 		{
@@ -469,41 +476,41 @@ func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			fs := afero.NewMemMapFs()
-			config := &TestConfig{MachineUUID: "machine-abc"}
-			config.InitConfig()
-			manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	for _, authenticated := range []bool{true, false} {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("authenticated=%t/%s", authenticated, tt.name), func(t *testing.T) {
+				fs := afero.NewMemMapFs()
+				config := &TestConfig{MachineUUID: "machine-abc"}
+				config.InitConfig()
+				path := "/v1/stripecli/get-plugin-metadata"
+				if !authenticated {
+					config.Profile.APIKey = ""
+					path = "/ajax/stripecli/plugins_metadata"
+				}
 
-			response := map[string]interface{}{
-				"binary_url":      "https://example.test/appA/2.0.1",
-				"plugin_manifest": string(singlePluginManifest(t, "appA", manifestContent, nil)),
-			}
-			if tt.autoInstall != nil {
-				response["auto_install"] = *tt.autoInstall
-			}
+				response := map[string]interface{}{
+					"binary_url":      "https://example.test/appA/2.0.1",
+					"plugin_manifest": manifest,
+				}
+				if tt.autoInstall != nil {
+					response["auto_install"] = *tt.autoInstall
+				}
 
-			stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-				switch req.URL.Path {
-				case "/v1/stripecli/get-plugin-metadata":
-					// The server hashes this to decide which side of the auto-install
-					// rollout the machine is on, so it has to reach the endpoint.
-					require.Equal(t, "machine-abc", req.URL.Query().Get("machine_uuid"))
+				stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+					require.Equal(t, path, req.URL.Path)
+					require.False(t, req.URL.Query().Has("machine_uuid"))
 					body, err := json.Marshal(response)
 					require.NoError(t, err)
 					_, _ = res.Write(body)
-				default:
-					t.Errorf("Received an unexpected request URL: %s", req.URL.String())
-				}
-			}))
-			defer stripeServer.Close()
+				}))
+				defer stripeServer.Close()
 
-			resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL, stripeServer.URL)
-			require.NoError(t, err)
-			require.Equal(t, "2.0.1", resolvedPlugin.Version)
-			require.Equal(t, tt.wantAutoInstall, resolvedPlugin.AutoInstall)
-		})
+				resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "2.0.1", stripeServer.URL, stripeServer.URL)
+				require.NoError(t, err)
+				require.Equal(t, "2.0.1", resolvedPlugin.Version)
+				require.Equal(t, tt.wantAutoInstall, resolvedPlugin.AutoInstall)
+			})
+		}
 	}
 }
 

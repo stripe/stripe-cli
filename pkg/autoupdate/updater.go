@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,7 +13,9 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -20,12 +23,29 @@ import (
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
+// downloadTimeout bounds the whole download, headers through last byte. A var so
+// that tests can shorten it rather than wait out the real value.
+//
+// This runs before the command the user typed, so the question is not how slow a
+// connection we can tolerate but how long we are willing to make someone wait for
+// work they did not ask for. Abandoning the attempt is cheap: the marker stays
+// staged for the next invocation, and their command runs now on the version they
+// already have. Without a bound, a connection that accepts and then stalls hangs
+// that command indefinitely -- net/http's default transport limits the dial and
+// the TLS handshake, but not reading the body.
+var downloadTimeout = 2 * time.Minute
+
 // ApplyIfPending checks for a pending update marker and applies it.
 // If an update is applied, it re-execs the current process with the new binary.
 // This function only returns if no update was applied — or, on Windows, if the
 // new binary could not be started, in which case this invocation carries on
 // running the image it already has.
 func ApplyIfPending() {
+	// This runs as the first statement of main, before the process-wide panic
+	// handler is installed, so without this a panic in here would take down the
+	// command the user typed -- before it had a chance to run at all.
+	defer recoverAndReport("apply")
+
 	if version.Version == "master" {
 		return
 	}
@@ -64,9 +84,14 @@ func ApplyIfPending() {
 	fmt.Fprintf(os.Stderr, "Automatically updating Stripe CLI from %s to %s.\n", current, target)
 	fmt.Fprintf(os.Stderr, "To disable auto-update, set STRIPE_NO_AUTO_UPDATE=1 or add auto_update = false to ~/.config/stripe/config.toml\n")
 
-	if err := downloadAndReplace(marker, exe); err != nil {
+	if reason, err := downloadAndReplace(marker, exe); err != nil {
 		fmt.Fprintf(os.Stderr, "Auto-update failed: %v. Continuing with current version.\n", err)
-		sendTelemetryEvent("Auto-Update Failed", fmt.Sprintf("from=%s to=%s error=%s", current, target, err.Error()))
+		sendEvent(eventFailed, map[string]string{
+			"from":   current,
+			"to":     target,
+			"reason": reason,
+			"error":  err.Error(),
+		})
 		ClearMarker()
 		return
 	}
@@ -74,57 +99,75 @@ func ApplyIfPending() {
 	ClearMarker()
 	fmt.Fprintf(os.Stderr, "Updated successfully ✓\n")
 	fmt.Fprintf(os.Stderr, "Run 'stripe version --notes' to see what's new.\n")
-	sendTelemetryEvent("Auto-Update Succeeded", fmt.Sprintf("from=%s to=%s", current, target))
+
+	succeeded := map[string]string{"from": current, "to": target}
+	if marker.StagedAt > 0 {
+		succeeded["staged_for_seconds"] = strconv.FormatInt(time.Now().Unix()-marker.StagedAt, 10)
+	}
+	sendEvent(eventSucceeded, succeeded)
 
 	reexec(exe)
 }
 
-func downloadAndReplace(marker *UpdateMarker, exePath string) error {
-	resp, err := http.Get(marker.DownloadURL) //nolint:gosec
+// downloadAndReplace fetches the staged release and swaps it in. The returned
+// reason names the stage that failed, so that a dashboard can group failures
+// without matching on error text; it is empty on success.
+func downloadAndReplace(marker *UpdateMarker, exePath string) (string, error) {
+	// Canceled when this function returns, which is after the body has been read,
+	// so the deadline covers the transfer and not just the response headers.
+	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, marker.DownloadURL, nil)
 	if err != nil {
-		return fmt.Errorf("download failed: %w", err)
+		return reasonDownload, fmt.Errorf("cannot create download request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return reasonDownload, fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errorcategory.Errorf(errorcategory.Network, "download returned status %d", resp.StatusCode)
+		return reasonStatus, errorcategory.Errorf(errorcategory.Network, "download returned status %d", resp.StatusCode)
 	}
 
 	tmpArchive, err := os.CreateTemp(filepath.Dir(exePath), "stripe-update-archive-*")
 	if err != nil {
-		return fmt.Errorf("cannot create temp file: %w", err)
+		return reasonReplace, fmt.Errorf("cannot create temp file: %w", err)
 	}
 	tmpArchivePath := tmpArchive.Name()
 	defer os.Remove(tmpArchivePath)
 
 	if _, err := io.Copy(tmpArchive, resp.Body); err != nil {
 		tmpArchive.Close()
-		return fmt.Errorf("download interrupted: %w", err)
+		return reasonDownload, fmt.Errorf("download interrupted: %w", err)
 	}
 	tmpArchive.Close()
 
 	if marker.Checksum != "" && !VerifyChecksum(tmpArchivePath, marker.Checksum) {
-		return errorcategory.Errorf(errorcategory.Network, "checksum verification failed")
+		return reasonChecksum, errorcategory.Errorf(errorcategory.Network, "checksum verification failed")
 	}
 
 	tmpBinary, err := os.CreateTemp(filepath.Dir(exePath), "stripe-update-*")
 	if err != nil {
-		return fmt.Errorf("cannot create temp binary: %w", err)
+		return reasonReplace, fmt.Errorf("cannot create temp binary: %w", err)
 	}
 	tmpBinaryPath := tmpBinary.Name()
 	tmpBinary.Close()
 
 	if err := extractBinary(tmpArchivePath, tmpBinaryPath); err != nil {
 		os.Remove(tmpBinaryPath)
-		return fmt.Errorf("extraction failed: %w", err)
+		return reasonExtract, fmt.Errorf("extraction failed: %w", err)
 	}
 
 	if err := replaceBinary(exePath, tmpBinaryPath); err != nil {
 		os.Remove(tmpBinaryPath)
-		return err
+		return reasonReplace, err
 	}
 
-	return nil
+	return "", nil
 }
 
 // resolvedExecutable is the path of the running binary with every symlink

@@ -24,13 +24,14 @@ func TestVerboseTransport(t *testing.T) {
 	tr := &verboseTransport{
 		Transport:        httpTransport,
 		Out:              &b,
-		PrintableHeaders: inspectHeaders,
+		PrintableHeaders: append(DefaultPrintableHeaders(), "X-Test-Header"),
 	}
 	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest("POST", ts.URL+"/test", nil)
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer token")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-Test-Header", "custom-value")
 
 	resp, err := client.Do(req)
 	require.NoError(t, err)
@@ -41,6 +42,7 @@ func TestVerboseTransport(t *testing.T) {
 	require.Regexp(t, regexp.MustCompile("> POST http://(.+)/test\n"), out)
 	require.Contains(t, out, "> Authorization: Bearer [REDACTED]\n")
 	require.Contains(t, out, "> Content-Type: application/x-www-form-urlencoded\n")
+	require.Contains(t, out, "> X-Test-Header: custom-value\n")
 	require.Contains(t, out, "< HTTP 200\n")
 	require.Contains(t, out, "< Request-Id: req_123\n")
 	require.NotContains(t, out, "Non-Whitelisted-Header")

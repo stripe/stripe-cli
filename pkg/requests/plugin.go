@@ -61,11 +61,7 @@ func getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) strin
 // GetPluginMetadata returns plugin-specific manifest and binary information.
 // It uses the authenticated endpoint when an API key is available and the
 // anonymous endpoint otherwise.
-//
-// machineUUID is the CLI's persistent per-installation identifier. The server
-// keys the auto-install rollout on it so a machine stays on the same side of that
-// rollout across invocations rather than flipping between prompting and not.
-func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch, machineUUID string) (PluginMetadata, error) {
+func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,
@@ -82,9 +78,6 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		"version":  version,
 		"os":       os,
 		"arch":     arch,
-		// Logged so a machine that is not being auto-installed to can be told apart
-		// from one that never sent the identifier the rollout is keyed on.
-		"machine_uuid": machineUUID,
 	}).Debug("Fetching plugin metadata")
 
 	base := &Base{
@@ -104,11 +97,6 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 		"version": version,
 		"os":      os,
 		"arch":    arch,
-	}
-	// Left out when there is no uuid to send: the server reads absent and empty
-	// identically, as "this caller keeps prompting".
-	if machineUUID != "" {
-		requestParams["machine_uuid"] = machineUUID
 	}
 
 	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, requestParams, true, nil)

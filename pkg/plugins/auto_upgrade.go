@@ -294,14 +294,6 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 		return p, installedVersion
 	}
 
-	// Said out loud because the user did not ask for this and is waiting on it. The
-	// install spinner alone would look like the CLI hanging for no reason.
-	color := ansi.Color(os.Stderr)
-	fmt.Fprintln(os.Stderr, color.Faint(fmt.Sprintf(
-		"Upgrading the %s plugin to v%s. Run `stripe plugin auto-update %s --disable` to stop upgrading it automatically.",
-		p.Shortname, resolved.Version, p.Shortname,
-	)).String())
-
 	// Handed ctx, not resolveCtx: deciding whether to upgrade is on a timer, the
 	// download is not.
 	if err := autoUpgradeInstaller(ctx, resolved, cfg, fs, installAPIBaseURL, installDashboardBaseURL); err != nil {
@@ -310,6 +302,22 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 		logger.Debugf("auto-upgrade to v%s failed, continuing with v%s: %s", resolved.Version, installedVersion, err)
 		return p, installedVersion
 	}
+
+	// Said out loud because the user did not ask for this: something they did not
+	// type changed the version of the plugin they are about to run, and the install
+	// spinner erases itself on the way out, leaving no trace that it happened.
+	//
+	// Reported after the install rather than announced before it, so it only ever
+	// claims an upgrade that actually landed -- an install that breaks says so
+	// itself, and until then the spinner is what covers the wait.
+	//
+	// On stderr, like every other thing the CLI says about itself: a plugin command
+	// whose output is being piped somewhere should not have this turn up in it.
+	color := ansi.Color(os.Stderr)
+	fmt.Fprintln(os.Stderr, color.Faint(fmt.Sprintf(
+		"Updated the %s plugin to v%s. Run `stripe plugin auto-update %s --disable` to stop updating it automatically.",
+		p.Shortname, resolved.Version, p.Shortname,
+	)).String())
 
 	// Given the caller's base URLs rather than the resolved ones: a plugin reads an
 	// empty value as "use your own default", and it should not inherit this CLI's just

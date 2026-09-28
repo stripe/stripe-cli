@@ -297,6 +297,14 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether to allow connected accounts to submit disputes using Smart Disputes",
 		},
+		"components.payment_method_settings.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Whether the embedded component is enabled",
+		},
+		"components.payment_method_settings.features.disable_stripe_user_authentication": {
+			Type:             "boolean",
+			ShortDescription: "Whether Stripe user authentication is disabled",
+		},
 		"components.payments.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
@@ -381,7 +389,7 @@ var V1AccountsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
-			ShortDescription: "An [account token](https://api.stripe.com#create_account_token), used to securely provide details to the account",
+			ShortDescription: "An [account token](https://docs.stripe.com/api#create_account_token), used to securely provide details to the account",
 		},
 		"business_profile.annual_revenue.amount": {
 			Type:             "integer",
@@ -424,6 +432,10 @@ var V1AccountsCreate = resource.OperationSpec{
 		"business_profile.product_description": {
 			Type:             "string",
 			ShortDescription: "Internal-only description of the product sold by, or service provided by, the business",
+		},
+		"business_profile.specified_commercial_transactions_act_url": {
+			Type:             "string",
+			ShortDescription: "A link to the business's publicly available terms related to the Specified Commercial Transaction Act",
 		},
 		"business_profile.support_address.city": {
 			Type:             "string",
@@ -525,6 +537,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.blik_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.blik_recurring_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -653,6 +669,10 @@ var V1AccountsCreate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.paynow_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.paypay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -1014,11 +1034,11 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"company.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
+			ShortDescription: "The back of a document returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"company.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
+			ShortDescription: "The front of a document returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"controller.fees.payer": {
 			Type:             "string",
@@ -1065,35 +1085,35 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.signer.person": {
 			Type:             "string",
@@ -1314,19 +1334,19 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"individual.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"settings.bacs_debit_payments.display_name": {
 			Type:             "string",
@@ -1449,6 +1469,43 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The text that appears on the bank account statement for payouts",
 		},
+		"settings.paypay_payments.additional_files": {
+			Type:             "array",
+			ShortDescription: "Additional files that are required to support the onboarding process of your business",
+		},
+		"settings.paypay_payments.goods_type": {
+			Type:             "string",
+			ShortDescription: "The type of goods your business sells",
+			Enum: []resource.EnumSpec{
+				{Value: "digital_content"},
+				{Value: "other"},
+			},
+		},
+		"settings.paypay_payments.site.in_development.password": {
+			Type:             "string",
+			ShortDescription: "The password needed to access your business's website",
+		},
+		"settings.paypay_payments.site.in_development.username": {
+			Type:             "string",
+			ShortDescription: "The username needed to access your business's website",
+		},
+		"settings.paypay_payments.site.restricted.payment_flow_file": {
+			Type:             "string",
+			ShortDescription: "The file explaining the payment flow for your business",
+		},
+		"settings.paypay_payments.site.type": {
+			Type:             "string",
+			ShortDescription: "The status of your business's website",
+			Enum: []resource.EnumSpec{
+				{Value: "accessible"},
+				{Value: "in_development"},
+				{Value: "restricted"},
+			},
+		},
+		"settings.sepa_debit_payments.creditor_id": {
+			Type:             "string",
+			ShortDescription: "The business creditor id for european payments",
+		},
 		"settings.treasury.tos_acceptance.date": {
 			Type:             "integer",
 			ShortDescription: "The Unix timestamp marking when the account representative accepted the service agreement",
@@ -1560,6 +1617,15 @@ var V1AccountsReject = resource.OperationSpec{
 			ShortDescription: "The reason for rejecting the account",
 			Required:         true,
 			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "credit"},
+				{Value: "fraud_no_intent_to_fulfill"},
+				{Value: "fraud_other"},
+				{Value: "fraud_payment_method_casher"},
+				{Value: "fraud_payment_method_tester"},
+				{Value: "other"},
+				{Value: "terms_of_service"},
+			},
 		},
 	},
 }
@@ -1583,7 +1649,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
-			ShortDescription: "An [account token](https://api.stripe.com#create_account_token), used to securely provide details to the account",
+			ShortDescription: "An [account token](https://docs.stripe.com/api#create_account_token), used to securely provide details to the account",
 		},
 		"business_profile.annual_revenue.amount": {
 			Type:             "integer",
@@ -1626,6 +1692,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"business_profile.product_description": {
 			Type:             "string",
 			ShortDescription: "Internal-only description of the product sold by, or service provided by, the business",
+		},
+		"business_profile.specified_commercial_transactions_act_url": {
+			Type:             "string",
+			ShortDescription: "A link to the business's publicly available terms related to the Specified Commercial Transaction Act",
 		},
 		"business_profile.support_address.city": {
 			Type:             "string",
@@ -1727,6 +1797,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.blik_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.blik_recurring_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -1855,6 +1929,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
 		"capabilities.paynow_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
+		},
+		"capabilities.paypay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "Passing true requests the capability for the account, if it is not already requested",
 		},
@@ -2216,11 +2294,11 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"company.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
+			ShortDescription: "The back of a document returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"company.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
+			ShortDescription: "The front of a document returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"default_currency": {
 			Type:             "string",
@@ -2229,35 +2307,35 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_registration.signer.person": {
 			Type:             "string",
@@ -2265,7 +2343,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.signer.person": {
 			Type:             "string",
@@ -2486,19 +2564,19 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"individual.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"settings.bacs_debit_payments.display_name": {
 			Type:             "string",
@@ -2625,6 +2703,39 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The text that appears on the bank account statement for payouts",
 		},
+		"settings.paypay_payments.additional_files": {
+			Type:             "array",
+			ShortDescription: "Additional files that are required to support the onboarding process of your business",
+		},
+		"settings.paypay_payments.goods_type": {
+			Type:             "string",
+			ShortDescription: "The type of goods your business sells",
+			Enum: []resource.EnumSpec{
+				{Value: "digital_content"},
+				{Value: "other"},
+			},
+		},
+		"settings.paypay_payments.site.in_development.password": {
+			Type:             "string",
+			ShortDescription: "The password needed to access your business's website",
+		},
+		"settings.paypay_payments.site.in_development.username": {
+			Type:             "string",
+			ShortDescription: "The username needed to access your business's website",
+		},
+		"settings.paypay_payments.site.restricted.payment_flow_file": {
+			Type:             "string",
+			ShortDescription: "The file explaining the payment flow for your business",
+		},
+		"settings.paypay_payments.site.type": {
+			Type:             "string",
+			ShortDescription: "The status of your business's website",
+			Enum: []resource.EnumSpec{
+				{Value: "accessible"},
+				{Value: "in_development"},
+				{Value: "restricted"},
+			},
+		},
 		"settings.sepa_debit_payments.creditor_id": {
 			Type:             "string",
 			ShortDescription: "The business creditor id for european payments",
@@ -2742,6 +2853,120 @@ var V1ApplicationFeesRetrieve = resource.OperationSpec{
 	Name:   "retrieve",
 	Path:   "/v1/application_fees/{id}",
 	Method: "GET",
+}
+
+var V1AppsInstallsCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v1/apps/installs",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"app": {
+			Type:             "string",
+			ShortDescription: "The ID of the app to install",
+			Required:         true,
+			MostCommon:       true,
+		},
+		"channel": {
+			Type:             "string",
+			ShortDescription: "The distribution channel to install from",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "private_live"},
+				{Value: "private_test"},
+				{Value: "public"},
+				{Value: "testing"},
+			},
+		},
+		"code_challenge": {
+			Type:             "string",
+			ShortDescription: "For OAuth apps, the PKCE code challenge used to issue the `auth_code` returned on the install",
+			MostCommon:       true,
+		},
+		"code_challenge_method": {
+			Type:             "string",
+			ShortDescription: "The method used to derive `code_challenge`",
+			MostCommon:       true,
+		},
+	},
+}
+
+var V1AppsInstallsList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v1/apps/installs",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"account": {
+			Type:             "string",
+			ShortDescription: "Only return installs made by this account",
+		},
+		"app": {
+			Type:             "string",
+			ShortDescription: "Only return installs for the app specified by this app ID",
+		},
+		"approval_required": {
+			Type:             "boolean",
+			ShortDescription: "Only return installs whose installer must authorize pending permissions, content security policy entries, or endpoints",
+		},
+		"channel": {
+			Type:             "string",
+			ShortDescription: "Only return installs in the distribution channel specified by this channel name",
+			Enum: []resource.EnumSpec{
+				{Value: "private_live"},
+				{Value: "private_test"},
+				{Value: "public"},
+				{Value: "testing"},
+			},
+		},
+		"created": {
+			Type:             "integer",
+			ShortDescription: "Only return app installs that were created during the given date interval",
+		},
+		"created_by": {
+			Type:             "string",
+			ShortDescription: "Only return installs created by the embedding platform specified by this account ID",
+		},
+		"ending_before": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "A limit on the number of objects to be returned",
+		},
+		"starting_after": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"status": {
+			Type:             "string",
+			ShortDescription: "Only return installs with the given status",
+			Enum: []resource.EnumSpec{
+				{Value: "install_failed"},
+				{Value: "installed"},
+				{Value: "installing"},
+				{Value: "uninstall_failed"},
+				{Value: "uninstalling"},
+			},
+		},
+	},
+}
+
+var V1AppsInstallsRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v1/apps/installs/{id}",
+	Method: "GET",
+}
+
+var V1AppsInstallsUninstall = resource.OperationSpec{
+	Name:   "uninstall",
+	Path:   "/v1/apps/installs/{id}/uninstall",
+	Method: "POST",
+}
+
+var V1AppsInstallsUpdate = resource.OperationSpec{
+	Name:   "update",
+	Path:   "/v1/apps/installs/{id}",
+	Method: "POST",
 }
 
 var V1AppsSecretsCreate = resource.OperationSpec{
@@ -3018,7 +3243,7 @@ var V1BankAccountsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"exp_month": {
 			Type:             "string",
@@ -3337,9 +3562,10 @@ var V1BillingFeedbackOptionsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type:       "string",
-			Required:   true,
-			MostCommon: true,
+			Type:             "string",
+			ShortDescription: "The text of the feedback option, which customers see when canceling",
+			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -3390,8 +3616,9 @@ var V1BillingFeedbackOptionsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type:       "string",
-			MostCommon: true,
+			Type:             "string",
+			ShortDescription: "The text of the feedback option, which customers see when canceling",
+			MostCommon:       true,
 		},
 	},
 }
@@ -4119,7 +4346,7 @@ var V1CardsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"exp_month": {
 			Type:             "string",
@@ -4499,6 +4726,10 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Enables user redeemable promotion codes",
 		},
+		"allowed_payment_method_types": {
+			Type:             "array",
+			ShortDescription: "A list of the types of payment methods (e.g., `card`) this Checkout Session can accept",
+		},
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to [calculate tax automatically](https://docs.stripe.com/tax) using the customer's location",
@@ -4874,7 +5105,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"payment_intent_data.setup_future_usage": {
 			Type:             "string",
-			ShortDescription: "Indicates that you intend to [make future payments](https://docs.stripe.com/payments/payment-intents#future-usage) with the payment\nmethod collected by this Checkout Session",
+			ShortDescription: "Indicates that you intend to [make future payments](https://docs.stripe.com/payments/payment-intents#future-usage) with the payment method collected by this Checkout Session",
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -5110,6 +5341,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.billie.capture_method": {
@@ -5117,6 +5349,18 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			ShortDescription: "Controls when the funds will be captured from the customer's account",
 			Enum: []resource.EnumSpec{
 				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged",
+			Format:           "unix-time",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.boleto.expires_after_days": {
@@ -5814,10 +6058,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 			},
-		},
-		"payment_method_types": {
-			Type:             "array",
-			ShortDescription: "A list of the types of payment methods (e.g., `card`) this Checkout Session can accept",
 		},
 		"permissions.update_shipping_details": {
 			Type:             "string",
@@ -6646,6 +6886,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -7794,6 +8035,7 @@ var V1CustomersListPaymentMethods = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -8608,7 +8850,7 @@ var V1ExternalAccountsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"exp_month": {
 			Type:             "string",
@@ -8939,9 +9181,9 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "Restricts the Session to subcategories of accounts that can be linked",
 		},
-		"filters.countries": {
-			Type:             "array",
-			ShortDescription: "List of countries from which to collect accounts",
+		"filters.country": {
+			Type:             "string",
+			ShortDescription: "Country from which to collect accounts",
 		},
 		"filters.require_payment_method_support": {
 			Type:             "string",
@@ -9381,6 +9623,14 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 			ShortDescription: "The product's name, meant to be displayable to the customer",
 		},
 		"price_data.product_data.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
+		"price_data.product_data.tax_details.performance_location": {
+			Type:             "string",
+			ShortDescription: "A tax location ID",
+		},
+		"price_data.product_data.tax_details.tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
 		},
@@ -9979,6 +10229,66 @@ var V1InvoicesCreate = resource.OperationSpec{
 				{Value: "nl"},
 			},
 		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (for example, street, PO Box, or company name)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (for example, apartment, suite, unit, or building)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_settings.payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT ID number",
+		},
+		"payment_settings.payment_method_options.billie.reference": {
+			Type:             "string",
+			ShortDescription: "An identifier or reference that this payment corresponds to",
+		},
 		"payment_settings.payment_method_options.card.installments.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Setting to true enables installments for this invoice",
@@ -10427,9 +10737,19 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 			ShortDescription: "The identifier of the subscription for which you'd like to retrieve the upcoming invoice",
 			MostCommon:       true,
 		},
-		"subscription_details.billing_cycle_anchor": {
+		"subscription_details.billing_cycle_anchor.timestamp": {
+			Type:             "integer",
+			ShortDescription: "A timestamp to use as the subscription's billing cycle anchor",
+			Format:           "unix-time",
+		},
+		"subscription_details.billing_cycle_anchor.type": {
 			Type:             "string",
-			ShortDescription: "For new subscriptions, a future timestamp to anchor the subscription's [billing cycle](https://docs.stripe.com/subscriptions/billing-cycle)",
+			ShortDescription: "Determines how the subscription's billing cycle anchor behaves for the invoice preview",
+			Enum: []resource.EnumSpec{
+				{Value: "now"},
+				{Value: "timestamp"},
+				{Value: "unchanged"},
+			},
 		},
 		"subscription_details.billing_mode.flexible.proration_discounts": {
 			Type:             "string",
@@ -10462,6 +10782,38 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"subscription_details.default_tax_rates": {
 			Type:             "array",
 			ShortDescription: "If provided, the invoice returned will preview updating or creating a subscription with these default tax rates",
+		},
+		"subscription_details.pause.bill_for.outstanding_usage_through.type": {
+			Type:             "string",
+			ShortDescription: "When to bill metered usage in the current period",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "now"},
+			},
+		},
+		"subscription_details.pause.bill_for.unused_time_from.type": {
+			Type:             "string",
+			ShortDescription: "When to credit for unused time",
+			Enum: []resource.EnumSpec{
+				{Value: "item_current_period_start"},
+				{Value: "none"},
+				{Value: "now"},
+			},
+		},
+		"subscription_details.pause.invoicing_behavior": {
+			Type:             "string",
+			ShortDescription: "Determines how to handle debits and credits when pausing",
+			Enum: []resource.EnumSpec{
+				{Value: "invoice"},
+				{Value: "pending_invoice_item"},
+			},
+		},
+		"subscription_details.pause.type": {
+			Type:             "string",
+			ShortDescription: "The type of pause to apply",
+			Enum: []resource.EnumSpec{
+				{Value: "subscription"},
+			},
 		},
 		"subscription_details.proration_behavior": {
 			Type:             "string",
@@ -10789,6 +11141,66 @@ var V1InvoicesUpdate = resource.OperationSpec{
 				{Value: "fr"},
 				{Value: "nl"},
 			},
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (for example, street, PO Box, or company name)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (for example, apartment, suite, unit, or building)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_settings.payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT ID number",
+		},
+		"payment_settings.payment_method_options.billie.reference": {
+			Type:             "string",
+			ShortDescription: "An identifier or reference that this payment corresponds to",
 		},
 		"payment_settings.payment_method_options.card.installments.enabled": {
 			Type:             "boolean",
@@ -12143,11 +12555,11 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"name": {
 			Type:             "string",
@@ -12339,11 +12751,11 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"phone_number": {
 			Type:             "string",
@@ -14668,6 +15080,14 @@ var V1LineItemsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
 		},
+		"price_data.product_data.tax_details.performance_location": {
+			Type:             "string",
+			ShortDescription: "A tax location ID",
+		},
+		"price_data.product_data.tax_details.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
 		"price_data.product_data.unit_label": {
 			Type:             "string",
 			ShortDescription: "A label that represents units of this product",
@@ -15321,6 +15741,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -15557,15 +15978,81 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (e.g., street, PO Box, or company name)",
+		},
+		"payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (e.g., apartment, suite, unit, or building)",
+		},
+		"payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT id number",
+		},
+		"payment_method_options.billie.reference": {
+			Type:             "string",
+			ShortDescription: "An identifier or reference that this payment corresponds to",
+		},
 		"payment_method_options.blik.code": {
 			Type:             "string",
 			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Expiry date of the mandate",
+			Format:           "unix-time",
 		},
 		"payment_method_options.blik.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.boleto.expires_after_days": {
@@ -15823,35 +16310,6 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "2.2.0"},
 				{Value: "2.3.0"},
 				{Value: "2.3.1"},
-			},
-		},
-		"payment_method_options.card_present.aade_data.mark_data": {
-			Type:             "string",
-			ShortDescription: "The canonical string that was signed by the e-invoicing provider to produce `signed_mark`, formatted per Appendix A of A.1155/2023",
-		},
-		"payment_method_options.card_present.aade_data.mode": {
-			Type:             "string",
-			ShortDescription: "The e-invoicing mode under which the mark was generated",
-			Enum: []resource.EnumSpec{
-				{Value: "autonomous"},
-				{Value: "standard"},
-			},
-		},
-		"payment_method_options.card_present.aade_data.provider_id": {
-			Type:             "integer",
-			ShortDescription: "The AADE-assigned approval number of the e-invoicing provider that generated the mark",
-		},
-		"payment_method_options.card_present.aade_data.signed_mark": {
-			Type:             "string",
-			ShortDescription: "The cryptographic signature returned by the e-invoicing provider for this transaction, hex-encoded",
-		},
-		"payment_method_options.card_present.aade_data.unbound_pos": {
-			Type:             "string",
-			ShortDescription: "The reason for entering autonomous mode",
-			Enum: []resource.EnumSpec{
-				{Value: "interconnection_loss"},
-				{Value: "lock"},
-				{Value: "replacement_cash_system"},
 			},
 		},
 		"payment_method_options.card_present.capture_method": {
@@ -16675,11 +17133,6 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 			},
-		},
-		"payment_method_types": {
-			Type:             "array",
-			ShortDescription: "The list of payment method types (for example, a card) that this PaymentIntent can use",
-			MostCommon:       true,
 		},
 		"radar_options.referrer": {
 			Type:             "string",
@@ -17260,6 +17713,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -17496,15 +17950,81 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (e.g., street, PO Box, or company name)",
+		},
+		"payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (e.g., apartment, suite, unit, or building)",
+		},
+		"payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT id number",
+		},
+		"payment_method_options.billie.reference": {
+			Type:             "string",
+			ShortDescription: "An identifier or reference that this payment corresponds to",
+		},
 		"payment_method_options.blik.code": {
 			Type:             "string",
 			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Expiry date of the mandate",
+			Format:           "unix-time",
 		},
 		"payment_method_options.blik.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.boleto.expires_after_days": {
@@ -17762,35 +18282,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 				{Value: "2.2.0"},
 				{Value: "2.3.0"},
 				{Value: "2.3.1"},
-			},
-		},
-		"payment_method_options.card_present.aade_data.mark_data": {
-			Type:             "string",
-			ShortDescription: "The canonical string that was signed by the e-invoicing provider to produce `signed_mark`, formatted per Appendix A of A.1155/2023",
-		},
-		"payment_method_options.card_present.aade_data.mode": {
-			Type:             "string",
-			ShortDescription: "The e-invoicing mode under which the mark was generated",
-			Enum: []resource.EnumSpec{
-				{Value: "autonomous"},
-				{Value: "standard"},
-			},
-		},
-		"payment_method_options.card_present.aade_data.provider_id": {
-			Type:             "integer",
-			ShortDescription: "The AADE-assigned approval number of the e-invoicing provider that generated the mark",
-		},
-		"payment_method_options.card_present.aade_data.signed_mark": {
-			Type:             "string",
-			ShortDescription: "The cryptographic signature returned by the e-invoicing provider for this transaction, hex-encoded",
-		},
-		"payment_method_options.card_present.aade_data.unbound_pos": {
-			Type:             "string",
-			ShortDescription: "The reason for entering autonomous mode",
-			Enum: []resource.EnumSpec{
-				{Value: "interconnection_loss"},
-				{Value: "lock"},
-				{Value: "replacement_cash_system"},
 			},
 		},
 		"payment_method_options.card_present.capture_method": {
@@ -18614,11 +19105,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 			},
-		},
-		"payment_method_types": {
-			Type:             "array",
-			ShortDescription: "The list of payment method types (for example, a card) that this PaymentIntent can use",
-			MostCommon:       true,
 		},
 		"radar_options.referrer": {
 			Type:             "string",
@@ -19288,6 +19774,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -19524,15 +20011,81 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "manual"},
 			},
 		},
+		"payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (e.g., street, PO Box, or company name)",
+		},
+		"payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (e.g., apartment, suite, unit, or building)",
+		},
+		"payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT id number",
+		},
+		"payment_method_options.billie.reference": {
+			Type:             "string",
+			ShortDescription: "An identifier or reference that this payment corresponds to",
+		},
 		"payment_method_options.blik.code": {
 			Type:             "string",
 			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Expiry date of the mandate",
+			Format:           "unix-time",
 		},
 		"payment_method_options.blik.setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
+				{Value: "off_session"},
 			},
 		},
 		"payment_method_options.boleto.expires_after_days": {
@@ -19790,35 +20343,6 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "2.2.0"},
 				{Value: "2.3.0"},
 				{Value: "2.3.1"},
-			},
-		},
-		"payment_method_options.card_present.aade_data.mark_data": {
-			Type:             "string",
-			ShortDescription: "The canonical string that was signed by the e-invoicing provider to produce `signed_mark`, formatted per Appendix A of A.1155/2023",
-		},
-		"payment_method_options.card_present.aade_data.mode": {
-			Type:             "string",
-			ShortDescription: "The e-invoicing mode under which the mark was generated",
-			Enum: []resource.EnumSpec{
-				{Value: "autonomous"},
-				{Value: "standard"},
-			},
-		},
-		"payment_method_options.card_present.aade_data.provider_id": {
-			Type:             "integer",
-			ShortDescription: "The AADE-assigned approval number of the e-invoicing provider that generated the mark",
-		},
-		"payment_method_options.card_present.aade_data.signed_mark": {
-			Type:             "string",
-			ShortDescription: "The cryptographic signature returned by the e-invoicing provider for this transaction, hex-encoded",
-		},
-		"payment_method_options.card_present.aade_data.unbound_pos": {
-			Type:             "string",
-			ShortDescription: "The reason for entering autonomous mode",
-			Enum: []resource.EnumSpec{
-				{Value: "interconnection_loss"},
-				{Value: "lock"},
-				{Value: "replacement_cash_system"},
 			},
 		},
 		"payment_method_options.card_present.capture_method": {
@@ -20642,11 +21166,6 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "none"},
 			},
-		},
-		"payment_method_types": {
-			Type:             "array",
-			ShortDescription: "The list of payment method types (for example, card) that this PaymentIntent can use",
-			MostCommon:       true,
 		},
 		"receipt_email": {
 			Type:             "string",
@@ -21820,6 +22339,15 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 				{Value: "on"},
 			},
 		},
+		"paypay.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
 		"payto.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
@@ -22413,6 +22941,15 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 			},
 		},
 		"paypal.display_preference.preference": {
+			Type:             "string",
+			ShortDescription: "The account's preference for whether or not to display this payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off"},
+				{Value: "on"},
+			},
+		},
+		"paypay.display_preference.preference": {
 			Type:             "string",
 			ShortDescription: "The account's preference for whether or not to display this payment method",
 			Enum: []resource.EnumSpec{
@@ -23042,6 +23579,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -23196,6 +23734,7 @@ var V1PaymentMethodsList = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -23295,18 +23834,6 @@ var V1PaymentMethodsUpdate = resource.OperationSpec{
 				{Value: "visa"},
 			},
 		},
-		"payto.account_number": {
-			Type:             "string",
-			ShortDescription: "The account number for the bank account",
-		},
-		"payto.bsb_number": {
-			Type:             "string",
-			ShortDescription: "Bank-State-Branch number of the bank account",
-		},
-		"payto.pay_id": {
-			Type:             "string",
-			ShortDescription: "The PayID alias for the bank account",
-		},
 		"us_bank_account.account_holder_type": {
 			Type:             "string",
 			ShortDescription: "Bank account holder type",
@@ -23374,6 +23901,12 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 			Required:         true,
 			MostCommon:       true,
 		},
+		"canceled.canceled_at": {
+			Type:             "integer",
+			ShortDescription: "When the reported payment was canceled",
+			MostCommon:       true,
+			Format:           "unix-time",
+		},
 		"customer_details.customer": {
 			Type:             "string",
 			ShortDescription: "The customer who made the payment",
@@ -23428,6 +23961,7 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 			ShortDescription: "The outcome of the reported payment",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
+				{Value: "canceled"},
 				{Value: "failed"},
 				{Value: "guaranteed"},
 			},
@@ -23539,6 +24073,12 @@ var V1PaymentRecordsReportPaymentAttempt = resource.OperationSpec{
 	Path:   "/v1/payment_records/{id}/report_payment_attempt",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"canceled.canceled_at": {
+			Type:             "integer",
+			ShortDescription: "When the reported payment was canceled",
+			MostCommon:       true,
+			Format:           "unix-time",
+		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
@@ -23568,6 +24108,7 @@ var V1PaymentRecordsReportPaymentAttempt = resource.OperationSpec{
 			ShortDescription: "The outcome of the reported payment",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
+				{Value: "canceled"},
 				{Value: "failed"},
 				{Value: "guaranteed"},
 			},
@@ -23893,7 +24434,7 @@ var V1PayoutsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
-			ShortDescription: "A positive integer in cents representing how much to payout",
+			ShortDescription: "A positive integer in cents representing how much to pay out",
 			Required:         true,
 			MostCommon:       true,
 		},
@@ -24115,15 +24656,15 @@ var V1PersonsCreate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"email": {
 			Type:             "string",
@@ -24281,19 +24822,19 @@ var V1PersonsCreate = resource.OperationSpec{
 		},
 		"verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 	},
 }
@@ -24449,15 +24990,15 @@ var V1PersonsUpdate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"email": {
 			Type:             "string",
@@ -24615,19 +25156,19 @@ var V1PersonsUpdate = resource.OperationSpec{
 		},
 		"verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 	},
 }
@@ -24714,6 +25255,14 @@ var V1PlansCreate = resource.OperationSpec{
 			ShortDescription: "An arbitrary string to be displayed on your customer's credit card or bank statement",
 		},
 		"product.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
+		"product.tax_details.performance_location": {
+			Type:             "string",
+			ShortDescription: "A tax location ID",
+		},
+		"product.tax_details.tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
 		},
@@ -24898,6 +25447,14 @@ var V1PricesCreate = resource.OperationSpec{
 			ShortDescription: "An arbitrary string to be displayed on your customer's credit card or bank statement",
 		},
 		"product_data.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
+		"product_data.tax_details.performance_location": {
+			Type:             "string",
+			ShortDescription: "A tax location ID",
+		},
+		"product_data.tax_details.tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
 		},
@@ -25098,6 +25655,99 @@ var V1PricesUpdate = resource.OperationSpec{
 	},
 }
 
+var V1ProductCatalogTrialOffersCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v1/product_catalog/trial_offers",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"active": {
+			Type:             "boolean",
+			ShortDescription: "Whether the trial offer can be used for new subscriptions",
+			MostCommon:       true,
+		},
+		"duration.relative.iterations": {
+			Type:             "integer",
+			ShortDescription: "The number of recurring price's interval to apply for the trial period",
+		},
+		"duration.type": {
+			Type:             "string",
+			ShortDescription: "Specifies how the trial offer duration is determined",
+			Required:         true,
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "relative"},
+			},
+		},
+		"end_behavior.transition.price": {
+			Type:             "string",
+			ShortDescription: "The price to transition the recurring item to when the trial offer ends",
+			Required:         true,
+		},
+		"nickname": {
+			Type:             "string",
+			ShortDescription: "A brief description of the trial offer, hidden from customers",
+			MostCommon:       true,
+		},
+		"price": {
+			Type:             "string",
+			ShortDescription: "Price configuration during the trial period (amount, billing scheme, etc)",
+			Required:         true,
+			MostCommon:       true,
+		},
+	},
+}
+
+var V1ProductCatalogTrialOffersList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v1/product_catalog/trial_offers",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"active": {
+			Type:             "boolean",
+			ShortDescription: "Only return trial offers that are active (`true`) or archived (`false`)",
+		},
+		"created": {
+			Type:             "integer",
+			ShortDescription: "Only return trial offers that were created during the given date interval",
+		},
+		"ending_before": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "A limit on the number of objects to be returned",
+		},
+		"prices": {
+			Type:             "array",
+			ShortDescription: "Only return trial offers that reference these prices (during the trial period)",
+		},
+		"starting_after": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+	},
+}
+
+var V1ProductCatalogTrialOffersRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v1/product_catalog/trial_offers/{id}",
+	Method: "GET",
+}
+
+var V1ProductCatalogTrialOffersUpdate = resource.OperationSpec{
+	Name:   "update",
+	Path:   "/v1/product_catalog/trial_offers/{id}",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"active": {
+			Type:             "boolean",
+			ShortDescription: "Whether the trial offer can be used for new purchases",
+			MostCommon:       true,
+		},
+	},
+}
+
 var V1ProductFeaturesCreate = resource.OperationSpec{
 	Name:   "create",
 	Path:   "/v1/products/{product}/features",
@@ -25256,6 +25906,14 @@ var V1ProductsCreate = resource.OperationSpec{
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
 			MostCommon:       true,
 		},
+		"tax_details.performance_location": {
+			Type:             "string",
+			ShortDescription: "A tax location ID",
+		},
+		"tax_details.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of the product",
@@ -25413,6 +26071,20 @@ var V1ProductsUpdate = resource.OperationSpec{
 			ShortDescription: "An arbitrary string to be displayed on your customer's credit card or bank statement",
 		},
 		"tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+			MostCommon:       true,
+		},
+		"tax_details": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"tax_details.performance_location": {
+			Type:             "string",
+			ShortDescription: "A tax location ID",
+			MostCommon:       true,
+		},
+		"tax_details.tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
 			MostCommon:       true,
@@ -27633,6 +28305,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -27750,6 +28423,15 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.blik.code": {
+			Type:             "string",
+			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Expiry date of the mandate",
+			Format:           "unix-time",
 		},
 		"payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
@@ -28601,6 +29283,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -28718,6 +29401,15 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.blik.code": {
+			Type:             "string",
+			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Expiry date of the mandate",
+			Format:           "unix-time",
 		},
 		"payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
@@ -29134,11 +29826,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 				{Value: "instant"},
 				{Value: "microdeposits"},
 			},
-		},
-		"payment_method_types": {
-			Type:             "array",
-			ShortDescription: "The list of payment method types (for example, card) that this SetupIntent can use",
-			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
@@ -29594,6 +30281,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -29711,6 +30399,15 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
 			Type:             "string",
 			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.blik.code": {
+			Type:             "string",
+			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Expiry date of the mandate",
+			Format:           "unix-time",
 		},
 		"payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
@@ -30127,11 +30824,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 				{Value: "instant"},
 				{Value: "microdeposits"},
 			},
-		},
-		"payment_method_types": {
-			Type:             "array",
-			ShortDescription: "The list of payment method types (for example, card) that this SetupIntent can set up",
-			MostCommon:       true,
 		},
 	},
 }
@@ -30751,6 +31443,10 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Number of units that meets the billing threshold to advance the subscription to a new billing period (e.g., it takes 10 $5 units to meet a $50 [monetary threshold](https://docs.stripe.com/api/subscriptions/update#update_subscription-billing_thresholds-amount_gte))",
 		},
+		"current_trial.trial_offer": {
+			Type:             "string",
+			ShortDescription: "The ID of the trial offer to apply to the subscription item",
+		},
 		"payment_behavior": {
 			Type:             "string",
 			ShortDescription: "Controls how Stripe handles payment when a subscription update requires payment and `collection_method=charge_automatically`",
@@ -30893,6 +31589,10 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 		"billing_thresholds.usage_gte": {
 			Type:             "integer",
 			ShortDescription: "Number of units that meets the billing threshold to advance the subscription to a new billing period (e.g., it takes 10 $5 units to meet a $50 [monetary threshold](https://docs.stripe.com/api/subscriptions/update#update_subscription-billing_thresholds-amount_gte))",
+		},
+		"current_trial.trial_offer": {
+			Type:             "string",
+			ShortDescription: "The ID of the trial offer to apply to the subscription item",
 		},
 		"off_session": {
 			Type:             "boolean",
@@ -31542,6 +32242,67 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 				{Value: "nl"},
 			},
 		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (for example, street, PO Box, or company name)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (for example, apartment, suite, unit, or building)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_settings.payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT ID number",
+		},
+		"payment_settings.payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged",
+			Format:           "unix-time",
+		},
 		"payment_settings.payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
 			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
@@ -31750,6 +32511,14 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Integer representing the number of trial period days before the customer is charged for the first time",
 		},
+		"trial_settings.end_behavior.billing_cycle_anchor": {
+			Type:             "string",
+			ShortDescription: "Indicates how the subscription's billing cycle anchor is reset when a trial ends",
+			Enum: []resource.EnumSpec{
+				{Value: "now"},
+				{Value: "unchanged"},
+			},
+		},
 		"trial_settings.end_behavior.missing_payment_method": {
 			Type:             "string",
 			ShortDescription: "Indicates how the subscription should change when the trial ends if the user did not provide a payment method",
@@ -31869,18 +32638,68 @@ var V1SubscriptionsMigrate = resource.OperationSpec{
 	},
 }
 
+var V1SubscriptionsPause = resource.OperationSpec{
+	Name:   "pause",
+	Path:   "/v1/subscriptions/{subscription}/pause",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"bill_for.outstanding_usage_through.type": {
+			Type:             "string",
+			ShortDescription: "When to bill metered usage in the current period",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "now"},
+			},
+		},
+		"bill_for.unused_time_from.type": {
+			Type:             "string",
+			ShortDescription: "When to credit for unused time",
+			Enum: []resource.EnumSpec{
+				{Value: "item_current_period_start"},
+				{Value: "none"},
+				{Value: "now"},
+			},
+		},
+		"invoicing_behavior": {
+			Type:             "string",
+			ShortDescription: "Determines how to handle debits and credits when pausing",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "invoice"},
+				{Value: "pending_invoice_item"},
+			},
+		},
+		"type": {
+			Type:             "string",
+			ShortDescription: "The type of pause to apply",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "subscription"},
+			},
+		},
+	},
+}
+
 var V1SubscriptionsResume = resource.OperationSpec{
 	Name:   "resume",
 	Path:   "/v1/subscriptions/{subscription}/resume",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
-		"billing_cycle_anchor": {
+		"billing_cycle_anchor.type": {
 			Type:             "string",
-			ShortDescription: "The billing cycle anchor that applies when the subscription is resumed",
+			ShortDescription: "Determines how the billing cycle anchor changes when the subscription resumes",
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "now"},
 				{Value: "unchanged"},
+			},
+		},
+		"payment_behavior": {
+			Type:             "string",
+			ShortDescription: "Controls whether Stripe attempts payment on the resumption invoice in the resume request, and how payment on that invoice affects the subscription's status",
+			Enum: []resource.EnumSpec{
+				{Value: "resume_on_payment_attempt"},
+				{Value: "resume_on_payment_success"},
 			},
 		},
 		"proration_behavior": {
@@ -31954,9 +32773,9 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "self"},
 			},
 		},
-		"billing_cycle_anchor": {
+		"billing_cycle_anchor.type": {
 			Type:             "string",
-			ShortDescription: "Either `now` or `unchanged`",
+			ShortDescription: "Determines how the billing cycle anchor changes when the subscription is updated",
 			Enum: []resource.EnumSpec{
 				{Value: "now"},
 				{Value: "unchanged"},
@@ -32119,6 +32938,67 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "fr"},
 				{Value: "nl"},
 			},
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (for example, street, PO Box, or company name)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (for example, apartment, suite, unit, or building)",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Company or entity name",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_number": {
+			Type:             "string",
+			ShortDescription: "The official registration number for the given registration type",
+		},
+		"payment_settings.payment_method_options.billie.company_details.registration_type": {
+			Type:             "string",
+			ShortDescription: "Type of registration the company or entity holds in their registered country",
+			Enum: []resource.EnumSpec{
+				{Value: "ch_ein"},
+				{Value: "de_hrb"},
+				{Value: "dk_cvr"},
+				{Value: "es_cif"},
+				{Value: "fi_tunnus"},
+				{Value: "fr_siren"},
+				{Value: "fr_siret"},
+				{Value: "it_rea"},
+				{Value: "nl_kvk"},
+				{Value: "no_org_number"},
+				{Value: "no_pno"},
+				{Value: "se_org_number"},
+				{Value: "se_pno"},
+				{Value: "uk_crn"},
+			},
+		},
+		"payment_settings.payment_method_options.billie.company_details.vat": {
+			Type:             "string",
+			ShortDescription: "VAT ID number",
+		},
+		"payment_settings.payment_method_options.blik.mandate_options.expires_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the mandate expires and no further payments will be charged",
+			Format:           "unix-time",
 		},
 		"payment_settings.payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
@@ -32332,6 +33212,14 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"trial_from_plan": {
 			Type:             "boolean",
 			ShortDescription: "Indicates if a plan's `trial_period_days` should be applied to the subscription",
+		},
+		"trial_settings.end_behavior.billing_cycle_anchor": {
+			Type:             "string",
+			ShortDescription: "Indicates how the subscription's billing cycle anchor is reset when a trial ends",
+			Enum: []resource.EnumSpec{
+				{Value: "now"},
+				{Value: "unchanged"},
+			},
 		},
 		"trial_settings.end_behavior.missing_payment_method": {
 			Type:             "string",
@@ -32693,6 +33581,88 @@ var V1TaxIdsRetrieve = resource.OperationSpec{
 	Method: "GET",
 }
 
+var V1TaxLocationsCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v1/tax/locations",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+			Required:         true,
+			MostCommon:       true,
+		},
+		"address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"address.state": {
+			Type:             "string",
+			ShortDescription: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\"",
+		},
+		"description": {
+			Type:             "string",
+			ShortDescription: "Details to identify the tax location by its venue, types of events held, or available services, such as \"A spacious auditorium suitable for large concerts and events.\"",
+			MostCommon:       true,
+		},
+		"type": {
+			Type:             "string",
+			ShortDescription: "The type of tax location",
+			Required:         true,
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "performance"},
+			},
+		},
+	},
+}
+
+var V1TaxLocationsList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v1/tax/locations",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "A limit on the number of objects to be returned",
+		},
+		"starting_after": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"type": {
+			Type:             "string",
+			ShortDescription: "Type of the tax location",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "performance"},
+			},
+		},
+	},
+}
+
+var V1TaxLocationsRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v1/tax/locations/{location}",
+	Method: "GET",
+}
+
 var V1TaxRatesCreate = resource.OperationSpec{
 	Name:   "create",
 	Path:   "/v1/tax_rates",
@@ -32747,6 +33717,7 @@ var V1TaxRatesCreate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "amusement_tax"},
 				{Value: "communications_tax"},
+				{Value: "digital_excise_tax"},
 				{Value: "gst"},
 				{Value: "hst"},
 				{Value: "igst"},
@@ -32760,6 +33731,7 @@ var V1TaxRatesCreate = resource.OperationSpec{
 				{Value: "rst"},
 				{Value: "sales_tax"},
 				{Value: "service_tax"},
+				{Value: "utility_users_tax"},
 				{Value: "vat"},
 			},
 		},
@@ -32845,6 +33817,7 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "amusement_tax"},
 				{Value: "communications_tax"},
+				{Value: "digital_excise_tax"},
 				{Value: "gst"},
 				{Value: "hst"},
 				{Value: "igst"},
@@ -32858,6 +33831,7 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 				{Value: "rst"},
 				{Value: "sales_tax"},
 				{Value: "service_tax"},
+				{Value: "utility_users_tax"},
 				{Value: "vat"},
 			},
 		},
@@ -32930,14 +33904,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.at.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33042,14 +34008,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.be.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.be.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33081,14 +34039,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.bg.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33233,14 +34183,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.cy.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.cy.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33257,14 +34199,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.cz.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33287,14 +34221,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.de.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.de.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33311,14 +34237,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.dk.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33348,14 +34266,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.ee.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.ee.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33382,14 +34292,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.es.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.es.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33401,7 +34303,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.es.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in an EU country",
+			ShortDescription: "Type of registration to be created in ES",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -33424,14 +34326,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.fi.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.fi.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33448,14 +34342,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.fr.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33515,14 +34401,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.gr.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.gr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33542,14 +34420,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.hr.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.hr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33566,14 +34436,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.hu.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33601,14 +34463,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
-			},
-		},
-		"country_options.ie.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
 			},
 		},
 		"country_options.ie.standard.place_of_supply_scheme": {
@@ -33649,14 +34503,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.it.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33743,14 +34589,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.lt.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.lt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33770,14 +34608,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.lu.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.lu.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33794,14 +34624,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lv.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -33883,14 +34705,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.mt.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.mt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -33929,14 +34743,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			ShortDescription: "Type of registration to be created in `country`",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
-			},
-		},
-		"country_options.nl.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
 			},
 		},
 		"country_options.nl.standard.place_of_supply_scheme": {
@@ -34024,14 +34830,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.pl.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.pl.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -34051,14 +34849,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.pt.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.pt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -34075,14 +34865,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ro.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -34134,14 +34916,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.se.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.se.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -34176,14 +34950,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.si.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
 		"country_options.si.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -34200,14 +34966,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.sk.igic.place_of_supply_scheme": {
-			Type:             "string",
-			ShortDescription: "Place of supply scheme used in an IGIC registration",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -34301,6 +35059,26 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.us.admissions_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=admissions_tax#registration-types)",
+		},
+		"country_options.us.attendance_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=attendance_tax#registration-types)",
+		},
+		"country_options.us.entertainment_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=entertainment_tax#registration-types)",
+		},
+		"country_options.us.gross_receipts_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=gross_receipts_tax#registration-types)",
+		},
+		"country_options.us.hospitality_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=hospitality_tax#registration-types)",
+		},
 		"country_options.us.local_amusement_tax.jurisdiction": {
 			Type:             "string",
 			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=amusement_tax#registration-types)",
@@ -34308,6 +35086,10 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.us.local_lease_tax.jurisdiction": {
 			Type:             "string",
 			ShortDescription: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction",
+		},
+		"country_options.us.luxury_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=luxury_tax#registration-types)",
 		},
 		"country_options.us.mass_transit_parking_tax.jurisdiction": {
 			Type:             "string",
@@ -34317,21 +35099,37 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=parking_tax#registration-types)",
 		},
+		"country_options.us.resort_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=resort_tax#registration-types)",
+		},
 		"country_options.us.state": {
 			Type:             "string",
 			ShortDescription: "Two-letter US state code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"country_options.us.tourism_tax.jurisdiction": {
+			Type:             "string",
+			ShortDescription: "A jurisdiction code representing the [local jurisdiction](/tax/registering?type=tourism_tax#registration-types)",
 		},
 		"country_options.us.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in the US",
 			Enum: []resource.EnumSpec{
+				{Value: "admissions_tax"},
+				{Value: "attendance_tax"},
+				{Value: "entertainment_tax"},
+				{Value: "gross_receipts_tax"},
+				{Value: "hospitality_tax"},
 				{Value: "local_amusement_tax"},
 				{Value: "local_lease_tax"},
+				{Value: "luxury_tax"},
 				{Value: "mass_transit_parking_tax"},
 				{Value: "parking_tax"},
+				{Value: "resort_tax"},
 				{Value: "state_communications_tax"},
 				{Value: "state_retail_delivery_fee"},
 				{Value: "state_sales_tax"},
+				{Value: "tourism_tax"},
 			},
 		},
 		"country_options.uy.standard.place_of_supply_scheme": {
@@ -36460,6 +37258,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 				{Value: "payco"},
 				{Value: "paynow"},
 				{Value: "paypal"},
+				{Value: "paypay"},
 				{Value: "payto"},
 				{Value: "pix"},
 				{Value: "promptpay"},
@@ -38977,6 +39776,7 @@ var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
+				{Value: "rtp"},
 				{Value: "us_domestic_wire"},
 			},
 		},
@@ -39040,6 +39840,412 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 			},
+		},
+	},
+}
+
+var V1ThreeDSecureAuthenticationsCancel = resource.OperationSpec{
+	Name:   "cancel",
+	Path:   "/v1/three_d_secure/authentications/{authentication}/cancel",
+	Method: "POST",
+}
+
+var V1ThreeDSecureAuthenticationsCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v1/three_d_secure/authentications",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"acquirer_details.acquirer_bin": {
+			Type:             "string",
+			ShortDescription: "The Acquirer BIN (specific to the directory_server)",
+			MostCommon:       true,
+		},
+		"acquirer_details.acquirer_country": {
+			Type:             "string",
+			ShortDescription: "The two-letter country code of the acquirer ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+			MostCommon:       true,
+		},
+		"acquirer_details.acquirer_merchant_id": {
+			Type:             "string",
+			ShortDescription: "The Merchant ID (or Card Acceptor ID) that your acquirer assigned you (specific to the directory_server)",
+			MostCommon:       true,
+		},
+		"acquirer_details.mcc": {
+			Type:             "string",
+			ShortDescription: "The [merchant category code](https://en.wikipedia.org/wiki/Merchant_category_code) as defined by each payment system or directory server",
+		},
+		"acquirer_details.merchant_name": {
+			Type:             "string",
+			ShortDescription: "The merchant name assigned by the acquirer or payment system",
+		},
+		"acquirer_details.requestor_id": {
+			Type:             "string",
+			ShortDescription: "Requestor ID if you’re enrolled in the card network’s 3DS program",
+		},
+		"amount": {
+			Type:             "integer",
+			ShortDescription: "A non-negative integer representing the amount in the [smallest currency unit](/currencies#zero-decimal)",
+			MostCommon:       true,
+		},
+		"channel.browser.accept_header": {
+			Type:             "string",
+			ShortDescription: "The HTTP accept headers from the cardholder's browser",
+		},
+		"channel.browser.color_depth": {
+			Type:             "integer",
+			ShortDescription: "The color depth of the cardholder’s screen",
+		},
+		"channel.browser.device_id": {
+			Type:             "string",
+			ShortDescription: "Unique and immutable identifier linked to a device that is consistent across 3DS transactions for the specific user device",
+		},
+		"channel.browser.ip_address": {
+			Type:             "string",
+			ShortDescription: "The IP address of the browser",
+		},
+		"channel.browser.java_enabled": {
+			Type:             "boolean",
+			ShortDescription: "The cardholder browser’s ability to execute Java",
+		},
+		"channel.browser.javascript_enabled": {
+			Type:             "boolean",
+			ShortDescription: "The cardholder browser’s ability to execute JavaScript",
+		},
+		"channel.browser.language": {
+			Type:             "string",
+			ShortDescription: "An IETF BCP 47 language tag representing the browser language",
+		},
+		"channel.browser.screen_height": {
+			Type:             "integer",
+			ShortDescription: "The total height of the cardholder’s screen in pixels",
+		},
+		"channel.browser.screen_width": {
+			Type:             "integer",
+			ShortDescription: "The total width of the cardholder’s screen in pixels",
+		},
+		"channel.browser.timezone_offset": {
+			Type:             "integer",
+			ShortDescription: "The time difference between UTC time and the local time of the cardholder’s browser, in minutes",
+		},
+		"channel.browser.user_agent": {
+			Type:             "string",
+			ShortDescription: "The browser user agent",
+		},
+		"channel.three_r_i.previous_authentication": {
+			Type:             "string",
+			ShortDescription: "ID of a prior `Authentication`",
+		},
+		"channel.three_r_i.type": {
+			Type:             "string",
+			ShortDescription: "It provides additional information to the ACS to determine the best approach for handling a 3RI request",
+			Enum: []resource.EnumSpec{
+				{Value: "delayed_shipment"},
+				{Value: "other_payment"},
+				{Value: "recurring"},
+				{Value: "split_shipment"},
+			},
+		},
+		"channel.type": {
+			Type:             "string",
+			ShortDescription: "Type of channel you would prefer to use for this 3DS Authentication",
+			Required:         true,
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "browser"},
+				{Value: "three_r_i"},
+			},
+		},
+		"currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
+			Format:           "currency",
+		},
+		"directory_server": {
+			Type:             "string",
+			ShortDescription: "The 3DS directory server with which this 3DS Authentication was processed",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "american_express"},
+				{Value: "cartes_bancaires"},
+				{Value: "discover"},
+				{Value: "mastercard"},
+				{Value: "visa"},
+			},
+		},
+		"flow_preference.challenge.type": {
+			Type:             "string",
+			ShortDescription: "Type of challenge flow you requested for this 3DS Authentication",
+			Enum: []resource.EnumSpec{
+				{Value: "mandated"},
+				{Value: "preferred"},
+			},
+		},
+		"flow_preference.data_share.type": {
+			Type:             "string",
+			ShortDescription: "Type of data share only flow you requested for this 3DS Authentication",
+			Enum: []resource.EnumSpec{
+				{Value: "ds_specific"},
+				{Value: "emv_standard"},
+			},
+		},
+		"flow_preference.frictionless.type": {
+			Type:             "string",
+			ShortDescription: "Type of frictionless flow you requested for this 3DS Authentication",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"flow_preference.type": {
+			Type:             "string",
+			ShortDescription: "Type of flow you requested for this 3DS Authentication",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "challenge"},
+				{Value: "data_share"},
+				{Value: "frictionless"},
+			},
+		},
+		"future_usage.installment.amount": {
+			Type:             "integer",
+			ShortDescription: "A non-negative integer representing the future authorizations' amount in the [smallest currency unit](/currencies#zero-decimal)",
+		},
+		"future_usage.installment.expiry.date": {
+			Type:             "string",
+			ShortDescription: "The date before which the last authorization related to this authentication will occur",
+		},
+		"future_usage.installment.expiry.type": {
+			Type:             "string",
+			ShortDescription: "The type of expiry for the future use of this authentication",
+			Enum: []resource.EnumSpec{
+				{Value: "date"},
+				{Value: "never"},
+			},
+		},
+		"future_usage.installment.interval": {
+			Type:             "string",
+			ShortDescription: "The unit of time for `interval_count`",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+			},
+		},
+		"future_usage.installment.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The minimum number of time intervals between authorizations",
+		},
+		"future_usage.installment.number": {
+			Type:             "integer",
+			ShortDescription: "The maximum number of installments",
+		},
+		"future_usage.recurring.amount": {
+			Type:             "integer",
+			ShortDescription: "A non-negative integer representing the future authorizations' amount in the [smallest currency unit](/currencies#zero-decimal)",
+		},
+		"future_usage.recurring.expiry.date": {
+			Type:             "string",
+			ShortDescription: "The date before which the last authorization related to this authentication will occur",
+		},
+		"future_usage.recurring.expiry.type": {
+			Type:             "string",
+			ShortDescription: "The type of expiry for the future use of this authentication",
+			Enum: []resource.EnumSpec{
+				{Value: "date"},
+				{Value: "never"},
+			},
+		},
+		"future_usage.recurring.interval": {
+			Type:             "string",
+			ShortDescription: "The unit of time for `interval_count`",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+			},
+		},
+		"future_usage.recurring.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The minimum number of time intervals between authorizations",
+		},
+		"future_usage.type": {
+			Type:             "string",
+			ShortDescription: "The type of future usage declared for this 3DS Authentication",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "card_on_file"},
+				{Value: "installment"},
+				{Value: "recurring"},
+			},
+		},
+		"message_category": {
+			Type:             "string",
+			ShortDescription: "Indicates whether this 3DS Authentication is being performed for a payment or non-payment use case",
+			Required:         true,
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "non_payment_authentication"},
+				{Value: "payment_authentication"},
+			},
+		},
+		"payment_method": {
+			Type:             "string",
+			ShortDescription: "ID of the payment method (a PaymentMethod object) to attach to this 3DS Authentication",
+			MostCommon:       true,
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "Country subdivision code defined in ISO 3166-2",
+		},
+		"payment_method_data.billing_details.email": {
+			Type:             "string",
+			ShortDescription: "Email address",
+		},
+		"payment_method_data.billing_details.name": {
+			Type:             "string",
+			ShortDescription: "Full name",
+		},
+		"payment_method_data.billing_details.phone": {
+			Type:             "string",
+			ShortDescription: "Billing phone number (including extension)",
+		},
+		"payment_method_data.card.cvc": {
+			Type: "string",
+		},
+		"payment_method_data.card.exp_month": {
+			Type: "integer",
+		},
+		"payment_method_data.card.exp_year": {
+			Type: "integer",
+		},
+		"payment_method_data.card.number": {
+			Type: "string",
+		},
+		"payment_method_data.type": {
+			Type:             "string",
+			ShortDescription: "The type of the PaymentMethod",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "card"},
+			},
+		},
+		"reason": {
+			Type:             "string",
+			ShortDescription: "The reason for invoking standalone 3DS",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "cardholder_authentication"},
+				{Value: "issuer_requested"},
+				{Value: "liability_shift"},
+				{Value: "processing_costs"},
+				{Value: "regulatory_compliance"},
+			},
+		},
+		"shipping_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"shipping_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping_address.state": {
+			Type:             "string",
+			ShortDescription: "Country subdivision code defined in ISO 3166-2",
+		},
+		"submit": {
+			Type:             "string",
+			ShortDescription: "Set to `always` to skip the fingerprinting step and submit this Authentication immediately or `if_fingerprinting_not_supported` to submit this Authentication only if fingerprinting is not available",
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "if_fingerprinting_not_supported"},
+				{Value: "never"},
+			},
+		},
+	},
+}
+
+var V1ThreeDSecureAuthenticationsList = resource.OperationSpec{
+	Name:   "list",
+	Path:   "/v1/three_d_secure/authentications",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:             "integer",
+			ShortDescription: "A filter on the list, based on the object `created` field",
+		},
+		"ending_before": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"limit": {
+			Type:             "integer",
+			ShortDescription: "A limit on the number of objects to be returned",
+		},
+		"starting_after": {
+			Type:             "string",
+			ShortDescription: "A cursor for use in pagination",
+		},
+		"status": {
+			Type:             "string",
+			ShortDescription: "Only return 3D Secure Authentications for specified status",
+			Enum: []resource.EnumSpec{
+				{Value: "canceled"},
+				{Value: "error"},
+				{Value: "failed"},
+				{Value: "requires_challenge"},
+				{Value: "requires_submission"},
+				{Value: "succeeded"},
+			},
+		},
+	},
+}
+
+var V1ThreeDSecureAuthenticationsRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v1/three_d_secure/authentications/{authentication}",
+	Method: "GET",
+}
+
+var V1ThreeDSecureAuthenticationsSubmit = resource.OperationSpec{
+	Name:   "submit",
+	Path:   "/v1/three_d_secure/authentications/{authentication}/submit",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"fingerprinting_result": {
+			Type:             "string",
+			ShortDescription: "The fingerprinting result of the issuer fingerprinting step",
+			MostCommon:       true,
 		},
 	},
 }
@@ -39333,11 +40539,11 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.company.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
+			ShortDescription: "The back of a document returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"account.company.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
+			ShortDescription: "The front of a document returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"account.individual.address.city": {
 			Type:             "string",
@@ -39541,19 +40747,19 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.individual.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.individual.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.tos_shown_and_accepted": {
 			Type:             "boolean",
@@ -39780,15 +40986,15 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"person.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"person.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"person.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
+			ShortDescription: "One or more document ids returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"person.email": {
 			Type:             "string",
@@ -39936,19 +41142,19 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"person.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"person.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"person.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The back of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"person.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
+			ShortDescription: "The front of an ID returned by a [file upload](https://docs.stripe.com/api#create_file) with a `purpose` value of `identity_document`",
 		},
 		"pii.id_number": {
 			Type:             "string",
@@ -41290,6 +42496,7 @@ var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
 			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
+				{Value: "rtp"},
 				{Value: "us_domestic_wire"},
 			},
 		},
@@ -41635,6 +42842,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-06-24.dahlia"},
 				{Value: "2026-07-29.dahlia"},
 				{Value: "2026-08-26.dahlia"},
+				{Value: "2026-09-30.endive"},
 			},
 		},
 		"connect": {
@@ -41896,10 +43104,6 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 				{Value: "omit"},
 			},
 		},
-		"use_case.account_onboarding.configurations": {
-			Type:             "array",
-			ShortDescription: "Open Enum",
-		},
 		"use_case.account_onboarding.refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the AccountLink is expired, has been used, or is otherwise invalid",
@@ -41923,10 +43127,6 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 				{Value: "include"},
 				{Value: "omit"},
 			},
-		},
-		"use_case.account_update.configurations": {
-			Type:             "array",
-			ShortDescription: "Open Enum",
 		},
 		"use_case.account_update.refresh_url": {
 			Type:             "string",
@@ -43529,6 +44729,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.blik_recurring_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -43641,11 +44845,19 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.satispay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.sequra_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -43712,6 +44924,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.script_statement_descriptor.kanji.prefix": {
 			Type:             "string",
 			ShortDescription: "Default text that appears on statements for card charges outside of Japan, prefixing any dynamic statement_descriptor_suffix specified on the charge",
+		},
+		"configuration.merchant.sepa_debit_payments.creditor_id": {
+			Type:             "string",
+			ShortDescription: "Creditor ID for SEPA Direct Debit payments",
 		},
 		"configuration.merchant.statement_descriptor.descriptor": {
 			Type:             "string",
@@ -44643,6 +45859,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.blik_recurring_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -44755,11 +45975,19 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.satispay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.sequra_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -44826,6 +46054,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"configuration.merchant.script_statement_descriptor.kanji.prefix": {
 			Type:             "string",
 			ShortDescription: "Default text that appears on statements for card charges outside of Japan, prefixing any dynamic statement_descriptor_suffix specified on the charge",
+		},
+		"configuration.merchant.sepa_debit_payments.creditor_id": {
+			Type:             "string",
+			ShortDescription: "Creditor ID for SEPA Direct Debit payments",
 		},
 		"configuration.merchant.statement_descriptor.descriptor": {
 			Type:             "string",
@@ -45591,36 +46823,36 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"amazon_eventbridge.aws_account_id": {
 			Type:             "string",
-			ShortDescription: "The AWS account ID",
+			ShortDescription: "Your AWS account where Stripe creates the partner event source",
 		},
 		"amazon_eventbridge.aws_region": {
 			Type:             "string",
-			ShortDescription: "The region of the AWS event source",
+			ShortDescription: "The AWS region where Stripe creates the partner event source",
 		},
 		"azure_event_grid.azure_region": {
 			Type:             "string",
-			ShortDescription: "The Azure region",
+			ShortDescription: "The Azure region where Stripe creates the partner topic",
 		},
 		"azure_event_grid.azure_resource_group_name": {
 			Type:             "string",
-			ShortDescription: "The name of the Azure resource group",
+			ShortDescription: "The Azure resource group where Stripe creates the partner topic",
 		},
 		"azure_event_grid.azure_subscription_id": {
 			Type:             "string",
-			ShortDescription: "The Azure subscription ID",
+			ShortDescription: "The Azure subscription where Stripe creates the partner topic",
 		},
 		"description": {
 			Type:             "string",
-			ShortDescription: "An optional description of what the event destination is used for",
+			ShortDescription: "An optional user-defined description of the destination's purpose",
 		},
 		"enabled_events": {
 			Type:             "array",
-			ShortDescription: "The list of events to enable for this endpoint",
+			ShortDescription: "The list of event types enabled for delivery to this destination",
 			Required:         true,
 		},
 		"event_payload": {
 			Type:             "string",
-			ShortDescription: "Payload type of events being subscribed to",
+			ShortDescription: "Whether to deliver as snapshot or thin events",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "snapshot"},
@@ -45629,24 +46861,24 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 		},
 		"events_from": {
 			Type:             "array",
-			ShortDescription: "Specifies which accounts' events route to this destination",
+			ShortDescription: "The account or organization scopes that can supply events",
 		},
 		"include": {
 			Type:             "array",
-			ShortDescription: "Additional fields to include in the response",
+			ShortDescription: "Include normally redacted webhook fields in the create response",
 		},
 		"name": {
 			Type:             "string",
-			ShortDescription: "Event destination name",
+			ShortDescription: "A user-defined label for identifying the destination",
 			Required:         true,
 		},
 		"snapshot_api_version": {
 			Type:             "string",
-			ShortDescription: "If using the snapshot event payload, the API version events are rendered as",
+			ShortDescription: "For snapshot events only, the Stripe API version used to render event objects; do not provide this for thin events",
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "Event destination type",
+			ShortDescription: "The delivery transport",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "amazon_eventbridge"},
@@ -45656,7 +46888,7 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 		},
 		"webhook_endpoint.url": {
 			Type:             "string",
-			ShortDescription: "The URL of the webhook endpoint",
+			ShortDescription: "The URL where Stripe sends matching events",
 		},
 	},
 }
@@ -45686,7 +46918,7 @@ var V2CoreEventDestinationsList = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"include": {
 			Type:             "array",
-			ShortDescription: "Additional fields to include in the response",
+			ShortDescription: "Include the normally redacted `webhook_endpoint.url` in each returned destination",
 		},
 		"limit": {
 			Type:             "integer",
@@ -45724,23 +46956,23 @@ var V2CoreEventDestinationsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
-			ShortDescription: "An optional description of what the event destination is used for",
+			ShortDescription: "An optional user-defined description of the destination's purpose; it does not control routing",
 		},
 		"enabled_events": {
 			Type:             "array",
-			ShortDescription: "The list of events to enable for this endpoint",
+			ShortDescription: "The list of event types enabled for delivery to this destination",
 		},
 		"include": {
 			Type:             "array",
-			ShortDescription: "Additional fields to include in the response",
+			ShortDescription: "Include the normally redacted `webhook_endpoint.url` in the response",
 		},
 		"name": {
 			Type:             "string",
-			ShortDescription: "Event destination name",
+			ShortDescription: "A user-defined label for identifying the destination; it does not control routing",
 		},
 		"webhook_endpoint.url": {
 			Type:             "string",
-			ShortDescription: "The URL of the webhook endpoint",
+			ShortDescription: "The URL where Stripe sends matching events",
 		},
 	},
 }
@@ -46701,10 +47933,6 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 				{Value: "omit"},
 			},
 		},
-		"use_case.account_onboarding.configurations": {
-			Type:             "array",
-			ShortDescription: "Open Enum",
-		},
 		"use_case.account_onboarding.refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the AccountLink is expired, has been used, or is otherwise invalid",
@@ -46728,10 +47956,6 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 				{Value: "include"},
 				{Value: "omit"},
 			},
-		},
-		"use_case.account_update.configurations": {
-			Type:             "array",
-			ShortDescription: "Open Enum",
 		},
 		"use_case.account_update.refresh_url": {
 			Type:             "string",
@@ -48359,6 +49583,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.blik_recurring_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -48471,11 +49699,19 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.satispay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.sequra_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -48542,6 +49778,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.script_statement_descriptor.kanji.prefix": {
 			Type:             "string",
 			ShortDescription: "Default text that appears on statements for card charges outside of Japan, prefixing any dynamic statement_descriptor_suffix specified on the charge",
+		},
+		"configuration.merchant.sepa_debit_payments.creditor_id": {
+			Type:             "string",
+			ShortDescription: "Creditor ID for SEPA Direct Debit payments",
 		},
 		"configuration.merchant.smart_disputes.auto_respond.preference": {
 			Type:             "string",
@@ -49596,6 +50836,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.blik_recurring_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -49708,11 +50952,19 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.satispay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.sequra_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -49779,6 +51031,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"configuration.merchant.script_statement_descriptor.kanji.prefix": {
 			Type:             "string",
 			ShortDescription: "Default text that appears on statements for card charges outside of Japan, prefixing any dynamic statement_descriptor_suffix specified on the charge",
+		},
+		"configuration.merchant.sepa_debit_payments.creditor_id": {
+			Type:             "string",
+			ShortDescription: "Creditor ID for SEPA Direct Debit payments",
 		},
 		"configuration.merchant.smart_disputes.auto_respond.preference": {
 			Type:             "string",
@@ -50752,36 +52008,36 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"amazon_eventbridge.aws_account_id": {
 			Type:             "string",
-			ShortDescription: "The AWS account ID",
+			ShortDescription: "Your AWS account where Stripe creates the partner event source",
 		},
 		"amazon_eventbridge.aws_region": {
 			Type:             "string",
-			ShortDescription: "The region of the AWS event source",
+			ShortDescription: "The AWS region where Stripe creates the partner event source",
 		},
 		"azure_event_grid.azure_region": {
 			Type:             "string",
-			ShortDescription: "The Azure region",
+			ShortDescription: "The Azure region where Stripe creates the partner topic",
 		},
 		"azure_event_grid.azure_resource_group_name": {
 			Type:             "string",
-			ShortDescription: "The name of the Azure resource group",
+			ShortDescription: "The Azure resource group where Stripe creates the partner topic",
 		},
 		"azure_event_grid.azure_subscription_id": {
 			Type:             "string",
-			ShortDescription: "The Azure subscription ID",
+			ShortDescription: "The Azure subscription where Stripe creates the partner topic",
 		},
 		"description": {
 			Type:             "string",
-			ShortDescription: "An optional description of what the event destination is used for",
+			ShortDescription: "An optional user-defined description of the destination's purpose",
 		},
 		"enabled_events": {
 			Type:             "array",
-			ShortDescription: "The list of events to enable for this endpoint",
+			ShortDescription: "The list of event types enabled for delivery to this destination",
 			Required:         true,
 		},
 		"event_payload": {
 			Type:             "string",
-			ShortDescription: "Payload type of events being subscribed to",
+			ShortDescription: "Whether to deliver as snapshot or thin events",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "snapshot"},
@@ -50790,24 +52046,24 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 		},
 		"events_from": {
 			Type:             "array",
-			ShortDescription: "Specifies which accounts' events route to this destination",
+			ShortDescription: "The account or organization scopes that can supply events",
 		},
 		"include": {
 			Type:             "array",
-			ShortDescription: "Additional fields to include in the response",
+			ShortDescription: "Include normally redacted webhook fields in the create response",
 		},
 		"name": {
 			Type:             "string",
-			ShortDescription: "Event destination name",
+			ShortDescription: "A user-defined label for identifying the destination",
 			Required:         true,
 		},
 		"snapshot_api_version": {
 			Type:             "string",
-			ShortDescription: "If using the snapshot event payload, the API version events are rendered as",
+			ShortDescription: "For snapshot events only, the Stripe API version used to render event objects; do not provide this for thin events",
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "Event destination type",
+			ShortDescription: "The delivery transport",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "amazon_eventbridge"},
@@ -50817,7 +52073,7 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 		},
 		"webhook_endpoint.url": {
 			Type:             "string",
-			ShortDescription: "The URL of the webhook endpoint",
+			ShortDescription: "The URL where Stripe sends matching events",
 		},
 	},
 }
@@ -50851,7 +52107,7 @@ var V2PreviewCoreEventDestinationsList = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"include": {
 			Type:             "array",
-			ShortDescription: "Additional fields to include in the response",
+			ShortDescription: "Include the normally redacted `webhook_endpoint.url` in each returned destination",
 		},
 		"limit": {
 			Type:             "integer",
@@ -50892,23 +52148,23 @@ var V2PreviewCoreEventDestinationsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
-			ShortDescription: "An optional description of what the event destination is used for",
+			ShortDescription: "An optional user-defined description of the destination's purpose; it does not control routing",
 		},
 		"enabled_events": {
 			Type:             "array",
-			ShortDescription: "The list of events to enable for this endpoint",
+			ShortDescription: "The list of event types enabled for delivery to this destination",
 		},
 		"include": {
 			Type:             "array",
-			ShortDescription: "Additional fields to include in the response",
+			ShortDescription: "Include the normally redacted `webhook_endpoint.url` in the response",
 		},
 		"name": {
 			Type:             "string",
-			ShortDescription: "Event destination name",
+			ShortDescription: "A user-defined label for identifying the destination; it does not control routing",
 		},
 		"webhook_endpoint.url": {
 			Type:             "string",
-			ShortDescription: "The URL of the webhook endpoint",
+			ShortDescription: "The URL where Stripe sends matching events",
 		},
 	},
 }
@@ -51259,48 +52515,6 @@ var V2PreviewExtendWorkflowsRetrieve = resource.OperationSpec{
 	IsPreview: true,
 }
 
-var V2PreviewFinancialAddressCreditSimulationsTestHelpersCredit = resource.OperationSpec{
-	Name:      "credit",
-	Path:      "/v2/test_helpers/financial_addresses/{id}/credit",
-	Method:    "POST",
-	IsPreview: true,
-	Params: map[string]*resource.ParamSpec{
-		"amount.currency": {
-			Type:             "string",
-			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
-		},
-		"amount.value": {
-			Type:             "integer",
-			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
-		},
-		"network": {
-			Type:             "string",
-			ShortDescription: "Open Enum",
-			Required:         true,
-			Enum: []resource.EnumSpec{
-				{Value: "ach"},
-				{Value: "chaps"},
-				{Value: "fps"},
-				{Value: "rtp"},
-				{Value: "wire"},
-			},
-		},
-		"statement_descriptor": {
-			Type:             "string",
-			ShortDescription: "String explaining funds flow",
-		},
-	},
-}
-
-var V2PreviewFinancialAddressGeneratedMicrodepositssTestHelpersGenerateMicrodeposits = resource.OperationSpec{
-	Name:      "generate_microdeposits",
-	Path:      "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits",
-	Method:    "POST",
-	IsPreview: true,
-}
-
 var V2PreviewIamActivityLogsList = resource.OperationSpec{
 	Name:      "list",
 	Path:      "/v2/iam/activity_logs",
@@ -51342,31 +52556,6 @@ var V2PreviewMoneyManagementAdjustmentsList = resource.OperationSpec{
 		"adjusted_flow": {
 			Type:             "string",
 			ShortDescription: "Filter for Adjustments linked to a Flow",
-		},
-		"created": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created at the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gt": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gte": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created on or after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lt": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created before the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lte": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created on or before the specified timestamp",
-			Format:           "date-time",
 		},
 		"limit": {
 			Type:             "integer",
@@ -51434,6 +52623,10 @@ var V2PreviewMoneyManagementFinancialAccountsList = resource.OperationSpec{
 	Method:    "GET",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:             "array",
+			ShortDescription: "Additional fields to include in the response",
+		},
 		"limit": {
 			Type:             "integer",
 			ShortDescription: "The page limit",
@@ -51454,6 +52647,12 @@ var V2PreviewMoneyManagementFinancialAccountsRetrieve = resource.OperationSpec{
 	Path:      "/v2/money_management/financial_accounts/{id}",
 	Method:    "GET",
 	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:             "array",
+			ShortDescription: "Additional fields to include in the response",
+		},
+	},
 }
 
 var V2PreviewMoneyManagementFinancialAccountsUpdate = resource.OperationSpec{
@@ -51469,24 +52668,81 @@ var V2PreviewMoneyManagementFinancialAccountsUpdate = resource.OperationSpec{
 	},
 }
 
+var V2PreviewMoneyManagementFinancialAddressCreditSimulationsTestHelpersCredit = resource.OperationSpec{
+	Name:      "credit",
+	Path:      "/v2/money_management/test_helpers/financial_addresses/{id}/credit",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"amount.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Required:         true,
+		},
+		"amount.value": {
+			Type:             "integer",
+			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
+			Required:         true,
+		},
+		"network": {
+			Type:             "string",
+			ShortDescription: "Open Enum",
+			Required:         true,
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "chaps"},
+				{Value: "fps"},
+				{Value: "rtp"},
+				{Value: "wire"},
+			},
+		},
+		"statement_descriptor": {
+			Type:             "string",
+			ShortDescription: "String explaining funds flow",
+		},
+	},
+}
+
+var V2PreviewMoneyManagementFinancialAddressGeneratedMicrodepositssTestHelpersGenerateMicrodeposits = resource.OperationSpec{
+	Name:      "generate_microdeposits",
+	Path:      "/v2/money_management/test_helpers/financial_addresses/{id}/generate_microdeposits",
+	Method:    "POST",
+	IsPreview: true,
+}
+
 var V2PreviewMoneyManagementFinancialAddresssCreate = resource.OperationSpec{
 	Name:      "create",
 	Path:      "/v2/money_management/financial_addresses",
 	Method:    "POST",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
+		"bank_account.country": {
+			Type:             "string",
+			ShortDescription: "The country for the bank account",
+		},
+		"bank_account.currency": {
+			Type:             "string",
+			ShortDescription: "The currency of the bank account to provision",
+			Enum: []resource.EnumSpec{
+				{Value: "gbp"},
+				{Value: "usd"},
+			},
+		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The ID of the FinancialAccount the new FinancialAddress should be associated with",
 			Required:         true,
 		},
+		"settlement_currency": {
+			Type:             "string",
+			ShortDescription: "Open Enum",
+		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "The type of FinancialAddress details to provision",
+			ShortDescription: "The type of FinancialAddress to create",
 			Required:         true,
 			Enum: []resource.EnumSpec{
-				{Value: "gb_bank_account"},
-				{Value: "us_bank_account"},
+				{Value: "bank_account"},
 			},
 		},
 	},
@@ -51501,10 +52757,6 @@ var V2PreviewMoneyManagementFinancialAddresssList = resource.OperationSpec{
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The ID of the FinancialAccount for which FinancialAddresses are to be returned",
-		},
-		"include": {
-			Type:             "array",
-			ShortDescription: "Open Enum",
 		},
 		"limit": {
 			Type:             "integer",
@@ -51522,12 +52774,6 @@ var V2PreviewMoneyManagementFinancialAddresssRetrieve = resource.OperationSpec{
 	Path:      "/v2/money_management/financial_addresses/{id}",
 	Method:    "GET",
 	IsPreview: true,
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:             "array",
-			ShortDescription: "Open Enum",
-		},
-	},
 }
 
 var V2PreviewMoneyManagementInboundTransfersCreate = resource.OperationSpec{
@@ -51578,31 +52824,6 @@ var V2PreviewMoneyManagementInboundTransfersList = resource.OperationSpec{
 	Method:    "GET",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created at the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gt": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gte": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created on or after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lt": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created before the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lte": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created on or before the specified timestamp",
-			Format:           "date-time",
-		},
 		"limit": {
 			Type:             "integer",
 			ShortDescription: "The page limit",
@@ -52164,31 +53385,6 @@ var V2PreviewMoneyManagementReceivedCreditsList = resource.OperationSpec{
 	Method:    "GET",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created at the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gt": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gte": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created on or after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lt": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created before the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lte": {
-			Type:             "string",
-			ShortDescription: "Filter for objects created on or before the specified timestamp",
-			Format:           "date-time",
-		},
 		"limit": {
 			Type:             "integer",
 			ShortDescription: "The page limit",
@@ -52237,31 +53433,6 @@ var V2PreviewMoneyManagementTransactionEntrysList = resource.OperationSpec{
 	Method:    "GET",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created at an exact time",
-			Format:           "date-time",
-		},
-		"created_gt": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gte": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created at or after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lt": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created before the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lte": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created at or before the specified timestamp",
-			Format:           "date-time",
-		},
 		"limit": {
 			Type:             "integer",
 			ShortDescription: "The page limit",
@@ -52290,31 +53461,6 @@ var V2PreviewMoneyManagementTransactionsList = resource.OperationSpec{
 	Method:    "GET",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created at an exact time",
-			Format:           "date-time",
-		},
-		"created_gt": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_gte": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created at or after the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lt": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created before the specified timestamp",
-			Format:           "date-time",
-		},
-		"created_lte": {
-			Type:             "string",
-			ShortDescription: "Filter for Transactions created at or before the specified timestamp",
-			Format:           "date-time",
-		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "Filter for Transactions belonging to a FinancialAccount",
@@ -52413,7 +53559,7 @@ var V2PreviewOrchestratedCommerceAgreementsTerminate = resource.OperationSpec{
 
 var V2PreviewSignalsAccountActivitysCreate = resource.OperationSpec{
 	Name:      "create",
-	Path:      "/v2/signals/account_activity",
+	Path:      "/v2/signals/account_activities",
 	Method:    "POST",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
@@ -52436,6 +53582,10 @@ var V2PreviewSignalsAccountActivitysCreate = resource.OperationSpec{
 		"account_details.data.defaults.profile.product_description": {
 			Type:             "string",
 			ShortDescription: "Description of the account's product or service",
+		},
+		"account_details.data.identity.business_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Registered business name",
 		},
 		"account_evaluation": {
 			Type:             "string",
@@ -52512,14 +53662,14 @@ var V2PreviewSignalsAccountActivitysCreate = resource.OperationSpec{
 
 var V2PreviewSignalsAccountActivitysDelete = resource.OperationSpec{
 	Name:      "delete",
-	Path:      "/v2/signals/account_activity/{id}",
+	Path:      "/v2/signals/account_activities/{id}",
 	Method:    "DELETE",
 	IsPreview: true,
 }
 
 var V2PreviewSignalsAccountActivitysRetrieve = resource.OperationSpec{
 	Name:      "retrieve",
-	Path:      "/v2/signals/account_activity/{id}",
+	Path:      "/v2/signals/account_activities/{id}",
 	Method:    "GET",
 	IsPreview: true,
 }
@@ -52601,6 +53751,10 @@ var V2PreviewSignalsAccountEvaluationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Description of the account's product or service",
 		},
+		"account_details.data.identity.business_details.registered_name": {
+			Type:             "string",
+			ShortDescription: "Registered business name",
+		},
 		"requested_signals": {
 			Type:             "array",
 			ShortDescription: "List of signals to evaluate",
@@ -52645,9 +53799,9 @@ var V2PreviewSignalsAccountSignalsRetrieve = resource.OperationSpec{
 	IsPreview: true,
 }
 
-var V2PreviewTestHelpersFinancialAddressCreditSimulationsCredit = resource.OperationSpec{
+var V2PreviewTestHelpersMoneyManagementsFinancialAddressCreditSimulationsCredit = resource.OperationSpec{
 	Name:      "credit",
-	Path:      "/v2/test_helpers/financial_addresses/{id}/credit",
+	Path:      "/v2/money_management/test_helpers/financial_addresses/{id}/credit",
 	Method:    "POST",
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
@@ -52680,9 +53834,9 @@ var V2PreviewTestHelpersFinancialAddressCreditSimulationsCredit = resource.Opera
 	},
 }
 
-var V2PreviewTestHelpersFinancialAddressGeneratedMicrodepositssGenerateMicrodeposits = resource.OperationSpec{
+var V2PreviewTestHelpersMoneyManagementsFinancialAddressGeneratedMicrodepositssGenerateMicrodeposits = resource.OperationSpec{
 	Name:      "generate_microdeposits",
-	Path:      "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits",
+	Path:      "/v2/money_management/test_helpers/financial_addresses/{id}/generate_microdeposits",
 	Method:    "POST",
 	IsPreview: true,
 }
