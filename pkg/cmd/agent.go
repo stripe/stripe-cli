@@ -34,6 +34,7 @@ var agentClientID = map[string]string{
 	"cursor":      agentsetup.ClientCursor,
 	"grok":        agentsetup.ClientGrok,
 	"openclaw":    agentsetup.ClientOpenclaw,
+	"kiro":        agentsetup.ClientKiro,
 }
 
 // providerOrder is the canonical display order for known clients. Providers not
@@ -44,6 +45,7 @@ var providerOrder = []string{
 	agentsetup.ClientCursor,
 	agentsetup.ClientGrok,
 	agentsetup.ClientOpenclaw,
+	agentsetup.ClientKiro,
 }
 
 type agentCmd struct {
@@ -870,6 +872,7 @@ Supported clients for automatic setup:
   • Codex CLI     https://openai.com/codex/
   • Grok Build    https://x.ai/build
   • Openclaw      https://openclaw.ai
+  • Kiro          https://https://kiro.dev/
 
 You can still install Stripe skills.
 `)
@@ -884,6 +887,7 @@ Supported clients for automatic setup:
   • Codex CLI     https://openai.com/codex/
   • Grok Build    https://x.ai/build
   • Openclaw      https://openclaw.ai
+  • Kiro          https://https://kiro.dev/
 
 Once a client is installed, re-run: stripe agent setup
 `)
