@@ -32,6 +32,9 @@ type PluginMetadata struct {
 	// had — so losing the signal can only cost a prompt, never cause a surprise
 	// download.
 	AutoInstall bool `json:"auto_install"`
+	// AutoUpdateDefault enables automatic updates when the user has not chosen a
+	// per-plugin or global setting. Older responses that omit it default to false.
+	AutoUpdateDefault bool `json:"auto_update_default"`
 }
 
 func getPluginMetadataPath(apiKey string) string {

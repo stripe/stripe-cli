@@ -441,9 +441,10 @@ func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(
 	// Nothing answered the auto-install question, so the caller keeps prompting
 	// rather than installing on an assumption.
 	require.False(t, resolvedPlugin.AutoInstall)
+	require.False(t, resolvedPlugin.AutoUpdateDefault)
 }
 
-func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
+func TestResolvePluginCarriesAutomaticUpdateAndInstallSettingsFromMetadata(t *testing.T) {
 	optedIn, optedOut := true, false
 	manifest := fmt.Sprintf(`[[Plugin]]
   Shortname = "appA"
@@ -459,8 +460,10 @@ func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
 	tests := []struct {
 		name string
 		// nil leaves the field out entirely, as an older server would.
-		autoInstall     *bool
-		wantAutoInstall bool
+		autoInstall           *bool
+		autoUpdateDefault     *bool
+		wantAutoInstall       bool
+		wantAutoUpdateDefault bool
 	}{
 		{
 			name:            "backend enabled auto-install",
@@ -473,6 +476,25 @@ func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
 		},
 		{
 			name: "server did not answer",
+		},
+		{
+			name:                  "backend enabled auto-update only",
+			autoInstall:           &optedOut,
+			autoUpdateDefault:     &optedIn,
+			wantAutoUpdateDefault: true,
+		},
+		{
+			name:                  "backend enabled both",
+			autoInstall:           &optedIn,
+			autoUpdateDefault:     &optedIn,
+			wantAutoInstall:       true,
+			wantAutoUpdateDefault: true,
+		},
+		{
+			name:              "backend disabled auto-update",
+			autoInstall:       &optedIn,
+			autoUpdateDefault: &optedOut,
+			wantAutoInstall:   true,
 		},
 	}
 
@@ -495,6 +517,9 @@ func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
 				if tt.autoInstall != nil {
 					response["auto_install"] = *tt.autoInstall
 				}
+				if tt.autoUpdateDefault != nil {
+					response["auto_update_default"] = *tt.autoUpdateDefault
+				}
 
 				stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 					require.Equal(t, path, req.URL.Path)
@@ -509,6 +534,11 @@ func TestResolvePluginForInstallCarriesAutoInstallFromMetadata(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "2.0.1", resolvedPlugin.Version)
 				require.Equal(t, tt.wantAutoInstall, resolvedPlugin.AutoInstall)
+				require.Equal(t, tt.wantAutoUpdateDefault, resolvedPlugin.AutoUpdateDefault)
+
+				resolvedUpgrade, err := ResolvePluginForUpgrade(context.Background(), config, fs, "appA", stripeServer.URL, stripeServer.URL)
+				require.NoError(t, err)
+				require.Equal(t, resolvedPlugin, resolvedUpgrade)
 			})
 		}
 	}
@@ -754,6 +784,7 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	require.Equal(t, localPlugin, *resolvedPlugin.Plugin)
 	require.Equal(t, "0.1.25", resolvedPlugin.Version)
 	require.Empty(t, resolvedPlugin.BinaryURL)
+	require.False(t, resolvedPlugin.AutoUpdateDefault)
 }
 
 func TestResolvePluginForUpgradePrefersFresherCachedManifestWhenEndpointFails(t *testing.T) {
@@ -1311,7 +1342,7 @@ func TestCheckLatestPluginVersionSilentWhenPluginAutoUpdates(t *testing.T) {
 	t.Setenv("STRIPE_PLUGINS_PATH", "")
 
 	var settingReads []string
-	pluginUpdatesEnabled = func(pluginName string) bool {
+	pluginUpdatesEnabled = func(pluginName string, _ bool) bool {
 		settingReads = append(settingReads, pluginName)
 		return true
 	}
@@ -1384,7 +1415,7 @@ func TestCheckLatestPluginVersionHintsWhenAutoUpgradeWillNotRun(t *testing.T) {
 	t.Setenv("STRIPE_PLUGINS_PATH", "/somewhere/else")
 
 	var settingReads []string
-	pluginUpdatesEnabled = func(pluginName string) bool {
+	pluginUpdatesEnabled = func(pluginName string, _ bool) bool {
 		settingReads = append(settingReads, pluginName)
 		return true
 	}

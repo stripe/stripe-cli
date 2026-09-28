@@ -52,6 +52,9 @@ type ResolvedPluginVersion struct {
 	// back to cached metadata leaves it false, so a machine that cannot reach the
 	// endpoint keeps prompting rather than installing on a stale answer.
 	AutoInstall bool
+	// AutoUpdateDefault is the backend default from a live metadata response.
+	// Cached metadata leaves it false; explicit user settings take precedence.
+	AutoUpdateDefault bool
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -866,10 +869,11 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 	}
 
 	return &ResolvedPluginVersion{
-		Plugin:      plugin,
-		Version:     resolvedVersion,
-		BinaryURL:   pluginMetadata.BinaryURL,
-		AutoInstall: pluginMetadata.AutoInstall,
+		Plugin:            plugin,
+		Version:           resolvedVersion,
+		BinaryURL:         pluginMetadata.BinaryURL,
+		AutoInstall:       pluginMetadata.AutoInstall,
+		AutoUpdateDefault: pluginMetadata.AutoUpdateDefault,
 	}, nil
 }
 
@@ -1191,6 +1195,9 @@ func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 // after such a decline. Those runs now say nothing at all. The alternative is charging
 // every auto-updating command a request to say it, and a check that keeps declining is
 // better reported by the check itself than inferred from a hint here.
+//
+// When following the backend default, reuse the pre-run check's resolution. A
+// default of false still gets an upgrade hint, at the same interval as the check.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
 	// PluginsPath alone, deliberately narrower than the same-looking guard in
 	// maybeAutoUpgrade: a `localdev` build has no published release to be behind, but
@@ -1215,8 +1222,19 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	// Asked of pluginsDirOverride rather than the environment directly, even though the
 	// guard above has already returned for the compiled-in half of it, so that this and
 	// maybeAutoUpgrade keep reading the same answer from the same place.
-	if pluginsDirOverride() == "" && pluginUpdatesEnabled(plugin.Shortname) {
-		return
+	var resolvedPlugin *ResolvedPluginVersion
+	if pluginsDirOverride() == "" {
+		if pluginUpdatesEnabled(plugin.Shortname, false) {
+			return
+		}
+		if plugin.autoUpgradeCheck != nil && pluginUpdatesEnabled(plugin.Shortname, true) {
+			// With no explicit setting, reuse the pre-run decision. This also keeps
+			// throttled and failed checks from causing another request on exit.
+			resolvedPlugin = plugin.autoUpgradeCheck.resolved
+			if resolvedPlugin == nil || resolvedPlugin.AutoUpdateDefault {
+				return
+			}
+		}
 	}
 
 	installedVersion := plugin.InstalledVersion(config, fs)
@@ -1235,9 +1253,12 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	ctx, cancel := context.WithTimeout(ctx, checkLatestPluginVersionTimeout)
 	defer cancel()
 
-	resolvedPlugin, err := checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
-	if err != nil {
-		return
+	if resolvedPlugin == nil {
+		var err error
+		resolvedPlugin, err = checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
+		if err != nil || resolvedPlugin == nil {
+			return
+		}
 	}
 
 	latestVersion := resolvedPlugin.Version

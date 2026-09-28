@@ -114,7 +114,7 @@ func TestPluginDisable(t *testing.T) {
 	err := ac.run(ac.Cmd, []string{"apps"})
 	require.NoError(t, err)
 	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
-	assert.Equal(t, "Automatic updates are disabled for the Apps plugin\n\nEnable it with 'stripe plugin auto-update apps --enable'\nFollow the global setting with 'stripe plugin auto-update apps --unset' (current: disabled)\n", output.String())
+	assert.Equal(t, "Automatic updates are disabled for the Apps plugin\n\nEnable it with 'stripe plugin auto-update apps --enable'\nFollow the global setting with 'stripe plugin auto-update apps --unset' (current: plugin default)\n", output.String())
 }
 
 // -- per-plugin not installed -----------------------------------------------

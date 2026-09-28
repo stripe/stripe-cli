@@ -28,11 +28,11 @@ func NewAutoUpdateCmd(cfg *config.Config) *AutoUpdateCmd {
 	ac.Cmd = &cobra.Command{
 		Use:   "auto-update [plugin]",
 		Short: "Enable or disable automatic updates for a plugin",
-		Long: `Enable or disable automatic background updates for a plugin.
+		Long: `Enable or disable automatic updates before a plugin runs.
 
-By default, automatic updates are disabled. When disabled, the CLI will not check
-for or download newer versions automatically.
-Omit the plugin name to apply the setting globally to all plugins.`,
+Each plugin defines whether automatic updates are enabled by default.
+Omit the plugin name to apply your choice globally to all plugins.
+A per-plugin choice overrides the global choice; both override the plugin's default.`,
 		Example: `stripe plugin auto-update --enable
   stripe plugin auto-update --disable
   stripe plugin auto-update apps --enable
@@ -91,9 +91,11 @@ func (ac *AutoUpdateCmd) printSettings(cmd *cobra.Command, scope string) {
 	}
 
 	pluginName := strings.ToUpper(scope[:1]) + scope[1:]
-	globalState := "disabled"
-	if config.PluginUpdatesEnabled("") {
+	globalState := "plugin default"
+	if config.PluginUpdatesEnabled("", false) {
 		globalState = "enabled"
+	} else if !config.PluginUpdatesEnabled("", true) {
+		globalState = "disabled"
 	}
 
 	fmt.Fprintf(out, "Automatic updates are %s for the %s plugin\n\n", state, pluginName)

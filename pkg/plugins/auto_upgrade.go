@@ -69,6 +69,12 @@ var (
 	}
 )
 
+// autoUpgradeCheckResult shares this invocation's lookup with the post-command
+// hint. A nil resolution means the check was throttled or could not resolve metadata.
+type autoUpgradeCheckResult struct {
+	resolved *ResolvedPluginVersion
+}
+
 // autoUpgradeCheckStampPath returns the file recording when this plugin was last
 // checked for an upgrade.
 //
@@ -91,8 +97,7 @@ func autoUpgradeCheckStampPath(cfg config.IConfig, pluginName string) (string, e
 // removeAutoUpgradeCheckStamp deletes a plugin's check stamp, for an uninstall that
 // should not leave anything of the plugin behind.
 //
-// A missing stamp is not an error: most uninstalls are of plugins that never had one,
-// because the setting is off by default.
+// A missing stamp is not an error: the plugin may never have been checked.
 func removeAutoUpgradeCheckStamp(cfg config.IConfig, fs afero.Fs, pluginName string) error {
 	path, err := autoUpgradeCheckStampPath(cfg, pluginName)
 	if err != nil {
@@ -159,12 +164,12 @@ func recordAutoUpgradeCheck(cfg config.IConfig, fs afero.Fs, pluginName string) 
 }
 
 // maybeAutoUpgrade upgrades a plugin to the newest release available to this CLI
-// before it runs, when the user turned `stripe plugin auto-update` on for it. It
-// returns the plugin and version to run: the newly installed pair when it upgraded,
-// and the pair it was given every other time.
+// before it runs, when enabled by the user's setting or the backend default. It
+// returns the newly installed plugin and version when it upgraded, and the pair
+// it was given every other time.
 //
-// Most calls return without looking anything up. It runs on every invocation of an
-// opted-in plugin, but only actually checks once per autoUpgradeCheckInterval.
+// Unless the user explicitly disabled updates, it checks for the latest release
+// and backend default at most once per autoUpgradeCheckInterval.
 //
 // It returns no error, by design. The user asked to run a plugin, not to upgrade
 // one, so every way this can come up short -- a setting that is off, an endpoint
@@ -210,13 +215,14 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 		return p, installedVersion
 	case isLocalDevelopmentVersion(installedVersion):
 		return p, installedVersion
-	case !pluginUpdatesEnabled(p.Shortname):
-		// Read before the lookup below so a user who left this off pays nothing for
-		// the feature, not even one request per plugin command.
+	case !pluginUpdatesEnabled(p.Shortname, true):
+		// An explicit opt-out skips the lookup. An unset preference needs a live
+		// response to discover the backend default before deciding whether to install.
 		return p, installedVersion
-	case !autoUpgradeCheckDue(cfg, fs, p.Shortname):
-		// Checked recently enough. Ordered after the setting because that read is free
-		// and this one touches the disk. See autoUpgradeCheckInterval.
+	}
+
+	p.autoUpgradeCheck = &autoUpgradeCheckResult{}
+	if !autoUpgradeCheckDue(cfg, fs, p.Shortname) {
 		logger.Debug("skipping auto-upgrade, checked for one recently")
 		return p, installedVersion
 	}
@@ -258,6 +264,11 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 	}
 	if resolved == nil || resolved.Plugin == nil || resolved.Version == "" {
 		logger.Debug("skipping auto-upgrade, the latest version could not be determined")
+		return p, installedVersion
+	}
+	p.autoUpgradeCheck.resolved = resolved
+
+	if !pluginUpdatesEnabled(p.Shortname, resolved.AutoUpdateDefault) {
 		return p, installedVersion
 	}
 

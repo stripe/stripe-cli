@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
 	cfgpkg "github.com/stripe/stripe-cli/pkg/config"
@@ -93,7 +94,7 @@ func stubAutoUpgrade(t *testing.T) *autoUpgradeStubs {
 
 	autoUpgradeNow = func() time.Time { return stubs.now }
 
-	pluginUpdatesEnabled = func(pluginName string) bool {
+	pluginUpdatesEnabled = func(pluginName string, _ bool) bool {
 		stubs.settingReads = append(stubs.settingReads, pluginName)
 		return stubs.updatesEnabled
 	}
@@ -261,6 +262,161 @@ func TestMaybeAutoUpgradeInstallsNewerRelease(t *testing.T) {
 	// doing it again.
 	require.Contains(t, output, "Updated the apps plugin to v1.3.0")
 	require.Contains(t, output, "stripe plugin auto-update apps --disable")
+}
+
+func TestMaybeAutoUpgradeHonorsBackendDefaultAndUserSettings(t *testing.T) {
+	tests := []struct {
+		name           string
+		pluginSetting  string
+		globalSetting  string
+		backendDefault bool
+		wantLookup     bool
+		wantUpgrade    bool
+	}{
+		{name: "unset uses backend on", backendDefault: true, wantLookup: true, wantUpgrade: true},
+		{name: "unset uses backend off", wantLookup: true},
+		{name: "plugin on overrides backend off", pluginSetting: cfgpkg.PluginConfigOn, wantLookup: true, wantUpgrade: true},
+		{name: "global on overrides backend off", globalSetting: cfgpkg.PluginConfigOn, wantLookup: true, wantUpgrade: true},
+		{name: "plugin off overrides backend on", pluginSetting: cfgpkg.PluginConfigOff, backendDefault: true},
+		{name: "global off overrides backend on", globalSetting: cfgpkg.PluginConfigOff, backendDefault: true},
+		{name: "plugin off overrides global on and backend on", pluginSetting: cfgpkg.PluginConfigOff, globalSetting: cfgpkg.PluginConfigOn, backendDefault: true},
+		{name: "plugin on overrides global off and backend off", pluginSetting: cfgpkg.PluginConfigOn, globalSetting: cfgpkg.PluginConfigOff, wantLookup: true, wantUpgrade: true},
+		{name: "invalid plugin setting overrides backend on", pluginSetting: "invalid", backendDefault: true},
+		{name: "invalid global setting overrides backend on", globalSetting: "invalid", backendDefault: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			t.Cleanup(viper.Reset)
+			if tt.pluginSetting != "" {
+				viper.Set(cfgpkg.PluginConfigKey("apps", cfgpkg.PluginConfigUpdatesField), tt.pluginSetting)
+			}
+			if tt.globalSetting != "" {
+				viper.Set(cfgpkg.PluginConfigKey(cfgpkg.PluginConfigGlobalScope, cfgpkg.PluginConfigUpdatesField), tt.globalSetting)
+			}
+			settingsBefore := viper.AllSettings()
+
+			stubs := stubAutoUpgrade(t)
+			pluginUpdatesEnabled = cfgpkg.PluginUpdatesEnabled
+			stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+			stubs.resolved.AutoUpdateDefault = tt.backendDefault
+			cfg, fs := autoUpgradeTestConfig(), afero.NewMemMapFs()
+			installed := autoUpgradeTestPlugin("1.2.0")
+
+			var gotPlugin *Plugin
+			var gotVersion string
+			output := captureStderr(t, func() {
+				gotPlugin, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs, installed, "1.2.0", "", "", "")
+			})
+
+			require.Equal(t, tt.wantLookup, len(stubs.resolveCalls) > 0)
+			require.Equal(t, tt.wantLookup, autoUpgradeCheckStampExists(t, cfg, fs, "apps"))
+			if tt.wantUpgrade {
+				require.Same(t, stubs.resolved.Plugin, gotPlugin)
+				require.Equal(t, "1.3.0", gotVersion)
+				require.Len(t, stubs.installCalls, 1)
+				require.Len(t, stubs.postInstallCalls, 1)
+				require.Contains(t, output, "stripe plugin auto-update apps --disable")
+			} else {
+				require.Same(t, installed, gotPlugin)
+				require.Equal(t, "1.2.0", gotVersion)
+				require.Empty(t, stubs.installCalls)
+				require.Empty(t, stubs.postInstallCalls)
+				require.Empty(t, output)
+			}
+			// Learning the backend default must not turn it into a user override.
+			require.Equal(t, settingsBefore, viper.AllSettings())
+		})
+	}
+}
+
+func TestMaybeAutoUpgradeRefreshesBackendDefaultAfterInterval(t *testing.T) {
+	stubs := stubAutoUpgrade(t)
+	pluginUpdatesEnabled = func(_ string, backendDefault bool) bool { return backendDefault }
+	stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+	cfg, fs := autoUpgradeTestConfig(), afero.NewMemMapFs()
+
+	output := captureStderr(t, func() {
+		_, version := maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+		require.Equal(t, "1.2.0", version)
+		require.Empty(t, stubs.installCalls)
+
+		stubs.resolved.AutoUpdateDefault = true
+		_, version = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+		require.Equal(t, "1.2.0", version)
+		require.Len(t, stubs.resolveCalls, 1)
+
+		stubs.now = stubs.now.Add(autoUpgradeCheckInterval)
+		_, version = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.2.0"), "1.2.0", "", "", "")
+		require.Equal(t, "1.3.0", version)
+		require.Len(t, stubs.resolveCalls, 2)
+		require.Len(t, stubs.installCalls, 1)
+
+		// A later backend opt-out must be honored too.
+		stubs.resolved = autoUpgradeResolvedPlugin("1.4.0")
+		stubs.now = stubs.now.Add(autoUpgradeCheckInterval)
+		_, version = maybeAutoUpgrade(context.Background(), cfg, fs, autoUpgradeTestPlugin("1.3.0"), "1.3.0", "", "", "")
+		require.Equal(t, "1.3.0", version)
+		require.Len(t, stubs.resolveCalls, 3)
+		require.Len(t, stubs.installCalls, 1)
+	})
+	require.Contains(t, output, "Updated the apps plugin to v1.3.0")
+}
+
+func TestCheckLatestPluginVersionReusesAutoUpgradeCheck(t *testing.T) {
+	tests := []struct {
+		name           string
+		backendDefault bool
+		resolveErr     error
+		installErr     error
+		throttled      bool
+		wantHint       bool
+	}{
+		{name: "backend on", backendDefault: true},
+		{name: "backend off", wantHint: true},
+		{name: "lookup failed", resolveErr: errors.New("metadata endpoint unreachable")},
+		{name: "install failed", backendDefault: true, installErr: errors.New("download failed")},
+		{name: "check throttled", throttled: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stubs := stubAutoUpgrade(t)
+			pluginUpdatesEnabled = func(_ string, backendDefault bool) bool { return backendDefault }
+			stubs.resolved = autoUpgradeResolvedPlugin("1.3.0")
+			stubs.resolved.AutoUpdateDefault = tt.backendDefault
+			stubs.resolveErr, stubs.installErr = tt.resolveErr, tt.installErr
+			cfg, fs := autoUpgradeTestConfig(), afero.NewMemMapFs()
+			if tt.throttled {
+				writeAutoUpgradeCheckStamp(t, cfg, fs, "apps", stubs.now)
+			}
+			installed := autoUpgradeTestPlugin("1.2.0")
+			installPath, err := installed.getPluginInstallPath(cfg, "1.2.0")
+			require.NoError(t, err)
+			binaryPath := filepath.Join(installPath, installed.Binary+GetBinaryExtension())
+			require.NoError(t, fs.MkdirAll(filepath.Dir(binaryPath), 0755))
+			require.NoError(t, afero.WriteFile(fs, binaryPath, []byte("binary"), 0755))
+
+			origResolver := checkLatestPluginVersionResolver
+			t.Cleanup(func() { checkLatestPluginVersionResolver = origResolver })
+			checkLatestPluginVersionResolver = func(context.Context, cfgpkg.IConfig, afero.Fs, string, string, string) (*ResolvedPluginVersion, error) {
+				t.Fatal("the post-command hint must not make another metadata request")
+				return nil, nil
+			}
+
+			captureStderr(t, func() {
+				maybeAutoUpgrade(context.Background(), cfg, fs, installed, "1.2.0", "", "", "")
+			})
+			output := captureStderr(t, func() {
+				CheckLatestPluginVersion(context.Background(), cfg, fs, *installed, stripe.DefaultAPIBaseURL, "")
+			})
+			if tt.wantHint {
+				require.Contains(t, output, "A newer version of the apps plugin is available")
+			} else {
+				require.Empty(t, output)
+			}
+		})
+	}
 }
 
 // The base URLs Run holds carry only what the user explicitly passed, because a
