@@ -2,6 +2,7 @@ package version
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -40,4 +41,14 @@ func TestNeedsToUpgrade(t *testing.T) {
 	require.True(t, needsToUpgrade("4.2.4.2", "4.2.4.3"))
 	require.True(t, needsToUpgrade("4.2.4.2", "v4.2.4.3"))
 	require.True(t, needsToUpgrade("v4.2.4.2", "v4.2.4.3"))
+}
+
+func TestReleaseIsSettled(t *testing.T) {
+	now := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)
+
+	require.False(t, releaseIsSettled(now.Add(-time.Hour), now))
+	require.False(t, releaseIsSettled(now.Add(-releaseGracePeriod+time.Minute), now))
+	require.True(t, releaseIsSettled(now.Add(-releaseGracePeriod), now))
+	require.True(t, releaseIsSettled(now.Add(-72*time.Hour), now))
+	require.True(t, releaseIsSettled(time.Time{}, now))
 }
