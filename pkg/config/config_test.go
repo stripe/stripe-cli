@@ -24,6 +24,42 @@ func TestRemoveKey(t *testing.T) {
 	require.ElementsMatch(t, []string{"stay", "remove"}, v.AllKeys())
 }
 
+// The table name is mixed case on purpose: viper stores it lowercased, and the
+// delete has to find that table rather than drop the whole thing.
+func TestDeleteConfigFieldRemovesOnlyThatField(t *testing.T) {
+	c, profilesFile, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	pluginKey := PluginConfigKey("appA", PluginConfigUpdatesField)
+	siblingKey := PluginConfigKey("appA", "sibling")
+	globalKey := PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField)
+	require.NoError(t, c.WriteConfigField(pluginKey, PluginConfigOn))
+	require.NoError(t, c.WriteConfigField(siblingKey, "kept"))
+	require.NoError(t, c.WriteConfigField(globalKey, PluginConfigOff))
+
+	require.NoError(t, c.DeleteConfigField(pluginKey))
+
+	onDisk := viper.New()
+	onDisk.SetConfigFile(profilesFile)
+	require.NoError(t, onDisk.ReadInConfig())
+	require.False(t, onDisk.IsSet(pluginKey))
+	require.Equal(t, "kept", onDisk.GetString(siblingKey))
+	require.Equal(t, PluginConfigOff, onDisk.GetString(globalKey))
+
+	require.False(t, viper.IsSet(pluginKey))
+}
+
+func TestDeleteConfigFieldLeavesAnUnsetFieldAlone(t *testing.T) {
+	c, profilesFile, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	require.NoError(t, c.DeleteConfigField(PluginConfigKey("apps", PluginConfigUpdatesField)))
+
+	// Nothing to remove means nothing to write, so the file is never created.
+	_, err := os.Stat(profilesFile)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 func setupTestConfig(t *testing.T) (*Config, string, func()) {
 	t.Helper()
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")

@@ -137,4 +137,13 @@ func TestPluginUpdatesEnabledReadsWhatAutoUpdateWrites(t *testing.T) {
 	require.NoError(t, c.WriteConfigField(PluginConfigKey("apps", PluginConfigUpdatesField), PluginConfigOff))
 	require.False(t, PluginUpdatesEnabled("apps", true))
 	require.True(t, PluginUpdatesEnabled("projects", false))
+
+	// `--unset` walks back down the same precedence: the plugin to the global
+	// choice, then the global choice to the plugin's default.
+	require.NoError(t, c.DeleteConfigField(PluginConfigKey("apps", PluginConfigUpdatesField)))
+	require.True(t, PluginUpdatesEnabled("apps", false))
+
+	require.NoError(t, c.DeleteConfigField(PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField)))
+	require.False(t, PluginUpdatesEnabled("apps", false))
+	require.True(t, PluginUpdatesEnabled("apps", true))
 }
