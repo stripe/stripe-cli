@@ -1,4 +1,6 @@
 on:
+  schedule:
+    - cron: '*/10 * * * *' # Every 10 minutes
   workflow_dispatch:
     inputs:
       dryrun:
@@ -275,11 +277,7 @@ jobs:
             exit 1
           fi
 
-          # A later invocation is what clears it. The release just installed
-          # predates the cleanup, so put a build that has it back in place.
-          CGO_ENABLED=0 go build -ldflags="-s -w -X github.com/stripe/stripe-cli/pkg/version.Version=1.0.0" \
-            -o "$STRIPE" ./cmd/stripe
-
+          # A later invocation of the installed release is what clears it.
           # Opted out, so that this also covers the cleanup running ahead of the
           # opt-out check: turning auto-update off must not park the outgoing
           # binary next to the new one forever.
