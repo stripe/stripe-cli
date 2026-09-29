@@ -30,6 +30,10 @@ type Provider interface {
 	Apply(context.Context, io.Writer, Plan) error
 }
 
+// RunOutputFunc runs a command and returns its standard output. It exists so
+// Codex detection (which shells out to `codex plugin list --json`) is testable.
+type RunOutputFunc func(context.Context, string, ...string) ([]byte, error)
+
 // ProviderConfig holds the configuration for a provider.
 type ProviderConfig struct {
 	Scanner     Scanner

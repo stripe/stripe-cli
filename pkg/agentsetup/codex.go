@@ -24,10 +24,6 @@ const (
 // https://github.com/openai/plugins/blob/main/.agents/plugins/api_marketplace.json
 var codexMarketplaces = [...]string{"openai-curated", "openai-api-curated"}
 
-// RunOutputFunc runs a command and returns its standard output. It exists so
-// Codex detection (which shells out to `codex plugin list --json`) is testable.
-type RunOutputFunc func(context.Context, string, ...string) ([]byte, error)
-
 // CodexProvider detects and installs the Stripe plugin for Codex CLI.
 //
 // Detection selects the first available supported marketplace, and installation
