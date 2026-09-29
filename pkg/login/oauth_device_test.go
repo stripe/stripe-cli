@@ -55,6 +55,23 @@ func TestRequestDeviceCode_NonOK(t *testing.T) {
 	assert.Contains(t, err.Error(), "404")
 }
 
+func TestDeviceAuthResponse_BrowserURL(t *testing.T) {
+	t.Run("prefers verification_uri_complete when present", func(t *testing.T) {
+		resp := &DeviceAuthResponse{
+			VerificationURI:         "https://qa-access.stripe.com/stripecli/oauth2/device",
+			VerificationURIComplete: "https://qa-access.stripe.com/stripecli/oauth2/device?user_code=BZFN-KXNJ",
+		}
+		assert.Equal(t, "https://qa-access.stripe.com/stripecli/oauth2/device?user_code=BZFN-KXNJ", resp.BrowserURL())
+	})
+
+	t.Run("falls back to verification_uri when absent", func(t *testing.T) {
+		resp := &DeviceAuthResponse{
+			VerificationURI: "https://qa-access.stripe.com/stripecli/oauth2/device",
+		}
+		assert.Equal(t, "https://qa-access.stripe.com/stripecli/oauth2/device", resp.BrowserURL())
+	})
+}
+
 func TestPollDeviceToken_Success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.NoError(t, r.ParseForm())
