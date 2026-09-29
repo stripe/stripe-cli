@@ -30,6 +30,16 @@ type Provider interface {
 	Apply(context.Context, io.Writer, Plan) error
 }
 
+// ProviderConfig holds the configuration for a provider.
+type ProviderConfig struct {
+	Scanner     Scanner
+	Client      string
+	BinaryName  string
+	DisplayName string
+	RunCommand  RunCommandFunc
+	RunOutput   RunOutputFunc
+}
+
 // DefaultProviders returns production setup providers keyed by client id.
 func DefaultProviders() map[string]Provider {
 	scanner := DefaultScanner()
