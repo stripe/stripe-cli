@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -64,6 +66,30 @@ func TestHelpFlag(t *testing.T) {
 
 	require.Contains(t, output, "Stripe commands:")
 	require.NoError(t, err)
+}
+
+func TestExecuteNormalizesBooleanRequestArgs(t *testing.T) {
+	previousRoot, previousArgs := rootCmd, os.Args
+	t.Cleanup(func() {
+		rootCmd, os.Args = previousRoot, previousArgs
+	})
+	rootCmd = &cobra.Command{Use: "stripe", Annotations: make(map[string]string)}
+	rootCmd.PersistentFlags().String("project-name", "default", "Project")
+	endpoints := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
+	resource.NewOperationCmd(endpoints.Cmd, &resources.V1WebhookEndpointsUpdate, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	var output bytes.Buffer
+	rootCmd.SetOut(&output)
+	os.Args = []string{"stripe", "webhook_endpoints", "update", "we_123", "--disabled", "false", "--dry-run", "-d", "items[]=one", "-d", "items[]=two"}
+
+	Execute(t.Context())
+
+	var preview requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(output.Bytes(), &preview))
+	require.Equal(t, "https://api.stripe.com/v1/webhook_endpoints/we_123", preview.DryRun.URL)
+	require.Equal(t, map[string]interface{}{
+		"disabled": false,
+		"items":    []interface{}{"one", "two"},
+	}, preview.DryRun.Params)
 }
 
 func TestSandboxVisibleInHelp(t *testing.T) {
