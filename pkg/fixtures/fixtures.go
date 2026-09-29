@@ -309,12 +309,21 @@ func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, e
 		fmt.Printf("Running fixture for: %s\n", data.Name)
 		resp, err := fxt.makeRequest(ctx, data, apiVersion)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
-			return nil, err
+			return nil, fixtureRequestError(data, err)
 		}
 
 		fxt.Responses[data.Name] = gjson.ParseBytes(resp)
 	}
 	return requestNames, nil
+}
+
+func fixtureRequestError(data FixtureRequest, err error) error {
+	var requestErr requests.RequestError
+	if data.Path == "/v1/accounts" && strings.EqualFold(data.Method, http.MethodPost) &&
+		errors.As(err, &requestErr) && requestErr.StatusCode == http.StatusBadRequest {
+		return fmt.Errorf("fixture %q requires Accounts v1 account creation support (POST /v1/accounts). If Accounts v1 creation is disabled, use an account with Accounts v1 support or a custom fixture for Accounts v2 events: https://docs.stripe.com/cli/fixtures. Original error: %w", data.Name, err)
+	}
+	return err
 }
 
 func errWasExpected(err error, expectedErrorType string) bool {

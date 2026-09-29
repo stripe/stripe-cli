@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -87,6 +89,51 @@ const file = "test_fixture.json"
 const customersPath = "/v1/customers"
 const chargePath = "/v1/charges"
 const capturePath = "/v1/charges/char_12345/capture"
+
+func TestAccountCreationFixtureError(t *testing.T) {
+	fxt, err := NewFixtureFromFile(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", "", "triggers/account.updated.json", nil, nil, nil, nil, false)
+	require.NoError(t, err)
+	data := fxt.FixtureData.Requests[0]
+	requestErr := requests.RequestError{
+		StatusCode: http.StatusBadRequest,
+		ErrorType:  "invalid_request_error",
+		Message:    "Stripe no longer recommends Accounts v1 for new Connect integrations. Create connected accounts with POST /v2/core/accounts instead.",
+		Body:       `{"error":{"message":"Stripe no longer recommends Accounts v1 for new Connect integrations."}}`,
+	}
+
+	for _, original := range []error{requestErr, fmt.Errorf("request failed: %w", requestErr)} {
+		err := fixtureRequestError(data, original)
+		require.ErrorContains(t, err, `fixture "account" requires Accounts v1 account creation support`)
+		require.ErrorContains(t, err, "POST /v1/accounts")
+		require.ErrorContains(t, err, "custom fixture for Accounts v2 events")
+		require.ErrorContains(t, err, "https://docs.stripe.com/cli/fixtures")
+		require.ErrorContains(t, err, requestErr.Error())
+		var underlying requests.RequestError
+		require.ErrorAs(t, err, &underlying)
+		require.Equal(t, requestErr, underlying)
+	}
+
+	t.Run("other requests", func(t *testing.T) {
+		for _, request := range []FixtureRequest{
+			{Path: "/v1/accounts/acct_123", Method: "post"},
+			{Path: "/v2/core/accounts", Method: "post"},
+			{Path: "/v1/customers", Method: "post"},
+			{Path: "/v1/accounts", Method: "get"},
+		} {
+			require.Equal(t, requestErr, fixtureRequestError(request, requestErr))
+		}
+	})
+	t.Run("other errors", func(t *testing.T) {
+		for _, original := range []error{
+			nil,
+			context.Canceled,
+			requests.RequestError{StatusCode: http.StatusUnauthorized},
+			requests.RequestError{StatusCode: http.StatusInternalServerError},
+		} {
+			require.Equal(t, original, fixtureRequestError(data, original))
+		}
+	})
+}
 
 func TestMakeRequest(t *testing.T) {
 	fs := afero.NewMemMapFs()
