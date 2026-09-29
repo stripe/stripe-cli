@@ -17,13 +17,24 @@ import (
 // It is written to disk by InitiateLogin/InitiateOAuthLogin and read by PollPendingDeviceAuth/
 // PollPendingOAuthLogin.
 type oauthContinuation struct {
-	DeviceCode      string    `json:"device_code"`
-	Interval        int       `json:"interval"`
-	ExpiresIn       int       `json:"expires_in"`
-	AccessBaseURL   string    `json:"access_base"`
-	VerificationURI string    `json:"verification_uri"`
-	UserCode        string    `json:"user_code"`
-	IssuedAt        time.Time `json:"issued_at"`
+	DeviceCode              string    `json:"device_code"`
+	Interval                int       `json:"interval"`
+	ExpiresIn               int       `json:"expires_in"`
+	AccessBaseURL           string    `json:"access_base"`
+	VerificationURI         string    `json:"verification_uri"`
+	VerificationURIComplete string    `json:"verification_uri_complete"`
+	UserCode                string    `json:"user_code"`
+	IssuedAt                time.Time `json:"issued_at"`
+}
+
+// browserURL returns the URL to display/open for the user to complete
+// authorization, preferring VerificationURIComplete over VerificationURI -
+// see DeviceAuthResponse.BrowserURL.
+func (c *oauthContinuation) browserURL() string {
+	if c.VerificationURIComplete != "" {
+		return c.VerificationURIComplete
+	}
+	return c.VerificationURI
 }
 
 // deadline returns the absolute time at which this device code expires. It's computed from
