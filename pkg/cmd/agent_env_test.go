@@ -32,6 +32,7 @@ func clearAgentEnv(t *testing.T) {
 		"HERMES_AGENT",
 		"OPENCLAW_SHELL",
 		"OPENCODE",
+		"TERM_PROGRAM",
 	} {
 		t.Setenv(key, "")
 	}
