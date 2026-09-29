@@ -12,7 +12,7 @@ import (
 // for API boolean flags, so the value is never taken as a positional argument
 // (such as the object ID). It never sets flag values.
 func NormalizeBooleanRequestArgs(root *cobra.Command, args []string) []string {
-	cmd, remaining, err := root.Find(args)
+	cmd, _, err := root.Find(args)
 	if err != nil || cmd.Parent() == nil || cmd.Parent().Annotations[cmd.Name()] != "operation" {
 		return args
 	}
@@ -22,11 +22,6 @@ func NormalizeBooleanRequestArgs(root *cobra.Command, args []string) []string {
 	flags.SetNormalizeFunc(cmd.Flags().GetNormalizeFunc())
 	flags.AddFlagSet(cmd.Flags())
 	flags.AddFlagSet(cmd.InheritedFlags())
-	// ParseAll leaves values untouched, including arrays and config bindings.
-	ignoreFlag := func(*pflag.Flag, string) error { return nil }
-	if err := flags.ParseAll(remaining, ignoreFlag); err != nil {
-		return args
-	}
 
 	normalized := append([]string(nil), args...)
 	for i := 0; i+1 < len(normalized); i++ {
@@ -41,16 +36,12 @@ func NormalizeBooleanRequestArgs(root *cobra.Command, args []string) []string {
 			normalized = append(normalized[:i+1], normalized[i+2:]...)
 		}
 	}
-
-	// Don't let the rewrite change which command runs.
-	if normalizedCmd, _, err := root.Find(normalized); err != nil || normalizedCmd != cmd {
-		return args
-	}
 	return normalized
 }
 
 // endsWithFlag distinguishes a flag from another flag's value or a positional
 // argument, including tokens after --, using pflag's own parsing rules.
+// ParseAll with a callback leaves flag values untouched.
 func endsWithFlag(flags *pflag.FlagSet, args []string, want *pflag.Flag) bool {
 	var last *pflag.Flag
 	positionalCount := -1
