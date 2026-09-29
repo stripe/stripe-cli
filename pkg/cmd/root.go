@@ -320,6 +320,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command, instead of your logged in session. Overridden by the STRIPE_API_KEY environment variable, if set")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.ContextOverride, "context", "", "For this command only, target the given authorized account ID instead of the active context set by 'stripe switch' (doesn't change the active context). Overridden by the STRIPE_CONTEXT environment variable, if set. Run 'stripe whoami' to see authorized account IDs")
 	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
 	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, trace, warn, error)")

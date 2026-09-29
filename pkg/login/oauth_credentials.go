@@ -30,14 +30,14 @@ func UpdateOAuthTokens(cfg *config.Config, resp *OAuthTokenResponse) error {
 	}
 
 	if resp.RefreshToken != "" {
-		if err := config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte(resp.RefreshToken), "Stripe CLI refresh token"); err != nil {
+		if err := config.KeyRing.Set(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey), []byte(resp.RefreshToken), "Stripe CLI refresh token"); err != nil {
 			return err
 		}
 	}
 
 	if resp.ExpiresIn > 0 {
 		expiresAt := time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
-		if err := config.SaveUATExpiresAt(expiresAt); err != nil {
+		if err := cfg.Profile.SaveUATExpiresAt(expiresAt); err != nil {
 			return err
 		}
 	}
@@ -48,11 +48,11 @@ func UpdateOAuthTokens(cfg *config.Config, resp *OAuthTokenResponse) error {
 // RevokeToken revokes the stored refresh token via the revocation endpoint.
 // Returns nil if no refresh token is stored. Errors from the server are
 // returned to callers, who should log and continue with credential cleanup.
-func RevokeToken(ctx context.Context, accessBaseURL string) error {
+func RevokeToken(ctx context.Context, accessBaseURL string, profile *config.Profile) error {
 	if config.KeyRing == nil {
 		return nil
 	}
-	refreshTokenBytes, err := config.KeyRing.Get(config.OAuthRefreshTokenKeychainKey)
+	refreshTokenBytes, err := config.KeyRing.Get(profile.KeyringKey(config.OAuthRefreshTokenKeychainKey))
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return nil
@@ -92,15 +92,15 @@ func ClearOAuthCredentials(cfg *config.Config) error {
 		return err
 	}
 
-	if err := config.KeyRing.Remove(OAuthRefreshTokenKeychainKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+	if err := config.KeyRing.Remove(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey)); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 		return err
 	}
 
-	if err := config.KeyRing.Remove(config.OAuthActiveContextKeychainKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+	if err := config.KeyRing.Remove(cfg.Profile.KeyringKey(config.OAuthActiveContextKeychainKey)); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 		return err
 	}
 
-	if err := config.KeyRing.Remove(config.OAuthUATExpiresAtKeychainKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+	if err := config.KeyRing.Remove(cfg.Profile.KeyringKey(config.OAuthUATExpiresAtKeychainKey)); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 		return err
 	}
 
@@ -119,7 +119,7 @@ func clearOAuthCredentialsForProfile(p *config.Profile) error {
 		config.OAuthActiveContextKeychainKey,
 		config.OAuthUATExpiresAtKeychainKey,
 	} {
-		if err := config.KeyRing.Remove(key); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+		if err := config.KeyRing.Remove(p.KeyringKey(key)); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 			return err
 		}
 	}

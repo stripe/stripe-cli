@@ -38,7 +38,7 @@ type reauthResponse struct {
 // otherwise the URL is printed for the user to visit manually. It then waits
 // for the authorized-accounts list to change before printing the updated list
 // of authorized contexts.
-func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
+func Reauth(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 	before, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func Reauth(ctx context.Context, accessBaseURL, accessToken string) error {
 		fmt.Printf("Visit the following URL to re-authorize the CLI:\n  %s\n", reauthURL)
 	}
 
-	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil)
+	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil, profile)
 }
 
 type reauthSessionOutput struct {
@@ -114,7 +114,7 @@ func InitiateReauth(ctx context.Context, accessBaseURL, accessToken string) erro
 // this, and one who runs `--complete-reauth` without a snapshot at all (e.g.
 // skipped `--non-interactive`). Only if there's a snapshot and nothing has
 // changed yet does it fall back to waiting/polling for a change.
-func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) error {
+func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 	before, err := loadPendingReauthAccounts()
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) e
 		if before != nil {
 			clearPendingReauthAccounts()
 		}
-		ac, _ := config.GetActiveContext()
+		ac, _ := profile.GetActiveContext()
 		activeID, activeLivemode := "", false
 		if ac != nil {
 			activeID = ac.AccountID
@@ -142,7 +142,7 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) e
 	fmt.Println("Waiting for you to finish in the browser. Press ^C to cancel.")
 	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, nil, func([]config.AuthorizedAccount) {
 		clearPendingReauthAccounts()
-	})
+	}, profile)
 }
 
 // waitForReauthCompletion waits for the authorized-accounts list to change
@@ -151,7 +151,7 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string) e
 // so a change to the accounts/scopes returned for the token is used as a
 // proxy for completion. onComplete, if non-nil, runs once a change is
 // detected and before the summary is printed.
-func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken string, before []config.AuthorizedAccount, browserOpened <-chan struct{}, onComplete func([]config.AuthorizedAccount)) error {
+func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken string, before []config.AuthorizedAccount, browserOpened <-chan struct{}, onComplete func([]config.AuthorizedAccount), profile *config.Profile) error {
 	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
@@ -176,7 +176,7 @@ func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken str
 		onComplete(after)
 	}
 
-	ac, _ := config.GetActiveContext()
+	ac, _ := profile.GetActiveContext()
 	activeID, activeLivemode := "", false
 	if ac != nil {
 		activeID = ac.AccountID

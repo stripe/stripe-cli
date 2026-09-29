@@ -19,13 +19,13 @@ func Logout(ctx context.Context, accessBaseURL string, cfg *config.Config) error
 	testKey, _ := cfg.Profile.GetAPIKey(false)
 	uat, _ := cfg.Profile.GetUAT()
 
-	if liveKey == "" && testKey == "" && uat == "" && !hasStoredOAuthData() {
+	if liveKey == "" && testKey == "" && uat == "" && !hasStoredOAuthData(&cfg.Profile) {
 		fmt.Println("You are already logged out.")
 		return nil
 	}
 
 	if strings.HasPrefix(uat, "oak_") {
-		if err := login.RevokeToken(ctx, accessBaseURL); err != nil {
+		if err := login.RevokeToken(ctx, accessBaseURL, &cfg.Profile); err != nil {
 			// Log but don't block — credentials should still be cleared.
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
 		}
@@ -50,12 +50,12 @@ func Logout(ctx context.Context, accessBaseURL string, cfg *config.Config) error
 	return nil
 }
 
-func hasStoredOAuthData() bool {
+func hasStoredOAuthData(profile *config.Profile) bool {
 	if config.KeyRing == nil {
 		return false
 	}
 	for _, key := range []string{config.OAuthRefreshTokenKeychainKey, config.OAuthActiveContextKeychainKey} {
-		if _, err := config.KeyRing.Get(key); err == nil {
+		if _, err := config.KeyRing.Get(profile.KeyringKey(key)); err == nil {
 			return true
 		}
 	}
@@ -64,9 +64,12 @@ func hasStoredOAuthData() bool {
 
 // All clears credentials for all profiles.
 func All(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
+	// Only the current profile's OAuth token is revoked server-side; other
+	// profiles' tokens are left valid upstream even though their local
+	// credentials are cleared below by RemoveAllAuthFields.
 	uat, _ := cfg.Profile.GetUAT()
 	if strings.HasPrefix(uat, "oak_") {
-		if err := login.RevokeToken(ctx, accessBaseURL); err != nil {
+		if err := login.RevokeToken(ctx, accessBaseURL, &cfg.Profile); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
 		}
 	}

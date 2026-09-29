@@ -249,6 +249,53 @@ func TestBuildOAuthWhoamiOutput_LiveModeActiveContextUnknownAccount(t *testing.T
 	assert.Nil(t, out.ExpiresAt)
 }
 
+func TestResolveWhoamiActiveContext_NoOverrideUsesActiveContext(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	profile := &config.Profile{}
+	require.NoError(t, profile.SaveActiveContext("acct_active", true))
+	ac, err := resolveWhoamiActiveContext(profile, nil, false)
+	require.NoError(t, err)
+	require.NotNil(t, ac)
+	assert.Equal(t, "acct_active", ac.AccountID)
+	assert.True(t, ac.Livemode)
+}
+
+func TestResolveWhoamiActiveContext_OverrideIgnoresActiveContext(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	accounts := []config.AuthorizedAccount{{ID: "acct_override", Name: "Override Co", Modes: []string{"test", "live"}}}
+	profile := &config.Profile{ContextOverride: "acct_override"}
+	require.NoError(t, profile.SaveActiveContext("acct_active", true))
+
+	ac, err := resolveWhoamiActiveContext(profile, accounts, false)
+	require.NoError(t, err)
+	require.NotNil(t, ac)
+	assert.Equal(t, "acct_override", ac.AccountID)
+	assert.False(t, ac.Livemode)
+}
+
+func TestResolveWhoamiActiveContext_OverrideRejectsUnauthorizedAccount(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_known", Name: "Known Co", Modes: []string{"test"}}}
+	profile := &config.Profile{ContextOverride: "acct_unknown"}
+
+	_, err := resolveWhoamiActiveContext(profile, accounts, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "acct_unknown")
+	assert.Contains(t, err.Error(), "isn't among your authorized accounts")
+}
+
+func TestResolveWhoamiActiveContext_OverrideRejectsUnsupportedMode(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_known", Name: "Known Co", Modes: []string{"test"}}}
+	profile := &config.Profile{ContextOverride: "acct_known"}
+
+	_, err := resolveWhoamiActiveContext(profile, accounts, true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "live mode")
+}
+
 func TestDisplayModeText(t *testing.T) {
 	assert.Equal(t, "sandbox", displayModeText("test"))
 	assert.Equal(t, "live", displayModeText("live"))

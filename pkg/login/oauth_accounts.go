@@ -79,7 +79,7 @@ func ListAuthorizedAccountsForActiveSession(ctx context.Context, accessBaseURL s
 	}
 
 	result := &AuthorizedAccountsResult{Accounts: accounts}
-	if ac, _ := config.GetActiveContext(); ac != nil {
+	if ac, _ := cfg.Profile.GetActiveContext(); ac != nil {
 		result.ActiveAccountID = ac.AccountID
 		result.ActiveLivemode = ac.Livemode
 	}
@@ -88,20 +88,20 @@ func ListAuthorizedAccountsForActiveSession(ctx context.Context, accessBaseURL s
 
 // PrintAuthorizedContexts fetches the authorized accounts for accessToken and
 // prints them as a formatted list, marking the active context.
-func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken string) error {
+func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
-	PrintAuthorizedContextsList(accounts)
+	PrintAuthorizedContextsList(profile, accounts)
 	return nil
 }
 
 // PrintAuthorizedContextsList prints already-fetched authorized accounts as a
 // formatted list, marking the active context.
-func PrintAuthorizedContextsList(accounts []config.AuthorizedAccount) {
-	ac, _ := config.GetActiveContext()
+func PrintAuthorizedContextsList(profile *config.Profile, accounts []config.AuthorizedAccount) {
+	ac, _ := profile.GetActiveContext()
 	activeID, activeMode := "", "test"
 	if ac != nil {
 		activeID = ac.AccountID
@@ -186,7 +186,7 @@ func populateProfileFromAccounts(cfg *config.Config, accounts []config.Authorize
 		return errorcategory.Errorf(errorcategory.Auth, "no authorized accounts returned")
 	}
 
-	if err := config.SaveActiveContext(activeID, activeLivemode); err != nil {
+	if err := cfg.Profile.SaveActiveContext(activeID, activeLivemode); err != nil {
 		return err
 	}
 

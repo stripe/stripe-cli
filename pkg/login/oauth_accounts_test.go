@@ -79,8 +79,8 @@ func TestListAuthorizedAccountsForActiveSession_ReturnsAccountsAndActiveContext(
 	}))
 	defer srv.Close()
 
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oak_test"), ""))
-	require.NoError(t, config.SaveActiveContext("acct_456", true))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.UATKeychainItemKey), []byte("oak_test"), ""))
+	require.NoError(t, cfg.Profile.SaveActiveContext("acct_456", true))
 
 	result, err := ListAuthorizedAccountsForActiveSession(context.Background(), srv.URL, cfg)
 	require.NoError(t, err)

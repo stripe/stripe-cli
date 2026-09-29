@@ -190,7 +190,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 
 	if lc.completeReauth {
 		uat, _ := Config.Profile.GetUAT()
-		return pollPendingReauth(cmd.Context(), lc.accessBaseURL, uat)
+		return pollPendingReauth(cmd.Context(), lc.accessBaseURL, uat, &Config.Profile)
 	}
 
 	if lc.completeURL != "" {
@@ -210,7 +210,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		}
 	} else if strings.HasPrefix(uat, "oak_") {
 		// Revoke the previous OAuth session before starting a new one, same as `stripe logout`.
-		if err := revokeToken(cmd.Context(), lc.accessBaseURL); err != nil {
+		if err := revokeToken(cmd.Context(), lc.accessBaseURL, &Config.Profile); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
 		}
 		if !lc.nonInteractive {
@@ -239,7 +239,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 // attempt confirms it can't be revived. It returns the token to use, which is
 // the refreshed token if a refresh occurred.
 func sessionIsValid(uat string) (string, bool) {
-	expiresAt, expErr := config.GetUATExpiresAt()
+	expiresAt, expErr := Config.Profile.GetUATExpiresAt()
 	if expErr == nil && time.Now().Before(expiresAt) {
 		return uat, true
 	}
@@ -263,7 +263,7 @@ func (lc *loginCmd) reauthorizeSession(cmd *cobra.Command, uat string) error {
 		return initiateReauth(cmd.Context(), lc.accessBaseURL, uat)
 	}
 	printAlreadyLoggedIn(cmd, lc.apiBaseURL, lc.accessBaseURL, uat)
-	return reauth(cmd.Context(), lc.accessBaseURL, uat)
+	return reauth(cmd.Context(), lc.accessBaseURL, uat, &Config.Profile)
 }
 
 // printAlreadyLoggedIn prints a summary of the currently authenticated
@@ -288,7 +288,7 @@ func printAlreadyLoggedIn(cmd *cobra.Command, apiBaseURL, accessBaseURL, uat str
 		fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
 	}
 	if contextCount > 1 {
-		login.PrintAuthorizedContextsList(accounts)
+		login.PrintAuthorizedContextsList(&Config.Profile, accounts)
 	}
 }
 
@@ -297,7 +297,7 @@ func printAlreadyLoggedIn(cmd *cobra.Command, apiBaseURL, accessBaseURL, uat str
 // the email here is a courtesy identity confirmation, not a precondition for
 // reauthorizing.
 func fetchLoginEmail(ctx context.Context, apiBaseURL, uat string) string {
-	ac, _ := config.GetActiveContext()
+	ac, _ := Config.Profile.GetActiveContext()
 	if ac == nil {
 		return ""
 	}
@@ -339,7 +339,7 @@ func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []strin
 		if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
 			return err
 		}
-		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, uat)
+		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, uat, &Config.Profile)
 	}
 	return Config.ListProfiles()
 }
