@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"fmt"
+	"io"
 	"slices"
 	"strings"
 
@@ -19,6 +20,7 @@ type AutoUpdateCmd struct {
 
 	enable  bool
 	disable bool
+	unset   bool
 }
 
 // NewAutoUpdateCmd creates the `stripe plugin auto-update` command.
@@ -28,15 +30,18 @@ func NewAutoUpdateCmd(cfg *config.Config) *AutoUpdateCmd {
 	ac.Cmd = &cobra.Command{
 		Use:   "auto-update [plugin]",
 		Short: "Enable or disable automatic updates for a plugin",
-		Long: `Enable or disable automatic background updates for a plugin.
+		Long: `Enable or disable automatic updates before a plugin runs.
 
-By default, automatic updates are disabled. When disabled, the CLI will not check
-for or download newer versions automatically.
-Omit the plugin name to apply the setting globally to all plugins.`,
+Each plugin defines whether automatic updates are enabled by default.
+Omit the plugin name to apply your choice globally to all plugins.
+A per-plugin choice overrides the global choice; both override the plugin's default.
+Use --unset to clear a choice so the next one applies.`,
 		Example: `stripe plugin auto-update --enable
   stripe plugin auto-update --disable
+  stripe plugin auto-update --unset
   stripe plugin auto-update apps --enable
-  stripe plugin auto-update apps --disable`,
+  stripe plugin auto-update apps --disable
+  stripe plugin auto-update apps --unset`,
 		Args:   validators.MaximumNArgs(1),
 		RunE:   ac.run,
 		Hidden: true,
@@ -44,13 +49,14 @@ Omit the plugin name to apply the setting globally to all plugins.`,
 
 	ac.Cmd.Flags().BoolVar(&ac.enable, "enable", false, "Enable automatic updates")
 	ac.Cmd.Flags().BoolVar(&ac.disable, "disable", false, "Disable automatic updates")
-	ac.Cmd.MarkFlagsMutuallyExclusive("enable", "disable")
+	ac.Cmd.Flags().BoolVar(&ac.unset, "unset", false, "Clear the choice so the global setting or plugin default applies")
+	ac.Cmd.MarkFlagsMutuallyExclusive("enable", "disable", "unset")
 
 	return ac
 }
 
 func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
-	if !ac.enable && !ac.disable {
+	if !ac.enable && !ac.disable && !ac.unset {
 		return cmd.Help()
 	}
 
@@ -62,12 +68,17 @@ func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	value := config.PluginConfigOff
-	if ac.enable {
-		value = config.PluginConfigOn
+	key := config.PluginConfigKey(scope, config.PluginConfigUpdatesField)
+	var err error
+	switch {
+	case ac.unset:
+		err = ac.cfg.DeleteConfigField(key)
+	case ac.enable:
+		err = ac.cfg.WriteConfigField(key, config.PluginConfigOn)
+	default:
+		err = ac.cfg.WriteConfigField(key, config.PluginConfigOff)
 	}
-
-	if err := ac.cfg.WriteConfigField(config.PluginConfigKey(scope, config.PluginConfigUpdatesField), value); err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -76,6 +87,12 @@ func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
 }
 
 func (ac *AutoUpdateCmd) printSettings(cmd *cobra.Command, scope string) {
+	out := cmd.OutOrStdout()
+	if ac.unset {
+		printUnsetSettings(out, scope)
+		return
+	}
+
 	action := "Enable"
 	state := "disabled"
 	if ac.enable {
@@ -83,20 +100,45 @@ func (ac *AutoUpdateCmd) printSettings(cmd *cobra.Command, scope string) {
 		state = "enabled"
 	}
 
-	out := cmd.OutOrStdout()
 	if scope == config.PluginConfigGlobalScope {
 		fmt.Fprintf(out, "Automatic updates are %s for all plugins\n\n", state)
 		fmt.Fprintf(out, "%s them with 'stripe plugin auto-update --%s'\n", action, strings.ToLower(action))
+		fmt.Fprintln(out, "Follow each plugin's default with 'stripe plugin auto-update --unset'")
 		return
 	}
 
-	pluginName := strings.ToUpper(scope[:1]) + scope[1:]
-	globalState := "disabled"
-	if config.PluginUpdatesEnabled("") {
-		globalState = "enabled"
+	fmt.Fprintf(out, "Automatic updates are %s for the %s plugin\n\n", state, displayPluginName(scope))
+	fmt.Fprintf(out, "%s it with 'stripe plugin auto-update %s --%s'\n", action, scope, strings.ToLower(action))
+	fmt.Fprintf(out, "Follow the global setting with 'stripe plugin auto-update %s --unset' (current: %s)\n", scope, globalUpdatesState())
+}
+
+// printUnsetSettings reports what a scope follows once its own choice is cleared.
+func printUnsetSettings(out io.Writer, scope string) {
+	if scope == config.PluginConfigGlobalScope {
+		fmt.Fprint(out, "Automatic updates now follow each plugin's default\n\n")
+		fmt.Fprintln(out, "Enable them with 'stripe plugin auto-update --enable'")
+		fmt.Fprintln(out, "Disable them with 'stripe plugin auto-update --disable'")
+		return
 	}
 
-	fmt.Fprintf(out, "Automatic updates are %s for the %s plugin\n\n", state, pluginName)
-	fmt.Fprintf(out, "%s it with 'stripe plugin auto-update %s --%s'\n", action, scope, strings.ToLower(action))
-	fmt.Fprintf(out, "Follow the global setting with 'stripe plugin auto-update %s --unset' (current: %s)\n", scope, globalState)
+	fmt.Fprintf(out, "Automatic updates for the %s plugin now follow the global setting (current: %s)\n\n", displayPluginName(scope), globalUpdatesState())
+	fmt.Fprintf(out, "Enable it with 'stripe plugin auto-update %s --enable'\n", scope)
+	fmt.Fprintf(out, "Disable it with 'stripe plugin auto-update %s --disable'\n", scope)
+}
+
+// globalUpdatesState describes the global choice, which is what a plugin without
+// a choice of its own follows.
+func globalUpdatesState() string {
+	switch {
+	case config.PluginUpdatesEnabled("", false):
+		return "enabled"
+	case !config.PluginUpdatesEnabled("", true):
+		return "disabled"
+	default:
+		return "plugin default"
+	}
+}
+
+func displayPluginName(scope string) string {
+	return strings.ToUpper(scope[:1]) + scope[1:]
 }

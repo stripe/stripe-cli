@@ -14,7 +14,7 @@ import (
 // of that plugin which reads the v2 config layout.
 //
 // Plugins parse config.toml themselves rather than asking the CLI for it, and
-// plugin auto-update is off by default, so an installed plugin binary can be
+// plugin auto-update can be disabled, so an installed plugin binary can be
 // arbitrarily old. Migrating the config file out from under one that only knows
 // the flat layout would leave it unable to find any profile — hence the gate.
 //

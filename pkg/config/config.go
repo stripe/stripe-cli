@@ -796,6 +796,24 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 	return writeConfig(runtimeViper)
 }
 
+// DeleteConfigField removes a configuration field and writes the updated
+// configuration to disk. A field that is not set leaves the file untouched.
+func (c *Config) DeleteConfigField(field string) error {
+	runtimeViper := viper.GetViper()
+	if !runtimeViper.IsSet(field) {
+		return nil
+	}
+
+	// removeKey walks AllSettings, where viper has lowercased every key, but only
+	// lowercases the last segment of the path it is given.
+	runtimeViper, err := removeKey(runtimeViper, strings.ToLower(field))
+	if err != nil {
+		return err
+	}
+
+	return writeConfig(runtimeViper)
+}
+
 // writeConfig writes a viper instance to the config file and syncs the global viper.
 func writeConfig(runtimeViper *viper.Viper) error {
 	// Refuse to write a file whose layout version this binary does not know. Both

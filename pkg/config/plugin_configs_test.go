@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -18,7 +19,7 @@ func TestPluginUpdatesEnabledPrecedence(t *testing.T) {
 		wantForOther bool
 	}{
 		{
-			name:         "unset defaults to off",
+			name:         "unset follows backend default",
 			wantForApps:  false,
 			wantForOther: false,
 		},
@@ -70,6 +71,14 @@ func TestPluginUpdatesEnabledPrecedence(t *testing.T) {
 			wantForApps:  false,
 			wantForOther: false,
 		},
+		{
+			name:        "unrecognized global value overrides the backend",
+			globalValue: "yes",
+		},
+		{
+			name:        "non-string global value overrides the backend",
+			globalValue: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -82,8 +91,19 @@ func TestPluginUpdatesEnabledPrecedence(t *testing.T) {
 				v.Set(PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField), tt.globalValue)
 			}
 
-			require.Equal(t, tt.wantForApps, pluginUpdatesEnabled(v, plugin))
-			require.Equal(t, tt.wantForOther, pluginUpdatesEnabled(v, "projects"))
+			for _, backendDefault := range []bool{false, true} {
+				t.Run(fmt.Sprintf("backend_default=%t", backendDefault), func(t *testing.T) {
+					wantForApps, wantForOther := tt.wantForApps, tt.wantForOther
+					if tt.globalValue == nil {
+						wantForOther = backendDefault
+						if tt.pluginValue == nil {
+							wantForApps = backendDefault
+						}
+					}
+					require.Equal(t, wantForApps, pluginUpdatesEnabled(v, plugin, backendDefault))
+					require.Equal(t, wantForOther, pluginUpdatesEnabled(v, "projects", backendDefault))
+				})
+			}
 		})
 	}
 }
@@ -95,11 +115,11 @@ func TestPluginUpdatesEnabledIgnoresEmptyPluginName(t *testing.T) {
 	v := viper.New()
 	v.Set(PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField), PluginConfigOn)
 
-	require.True(t, pluginUpdatesEnabled(v, ""))
+	require.True(t, pluginUpdatesEnabled(v, "", false))
 
 	v.Set(PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField), PluginConfigOff)
 
-	require.False(t, pluginUpdatesEnabled(v, ""))
+	require.False(t, pluginUpdatesEnabled(v, "", true))
 }
 
 // The setting is written by `stripe plugin auto-update` and read here, from two
@@ -108,12 +128,22 @@ func TestPluginUpdatesEnabledReadsWhatAutoUpdateWrites(t *testing.T) {
 	c, _, cleanup := setupTestConfig(t)
 	defer cleanup()
 
-	require.False(t, PluginUpdatesEnabled("apps"))
+	require.False(t, PluginUpdatesEnabled("apps", false))
+	require.True(t, PluginUpdatesEnabled("apps", true))
 
 	require.NoError(t, c.WriteConfigField(PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField), PluginConfigOn))
-	require.True(t, PluginUpdatesEnabled("apps"))
+	require.True(t, PluginUpdatesEnabled("apps", false))
 
 	require.NoError(t, c.WriteConfigField(PluginConfigKey("apps", PluginConfigUpdatesField), PluginConfigOff))
-	require.False(t, PluginUpdatesEnabled("apps"))
-	require.True(t, PluginUpdatesEnabled("projects"))
+	require.False(t, PluginUpdatesEnabled("apps", true))
+	require.True(t, PluginUpdatesEnabled("projects", false))
+
+	// `--unset` walks back down the same precedence: the plugin to the global
+	// choice, then the global choice to the plugin's default.
+	require.NoError(t, c.DeleteConfigField(PluginConfigKey("apps", PluginConfigUpdatesField)))
+	require.True(t, PluginUpdatesEnabled("apps", false))
+
+	require.NoError(t, c.DeleteConfigField(PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField)))
+	require.False(t, PluginUpdatesEnabled("apps", false))
+	require.True(t, PluginUpdatesEnabled("apps", true))
 }

@@ -882,7 +882,7 @@ func TestRunAutoUpgradesTheInstalledVersion(t *testing.T) {
 
 	runErr := plugin.Run(context.Background(), &cfg.Config, fs, nil, "", "", "", "", "")
 
-	require.Equal(t, []string{"appA"}, stubs.settingReads)
+	require.Equal(t, []string{"appA", "appA"}, stubs.settingReads)
 	require.Len(t, stubs.resolveCalls, 1)
 	require.Equal(t, "appA", stubs.resolveCalls[0].pluginName)
 
@@ -944,8 +944,10 @@ func TestRunWithoutAutoUpgradeSkipsTheCheck(t *testing.T) {
 
 	plugin, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
 	require.NoError(t, err)
+	plugin.autoUpgradeCheck = &autoUpgradeCheckResult{resolved: stubs.resolved}
 
 	require.Error(t, plugin.RunWithoutAutoUpgrade(context.Background(), &cfg.Config, fs, []string{"--help"}, "", "", "", "", ""))
+	require.Nil(t, plugin.autoUpgradeCheck, "a previous run's result must not affect this invocation")
 
 	// Not even the setting is read. Both callers of this reach a plugin with nothing to
 	// gain from the check -- printing help, or running something whose install just
@@ -1238,8 +1240,8 @@ func TestUninstallRemovesTheAutoUpgradeCheckStamp(t *testing.T) {
 	require.False(t, autoUpgradeCheckStampExists(t, config, fs, "sample-plugin"))
 }
 
-// The ordinary case, since auto-update is off by default: there is no stamp to remove,
-// and an uninstall must not report that as a problem.
+// A plugin that has never been checked has no stamp to remove, and an uninstall
+// must not report that as a problem.
 func TestUninstallSucceedsWithoutAnAutoUpgradeCheckStamp(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}

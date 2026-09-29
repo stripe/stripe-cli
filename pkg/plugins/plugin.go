@@ -54,6 +54,8 @@ type Plugin struct {
 	Releases         []Release     `toml:"Release" json:"releases"`
 	MagicCookieValue string        `toml:"MagicCookieValue" json:"magic_cookie_value,omitempty"`
 	Commands         []CommandInfo `toml:"Command,omitempty" json:"commands,omitempty"`
+	// Kept only for this invocation so the post-command hint can reuse the lookup.
+	autoUpgradeCheck *autoUpgradeCheckResult
 }
 
 // PluginList contains a list of plugins
@@ -656,8 +658,8 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 // empty unless the user explicitly passed --api-base/--dashboard-base/--access-base; an empty
 // value tells the plugin to fall back to its own default rather than the CLI's resolved default.
 //
-// When the user turned `stripe plugin auto-update` on for the plugin, this upgrades it
-// before running it; see maybeAutoUpgrade.
+// When automatic updates are enabled by the user or backend default, this upgrades
+// the plugin before running it; see maybeAutoUpgrade.
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string) error {
 	return p.run(ctx, config, fs, args, cwd, versionOverride, apiBaseURL, dashboardBaseURL, accessBaseURL, true)
 }
@@ -689,6 +691,7 @@ func (p *Plugin) RunWithoutAutoUpgrade(ctx context.Context, config *config.Confi
 // gain from it can leave it out. See CoreCLIHelper.RunPeerPlugin and
 // RunWithoutAutoUpgrade.
 func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string, allowAutoUpgrade bool) error {
+	p.autoUpgradeCheck = nil
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
