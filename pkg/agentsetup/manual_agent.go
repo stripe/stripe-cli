@@ -5,20 +5,6 @@ import (
 	"io"
 )
 
-const (
-	// Cursor requires the user to run a slash command from inside the agent to install the Stripe plugin.
-	ClientCursor            = "cursor"
-	CursorBinaryName        = "cursor"
-	CursorDisplayName       = "Cursor"
-	CursorManualInstruction = "run /add-plugin stripe inside Cursor"
-
-	// Kiro requires the user to add the Stripe plugin manually via the Kiro IDE or website.
-	ClientKiro            = "kiro"
-	KiroBinaryName        = "kiro"
-	KiroDisplayName       = "Kiro"
-	KiroManualInstruction = "add plugin manually via Kiro IDE or website"
-)
-
 // ManualProvider detects a client's Stripe plugin that must be installed by
 // the user from inside that client, rather than via a shell CLI installer.
 //

@@ -1,7 +1,6 @@
 package agentsetup
 
 import (
-	"context"
 	"errors"
 	"testing"
 
