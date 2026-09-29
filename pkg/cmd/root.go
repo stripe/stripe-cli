@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -182,6 +183,11 @@ func Execute(ctx context.Context) {
 		}
 		printCommandMap(os.Stdout, targetCmd, mode)
 		return
+	}
+
+	args := os.Args[1:]
+	if normalized := resource.NormalizeBooleanRequestArgs(rootCmd, args); !slices.Equal(args, normalized) {
+		rootCmd.SetArgs(normalized)
 	}
 
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {

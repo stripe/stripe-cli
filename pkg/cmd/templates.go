@@ -123,7 +123,7 @@ func writeFlagLine(sb *strings.Builder, flag *pflag.Flag, descIndent string, ter
 		case "array":
 			fmt.Fprintf(sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
 		case "boolean":
-			fmt.Fprintf(sb, "      --%s true|false\n", flag.Name)
+			fmt.Fprintf(sb, "      --%s[=true|false]\n", flag.Name)
 		case "clearable_object":
 			fmt.Fprintf(sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
 		default:
