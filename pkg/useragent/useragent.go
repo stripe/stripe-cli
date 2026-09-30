@@ -106,7 +106,7 @@ func DetectAIAgent(getEnv func(string) string) string {
 		return "openclaw"
 	}
 	// TERM_PROGRAM=kiro is set by both the IDE terminal and the CLI agent, so gate on no_tty to avoid misdetecting a human at the integrated terminal.
-	if getEnv("TERM_PROGRAM") == "kiro" && !term.IsTerminal(int(os.Stdin.Fd())) {
+	if (getEnv("TERM_PROGRAM") == "kiro" && !term.IsTerminal(int(os.Stdin.Fd()))) || getEnv("KIRO_SESSION_ID") != "" {
 		return "kiro"
 	}
 
