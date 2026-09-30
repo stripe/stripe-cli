@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,8 +14,13 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
+	"testing/iotest"
+	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,10 +29,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/sandbox"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func setupSandboxTestConfig(t *testing.T) func() {
 	t.Helper()
+	resetSandboxCreateFlagsForTest(t)
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 
 	origProfilesFile := Config.ProfilesFile
@@ -65,6 +74,29 @@ func setupSandboxTestConfig(t *testing.T) func() {
 		restoreLoginBrowser()
 		sandbox.GitConfigFunc = origGit
 		viper.Reset()
+	}
+}
+
+func resetSandboxCreateFlagsForTest(t *testing.T) {
+	t.Helper()
+	cmd, _, err := rootCmd.Find([]string{"sandbox", "create"})
+	require.NoError(t, err)
+
+	for _, name := range []string{
+		"base-url",
+		"create-blank",
+		"country",
+		"api-base",
+		"dashboard-base",
+		"email",
+		"from-git",
+		"full-name",
+		"non-interactive",
+	} {
+		flag := cmd.Flags().Lookup(name)
+		require.NotNil(t, flag)
+		require.NoError(t, flag.Value.Set(flag.DefValue))
+		flag.Changed = false
 	}
 }
 
@@ -228,14 +260,17 @@ func TestSandboxCreateCmd_MissingEmail(t *testing.T) {
 	defer cleanup()
 
 	cmd := newSandboxCreateCmd()
+	cmd.isInteractive = func(*cobra.Command) bool { return true }
 	cmd.cmd.SetArgs([]string{})
 
-	var stderr bytes.Buffer
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
 	cmd.cmd.SetErr(&stderr)
 
 	err := cmd.cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "email is required")
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
 }
 
 func TestSandboxCreateCmd_EmailAndFromGitMutuallyExclusive(t *testing.T) {
@@ -473,7 +508,7 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, output, "You already have an active sandbox")
 	assert.Contains(t, output, "Claim it before then")
-	assert.Contains(t, output, "stripe sandbox claim")
+	assert.Contains(t, output, "stripe sandboxes claim")
 	require.Len(t, recs, 1)
 	assert.Equal(t, http.MethodGet, recs[0].Method)
 	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
@@ -625,7 +660,7 @@ func TestSandboxClaimCmd_NoActiveSandboxDoesNotCallStatus(t *testing.T) {
 		return cmd.cmd.Execute()
 	})
 	require.NoError(t, err)
-	assert.Contains(t, output, "No active sandbox. Run `stripe sandbox create` to get started.")
+	assert.Contains(t, output, "No active sandbox. Run `stripe sandboxes create` to get started.")
 	assert.Empty(t, recs)
 }
 
@@ -715,7 +750,7 @@ func TestSandboxCreateCmd_ExistingSandboxClaimedOmitsClaimGuidance(t *testing.T)
 	assert.Contains(t, output, "You already have an active sandbox")
 	assert.Contains(t, output, sandboxAlreadyClaimedMessage)
 	assert.NotContains(t, output, "Claim it before then")
-	assert.NotContains(t, output, "stripe sandbox claim")
+	assert.NotContains(t, output, "stripe sandboxes claim")
 }
 
 func TestSandboxClaimCmd_StatusEndpointErrors(t *testing.T) {
@@ -782,6 +817,1402 @@ func TestSandboxCreateCmd_ExistingSandboxStatusErrorFallsBackToClaimGuidance(t *
 	require.NoError(t, err)
 	assert.Contains(t, output, "You already have an active sandbox")
 	assert.Contains(t, output, "Claim it before then")
-	assert.Contains(t, output, "stripe sandbox claim")
+	assert.Contains(t, output, "stripe sandboxes claim")
 	assert.NotContains(t, output, sandboxAlreadyClaimedMessage)
+}
+
+type fakeSandboxCreateClient struct {
+	created      sandbox.CreatedSandbox
+	err          error
+	calls        []sandbox.CreateOptions
+	beforeReturn func()
+}
+
+type sandboxTelemetryEvent struct {
+	name  string
+	value string
+}
+
+type fakeSandboxTelemetryClient struct {
+	events chan sandboxTelemetryEvent
+}
+
+func newFakeSandboxTelemetryClient() *fakeSandboxTelemetryClient {
+	return &fakeSandboxTelemetryClient{events: make(chan sandboxTelemetryEvent, 4)}
+}
+
+func (f *fakeSandboxTelemetryClient) SendAPIRequestEvent(context.Context, string, bool) (*http.Response, error) {
+	return nil, nil
+}
+
+func (f *fakeSandboxTelemetryClient) SendEvent(_ context.Context, name, value string) {
+	f.events <- sandboxTelemetryEvent{name: name, value: value}
+}
+
+func (f *fakeSandboxTelemetryClient) waitForEvent(t *testing.T) sandboxTelemetryEvent {
+	t.Helper()
+	select {
+	case event := <-f.events:
+		return event
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for sandbox telemetry event")
+		return sandboxTelemetryEvent{}
+	}
+}
+
+func (f *fakeSandboxTelemetryClient) assertNoEvent(t *testing.T) {
+	t.Helper()
+	select {
+	case event := <-f.events:
+		t.Fatalf("unexpected sandbox telemetry event: %#v", event)
+	default:
+	}
+}
+
+type sandboxTestContextKey struct{}
+
+func (f *fakeSandboxCreateClient) Create(_ context.Context, options sandbox.CreateOptions) (sandbox.CreatedSandbox, error) {
+	f.calls = append(f.calls, options)
+	if f.beforeReturn != nil {
+		f.beforeReturn()
+	}
+	return f.created, f.err
+}
+
+func setSandboxCreateOAuthContext(t *testing.T) {
+	t.Helper()
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_live", Livemode: true})
+	require.NoError(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_live_test"),
+		config.OAuthActiveContextKeychainKey: activeContext,
+	})
+}
+
+func setSandboxTestModeOAuthContext(t *testing.T) {
+	t.Helper()
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_test_active", Livemode: false})
+	require.NoError(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_test_active"),
+		config.OAuthActiveContextKeychainKey: activeContext,
+	})
+}
+
+func TestSandboxCreateCmdSurfaceIncludesAuthenticatedCreation(t *testing.T) {
+	command := newSandboxCreateCmd()
+	require.Equal(t, "create [name]", command.cmd.Use)
+	require.Contains(t, command.cmd.Long, "After logging in and selecting a live account")
+	require.Contains(t, command.cmd.Long, "If you have not logged in and this CLI profile has no API key")
+	require.Contains(t, command.cmd.Long, "profile already has an API key")
+	require.NotContains(t, command.cmd.Long, "OAuth")
+	require.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "After logging in and selecting a live account")
+	require.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "If you have not logged in")
+	require.NotContains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "OAuth")
+
+	var flags []string
+	command.cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		flags = append(flags, flag.Name)
+	})
+	require.ElementsMatch(t, []string{
+		"api-base",
+		"base-url",
+		"country",
+		"create-blank",
+		"dashboard-base",
+		"email",
+		"from-git",
+		"full-name",
+		"non-interactive",
+	}, flags)
+	for _, hidden := range []string{"api-base", "base-url", "dashboard-base"} {
+		require.True(t, command.cmd.Flags().Lookup(hidden).Hidden, hidden)
+	}
+}
+
+func TestSandboxCmdDoesNotRegisterNew(t *testing.T) {
+	command := newSandboxCmd()
+	for _, child := range command.cmd.Commands() {
+		require.NotEqual(t, "new", child.Name())
+	}
+
+	for _, name := range []string{"new", "does-not-exist"} {
+		err := command.cmd.RunE(command.cmd, []string{name})
+		require.EqualError(t, err, fmt.Sprintf("unknown command %q for %q", name, command.cmd.CommandPath()))
+	}
+}
+
+func TestSandboxCmdPublicSurface(t *testing.T) {
+	command := newSandboxCmd()
+	commands := make(map[string]*cobra.Command)
+	for _, child := range command.cmd.Commands() {
+		commands[child.Name()] = child
+	}
+
+	for _, name := range []string{"create", "claim", "list", "delete"} {
+		child, ok := commands[name]
+		require.True(t, ok, name)
+		require.False(t, child.Hidden, name)
+	}
+
+	assert.Contains(t, command.cmd.UsageString(), "list")
+	assert.Contains(t, command.cmd.UsageString(), "delete")
+	assert.Contains(t, command.cmd.Long, "authorized")
+	assert.Contains(t, command.cmd.Long, "active live account")
+	assert.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "After logging in and selecting a live account")
+	assert.NotContains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "OAuth")
+	assert.NotContains(t, command.cmd.UsageString(), "sandbox new")
+
+	for _, name := range []string{"list", "delete"} {
+		child := commands[name]
+		assert.Nil(t, child.Flags().Lookup("json"), name)
+		assert.Nil(t, child.Flags().Lookup("format"), name)
+	}
+}
+
+func TestSandboxNamespaceAliasSharesCommandTree(t *testing.T) {
+	root := &cobra.Command{Use: "stripe"}
+	parent := newSandboxCmd().cmd
+	root.AddCommand(parent)
+	parent.AddCommand(&cobra.Command{Use: "future", Run: func(*cobra.Command, []string) {}})
+
+	require.Equal(t, "sandboxes", parent.Name())
+	require.Equal(t, []string{"sandbox"}, parent.Aliases)
+	require.Len(t, root.Commands(), 1)
+	for _, namespace := range []string{"sandboxes", "sandbox"} {
+		resolved, _, err := root.Find([]string{namespace})
+		require.NoError(t, err)
+		require.Same(t, parent, resolved)
+		for _, child := range parent.Commands() {
+			resolved, _, err := root.Find([]string{namespace, child.Name()})
+			require.NoError(t, err)
+			require.Same(t, child, resolved)
+			metadata := stripe.NewEventMetadata()
+			metadata.SetCobraCommandContext(resolved)
+			assert.Equal(t, "stripe sandboxes "+child.Name(), metadata.CommandPath)
+		}
+	}
+}
+
+func executeSandboxNamespaceForTest(t *testing.T, namespace string, child *cobra.Command, args ...string) (string, error) {
+	t.Helper()
+	parent := newSandboxCmd().cmd
+	for _, existing := range parent.Commands() {
+		if existing.Name() == child.Name() {
+			parent.RemoveCommand(existing)
+		}
+	}
+	parent.AddCommand(child)
+	root := &cobra.Command{Use: "stripe", SilenceErrors: true, SilenceUsage: true}
+	root.AddCommand(parent)
+	return executeCommand(root, append([]string{namespace, child.Name()}, args...)...)
+}
+
+func TestSandboxNamespaceExecution(t *testing.T) {
+	for _, namespace := range []string{"sandboxes", "sandbox"} {
+		t.Run(namespace, func(t *testing.T) {
+			t.Run("OAuth create", func(t *testing.T) {
+				defer setupSandboxTestConfig(t)()
+				setSandboxCreateOAuthContext(t)
+				client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+				command := newSandboxCreateCmd()
+				command.client = client
+				command.isInteractive = func(*cobra.Command) bool { return true }
+				command.reauth = func(context.Context, string, string) error {
+					t.Fatal("non-interactive creation must not reauthorize")
+					return nil
+				}
+
+				output, err := executeSandboxNamespaceForTest(t, namespace, command.cmd, "My sandbox", "--non-interactive")
+
+				require.NoError(t, err)
+				assert.Equal(t, []sandbox.CreateOptions{{Name: "My sandbox"}}, client.calls)
+				assert.Contains(t, output, "Account ID: acct_created")
+				assert.Contains(t, output, "stripe login")
+				assert.NotContains(t, output, "Authorize this sandbox")
+			})
+			t.Run("anonymous create", func(t *testing.T) {
+				defer setupSandboxTestConfig(t)()
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				telemetry := newFakeSandboxTelemetryClient()
+				command := newSandboxCreateCmd()
+				command.cmd.SetContext(stripe.WithTelemetryClient(ctx, telemetry))
+
+				_, err := executeSandboxNamespaceForTest(t, namespace, command.cmd, "--email", "test@example.com")
+
+				require.ErrorIs(t, err, context.Canceled)
+				assert.Equal(t, sandboxCreateAnonymousRoute, telemetry.waitForEvent(t).value)
+			})
+			t.Run("claim", func(t *testing.T) {
+				defer setupSandboxTestConfig(t)()
+				output, err := captureStdout(t, func() error {
+					_, err := executeSandboxNamespaceForTest(t, namespace, newSandboxClaimCmd().cmd, "--non-interactive")
+					return err
+				})
+
+				require.NoError(t, err)
+				assert.Contains(t, output, "stripe sandboxes create")
+			})
+			t.Run("list", func(t *testing.T) {
+				command := newSandboxListCmd()
+				command.client = fakeSandboxListClient{sandboxes: []sandbox.ManagedSandbox{{Name: "My sandbox", AccountID: "acct_listed", AccessLevel: sandbox.SandboxAccessLevelPrivate}}}
+
+				output, err := executeSandboxNamespaceForTest(t, namespace, command.cmd)
+
+				require.NoError(t, err)
+				assert.Contains(t, output, "acct_listed")
+			})
+			t.Run("delete", func(t *testing.T) {
+				client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target"}}
+				command := newSandboxDeleteCmd()
+				command.client = client
+
+				output, err := executeSandboxNamespaceForTest(t, namespace, command.cmd, "acct_target", "--confirm")
+
+				require.NoError(t, err)
+				assert.Equal(t, []string{"acct_target"}, client.calls)
+				assert.Contains(t, output, "Deleted sandbox acct_target")
+			})
+			t.Run("invalid delete", func(t *testing.T) {
+				client := &fakeSandboxDeleteClient{}
+				command := newSandboxDeleteCmd()
+				command.client = client
+
+				_, err := executeSandboxNamespaceForTest(t, namespace, command.cmd, "invalid", "--confirm")
+
+				require.ErrorContains(t, err, "account ID")
+				assert.Empty(t, client.calls)
+			})
+		})
+	}
+}
+
+func TestSandboxNamespaceCompletion(t *testing.T) {
+	for _, namespace := range []string{"sandboxes", "sandbox"} {
+		for _, suffix := range [][]string{{""}, {"create", "--non"}} {
+			t.Run(namespace+strings.Join(suffix, "/"), func(t *testing.T) {
+				root := &cobra.Command{Use: "stripe"}
+				root.AddCommand(newSandboxCmd().cmd)
+
+				output, err := executeCommand(root, append([]string{"__complete", namespace}, suffix...)...)
+
+				require.NoError(t, err)
+				if len(suffix) == 1 {
+					for _, name := range []string{"create", "claim", "list", "delete"} {
+						assert.Contains(t, output, name+"\t")
+					}
+				} else {
+					assert.Contains(t, output, "--non-interactive\t")
+				}
+			})
+		}
+	}
+}
+
+func TestSandboxNamespaceHelpAndUnknownCommand(t *testing.T) {
+	for _, namespace := range []string{"sandboxes", "sandbox"} {
+		for _, child := range []string{"", "create", "claim", "list", "delete"} {
+			t.Run(namespace+"/"+child, func(t *testing.T) {
+				root := &cobra.Command{Use: "stripe"}
+				root.AddCommand(newSandboxCmd().cmd)
+				args := []string{namespace}
+				if child != "" {
+					args = append(args, child)
+				}
+
+				output, err := executeCommand(root, append(args, "--help")...)
+
+				require.NoError(t, err)
+				assert.Contains(t, output, strings.TrimSpace("stripe sandboxes "+child))
+				assert.NotContains(t, output, "stripe sandbox ")
+				if child == "" {
+					assert.Contains(t, output, "sandboxes, sandbox")
+				}
+			})
+		}
+		t.Run(namespace+"/unknown", func(t *testing.T) {
+			root := &cobra.Command{Use: "stripe", SilenceUsage: true, SilenceErrors: true}
+			root.AddCommand(newSandboxCmd().cmd)
+
+			_, err := executeCommand(root, namespace, "does-not-exist")
+
+			require.EqualError(t, err, `unknown command "does-not-exist" for "stripe sandboxes"`)
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuthCreatesCopyLiveByDefault(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetArgs([]string{"  Copied sandbox  "})
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Copied sandbox"}}, client.calls)
+	require.Contains(t, stdout.String(), "Created sandbox \"Copied sandbox\"")
+	require.Contains(t, stdout.String(), "Account ID: acct_created")
+	require.Contains(t, stdout.String(), "stripe login")
+	require.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuthRoutesTelemetryOnce(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	telemetry := newFakeSandboxTelemetryClient()
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	event := telemetry.waitForEvent(t)
+	assert.Equal(t, "Sandbox Create Routed", event.name)
+	assert.Equal(t, "oauth", event.value)
+	telemetry.assertNoEvent(t)
+}
+
+func TestSandboxCreateCmdAnonymousRoutesTelemetryOnce(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	telemetry := newFakeSandboxTelemetryClient()
+	ctx, cancel := context.WithCancel(stripe.WithTelemetryClient(context.Background(), telemetry))
+	cancel()
+	command := newSandboxCreateCmd()
+	command.cmd.SetContext(ctx)
+	command.cmd.SetArgs([]string{"--email", "alice@example.com"})
+
+	err := command.cmd.Execute()
+	require.ErrorIs(t, err, context.Canceled)
+	event := telemetry.waitForEvent(t)
+	assert.Equal(t, "Sandbox Create Routed", event.name)
+	assert.Equal(t, "anonymous", event.value)
+	telemetry.assertNoEvent(t)
+}
+
+func TestSandboxCreateCmdInvalidRouteDoesNotSendTelemetry(t *testing.T) {
+	tests := []struct {
+		name      string
+		setup     func(*testing.T)
+		args      []string
+		wantInErr string
+	}{
+		{
+			name: "OAuth missing name",
+			setup: func(t *testing.T) {
+				setSandboxCreateOAuthContext(t)
+			},
+			wantInErr: "sandbox name is required",
+		},
+		{
+			name:      "anonymous invalid email",
+			args:      []string{"--email", "not-an-email"},
+			wantInErr: "invalid email",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			if test.setup != nil {
+				test.setup(t)
+			}
+
+			telemetry := newFakeSandboxTelemetryClient()
+			command := newSandboxCreateCmd()
+			command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+			command.cmd.SetArgs(test.args)
+
+			err := command.cmd.Execute()
+			require.ErrorContains(t, err, test.wantInErr)
+			telemetry.assertNoEvent(t)
+		})
+	}
+}
+
+func TestSandboxCreateCmdNilTelemetryClientDoesNotChangeBehavior(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetContext(context.Background())
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Equal(t, []sandbox.CreateOptions{{Name: "OAuth sandbox"}}, client.calls)
+}
+
+func TestSandboxCreateCmdRouteTelemetryIsPrivacySafe(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	telemetry := newFakeSandboxTelemetryClient()
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_sensitive"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+	command.cmd.SetArgs([]string{"Alice acct_sensitive alice@example.com"})
+
+	require.NoError(t, command.cmd.Execute())
+	event := telemetry.waitForEvent(t)
+	assert.Equal(t, "Sandbox Create Routed", event.name)
+	assert.Equal(t, "oauth", event.value)
+	for _, sensitiveValue := range []string{"Alice", "acct_sensitive", "alice@example.com", "sk_", "--create-blank"} {
+		assert.NotContains(t, event.value, sensitiveValue)
+	}
+}
+
+func TestSandboxCreateCmdOAuthWinsOverConfiguredLegacyKey(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+	require.NoError(t, Config.Profile.WriteConfigField(config.TestModeAPIKeyName, "sk_test_configured"))
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "OAuth sandbox"}}, client.calls)
+}
+
+func TestSandboxCreateCmdStaleOAuthDoesNotFallBackToAnonymousProvisioning(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_live_stale"),
+	})
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	command := newSandboxCreateCmd()
+	command.apiBaseURL = server.URL
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	err := command.cmd.Execute()
+	require.ErrorContains(t, err, "stripe login")
+	require.Zero(t, requestCount)
+}
+
+func TestSandboxManagementCommandsRejectActiveTestModeOAuth(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(string) error
+	}{
+		{
+			name: "create",
+			run: func(apiBaseURL string) error {
+				command := newSandboxCreateCmd()
+				command.apiBaseURL = apiBaseURL
+				command.cmd.SetArgs([]string{"Test mode sandbox"})
+				return command.cmd.Execute()
+			},
+		},
+		{
+			name: "list",
+			run: func(apiBaseURL string) error {
+				command := newSandboxListCmd()
+				command.apiBase = apiBaseURL
+				return command.cmd.Execute()
+			},
+		},
+		{
+			name: "delete with confirm",
+			run: func(apiBaseURL string) error {
+				command := newSandboxDeleteCmd()
+				command.apiBase = apiBaseURL
+				command.cmd.SetArgs([]string{"acct_target", "--confirm"})
+				return command.cmd.Execute()
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxTestModeOAuthContext(t)
+
+			requestCount := 0
+			mutationCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				if r.Method != http.MethodGet {
+					mutationCount++
+				}
+				t.Errorf("unexpected HTTP request: %s %s", r.Method, r.URL.Path)
+				w.WriteHeader(http.StatusInternalServerError)
+			}))
+			defer server.Close()
+
+			err := test.run(server.URL)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "You're in a sandbox.")
+			assert.Contains(t, err.Error(), "stripe switch")
+			assert.Zero(t, requestCount)
+			assert.Zero(t, mutationCount)
+		})
+	}
+}
+
+func TestSandboxCreateCmdRejectsActiveTestModeOAuthBeforePrompt(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxTestModeOAuthContext(t)
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	command := newSandboxCreateCmd()
+	command.apiBaseURL = server.URL
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Should not be read\n"))
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	err := command.cmd.Execute()
+	require.ErrorContains(t, err, "You're in a sandbox")
+	assert.Contains(t, err.Error(), "stripe switch")
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
+	assert.Zero(t, requestCount)
+}
+
+func TestSandboxCreateCmdExplicitAPIKeyOverrideWinsOverOAuth(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+	Config.Profile.APIKey = "sk_test_explicit"
+
+	client := &fakeSandboxCreateClient{}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.cmd.SetArgs([]string{"OAuth sandbox"})
+
+	err := command.cmd.Execute()
+	require.ErrorContains(t, err, "sandbox name is only valid for managed creation with an active live account")
+	require.ErrorContains(t, err, "remove the API key override or run `stripe login`")
+	require.Empty(t, client.calls)
+}
+
+func TestSandboxCreateCmdRejectsRouteSpecificInputsBeforeSideEffects(t *testing.T) {
+	t.Run("OAuth rejects anonymous identity flags", func(t *testing.T) {
+		cleanup := setupSandboxTestConfig(t)
+		defer cleanup()
+		setSandboxCreateOAuthContext(t)
+
+		client := &fakeSandboxCreateClient{}
+		command := newSandboxCreateCmd()
+		command.client = client
+		command.cmd.SetArgs([]string{"OAuth sandbox", "--email", "test@stripe.com"})
+
+		err := command.cmd.Execute()
+		require.ErrorContains(t, err, "--email is only valid for anonymous sandbox provisioning")
+		require.Empty(t, client.calls)
+	})
+
+	t.Run("anonymous rejects management flags", func(t *testing.T) {
+		cleanup := setupSandboxTestConfig(t)
+		defer cleanup()
+
+		client := &fakeSandboxCreateClient{}
+		command := newSandboxCreateCmd()
+		command.client = client
+		command.cmd.SetArgs([]string{"--email", "test@stripe.com", "--create-blank", "--country", "US"})
+
+		err := command.cmd.Execute()
+		require.ErrorContains(t, err, "--create-blank is only valid for managed creation with an active live account")
+		require.ErrorContains(t, err, "remove the API key override or run `stripe login`")
+		require.Empty(t, client.calls)
+	})
+}
+
+func TestSandboxCreateCmdOAuthRequiresName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "sandbox name is required; for example: `stripe sandboxes create \"My sandbox\"`")
+	require.Empty(t, client.calls)
+}
+
+func TestSandboxCreateCmdOAuthNonInteractiveRequiresNameBeforeCreation(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetArgs([]string{"--non-interactive"})
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "sandbox name is required; for example: `stripe sandboxes create \"My sandbox\"`")
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
+	require.Empty(t, client.calls)
+}
+
+func TestSandboxCreateCmdOAuthPromptsForMissingName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("  Prompted sandbox  \n"))
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Prompted sandbox"}}, client.calls)
+	assert.Contains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Created sandbox \"Prompted sandbox\"")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuthPromptsForMissingBlankSandboxName(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Blank sandbox\n"))
+	command.cmd.SetArgs([]string{"--create-blank", "--country", " us "})
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Blank sandbox", Blank: true, Country: "US"}}, client.calls)
+}
+
+func TestSandboxCreateCmdOAuthPositionalNameDoesNotPrompt(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("no\n"))
+	command.cmd.SetArgs([]string{"Positional sandbox"})
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Positional sandbox"}}, client.calls)
+	assert.NotContains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now?")
+}
+
+func TestSandboxCreateCmdOAuthRejectsInvalidPromptInput(t *testing.T) {
+	tests := []struct {
+		name  string
+		setIn func(*cobra.Command)
+		want  string
+	}{
+		{
+			name: "blank",
+			setIn: func(cmd *cobra.Command) {
+				cmd.SetIn(strings.NewReader("  \n"))
+			},
+			want: "sandbox name cannot be blank",
+		},
+		{
+			name: "EOF",
+			setIn: func(cmd *cobra.Command) {
+				cmd.SetIn(strings.NewReader(""))
+			},
+			want: "sandbox name cannot be blank",
+		},
+		{
+			name: "read error",
+			setIn: func(cmd *cobra.Command) {
+				cmd.SetIn(iotest.ErrReader(errors.New("read failed")))
+			},
+			want: "failed to read sandbox name",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			telemetry := newFakeSandboxTelemetryClient()
+			client := &fakeSandboxCreateClient{}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), telemetry))
+			test.setIn(command.cmd)
+
+			err := command.cmd.Execute()
+			require.ErrorContains(t, err, test.want)
+			require.Empty(t, client.calls)
+			telemetry.assertNoEvent(t)
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuthPromptedNameThenAuthorizes(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Prompted sandbox\nyes\n"))
+
+	reauthCalls := 0
+	command.reauth = func(context.Context, string, string) error {
+		reauthCalls++
+		return nil
+	}
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Prompted sandbox"}}, client.calls)
+	assert.Equal(t, 1, reauthCalls)
+	assert.Contains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now?")
+}
+
+func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	previousAccessBase := rootAccessBaseURL
+	rootAccessBaseURL = login.QAAccessBaseURL
+	t.Cleanup(func() { rootAccessBaseURL = previousAccessBase })
+
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_live", Livemode: true})
+	require.NoError(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_original"),
+		config.OAuthUATExpiresAtKeychainKey:  []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
+		config.OAuthActiveContextKeychainKey: activeContext,
+	})
+	previousRefresher := config.OAuthTokenRefresher
+	t.Cleanup(func() { config.OAuthTokenRefresher = previousRefresher })
+
+	refreshCalls := 0
+	config.OAuthTokenRefresher = func(profile *config.Profile) error {
+		refreshCalls++
+		profile.UAT = "oak_refreshed"
+		return nil
+	}
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+
+	ctx := context.WithValue(context.Background(), sandboxTestContextKey{}, "sandbox-test")
+	command.cmd.SetContext(ctx)
+	command.cmd.SetIn(strings.NewReader("  YeS  \n"))
+
+	var reauthContext context.Context
+	var reauthAccessBaseURL string
+	var reauthAccessToken string
+	reauthCalls := 0
+	command.reauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+		reauthCalls++
+		reauthContext = ctx
+		reauthAccessBaseURL = accessBaseURL
+		reauthAccessToken = accessToken
+		return nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+	command.cmd.SetArgs([]string{"Created sandbox"})
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Equal(t, 1, refreshCalls)
+	assert.Equal(t, 1, reauthCalls)
+	assert.Equal(t, ctx, reauthContext)
+	assert.Equal(t, login.QAAccessBaseURL, reauthAccessBaseURL)
+	assert.Equal(t, "oak_refreshed", reauthAccessToken)
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now? [y/N]:")
+	assert.Contains(t, stdout.String(), "stripe login")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuth_InteractiveDeclinesWithoutReauth(t *testing.T) {
+	for _, input := range []string{"\n", "n\n", "no\n", "maybe\n", ""} {
+		t.Run(fmt.Sprintf("input_%q", input), func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetIn(strings.NewReader(input))
+			command.cmd.SetArgs([]string{"Created sandbox"})
+
+			reauthCalls := 0
+			command.reauth = func(context.Context, string, string) error {
+				reauthCalls++
+				return nil
+			}
+
+			var stdout, stderr bytes.Buffer
+			command.cmd.SetOut(&stdout)
+			command.cmd.SetErr(&stderr)
+
+			require.NoError(t, command.cmd.Execute())
+			assert.Equal(t, 0, reauthCalls)
+			assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now? [y/N]:")
+			assert.Contains(t, stdout.String(), "stripe login")
+			assert.Empty(t, stderr.String())
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuth_NonInteractiveDoesNotPrompt(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetArgs([]string{"Created sandbox"})
+
+	command.reauth = func(context.Context, string, string) error {
+		t.Fatal("reauth should not run for a non-interactive caller")
+		return nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	assert.NotContains(t, stdout.String(), "Authorize this sandbox")
+	assert.Contains(t, stdout.String(), "stripe login")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxCreateCmdOAuthExplicitNonInteractiveDoesNotPrompt(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantCall sandbox.CreateOptions
+	}{
+		{
+			name:     "copy live",
+			args:     []string{"Created sandbox", "--non-interactive"},
+			wantCall: sandbox.CreateOptions{Name: "Created sandbox"},
+		},
+		{
+			name:     "blank",
+			args:     []string{"Blank sandbox", "--create-blank", "--country", "US", "--non-interactive"},
+			wantCall: sandbox.CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetIn(iotest.ErrReader(errors.New("stdin should not be read")))
+			command.cmd.SetArgs(test.args)
+			command.reauth = func(context.Context, string, string) error {
+				t.Fatal("reauth should not run for an explicitly non-interactive caller")
+				return nil
+			}
+
+			var stdout, stderr bytes.Buffer
+			command.cmd.SetOut(&stdout)
+			command.cmd.SetErr(&stderr)
+
+			require.NoError(t, command.cmd.Execute())
+			assert.Equal(t, []sandbox.CreateOptions{test.wantCall}, client.calls)
+			assert.Contains(t, stdout.String(), "Created sandbox")
+			assert.Contains(t, stdout.String(), "stripe login")
+			assert.NotContains(t, stdout.String(), "Sandbox name:")
+			assert.NotContains(t, stdout.String(), "Authorize this sandbox")
+			assert.Empty(t, stderr.String())
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuthNonInteractiveFalseRetainsTerminalPrompts(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("Prompted sandbox\nno\n"))
+	command.cmd.SetArgs([]string{"--non-interactive=false"})
+
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Equal(t, []sandbox.CreateOptions{{Name: "Prompted sandbox"}}, client.calls)
+	assert.Contains(t, stdout.String(), "Sandbox name:")
+	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now?")
+}
+
+func TestSandboxCreateCmdOAuth_InvalidUATAfterCreationWarnsWithoutReauth(t *testing.T) {
+	for _, uat := range []string{"", "sk_test_not_oak"} {
+		t.Run(fmt.Sprintf("uat_%q", uat), func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			client := &fakeSandboxCreateClient{
+				created: sandbox.CreatedSandbox{AccountID: "acct_created"},
+				beforeReturn: func() {
+					initial := map[string][]byte{}
+					if uat != "" {
+						initial[config.UATKeychainItemKey] = []byte(uat)
+					}
+					config.KeyRing = keyring.NewMemoryStore(initial)
+				},
+			}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.isInteractive = func(*cobra.Command) bool { return true }
+			command.cmd.SetIn(strings.NewReader("y\n"))
+			command.cmd.SetArgs([]string{"Created sandbox"})
+
+			reauthCalls := 0
+			command.reauth = func(context.Context, string, string) error {
+				reauthCalls++
+				return nil
+			}
+
+			var stdout, stderr bytes.Buffer
+			command.cmd.SetOut(&stdout)
+			command.cmd.SetErr(&stderr)
+
+			require.NoError(t, command.cmd.Execute())
+			assert.Equal(t, 0, reauthCalls)
+			assert.Contains(t, stdout.String(), "Created sandbox")
+			assert.Contains(t, stderr.String(), "sandbox creation succeeded")
+			assert.Contains(t, stderr.String(), "stripe login")
+			assert.NotContains(t, stderr.String(), "sandbox new")
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuth_ReauthFailurePreservesCreationSuccess(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_created"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("yes\n"))
+	command.cmd.SetArgs([]string{"Created sandbox"})
+	command.reauth = func(context.Context, string, string) error {
+		return fmt.Errorf("reauth failed")
+	}
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	assert.Contains(t, stdout.String(), "Created sandbox")
+	assert.Contains(t, stderr.String(), "sandbox creation succeeded")
+	assert.Contains(t, stderr.String(), "stripe login")
+	assert.NotContains(t, stderr.String(), "sandbox new")
+}
+
+func TestSandboxCreateCmdOAuthCreatesBlankWithNormalizedCountry(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{created: sandbox.CreatedSandbox{AccountID: "acct_blank"}}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return false }
+	command.cmd.SetArgs([]string{"Blank sandbox", "--create-blank", "--country", " us "})
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []sandbox.CreateOptions{{Name: "Blank sandbox", Blank: true, Country: "US"}}, client.calls)
+	require.Contains(t, stdout.String(), "acct_blank")
+}
+
+func TestSandboxCreateCmdOAuthRejectsInvalidInputBeforeCallingClient(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "missing name"},
+		{name: "extra argument", args: []string{"one", "two"}},
+		{name: "blank name", args: []string{"   "}},
+		{name: "blank without country", args: []string{"blank", "--create-blank"}},
+		{name: "country without blank", args: []string{"copy", "--country", "US"}},
+		{name: "short country", args: []string{"blank", "--create-blank", "--country", "U"}},
+		{name: "long country", args: []string{"blank", "--create-blank", "--country", "USA"}},
+		{name: "nonletters country", args: []string{"blank", "--create-blank", "--country", "1S"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+			setSandboxCreateOAuthContext(t)
+
+			client := &fakeSandboxCreateClient{}
+			command := newSandboxCreateCmd()
+			command.client = client
+			command.cmd.SetArgs(test.args)
+
+			require.Error(t, command.cmd.Execute())
+			require.Empty(t, client.calls)
+		})
+	}
+}
+
+func TestSandboxCreateCmdOAuthReturnsClientErrorWithoutSuccessOutput(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+	setSandboxCreateOAuthContext(t)
+
+	client := &fakeSandboxCreateClient{err: fmt.Errorf("safe create failure")}
+	command := newSandboxCreateCmd()
+	command.client = client
+	command.isInteractive = func(*cobra.Command) bool { return true }
+	command.cmd.SetIn(strings.NewReader("yes\n"))
+	command.reauth = func(context.Context, string, string) error {
+		t.Fatal("reauth should not run when creation fails")
+		return nil
+	}
+	command.cmd.SetArgs([]string{"Failed sandbox"})
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "safe create failure")
+	require.NotContains(t, stdout.String(), "Created sandbox")
+	require.NotContains(t, stdout.String(), "acct_")
+}
+
+type fakeSandboxListClient struct {
+	sandboxes []sandbox.ManagedSandbox
+	err       error
+}
+
+func (f fakeSandboxListClient) ListAccessible(context.Context) ([]sandbox.ManagedSandbox, error) {
+	return f.sandboxes, f.err
+}
+
+func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
+	cmd := newSandboxListCmd()
+	cmd.client = fakeSandboxListClient{
+		sandboxes: []sandbox.ManagedSandbox{
+			{WorkspaceID: "wksp_test_z", AccountID: "acct_z", Name: "Zeta", AccessLevel: sandbox.SandboxAccessLevelPrivate},
+			{WorkspaceID: "wksp_test_a", AccountID: "acct_a", Name: "Alpha", AccessLevel: sandbox.SandboxAccessLevelGlobal},
+			{WorkspaceID: "wksp_test_b", AccountID: "acct_b", Name: "Beta", AccessLevel: sandbox.SandboxAccessLevelDeveloper},
+			{WorkspaceID: "wksp_test_ltm", AccountID: "acct_ltm", Name: "Acme", AccessLevel: sandbox.SandboxAccessLevelPrivate, IsLegacyTestmode: true},
+		},
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	require.NoError(t, cmd.cmd.Execute())
+
+	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+	require.Len(t, lines, 5)
+	assert.Equal(t, []string{"NAME", "ACCOUNT", "ACCESS"}, strings.Fields(lines[0]))
+	assert.Equal(t, []string{"Zeta", "acct_z", "Private"}, strings.Fields(lines[1]))
+	assert.Equal(t, []string{"Alpha", "acct_a", "All", "team", "members"}, strings.Fields(lines[2]))
+	assert.Equal(t, []string{"Beta", "acct_b", "Developer"}, strings.Fields(lines[3]))
+	assert.Equal(t, []string{"Acme", "acct_ltm", "Private"}, strings.Fields(lines[4]))
+	assert.NotContains(t, stdout.String(), "wksp_")
+	assert.NotContains(t, stdout.String(), "TYPE")
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxListCmd_Empty(t *testing.T) {
+	cmd := newSandboxListCmd()
+	cmd.client = fakeSandboxListClient{sandboxes: []sandbox.ManagedSandbox{}}
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+
+	require.NoError(t, cmd.cmd.Execute())
+
+	assert.Equal(t, "No sandboxes found.\n", stdout.String())
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxListCmd_ClientError(t *testing.T) {
+	cmd := newSandboxListCmd()
+	cmd.client = fakeSandboxListClient{err: fmt.Errorf("could not list accessible sandboxes")}
+
+	var stdout, stderr bytes.Buffer
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+	cmd.cmd.SilenceUsage = true
+	cmd.cmd.SilenceErrors = true
+
+	err := cmd.cmd.Execute()
+	require.EqualError(t, err, "could not list accessible sandboxes")
+	assert.Empty(t, stdout.String())
+	assert.Empty(t, stderr.String())
+}
+
+func TestSandboxListCmd_Surface(t *testing.T) {
+	cmd := newSandboxListCmd()
+	assert.False(t, cmd.cmd.Hidden)
+	assert.Equal(t, "List sandboxes authorized to the CLI", cmd.cmd.Short)
+	assert.Contains(t, cmd.cmd.Long, "active live account")
+	assert.Contains(t, cmd.cmd.Long, "authorized to this CLI session")
+	assert.Contains(t, cmd.cmd.Long, "authorize additional sandboxes")
+	assert.Contains(t, cmd.cmd.Long, "stripe login")
+	assert.Equal(t, "stripe sandboxes list", cmd.cmd.Example)
+	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "authorized to the CLI")
+	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "stripe sandboxes delete")
+	require.NotNil(t, cmd.cmd.Flags().Lookup("api-base"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-account"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-version"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("json"))
+	assert.Nil(t, cmd.cmd.Flags().Lookup("format"))
+
+	var stdout, stderr bytes.Buffer
+	cmd.client = fakeSandboxListClient{}
+	cmd.cmd.SetOut(&stdout)
+	cmd.cmd.SetErr(&stderr)
+	cmd.cmd.SilenceUsage = true
+	cmd.cmd.SilenceErrors = true
+	cmd.cmd.SetArgs([]string{"--api-base=http://example.test"})
+	require.NoError(t, cmd.cmd.Execute())
+	assert.Equal(t, "No sandboxes found.\n", stdout.String())
+	assert.Empty(t, stderr.String())
+
+	for _, args := range [][]string{{"acct_123"}, {"--stripe-account=acct_123"}, {"--stripe-version=2026-01-01"}} {
+		cmd := newSandboxListCmd()
+		cmd.client = fakeSandboxListClient{}
+		cmd.cmd.SilenceUsage = true
+		cmd.cmd.SilenceErrors = true
+		cmd.cmd.SetArgs(args)
+		require.Error(t, cmd.cmd.Execute())
+	}
+}
+
+type fakeSandboxDeleteClient struct {
+	deleted sandbox.DeletedSandbox
+	err     error
+	calls   []string
+}
+
+func (f *fakeSandboxDeleteClient) Delete(_ context.Context, accountID string) (sandbox.DeletedSandbox, error) {
+	f.calls = append(f.calls, accountID)
+	return f.deleted, f.err
+}
+
+func TestSandboxDeleteCmd_Success(t *testing.T) {
+	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target", Name: "Target sandbox"}}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetArgs([]string{"--api-base=http://example.test", "--confirm", "  acct_target  "})
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Equal(t, "Deleted sandbox \"Target sandbox\" (acct_target)\n", stdout.String())
+	require.Empty(t, stderr.String())
+	require.NotContains(t, stdout.String(), "wksp_")
+}
+
+func TestSandboxDeleteCmd_ClientError(t *testing.T) {
+	client := &fakeSandboxDeleteClient{err: fmt.Errorf("safe delete failure")}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetArgs([]string{"acct_target", "--confirm"})
+
+	var stdout, stderr bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	command.cmd.SetErr(&stderr)
+	command.cmd.SilenceUsage = true
+	command.cmd.SilenceErrors = true
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "safe delete failure")
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+}
+
+func TestSandboxDeleteCmd_RejectsInvalidInputBeforeCallingClient(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "missing account"},
+		{name: "empty account", args: []string{"   ", "--confirm"}},
+		{name: "organization", args: []string{"org_123", "--confirm"}},
+		{name: "wrong prefix", args: []string{"not_an_account", "--confirm"}},
+		{name: "missing account suffix", args: []string{"acct_", "--confirm"}},
+		{name: "extra account", args: []string{"acct_one", "acct_two", "--confirm"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := &fakeSandboxDeleteClient{}
+			command := newSandboxDeleteCmd()
+			command.client = client
+			command.cmd.SetArgs(test.args)
+
+			require.Error(t, command.cmd.Execute())
+			require.Empty(t, client.calls)
+		})
+	}
+}
+
+func TestSandboxDeleteCmd_Surface(t *testing.T) {
+	command := newSandboxDeleteCmd()
+	require.False(t, command.cmd.Hidden)
+	require.Equal(t, "delete <account_id>", command.cmd.Use)
+	require.Equal(t, "Permanently delete a sandbox", command.cmd.Short)
+	require.Contains(t, command.cmd.Long, "does not affect your live account")
+	require.Contains(t, command.cmd.Long, "cannot be undone")
+	require.Contains(t, command.cmd.Long, "stripe sandboxes list")
+	require.Equal(t, "stripe sandboxes delete acct_123\n  stripe sandboxes delete acct_123 --confirm", command.cmd.Example)
+	require.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "stripe sandboxes list")
+	require.Nil(t, command.cmd.Flags().Lookup("stripe-account"))
+	require.NotNil(t, command.cmd.Flags().Lookup("confirm"))
+	require.Nil(t, command.cmd.Flags().Lookup("yes"))
+	require.NotNil(t, command.cmd.Flags().ShorthandLookup("c"))
+	require.Nil(t, command.cmd.Flags().ShorthandLookup("y"))
+	require.NotNil(t, command.cmd.Flags().Lookup("api-base"))
+	require.Nil(t, command.cmd.Flags().Lookup("stripe-version"))
+	require.Nil(t, command.cmd.Flags().Lookup("json"))
+	require.Nil(t, command.cmd.Flags().Lookup("format"))
+	require.NotContains(t, command.cmd.UsageString(), "--stripe-account stripe sandboxes list")
+	require.Contains(t, command.cmd.UsageString(), "--confirm")
+	require.NotContains(t, command.cmd.UsageString(), "--yes")
+
+	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target"}}
+	command.client = client
+	command.cmd.SetArgs([]string{"acct_target", "-c"})
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Equal(t, "Deleted sandbox acct_target\n", stdout.String())
+}
+
+func TestSandboxDeleteCmd_RequiresConfirmationWhenNonInteractive(t *testing.T) {
+	client := &fakeSandboxDeleteClient{}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetIn(os.Stdin)
+	command.cmd.SetArgs([]string{"acct_target"})
+
+	err := command.cmd.Execute()
+	require.EqualError(t, err, "refusing to delete sandbox acct_target without confirmation; re-run with --confirm")
+	require.Empty(t, client.calls)
+}
+
+func TestSandboxDeleteCmd_AbortsUnlessConfirmed(t *testing.T) {
+	client := &fakeSandboxDeleteClient{}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetIn(strings.NewReader("\n"))
+	command.cmd.SetArgs([]string{"acct_target"})
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Empty(t, client.calls)
+	require.Equal(t, "Delete sandbox acct_target?\nThis action cannot be undone.\nContinue? [y/N]: Aborted. No changes were made.\n", stdout.String())
+}
+
+func TestSandboxDeleteCmd_DeletesAfterConfirmation(t *testing.T) {
+	client := &fakeSandboxDeleteClient{deleted: sandbox.DeletedSandbox{AccountID: "acct_target", Name: "Target sandbox"}}
+	command := newSandboxDeleteCmd()
+	command.client = client
+	command.cmd.SetIn(strings.NewReader("yes\n"))
+	command.cmd.SetArgs([]string{"acct_target"})
+	var stdout bytes.Buffer
+	command.cmd.SetOut(&stdout)
+
+	require.NoError(t, command.cmd.Execute())
+	require.Equal(t, []string{"acct_target"}, client.calls)
+	require.Equal(t, "Delete sandbox acct_target?\nThis action cannot be undone.\nContinue? [y/N]: Deleted sandbox \"Target sandbox\" (acct_target)\n", stdout.String())
 }
