@@ -588,7 +588,7 @@ func TestAgentSetupCursorIsSkippedNotInstalled(t *testing.T) {
 	// Cursor detected but plugin not installed — shows manual step hint.
 	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil },
-	}, nil)
+	})
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{cursor.ID(): cursor}
@@ -608,7 +608,7 @@ func TestAgentSetupStatusHidesUndetectedClients(t *testing.T) {
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), nil)
 	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "", errors.New("not found") },
-	}, nil)
+	})
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, cursor.ID(): cursor}

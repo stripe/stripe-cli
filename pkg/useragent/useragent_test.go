@@ -374,6 +374,18 @@ func TestObservedAgentSessions(t *testing.T) {
 			description: "Openclaw's shell sets only OPENCLAW_SHELL, and " +
 				"reports no version through the AI_AGENT/AGENT convention",
 		},
+		{
+			name: "kiro terminal",
+			envs: map[string]string{
+				"KIRO_SESSION_ID": sensitiveSessionID,
+			},
+			agent:    "kiro",
+			hostKind: "terminal",
+			hostRaw:  "kiro",
+			version:  "",
+			description: "Kiro's shell sets KIRO_SESSION_ID, and " +
+				"reports no version through the AI_AGENT/AGENT convention",
+		},
 	}
 
 	for _, tt := range tests {
