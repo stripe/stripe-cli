@@ -352,7 +352,7 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	require.ElementsMatch(t, []string{"claude", "codex", "openclaw", "grok"}, installed)
 	require.Contains(t, output, "Claude Code")
 	require.Contains(t, output, "Codex CLI")
-	require.Contains(t, output, "Openclaw")
+	require.Contains(t, output, "OpenClaw")
 	require.Contains(t, output, "Grok")
 	require.Contains(t, output, "4 installed, 0 updated, 0 skipped, 0 errors")
 }
@@ -426,7 +426,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 		},
 		{
 			name:         "openclaw",
-			displayName:  "Openclaw",
+			displayName:  "OpenClaw",
 			agent:        "openclaw",
 			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(record) },
 		},

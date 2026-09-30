@@ -15,7 +15,7 @@ const (
 	ClientOpenclaw      = "openclaw"
 	OpenclawBinaryName  = "openclaw"
 	OpenclawPluginName  = "stripe"
-	OpenclawDisplayName = "Openclaw"
+	OpenclawDisplayName = "OpenClaw"
 
 	openclawRepoDir     = ".openclaw/stripe"
 	openclawListTimeout = 5 * time.Second
@@ -59,14 +59,14 @@ func (p OpenclawProvider) Detect() Status {
 
 	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
 	if !supportsPlugins {
-		status.Error = "upgrade Openclaw Build to enable plugin support"
+		status.Error = "upgrade OpenClaw to enable plugin support"
 		return status
 	}
 
 	// If home directory cannot be resolved and plugin is not found, return an error status. This is a prerequisite for Openclaw plugin installation.
 	_, err := p.Scanner.withDefaults().HomeDir()
 	if err != nil && !ok {
-		status.Error = "Could not resolve home directory for Openclaw plugin installation"
+		status.Error = "Could not resolve home directory for OpenClaw plugin installation"
 		status.Status = StatusError
 		return status
 	}

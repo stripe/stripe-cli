@@ -24,7 +24,7 @@ func TestOpenclaw_NotDetected(t *testing.T) {
 	status := provider.Detect()
 
 	require.Equal(t, ClientOpenclaw, status.Client)
-	require.Equal(t, "Openclaw", status.DisplayName)
+	require.Equal(t, "OpenClaw", status.DisplayName)
 	require.False(t, status.Detected)
 	require.Equal(t, StatusNotDetected, status.Status)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
@@ -47,7 +47,7 @@ func TestOpenclaw_HomeDirUnresolvable(t *testing.T) {
 	status := provider.Detect()
 
 	require.Equal(t, StatusError, status.Status)
-	require.Equal(t, "Could not resolve home directory for Openclaw plugin installation", status.Error)
+	require.Equal(t, "Could not resolve home directory for OpenClaw plugin installation", status.Error)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, true))
 }
@@ -107,7 +107,7 @@ func TestOpenclaw_OldVersionWithoutPluginSupport(t *testing.T) {
 
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
-	require.Contains(t, status.Error, "upgrade Openclaw Build")
+	require.Contains(t, status.Error, "upgrade OpenClaw")
 }
 
 func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
