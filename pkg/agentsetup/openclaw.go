@@ -17,8 +17,6 @@ const (
 	OpenclawPluginName  = "stripe"
 	OpenclawDisplayName = "Openclaw"
 
-	// openclawRepoDir is relative to $HOME. repos is a new folder we create within
-	// .openclaw that none of .openclaw's functionality is reliant on.
 	openclawRepoDir     = ".openclaw/stripe"
 	openclawListTimeout = 5 * time.Second
 )

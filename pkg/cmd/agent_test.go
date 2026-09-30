@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -424,11 +425,18 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 		},
 	}
 
+	var agentNames []string
+	for _, a := range callingAgents {
+		agentNames = append(agentNames, a.agent)
+	}
+	agentNames = append(agentNames, "claude")
+
+
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
 			record := func(_ context.Context, name string, args ...string) error {
-				if name != "git" && name != "mkdir" && name != "rm" { // openclaw's pre-install steps are not the agent being installed, so ignore them
+				if slices.Contains(agentNames, name) {
 					installedAgents = append(installedAgents, name)
 				}
 				return nil
