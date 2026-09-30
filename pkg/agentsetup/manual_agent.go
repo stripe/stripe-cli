@@ -5,7 +5,6 @@ import (
 	"io"
 )
 
-
 type ManualProvider struct {
 	ProviderConfig
 	ManualInstruction string
