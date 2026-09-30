@@ -344,8 +344,9 @@ jobs:
 
           echo "msg=${MSG:-Unknown failure}" >> "$GITHUB_OUTPUT"
 
+      # Only master pages; runs dispatched on a feature branch are for testing that branch.
       - name: Trigger PagerDuty alert
-        if: needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
+        if: github.ref == 'refs/heads/master' && needs.resolve-versions.result == 'success' && contains(needs.*.result, 'failure')
         run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: failure
@@ -358,7 +359,7 @@ jobs:
           DRYRUN: "true" # TODO: switch to ${{ inputs.dryrun }} once confirmed stable
 
       - name: Resolve PagerDuty alert
-        if: needs.upgrade-macos.result == 'success' && needs.upgrade-linux.result == 'success' && needs.upgrade-windows.result == 'success'
+        if: github.ref == 'refs/heads/master' && needs.upgrade-macos.result == 'success' && needs.upgrade-linux.result == 'success' && needs.upgrade-windows.result == 'success'
         run: bash scripts/notify.sh
         env:
           OVERALL_RESULT: success
