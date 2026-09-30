@@ -5,12 +5,7 @@ import (
 	"io"
 )
 
-// ManualProvider detects a client's Stripe plugin that must be installed by
-// the user from inside that client, rather than via a shell CLI installer.
-//
-// Some clients (e.g. Cursor, Kiro) have no CLI installer or JSON registry for
-// their plugins. This provider points the user to a caller-supplied instruction rather
-// than trying to install for them.
+
 type ManualProvider struct {
 	ProviderConfig
 	ManualInstruction string
@@ -55,8 +50,6 @@ func (p ManualProvider) Plan(status Status, _ bool) Plan {
 	return Plan{Action: ActionNone}
 }
 
-// Apply is a no-op: the plugin is installed from inside the client, so the
-// setup flow surfaces the ActionManual instruction rather than calling Apply.
 func (p ManualProvider) Apply(_ context.Context, _ io.Writer, _ Plan) error {
 	return nil
 }
