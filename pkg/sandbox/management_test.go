@@ -428,13 +428,13 @@ func TestSafeCreateError(t *testing.T) {
 			name:         "unauthorized",
 			err:          requests.RequestError{StatusCode: http.StatusUnauthorized, Message: "sentinel", Body: "body_secret"},
 			wantCategory: errorcategory.Auth,
-			wantMessage:  "could not create sandbox: OAuth authorization is no longer valid; run `stripe login` or reauthorize the CLI",
+			wantMessage:  "could not create sandbox: CLI authorization is no longer valid; run `stripe login` or reauthorize the CLI",
 		},
 		{
 			name:         "forbidden",
 			err:          requests.RequestError{StatusCode: http.StatusForbidden, Message: "sentinel", Body: "body_secret"},
 			wantCategory: errorcategory.Auth,
-			wantMessage:  "could not create sandbox: the active OAuth account is not authorized; switch context or reauthorize the CLI",
+			wantMessage:  "could not create sandbox: the active live account is not authorized for this CLI session; switch context or reauthorize the CLI",
 		},
 		{
 			name:         "rate limited",

@@ -305,7 +305,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 
 func (c *ManagementClient) resolveCredentials() (stripe.Credentials, error) {
 	if c == nil || c.Profile == nil {
-		return stripe.Credentials{}, errorcategory.New(errorcategory.Auth, "sandbox management requires an active live OAuth account; run `stripe login` first")
+		return stripe.Credentials{}, errorcategory.New(errorcategory.Auth, "sandbox management requires an active live account; run `stripe login` first")
 	}
 
 	creds, err := c.Profile.ResolveCredentials(true)
@@ -314,14 +314,14 @@ func (c *ManagementClient) resolveCredentials() (stripe.Credentials, error) {
 		if errors.As(err, &mismatch) {
 			return stripe.Credentials{}, errorcategory.UserInputErrorf("%s", mismatch.Error())
 		}
-		return stripe.Credentials{}, errorcategory.New(errorcategory.Auth, "sandbox management requires an active live OAuth account; run `stripe login` first")
+		return stripe.Credentials{}, errorcategory.New(errorcategory.Auth, "sandbox management requires an active live account; run `stripe login` first")
 	}
 
 	if !strings.HasPrefix(creds.Token, "oak_") ||
 		creds.OAKLivemode == nil ||
 		!*creds.OAKLivemode ||
 		!validAccountID(creds.OAKContext) {
-		return stripe.Credentials{}, errorcategory.New(errorcategory.Auth, "sandbox management requires an active live OAuth account; run `stripe login` and select a live account")
+		return stripe.Credentials{}, errorcategory.New(errorcategory.Auth, "sandbox management requires an active live account; run `stripe login` and select a live account")
 	}
 
 	return creds, nil
@@ -524,9 +524,9 @@ func safeDependencyError(operation string, err error) error {
 	if statusCode, ok := requestStatusCode(err); ok {
 		switch statusCode {
 		case http.StatusUnauthorized:
-			return errorcategory.Errorf(errorcategory.Auth, "%s: OAuth authorization is no longer valid; run `stripe login` or reauthorize the CLI", operation)
+			return errorcategory.Errorf(errorcategory.Auth, "%s: CLI authorization is no longer valid; run `stripe login` or reauthorize the CLI", operation)
 		case http.StatusForbidden:
-			return errorcategory.Errorf(errorcategory.Auth, "%s: the active OAuth account is not authorized; switch context or reauthorize the CLI", operation)
+			return errorcategory.Errorf(errorcategory.Auth, "%s: the active live account is not authorized for this CLI session; switch context or reauthorize the CLI", operation)
 		case http.StatusTooManyRequests:
 			return errorcategory.Errorf(errorcategory.RateLimit, "%s: too many requests; try again later", operation)
 		default:
