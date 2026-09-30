@@ -42,7 +42,7 @@ func TestManual_PlanManualWhenNotInstalled(t *testing.T) {
 
 func TestManual_PlanNoneWhenNotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
-	provider := NewManualProvider(scanner, ClientCursor, CursorBinaryName, CursorDisplayName, CursorManualInstruction)
+	provider := NewCursorProvider(scanner)
 
 	status := provider.Detect()
 	plan := provider.Plan(status, false)
