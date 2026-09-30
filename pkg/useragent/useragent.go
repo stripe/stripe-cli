@@ -166,6 +166,14 @@ func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 		return "terminal", "openclaw"
 	}
 
+	if getEnv("TERM_PROGRAM") == "kiro" {
+		return "ide", "kiro"
+	}
+
+	if getEnv("KIRO_SESSION_ID") != "" {
+		return "terminal", "kiro"
+	}
+
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")
 	if host == "" {
 		// Codex Desktop sets this alongside the generic Codex signals, and it is
