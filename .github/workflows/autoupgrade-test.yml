@@ -90,8 +90,6 @@ jobs:
 
       - name: Verify auto-upgrade
         id: upgrade
-        env:
-          STRIPE_INSTALL_METHOD: script
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           OUTPUT=$(stripe --version 2>&1)
@@ -169,8 +167,6 @@ jobs:
 
       - name: Verify auto-upgrade
         id: upgrade
-        env:
-          STRIPE_INSTALL_METHOD: script
         run: |
           export PATH="$HOME/.stripe/bin:$PATH"
           OUTPUT=$(stripe --version 2>&1)
@@ -249,8 +245,6 @@ jobs:
 
       - name: Verify auto-upgrade
         id: upgrade
-        env:
-          STRIPE_INSTALL_METHOD: script
         run: |
           OUTPUT=$("$HOME/.stripe/bin/stripe.exe" --version 2>&1)
           echo "$OUTPUT"
@@ -263,8 +257,6 @@ jobs:
 
       - name: Verify the moved-aside binary is cleaned up
         id: cleanup
-        env:
-          STRIPE_INSTALL_METHOD: script
         run: |
           STRIPE="$HOME/.stripe/bin/stripe.exe"
 
