@@ -362,6 +362,18 @@ func TestObservedAgentSessions(t *testing.T) {
 			description: "Grok Build's terminal TUI sets GROK_AGENT alongside GROK_SESSION_ID, and " +
 				"reports no version through the AI_AGENT/AGENT convention",
 		},
+		{
+			name: "openclaw shell",
+			envs: map[string]string{
+				"OPENCLAW_SHELL": "1",
+			},
+			agent:    "openclaw",
+			hostKind: "terminal",
+			hostRaw:  "openclaw",
+			version:  "",
+			description: "Openclaw's shell sets only OPENCLAW_SHELL, and " +
+				"reports no version through the AI_AGENT/AGENT convention",
+		},
 	}
 
 	for _, tt := range tests {
@@ -403,6 +415,7 @@ func TestObservedAgentSessions_NoSensitiveValuesReported(t *testing.T) {
 		"CODEX_PERMISSION_PROFILE":           ":read-only",
 		"GROK_AGENT":                         "1",
 		"GROK_SESSION_ID":                    sensitiveSessionID,
+		"OPENCLAW_SHELL":                     "1",
 	}
 	getEnv := mapEnv(envs)
 

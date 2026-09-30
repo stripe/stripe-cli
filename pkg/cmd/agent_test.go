@@ -326,17 +326,22 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 }
 
 func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
+	agentNames := []string{"claude", "codex", "openclaw", "grok"}
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) error {
-		installed = append(installed, name)
+		if slices.Contains(agentNames, name) {
+			installed = append(installed, name)
+		}
 		return nil
 	}
 
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
 	codex := codexMissingProvider(record)
+	openclaw := openclawMissingProvider(record)
+	grok := grokMissingProvider(record)
 
 	setup := testAgentSetupCmd()
-	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex, openclaw.ID(): openclaw, grok.ID(): grok}
 	setup.callingAgent = func() string { return "" } // no agent -> install all detected
 	setup.cmd.SetContext(context.Background())
 
@@ -344,10 +349,12 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"claude", "codex"}, installed)
+	require.ElementsMatch(t, []string{"claude", "codex", "openclaw", "grok"}, installed)
 	require.Contains(t, output, "Claude Code")
 	require.Contains(t, output, "Codex CLI")
-	require.Contains(t, output, "2 installed, 0 updated, 0 skipped, 0 errors")
+	require.Contains(t, output, "Openclaw")
+	require.Contains(t, output, "Grok")
+	require.Contains(t, output, "4 installed, 0 updated, 0 skipped, 0 errors")
 }
 
 func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
