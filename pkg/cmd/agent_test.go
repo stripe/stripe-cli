@@ -431,7 +431,6 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	}
 	agentNames = append(agentNames, "claude")
 
-
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
