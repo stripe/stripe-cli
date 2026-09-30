@@ -1,10 +1,5 @@
 package agentsetup
 
-import (
-	"context"
-	"os/exec"
-)
-
 const (
 	gitBinaryName = "git"
 )
@@ -45,8 +40,4 @@ func getPlanByStatus(status Status, force bool, installCommands [][]string, rein
 	default:
 		return Plan{Action: ActionInstall, Commands: installCommands}
 	}
-}
-
-func runCommandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
-	return exec.CommandContext(ctx, name, args...).Output()
 }
