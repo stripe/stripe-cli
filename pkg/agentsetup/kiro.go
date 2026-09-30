@@ -7,3 +7,7 @@ const (
 	KiroDisplayName       = "Kiro"
 	KiroManualInstruction = "add plugin manually via Kiro IDE or website"
 )
+
+func NewKiroProvider(scanner Scanner) Provider {
+	return NewManualProvider(scanner, ClientKiro, KiroBinaryName, KiroDisplayName, KiroManualInstruction)
+}

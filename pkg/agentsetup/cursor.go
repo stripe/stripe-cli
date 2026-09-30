@@ -7,3 +7,7 @@ const (
 	CursorDisplayName       = "Cursor"
 	CursorManualInstruction = "run /add-plugin stripe inside Cursor"
 )
+
+func NewCursorProvider(scanner Scanner) Provider {
+	return NewManualProvider(scanner, ClientCursor, CursorBinaryName, CursorDisplayName, CursorManualInstruction)
+}

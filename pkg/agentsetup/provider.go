@@ -44,11 +44,11 @@ type ProviderConfig struct {
 func DefaultProviders() map[string]Provider {
 	scanner := DefaultScanner()
 	claude := NewClaudeProvider(scanner, RunCommand)
-	cursor := NewManualProvider(scanner, ClientCursor, CursorBinaryName, CursorDisplayName, CursorManualInstruction)
+	cursor := NewCursorProvider(scanner)
 	codex := NewCodexProvider(scanner, RunCommand)
 	grok := NewGrokProvider(scanner, RunCommand)
 	openclaw := NewOpenclawProvider(scanner, RunCommand)
-	kiro := NewManualProvider(scanner, ClientKiro, KiroBinaryName, KiroDisplayName, KiroManualInstruction)
+	kiro := NewKiroProvider(scanner)
 	return map[string]Provider{
 		claude.ID():   claude,
 		cursor.ID():   cursor,
