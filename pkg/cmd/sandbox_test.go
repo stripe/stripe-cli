@@ -902,6 +902,13 @@ func setSandboxTestModeOAuthContext(t *testing.T) {
 func TestSandboxCreateCmdSurfaceIncludesAuthenticatedCreation(t *testing.T) {
 	command := newSandboxCreateCmd()
 	require.Equal(t, "create [name]", command.cmd.Use)
+	require.Contains(t, command.cmd.Long, "After logging in and selecting a live account")
+	require.Contains(t, command.cmd.Long, "If you have not logged in and this CLI profile has no API key")
+	require.Contains(t, command.cmd.Long, "profile already has an API key")
+	require.NotContains(t, command.cmd.Long, "OAuth")
+	require.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "After logging in and selecting a live account")
+	require.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "If you have not logged in")
+	require.NotContains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "OAuth")
 
 	var flags []string
 	command.cmd.Flags().VisitAll(func(flag *pflag.Flag) {
@@ -952,6 +959,8 @@ func TestSandboxCmdPublicSurface(t *testing.T) {
 	assert.Contains(t, command.cmd.UsageString(), "delete")
 	assert.Contains(t, command.cmd.Long, "authorized")
 	assert.Contains(t, command.cmd.Long, "active live account")
+	assert.Contains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "After logging in and selecting a live account")
+	assert.NotContains(t, command.cmd.Annotations[AIAgentHelpAnnotationKey], "OAuth")
 	assert.NotContains(t, command.cmd.UsageString(), "sandbox new")
 
 	for _, name := range []string{"list", "delete"} {
@@ -1412,7 +1421,8 @@ func TestSandboxCreateCmdExplicitAPIKeyOverrideWinsOverOAuth(t *testing.T) {
 	command.cmd.SetArgs([]string{"OAuth sandbox"})
 
 	err := command.cmd.Execute()
-	require.ErrorContains(t, err, "sandbox name is only valid with an active live OAuth account")
+	require.ErrorContains(t, err, "sandbox name is only valid for managed creation with an active live account")
+	require.ErrorContains(t, err, "remove the API key override or run `stripe login`")
 	require.Empty(t, client.calls)
 }
 
@@ -1442,7 +1452,8 @@ func TestSandboxCreateCmdRejectsRouteSpecificInputsBeforeSideEffects(t *testing.
 		command.cmd.SetArgs([]string{"--email", "test@stripe.com", "--create-blank", "--country", "US"})
 
 		err := command.cmd.Execute()
-		require.ErrorContains(t, err, "--create-blank is only valid with an active live OAuth account")
+		require.ErrorContains(t, err, "--create-blank is only valid for managed creation with an active live account")
+		require.ErrorContains(t, err, "remove the API key override or run `stripe login`")
 		require.Empty(t, client.calls)
 	})
 }

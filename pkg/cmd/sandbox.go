@@ -88,7 +88,7 @@ to the CLI under the active live account, and sandboxes delete to permanently re
 			AIAgentHelpAnnotationKey: "  For new integrations, use separate general sandboxes to isolate settings and test data from live mode. Use the test mode sandbox only for existing integrations or features that require it.\n" +
 				"  Use separate sandboxes for local development and continuous integration (CI) as this avoids undesired interaction between your test environments.\n" +
 				"  Reuse sandboxes across test runs.\n" +
-				"  With an active live OAuth account, use `stripe sandboxes create \"My sandbox\"`.\n" +
+				"  After logging in and selecting a live account, use `stripe sandboxes create \"My sandbox\"`.\n" +
 				"  Run `stripe sandboxes list` to see the sandboxes authorized to the CLI under the active live account.\n" +
 				"  Run `stripe sandboxes delete <account_id>` to permanently remove an authorized sandbox; get the account ID from `stripe sandboxes list` and use `--confirm` for approved non-interactive deletion.\n" +
 				"  Use `stripe sandboxes create --from-git` to provision a sandbox using your git email.\n" +
@@ -116,16 +116,17 @@ func newSandboxCreateCmd() *sandboxCreateCmd {
 		Short: "Provision a new sandbox environment",
 		Long: `Create a new Stripe sandbox.
 
-With an active live OAuth account, provide a name to create a sandbox under
-that account. By default, settings and data are copied from the live account;
+After logging in and selecting a live account, provide a name to create a sandbox
+under that account. By default, settings and data are copied from the live account;
 pass --create-blank and --country to create a blank sandbox instead. When run
 interactively, the command prompts for a name if one is not provided.
 Use --non-interactive with a name to skip prompts, then run stripe login
 when you want to authorize CLI access to the new sandbox.
 
-Without OAuth, use --email or --from-git to provision a temporary claimable
-sandbox with test API keys. If that fails, the command falls back to
-browser-based signup or login.
+If you have not logged in and this CLI profile has no API key, use --email or
+--from-git to provision a temporary claimable sandbox with test API keys. If the
+profile already has an API key, the command opens Dashboard instead. If anonymous
+provisioning fails, the command falls back to browser-based signup or login.
 
 For a claimable sandbox, keys are saved to the current CLI profile so
 subsequent stripe commands work immediately.`,
@@ -136,8 +137,8 @@ subsequent stripe commands work immediately.`,
   stripe sandboxes create --from-git`,
 		Args: validators.MaximumNArgs(1),
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  With an active live OAuth account, pass a name to create a managed sandbox.\n" +
-				"  Without OAuth, provisions a claimable sandbox and saves keys to the current CLI profile.\n" +
+			AIAgentHelpAnnotationKey: "  After logging in and selecting a live account, pass a name to create a managed sandbox.\n" +
+				"  If you have not logged in and the current CLI profile has no API key, use `--email` or `--from-git` to provision a claimable sandbox and save its keys.\n" +
 				"  Pass --from-git to resolve your email from git config user.email.\n" +
 				"  Pass --email to provide an explicit email address.\n" +
 				"  Falls back to browser login on server errors.",
@@ -180,11 +181,11 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	}
 
 	if len(args) > 0 {
-		return errorcategory.New(errorcategory.UserInput, "sandbox name is only valid with an active live OAuth account; run `stripe login` first")
+		return errorcategory.New(errorcategory.UserInput, "sandbox name is only valid for managed creation with an active live account; remove the API key override or run `stripe login` first")
 	}
 	for _, flagName := range []string{"create-blank", "country"} {
 		if cmd.Flags().Changed(flagName) {
-			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid with an active live OAuth account; run `stripe login` first", flagName)
+			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid for managed creation with an active live account; remove the API key override or run `stripe login` first", flagName)
 		}
 	}
 
@@ -735,7 +736,7 @@ func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 		return
 	}
 	if !strings.HasPrefix(uat, "oak_") {
-		scc.warnAuthorizationFailure(cmd, errorcategory.New(errorcategory.Auth, "no valid OAuth session is available"))
+		scc.warnAuthorizationFailure(cmd, errorcategory.New(errorcategory.Auth, "no valid CLI login session is available"))
 		return
 	}
 
