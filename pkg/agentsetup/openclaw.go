@@ -150,14 +150,13 @@ func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 
 	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 
-	makeRepoDirectoryCommand := []string{"mkdir", "-p", repoPath}
+	makeTempDirectoryCommand := []string{"mkdir", "-p", repoPath}
 	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath}
-	installCommands := [][]string{makeRepoDirectoryCommand, gitInstallCommand, installCommand}
+	removeTempDirectoryCommand := []string{"rm", "-rf", repoPath}
 
-	gitPullCommand := []string{gitBinaryName, "pull", "-C", repoPath}
-	reinstallCommands := [][]string{gitPullCommand, installCommand}
+	installOrReinstallCommands := [][]string{makeTempDirectoryCommand, gitInstallCommand, installCommand, removeTempDirectoryCommand}
 
-	return getPlanByStatus(status, force, installCommands, reinstallCommands)
+	return getPlanByStatus(status, force, installOrReinstallCommands, installOrReinstallCommands)
 }
 
 // Apply runs each command in the plan in order. The install step is already

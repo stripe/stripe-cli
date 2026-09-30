@@ -65,6 +65,7 @@ func TestOpenclaw_PluginMissing(t *testing.T) {
 			{"mkdir", "-p", testOpenclawRepoPath},
 			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
 			{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
+			{"rm", "-rf", testOpenclawRepoPath},
 		}},
 		provider.Plan(status, false))
 }
@@ -91,8 +92,10 @@ func TestOpenclaw_PluginInstalled(t *testing.T) {
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 	require.Equal(t,
 		Plan{Action: ActionReinstall, Commands: [][]string{
-			{"git", "pull", "-C", testOpenclawRepoPath},
+			{"mkdir", "-p", testOpenclawRepoPath},
+			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
 			{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
+			{"rm", "-rf", testOpenclawRepoPath},
 		}},
 		provider.Plan(status, true))
 }
@@ -121,37 +124,20 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 		{"mkdir", "-p", testOpenclawRepoPath},
 		{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
 		{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
+		{"rm", "-rf", testOpenclawRepoPath},
 	}
 
 	plan := Plan{Action: ActionInstall, Commands: preInstallCommands}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"mkdir", "git", "openclaw"}, commandNames)
+	require.Equal(t, []string{"mkdir", "git", "openclaw", "rm"}, commandNames)
 	require.Equal(t, []string{"-p", testOpenclawRepoPath}, commandArgs[0])
 	require.Equal(t,
 		[]string{"clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
 		commandArgs[1])
 	require.Equal(t, []string{"plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath}, commandArgs[2])
-}
-
-func TestOpenclawApply_ReinstallPullsThenInstalls(t *testing.T) {
-	var commandArgs [][]string
-	runCommand := func(_ context.Context, _ string, args ...string) error {
-		commandArgs = append(commandArgs, args)
-		return nil
-	}
-	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
-
-	plan := Plan{Action: ActionReinstall, Commands: [][]string{
-		{"git", "pull", "-C", testOpenclawRepoPath},
-		{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
-	}}
-	err := provider.Apply(context.Background(), nil, plan)
-
-	require.NoError(t, err)
-	require.Equal(t, []string{"pull", "-C", testOpenclawRepoPath}, commandArgs[0])
-	require.Equal(t, []string{"plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath}, commandArgs[1])
+	require.Equal(t, []string{"-rf", testOpenclawRepoPath}, commandArgs[3])
 }
 
 func TestOpenclawApply_NoneIsNoop(t *testing.T) {

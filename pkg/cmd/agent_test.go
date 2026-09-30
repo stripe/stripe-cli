@@ -428,7 +428,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
 			record := func(_ context.Context, name string, args ...string) error {
-				if name != "git" && name != "mkdir" { // openclaw's pre-install steps are not the agent being installed, so ignore them
+				if name != "git" && name != "mkdir" && name != "rm" { // openclaw's pre-install steps are not the agent being installed, so ignore them
 					installedAgents = append(installedAgents, name)
 				}
 				return nil
