@@ -1,11 +1,11 @@
 package agentsetup
 
 const (
-	// Kiro requires the user to add the Stripe plugin manually via the Kiro IDE or website.
+	// Kiro requires the user to add the Stripe plugin manually via the website
 	ClientKiro            = "kiro"
 	KiroBinaryName        = "kiro-cli"
 	KiroDisplayName       = "Kiro"
-	KiroManualInstruction = "add plugin manually via Kiro IDE or website"
+	KiroManualInstruction = "add plugin manually using this link https://kiro.dev/launch/powers/add/?name=stripe"
 )
 
 func NewKiroProvider(scanner Scanner) Provider {
