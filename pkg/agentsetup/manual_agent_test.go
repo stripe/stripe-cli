@@ -9,7 +9,7 @@ import (
 
 func TestManual_NotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
-	provider := NewManualProvider(scanner, ClientCursor, CursorBinaryName, CursorDisplayName, CursorManualInstruction)
+	provider := NewCursorProvider(scanner)
 
 	status := provider.Detect()
 
@@ -62,5 +62,5 @@ func TestManual_PlanNoneWhenInstalled(t *testing.T) {
 
 func cursorTestProvider() Provider {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}
-	return NewManualProvider(scanner, ClientCursor, CursorBinaryName, CursorDisplayName, CursorManualInstruction)
+	return NewCursorProvider(scanner)
 }
