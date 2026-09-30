@@ -872,7 +872,7 @@ Supported clients for automatic setup:
   • Codex CLI     https://openai.com/codex/
   • Grok Build    https://x.ai/build
   • Openclaw      https://openclaw.ai
-  • Kiro          https://https://kiro.dev/
+  • Kiro          https://kiro.dev/
 
 You can still install Stripe skills.
 `)
@@ -887,7 +887,7 @@ Supported clients for automatic setup:
   • Codex CLI     https://openai.com/codex/
   • Grok Build    https://x.ai/build
   • Openclaw      https://openclaw.ai
-  • Kiro          https://https://kiro.dev/
+  • Kiro          https://kiro.dev/
 
 Once a client is installed, re-run: stripe agent setup
 `)
