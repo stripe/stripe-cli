@@ -54,7 +54,7 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.Equal(t, "0.7.1", status.Plugin.Version)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"grok", "plugin", "update", GrokPluginName}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"grok", "plugin", "update", GrokPluginName}}}, provider.Plan(status, true))
 }
 
 func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {

@@ -67,7 +67,7 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	require.Equal(t, "2.4.1", status.Plugin.Version)
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, true))
 }
 
 func TestClaude_MalformedJSON(t *testing.T) {

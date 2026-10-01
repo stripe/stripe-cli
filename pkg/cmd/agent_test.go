@@ -568,21 +568,6 @@ func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.Opencl
 	}
 }
 
-func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
-	return agentsetup.OpenclawProvider{
-		ProviderConfig: agentsetup.ProviderConfig{
-			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil }},
-			Client:      agentsetup.ClientOpenclaw,
-			BinaryName:  agentsetup.OpenclawBinaryName,
-			DisplayName: agentsetup.OpenclawDisplayName,
-			RunCommand:  record,
-			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-				return []byte(`[]`), nil
-			},
-		},
-	}
-}
-
 func TestAgentSetupUnsupportedAgentInstallsSkillsToLocal(t *testing.T) {
 	var gotDir string
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(func(context.Context, string, ...string) ([]byte, error) {

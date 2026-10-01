@@ -32,10 +32,6 @@ type StatFunc func(string) (os.FileInfo, error)
 // upon failure
 type RunCommandFunc func(context.Context, string, ...string) ([]byte, error)
 
-// RunOutputFunc runs a command and returns its standard output. It exists so
-// Codex detection (which shells out to `codex plugin list --json`) is testable.
-type RunOutputFunc func(context.Context, string, ...string) ([]byte, error)
-
 // Scanner scans local agent installations without mutating them.
 type Scanner struct {
 	LookPath LookPathFunc
@@ -104,11 +100,6 @@ func RunCommand(ctx context.Context, name string, args ...string) ([]byte, error
 	}
 
 	return out, err
-}
-
-// RunCommandOutput runs a command and returns its standard output.
-func runCommandOutput(ctx context.Context, name string, args ...string) ([]byte, error) {
-	return exec.CommandContext(ctx, name, args...).Output()
 }
 
 func errorFromOutput(out []byte) string {

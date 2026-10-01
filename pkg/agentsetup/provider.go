@@ -14,9 +14,9 @@ const (
 	StatusUnknown     = "unknown"
 	StatusError       = "error"
 
-	ActionNone      = "none"
-	ActionInstall   = "install"
-	ActionReinstall = "reinstall"
+	ActionNone    = "none"
+	ActionInstall = "install"
+	ActionUpdate  = "update"
 	// ActionManual means setup cannot be automated and the user must perform a
 	// step themselves (e.g. Cursor plugins are installed from inside Cursor).
 	ActionManual = "manual"

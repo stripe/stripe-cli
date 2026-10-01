@@ -38,7 +38,6 @@ func NewOpenclawProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 			BinaryName:  OpenclawBinaryName,
 			DisplayName: OpenclawDisplayName,
 			RunCommand:  runCommand,
-			RunOutput:   runCommandOutput,
 		},
 	}
 }
@@ -87,11 +86,11 @@ func (p OpenclawProvider) Detect() Status {
 // Stripe plugin is installed. When the command fails (e.g. an old Openclaw
 // version without plugin support), supportsPlugins is false.
 func (p OpenclawProvider) stripePluginStatus(ctx context.Context) (plugin openclawInstalledPlugin, installed bool, supportsPlugins bool) {
-	runOutput := p.RunOutput
-	if runOutput == nil {
-		runOutput = runCommandOutput
+	runCommand := p.RunCommand
+	if runCommand == nil {
+		runCommand = RunCommand
 	}
-	out, err := runOutput(ctx, p.BinaryName, "plugins", "list", "--json")
+	out, err := runCommand(ctx, p.BinaryName, "plugins", "list", "--json")
 	if err != nil {
 		return openclawInstalledPlugin{}, false, false
 	}
@@ -169,7 +168,7 @@ func (p OpenclawProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) err
 	}
 
 	for _, command := range plan.Commands {
-		if err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
+		if _, err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
 			return err
 		}
 	}

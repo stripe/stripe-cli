@@ -78,7 +78,7 @@ func TestScanCodex_APIPluginInstalled(t *testing.T) {
 	require.Equal(t, "stripe@openai-api-curated", status.Plugin.ID)
 	require.Equal(t, "1.0.0", status.Plugin.Version)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"codex", "plugin", "add", "stripe@openai-api-curated"}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"codex", "plugin", "add", "stripe@openai-api-curated"}}}, provider.Plan(status, true))
 }
 
 func TestScanCodex_DoesNotFallBackAfterLookupError(t *testing.T) {
