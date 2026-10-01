@@ -765,6 +765,37 @@ func TestOAuthSessionIsolationAcrossProfiles(t *testing.T) {
 	require.Equal(t, "acct_personal", personalCtx.AccountID)
 }
 
+// TestBannerDisplayNameGuardsAgainstMismatch is a regression test for the
+// name/ID mismatch issue #2085 was about: if the profile's own persisted
+// AccountID ever disagrees with the active context passed in, the display
+// name must not be trusted, so the banner falls back to the account ID.
+func TestBannerDisplayNameGuardsAgainstMismatch(t *testing.T) {
+	_, _ = setupProfileConfig(t, "[default]\naccount_id = 'acct_recorded'\ndisplay_name = 'Recorded Co'\n")
+	p := Profile{ProfileName: "default"}
+
+	t.Run("matching account ID trusts the display name", func(t *testing.T) {
+		name := p.bannerDisplayName(&ActiveContext{AccountID: "acct_recorded", Livemode: false})
+		require.Equal(t, "Recorded Co", name)
+	})
+
+	t.Run("mismatched account ID discards the display name", func(t *testing.T) {
+		name := p.bannerDisplayName(&ActiveContext{AccountID: "acct_other", Livemode: false})
+		require.Empty(t, name)
+	})
+}
+
+// TestBannerDisplayNameTrustsNameWhenProfileHasNoRecordedAccount covers a
+// profile that has never persisted its own AccountID (e.g. a brand new
+// profile mid-login): there's nothing to disagree with, so the active
+// context's display name is used as-is.
+func TestBannerDisplayNameTrustsNameWhenProfileHasNoRecordedAccount(t *testing.T) {
+	_, _ = setupProfileConfig(t, "[default]\ndisplay_name = 'Fresh Co'\n")
+	p := Profile{ProfileName: "default"}
+
+	name := p.bannerDisplayName(&ActiveContext{AccountID: "acct_new", Livemode: false})
+	require.Equal(t, "Fresh Co", name)
+}
+
 func helperLoadBytes(t *testing.T, name string) []byte {
 	bytes, err := os.ReadFile(name)
 	if err != nil {

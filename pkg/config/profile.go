@@ -974,6 +974,19 @@ func (p *Profile) GetUATExpiresAt() (time.Time, error) {
 	return time.Parse(time.RFC3339, string(data))
 }
 
+// bannerDisplayName returns the display name to pair with ac in the active
+// context banner, or "" if it shouldn't be trusted. Every current write path
+// keeps the profile's persisted AccountID and the active context in sync, so
+// this guard shouldn't trigger today; it exists so a future regression shows
+// an honest account ID instead of a wrong name next to the right one — the
+// exact mismatch issue #2085 was about.
+func (p *Profile) bannerDisplayName(ac *ActiveContext) string {
+	if accountID, _ := p.GetAccountID(); accountID != "" && accountID != ac.AccountID {
+		return ""
+	}
+	return p.GetDisplayName()
+}
+
 // PrintActiveContextBanner prints the active context to stderr once per
 // process. Call this at the start of commands that make user-visible Stripe
 // API requests (resource commands, raw HTTP, fixtures, triggers).
@@ -992,7 +1005,13 @@ func (p *Profile) PrintActiveContextBanner() {
 		if ac.Livemode {
 			mode = "live"
 		}
-		fmt.Fprintf(os.Stderr, "%s Running in %s · %s (%s)\n", color.Faint("▸"), p.GetDisplayName(), mode, ac.AccountID)
+
+		displayName := p.bannerDisplayName(ac)
+		if displayName == "" {
+			fmt.Fprintf(os.Stderr, "%s Running in %s · %s\n", color.Faint("▸"), ac.AccountID, mode)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "%s Running in %s · %s (%s)\n", color.Faint("▸"), displayName, mode, ac.AccountID)
 	})
 }
 
