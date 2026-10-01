@@ -643,7 +643,7 @@ func TestResolveCredentialsForAnyModeRetriesOnLivemodeMismatch(t *testing.T) {
 func TestRefreshUATIfNeededSkipsWhenNotExpiring(t *testing.T) {
 	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
-	require.NoError(t, SaveUATExpiresAt(time.Now().Add(time.Hour)))
+	require.NoError(t, (&Profile{}).SaveUATExpiresAt(time.Now().Add(time.Hour)))
 
 	previousRefresher := OAuthTokenRefresher
 	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
@@ -661,7 +661,7 @@ func TestRefreshUATIfNeededSkipsWhenNotExpiring(t *testing.T) {
 func TestRefreshUATIfNeededRefreshesWhenNearExpiry(t *testing.T) {
 	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
-	require.NoError(t, SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+	require.NoError(t, (&Profile{}).SaveUATExpiresAt(time.Now().Add(30*time.Second)))
 
 	previousRefresher := OAuthTokenRefresher
 	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
@@ -679,7 +679,7 @@ func TestRefreshUATIfNeededRefreshesWhenNearExpiry(t *testing.T) {
 func TestRefreshUATIfNeededPropagatesRefreshError(t *testing.T) {
 	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
-	require.NoError(t, SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+	require.NoError(t, (&Profile{}).SaveUATExpiresAt(time.Now().Add(30*time.Second)))
 
 	previousRefresher := OAuthTokenRefresher
 	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
@@ -697,7 +697,7 @@ func TestRefreshUATIfNeededPropagatesRefreshError(t *testing.T) {
 func TestRefreshUATIfNeededNoopWithoutRefresher(t *testing.T) {
 	KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { KeyRing = nil })
-	require.NoError(t, SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+	require.NoError(t, (&Profile{}).SaveUATExpiresAt(time.Now().Add(30*time.Second)))
 
 	previousRefresher := OAuthTokenRefresher
 	t.Cleanup(func() { OAuthTokenRefresher = previousRefresher })
@@ -707,6 +707,93 @@ func TestRefreshUATIfNeededNoopWithoutRefresher(t *testing.T) {
 	uat, err := RefreshUATIfNeeded(p, "oak_live_original")
 	require.NoError(t, err)
 	require.Equal(t, "oak_live_original", uat)
+}
+
+func TestKeyringKeyDefaultProfileUsesUnscopedLegacyKey(t *testing.T) {
+	require.Equal(t, UATKeychainItemKey, (&Profile{}).KeyringKey(UATKeychainItemKey))
+	require.Equal(t, UATKeychainItemKey, (&Profile{ProfileName: "default"}).KeyringKey(UATKeychainItemKey))
+}
+
+func TestKeyringKeyNamedProfileIsScoped(t *testing.T) {
+	require.Equal(t, UATKeychainItemKey+":work", (&Profile{ProfileName: "work"}).KeyringKey(UATKeychainItemKey))
+}
+
+// TestOAuthSessionIsolationAcrossProfiles guards against a regression where
+// two profiles logged in independently would clobber each other's UAT
+// expiry and active context, since those were previously stored under
+// fixed, unscoped keyring keys shared by every profile.
+func TestOAuthSessionIsolationAcrossProfiles(t *testing.T) {
+	KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { KeyRing = nil })
+
+	work := &Profile{ProfileName: "work"}
+	personal := &Profile{ProfileName: "personal"}
+
+	workExpiry := time.Now().Add(time.Hour).Truncate(time.Second)
+	personalExpiry := time.Now().Add(2 * time.Hour).Truncate(time.Second)
+	require.NoError(t, work.SaveUATExpiresAt(workExpiry))
+	require.NoError(t, personal.SaveUATExpiresAt(personalExpiry))
+	require.NoError(t, work.SaveActiveContext("acct_work", true))
+	require.NoError(t, personal.SaveActiveContext("acct_personal", false))
+
+	gotWorkExpiry, err := work.GetUATExpiresAt()
+	require.NoError(t, err)
+	require.True(t, workExpiry.Equal(gotWorkExpiry))
+
+	gotPersonalExpiry, err := personal.GetUATExpiresAt()
+	require.NoError(t, err)
+	require.True(t, personalExpiry.Equal(gotPersonalExpiry))
+
+	workCtx, err := work.GetActiveContext()
+	require.NoError(t, err)
+	require.Equal(t, "acct_work", workCtx.AccountID)
+	require.True(t, workCtx.Livemode)
+
+	personalCtx, err := personal.GetActiveContext()
+	require.NoError(t, err)
+	require.Equal(t, "acct_personal", personalCtx.AccountID)
+	require.False(t, personalCtx.Livemode)
+
+	// Deleting one profile's OAuth session must not disturb the other's.
+	require.NoError(t, work.deleteOAuthSessionKeys())
+	workCtx, err = work.GetActiveContext()
+	require.NoError(t, err)
+	require.Nil(t, workCtx, "work's active context should be cleared")
+
+	personalCtx, err = personal.GetActiveContext()
+	require.NoError(t, err)
+	require.Equal(t, "acct_personal", personalCtx.AccountID)
+}
+
+// TestBannerDisplayNameGuardsAgainstMismatch is a regression test for the
+// name/ID mismatch issue #2085 was about: if the profile's own persisted
+// AccountID ever disagrees with the active context passed in, the display
+// name must not be trusted, so the banner falls back to the account ID.
+func TestBannerDisplayNameGuardsAgainstMismatch(t *testing.T) {
+	_, _ = setupProfileConfig(t, "[default]\naccount_id = 'acct_recorded'\ndisplay_name = 'Recorded Co'\n")
+	p := Profile{ProfileName: "default"}
+
+	t.Run("matching account ID trusts the display name", func(t *testing.T) {
+		name := p.bannerDisplayName(&ActiveContext{AccountID: "acct_recorded", Livemode: false})
+		require.Equal(t, "Recorded Co", name)
+	})
+
+	t.Run("mismatched account ID discards the display name", func(t *testing.T) {
+		name := p.bannerDisplayName(&ActiveContext{AccountID: "acct_other", Livemode: false})
+		require.Empty(t, name)
+	})
+}
+
+// TestBannerDisplayNameTrustsNameWhenProfileHasNoRecordedAccount covers a
+// profile that has never persisted its own AccountID (e.g. a brand new
+// profile mid-login): there's nothing to disagree with, so the active
+// context's display name is used as-is.
+func TestBannerDisplayNameTrustsNameWhenProfileHasNoRecordedAccount(t *testing.T) {
+	_, _ = setupProfileConfig(t, "[default]\ndisplay_name = 'Fresh Co'\n")
+	p := Profile{ProfileName: "default"}
+
+	name := p.bannerDisplayName(&ActiveContext{AccountID: "acct_new", Livemode: false})
+	require.Equal(t, "Fresh Co", name)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {

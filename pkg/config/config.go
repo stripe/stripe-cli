@@ -549,10 +549,10 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 		deleteLivemodeKey(LiveModeAPIKeyName, profileName)
 	}
 
-	deleteTopLevelLivemodeKey(UATKeychainItemKey)
-	deleteTopLevelLivemodeKey(OAuthRefreshTokenKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthActiveContextKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthUATExpiresAtKeychainKey)
+	// The OAuth session keyring keys are scoped by profileName directly (see
+	// Profile.KeyringKey), independent of whether a matching entry exists in
+	// the config file, so clear them unconditionally here.
+	(&Profile{ProfileName: profileName}).deleteOAuthSessionKeys()
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
@@ -571,12 +571,14 @@ func (c *Config) RemoveAllAuthFields() error {
 		p := &Profile{ProfileName: entry.name}
 		runtimeViper = p.deleteAuthFields(runtimeViper)
 		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
+		p.deleteOAuthSessionKeys()
 	}
 
-	deleteTopLevelLivemodeKey(UATKeychainItemKey)
-	deleteTopLevelLivemodeKey(OAuthRefreshTokenKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthActiveContextKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthUATExpiresAtKeychainKey)
+	// The "default" profile's OAuth session keys are unscoped (see
+	// Profile.KeyringKey), so they're covered above only when a "default"
+	// entry actually exists in the config file. Clear them unconditionally
+	// too, since a session can exist without any config file entries yet.
+	(&Profile{}).deleteOAuthSessionKeys()
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
@@ -589,14 +591,6 @@ func (c *Config) RemoveAllAuthFields() error {
 func deleteLivemodeKey(key string, profile string) error {
 	fieldID := profile + "." + key
 	err := KeyRing.Remove(fieldID)
-	if errors.Is(err, keyring.ErrKeyNotFound) {
-		return nil
-	}
-	return err
-}
-
-func deleteTopLevelLivemodeKey(key string) error {
-	err := KeyRing.Remove(key)
 	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return nil
 	}

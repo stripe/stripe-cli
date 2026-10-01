@@ -73,6 +73,37 @@ type Profile struct {
 	OAuthAccessBaseURL string
 }
 
+// KeyringKey returns the keyring key to use for the given base OAuth session
+// key, scoped to this profile. The "default" profile (and the zero-value
+// profile name) map to the unscoped legacy key, so existing single-profile
+// users don't need any migration; every other profile gets its own key so
+// OAuth sessions don't collide across profiles.
+func (p *Profile) KeyringKey(base string) string {
+	if p.ProfileName == "" || p.ProfileName == "default" {
+		return base
+	}
+	return base + ":" + p.ProfileName
+}
+
+// deleteOAuthSessionKeys removes this profile's OAuth session keyring
+// entries (UAT, refresh token, active context, UAT expiry).
+func (p *Profile) deleteOAuthSessionKeys() error {
+	if KeyRing == nil {
+		return nil
+	}
+	for _, base := range []string{
+		UATKeychainItemKey,
+		OAuthRefreshTokenKeychainKey,
+		OAuthActiveContextKeychainKey,
+		OAuthUATExpiresAtKeychainKey,
+	} {
+		if err := KeyRing.Remove(p.KeyringKey(base)); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+			return err
+		}
+	}
+	return nil
+}
+
 // config key names
 const (
 	AccountIDName              = "account_id"
@@ -739,11 +770,11 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if KeyRing != nil {
 		if p.UAT != "" {
-			if err := KeyRing.Set(UATKeychainItemKey, []byte(strings.TrimSpace(p.UAT)), "Stripe CLI user access token"); err != nil {
+			if err := KeyRing.Set(p.KeyringKey(UATKeychainItemKey), []byte(strings.TrimSpace(p.UAT)), "Stripe CLI user access token"); err != nil {
 				return err
 			}
 		} else {
-			if err := KeyRing.Remove(UATKeychainItemKey); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
+			if err := KeyRing.Remove(p.KeyringKey(UATKeychainItemKey)); err != nil && !errors.Is(err, keyring.ErrKeyNotFound) {
 				return err
 			}
 		}
@@ -879,7 +910,7 @@ func (p *Profile) GetUAT() (string, error) {
 	if KeyRing == nil {
 		return "", nil
 	}
-	data, err := KeyRing.Get(UATKeychainItemKey)
+	data, err := KeyRing.Get(p.KeyringKey(UATKeychainItemKey))
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return "", nil
@@ -891,11 +922,11 @@ func (p *Profile) GetUAT() (string, error) {
 
 // GetActiveContext reads the stored OAuth active context from the keyring.
 // Returns nil, nil when no active context has been saved yet.
-func GetActiveContext() (*ActiveContext, error) {
+func (p *Profile) GetActiveContext() (*ActiveContext, error) {
 	if KeyRing == nil {
 		return nil, nil
 	}
-	data, err := KeyRing.Get(OAuthActiveContextKeychainKey)
+	data, err := KeyRing.Get(p.KeyringKey(OAuthActiveContextKeychainKey))
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return nil, nil
@@ -911,7 +942,7 @@ func GetActiveContext() (*ActiveContext, error) {
 
 // SaveActiveContext persists the active OAuth context (account ID + livemode) in
 // the keyring so that ResolveCredentials can build the Stripe-Context header.
-func SaveActiveContext(accountID string, livemode bool) error {
+func (p *Profile) SaveActiveContext(accountID string, livemode bool) error {
 	if KeyRing == nil {
 		return nil
 	}
@@ -919,28 +950,41 @@ func SaveActiveContext(accountID string, livemode bool) error {
 	if err != nil {
 		return err
 	}
-	return KeyRing.Set(OAuthActiveContextKeychainKey, data, "Stripe CLI active context")
+	return KeyRing.Set(p.KeyringKey(OAuthActiveContextKeychainKey), data, "Stripe CLI active context")
 }
 
 // SaveUATExpiresAt persists the UAT expiry time in the keyring.
-func SaveUATExpiresAt(t time.Time) error {
+func (p *Profile) SaveUATExpiresAt(t time.Time) error {
 	if KeyRing == nil {
 		return nil
 	}
-	return KeyRing.Set(OAuthUATExpiresAtKeychainKey, []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI token expiry")
+	return KeyRing.Set(p.KeyringKey(OAuthUATExpiresAtKeychainKey), []byte(t.UTC().Format(time.RFC3339)), "Stripe CLI token expiry")
 }
 
 // GetUATExpiresAt retrieves the stored UAT expiry time from the keyring.
 // Returns ErrKeyNotFound (wrapped) when no expiry has been saved.
-func GetUATExpiresAt() (time.Time, error) {
+func (p *Profile) GetUATExpiresAt() (time.Time, error) {
 	if KeyRing == nil {
 		return time.Time{}, keyring.ErrKeyNotFound
 	}
-	data, err := KeyRing.Get(OAuthUATExpiresAtKeychainKey)
+	data, err := KeyRing.Get(p.KeyringKey(OAuthUATExpiresAtKeychainKey))
 	if err != nil {
 		return time.Time{}, err
 	}
 	return time.Parse(time.RFC3339, string(data))
+}
+
+// bannerDisplayName returns the display name to pair with ac in the active
+// context banner, or "" if it shouldn't be trusted. Every current write path
+// keeps the profile's persisted AccountID and the active context in sync, so
+// this guard shouldn't trigger today; it exists so a future regression shows
+// an honest account ID instead of a wrong name next to the right one — the
+// exact mismatch issue #2085 was about.
+func (p *Profile) bannerDisplayName(ac *ActiveContext) string {
+	if accountID, _ := p.GetAccountID(); accountID != "" && accountID != ac.AccountID {
+		return ""
+	}
+	return p.GetDisplayName()
 }
 
 // PrintActiveContextBanner prints the active context to stderr once per
@@ -952,7 +996,8 @@ func (p *Profile) PrintActiveContextBanner() {
 		if !strings.HasPrefix(uat, "oak_") {
 			return
 		}
-		ac, _ := GetActiveContext()
+		color := ansi.Color(os.Stderr)
+		ac, _ := p.GetActiveContext()
 		if ac == nil {
 			return
 		}
@@ -960,8 +1005,13 @@ func (p *Profile) PrintActiveContextBanner() {
 		if ac.Livemode {
 			mode = "live"
 		}
-		color := ansi.Color(os.Stderr)
-		fmt.Fprintf(os.Stderr, "%s Running in %s · %s (%s)\n", color.Faint("▸"), p.GetDisplayName(), mode, ac.AccountID)
+
+		displayName := p.bannerDisplayName(ac)
+		if displayName == "" {
+			fmt.Fprintf(os.Stderr, "%s Running in %s · %s\n", color.Faint("▸"), ac.AccountID, mode)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "%s Running in %s · %s (%s)\n", color.Faint("▸"), displayName, mode, ac.AccountID)
 	})
 }
 
@@ -1025,7 +1075,7 @@ func RefreshUATIfNeeded(p *Profile, uat string) (string, error) {
 	if OAuthTokenRefresher == nil {
 		return uat, nil
 	}
-	t, tErr := GetUATExpiresAt()
+	t, tErr := p.GetUATExpiresAt()
 	if tErr != nil || time.Until(t) >= 60*time.Second {
 		return uat, nil
 	}
@@ -1034,7 +1084,7 @@ func RefreshUATIfNeeded(p *Profile, uat string) (string, error) {
 	defer refreshMu.Unlock()
 	// Re-check after acquiring the lock; another goroutine may have already
 	// refreshed, bumping the expiry forward.
-	t2, tErr2 := GetUATExpiresAt()
+	t2, tErr2 := p.GetUATExpiresAt()
 	if tErr2 == nil && time.Until(t2) < 60*time.Second {
 		if err := OAuthTokenRefresher(p); err != nil {
 			return uat, err
@@ -1045,10 +1095,10 @@ func RefreshUATIfNeeded(p *Profile, uat string) (string, error) {
 }
 
 // ResolveCredentials returns the credentials for the given mode. If an OAK
-// token (prefix "oak_") is stored in the keyring and no explicit override is
+// token (prefix "oak_") is stored in the keyring and no API key override is
 // active, it is preferred over the configured API key. For OAK tokens the
 // active context stored in the keyring sets both Stripe-Context and
-// Stripe-Livemode; the livemode parameter is used only for the legacy OIDC
+// Stripe-Livemode. The livemode parameter is used only for the legacy OIDC
 // fallback and plain API key path. If the active context's livemode differs
 // from the requested livemode, it returns an *ActiveContextLivemodeMismatchError.
 func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
@@ -1062,7 +1112,7 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			if err != nil {
 				return stripe.Credentials{}, err
 			}
-			ac, err := GetActiveContext()
+			ac, err := p.GetActiveContext()
 			if err != nil {
 				return stripe.Credentials{}, err
 			}

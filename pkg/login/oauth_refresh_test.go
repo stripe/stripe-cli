@@ -29,7 +29,7 @@ func TestRefreshOAuthToken_PreservesProfileMetadata(t *testing.T) {
 	cfg.Profile.UserID = "user_123"
 	require.NoError(t, cfg.Profile.CreateProfile())
 
-	require.NoError(t, config.KeyRing.Set(config.OAuthRefreshTokenKeychainKey, []byte("oart_old_refresh"), "test"))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.OAuthRefreshTokenKeychainKey), []byte("oart_old_refresh"), "test"))
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

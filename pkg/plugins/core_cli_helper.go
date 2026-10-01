@@ -645,7 +645,7 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	// Same as `stripe login --new-session`: revoke any existing OAuth session before starting a
 	// new one, so this works even if the stored credential is expired or revoked.
 	if uat, _ := cfg.Profile.GetUAT(); strings.HasPrefix(uat, "oak_") {
-		if err := loginRevokeToken(ctx, accessBaseURL); err != nil {
+		if err := loginRevokeToken(ctx, accessBaseURL, &cfg.Profile); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: token revocation failed: %s\n", err)
 		}
 	}
@@ -658,7 +658,7 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	}
 
 	livemode := false
-	if ac, _ := config.GetActiveContext(); ac != nil {
+	if ac, _ := cfg.Profile.GetActiveContext(); ac != nil {
 		livemode = ac.Livemode
 	}
 	return cfg.Profile.AccountID, cfg.Profile.DisplayName, livemode, true, nil

@@ -45,5 +45,5 @@ func (rc *reauthCmd) runReauthCmd(cmd *cobra.Command, args []string) error {
 	if !strings.HasPrefix(uat, "oak_") {
 		return errorcategory.Errorf(errorcategory.Auth, "reauth requires a valid session; run 'stripe login' to authenticate")
 	}
-	return login.Reauth(cmd.Context(), rc.accessBaseURL, uat)
+	return login.Reauth(cmd.Context(), rc.accessBaseURL, uat, &Config.Profile)
 }

@@ -591,7 +591,7 @@ func TestLoginSuccess(t *testing.T) {
 	})
 
 	var revokeCalled bool
-	loginRevokeToken = func(ctx context.Context, accessBaseURL string) error {
+	loginRevokeToken = func(ctx context.Context, accessBaseURL string, profile *config.Profile) error {
 		revokeCalled = true
 		return nil
 	}
@@ -604,7 +604,7 @@ func TestLoginSuccess(t *testing.T) {
 
 	config.KeyRing = keyring.NewMemoryStore(nil)
 	t.Cleanup(func() { config.KeyRing = nil })
-	require.NoError(t, config.SaveActiveContext("acct_123", true))
+	require.NoError(t, (&config.Profile{}).SaveActiveContext("acct_123", true))
 
 	coreCLIHelper := NewCoreCLIHelper(context.Background(), &config.Config{}, afero.NewMemMapFs(), "", "", "")
 	accountID, accountName, livemode, loggedIn, err := coreCLIHelper.Login(0)
@@ -626,7 +626,7 @@ func TestLoginRevokesExistingOAuthSession(t *testing.T) {
 	})
 
 	var revokeCalled bool
-	loginRevokeToken = func(ctx context.Context, accessBaseURL string) error {
+	loginRevokeToken = func(ctx context.Context, accessBaseURL string, profile *config.Profile) error {
 		revokeCalled = true
 		return nil
 	}

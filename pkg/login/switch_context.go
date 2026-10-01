@@ -76,7 +76,7 @@ func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, account
 
 func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode string) error {
 	livemode := mode == "live"
-	if err := config.SaveActiveContext(account.ID, livemode); err != nil {
+	if err := cfg.Profile.SaveActiveContext(account.ID, livemode); err != nil {
 		return err
 	}
 	// Preserve the existing UAT: writeProfile removes the keychain entry when UAT is empty.
@@ -147,9 +147,9 @@ func buildSwitchRows(accounts []config.AuthorizedAccount, activeID, activeMode s
 	return rows, nameW, idW
 }
 
-func newSwitchContextModel(accounts []config.AuthorizedAccount) switchContextModel {
+func newSwitchContextModel(accounts []config.AuthorizedAccount, profile *config.Profile) switchContextModel {
 	activeID, activeMode := "", "test"
-	if ac, _ := config.GetActiveContext(); ac != nil {
+	if ac, _ := profile.GetActiveContext(); ac != nil {
 		activeID = ac.AccountID
 		if ac.Livemode {
 			activeMode = "live"
@@ -266,7 +266,7 @@ func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount
 	if len(accounts) == 0 {
 		return nil, errorcategory.Errorf(errorcategory.Auth, "no authorized accounts found")
 	}
-	m := newSwitchContextModel(accounts)
+	m := newSwitchContextModel(accounts, &cfg.Profile)
 
 	final, err := tea.NewProgram(m).Run()
 	if err != nil {

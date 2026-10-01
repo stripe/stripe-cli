@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -350,6 +351,58 @@ func TestRemoveAuthFieldsWithDottedName(t *testing.T) {
 	v := viper.GetViper()
 	require.Empty(t, v.GetString("example.project.test_mode_api_key"))
 	require.Equal(t, "sk_test_sibling", v.GetString("example.test_mode_api_key"))
+}
+
+// TestRemoveAuthFieldsClearsOAuthSessionWithoutConfigEntry guards against a
+// regression where OAuth session keyring keys were only cleared when the
+// profile had a matching entry in the config file. A profile can have OAuth
+// session state (UAT, active context, etc.) in the keyring without ever
+// having been written to the config file, so the keyring keys must be
+// cleared unconditionally by profile name.
+func TestRemoveAuthFieldsClearsOAuthSessionWithoutConfigEntry(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	p := &Profile{ProfileName: "default"}
+	require.NoError(t, KeyRing.Set(p.KeyringKey(UATKeychainItemKey), []byte("oak_test"), ""))
+	require.NoError(t, p.SaveActiveContext("acct_123", true))
+	require.NoError(t, p.SaveUATExpiresAt(time.Now().Add(time.Hour)))
+
+	require.NoError(t, c.RemoveAuthFields("default"))
+
+	_, err := KeyRing.Get(p.KeyringKey(UATKeychainItemKey))
+	require.Error(t, err)
+	ac, err := p.GetActiveContext()
+	require.NoError(t, err)
+	require.Nil(t, ac)
+	_, err = p.GetUATExpiresAt()
+	require.Error(t, err)
+}
+
+// TestRemoveAuthFieldsDoesNotDisturbOtherProfilesOAuthSession verifies that
+// logging out of one profile leaves another profile's independent OAuth
+// session (UAT, active context) intact.
+func TestRemoveAuthFieldsDoesNotDisturbOtherProfilesOAuthSession(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	work := Profile{ProfileName: "work", DisplayName: "Work", AccountID: "acct_work"}
+	require.NoError(t, work.CreateProfile())
+	personal := Profile{ProfileName: "personal", DisplayName: "Personal", AccountID: "acct_personal"}
+	require.NoError(t, personal.CreateProfile())
+
+	require.NoError(t, work.SaveActiveContext("acct_work", true))
+	require.NoError(t, personal.SaveActiveContext("acct_personal", false))
+
+	require.NoError(t, c.RemoveAuthFields("work"))
+
+	workCtx, err := work.GetActiveContext()
+	require.NoError(t, err)
+	require.Nil(t, workCtx, "work's active context should be cleared")
+
+	personalCtx, err := personal.GetActiveContext()
+	require.NoError(t, err)
+	require.Equal(t, "acct_personal", personalCtx.AccountID)
 }
 
 func TestSwitchProfile(t *testing.T) {
