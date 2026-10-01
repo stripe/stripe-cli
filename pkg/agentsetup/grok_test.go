@@ -35,7 +35,7 @@ func TestGrok_PluginMissing(t *testing.T) {
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
 	require.Equal(t,
-		Plan{Action: ActionInstall, Command: []string{"grok", "plugin", "install", GrokPluginName, "--trust"}},
+		Plan{Action: ActionInstall, Commands: [][]string{{"grok", "plugin", "install", GrokPluginName, "--trust"}}},
 		provider.Plan(status, false))
 }
 
@@ -54,7 +54,7 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.Equal(t, "0.7.1", status.Plugin.Version)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"grok", "plugin", "update", GrokPluginName}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"grok", "plugin", "update", GrokPluginName}}}, provider.Plan(status, true))
 }
 
 func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
@@ -77,7 +77,7 @@ func TestGrokApply_RunsInstallCommand(t *testing.T) {
 	}
 	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
-	plan := Plan{Action: ActionInstall, Command: []string{"grok", "plugin", "install", GrokPluginName, "--trust"}}
+	plan := Plan{Action: ActionInstall, Commands: [][]string{{"grok", "plugin", "install", GrokPluginName, "--trust"}}}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)

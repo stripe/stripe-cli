@@ -78,7 +78,7 @@ func (p ClaudeProvider) Detect() Status {
 
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
 	name, args := p.installCommand()
-	installOrReinstallCommand := append([]string{name}, args...)
+	installOrReinstallCommand := [][]string{append([]string{name}, args...)}
 	return getPlanByStatus(status, force, installOrReinstallCommand, installOrReinstallCommand)
 }
 
@@ -88,11 +88,11 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 	if plan.Action == ActionNone {
 		return nil
 	}
-	if len(plan.Command) == 0 {
+	if len(plan.Commands) == 0 {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
-
-	name, installArgs := plan.Command[0], plan.Command[1:]
+	command := plan.Commands[0]
+	name, installArgs := command[0], command[1:]
 	if err := p.RunCommand(ctx, name, installArgs...); err == nil {
 		return nil
 	}

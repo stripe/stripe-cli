@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCursor_NotDetected(t *testing.T) {
+func TestManual_NotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
-	provider := NewCursorProvider(scanner, nil)
+	provider := NewCursorProvider(scanner)
 
 	status := provider.Detect()
 
@@ -19,7 +19,7 @@ func TestCursor_NotDetected(t *testing.T) {
 	require.Equal(t, StatusNotDetected, status.Status)
 }
 
-func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
+func TestManual_DetectedAlwaysUnknown(t *testing.T) {
 	provider := cursorTestProvider()
 
 	status := provider.Detect()
@@ -30,7 +30,7 @@ func TestCursor_DetectedAlwaysUnknown(t *testing.T) {
 	require.False(t, status.Plugin.Installed)
 }
 
-func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
+func TestManual_PlanManualWhenNotInstalled(t *testing.T) {
 	provider := cursorTestProvider()
 
 	status := provider.Detect()
@@ -40,9 +40,9 @@ func TestCursor_PlanManualWhenNotInstalled(t *testing.T) {
 	require.Contains(t, plan.Manual, "/add-plugin stripe")
 }
 
-func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
+func TestManual_PlanNoneWhenNotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
-	provider := NewCursorProvider(scanner, nil)
+	provider := NewCursorProvider(scanner)
 
 	status := provider.Detect()
 	plan := provider.Plan(status, false)
@@ -50,7 +50,7 @@ func TestCursor_PlanNoneWhenNotDetected(t *testing.T) {
 	require.Equal(t, ActionNone, plan.Action)
 }
 
-func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
+func TestManual_PlanNoneWhenInstalled(t *testing.T) {
 	provider := cursorTestProvider()
 
 	status := provider.Detect()
@@ -60,15 +60,7 @@ func TestCursor_PlanNoneWhenInstalled(t *testing.T) {
 	require.Equal(t, ActionNone, plan.Action)
 }
 
-func TestCursor_ErrorHintForTUIDisable(t *testing.T) {
-	provider := cursorTestProvider()
-
-	status := provider.Detect()
-
-	require.Contains(t, status.Error, "/add-plugin stripe")
-}
-
 func cursorTestProvider() Provider {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil }}
-	return NewCursorProvider(scanner, nil)
+	return NewCursorProvider(scanner)
 }

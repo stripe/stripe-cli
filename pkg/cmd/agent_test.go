@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -170,7 +171,7 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.False(t, result.Clients[0].Plugin.Installed)
 	require.Len(t, result.Actions, 1)
 	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
-	require.Equal(t, []string{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}, result.Actions[0].Command)
+	require.Equal(t, [][]string{{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}}, result.Actions[0].Commands)
 	require.Nil(t, result.Skills)
 }
 
@@ -325,17 +326,22 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 }
 
 func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
+	agentNames := []string{"claude", "codex", "openclaw", "grok"}
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) error {
-		installed = append(installed, name)
+		if slices.Contains(agentNames, name) {
+			installed = append(installed, name)
+		}
 		return nil
 	}
 
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
 	codex := codexMissingProvider(record)
+	openclaw := openclawMissingProvider(record)
+	grok := grokMissingProvider(record)
 
 	setup := testAgentSetupCmd()
-	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex}
+	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, codex.ID(): codex, openclaw.ID(): openclaw, grok.ID(): grok}
 	setup.callingAgent = func() string { return "" } // no agent -> install all detected
 	setup.cmd.SetContext(context.Background())
 
@@ -343,10 +349,12 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"claude", "codex"}, installed)
+	require.ElementsMatch(t, []string{"claude", "codex", "openclaw", "grok"}, installed)
 	require.Contains(t, output, "Claude Code")
 	require.Contains(t, output, "Codex CLI")
-	require.Contains(t, output, "2 installed, 0 updated, 0 skipped, 0 errors")
+	require.Contains(t, output, "OpenClaw")
+	require.Contains(t, output, "Grok")
+	require.Contains(t, output, "4 installed, 0 updated, 0 skipped, 0 errors")
 }
 
 func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
@@ -416,13 +424,27 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 			agent:        "grok",
 			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return grokMissingProvider(record) },
 		},
+		{
+			name:         "openclaw",
+			displayName:  "OpenClaw",
+			agent:        "openclaw",
+			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(record) },
+		},
 	}
+
+	var agentNames []string
+	for _, a := range callingAgents {
+		agentNames = append(agentNames, a.agent)
+	}
+	agentNames = append(agentNames, "claude")
 
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
 			record := func(_ context.Context, name string, args ...string) error {
-				installedAgents = append(installedAgents, name)
+				if slices.Contains(agentNames, name) {
+					installedAgents = append(installedAgents, name)
+				}
 				return nil
 			}
 
@@ -521,6 +543,21 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 	}
 }
 
+func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
+	return agentsetup.OpenclawProvider{
+		ProviderConfig: agentsetup.ProviderConfig{
+			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil }},
+			Client:      agentsetup.ClientOpenclaw,
+			BinaryName:  agentsetup.OpenclawBinaryName,
+			DisplayName: agentsetup.OpenclawDisplayName,
+			RunCommand:  record,
+			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+				return []byte(`[]`), nil
+			},
+		},
+	}
+}
+
 func TestAgentSetupUnsupportedAgentInstallsSkillsToLocal(t *testing.T) {
 	var gotDir string
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
@@ -551,7 +588,7 @@ func TestAgentSetupCursorIsSkippedNotInstalled(t *testing.T) {
 	// Cursor detected but plugin not installed — shows manual step hint.
 	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/cursor", nil },
-	}, nil)
+	})
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{cursor.ID(): cursor}
@@ -571,7 +608,7 @@ func TestAgentSetupStatusHidesUndetectedClients(t *testing.T) {
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), nil)
 	cursor := agentsetup.NewCursorProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "", errors.New("not found") },
-	}, nil)
+	})
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude, cursor.ID(): cursor}
