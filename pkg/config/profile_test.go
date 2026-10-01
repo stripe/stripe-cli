@@ -619,43 +619,6 @@ func TestResolveCredentialsOAKLivemodeMismatchReturnsTypedError(t *testing.T) {
 	require.Equal(t, "oak_live_1234567890", creds.Token)
 }
 
-func TestResolveCredentialsContextOverrideIgnoresActiveContext(t *testing.T) {
-	profilesFile := filepath.Join(t.TempDir(), "config.toml")
-	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))
-	activeCtxJSON, err := json.Marshal(ActiveContext{AccountID: "acct_active", Livemode: false})
-	require.NoError(t, err)
-	KeyRing = keyring.NewMemoryStore(map[string][]byte{
-		UATKeychainItemKey:            []byte("oak_live_1234567890"),
-		OAuthActiveContextKeychainKey: activeCtxJSON,
-	})
-	t.Cleanup(func() {
-		KeyRing = nil
-		viper.Reset()
-	})
-	(&Config{LogLevel: "info", ProfilesFile: profilesFile}).InitConfig()
-
-	p := Profile{ProfileName: "default", ContextOverride: "acct_override"}
-
-	// Livemode true would mismatch the persisted active context (test mode),
-	// but the override bypasses that check entirely.
-	creds, err := p.ResolveCredentials(true)
-	require.NoError(t, err)
-	require.Equal(t, "oak_live_1234567890", creds.Token)
-	require.Equal(t, "acct_override", creds.OAKContext)
-	require.NotNil(t, creds.OAKLivemode)
-	require.True(t, *creds.OAKLivemode)
-}
-
-func TestGetContextOverridePrefersFlagOverEnv(t *testing.T) {
-	t.Setenv("STRIPE_CONTEXT", "acct_from_env")
-
-	p := Profile{}
-	require.Equal(t, "acct_from_env", p.GetContextOverride())
-
-	p.ContextOverride = "acct_from_flag"
-	require.Equal(t, "acct_from_flag", p.GetContextOverride())
-}
-
 func TestResolveCredentialsForAnyModeRetriesOnLivemodeMismatch(t *testing.T) {
 	profilesFile := filepath.Join(t.TempDir(), "config.toml")
 	require.NoError(t, os.WriteFile(profilesFile, []byte{}, 0600))

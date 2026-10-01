@@ -27,7 +27,6 @@ type whoamiCmd struct {
 	cmd           *cobra.Command
 	profile       *config.Profile
 	format        string
-	livemode      bool
 	accessBaseURL string
 	apiBaseURL    string
 }
@@ -81,13 +80,11 @@ Exit codes:
   1  Not authenticated, or an error occurred`,
 		Example: `stripe whoami
   stripe whoami --format json
-  stripe whoami --project-name myproject --format json
-  stripe whoami --context acct_123 --live`,
+  stripe whoami --project-name myproject --format json`,
 		RunE: wc.runWhoamiCmd,
 	}
 
 	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
-	wc.cmd.Flags().BoolVar(&wc.livemode, "live", false, "Used with --context to report that account's live mode context instead of its sandbox (default: sandbox)")
 	wc.cmd.Flags().StringVar(&wc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	wc.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
 	wc.cmd.Flags().StringVar(&wc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -160,7 +157,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
-	ac, err := resolveWhoamiActiveContext(wc.profile, accounts, wc.livemode)
+	ac, err := wc.profile.GetActiveContext()
 	if err != nil {
 		return err
 	}
@@ -209,46 +206,6 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 	fmt.Fprintln(w, "Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
 	return nil
-}
-
-// resolveWhoamiActiveContext returns the context whoami should report on: the
-// --context/STRIPE_CONTEXT override (validated against accounts, paired with
-// the --live flag) when set, otherwise the persisted active context from
-// 'stripe switch'.
-func resolveWhoamiActiveContext(profile *config.Profile, accounts []config.AuthorizedAccount, livemode bool) (*config.ActiveContext, error) {
-	override := profile.GetContextOverride()
-	if override == "" {
-		return profile.GetActiveContext()
-	}
-
-	mode := modeString(livemode)
-	for _, a := range accounts {
-		if a.ID != override {
-			continue
-		}
-		if len(a.Modes) > 0 && !containsMode(a.Modes, mode) {
-			return nil, errorcategory.UserInputErrorf("the account %q from --context/STRIPE_CONTEXT isn't authorized for %s mode. Run 'stripe whoami' without --context to see its available modes.", override, mode)
-		}
-		return &config.ActiveContext{AccountID: override, Livemode: livemode}, nil
-	}
-
-	return nil, errorcategory.UserInputErrorf("the account %q from --context/STRIPE_CONTEXT isn't among your authorized accounts. Run 'stripe whoami' to list them, or 'stripe login' to authorize it.", override)
-}
-
-func modeString(livemode bool) string {
-	if livemode {
-		return "live"
-	}
-	return "test"
-}
-
-func containsMode(modes []string, mode string) bool {
-	for _, m := range modes {
-		if m == mode {
-			return true
-		}
-	}
-	return false
 }
 
 // buildOAuthWhoamiOutput assembles the OAuth whoami JSON output. It's a pure

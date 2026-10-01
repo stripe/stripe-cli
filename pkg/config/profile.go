@@ -71,23 +71,6 @@ type Profile struct {
 	// OAuthAccessBaseURL is the access-srv base URL to use for token refresh
 	// and revocation. Set at startup from the --access-base flag; not persisted.
 	OAuthAccessBaseURL string
-
-	// ContextOverride is the account ID to use for this invocation only,
-	// overriding (without changing) the active OAuth context set by
-	// `stripe switch`. Set at startup from the --context flag; not persisted.
-	// Read it via GetContextOverride, which also checks STRIPE_CONTEXT.
-	ContextOverride string
-}
-
-// GetContextOverride returns the account ID to target for this invocation
-// only, from the --context flag or the STRIPE_CONTEXT environment variable
-// (flag takes precedence), or "" if neither is set. This never touches the
-// active context persisted by `stripe switch`.
-func (p *Profile) GetContextOverride() string {
-	if p.ContextOverride != "" {
-		return p.ContextOverride
-	}
-	return os.Getenv("STRIPE_CONTEXT")
 }
 
 // KeyringKey returns the keyring key to use for the given base OAuth session
@@ -1001,14 +984,6 @@ func (p *Profile) PrintActiveContextBanner() {
 			return
 		}
 		color := ansi.Color(os.Stderr)
-		if override := p.GetContextOverride(); override != "" {
-			// Deliberately doesn't look up a display name for the override: doing so
-			// would require a network call, and reusing p.GetDisplayName() here would
-			// reintroduce the exact name/ID mismatch (issue #2085) this banner exists
-			// to avoid, since that name belongs to the active context, not override.
-			fmt.Fprintf(os.Stderr, "%s Running against %s (--context override; active context unchanged)\n", color.Faint("▸"), override)
-			return
-		}
 		ac, _ := p.GetActiveContext()
 		if ac == nil {
 			return
@@ -1104,12 +1079,9 @@ func RefreshUATIfNeeded(p *Profile, uat string) (string, error) {
 // token (prefix "oak_") is stored in the keyring and no API key override is
 // active, it is preferred over the configured API key. For OAK tokens the
 // active context stored in the keyring sets both Stripe-Context and
-// Stripe-Livemode, unless GetContextOverride() returns a non-empty account ID
-// (from --context/STRIPE_CONTEXT), in which case that account is used instead
-// for this call only, paired with the requested livemode. The livemode
-// parameter is used only for the legacy OIDC fallback and plain API key path.
-// If the active context's livemode differs from the requested livemode, it
-// returns an *ActiveContextLivemodeMismatchError.
+// Stripe-Livemode. The livemode parameter is used only for the legacy OIDC
+// fallback and plain API key path. If the active context's livemode differs
+// from the requested livemode, it returns an *ActiveContextLivemodeMismatchError.
 func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) {
 	if !p.HasOverrideAPIKey() {
 		uat, err := p.GetUAT()
@@ -1120,13 +1092,6 @@ func (p *Profile) ResolveCredentials(livemode bool) (stripe.Credentials, error) 
 			uat, err = RefreshUATIfNeeded(p, uat)
 			if err != nil {
 				return stripe.Credentials{}, err
-			}
-			if override := p.GetContextOverride(); override != "" {
-				// The override targets this invocation only: it doesn't check
-				// against the persisted active context's livemode (there isn't
-				// one for an account that was never switched to), and it doesn't
-				// touch the keyring, so `stripe switch`'s state is unaffected.
-				return stripe.NewOAKCredentials(uat, override, livemode), nil
 			}
 			ac, err := p.GetActiveContext()
 			if err != nil {
