@@ -28,9 +28,8 @@ type ReadDirFunc func(string) ([]os.DirEntry, error)
 // StatFunc matches os.Stat and exists to make file existence checks testable.
 type StatFunc func(string) (os.FileInfo, error)
 
-// RunCommandFunc runs a command and returns its standard output. The production
-// implementation captures output silently and returns a concise error on
-// failure.
+// RunCommandFunc runs a command and returns its standard output and a concise error
+// upon failure
 type RunCommandFunc func(context.Context, string, ...string) ([]byte, error)
 
 // RunOutputFunc runs a command and returns its standard output. It exists so
