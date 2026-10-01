@@ -413,6 +413,40 @@ func TestRunOperationCmd_DryRunParity_V2(t *testing.T) {
 	require.NotContains(t, dryOut.DryRun.URL, "?")
 }
 
+func TestFormatURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   string
+		params []string
+		want   string
+	}{
+		{
+			name:   "normal ID",
+			path:   "/v1/widgets/{id}",
+			params: []string{"widget_123"},
+			want:   "/v1/widgets/widget_123",
+		},
+		{
+			name:   "slashes and traversal sequence",
+			path:   "/v1/widgets/{id}",
+			params: []string{"widget_123/../../other/value"},
+			want:   "/v1/widgets/widget_123%2F..%2F..%2Fother%2Fvalue",
+		},
+		{
+			name:   "multiple parameters",
+			path:   "/v1/widgets/{widget}/parts/{part}",
+			params: []string{"widget/123", "part/../456"},
+			want:   "/v1/widgets/widget%2F123/parts/part%2F..%2F456",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, formatURL(tt.path, tt.params))
+		})
+	}
+}
+
 func TestConstructParamFromDot(t *testing.T) {
 	param := constructParamFromDot("shipping.address.line1")
 	require.Equal(t, "shipping[address][line1]", param)
