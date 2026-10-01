@@ -10,12 +10,12 @@ import (
 
 func TestGrok_NotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
-	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+	runCommand := func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("plugin list should not run when Grok is not detected")
 		return nil, nil
 	}
 	provider := NewGrokProvider(scanner, nil).(GrokProvider)
-	provider.RunOutput = runOutput
+	provider.RunCommand = runCommand
 
 	status := provider.Detect()
 
@@ -70,10 +70,10 @@ func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
 func TestGrokApply_RunsInstallCommand(t *testing.T) {
 	var gotName string
 	var gotArgs []string
-	runCommand := func(_ context.Context, name string, args ...string) error {
+	runCommand := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		gotName = name
 		gotArgs = args
-		return nil
+		return nil, nil
 	}
 	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
@@ -86,9 +86,9 @@ func TestGrokApply_RunsInstallCommand(t *testing.T) {
 }
 
 func TestGrokApply_NoneIsNoop(t *testing.T) {
-	runCommand := func(context.Context, string, ...string) error {
+	runCommand := func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("RunCommand should not run for ActionNone")
-		return nil
+		return nil, nil
 	}
 	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
 
@@ -97,15 +97,15 @@ func TestGrokApply_NoneIsNoop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func grokTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) GrokProvider {
+func grokTestProvider(listOutput string, listErr error, install RunCommandFunc) GrokProvider {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}
-	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+	runCommand := func(context.Context, string, ...string) ([]byte, error) {
 		if listErr != nil {
 			return nil, listErr
 		}
 		return []byte(listOutput), nil
 	}
-	provider := NewGrokProvider(scanner, runCommand).(GrokProvider)
-	provider.RunOutput = runOutput
+	provider := NewGrokProvider(scanner, install).(GrokProvider)
+	provider.RunCommand = runCommand
 	return provider
 }

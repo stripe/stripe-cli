@@ -37,7 +37,6 @@ type ProviderConfig struct {
 	BinaryName  string
 	DisplayName string
 	RunCommand  RunCommandFunc
-	RunOutput   RunOutputFunc
 }
 
 // DefaultProviders returns production setup providers keyed by client id.

@@ -36,7 +36,6 @@ func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 			BinaryName:  GrokBinaryName,
 			DisplayName: GrokDisplayName,
 			RunCommand:  runCommand,
-			RunOutput:   runCommandOutput,
 		},
 	}
 }
@@ -75,11 +74,11 @@ func (p GrokProvider) Detect() Status {
 // Stripe plugin is installed. When the command fails (e.g. an old Grok
 // version without plugin support), supportsPlugins is false.
 func (p GrokProvider) stripePluginStatus(ctx context.Context) (plugin grokInstalledPlugin, installed bool, supportsPlugins bool) {
-	runOutput := p.RunOutput
-	if runOutput == nil {
-		runOutput = runCommandOutput
+	runCommand := p.RunCommand
+	if runCommand == nil {
+		runCommand = RunCommand
 	}
-	out, err := runOutput(ctx, p.BinaryName, "plugin", "list", "--json")
+	out, err := runCommand(ctx, p.BinaryName, "plugin", "list", "--json")
 	if err != nil {
 		return grokInstalledPlugin{}, false, false
 	}
@@ -140,5 +139,6 @@ func (p GrokProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
 	command := plan.Commands[0]
-	return p.RunCommand(ctx, command[0], command[1:]...)
+	_, err := p.RunCommand(ctx, command[0], command[1:]...)
+	return err
 }

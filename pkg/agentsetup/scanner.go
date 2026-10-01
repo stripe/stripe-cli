@@ -2,6 +2,7 @@ package agentsetup
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -27,9 +28,10 @@ type ReadDirFunc func(string) ([]os.DirEntry, error)
 // StatFunc matches os.Stat and exists to make file existence checks testable.
 type StatFunc func(string) (os.FileInfo, error)
 
-// RunCommandFunc runs a command. The production implementation captures output
-// silently and returns a concise error on failure.
-type RunCommandFunc func(context.Context, string, ...string) error
+// RunCommandFunc runs a command and returns its standard output. The production
+// implementation captures output silently and returns a concise error on
+// failure.
+type RunCommandFunc func(context.Context, string, ...string) ([]byte, error)
 
 // RunOutputFunc runs a command and returns its standard output. It exists so
 // Codex detection (which shells out to `codex plugin list --json`) is testable.
@@ -80,19 +82,29 @@ func (s Scanner) withDefaults() Scanner {
 	return s
 }
 
-// RunCommand runs a command silently. Plugin installs run behind a spinner, so
-// streaming subprocess stdio to the terminal would interleave with our animation.
-// On failure, return a single line from the subprocess output.
-func RunCommand(ctx context.Context, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-	out, err := cmd.CombinedOutput()
+// RunCommand runs a command silently and returns its standard output. Plugin
+// installs run behind a spinner, so streaming subprocess stdio to the terminal
+// would interleave with our animation.
+func RunCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
+	out, err := exec.CommandContext(ctx, name, args...).Output()
 	if err == nil {
-		return nil
+		return out, nil
 	}
-	if msg := errorFromOutput(out); msg != "" {
-		return errorcategory.New(errorcategory.Internal, msg)
+	// In cases where the process never started (eg. binary wasn't found), the fallback should be to treat
+	// output as the error message.
+	stderr := out
+
+	// If a process exits with a non-zero exit code, Output() returns a pointer to a struct that
+	// hosts the actual error. Unwrap this pointer in order to get the error message.
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		stderr = exitErr.Stderr
 	}
-	return err
+	if msg := errorFromOutput(stderr); msg != "" {
+		return out, errorcategory.New(errorcategory.Internal, msg)
+	}
+
+	return out, err
 }
 
 // RunCommandOutput runs a command and returns its standard output.
