@@ -8,6 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ---------------------------------------------------------------------------
+// Tests from fish-completion branch (preserved)
+// ---------------------------------------------------------------------------
+
 func TestDetectShell(t *testing.T) {
 	tests := []struct {
 		name     string
