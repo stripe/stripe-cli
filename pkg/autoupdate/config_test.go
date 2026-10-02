@@ -56,10 +56,10 @@ func TestIsOptedOut_Config(t *testing.T) {
 	}
 }
 
-func TestIsCurlInstall_EnvOverride(t *testing.T) {
-	t.Setenv("STRIPE_INSTALL_METHOD", "curl")
-	assert.True(t, IsCurlInstall())
+func TestIsScriptInstall_EnvOverride(t *testing.T) {
+	t.Setenv("STRIPE_INSTALL_METHOD", "script")
+	assert.True(t, IsScriptInstall())
 
 	t.Setenv("STRIPE_INSTALL_METHOD", "homebrew")
-	assert.False(t, IsCurlInstall())
+	assert.False(t, IsScriptInstall())
 }
