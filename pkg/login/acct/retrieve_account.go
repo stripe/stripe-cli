@@ -9,7 +9,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
-// Account is the most outer layer of the json response from Stripe
+// Account is the outermost layer of the json response from Stripe
 type Account struct {
 	ID       string   `json:"id"`
 	Settings Settings `json:"settings"`
