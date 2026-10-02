@@ -63,8 +63,7 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"resources": "resources",
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
-			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
-			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
+			"  Run `stripe agent setup` to install or update the Stripe plugin.\n" +
 			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to install, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
