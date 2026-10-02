@@ -34,7 +34,7 @@ func getPlanByStatus(status Status, force bool, installCommands [][]string, rein
 	case !status.Detected:
 		return Plan{Action: ActionNone}
 	case status.Plugin.Installed && force:
-		return Plan{Action: ActionReinstall, Commands: reinstallCommands}
+		return Plan{Action: ActionUpdate, Commands: reinstallCommands}
 	case status.Plugin.Installed:
 		return Plan{Action: ActionNone}
 	default:

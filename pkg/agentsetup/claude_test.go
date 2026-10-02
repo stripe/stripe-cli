@@ -27,7 +27,7 @@ func TestClaude_DetectedNoPluginSupport(t *testing.T) {
 		return nil, errors.New("unknown command")
 	}
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunOutput = runOutput
+	provider.RunCommand = runOutput
 
 	status := provider.Detect()
 
@@ -40,7 +40,7 @@ func TestClaude_DetectedPluginMissing(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
 	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`[]`), nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunOutput = runOutput
+	provider.RunCommand = runOutput
 
 	status := provider.Detect()
 
@@ -57,7 +57,7 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
 	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunOutput = runOutput
+	provider.RunCommand = runOutput
 
 	status := provider.Detect()
 
@@ -67,14 +67,14 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	require.Equal(t, "2.4.1", status.Plugin.Version)
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"claude", "plugin", "install", "stripe@claude-plugins-official"}}}, provider.Plan(status, true))
 }
 
 func TestClaude_MalformedJSON(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
 	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`{nope`), nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunOutput = runOutput
+	provider.RunCommand = runOutput
 
 	status := provider.Detect()
 
@@ -89,7 +89,7 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
 	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunOutput = runOutput
+	provider.RunCommand = runOutput
 
 	status := provider.Detect()
 
@@ -101,13 +101,13 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 	installErr := errors.New("stale marketplace")
 	var calls [][]string
-	runCommand := func(_ context.Context, name string, args ...string) error {
+	runCommand := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		call := append([]string{name}, args...)
 		calls = append(calls, call)
 		if len(calls) == 1 {
-			return installErr
+			return nil, installErr
 		}
-		return nil
+		return nil, nil
 	}
 	provider := NewClaudeProvider(Scanner{}, runCommand)
 	plan := Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", TargetClaudePlugin}}}

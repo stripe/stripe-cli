@@ -39,7 +39,6 @@ func NewClaudeProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 			BinaryName:  ClaudeBinaryName,
 			DisplayName: ClaudeDisplayName,
 			RunCommand:  runCommand,
-			RunOutput:   runCommandOutput,
 		},
 	}
 }
@@ -93,26 +92,27 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 	}
 	command := plan.Commands[0]
 	name, installArgs := command[0], command[1:]
-	if err := p.RunCommand(ctx, name, installArgs...); err == nil {
+	if _, err := p.RunCommand(ctx, name, installArgs...); err == nil {
 		return nil
 	}
 
 	updateName, updateArgs := p.marketplaceUpdateCommand()
-	if updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
+	if _, updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
 		return updateErr
 	}
-	return p.RunCommand(ctx, name, installArgs...)
+	_, err := p.RunCommand(ctx, name, installArgs...)
+	return err
 }
 
 // stripePluginStatus runs `claude plugin list --json` and reports whether the
 // Stripe plugin is installed. When the command fails (e.g. old Claude version
 // without plugin support), supportsPlugins is false.
 func (p ClaudeProvider) stripePluginStatus(ctx context.Context) (id, version, scope string, installed bool, supportsPlugins bool) {
-	runOutput := p.RunOutput
-	if runOutput == nil {
-		runOutput = runCommandOutput
+	runCommand := p.RunCommand
+	if runCommand == nil {
+		runCommand = RunCommand
 	}
-	out, err := runOutput(ctx, p.BinaryName, "plugin", "list", "--json")
+	out, err := runCommand(ctx, p.BinaryName, "plugin", "list", "--json")
 	if err != nil {
 		return "", "", "", false, false
 	}
