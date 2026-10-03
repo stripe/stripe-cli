@@ -18,7 +18,11 @@ func deprecatedCommandMessage(command string) string {
 	return fmt.Sprintf("The `%s` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.", command)
 }
 
-func newDeprecatedCommand(use, message string) *cobra.Command {
+func newDeprecatedCommand(use, command string) *cobra.Command {
+	return newRemovedCommand(use, deprecatedCommandMessage(command))
+}
+
+func newRemovedCommand(use, message string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                use,
 		Hidden:             true,
@@ -42,21 +46,21 @@ func newDeprecatedCommand(use, message string) *cobra.Command {
 }
 
 func newSamplesCmd() *cobra.Command {
-	return newDeprecatedCommand("samples", deprecatedCommandMessage("stripe samples"))
+	return newDeprecatedCommand("samples", "stripe samples")
 }
 
 func newServeCmd() *cobra.Command {
-	cmd := newDeprecatedCommand("serve", deprecatedCommandMessage("stripe serve"))
+	cmd := newDeprecatedCommand("serve", "stripe serve")
 	cmd.Aliases = []string{"srv"}
 	return cmd
 }
 
 func newStatusCmd() *cobra.Command {
-	return newDeprecatedCommand("status", deprecatedCommandMessage("stripe status"))
+	return newDeprecatedCommand("status", "stripe status")
 }
 
 func newTerminalQuickstartCmd() *cobra.Command {
-	return newDeprecatedCommand("quickstart", "The `stripe terminal quickstart` command has been removed. It only supported the deprecated Verifone P400 reader.\n\n"+
+	return newRemovedCommand("quickstart", "The `stripe terminal quickstart` command has been removed. It only supported the deprecated Verifone P400 reader.\n\n"+
 		"To test your Terminal integration with a simulated reader, see:\n"+
 		"https://docs.stripe.com/terminal/payments/connect-reader")
 }
