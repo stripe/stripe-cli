@@ -199,7 +199,7 @@ func Execute(ctx context.Context) {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case errors.Is(err, errCommandRemoved):
-			// the shim already printed the downgrade guidance; just exit non-zero
+			// the shim already printed the removal guidance; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isMorePermissionsRequiredError(err):
@@ -374,6 +374,9 @@ func init() {
 	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
+	if terminalCmd, ok := cmdutil.FindSubCmd(rootCmd, "terminal"); ok {
+		terminalCmd.AddCommand(newTerminalQuickstartCmd())
+	}
 	registerHTTPCmds(rootCmd)
 	err := resource.AddDatabasesCmd(rootCmd, &Config)
 	if err != nil {

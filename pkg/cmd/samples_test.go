@@ -10,11 +10,18 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 )
 
+const expectedTerminalQuickstartRemovalMessage = "The `stripe terminal quickstart` command has been removed. It only supported the deprecated Verifone P400 reader.\n\n" +
+	"To test your Terminal integration with a simulated reader, see:\n" +
+	"https://docs.stripe.com/terminal/payments/connect-reader\n"
+
 func newRootWithDeprecatedCmds() *cobra.Command {
 	// Mirror the real root's silencing so the shims' output is what a user
 	// actually sees; without it cobra appends its own error and usage block.
 	root := &cobra.Command{Use: "stripe", SilenceUsage: true, SilenceErrors: true}
 	root.AddCommand(newSamplesCmd(), newServeCmd(), newStatusCmd())
+	terminalCmd := &cobra.Command{Use: "terminal"}
+	terminalCmd.AddCommand(newTerminalQuickstartCmd())
+	root.AddCommand(terminalCmd)
 	return root
 }
 
@@ -43,6 +50,16 @@ func TestDeprecatedCommands(t *testing.T) {
 			name:     "status",
 			args:     []string{"status"},
 			expected: "The `stripe status` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
+		},
+		{
+			name:     "terminal quickstart",
+			args:     []string{"terminal", "quickstart"},
+			expected: expectedTerminalQuickstartRemovalMessage,
+		},
+		{
+			name:     "terminal quickstart legacy flags",
+			args:     []string{"terminal", "quickstart", "--api-key", "sk_test_123"},
+			expected: expectedTerminalQuickstartRemovalMessage,
 		},
 	}
 
@@ -99,6 +116,21 @@ func TestDeprecatedCommandHelp(t *testing.T) {
 			args:     []string{"status", "--help"},
 			expected: "The `stripe status` command is no longer available in Stripe CLI v1.51.0 and later. To use it, install a version earlier than v1.51.0.\n",
 		},
+		{
+			name:     "terminal quickstart",
+			args:     []string{"help", "terminal", "quickstart"},
+			expected: expectedTerminalQuickstartRemovalMessage,
+		},
+		{
+			name:     "terminal quickstart help flag",
+			args:     []string{"terminal", "quickstart", "--help"},
+			expected: expectedTerminalQuickstartRemovalMessage,
+		},
+		{
+			name:     "terminal quickstart help shorthand",
+			args:     []string{"terminal", "quickstart", "-h"},
+			expected: expectedTerminalQuickstartRemovalMessage,
+		},
 	}
 
 	for _, tt := range tests {
@@ -120,6 +152,10 @@ func TestDeprecatedCommandsHidden(t *testing.T) {
 	require.NotContains(t, rootHelp, "samples")
 	require.NotContains(t, rootHelp, "serve")
 	require.NotContains(t, rootHelp, "status")
+
+	terminalHelp, err := executeCommand(root, "terminal", "--help")
+	require.NoError(t, err)
+	require.NotContains(t, terminalHelp, "quickstart")
 }
 
 // The tests above build their own root, so they can't catch the shims falling
@@ -130,6 +166,7 @@ func TestDeprecatedCommandsRegisteredOnRoot(t *testing.T) {
 		{"serve"},
 		{"srv"},
 		{"status"},
+		{"terminal", "quickstart"},
 	}
 
 	for _, path := range paths {
