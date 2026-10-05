@@ -198,17 +198,3 @@ func StatusCodeType(code string) error {
 
 	return nil
 }
-
-// OneDollar validates that a provided number is at least 100 (ie. 1 dollar)
-func OneDollar(number string) error {
-	num, err := strconv.Atoi(number)
-	if err != nil {
-		return errorcategory.Errorf(errorcategory.UserInput, "provided amount %v to charge should be an integer (eg. 100)", number)
-	}
-
-	if num >= 100 {
-		return nil
-	}
-
-	return errorcategory.Errorf(errorcategory.UserInput, "provided amount %v to charge is not at least 100", number)
-}
