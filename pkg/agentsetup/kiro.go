@@ -5,7 +5,7 @@ const (
 	ClientKiro            = "kiro"
 	KiroBinaryName        = "kiro-cli"
 	KiroDisplayName       = "Kiro"
-	KiroManualInstruction = "add plugin by visiting https://kiro.dev/launch/powers/add/?name=stripe"
+	KiroManualInstruction = "run /powers install stripe inside Kiro"
 )
 
 func NewKiroProvider(scanner Scanner) Provider {
