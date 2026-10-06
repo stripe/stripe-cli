@@ -55,6 +55,13 @@ type ResolvedPluginVersion struct {
 	// AutoUpdateDefault is the backend default from a live metadata response.
 	// Cached metadata leaves it false; explicit user settings take precedence.
 	AutoUpdateDefault bool
+	// MinPluginVersions holds the resolved release's declared minimum versions of
+	// peer plugins, from a live metadata response, keyed by plugin shortname. A
+	// resolution from cached metadata carries whatever the local plugin metadata
+	// recorded at install time, and nil when it recorded none — the behavior every
+	// release had before requirements existed. The same map rides on Plugin, which
+	// is what Install persists.
+	MinPluginVersions map[string]string
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -98,7 +105,7 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
-		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "")
+		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", nil)
 	}
 }
 
@@ -558,8 +565,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		}
 
 		return &ResolvedPluginVersion{
-			Plugin:  cachedPlugin,
-			Version: resolvedVersion,
+			Plugin:            cachedPlugin,
+			Version:           resolvedVersion,
+			MinPluginVersions: cachedPlugin.MinPluginVersions,
 		}, nil
 	}
 
@@ -606,8 +614,9 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		}
 
 		return &ResolvedPluginVersion{
-			Plugin:  cachedPlugin,
-			Version: version,
+			Plugin:            cachedPlugin,
+			Version:           version,
+			MinPluginVersions: cachedPlugin.MinPluginVersions,
 		}, nil
 	}
 
@@ -785,8 +794,9 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 	}
 
 	return &ResolvedPluginVersion{
-		Plugin:  cachedPlugin,
-		Version: version,
+		Plugin:            cachedPlugin,
+		Version:           version,
+		MinPluginVersions: cachedPlugin.MinPluginVersions,
 	}, nil
 }
 
@@ -868,12 +878,19 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		return nil, err
 	}
 
+	// Per-release peer requirements ride on the response, not the manifest, so the
+	// plugin that resolution hands around (and install persists) picks them up here.
+	// Set unconditionally: a release that declares none must not inherit requirements
+	// cached from whichever release was installed before.
+	plugin.MinPluginVersions = pluginMetadata.MinPluginVersions
+
 	return &ResolvedPluginVersion{
 		Plugin:            plugin,
 		Version:           resolvedVersion,
 		BinaryURL:         pluginMetadata.BinaryURL,
 		AutoInstall:       pluginMetadata.AutoInstall,
 		AutoUpdateDefault: pluginMetadata.AutoUpdateDefault,
+		MinPluginVersions: pluginMetadata.MinPluginVersions,
 	}, nil
 }
 

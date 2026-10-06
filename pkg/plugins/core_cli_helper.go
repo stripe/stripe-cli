@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
@@ -347,6 +348,12 @@ type coreCLIHelper struct {
 	apiBaseURL       string
 	dashboardBaseURL string
 	accessBaseURL    string
+
+	// callerPluginName is the shortname of the plugin this helper was dispensed to,
+	// empty when the helper was not created on behalf of a running plugin. It is
+	// what lets RunPeerPlugin enforce the minimum peer versions that plugin's
+	// installed release declared.
+	callerPluginName string
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
@@ -443,7 +450,18 @@ var (
 // NewCoreCLIHelper creates a new CoreCLIHelper with the given context, config, and filesystem.
 // apiBaseURL, dashboardBaseURL, and accessBaseURL should be empty unless the user explicitly
 // passed --api-base/--dashboard-base/--access-base to the CLI.
+//
+// A helper made this way belongs to no plugin, so RunPeerPlugin has no declared peer
+// requirements to enforce. Use NewCoreCLIHelperForPlugin for a helper that is handed
+// to a running plugin.
 func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL, accessBaseURL string) CoreCLIHelper {
+	return NewCoreCLIHelperForPlugin(ctx, cfg, fs, "", apiBaseURL, dashboardBaseURL, accessBaseURL)
+}
+
+// NewCoreCLIHelperForPlugin creates the CoreCLIHelper dispensed to a running plugin.
+// callerPluginName is that plugin's shortname; RunPeerPlugin uses it to look up the
+// minimum peer versions the plugin's installed release declared.
+func NewCoreCLIHelperForPlugin(ctx context.Context, cfg config.IConfig, fs afero.Fs, callerPluginName, apiBaseURL, dashboardBaseURL, accessBaseURL string) CoreCLIHelper {
 	return &coreCLIHelper{
 		ctx:              ctx,
 		config:           cfg,
@@ -451,6 +469,7 @@ func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs, apiB
 		apiBaseURL:       apiBaseURL,
 		dashboardBaseURL: dashboardBaseURL,
 		accessBaseURL:    accessBaseURL,
+		callerPluginName: callerPluginName,
 	}
 }
 
@@ -563,20 +582,131 @@ func credentialsResult(creds stripe.Credentials, err error) (string, string, boo
 // RunPeerPlugin looks up and runs the named plugin with the given arguments.
 // cwd sets the working directory for the plugin process; an empty string uses the current directory.
 //
-// This skips the auto-upgrade check. The user ran the calling plugin, not this one, and
-// is already waiting on it: interrupting its output to announce an upgrade of something
-// they did not name, and stalling it on the download, is not what they asked for. The
-// next time they run the peer directly, that run upgrades it.
+// This skips the optional auto-upgrade check. The user ran the calling plugin, not this
+// one, and is already waiting on it: interrupting its output to announce an upgrade of
+// something they did not name, and stalling it on the download, is not what they asked
+// for. The next time they run the peer directly, that run upgrades it.
+//
+// A minimum version the calling plugin's installed release declared for this peer is a
+// different matter: it is not an optional freshness check but a floor the caller says
+// it cannot work below, so a peer that is missing or too old is installed or upgraded
+// before it runs. A peer the caller declared nothing about runs exactly as it always
+// has. See ensurePeerPluginMinimumVersion.
 func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd string) error {
-	plugin, err := LookUpPlugin(h.ctx, h.config, h.fs, pluginName)
-	if err != nil {
-		return fmt.Errorf("peer plugin %q not found: %w", pluginName, err)
-	}
 	cfg, ok := h.config.(*config.Config)
 	if !ok {
 		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
-	return plugin.run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL, false)
+
+	installedPeer, lookupErr := LookUpPlugin(h.ctx, h.config, h.fs, pluginName)
+
+	// Enforcement runs before the lookup error is reported: a declared peer that was
+	// never installed is exactly the case it exists to repair.
+	peerToRun, err := h.ensurePeerPluginMinimumVersion(cfg, pluginName)
+	if err != nil {
+		return err
+	}
+	if peerToRun == nil {
+		if lookupErr != nil {
+			return fmt.Errorf("peer plugin %q not found: %w", pluginName, lookupErr)
+		}
+		peerToRun = &installedPeer
+	}
+
+	return peerToRun.run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL, false)
+}
+
+// Swappable for test injection.
+var (
+	peerPluginResolver  = ResolvePluginForUpgrade
+	peerPluginInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+		return resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL)
+	}
+)
+
+// ensurePeerPluginMinimumVersion enforces the minimum version the calling plugin's
+// installed release recorded for a peer. It returns the freshly installed plugin when
+// enforcement had to install or upgrade the peer — dispensing the new binary needs
+// that release's checksum, which only the fresh metadata carries — and nil when there
+// was nothing to enforce or the installed peer already satisfies the minimum. An error
+// means the peer cannot be brought up to the minimum and the caller must not run it.
+//
+// The minimum is a floor, not a pin: what gets installed is the newest release, which
+// is checked against the floor rather than matched to it.
+func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(cfg *config.Config, peerName string) (*Plugin, error) {
+	if h.callerPluginName == "" {
+		return nil, nil
+	}
+
+	// The caller's requirements were persisted with its local plugin metadata when it
+	// was installed. A caller installed before requirements were recorded has none,
+	// and metadata that cannot be read reports none, matching what it records.
+	caller, err := readLocalPluginMetadata(h.config, h.fs, h.callerPluginName)
+	if err != nil {
+		return nil, nil
+	}
+	minimum := caller.MinPluginVersions[peerName]
+	if minimum == "" {
+		return nil, nil
+	}
+
+	// A localdev CLI build runs every plugin at local.build.dev regardless of what is
+	// installed (see run), and that version satisfies every minimum.
+	if PluginsPath != "" {
+		return nil, nil
+	}
+
+	peer := &Plugin{Shortname: peerName}
+	installedVersion, err := peer.lookUpInstalledVersion(h.config, h.fs)
+	if err != nil {
+		installedVersion = ""
+	}
+	if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
+		return nil, nil
+	}
+
+	// Said before the download so the calling plugin's pause has a visible reason,
+	// and on stderr so it stays out of piped plugin output.
+	color := ansi.Color(os.Stderr)
+	fmt.Fprintln(os.Stderr, color.Faint(fmt.Sprintf(
+		"The %s plugin requires the %s plugin v%s or newer; installing the latest %s plugin...",
+		h.callerPluginName, peerName, minimum, peerName,
+	)).String())
+
+	apiBaseURL, dashboardBaseURL := resolveInstallBaseURLs(h.apiBaseURL, h.dashboardBaseURL)
+
+	resolved, err := peerPluginResolver(h.ctx, h.config, h.fs, peerName, apiBaseURL, dashboardBaseURL)
+	if err != nil {
+		return nil, peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion, err)
+	}
+	if !pluginVersionSatisfiesMinimum(resolved.Version, minimum) {
+		return nil, peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion,
+			errorcategory.Errorf(errorcategory.API, "the newest release available to this CLI is v%s", resolved.Version))
+	}
+	if err := peerPluginInstaller(h.ctx, resolved, cfg, h.fs, apiBaseURL, dashboardBaseURL); err != nil {
+		return nil, peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion, err)
+	}
+
+	// Best-effort, like every other install the user did not name. The user-passed
+	// base URL overrides are forwarded, same as they will be to the peer itself.
+	runPostInstallHook(h.ctx, cfg, h.fs, resolved.Plugin, resolved.Version, installedVersion, h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL)
+
+	return resolved.Plugin, nil
+}
+
+// peerMinimumVersionError reports a peer that could not be brought up to the minimum
+// the calling plugin declared. Categorized as user input because the actionable part
+// belongs to the user: install the peer themselves and rerun.
+func peerMinimumVersionError(callerName, peerName, minimum, installedVersion string, cause error) error {
+	installed := "none"
+	if installedVersion != "" {
+		installed = installedVersion
+	}
+
+	return errorcategory.With(fmt.Errorf(
+		"the %s plugin needs the %s plugin v%s or newer (installed: %s). Run `stripe plugin install %s`: %w",
+		callerName, peerName, minimum, installed, peerName, cause,
+	), errorcategory.UserInput)
 }
 
 // SwitchContext switches the active authorized account/mode context, the same way

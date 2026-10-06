@@ -54,6 +54,13 @@ type Plugin struct {
 	Releases         []Release     `toml:"Release" json:"releases"`
 	MagicCookieValue string        `toml:"MagicCookieValue" json:"magic_cookie_value,omitempty"`
 	Commands         []CommandInfo `toml:"Command,omitempty" json:"commands,omitempty"`
+	// MinPluginVersions holds the minimum versions of other plugins the installed
+	// release declares it needs, keyed by plugin shortname. It arrives on the
+	// plugin metadata response for a single resolved release — not in the manifest,
+	// which lists many releases — and is persisted in the local plugin metadata so
+	// RunPeerPlugin can enforce it without a network request. Plugins installed
+	// before this was recorded have none, which means no requirements to enforce.
+	MinPluginVersions map[string]string `toml:"MinPluginVersions,omitempty" json:"min_plugin_versions,omitempty"`
 	// Kept only for this invocation so the post-command hint can reuse the lookup.
 	autoUpgradeCheck *autoUpgradeCheckResult
 }
@@ -291,10 +298,19 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 
 // Install installs the plugin of the given version.
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string) error {
-	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false)
+	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false, nil)
 }
 
-func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
+// install downloads and persists one plugin version, after first installing any peer
+// plugins the release declares minimum versions for. installing tracks the plugins
+// already being installed up this call chain (nil at the entry point), so a dependency
+// cycle ends instead of recursing; see installPluginDependencies.
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, installing map[string]struct{}) error {
+	if installing == nil {
+		installing = map[string]struct{}{}
+	}
+	installing[p.Shortname] = struct{}{}
+
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
 
 	creds, _ := cfg.GetProfile().ResolveCredentialsForAnyMode(false)
@@ -346,6 +362,12 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 				return err
 			}
 
+			// The manifest in the response lists releases but not peer requirements;
+			// those ride on the response itself, for the one resolved release this
+			// install is about. Attached unconditionally so a release that declares
+			// none persists none, rather than inheriting whatever was on disk.
+			pluginFromMetadata.MinPluginVersions = pluginMetadata.MinPluginVersions
+
 			pluginToInstall = pluginFromMetadata
 			pluginDownloadURL = pluginMetadata.BinaryURL
 		}
@@ -357,6 +379,16 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 			return fmt.Errorf("could not resolve download URL for plugin '%s' v%s: failed to fetch plugin metadata: %w", p.Shortname, version, metadataLookupErr)
 		}
 		return errorcategory.Errorf(errorcategory.API, "could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
+	}
+
+	// Dependencies go in first, so a dependency that fails leaves this plugin exactly
+	// as it was: not installed, or still running its previous version.
+	if len(pluginToInstall.MinPluginVersions) > 0 {
+		ansi.StopSpinner(spinner, "", os.Stderr)
+		if err := installPluginDependencies(ctx, cfg, fs, pluginToInstall, apiBaseURL, dashboardBaseURL, installing); err != nil {
+			return err
+		}
+		spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
 	}
 
 	// Pull down bin, verify, and save to disk
@@ -773,7 +805,7 @@ func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
+		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelperForPlugin(ctx, config, fs, p.Shortname, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
 			return pluginReportedError{err}
 		}
 	default:
@@ -822,7 +854,7 @@ func (p *Plugin) PostInstall(ctx context.Context, config *config.Config, fs afer
 		return nil
 	}
 
-	return d.PostInstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, previousVersion, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL))
+	return d.PostInstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, previousVersion, NewCoreCLIHelperForPlugin(ctx, config, fs, p.Shortname, apiBaseURL, dashboardBaseURL, accessBaseURL))
 }
 
 // PreUninstall calls the plugin's PreUninstall hook for the currently installed version, if
@@ -847,5 +879,5 @@ func (p *Plugin) PreUninstall(ctx context.Context, config *config.Config, fs afe
 		return nil
 	}
 
-	return d.PreUninstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL))
+	return d.PreUninstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, NewCoreCLIHelperForPlugin(ctx, config, fs, p.Shortname, apiBaseURL, dashboardBaseURL, accessBaseURL))
 }
