@@ -56,14 +56,16 @@ func pluginVersionSatisfiesMinimum(installedVersion, minimum string) bool {
 // declared peer that is missing or below its minimum, it installs the newest
 // release of that peer — the minimum is a floor, not a pin.
 //
-// installing is the set of plugins already being installed up this call chain,
-// including the requester itself; a dependency found there is skipped, so a cycle
-// ends instead of recursing. The recursive install resolves each dependency's own
-// requirements the same way, so dependencies land transitively.
+// installing maps the plugins already being installed up this call chain,
+// including the requester itself, to the versions going in. A dependency found
+// there has its floor checked against that in-flight version rather than being
+// recursed into, so a cycle ends without waving the requirement through. The
+// recursive install resolves each dependency's own requirements the same way, so
+// dependencies land transitively.
 //
 // A failure names the dependency and leaves the requester uninstalled, since the
 // caller runs this before downloading the requester.
-func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero.Fs, requester *Plugin, apiBaseURL, dashboardBaseURL string, installing map[string]struct{}) error {
+func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero.Fs, requester *Plugin, apiBaseURL, dashboardBaseURL string, installing map[string]string) error {
 	dependencyNames := make([]string, 0, len(requester.MinPluginVersions))
 	for dependencyName := range requester.MinPluginVersions {
 		dependencyNames = append(dependencyNames, dependencyName)
@@ -79,8 +81,20 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 			continue
 		}
 
-		if _, alreadyInstalling := installing[dependencyName]; alreadyInstalling {
-			continue
+		// Already being installed somewhere up this call chain. Recursing would
+		// never end, but the version on its way in still has to clear this floor:
+		// a cycle is a reason to stop recursing, not permission to skip the
+		// requirement.
+		if inFlightVersion, alreadyInstalling := installing[dependencyName]; alreadyInstalling {
+			if pluginVersionSatisfiesMinimum(inFlightVersion, minimum) {
+				continue
+			}
+
+			return dependencyInstallError(requester.Shortname, dependencyName, errorcategory.Errorf(
+				errorcategory.API,
+				"v%s or newer is required, but v%s is already being installed by this same operation",
+				minimum, inFlightVersion,
+			))
 		}
 
 		if err := ValidatePluginShortname(dependencyName); err != nil {

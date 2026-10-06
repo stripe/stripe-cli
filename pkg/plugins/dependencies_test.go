@@ -305,6 +305,43 @@ func TestInstallResolvesDependencyCyclesWithoutRecursing(t *testing.T) {
 	require.True(t, env.installedBinaryExists(t, "parent", "1.0.0"))
 }
 
+func TestInstallFailsWhenACycleCannotMeetTheFloor(t *testing.T) {
+	// parent v1.0.0 is being installed, but child declares it needs parent v2.0.0.
+	// The cycle must stop the recursion without waving that requirement through.
+	env := setUpDependencyTest(t, []dependencyTestPlugin{
+		{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"child": "1.0.0"}},
+		{name: "child", releases: []dependencyTestRelease{{version: "1.0.0", body: "child-one"}}, minPeers: map[string]string{"parent": "2.0.0"}},
+	})
+
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not install the parent plugin, which the child plugin depends on")
+	require.Contains(t, err.Error(), "v2.0.0 or newer is required, but v1.0.0 is already being installed")
+
+	require.False(t, env.installedBinaryExists(t, "parent", "1.0.0"))
+	require.False(t, env.installedBinaryExists(t, "child", "1.0.0"))
+	require.Empty(t, env.config.GetInstalledPlugins())
+}
+
+func TestInstallReChecksAFloorForDependenciesInstalledEarlierInTheOperation(t *testing.T) {
+	// parent needs b (which installs c on its own, satisfied at v1.0.0) and then
+	// needs c itself at v5.0.0, which no release can meet. Having installed c for
+	// b earlier in the same operation must not exempt it from parent's own floor.
+	env := setUpDependencyTest(t, []dependencyTestPlugin{
+		{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"b": "1.0.0", "c": "5.0.0"}},
+		{name: "b", releases: []dependencyTestRelease{{version: "1.0.0", body: "b-one"}}, minPeers: map[string]string{"c": "1.0.0"}},
+		{name: "c", releases: []dependencyTestRelease{{version: "1.0.0", body: "c-one"}}},
+	})
+
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not install the c plugin, which the parent plugin depends on")
+	require.Contains(t, err.Error(), "v5.0.0 or newer is required")
+
+	require.Equal(t, []string{"c@1.0.0", "b@1.0.0"}, env.downloads)
+	require.False(t, env.installedBinaryExists(t, "parent", "1.0.0"))
+}
+
 func TestInstallNeverReplacesALocalDependencyBuild(t *testing.T) {
 	env := setUpDependencyTest(t, []dependencyTestPlugin{
 		{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"child": "99.0.0"}},
