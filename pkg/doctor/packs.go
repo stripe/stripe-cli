@@ -120,22 +120,6 @@ var ewcsSignals = PackSignals{
 	},
 }
 
-// dpmSignals is the DPM pack's declaration of what used to be hard-coded in
-// doctor.go: the delayed-notification events and legacy Card Element tokens.
-var dpmSignals = PackSignals{
-	WebhookEvents: []string{
-		"checkout.session.completed",
-		"checkout.session.async_payment_succeeded",
-		"checkout.session.async_payment_failed",
-	},
-	FrontendTokens: []FrontendToken{
-		{Token: "confirmCardPayment", Note: "legacy Card Element flow — dashboard-managed methods cannot render there"},
-		{Token: "createToken(", Note: "legacy Card Element flow — dashboard-managed methods cannot render there"},
-		{Token: "elements.create('card'", Note: "legacy Card Element flow — dashboard-managed methods cannot render there"},
-		{Token: `elements.create("card"`, Note: "legacy Card Element flow — dashboard-managed methods cannot render there"},
-	},
-}
-
 // ---------- flex: flexible payment features beta -> GA ----------
 //
 // Beta->GA migration (account-gated, not version-gated: IntroducedIn cannot
@@ -271,43 +255,7 @@ var elementsTriage = []TriageBranch{
 	},
 }
 
-var dpmRule = Rule{
-	ID:           "dpm/no-payment-method-types",
-	Severity:     "warn",
-	Action:       "remove",
-	IntroducedIn: "2023-08-16",
-	Message:      "Remove `payment_method_types` so payment methods are managed in the Dashboard.",
-	Docs:         "https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods",
-	// Below the cutoff, a bare PaymentIntent/SetupIntent defaults to
-	// card-only (verified live) — the doc's migration there is
-	// remove-and-replace, not remove. Checkout Sessions and Payment Links
-	// have no automatic_payment_methods parameter, so no companion there.
-	Companion: &Companion{
-		Param:     "automatic_payment_methods",
-		ForParam:  "payment_method_types",
-		Resources: []string{"payment_intents", "setup_intents"},
-	},
-	Match: []ParamMatch{{
-		Param: "payment_method_types",
-		Operations: []string{
-			"POST /v1/payment_intents",
-			"POST /v1/payment_intents/{intent}",
-			"POST /v1/payment_intents/{intent}/confirm",
-			"POST /v1/setup_intents",
-			"POST /v1/setup_intents/{intent}",
-			"POST /v1/checkout/sessions",
-			"POST /v1/payment_links",
-			"POST /v1/payment_links/{payment_link}",
-		},
-	}, {
-		Param: "payment_settings.payment_method_types",
-		Operations: []string{
-			"POST /v1/subscriptions",
-			"POST /v1/subscriptions/{subscription_exposed_id}",
-			"POST /v1/invoices",
-			"POST /v1/invoices/{invoice}",
-		},
-	}},
-}
+// dpmRule and dpmSignals are now defined in catalog.go, converted from the
+// embedded catalog/dpm.json entry.
 
 // ---------- Findings ----------

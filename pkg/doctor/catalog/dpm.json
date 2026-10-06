@@ -1,0 +1,61 @@
+{
+  "topic": "dpm",
+  "id": "dpm/no-payment-method-types",
+  "severity": "warn",
+  "checkFrom": "2023-08-16",
+  "checkUntil": null,
+  "docs": "https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods",
+  "message": "Your integration pins `payment_method_types`, so new payment methods you enable in the Dashboard won't show up at checkout.",
+  "action": "Remove `payment_method_types` and let the [Dashboard](https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods) manage payment methods",
+  "check": {
+    "kind": "paramUsage",
+    "match": [
+      {
+        "param": "payment_method_types",
+        "operations": [
+          "POST /v1/payment_intents",
+          "POST /v1/payment_intents/{intent}",
+          "POST /v1/payment_intents/{intent}/confirm",
+          "POST /v1/setup_intents",
+          "POST /v1/setup_intents/{intent}"
+        ],
+        "fix": {
+          "kind": "replaceParam",
+          "add": { "param": "automatic_payment_methods", "value": { "enabled": true } }
+        }
+      },
+      {
+        "param": "payment_method_types",
+        "operations": [
+          "POST /v1/checkout/sessions",
+          "POST /v1/payment_links",
+          "POST /v1/payment_links/{payment_link}"
+        ],
+        "fix": { "kind": "removeParam" }
+      },
+      {
+        "param": "payment_settings.payment_method_types",
+        "operations": [
+          "POST /v1/subscriptions",
+          "POST /v1/subscriptions/{subscription_exposed_id}",
+          "POST /v1/invoices",
+          "POST /v1/invoices/{invoice}"
+        ],
+        "fix": { "kind": "removeParam" }
+      }
+    ]
+  },
+  "signals": {
+    "webhookEvents": [
+      "checkout.session.completed",
+      "checkout.session.async_payment_succeeded",
+      "checkout.session.async_payment_failed"
+    ],
+    "frontendTokens": [
+      { "token": "confirmCardPayment", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" },
+      { "token": "createToken(", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" },
+      { "token": "elements.create('card'", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" },
+      { "token": "elements.create(\"card\"", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" }
+    ]
+  }
+}
