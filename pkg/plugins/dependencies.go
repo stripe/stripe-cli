@@ -10,6 +10,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // pluginVersionSatisfiesMinimum reports whether an installed plugin version meets
@@ -118,15 +119,48 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 		}
 
 		// Best-effort, like every other path that installs a plugin the user did
-		// not name. Base URL overrides are deliberately not forwarded: a plugin
-		// reads an empty value as "use your own default", and the resolved URLs
-		// here exist only because the metadata request needed a real host.
-		if realConfig, isRealConfig := cfg.(*config.Config); isRealConfig {
-			runPostInstallHook(ctx, realConfig, fs, resolved.Plugin, resolved.Version, installedVersion, "", "", "")
-		}
+		// not name. The hook gets the user's overrides back out of the resolved
+		// URLs install runs on; see hookBaseURLOverrides.
+		hookAPIBaseURL, hookDashboardBaseURL := hookBaseURLOverrides(apiBaseURL, dashboardBaseURL)
+		dependencyPostInstall(ctx, cfg, fs, resolved.Plugin, resolved.Version, installedVersion, hookAPIBaseURL, hookDashboardBaseURL, "")
 	}
 
 	return nil
+}
+
+// dependencyPostInstall runs a freshly installed dependency's PostInstall hook.
+// Swappable for test injection. The access base URL is always empty: install
+// never learns it, and a hook that needs it reads an empty value as its own
+// default, which is all the CLI could offer here anyway.
+var dependencyPostInstall = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, p *Plugin, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
+	realConfig, isRealConfig := cfg.(*config.Config)
+	if !isRealConfig {
+		return
+	}
+
+	runPostInstallHook(ctx, realConfig, fs, p, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL)
+}
+
+// hookBaseURLOverrides recovers the user's explicit base URL overrides from the
+// resolved URLs install runs on, for forwarding to a plugin hook. A plugin reads
+// an empty value as "use your own default", so a hook must only ever hear about a
+// URL the user actually chose — not the default install resolved so its metadata
+// request could name a real host.
+//
+// install is never told which values were explicit, but they are recoverable: the
+// API URL is only ever non-default when the user set it, and a dashboard URL equal
+// to the one derived from the API URL is exactly what resolution fills in when the
+// user said nothing (a user who explicitly passed that same value loses nothing by
+// having it elided — it is the value the plugin would derive too).
+func hookBaseURLOverrides(apiBaseURL, dashboardBaseURL string) (hookAPIBaseURL, hookDashboardBaseURL string) {
+	if apiBaseURL != stripe.DefaultAPIBaseURL {
+		hookAPIBaseURL = apiBaseURL
+	}
+	if dashboardBaseURL != stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL) {
+		hookDashboardBaseURL = dashboardBaseURL
+	}
+
+	return hookAPIBaseURL, hookDashboardBaseURL
 }
 
 func dependencyInstallError(requesterName, dependencyName string, cause error) error {

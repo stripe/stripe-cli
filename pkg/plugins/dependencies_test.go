@@ -21,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestPluginVersionSatisfiesMinimum(t *testing.T) {
@@ -316,6 +317,99 @@ func TestInstallNeverReplacesALocalDependencyBuild(t *testing.T) {
 
 	require.Equal(t, []string{"parent@1.0.0"}, env.downloads)
 	require.True(t, env.installedBinaryExists(t, "child", localDevelopmentVersion))
+}
+
+func TestHookBaseURLOverrides(t *testing.T) {
+	qaDashboard := stripe.DashboardBaseURLForAPIBaseURL("https://qa-api.stripe.com")
+
+	cases := []struct {
+		name                  string
+		apiBaseURL            string
+		dashboardBaseURL      string
+		expectedHookAPI       string
+		expectedHookDashboard string
+	}{
+		{
+			name:             "defaults resolve back to no overrides",
+			apiBaseURL:       stripe.DefaultAPIBaseURL,
+			dashboardBaseURL: stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL),
+		},
+		{
+			name:                  "non-default API URL can only be the user's",
+			apiBaseURL:            "https://qa-api.stripe.com",
+			dashboardBaseURL:      qaDashboard,
+			expectedHookAPI:       "https://qa-api.stripe.com",
+			expectedHookDashboard: "", // derived from the API URL, so resolution filled it in
+		},
+		{
+			name:                  "dashboard URL that is not the derived one is the user's",
+			apiBaseURL:            stripe.DefaultAPIBaseURL,
+			dashboardBaseURL:      "https://dashboard.example.test",
+			expectedHookDashboard: "https://dashboard.example.test",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			hookAPI, hookDashboard := hookBaseURLOverrides(tc.apiBaseURL, tc.dashboardBaseURL)
+			require.Equal(t, tc.expectedHookAPI, hookAPI)
+			require.Equal(t, tc.expectedHookDashboard, hookDashboard)
+		})
+	}
+}
+
+type dependencyPostInstallCall struct {
+	plugin           string
+	version          string
+	previousVersion  string
+	apiBaseURL       string
+	dashboardBaseURL string
+	accessBaseURL    string
+}
+
+func stubDependencyPostInstall(t *testing.T) *[]dependencyPostInstallCall {
+	t.Helper()
+
+	calls := &[]dependencyPostInstallCall{}
+	previous := dependencyPostInstall
+	dependencyPostInstall = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, p *Plugin, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
+		*calls = append(*calls, dependencyPostInstallCall{
+			plugin:           p.Shortname,
+			version:          version,
+			previousVersion:  previousVersion,
+			apiBaseURL:       apiBaseURL,
+			dashboardBaseURL: dashboardBaseURL,
+			accessBaseURL:    accessBaseURL,
+		})
+	}
+	t.Cleanup(func() { dependencyPostInstall = previous })
+
+	return calls
+}
+
+func TestInstallForwardsExplicitBaseURLsToDependencyHooks(t *testing.T) {
+	hookCalls := stubDependencyPostInstall(t)
+
+	env := setUpDependencyTest(t, []dependencyTestPlugin{
+		{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"child": "1.17.0"}},
+		{name: "child", releases: []dependencyTestRelease{{version: "1.17.0", body: "child-one"}}},
+	})
+
+	// The test server URL stands in for an explicit --api-base: it is not the
+	// default, so only the user could have put it there. The dashboard URL differs
+	// from the one derived from the API URL, so it counts as explicit too. (The
+	// metadata requests authenticate with the test API key, so the dashboard URL is
+	// only threaded through, never contacted.)
+	explicitDashboardBaseURL := env.stripeURL + "/dashboard"
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, explicitDashboardBaseURL)
+	require.NoError(t, err)
+
+	require.Equal(t, []dependencyPostInstallCall{{
+		plugin:           "child",
+		version:          "1.17.0",
+		apiBaseURL:       env.stripeURL,
+		dashboardBaseURL: explicitDashboardBaseURL,
+	}}, *hookCalls)
 }
 
 type peerEnforcementStubs struct {
