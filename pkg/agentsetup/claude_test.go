@@ -23,11 +23,11 @@ func TestClaude_NotDetected(t *testing.T) {
 
 func TestClaude_DetectedNoPluginSupport(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
-	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	testCommand := func(_ context.Context, _ string, _ ...string) ([]byte, error) {
 		return nil, errors.New("unknown command")
 	}
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunCommand = runOutput
+	provider.RunCommand = testCommand
 
 	status := provider.Detect()
 
@@ -38,9 +38,9 @@ func TestClaude_DetectedNoPluginSupport(t *testing.T) {
 
 func TestClaude_DetectedPluginMissing(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
-	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`[]`), nil }
+	testCommand := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`[]`), nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunCommand = runOutput
+	provider.RunCommand = testCommand
 
 	status := provider.Detect()
 
@@ -55,9 +55,9 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 		{ID: "stripe@claude-plugins-official", Version: "2.4.1", Scope: "user", Enabled: true},
 	})
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
-	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
+	testCommand := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunCommand = runOutput
+	provider.RunCommand = testCommand
 
 	status := provider.Detect()
 
@@ -72,9 +72,9 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 
 func TestClaude_MalformedJSON(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
-	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`{nope`), nil }
+	testCommand := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return []byte(`{nope`), nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunCommand = runOutput
+	provider.RunCommand = testCommand
 
 	status := provider.Detect()
 
@@ -87,9 +87,9 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 		{ID: "other-plugin@marketplace", Version: "1.0.0", Scope: "user", Enabled: true},
 	})
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil }}
-	runOutput := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
+	testCommand := func(_ context.Context, _ string, _ ...string) ([]byte, error) { return listJSON, nil }
 	provider := NewClaudeProvider(scanner, nil).(ClaudeProvider)
-	provider.RunCommand = runOutput
+	provider.RunCommand = testCommand
 
 	status := provider.Detect()
 

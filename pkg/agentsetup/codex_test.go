@@ -273,18 +273,17 @@ func TestScanCodex_MarketplaceDiscoveryFailures(t *testing.T) {
 	}
 }
 
-func codexTestProviderWithCustomRun(runCommand RunCommandFunc) CodexProvider {
+func codexTestProviderWithCustomRun(testCommand RunCommandFunc) CodexProvider {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }}
-	provider := NewCodexProvider(scanner, nil).(CodexProvider)
-	provider.RunCommand = runCommand
+	provider := NewCodexProvider(scanner, testCommand).(CodexProvider)
 	return provider
 }
 
-func codexTestProvider(listOutput string, listErr error, install RunCommandFunc) CodexProvider {
+func codexTestProvider(listOutput string, listErr error, installCommand RunCommandFunc) CodexProvider {
 	return codexTestProviderWithCustomRun(func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		if args[1] == "add" {
-			if install != nil {
-				return install(ctx, name, args...)
+			if installCommand != nil {
+				return installCommand(ctx, name, args...)
 			}
 			return nil, nil
 		}
