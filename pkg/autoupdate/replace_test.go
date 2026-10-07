@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -111,6 +112,105 @@ func TestReplaceBinaryRestoresTheOldBinaryOnFailure(t *testing.T) {
 	restored, readErr := os.ReadFile(dst)
 	require.NoError(t, readErr)
 	assert.Equal(t, "old", string(restored), "a failed update has to leave a working binary behind")
+}
+
+// errLocked stands in for Windows refusing a rename while an antivirus scanner
+// has the file open, which no other platform can produce on demand.
+var errLocked = errors.New("the process cannot access the file because it is being used by another process")
+
+// lockFor fails every rename of from with errLocked, the first times times, and
+// counts the attempts.
+func lockFor(t *testing.T, from string, times int) *int {
+	t.Helper()
+
+	attempts := 0
+	original, originalRetryable, originalBackoff := rename, isRetryable, renameBackoff
+	rename = func(f, to string) error {
+		if f == from {
+			attempts++
+			if attempts <= times {
+				return errLocked
+			}
+		}
+
+		return original(f, to)
+	}
+	isRetryable = func(err error) bool { return errors.Is(err, errLocked) }
+	renameBackoff = []time.Duration{0, 0, 0}
+
+	t.Cleanup(func() { rename, isRetryable, renameBackoff = original, originalRetryable, originalBackoff })
+
+	return &attempts
+}
+
+func TestReplaceBinaryWaitsOutABriefLock(t *testing.T) {
+	for _, held := range []string{"live", "staged"} {
+		t.Run(held, func(t *testing.T) {
+			dir := t.TempDir()
+			dst := filepath.Join(dir, binaryName())
+			staged := filepath.Join(dir, "staged")
+
+			require.NoError(t, os.WriteFile(dst, []byte("old"), 0755))
+			require.NoError(t, os.WriteFile(staged, []byte("new"), 0644))
+
+			locked := dst
+			if held == "staged" {
+				locked = staged
+			}
+			attempts := lockFor(t, locked, 2)
+
+			require.NoError(t, replaceBinary(dst, staged))
+			assert.Equal(t, 3, *attempts)
+
+			installed, err := os.ReadFile(dst)
+			require.NoError(t, err)
+			assert.Equal(t, "new", string(installed))
+		})
+	}
+}
+
+func TestReplaceBinaryGivesUpOnALockThatStays(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, binaryName())
+	staged := filepath.Join(dir, "staged")
+
+	require.NoError(t, os.WriteFile(dst, []byte("old"), 0755))
+	require.NoError(t, os.WriteFile(staged, []byte("new"), 0644))
+
+	attempts := lockFor(t, staged, 100)
+
+	err := replaceBinary(dst, staged)
+	require.ErrorIs(t, err, errLocked)
+	assert.Equal(t, 1+len(renameBackoff), *attempts)
+
+	restored, readErr := os.ReadFile(dst)
+	require.NoError(t, readErr)
+	assert.Equal(t, "old", string(restored), "a failed update has to leave a working binary behind")
+}
+
+func TestReplaceBinaryDoesNotRetryOtherFailures(t *testing.T) {
+	dir := t.TempDir()
+	dst := filepath.Join(dir, binaryName())
+	staged := filepath.Join(dir, "staged")
+
+	require.NoError(t, os.WriteFile(dst, []byte("old"), 0755))
+	require.NoError(t, os.WriteFile(staged, []byte("new"), 0644))
+
+	lockFor(t, "", 0)
+
+	attempts := 0
+	locked := rename
+	rename = func(from, to string) error {
+		if from == staged {
+			attempts++
+			return errors.New("disk full")
+		}
+
+		return locked(from, to)
+	}
+
+	require.Error(t, replaceBinary(dst, staged))
+	assert.Equal(t, 1, attempts)
 }
 
 func TestRemoveSupersededBinary(t *testing.T) {
