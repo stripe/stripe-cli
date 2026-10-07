@@ -135,7 +135,7 @@ func loadCatalogPack(raw []byte) (Rule, PackSignals) {
 	if e.Signals != nil {
 		sig.WebhookEvents = e.Signals.WebhookEvents
 		for _, t := range e.Signals.FrontendTokens {
-			sig.FrontendTokens = append(sig.FrontendTokens, FrontendToken{Token: t.Token, Note: t.Note})
+			sig.FrontendTokens = append(sig.FrontendTokens, FrontendToken(t))
 		}
 		for _, f := range e.Signals.ManifestFloors {
 			sig.ManifestFloors = append(sig.ManifestFloors, ManifestFloor{Package: f.Package, Min: f.Min})
