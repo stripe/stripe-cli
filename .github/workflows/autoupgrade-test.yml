@@ -71,11 +71,13 @@ jobs:
         id: update-check
         run: |
           # The installed release checks for a newer one after the command runs,
-          # and stages it for the next invocation.
-          "$HOME/.stripe/bin/stripe" --version
+          # and stages it for the next invocation. The debug log is where the check
+          # says why it did not stage one.
+          "$HOME/.stripe/bin/stripe" --version --log-level debug
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
             echo "Error: v$FROM did not stage an update"
+            ls -la "$HOME/.stripe/state" || true
             exit 1
           fi
           cat "$MARKER"
@@ -138,11 +140,13 @@ jobs:
         id: update-check
         run: |
           # The installed release checks for a newer one after the command runs,
-          # and stages it for the next invocation.
-          "$HOME/.stripe/bin/stripe" --version
+          # and stages it for the next invocation. The debug log is where the check
+          # says why it did not stage one.
+          "$HOME/.stripe/bin/stripe" --version --log-level debug
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
             echo "Error: v$FROM did not stage an update"
+            ls -la "$HOME/.stripe/state" || true
             exit 1
           fi
           cat "$MARKER"
@@ -215,11 +219,13 @@ jobs:
         id: update-check
         run: |
           # The installed release checks for a newer one after the command runs,
-          # and stages it for the next invocation.
-          "$HOME/.stripe/bin/stripe.exe" --version
+          # and stages it for the next invocation. The debug log is where the check
+          # says why it did not stage one.
+          "$HOME/.stripe/bin/stripe.exe" --version --log-level debug
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
             echo "Error: v$FROM did not stage an update"
+            ls -la "$HOME/.stripe/state" || true
             exit 1
           fi
           cat "$MARKER"
