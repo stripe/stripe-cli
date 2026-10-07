@@ -120,9 +120,9 @@ func (p delayedDetectProvider) Apply(context.Context, io.Writer, agentsetup.Plan
 }
 
 func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("installer should not run in --status mode")
-		return nil
+		return nil, nil
 	})
 
 	output, err := executeCommand(setup.cmd, "--status")
@@ -155,9 +155,9 @@ func TestAgentSetupUnsupportedClient(t *testing.T) {
 }
 
 func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("installer should not run in --json mode")
-		return nil
+		return nil, nil
 	})
 
 	output, err := executeCommand(setup.cmd, "--json")
@@ -176,9 +176,9 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 }
 
 func TestAgentSetupStatusJSONPrefersJSONOutput(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("installer should not run in --status --json mode")
-		return nil
+		return nil, nil
 	})
 
 	output, err := executeCommand(setup.cmd, "--status", "--json")
@@ -198,7 +198,7 @@ func TestAgentSetupJSONShowsUpgradeHintWhenPluginCommandFails(t *testing.T) {
 	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
 	}, nil).(agentsetup.ClaudeProvider)
-	claude.RunOutput = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	claude.RunCommand = func(_ context.Context, _ string, _ ...string) ([]byte, error) {
 		return nil, errors.New("unknown command")
 	}
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
@@ -226,11 +226,11 @@ func TestAgentSetupCodexDiscoveryFailureReportsError(t *testing.T) {
 		{"no supported marketplace", nil, "no supported Codex marketplace is available"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			codex := codexMissingProvider(func(context.Context, string, ...string) error {
+			codex := codexMissingProvider(func(context.Context, string, ...string) ([]byte, error) {
 				t.Fatal("must not install without a detected marketplace")
-				return nil
+				return nil, nil
 			})
-			codex.RunOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+			codex.RunCommand = func(_ context.Context, _ string, args ...string) ([]byte, error) {
 				require.Equal(t, []string{"plugin", "marketplace", "list", "--json"}, args)
 				return []byte(`{"marketplaces":[]}`), tt.listErr
 			}
@@ -251,11 +251,11 @@ func TestAgentSetupCodexDiscoveryFailureReportsError(t *testing.T) {
 
 func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
 	var called bool
-	setup := newTestAgentSetupCmdInstalled(t, func(ctx context.Context, name string, args ...string) error {
+	setup := newTestAgentSetupCmdInstalled(t, func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		called = true
 		require.Equal(t, "claude", name)
 		require.Equal(t, []string{"plugin", "install", agentsetup.TargetClaudePlugin}, args)
-		return nil
+		return nil, nil
 	})
 
 	output, err := executeCommand(setup.cmd, "--force", "--yes")
@@ -270,16 +270,16 @@ func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
 
 func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 	var calls []string
-	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) error {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		call := name
 		for _, arg := range args {
 			call += " " + arg
 		}
 		calls = append(calls, call)
 		if len(calls) == 1 {
-			return fmt.Errorf("plugin not found")
+			return nil, fmt.Errorf("plugin not found")
 		}
-		return nil
+		return nil, nil
 	})
 
 	output, err := executeCommand(setup.cmd, "--yes")
@@ -295,11 +295,11 @@ func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 }
 
 func TestAgentSetupSurfacesCleanErrorWhenInstallFails(t *testing.T) {
-	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) error {
+	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		if len(args) > 1 && args[1] == "marketplace" {
-			return errors.New(`Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.`)
+			return nil, errors.New(`Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.`)
 		}
-		return errors.New(`Failed to install plugin "stripe@claude-plugins-official"`)
+		return nil, errors.New(`Failed to install plugin "stripe@claude-plugins-official"`)
 	})
 
 	output, err := executeCommand(setup.cmd, "--yes")
@@ -313,9 +313,9 @@ func TestAgentSetupSurfacesCleanErrorWhenInstallFails(t *testing.T) {
 func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 	setup := newTestAgentSetupCmd(t, agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "", errors.New("not found") },
-	}, func(context.Context, string, ...string) error {
+	}, func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("installer should not run when Claude Code is not detected")
-		return nil
+		return nil, nil
 	})
 
 	output, err := executeCommand(setup.cmd)
@@ -328,14 +328,14 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	agentNames := []string{"claude", "codex", "openclaw", "grok"}
 	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
+	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		if slices.Contains(agentNames, name) {
 			installed = append(installed, name)
 		}
-		return nil
+		return nil, nil
 	}
 
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
 	openclaw := openclawMissingProvider(record)
 	grok := grokMissingProvider(record)
@@ -359,12 +359,12 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 
 func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
+	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		installed = append(installed, name)
-		return nil
+		return nil, nil
 	}
 
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -381,12 +381,12 @@ func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 
 func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
 	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
+	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		installed = append(installed, name)
-		return nil
+		return nil, nil
 	}
 
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -441,14 +441,14 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
 			var installedAgents []string
-			record := func(_ context.Context, name string, args ...string) error {
+			record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 				if slices.Contains(agentNames, name) {
 					installedAgents = append(installedAgents, name)
 				}
-				return nil
+				return nil, nil
 			}
 
-			claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+			claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 			provider := agent.makeProvider(record)
 
 			setup := testAgentSetupCmd()
@@ -470,12 +470,12 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 
 func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
 	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
+	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		installed = append(installed, name)
-		return nil
+		return nil, nil
 	}
 
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -506,14 +506,14 @@ func codexMissingProvider(record agentsetup.RunCommandFunc) agentsetup.CodexProv
 			Client:      agentsetup.ClientCodex,
 			BinaryName:  agentsetup.CodexBinaryName,
 			DisplayName: agentsetup.CodexDisplayName,
-			RunCommand: func(ctx context.Context, name string, args ...string) error {
-				installed = true
-				if record != nil {
-					return record(ctx, name, args...)
+			RunCommand: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+				if args[1] == "add" {
+					installed = true
+					if record != nil {
+						return record(ctx, name, args...)
+					}
+					return nil, nil
 				}
-				return nil
-			},
-			RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
 				if args[1] == "marketplace" {
 					return []byte(`{"marketplaces":[{"name":"openai-curated"}]}`), nil
 				}
@@ -535,8 +535,13 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 			Client:      agentsetup.ClientGrok,
 			BinaryName:  agentsetup.GrokBinaryName,
 			DisplayName: agentsetup.GrokDisplayName,
-			RunCommand:  record,
-			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+			RunCommand: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+				if args[1] == "install" || args[1] == "update" {
+					if record != nil {
+						return record(ctx, name, args...)
+					}
+					return nil, nil
+				}
 				return []byte(`[]`), nil
 			},
 		},
@@ -550,8 +555,13 @@ func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.Opencl
 			Client:      agentsetup.ClientOpenclaw,
 			BinaryName:  agentsetup.OpenclawBinaryName,
 			DisplayName: agentsetup.OpenclawDisplayName,
-			RunCommand:  record,
-			RunOutput: func(context.Context, string, ...string) ([]byte, error) {
+			RunCommand: func(ctx context.Context, name string, args ...string) ([]byte, error) {
+				if args[1] == "install" || args[1] == "update" {
+					if record != nil {
+						return record(ctx, name, args...)
+					}
+					return nil, nil
+				}
 				return []byte(`[]`), nil
 			},
 		},
@@ -560,10 +570,10 @@ func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.Opencl
 
 func TestAgentSetupUnsupportedAgentInstallsSkillsToLocal(t *testing.T) {
 	var gotDir string
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("no plugin should be installed for an unsupported agent")
-		return nil
-	})
+		return nil, nil
+	}, nil))
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
@@ -643,14 +653,14 @@ func TestAgentSetupAgentScopingWinsOverYes(t *testing.T) {
 	// Inside a coding agent, --yes must NOT broaden to all clients — it still
 	// only sets up the calling agent.
 	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
+	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		installed = append(installed, name)
-		return nil
+		return nil, nil
 	}
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("Claude must not be installed when the calling agent is Codex")
-		return nil
-	})
+		return nil, nil
+	}, nil))
 	codex := codexMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -669,11 +679,11 @@ func TestAgentSetupAgentScopingWinsOverYes(t *testing.T) {
 func TestAgentSetupYesInstallsAllWhenNoAgent(t *testing.T) {
 	// In a plain CLI (no calling agent), --yes still installs every detected client.
 	var installed []string
-	record := func(_ context.Context, name string, args ...string) error {
+	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		installed = append(installed, name)
-		return nil
+		return nil, nil
 	}
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), record)
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -692,10 +702,10 @@ func TestAgentSetupAgentNeverUsesInteractivePicker(t *testing.T) {
 	// human is present. When an agent is detected we must skip the picker and
 	// fall back to non-interactive behavior (skills for an unsupported agent).
 	var skillsCalled bool
-	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), func(context.Context, string, ...string) error {
+	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("no plugin should install; and the picker must not run")
-		return nil
-	})
+		return nil, nil
+	}, nil))
 
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
@@ -930,8 +940,7 @@ func TestAgentSetupSkillsUpdateWhenOutOfDate(t *testing.T) {
 func newTestAgentSetupCmd(t *testing.T, scanner agentsetup.Scanner, runInstall agentsetup.RunCommandFunc) *agentSetupCmd {
 	t.Helper()
 	setup := testAgentSetupCmd()
-	claude := agentsetup.NewClaudeProvider(scanner, runInstall).(agentsetup.ClaudeProvider)
-	claude.RunOutput = claudeListEmpty
+	claude := agentsetup.NewClaudeProvider(scanner, claudeTestRunCommand(runInstall, claudeListEmpty)).(agentsetup.ClaudeProvider)
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
 	setup.callingAgent = func() string { return "" }
 	setup.skillsCheck = mockSkillsCheckNotInstalled
@@ -944,8 +953,7 @@ func newTestAgentSetupCmdInstalled(t *testing.T, runInstall agentsetup.RunComman
 	setup := testAgentSetupCmd()
 	claude := agentsetup.NewClaudeProvider(agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
-	}, runInstall).(agentsetup.ClaudeProvider)
-	claude.RunOutput = claudeListInstalled
+	}, claudeTestRunCommand(runInstall, claudeListInstalled)).(agentsetup.ClaudeProvider)
 	setup.providers = map[string]agentsetup.Provider{claude.ID(): claude}
 	setup.callingAgent = func() string { return "" }
 	setup.skillsCheck = mockSkillsCheckNotInstalled
@@ -1038,6 +1046,21 @@ func claudeMissingPluginScanner(t *testing.T) agentsetup.Scanner {
 	t.Helper()
 	return agentsetup.Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/claude", nil },
+	}
+}
+
+func claudeTestRunCommand(install, list agentsetup.RunCommandFunc) agentsetup.RunCommandFunc {
+	if install == nil {
+		install = agentsetup.RunCommand
+	}
+	if list == nil {
+		list = claudeListEmpty
+	}
+	return func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		if len(args) > 1 && args[1] == "list" {
+			return list(ctx, name, args...)
+		}
+		return install(ctx, name, args...)
 	}
 }
 

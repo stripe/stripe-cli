@@ -10,12 +10,11 @@ import (
 
 func TestGrok_NotDetected(t *testing.T) {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
-	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("plugin list should not run when Grok is not detected")
 		return nil, nil
 	}
-	provider := NewGrokProvider(scanner, nil).(GrokProvider)
-	provider.RunOutput = runOutput
+	provider := NewGrokProvider(scanner, testCommand).(GrokProvider)
 
 	status := provider.Detect()
 
@@ -27,7 +26,7 @@ func TestGrok_NotDetected(t *testing.T) {
 }
 
 func TestGrok_PluginMissing(t *testing.T) {
-	provider := grokTestProvider(`[]`, nil, nil)
+	provider := grokTestProvider(`[]`, nil)
 
 	status := provider.Detect()
 
@@ -44,7 +43,7 @@ func TestGrok_PluginInstalled(t *testing.T) {
 		{"status":"installed","name":"stripe","repo_key":"plugin-760cfec9","version":"0.7.1",
 		 "path":"/Users/x/.grok/installed-plugins/plugin-760cfec9",
 		 "source":"https://github.com/stripe/ai.git","marketplace":"xAI Official"}
-	]`, nil, nil)
+	]`, nil)
 
 	status := provider.Detect()
 
@@ -54,11 +53,11 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.Equal(t, "0.7.1", status.Plugin.Version)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Commands: [][]string{{"grok", "plugin", "update", GrokPluginName}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"grok", "plugin", "update", GrokPluginName}}}, provider.Plan(status, true))
 }
 
 func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
-	provider := grokTestProvider("", errors.New("unrecognized subcommand 'plugin'"), nil)
+	provider := grokTestProvider("", errors.New("unrecognized subcommand 'plugin'"))
 
 	status := provider.Detect()
 
@@ -70,12 +69,12 @@ func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
 func TestGrokApply_RunsInstallCommand(t *testing.T) {
 	var gotName string
 	var gotArgs []string
-	runCommand := func(_ context.Context, name string, args ...string) error {
+	testCommand := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		gotName = name
 		gotArgs = args
-		return nil
+		return nil, nil
 	}
-	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
+	provider := NewGrokProvider(Scanner{}, testCommand).(GrokProvider)
 
 	plan := Plan{Action: ActionInstall, Commands: [][]string{{"grok", "plugin", "install", GrokPluginName, "--trust"}}}
 	err := provider.Apply(context.Background(), nil, plan)
@@ -86,26 +85,25 @@ func TestGrokApply_RunsInstallCommand(t *testing.T) {
 }
 
 func TestGrokApply_NoneIsNoop(t *testing.T) {
-	runCommand := func(context.Context, string, ...string) error {
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("RunCommand should not run for ActionNone")
-		return nil
+		return nil, nil
 	}
-	provider := NewGrokProvider(Scanner{}, runCommand).(GrokProvider)
+	provider := NewGrokProvider(Scanner{}, testCommand).(GrokProvider)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionNone})
 
 	require.NoError(t, err)
 }
 
-func grokTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) GrokProvider {
+func grokTestProvider(listOutput string, listErr error) GrokProvider {
 	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}
-	runOutput := func(context.Context, string, ...string) ([]byte, error) {
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
 		if listErr != nil {
 			return nil, listErr
 		}
 		return []byte(listOutput), nil
 	}
-	provider := NewGrokProvider(scanner, runCommand).(GrokProvider)
-	provider.RunOutput = runOutput
+	provider := NewGrokProvider(scanner, testCommand).(GrokProvider)
 	return provider
 }

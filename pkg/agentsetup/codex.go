@@ -45,7 +45,6 @@ func NewCodexProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 			BinaryName:  CodexBinaryName,
 			DisplayName: CodexDisplayName,
 			RunCommand:  runCommand,
-			RunOutput:   runCommandOutput,
 		},
 	}
 }
@@ -92,11 +91,11 @@ func (p CodexProvider) Detect() Status {
 func (p CodexProvider) marketplace(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, codexListTimeout)
 	defer cancel()
-	runOutput := p.RunOutput
-	if runOutput == nil {
-		runOutput = runCommandOutput
+	runCommand := p.RunCommand
+	if runCommand == nil {
+		runCommand = RunCommand
 	}
-	out, err := runOutput(ctx, p.BinaryName, "plugin", "marketplace", "list", "--json")
+	out, err := runCommand(ctx, p.BinaryName, "plugin", "marketplace", "list", "--json")
 	var list struct {
 		Marketplaces []struct {
 			Name string `json:"name"`
@@ -124,12 +123,12 @@ func (p CodexProvider) marketplace(ctx context.Context) (string, error) {
 // plugin is installed and its version. When the command fails (e.g. old Codex
 // version without plugin support), supportsPlugins is false.
 func (p CodexProvider) stripePluginStatus(ctx context.Context, marketplace string) (version string, installed bool, supportsPlugins bool) {
-	runOutput := p.RunOutput
-	if runOutput == nil {
-		runOutput = runCommandOutput
+	runCommand := p.RunCommand
+	if runCommand == nil {
+		runCommand = RunCommand
 	}
 	// The unfiltered list can omit locally installed curated plugins.
-	out, err := runOutput(ctx, p.BinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
+	out, err := runCommand(ctx, p.BinaryName, "plugin", "list", "--marketplace", marketplace, "--json")
 	if err != nil {
 		return "", false, false
 	}
@@ -156,7 +155,7 @@ func (p CodexProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error 
 	command := plan.Commands[0]
 	pluginID := command[len(command)-1]
 	_, marketplace, _ := strings.Cut(pluginID, "@")
-	if err := runCommand(ctx, command[0], command[1:]...); err != nil {
+	if _, err := runCommand(ctx, command[0], command[1:]...); err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "could not install the Stripe plugin from %s: %w", marketplace, err)
 	}
 

@@ -36,14 +36,14 @@ func TestOpenclaw_HomeDirUnresolvable(t *testing.T) {
 		LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil },
 		HomeDir:  func() (string, error) { return "", homeDirErr },
 	}
-	provider := NewOpenclawProvider(scanner, func(context.Context, string, ...string) error {
+	testCommand := func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		if args[1] == "list" {
+			return []byte(`{"plugins": [], "registry": []}`), nil
+		}
 		t.Fatal("RunCommand should not run when home directory cannot be resolved")
-		return nil
-	}).(OpenclawProvider)
-	provider.RunOutput = func(context.Context, string, ...string) ([]byte, error) {
-		return []byte(`{"plugins": [], "registry": []}`), nil
+		return nil, nil
 	}
-
+	provider := NewOpenclawProvider(scanner, testCommand)
 	status := provider.Detect()
 
 	require.Equal(t, StatusError, status.Status)
@@ -91,7 +91,7 @@ func TestOpenclaw_PluginInstalled(t *testing.T) {
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 	require.Equal(t,
-		Plan{Action: ActionReinstall, Commands: [][]string{
+		Plan{Action: ActionUpdate, Commands: [][]string{
 			{"mkdir", "-p", testOpenclawRepoPath},
 			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
 			{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
@@ -113,12 +113,12 @@ func TestOpenclaw_OldVersionWithoutPluginSupport(t *testing.T) {
 func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 	var commandNames []string
 	var commandArgs [][]string
-	runCommand := func(_ context.Context, name string, args ...string) error {
+	testCommand := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		commandNames = append(commandNames, name)
 		commandArgs = append(commandArgs, args)
-		return nil
+		return nil, nil
 	}
-	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, testCommand)
 
 	preInstallCommands := [][]string{
 		{"mkdir", "-p", testOpenclawRepoPath},
@@ -141,11 +141,11 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 }
 
 func TestOpenclawApply_NoneIsNoop(t *testing.T) {
-	runCommand := func(context.Context, string, ...string) error {
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("RunCommand should not run for ActionNone")
-		return nil
+		return nil, nil
 	}
-	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, testCommand)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionNone})
 
@@ -155,11 +155,11 @@ func TestOpenclawApply_NoneIsNoop(t *testing.T) {
 func TestOpenclawApply_StopsWhenCloneFails(t *testing.T) {
 	cloneErr := errors.New("clone failed")
 	var commandsRan []string
-	runCommand := func(_ context.Context, name string, _ ...string) error {
+	testCommand := func(_ context.Context, name string, _ ...string) ([]byte, error) {
 		commandsRan = append(commandsRan, name)
-		return cloneErr
+		return nil, cloneErr
 	}
-	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, runCommand).(OpenclawProvider)
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, testCommand).(OpenclawProvider)
 
 	plan := Plan{Action: ActionInstall, Commands: [][]string{{
 		"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1",
@@ -172,9 +172,9 @@ func TestOpenclawApply_StopsWhenCloneFails(t *testing.T) {
 }
 
 func TestOpenclawApply_MissingCommand(t *testing.T) {
-	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, func(context.Context, string, ...string) error {
+	provider := NewOpenclawProvider(Scanner{HomeDir: testOpenclawHomeDirFunc}, func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("RunCommand should not run without a command")
-		return nil
+		return nil, nil
 	}).(OpenclawProvider)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionInstall})
@@ -182,18 +182,23 @@ func TestOpenclawApply_MissingCommand(t *testing.T) {
 	require.Error(t, err)
 }
 
-func openclawTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) OpenclawProvider {
+func openclawTestProvider(listOutput string, listErr error, installCommand RunCommandFunc) OpenclawProvider {
 	scanner := Scanner{
 		LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil },
 		HomeDir:  testOpenclawHomeDirFunc,
 	}
-	runOutput := func(context.Context, string, ...string) ([]byte, error) {
-		if listErr != nil {
-			return nil, listErr
+	testCommand := func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		if args[1] == "list" {
+			if listErr != nil {
+				return nil, listErr
+			}
+			return []byte(listOutput), nil
 		}
-		return []byte(listOutput), nil
+		if installCommand != nil {
+			return installCommand(ctx, name, args...)
+		}
+		return nil, nil
 	}
-	provider := NewOpenclawProvider(scanner, runCommand).(OpenclawProvider)
-	provider.RunOutput = runOutput
+	provider := NewOpenclawProvider(scanner, testCommand).(OpenclawProvider)
 	return provider
 }
