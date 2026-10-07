@@ -61,7 +61,7 @@ jobs:
           STRIPE_NO_AUTO_UPDATE: "1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -sSL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/install.sh" | VERSION="$FROM" sh
+          curl -sSL https://cli.stripe.com/install.sh | VERSION="$FROM" sh
           INSTALLED=$("$HOME/.stripe/bin/stripe" --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           if [ "$INSTALLED" != "$FROM" ]; then
             echo "Error: expected v$FROM to be installed, got v$INSTALLED"
@@ -148,7 +148,7 @@ jobs:
           STRIPE_NO_AUTO_UPDATE: "1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -sSL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/install.sh" | VERSION="$FROM" sh
+          curl -sSL https://cli.stripe.com/install.sh | VERSION="$FROM" sh
           INSTALLED=$("$HOME/.stripe/bin/stripe" --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
           if [ "$INSTALLED" != "$FROM" ]; then
             echo "Error: expected v$FROM to be installed, got v$INSTALLED"
@@ -240,10 +240,9 @@ jobs:
           # here does not stage the update the next step checks for.
           STRIPE_NO_AUTO_UPDATE: "1"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SCRIPT_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/scripts/install.ps1
         run: |
           $env:VERSION = $env:FROM
-          irm $env:SCRIPT_URL | iex
+          irm https://cli.stripe.com/install.ps1 | iex
           $output = & "$env:USERPROFILE\.stripe\bin\stripe.exe" --version
           $installed = ([regex]::Match($output, '\d+\.\d+\.\d+')).Value
           if ($installed -ne $env:FROM) {
