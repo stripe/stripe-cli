@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -94,7 +95,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 func formatURL(path string, urlParams []string) string {
 	s := make([]interface{}, len(urlParams))
 	for i, v := range urlParams {
-		s[i] = v
+		s[i] = url.PathEscape(v)
 	}
 
 	re := regexp.MustCompile(`{\w+}`)

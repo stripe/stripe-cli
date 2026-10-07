@@ -41,6 +41,50 @@ func TestNewOperationCmd(t *testing.T) {
 	require.Contains(t, oc.Cmd.UsageTemplate(), "<id>")
 }
 
+func TestFormatURL(t *testing.T) {
+	tests := []struct {
+		name, input, want string
+	}{
+		{"ordinary ID", "cus_123", "/v1/customers/cus_123"},
+		{"slash and traversal", "id1/../../customers/cus_123", "/v1/customers/id1%2F..%2F..%2Fcustomers%2Fcus_123"},
+		{"percent", "50%", "/v1/customers/50%25"},
+		// Positional arguments are raw IDs. A pre-encoded slash is intentionally escaped again.
+		{"pre-encoded slash", "%2F", "/v1/customers/%252F"},
+		{"space", "a b", "/v1/customers/a%20b"},
+		{"plus", "a+b", "/v1/customers/a+b"},
+		{"query and fragment", "a?b#c", "/v1/customers/a%3Fb%23c"},
+		{"unicode", "café", "/v1/customers/caf%C3%A9"},
+		{"punctuation", "a;b,c@d:e", "/v1/customers/a%3Bb%2Cc@d:e"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, formatURL("/v1/customers/{customer}", []string{tt.input}))
+		})
+	}
+	require.Equal(t, "/v1/accounts/acct%2Fone/customers/cus%3Ftwo",
+		formatURL("/v1/accounts/{account}/customers/{customer}", []string{"acct/one", "cus?two"}))
+}
+
+func TestRunOperationCmd_EscapedPathOnWire(t *testing.T) {
+	const wantURI = "/v1/charges/id1%2F..%2F..%2Fcustomers%2Fcus_123"
+	requestPaths := make(chan [2]string, 1)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestPaths <- [2]string{r.RequestURI, r.URL.EscapedPath()}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name: "retrieve", Path: "/v1/charges/{charge}", Method: http.MethodGet,
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+	parentCmd.SetArgs([]string{"retrieve", "id1/../../customers/cus_123"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+	require.Equal(t, [2]string{wantURI, wantURI}, <-requestPaths)
+}
+
 func TestNewOperationCmd_NumberType(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
@@ -238,6 +282,22 @@ func TestRunOperationCmd_DryRun(t *testing.T) {
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
 	}}, result)
+}
+
+func TestRunOperationCmd_DryRunEscapedURL(t *testing.T) {
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name: "retrieve", Path: "/v1/charges/{charge}", Method: http.MethodGet,
+	}, &config.Config{})
+	var buf bytes.Buffer
+	oc.Cmd.SetOut(&buf)
+	require.NoError(t, oc.Cmd.Flags().Set("dry-run", "true"))
+	require.NoError(t, oc.runOperationCmd(oc.Cmd, []string{"id1/../../customers/cus_123"}))
+
+	var result requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Equal(t, "https://api.stripe.com/v1/charges/id1%2F..%2F..%2Fcustomers%2Fcus_123", result.DryRun.URL)
 }
 
 func TestRunOperationCmd_DryRun_NoAPIKey(t *testing.T) {

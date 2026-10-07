@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -342,7 +343,7 @@ func extractURLParams(path string) []string {
 func formatURL(path string, urlParams []string) string {
 	s := make([]interface{}, len(urlParams))
 	for i, v := range urlParams {
-		s[i] = v
+		s[i] = url.PathEscape(v)
 	}
 
 	re := regexp.MustCompile(`{\w+}`)
