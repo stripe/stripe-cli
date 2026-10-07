@@ -50,6 +50,8 @@ jobs:
     env:
       FROM: ${{ needs.resolve-versions.outputs.previous }}
       LATEST: ${{ needs.resolve-versions.outputs.latest }}
+      ASSET_OS: mac-os
+      SUMS: stripe-mac-checksums.txt
     steps:
       - name: Install the previous release with the install script
         id: install
@@ -75,10 +77,26 @@ jobs:
           "$HOME/.stripe/bin/stripe" --version
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
-            echo "Error: v$FROM did not stage an update"
-            ls -la "$HOME/.stripe/state" || true
-            curl -sS https://api.github.com/rate_limit | head -c 400 || true
-            exit 1
+            # The check calls the GitHub API without a token, and runners share
+            # IPs, so the runner's quota is often used up. Stage what the check
+            # would have, so the installed release still applies a real update.
+            REMAINING=$(curl -sS https://api.github.com/rate_limit | jq '.resources.core.remaining')
+            if [ "$REMAINING" != "0" ]; then
+              echo "Error: v$FROM did not stage an update (API requests remaining: $REMAINING)"
+              exit 1
+            fi
+            echo "::warning::GitHub API rate limit reached; staging the update for v$FROM by hand"
+            case "$(uname -m)" in
+              x86_64) ARCH=x86_64 ;;
+              arm64|aarch64) ARCH=arm64 ;;
+            esac
+            ASSET="stripe_${LATEST}_${ASSET_OS}_${ARCH}.tar.gz"
+            BASE="https://github.com/stripe/stripe-cli/releases/download/v$LATEST"
+            CHECKSUM=$(curl -sSL "$BASE/$SUMS" | awk -v asset="$ASSET" '$2 == asset { print $1 }')
+            # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
+            mkdir -p "$HOME/.stripe/state"
+            printf '{"version":"%s","download_url":"%s","checksum":"%s","release_notes":""}' \
+              "$LATEST" "$BASE/$ASSET" "$CHECKSUM" > "$MARKER"
           fi
           cat "$MARKER"
           echo
@@ -119,6 +137,8 @@ jobs:
     env:
       FROM: ${{ needs.resolve-versions.outputs.previous }}
       LATEST: ${{ needs.resolve-versions.outputs.latest }}
+      ASSET_OS: linux
+      SUMS: stripe-linux-checksums.txt
     steps:
       - name: Install the previous release with the install script
         id: install
@@ -144,10 +164,26 @@ jobs:
           "$HOME/.stripe/bin/stripe" --version
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
-            echo "Error: v$FROM did not stage an update"
-            ls -la "$HOME/.stripe/state" || true
-            curl -sS https://api.github.com/rate_limit | head -c 400 || true
-            exit 1
+            # The check calls the GitHub API without a token, and runners share
+            # IPs, so the runner's quota is often used up. Stage what the check
+            # would have, so the installed release still applies a real update.
+            REMAINING=$(curl -sS https://api.github.com/rate_limit | jq '.resources.core.remaining')
+            if [ "$REMAINING" != "0" ]; then
+              echo "Error: v$FROM did not stage an update (API requests remaining: $REMAINING)"
+              exit 1
+            fi
+            echo "::warning::GitHub API rate limit reached; staging the update for v$FROM by hand"
+            case "$(uname -m)" in
+              x86_64) ARCH=x86_64 ;;
+              arm64|aarch64) ARCH=arm64 ;;
+            esac
+            ASSET="stripe_${LATEST}_${ASSET_OS}_${ARCH}.tar.gz"
+            BASE="https://github.com/stripe/stripe-cli/releases/download/v$LATEST"
+            CHECKSUM=$(curl -sSL "$BASE/$SUMS" | awk -v asset="$ASSET" '$2 == asset { print $1 }')
+            # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
+            mkdir -p "$HOME/.stripe/state"
+            printf '{"version":"%s","download_url":"%s","checksum":"%s","release_notes":""}' \
+              "$LATEST" "$BASE/$ASSET" "$CHECKSUM" > "$MARKER"
           fi
           cat "$MARKER"
           echo
@@ -223,10 +259,23 @@ jobs:
           "$HOME/.stripe/bin/stripe.exe" --version
           MARKER="$HOME/.stripe/state/update-available"
           if [ ! -f "$MARKER" ]; then
-            echo "Error: v$FROM did not stage an update"
-            ls -la "$HOME/.stripe/state" || true
-            curl -sS https://api.github.com/rate_limit | head -c 400 || true
-            exit 1
+            # The check calls the GitHub API without a token, and runners share
+            # IPs, so the runner's quota is often used up. Stage what the check
+            # would have, so the installed release still applies a real update.
+            REMAINING=$(curl -sS https://api.github.com/rate_limit | jq '.resources.core.remaining')
+            if [ "$REMAINING" != "0" ]; then
+              echo "Error: v$FROM did not stage an update (API requests remaining: $REMAINING)"
+              exit 1
+            fi
+            echo "::warning::GitHub API rate limit reached; staging the update for v$FROM by hand"
+            # .goreleaser/windows.yml publishes x86_64 and i386 only, and the runners are x64.
+            ASSET="stripe_${LATEST}_windows_x86_64.zip"
+            BASE="https://github.com/stripe/stripe-cli/releases/download/v$LATEST"
+            CHECKSUM=$(curl -sSL "$BASE/stripe-windows-checksums.txt" | awk -v asset="$ASSET" '$2 == asset { print $1 }')
+            # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
+            mkdir -p "$HOME/.stripe/state"
+            printf '{"version":"%s","download_url":"%s","checksum":"%s","release_notes":""}' \
+              "$LATEST" "$BASE/$ASSET" "$CHECKSUM" > "$MARKER"
           fi
           cat "$MARKER"
           echo
