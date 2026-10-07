@@ -47,7 +47,15 @@ function Get-LatestVersion {
     if (-not $script:Version) {
         throw "Could not parse a version from the GitHub release response."
     }
-    Write-Host "Latest version: v$script:Version"
+    $script:LatestVersion = $script:Version
+
+    # A specific release, same as install.sh's VERSION.
+    if ($env:VERSION) {
+        $script:Version = $env:VERSION -replace "^v", ""
+        Write-Host "Installing requested version: v$script:Version (latest is v$script:LatestVersion)"
+    } else {
+        Write-Host "Latest version: v$script:Version"
+    }
 }
 
 function Download-And-Verify {
@@ -204,6 +212,18 @@ function Print-Success {
     Write-Host ""
     Write-Host "stripe v${script:Version} installed to $InstallDir\stripe.exe"
     Write-Host ""
+    $installed = $null
+    $latest = $null
+    if ([version]::TryParse($script:Version, [ref]$installed) -and
+        [version]::TryParse($script:LatestVersion, [ref]$latest) -and
+        $installed -lt $latest) {
+        Write-Host "Note: You installed v${script:Version}, but the latest is v${script:LatestVersion}."
+        Write-Host "Auto-update will upgrade you to the latest on next run."
+        Write-Host "To stay on this version, set STRIPE_NO_AUTO_UPDATE=1 or add to ~/.config/stripe/config.toml:"
+        Write-Host "  [settings]"
+        Write-Host "  auto_update = false"
+        Write-Host ""
+    }
     if ($script:PathUpdated) {
         Write-Host "Restart your terminal for PATH changes to take effect, then:"
     }
@@ -219,6 +239,7 @@ function Cleanup {
 
 # Main
 $script:Version = ""
+$script:LatestVersion = ""
 $script:ArchLabel = ""
 $script:TmpDir = ""
 $script:PathUpdated = $false
