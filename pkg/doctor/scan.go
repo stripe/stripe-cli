@@ -49,6 +49,9 @@ func scan(root string, rule Rule) (findings []Finding, scanned, parsed int, err 
 		if !ok {
 			return nil
 		}
+		// Findings carry forward-slash paths regardless of OS, so file:line
+		// keys and the exact-match test fixtures stay portable to Windows.
+		path = filepath.ToSlash(path)
 		scanned++
 
 		src, err := os.ReadFile(path)
