@@ -1,6 +1,6 @@
 require 'stripe'
-# nested payment_settings on a PAYMENT INTENT is not a valid rule pairing:
-# the nested rule is scoped to subscriptions/invoices only. Must NOT match.
+# nested payment_settings.payment_method_types is not a leaf param the rule
+# tracks at all (dpm only covers the top-level param). Must NOT match.
 Stripe::PaymentIntent.create(
   amount: 1099,
   payment_settings: {
