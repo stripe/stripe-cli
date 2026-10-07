@@ -6,13 +6,13 @@ package doctor
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -54,14 +54,14 @@ type accountFacts struct {
 // Stripe-Livemode header, erroring out if the active context is live.
 func loadTestCredentials(cfg *config.Config) (stripe.Credentials, error) {
 	if cfg == nil {
-		return stripe.Credentials{}, fmt.Errorf("no CLI configuration available")
+		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.Internal, "no CLI configuration available")
 	}
 	creds, err := cfg.GetProfile().ResolveCredentials(false)
 	if err != nil {
 		return stripe.Credentials{}, err
 	}
 	if creds.OAKLivemode == nil && !strings.HasPrefix(creds.Token, "sk_test_") && !strings.HasPrefix(creds.Token, "rk_test_") {
-		return stripe.Credentials{}, fmt.Errorf("resolved key is not a test-mode key (sk_test_/rk_test_); refusing")
+		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.UserInput, "resolved key is not a test-mode key (sk_test_/rk_test_); refusing")
 	}
 	return creds, nil
 }
@@ -92,10 +92,10 @@ func stripeGET(client *stripe.Client, stripeAccount, path, query string, out any
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 401 {
-		return fmt.Errorf("credentials rejected (401) — key may be expired; run `stripe login`")
+		return errorcategory.Errorf(errorcategory.Auth, "credentials rejected (401) — key may be expired; run `stripe login`")
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("GET %s: HTTP %d", path, resp.StatusCode)
+		return errorcategory.Errorf(errorcategory.API, "GET %s: HTTP %d", path, resp.StatusCode)
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }

@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	ts "github.com/odvcencio/gotreesitter"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 func scan(root string, rule Rule) (findings []Finding, scanned, parsed int, err error) {
@@ -19,7 +21,7 @@ func scan(root string, rule Rule) (findings []Finding, scanned, parsed int, err 
 		return nil, 0, 0, fmt.Errorf("cannot scan %q: %w", root, statErr)
 	}
 	if !info.IsDir() {
-		return nil, 0, 0, fmt.Errorf("cannot scan %q: not a directory", root)
+		return nil, 0, 0, errorcategory.Errorf(errorcategory.UserInput, "cannot scan %q: not a directory", root)
 	}
 	// Resource names the rule's operations imply, e.g. "payment_intents".
 	resources := map[string]bool{}
