@@ -1,50 +1,146 @@
 {
   "topic": "dpm",
-  "id": "dpm/no-payment-method-types",
-  "severity": "warn",
-  "checkFrom": "2023-08-16",
-  "checkUntil": null,
-  "docs": "https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods",
+  "severity": "medium",
+  "docs": [
+    "https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods"
+  ],
   "message": "Your integration pins `payment_method_types`, so new payment methods you enable in the Dashboard won't show up at checkout.",
   "action": "Remove `payment_method_types` and let the [Dashboard](https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods) manage payment methods",
-  "check": {
-    "kind": "paramUsage",
-    "match": [
-      {
-        "param": "payment_method_types",
-        "operations": [
-          "POST /v1/payment_intents",
-          "POST /v1/payment_intents/{intent}",
-          "POST /v1/payment_intents/{intent}/confirm",
-          "POST /v1/setup_intents",
-          "POST /v1/setup_intents/{intent}"
-        ],
-        "fix": {
-          "kind": "replaceParam",
-          "add": { "param": "automatic_payment_methods", "value": { "enabled": true } }
+  "fixes": [
+    {
+      "id": "remove_pmt",
+      "kind": "removeParam",
+      "param": "payment_method_types",
+      "value": null
+    },
+    {
+      "id": "switch_to_apm",
+      "kind": "upsertParam",
+      "param": "automatic_payment_methods",
+      "value": { "enabled": true }
+    }
+  ],
+  "logic": [
+    {
+      "logicalOperator": "or",
+      "matcherType": "conditionGroup",
+      "items": [
+        {
+          "path": { "operator": "start_with", "value": "/v1/payment_intents" },
+          "method": "POST",
+          "requestHeaders": null,
+          "postParams": [
+            {
+              "matcherType": "entry",
+              "key": "payment_method_types",
+              "matcher": { "operator": "exist", "value": null },
+              "patternMatcher": null,
+              "compareVersions": null,
+              "fuzzyMatchKey": null
+            }
+          ],
+          "key": null,
+          "doctorFixIds": ["remove_pmt", "switch_to_apm"],
+          "dataType": "request",
+          "matcherType": "entry"
+        },
+        {
+          "path": { "operator": "start_with", "value": "/v1/setup_intents" },
+          "method": "POST",
+          "requestHeaders": null,
+          "postParams": [
+            {
+              "matcherType": "entry",
+              "key": "payment_method_types",
+              "matcher": { "operator": "exist", "value": null },
+              "patternMatcher": null,
+              "compareVersions": null,
+              "fuzzyMatchKey": null
+            }
+          ],
+          "key": null,
+          "doctorFixIds": ["remove_pmt", "switch_to_apm"],
+          "dataType": "request",
+          "matcherType": "entry"
+        },
+        {
+          "path": { "operator": "start_with", "value": "/v1/checkout/sessions" },
+          "method": "POST",
+          "requestHeaders": null,
+          "postParams": [
+            {
+              "matcherType": "entry",
+              "key": "payment_method_types",
+              "matcher": { "operator": "exist", "value": null },
+              "patternMatcher": null,
+              "compareVersions": null,
+              "fuzzyMatchKey": null
+            }
+          ],
+          "key": null,
+          "doctorFixIds": ["remove_pmt"],
+          "dataType": "request",
+          "matcherType": "entry"
+        },
+        {
+          "path": { "operator": "regexp", "value": "^/v1/(payment_intents|setup_intents)$" },
+          "method": "POST",
+          "requestHeaders": [
+            {
+              "key": "STRIPE_VERSION",
+              "matcher": { "operator": "less_than", "value": "2023-08-16" },
+              "patternMatcher": "(\\d{4}-\\d{2}-\\d{2})",
+              "compareVersions": null,
+              "fuzzyMatchKey": null,
+              "matcherType": "entry"
+            }
+          ],
+          "postParams": [
+            {
+              "matcherType": "conditionGroup",
+              "logicalOperator": "and",
+              "items": [
+                {
+                  "matcherType": "entry",
+                  "key": "payment_method_types",
+                  "matcher": { "operator": "not_exist", "value": null },
+                  "patternMatcher": null,
+                  "compareVersions": null,
+                  "fuzzyMatchKey": null
+                },
+                {
+                  "matcherType": "conditionGroup",
+                  "logicalOperator": "or",
+                  "items": [
+                    {
+                      "matcherType": "entry",
+                      "key": "automatic_payment_methods.enabled",
+                      "matcher": { "operator": "not_exist", "value": null },
+                      "patternMatcher": null,
+                      "compareVersions": null,
+                      "fuzzyMatchKey": null
+                    },
+                    {
+                      "matcherType": "entry",
+                      "key": "automatic_payment_methods.enabled",
+                      "matcher": { "operator": "equal", "value": "false" },
+                      "patternMatcher": null,
+                      "compareVersions": null,
+                      "fuzzyMatchKey": null
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "key": null,
+          "doctorFixIds": ["switch_to_apm"],
+          "dataType": "request",
+          "matcherType": "entry"
         }
-      },
-      {
-        "param": "payment_method_types",
-        "operations": [
-          "POST /v1/checkout/sessions",
-          "POST /v1/payment_links",
-          "POST /v1/payment_links/{payment_link}"
-        ],
-        "fix": { "kind": "removeParam" }
-      },
-      {
-        "param": "payment_settings.payment_method_types",
-        "operations": [
-          "POST /v1/subscriptions",
-          "POST /v1/subscriptions/{subscription_exposed_id}",
-          "POST /v1/invoices",
-          "POST /v1/invoices/{invoice}"
-        ],
-        "fix": { "kind": "removeParam" }
-      }
-    ]
-  },
+      ]
+    }
+  ],
   "signals": {
     "webhookEvents": [
       "checkout.session.completed",

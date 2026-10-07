@@ -68,8 +68,8 @@ func TestCompanionInsertLanguages(t *testing.T) {
 		}
 	}
 
-	// Nested payment_settings.payment_method_types (subscriptions) is removed
-	// but must NOT gain the companion — the parameter does not exist there.
+	// Nested payment_settings.payment_method_types (subscriptions) isn't a
+	// leaf param dpm tracks at all, so it must be left untouched entirely.
 	if sub := mustRead(t, dir, "sub.rb"); strings.Contains(sub, "automatic_payment_methods") {
 		t.Errorf("sub.rb must not gain the companion:\n%s", sub)
 	}

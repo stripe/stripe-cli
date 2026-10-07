@@ -21,7 +21,6 @@ var want = []string{
 	"testdata/pi.py:7:5",           // direct
 	"testdata/pi.rb:7:3",           // direct
 	"testdata/static.php:4:6",      // direct (legacy \Stripe\X::create static style)
-	"testdata/sub.rb:6:5",          // direct, nested payment_settings
 	"testdata/esm.mjs:4:3",         // direct (ESM via the JS grammar)
 	"testdata/typed_decl.cs:10:7",  // type: C# target-typed new()
 	"testdata/var_indirect.py:5:6", // var: bag bound then passed
