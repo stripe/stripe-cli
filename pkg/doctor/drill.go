@@ -18,6 +18,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // drillRun implements the doc's delayed-notification handler and proves it
@@ -65,7 +67,7 @@ func drillRun() (*DrillReport, error) {
 		if p, err := exec.LookPath("stripe"); err == nil {
 			stripeBin = p
 		} else {
-			return r, fmt.Errorf("stripe CLI not found on PATH (set STRIPE_BIN)")
+			return r, errorcategory.Errorf(errorcategory.UserInput, "stripe CLI not found on PATH (set STRIPE_BIN)")
 		}
 	}
 	listen := exec.Command(stripeBin, "listen", "--forward-to", addr+"/webhook",
@@ -102,12 +104,12 @@ func drillRun() (*DrillReport, error) {
 	case secret = <-secretCh:
 		r.ListenReady = true
 	case <-time.After(20 * time.Second):
-		return r, fmt.Errorf("timed out waiting for stripe listen")
+		return r, errorcategory.Errorf(errorcategory.Network, "timed out waiting for stripe listen")
 	}
 
 	trigger := exec.Command(stripeBin, "trigger", "checkout.session.async_payment_succeeded")
 	if out, err := trigger.CombinedOutput(); err != nil {
-		return r, fmt.Errorf("stripe trigger: %v: %s", err, out)
+		return r, errorcategory.Errorf(errorcategory.Internal, "stripe trigger: %v: %s", err, out)
 	}
 	r.Triggered = "checkout.session.async_payment_succeeded"
 
@@ -118,7 +120,7 @@ func drillRun() (*DrillReport, error) {
 		case evt := <-received:
 			r.Events = append(r.Events, evt)
 			if evt.Signature != "verified" {
-				return r, fmt.Errorf("event %s arrived with invalid signature", evt.Type)
+				return r, errorcategory.Errorf(errorcategory.Internal, "event %s arrived with invalid signature", evt.Type)
 			}
 			want[evt.Type] = true
 			all := true

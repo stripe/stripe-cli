@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 var (
@@ -97,7 +98,7 @@ func topicAndDir(args []string) (string, string, error) {
 	// With two args, the first must be a topic; two non-topics means the
 	// first was a typo'd topic, not a directory.
 	if len(nonTopic) > 1 || (len(args) == 2 && len(nonTopic) == 2) {
-		return "", "", fmt.Errorf("unknown topic %q (available: %s)", nonTopic[0], topicList())
+		return "", "", errorcategory.Errorf(errorcategory.UserInput, "unknown topic %q (available: %s)", nonTopic[0], topicList())
 	}
 	if len(nonTopic) == 1 {
 		dir = nonTopic[0]
@@ -240,7 +241,7 @@ func newFixCmd(cfg *config.Config) *cobra.Command {
 			// there is no prompt to give it later, and a half-JSON abort
 			// message would corrupt the output contract.
 			if apply && flagJSON && !flagYes {
-				fail(fmt.Errorf("--apply with --json requires --yes (non-interactive write consent)"))
+				fail(errorcategory.Errorf(errorcategory.UserInput, "--apply with --json requires --yes (non-interactive write consent)"))
 			}
 			// Disclosure BEFORE consent: --apply first computes and renders
 			// the dry-run (which sites get which companion variant, what the
@@ -308,13 +309,13 @@ func validateReturnURL(s string) error {
 		return fmt.Errorf("--return-url: %w", err)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("--return-url must be http(s), got %q", s)
+		return errorcategory.Errorf(errorcategory.UserInput, "--return-url must be http(s), got %q", s)
 	}
 	if u.Host == "" {
-		return fmt.Errorf("--return-url has no host: %q", s)
+		return errorcategory.Errorf(errorcategory.UserInput, "--return-url has no host: %q", s)
 	}
 	if strings.ContainsAny(s, "'\"\\` \t\n\r") {
-		return fmt.Errorf("--return-url contains characters that cannot be spliced into source code: %q", s)
+		return errorcategory.Errorf(errorcategory.UserInput, "--return-url contains characters that cannot be spliced into source code: %q", s)
 	}
 	return nil
 }

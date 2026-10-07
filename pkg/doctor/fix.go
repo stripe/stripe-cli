@@ -19,6 +19,8 @@ import (
 	"strings"
 
 	ts "github.com/odvcencio/gotreesitter"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // siteRec is one located finding: its span plus language context.
@@ -253,7 +255,7 @@ func writeFixedFile(fe *fileEdit, ff *FixFile, out []byte, apply bool, report *F
 // companion fork (nil when the rule has no companion).
 func fixRun(root string, rule Rule, apply, includeAll bool, dec *companionDecision) (*FixReport, error) {
 	if rule.Action != "remove" {
-		return nil, fmt.Errorf("rule %s is action=%q: it detects and advises but has no automatic fix — run `doctor` and follow %s", rule.ID, rule.Action, rule.Docs)
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "rule %s is action=%q: it detects and advises but has no automatic fix — run `doctor` and follow %s", rule.ID, rule.Action, rule.Docs)
 	}
 	findings, _, _, err := scan(root, rule)
 	if err != nil {
