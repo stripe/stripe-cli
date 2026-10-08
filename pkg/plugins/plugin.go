@@ -23,6 +23,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/version"
 
 	hclog "github.com/hashicorp/go-hclog"
 	hcplugin "github.com/hashicorp/go-plugin"
@@ -569,6 +570,7 @@ func buildAdditionalInfo(logger *log.Entry, apiBaseURL, dashboardBaseURL, access
 		ApiBaseUrl:         apiBaseURL,
 		DashboardBaseUrl:   dashboardBaseURL,
 		AccessBaseUrl:      accessBaseURL,
+		CliVersion:         version.Version,
 	}
 }
 
