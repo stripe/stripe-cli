@@ -199,7 +199,7 @@ func TestInstallInstallsMissingDependencyFirst(t *testing.T) {
 		{name: "child", releases: []dependencyTestRelease{{version: "1.17.0", body: "child-one"}}},
 	})
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.NoError(t, err)
 
 	require.Equal(t, []string{"child@1.17.0", "parent@1.0.0"}, env.downloads)
@@ -225,7 +225,7 @@ func TestInstallSkipsDependencyThatSatisfiesTheMinimum(t *testing.T) {
 	})
 	env.placeInstalledBinary(t, "child", "1.18.5")
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.NoError(t, err)
 
 	require.Equal(t, []string{"parent@1.0.0"}, env.downloads)
@@ -241,7 +241,7 @@ func TestInstallUpgradesDependencyBelowTheMinimumToTheNewestRelease(t *testing.T
 	})
 	env.placeInstalledBinary(t, "child", "1.16.2")
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.NoError(t, err)
 
 	// 1.18.0, not 1.17.0: the declared minimum is a floor, and what gets installed
@@ -259,7 +259,7 @@ func TestInstallLeavesRequesterAloneWhenDependencyFails(t *testing.T) {
 	// A previous parent version stays in place when the new one cannot go in.
 	env.placeInstalledBinary(t, "parent", "0.9.0")
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not install the child plugin, which the parent plugin depends on")
 
@@ -276,7 +276,7 @@ func TestInstallFailsWhenNewestDependencyReleaseIsBelowTheMinimum(t *testing.T) 
 		{name: "child", releases: []dependencyTestRelease{{version: "1.17.0", body: "child-one"}}},
 	})
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not install the child plugin, which the parent plugin depends on")
 	require.Contains(t, err.Error(), "v2.0.0 or newer is required")
@@ -292,7 +292,7 @@ func TestInstallResolvesDependencyCyclesWithoutRecursing(t *testing.T) {
 		{name: "child", releases: []dependencyTestRelease{{version: "1.0.0", body: "child-one"}}, minPeers: map[string]string{"parent": "1.0.0"}},
 	})
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.NoError(t, err)
 
 	// child's own requirement on parent ends at the cycle guard: parent is already
@@ -310,7 +310,7 @@ func TestInstallFailsWhenACycleCannotMeetTheFloor(t *testing.T) {
 		{name: "child", releases: []dependencyTestRelease{{version: "1.0.0", body: "child-one"}}, minPeers: map[string]string{"parent": "2.0.0"}},
 	})
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not install the parent plugin, which the child plugin depends on")
 	require.Contains(t, err.Error(), "v2.0.0 or newer is required, but v1.0.0 is already being installed")
@@ -330,7 +330,7 @@ func TestInstallReChecksAFloorForDependenciesInstalledEarlierInTheOperation(t *t
 		{name: "c", releases: []dependencyTestRelease{{version: "1.0.0", body: "c-one"}}},
 	})
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not install the c plugin, which the parent plugin depends on")
 	require.Contains(t, err.Error(), "v5.0.0 or newer is required")
@@ -355,7 +355,7 @@ func TestInstallDefersDependencyHooksUntilTheChainCompletes(t *testing.T) {
 	}
 	t.Cleanup(func() { dependencyPostInstall = previous })
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.NoError(t, err)
 	require.True(t, parentInstalledAtHookTime)
 }
@@ -367,48 +367,37 @@ func TestInstallNeverReplacesALocalDependencyBuild(t *testing.T) {
 	})
 	env.placeInstalledBinary(t, "child", localDevelopmentVersion)
 
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
 	require.NoError(t, err)
 
 	require.Equal(t, []string{"parent@1.0.0"}, env.downloads)
 	require.True(t, env.installedBinaryExists(t, "child", localDevelopmentVersion))
 }
 
-func TestHookBaseURLOverrides(t *testing.T) {
-	qaDashboard := stripe.DashboardBaseURLForAPIBaseURL("https://qa-api.stripe.com")
+func TestInstallPreservesDependenciesInOverrideDirectory(t *testing.T) {
+	for _, override := range []string{"environment", "compiled"} {
+		t.Run(override, func(t *testing.T) {
+			previousPath := PluginsPath
+			t.Cleanup(func() { PluginsPath = previousPath })
+			PluginsPath = ""
+			t.Setenv("STRIPE_PLUGINS_PATH", "")
+			if override == "environment" {
+				t.Setenv("STRIPE_PLUGINS_PATH", "/developer-plugins")
+			} else {
+				PluginsPath = "/developer-plugins"
+			}
+			env := setUpDependencyTest(t, []dependencyTestPlugin{
+				{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"child": "2.0.0"}},
+				{name: "child", releases: []dependencyTestRelease{{version: "2.0.0", body: "child-two"}}},
+			})
+			placeFakeBinary(t, env.fs, getPluginsDir(env.config), "child", "stripe-cli-child", "1.0.0")
 
-	cases := []struct {
-		name                  string
-		apiBaseURL            string
-		dashboardBaseURL      string
-		expectedHookAPI       string
-		expectedHookDashboard string
-	}{
-		{
-			name:             "defaults resolve back to no overrides",
-			apiBaseURL:       stripe.DefaultAPIBaseURL,
-			dashboardBaseURL: stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL),
-		},
-		{
-			name:                  "non-default API URL can only be the user's",
-			apiBaseURL:            "https://qa-api.stripe.com",
-			dashboardBaseURL:      qaDashboard,
-			expectedHookAPI:       "https://qa-api.stripe.com",
-			expectedHookDashboard: "", // derived from the API URL, so resolution filled it in
-		},
-		{
-			name:                  "dashboard URL that is not the derived one is the user's",
-			apiBaseURL:            stripe.DefaultAPIBaseURL,
-			dashboardBaseURL:      "https://dashboard.example.test",
-			expectedHookDashboard: "https://dashboard.example.test",
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			hookAPI, hookDashboard := hookBaseURLOverrides(tc.apiBaseURL, tc.dashboardBaseURL)
-			require.Equal(t, tc.expectedHookAPI, hookAPI)
-			require.Equal(t, tc.expectedHookDashboard, hookDashboard)
+			err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, HookBaseURLs{})
+			require.NoError(t, err)
+			require.Equal(t, []string{"parent@1.0.0"}, env.downloads)
+			body, err := afero.ReadFile(env.fs, filepath.Join(getPluginsDir(env.config), "child", "1.0.0", "stripe-cli-child"+GetBinaryExtension()))
+			require.NoError(t, err)
+			require.Equal(t, "bin", string(body))
 		})
 	}
 }
@@ -450,20 +439,23 @@ func TestInstallForwardsExplicitBaseURLsToDependencyHooks(t *testing.T) {
 		{name: "child", releases: []dependencyTestRelease{{version: "1.17.0", body: "child-one"}}},
 	})
 
-	// The test server URL stands in for an explicit --api-base: it is not the
-	// default, so only the user could have put it there. The dashboard URL differs
-	// from the one derived from the API URL, so it counts as explicit too. (The
-	// metadata requests authenticate with the test API key, so the dashboard URL is
-	// only threaded through, never contacted.)
-	explicitDashboardBaseURL := env.stripeURL + "/dashboard"
-	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, explicitDashboardBaseURL)
+	// The overrides are whatever the entry point says the user explicitly passed —
+	// including values equal to the CLI's defaults, which must survive to the hook
+	// rather than be mistaken for "nothing passed".
+	hookBaseURLs := HookBaseURLs{
+		APIBaseURL:       stripe.DefaultAPIBaseURL,
+		DashboardBaseURL: env.stripeURL + "/dashboard",
+		AccessBaseURL:    "https://access.example.test",
+	}
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL, hookBaseURLs)
 	require.NoError(t, err)
 
 	require.Equal(t, []dependencyPostInstallCall{{
 		plugin:           "child",
 		version:          "1.17.0",
-		apiBaseURL:       env.stripeURL,
-		dashboardBaseURL: explicitDashboardBaseURL,
+		apiBaseURL:       stripe.DefaultAPIBaseURL,
+		dashboardBaseURL: hookBaseURLs.DashboardBaseURL,
+		accessBaseURL:    hookBaseURLs.AccessBaseURL,
 	}}, *hookCalls)
 }
 
@@ -662,6 +654,28 @@ func TestRunPeerPluginNeverReplacesALocalPeerBuild(t *testing.T) {
 	require.Empty(t, stubs.installCalls)
 	require.Error(t, runErr)
 	require.NotContains(t, runErr.Error(), "needs the appA plugin")
+}
+
+func TestRunPeerPluginPreservesOverrideDirectory(t *testing.T) {
+	t.Setenv("STRIPE_PLUGINS_PATH", "/developer-plugins")
+	helper, _, _, stubs := setUpPeerEnforcement(t, map[string]string{"appA": "2.0.0"}, "1.0.1")
+
+	require.Error(t, helper.RunPeerPlugin("appA", nil, "")) // Fake binary cannot launch.
+	require.Empty(t, stubs.resolveCalls)
+	require.Empty(t, stubs.installCalls)
+}
+
+func TestRunPeerPluginKeepsRunningCallersRequirements(t *testing.T) {
+	helper, cfg, fs, stubs := setUpPeerEnforcement(t, map[string]string{"appA": "2.0.0"}, "1.0.1")
+
+	// Another install changes the caller's metadata while its old process runs.
+	caller, err := readLocalPluginMetadata(&cfg.Config, fs, "appB")
+	require.NoError(t, err)
+	caller.MinPluginVersions = nil
+	require.NoError(t, writeLocalPluginMetadata(&cfg.Config, fs, caller))
+
+	require.Error(t, helper.RunPeerPlugin("appA", nil, "")) // Fake binary cannot launch.
+	require.Equal(t, []string{"appA@3.0.0"}, stubs.installCalls)
 }
 
 func TestRunPeerPluginWithoutRecordedCallerMetadataEnforcesNothing(t *testing.T) {

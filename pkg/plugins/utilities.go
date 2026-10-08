@@ -85,11 +85,24 @@ func ValidatePluginShortname(pluginName string) error {
 	}
 }
 
+// HookBaseURLs are the base URL overrides a plugin hook may hear about: exactly
+// what the user explicitly passed on the command line, and empty otherwise. A
+// plugin reads an empty value as "use your own default", so these deliberately
+// never carry the defaults the CLI resolves for its own metadata requests —
+// forwarding those would replace a plugin's choice with the CLI's. They ride
+// the install chain so the hooks of dependencies installed along the way hear
+// the same overrides the plugin the user named does.
+type HookBaseURLs struct {
+	APIBaseURL       string
+	DashboardBaseURL string
+	AccessBaseURL    string
+}
+
 // Install installs the resolved plugin version. If the metadata lookup already
 // resolved a concrete binary URL, it reuses that result and skips a second
 // metadata request. Otherwise it retries metadata during install so cached
 // local metadata can still recover fresh release details.
-func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, hookBaseURLs HookBaseURLs) error {
 	switch {
 	case r == nil:
 		return errorcategory.New(errorcategory.Internal, "missing resolved plugin version")
@@ -98,13 +111,15 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
-		return r.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, nil)
+		chain := newInstallChain(hookBaseURLs)
+		defer chain.runDeferredHooks()
+		return r.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, chain)
 	}
 }
 
-// install is Install without the entry-point guards, for dependency-chain
-// callers that have already validated the resolution and need to thread the
-// chain through.
+// install is Install without the entry-point guards or chain setup, for
+// dependency-chain callers that have already validated the resolution and hold
+// the chain to thread through.
 func (r *ResolvedPluginVersion) install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, chain *installChain) error {
 	return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", chain)
 }

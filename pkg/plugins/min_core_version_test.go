@@ -238,7 +238,7 @@ func TestInstallReportsEndpointRequiresNewerCLI(t *testing.T) {
 	defer server.Close()
 
 	plugin := pluginWithRelease("2.0.1")
-	err := plugin.Install(context.Background(), config, fs, "2.0.1", server.URL, server.URL)
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", server.URL, server.URL, HookBaseURLs{})
 	requireRequiresNewerCLI(t, err, "1.30.0")
 	require.NotContains(t, err.Error(), "could not resolve download URL")
 

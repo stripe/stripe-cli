@@ -10,7 +10,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // pluginVersionSatisfiesMinimum reports whether an installed plugin version meets
@@ -60,10 +59,16 @@ func pluginVersionSatisfiesMinimum(installedVersion, minimum string) bool {
 type installChain struct {
 	inFlight      map[string]string
 	deferredHooks []func()
+	// hookBaseURLs are the explicit overrides the chain's creator could vouch
+	// for, forwarded to the hook of every dependency installed along the chain.
+	hookBaseURLs HookBaseURLs
 }
 
-func newInstallChain() *installChain {
-	return &installChain{inFlight: map[string]string{}}
+func newInstallChain(hookBaseURLs HookBaseURLs) *installChain {
+	return &installChain{
+		inFlight:     map[string]string{},
+		hookBaseURLs: hookBaseURLs,
+	}
 }
 
 // runDeferredHooks runs the hooks owed by this chain, in install order. The
@@ -108,6 +113,10 @@ func init() {
 func ensurePluginAtLeast(ctx context.Context, cfg config.IConfig, fs afero.Fs, pluginName, minimum, apiBaseURL, dashboardBaseURL string, announce func(), chain *installChain) (*ResolvedPluginVersion, string, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, "", err
+	}
+	// Implicit installs must not replace builds in a developer's plugin directory.
+	if pluginsDirOverride() != "" {
+		return nil, "", nil
 	}
 
 	// Every error path inside the lookup already reports "", and unreadable is
@@ -169,10 +178,6 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 	}
 	sort.Strings(dependencyNames)
 
-	// The hook gets the user's overrides back out of the resolved URLs install
-	// runs on; see hookBaseURLOverrides.
-	hookAPIBaseURL, hookDashboardBaseURL := hookBaseURLOverrides(apiBaseURL, dashboardBaseURL)
-
 	for _, dependencyName := range dependencyNames {
 		minimum := requester.MinPluginVersions[dependencyName]
 
@@ -205,7 +210,8 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 		// not name — but deferred onto the chain rather than run here, so hook
 		// code never sees the chain's other plugins half-installed.
 		chain.deferredHooks = append(chain.deferredHooks, func() {
-			dependencyPostInstall(ctx, cfg, fs, resolved.Plugin, resolved.Version, previousVersion, hookAPIBaseURL, hookDashboardBaseURL, "")
+			dependencyPostInstall(ctx, cfg, fs, resolved.Plugin, resolved.Version, previousVersion,
+				chain.hookBaseURLs.APIBaseURL, chain.hookBaseURLs.DashboardBaseURL, chain.hookBaseURLs.AccessBaseURL)
 		})
 	}
 
@@ -214,9 +220,8 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 
 // dependencyPostInstall runs the PostInstall hook of a plugin that was installed
 // to satisfy a declared floor rather than by name. Swappable for test injection.
-// The base URLs are whatever explicit overrides the caller can vouch for; the
-// install path has no access base URL to offer, and a hook reads an empty value
-// as its own default.
+// The base URLs are the explicit overrides the install's initiator vouched for
+// (see HookBaseURLs); a hook reads an empty value as its own default.
 var dependencyPostInstall = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, p *Plugin, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
 	realConfig, isRealConfig := cfg.(*config.Config)
 	if !isRealConfig {
@@ -224,28 +229,6 @@ var dependencyPostInstall = func(ctx context.Context, cfg config.IConfig, fs afe
 	}
 
 	runPostInstallHook(ctx, realConfig, fs, p, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL)
-}
-
-// hookBaseURLOverrides recovers the user's explicit base URL overrides from the
-// resolved URLs install runs on, for forwarding to a plugin hook. A plugin reads
-// an empty value as "use your own default", so a hook must only ever hear about a
-// URL the user actually chose — not the default install resolved so its metadata
-// request could name a real host.
-//
-// install is never told which values were explicit, but they are recoverable: the
-// API URL is only ever non-default when the user set it, and a dashboard URL equal
-// to the one derived from the API URL is exactly what resolution fills in when the
-// user said nothing (a user who explicitly passed that same value loses nothing by
-// having it elided — it is the value the plugin would derive too).
-func hookBaseURLOverrides(apiBaseURL, dashboardBaseURL string) (hookAPIBaseURL, hookDashboardBaseURL string) {
-	if apiBaseURL != stripe.DefaultAPIBaseURL {
-		hookAPIBaseURL = apiBaseURL
-	}
-	if dashboardBaseURL != stripe.DashboardBaseURLForAPIBaseURL(apiBaseURL) {
-		hookDashboardBaseURL = dashboardBaseURL
-	}
-
-	return hookAPIBaseURL, hookDashboardBaseURL
 }
 
 func dependencyInstallError(requesterName, dependencyName string, cause error) error {

@@ -296,23 +296,21 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 	return ""
 }
 
-// Install installs the plugin of the given version.
-func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string) error {
-	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false, nil)
+// Install installs the plugin of the given version. hookBaseURLs carries the
+// base URL overrides the user explicitly passed, for the hooks of any
+// dependencies installed along the way; see HookBaseURLs.
+func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string, hookBaseURLs HookBaseURLs) error {
+	chain := newInstallChain(hookBaseURLs)
+	defer chain.runDeferredHooks()
+	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false, chain)
 }
 
 // install downloads and persists one plugin version, after first installing any peer
-// plugins the release declares minimum versions for. chain maps each plugin
-// currently being installed up this call chain to the version going in (nil at the
-// entry point); a dependency found there is checked against its declared floor
-// instead of recursed into, so a cycle ends. See installPluginDependencies.
+// plugins the release declares minimum versions for. chain is never nil: every
+// entry point creates one — and settles its deferred hooks — while recursive
+// dependency installs thread the enclosing chain through, which is both the
+// cycle guard and where their hooks defer. See installPluginDependencies.
 func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, chain *installChain) error {
-	if chain == nil {
-		chain = newInstallChain()
-		// The chain's creator settles the dependency hooks it accumulated, once
-		// the whole operation is over; see installChain.
-		defer chain.runDeferredHooks()
-	}
 	chain.inFlight[p.Shortname] = version
 	// Removed on the way out so the map describes the live call chain, not every
 	// install this operation has already finished: a later sibling that declares
@@ -773,7 +771,8 @@ func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 			p = resolvedPlugin.Plugin
 			version = resolvedPlugin.Version
-			if err := resolvedPlugin.Install(ctx, config, fs, installAPIBaseURL, installDashboardBaseURL); err != nil {
+			hookBaseURLs := HookBaseURLs{APIBaseURL: apiBaseURL, DashboardBaseURL: dashboardBaseURL, AccessBaseURL: accessBaseURL}
+			if err := resolvedPlugin.Install(ctx, config, fs, installAPIBaseURL, installDashboardBaseURL, hookBaseURLs); err != nil {
 				return err
 			}
 

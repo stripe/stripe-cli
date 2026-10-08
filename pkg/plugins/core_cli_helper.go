@@ -354,6 +354,8 @@ type coreCLIHelper struct {
 	// what lets RunPeerPlugin enforce the minimum peer versions that plugin's
 	// installed release declared.
 	callerPluginName string
+	// Snapshot for this caller; later installs must not change its requirements.
+	minPluginVersions map[string]string
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
@@ -459,17 +461,25 @@ func NewCoreCLIHelper(ctx context.Context, cfg config.IConfig, fs afero.Fs, apiB
 }
 
 // NewCoreCLIHelperForPlugin creates the CoreCLIHelper dispensed to a running plugin.
-// callerPluginName is that plugin's shortname; RunPeerPlugin uses it to look up the
-// minimum peer versions the plugin's installed release declared.
+// callerPluginName is that plugin's shortname. Its installed requirements are
+// captured here so they remain stable for the lifetime of the helper.
 func NewCoreCLIHelperForPlugin(ctx context.Context, cfg config.IConfig, fs afero.Fs, callerPluginName, apiBaseURL, dashboardBaseURL, accessBaseURL string) CoreCLIHelper {
+	var minimums map[string]string
+	if callerPluginName != "" {
+		// Missing or unreadable metadata declares no requirements.
+		if caller, err := readLocalPluginMetadata(cfg, fs, callerPluginName); err == nil {
+			minimums = caller.MinPluginVersions
+		}
+	}
 	return &coreCLIHelper{
-		ctx:              ctx,
-		config:           cfg,
-		fs:               fs,
-		apiBaseURL:       apiBaseURL,
-		dashboardBaseURL: dashboardBaseURL,
-		accessBaseURL:    accessBaseURL,
-		callerPluginName: callerPluginName,
+		ctx:               ctx,
+		config:            cfg,
+		fs:                fs,
+		apiBaseURL:        apiBaseURL,
+		dashboardBaseURL:  dashboardBaseURL,
+		accessBaseURL:     accessBaseURL,
+		callerPluginName:  callerPluginName,
+		minPluginVersions: minimums,
 	}
 }
 
@@ -623,20 +633,7 @@ func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(peerName string) error {
 		return nil
 	}
 
-	// A localdev CLI build runs every plugin at local.build.dev regardless of what is
-	// installed (see run), and that version satisfies every minimum.
-	if PluginsPath != "" {
-		return nil
-	}
-
-	// The caller's requirements were persisted with its local plugin metadata when it
-	// was installed. A caller installed before requirements were recorded has none,
-	// and metadata that cannot be read reports none, matching what it records.
-	caller, err := readLocalPluginMetadata(h.config, h.fs, h.callerPluginName)
-	if err != nil {
-		return nil
-	}
-	minimum := caller.MinPluginVersions[peerName]
+	minimum := h.minPluginVersions[peerName]
 	if minimum == "" {
 		return nil
 	}
@@ -653,7 +650,11 @@ func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(peerName string) error {
 
 	apiBaseURL, dashboardBaseURL := resolveInstallBaseURLs(h.apiBaseURL, h.dashboardBaseURL)
 
-	resolved, previousVersion, err := ensurePluginAtLeast(h.ctx, h.config, h.fs, peerName, minimum, apiBaseURL, dashboardBaseURL, announce, nil)
+	chain := newInstallChain(HookBaseURLs{APIBaseURL: h.apiBaseURL, DashboardBaseURL: h.dashboardBaseURL, AccessBaseURL: h.accessBaseURL})
+	resolved, previousVersion, err := ensurePluginAtLeast(h.ctx, h.config, h.fs, peerName, minimum, apiBaseURL, dashboardBaseURL, announce, chain)
+	// Settled before the peer's own hook so the peer's dependencies' hooks run
+	// first, and on failure too; see installChain.
+	chain.runDeferredHooks()
 	if err != nil {
 		return peerMinimumVersionError(h.callerPluginName, peerName, minimum, previousVersion, err)
 	}

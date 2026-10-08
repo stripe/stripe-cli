@@ -64,8 +64,8 @@ var (
 	autoUpgradeResolver    = ResolvePluginForUpgrade
 	autoUpgradePostInstall = runPostInstallHook
 	autoUpgradeNow         = time.Now
-	autoUpgradeInstaller   = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
-		return resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL)
+	autoUpgradeInstaller   = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, hookBaseURLs HookBaseURLs) error {
+		return resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL, hookBaseURLs)
 	}
 )
 
@@ -306,8 +306,9 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 	}
 
 	// Handed ctx, not resolveCtx: deciding whether to upgrade is on a timer, the
-	// download is not.
-	if err := autoUpgradeInstaller(ctx, resolved, cfg, fs, installAPIBaseURL, installDashboardBaseURL); err != nil {
+	// download is not. The hook overrides are the caller's unresolved values, so
+	// dependency hooks hear only what the user explicitly passed.
+	if err := autoUpgradeInstaller(ctx, resolved, cfg, fs, installAPIBaseURL, installDashboardBaseURL, HookBaseURLs{APIBaseURL: apiBaseURL, DashboardBaseURL: dashboardBaseURL, AccessBaseURL: accessBaseURL}); err != nil {
 		// install already told the user it could not install the plugin, and the
 		// version they have still works, so the command can carry on with it.
 		logger.Debugf("auto-upgrade to v%s failed, continuing with v%s: %s", resolved.Version, installedVersion, err)
