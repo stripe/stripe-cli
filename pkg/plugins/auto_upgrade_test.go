@@ -116,7 +116,7 @@ func stubAutoUpgrade(t *testing.T) *autoUpgradeStubs {
 		return stubs.resolved, stubs.resolveErr
 	}
 
-	autoUpgradeInstaller = func(_ context.Context, resolved *ResolvedPluginVersion, _ cfgpkg.IConfig, _ afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+	autoUpgradeInstaller = func(_ context.Context, resolved *ResolvedPluginVersion, _ cfgpkg.IConfig, _ afero.Fs, apiBaseURL, dashboardBaseURL string, _ HookBaseURLs) error {
 		stubs.installCalls = append(stubs.installCalls, autoUpgradeInstallCall{
 			version:          resolved.Version,
 			apiBaseURL:       apiBaseURL,

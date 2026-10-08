@@ -35,6 +35,13 @@ type PluginMetadata struct {
 	// AutoUpdateDefault enables automatic updates when the user has not chosen a
 	// per-plugin or global setting. Older responses that omit it default to false.
 	AutoUpdateDefault bool `json:"auto_update_default"`
+	// MinPluginVersions holds the minimum versions of other plugins the resolved
+	// release declares it needs, keyed by plugin shortname (e.g. {"apps": "1.17.0"}).
+	// Each value is a bare x.y.z minimum — a floor, never a range, and never the
+	// plugin itself. A response that omits the field decodes to nil, which means
+	// the release declares no requirements and everything behaves as it did before
+	// the field existed.
+	MinPluginVersions map[string]string `json:"min_plugin_versions"`
 }
 
 func getPluginMetadataPath(apiKey string) string {

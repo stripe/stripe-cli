@@ -188,14 +188,18 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL, dashboardBaseURL); err != nil {
+	hookBaseURLs := plugins.HookBaseURLs{
+		APIBaseURL:       explicitFlagValue(cmd, "api-base", ic.apiBaseURL),
+		DashboardBaseURL: explicitFlagValue(cmd, "dashboard-base", ic.dashboardBaseURL),
+		AccessBaseURL:    explicitFlagValue(cmd, "access-base", ic.accessBaseURL),
+	}
+
+	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL, dashboardBaseURL, hookBaseURLs); err != nil {
 		return err
 	}
 
 	runPostInstallHook(ctx, ic.cfg, ic.fs, plugin, version, prevVersion,
-		explicitFlagValue(cmd, "api-base", ic.apiBaseURL),
-		explicitFlagValue(cmd, "dashboard-base", ic.dashboardBaseURL),
-		explicitFlagValue(cmd, "access-base", ic.accessBaseURL))
+		hookBaseURLs.APIBaseURL, hookBaseURLs.DashboardBaseURL, hookBaseURLs.AccessBaseURL)
 
 	if prevVersion != "" {
 		plugins.SendPluginLifecycleEvent(cmd.Context(), plugins.PluginUpgradedEvent, version)
