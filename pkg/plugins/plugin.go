@@ -320,7 +320,8 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	// landed on disk, not skipped because the name was seen once.
 	defer delete(chain.inFlight, p.Shortname)
 
-	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
+	spinnerLabel := ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version))
+	spinner := ansi.StartNewSpinner(spinnerLabel, os.Stderr)
 
 	creds, _ := cfg.GetProfile().ResolveCredentialsForAnyMode(false)
 	apiKey := creds.Token
@@ -397,7 +398,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		if err := installPluginDependencies(ctx, cfg, fs, pluginToInstall, apiBaseURL, dashboardBaseURL, chain); err != nil {
 			return err
 		}
-		spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
+		spinner = ansi.StartNewSpinner(spinnerLabel, os.Stderr)
 	}
 
 	// Pull down bin, verify, and save to disk

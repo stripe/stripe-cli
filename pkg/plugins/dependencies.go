@@ -31,9 +31,6 @@ func pluginVersionSatisfiesMinimum(installedVersion, minimum string) bool {
 	if installedVersion == "" {
 		return false
 	}
-	if isLocalDevelopmentVersion(installedVersion) {
-		return true
-	}
 
 	installed, err := goversion.NewVersion(installedVersion)
 	if err != nil {
@@ -69,10 +66,6 @@ func newInstallChain() *installChain {
 	return &installChain{inFlight: map[string]string{}}
 }
 
-func (c *installChain) deferHook(hook func()) {
-	c.deferredHooks = append(c.deferredHooks, hook)
-}
-
 // runDeferredHooks runs the hooks owed by this chain, in install order. The
 // install that created the chain calls it once its own outcome is decided —
 // on failure too, since a dependency that landed before the failure is
@@ -81,7 +74,6 @@ func (c *installChain) runDeferredHooks() {
 	for _, hook := range c.deferredHooks {
 		hook()
 	}
-	c.deferredHooks = nil
 }
 
 // Swappable for test injection, shared by every path that brings a plugin up to
@@ -96,7 +88,7 @@ var (
 // install is an initialization cycle.
 func init() {
 	minimumVersionInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, chain *installChain) error {
-		return resolved.Plugin.install(ctx, cfg, fs, resolved.Version, apiBaseURL, dashboardBaseURL, resolved.BinaryURL, resolved.BinaryURL != "", chain)
+		return resolved.install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL, chain)
 	}
 }
 
@@ -107,9 +99,13 @@ func init() {
 // version already satisfies returns nil with no work done, so the caller knows
 // whether a post-install hook is owed.
 //
+// announce, when non-nil, runs once the floor is known to be unmet and before
+// any network or download work, so a caller can say why the pause is about to
+// happen without making the satisfied-check a second time itself.
+//
 // Errors are bare causes: the caller attributes them to whoever declared the
 // floor, which is the one thing the two callers legitimately say differently.
-func ensurePluginAtLeast(ctx context.Context, cfg config.IConfig, fs afero.Fs, pluginName, minimum, apiBaseURL, dashboardBaseURL string, chain *installChain) (*ResolvedPluginVersion, string, error) {
+func ensurePluginAtLeast(ctx context.Context, cfg config.IConfig, fs afero.Fs, pluginName, minimum, apiBaseURL, dashboardBaseURL string, announce func(), chain *installChain) (*ResolvedPluginVersion, string, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, "", err
 	}
@@ -120,6 +116,10 @@ func ensurePluginAtLeast(ctx context.Context, cfg config.IConfig, fs afero.Fs, p
 	installedVersion, _ := (&Plugin{Shortname: pluginName}).lookUpInstalledVersion(cfg, fs)
 	if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
 		return nil, installedVersion, nil
+	}
+
+	if announce != nil {
+		announce()
 	}
 
 	resolved, err := minimumVersionResolver(ctx, cfg, fs, pluginName, apiBaseURL, dashboardBaseURL)
@@ -176,16 +176,11 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 	for _, dependencyName := range dependencyNames {
 		minimum := requester.MinPluginVersions[dependencyName]
 
-		// Release validation rejects a plugin depending on itself, so a self-entry
-		// that still got here is bad data to skip, not something to recurse on.
-		if dependencyName == requester.Shortname {
-			continue
-		}
-
 		// Already being installed somewhere up this call chain. Recursing would
 		// never end, but the version on its way in still has to clear this floor:
 		// a cycle is a reason to stop recursing, not permission to skip the
-		// requirement.
+		// requirement. The requester itself is always in flight, so a self-entry
+		// — bad data that release validation rejects — ends here too.
 		if inFlightVersion, alreadyInstalling := chain.inFlight[dependencyName]; alreadyInstalling {
 			if pluginVersionSatisfiesMinimum(inFlightVersion, minimum) {
 				continue
@@ -198,7 +193,7 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 			))
 		}
 
-		resolved, previousVersion, err := ensurePluginAtLeast(ctx, cfg, fs, dependencyName, minimum, apiBaseURL, dashboardBaseURL, chain)
+		resolved, previousVersion, err := ensurePluginAtLeast(ctx, cfg, fs, dependencyName, minimum, apiBaseURL, dashboardBaseURL, nil, chain)
 		if err != nil {
 			return dependencyInstallError(requester.Shortname, dependencyName, err)
 		}
@@ -209,7 +204,7 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 		// Best-effort, like every other path that installs a plugin the user did
 		// not name — but deferred onto the chain rather than run here, so hook
 		// code never sees the chain's other plugins half-installed.
-		chain.deferHook(func() {
+		chain.deferredHooks = append(chain.deferredHooks, func() {
 			dependencyPostInstall(ctx, cfg, fs, resolved.Plugin, resolved.Version, previousVersion, hookAPIBaseURL, hookDashboardBaseURL, "")
 		})
 	}

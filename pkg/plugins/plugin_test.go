@@ -867,9 +867,7 @@ func setUpRunAutoUpgrade(t *testing.T, installedVersion string) (*autoUpgradeStu
 	// which is what a real machine does too.
 	t.Setenv("XDG_CONFIG_HOME", "/xdg")
 
-	installDir := filepath.Join(getPluginsDir(&cfg.Config), "appA", installedVersion)
-	require.NoError(t, fs.MkdirAll(installDir, 0755))
-	require.NoError(t, afero.WriteFile(fs, filepath.Join(installDir, "stripe-cli-app-a"+GetBinaryExtension()), []byte("bin"), 0755))
+	placeFakeBinary(t, fs, getPluginsDir(&cfg.Config), "appA", "stripe-cli-app-a", installedVersion)
 
 	return stubs, cfg, fs
 }

@@ -98,8 +98,15 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
-		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", nil)
+		return r.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, nil)
 	}
+}
+
+// install is Install without the entry-point guards, for dependency-chain
+// callers that have already validated the resolution and need to thread the
+// chain through.
+func (r *ResolvedPluginVersion) install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, chain *installChain) error {
+	return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", chain)
 }
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary

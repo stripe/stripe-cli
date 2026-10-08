@@ -641,24 +641,21 @@ func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(peerName string) error {
 		return nil
 	}
 
-	installedVersion, _ := (&Plugin{Shortname: peerName}).lookUpInstalledVersion(h.config, h.fs)
-	if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
-		return nil
-	}
-
 	// Said before the download so the calling plugin's pause has a visible reason,
 	// and on stderr so it stays out of piped plugin output.
-	color := ansi.Color(os.Stderr)
-	fmt.Fprintln(os.Stderr, color.Faint(fmt.Sprintf(
-		"The %s plugin requires the %s plugin v%s or newer; installing the latest %s plugin...",
-		h.callerPluginName, peerName, minimum, peerName,
-	)).String())
+	announce := func() {
+		color := ansi.Color(os.Stderr)
+		fmt.Fprintln(os.Stderr, color.Faint(fmt.Sprintf(
+			"The %s plugin requires the %s plugin v%s or newer; installing the latest %s plugin...",
+			h.callerPluginName, peerName, minimum, peerName,
+		)).String())
+	}
 
 	apiBaseURL, dashboardBaseURL := resolveInstallBaseURLs(h.apiBaseURL, h.dashboardBaseURL)
 
-	resolved, previousVersion, err := ensurePluginAtLeast(h.ctx, h.config, h.fs, peerName, minimum, apiBaseURL, dashboardBaseURL, nil)
+	resolved, previousVersion, err := ensurePluginAtLeast(h.ctx, h.config, h.fs, peerName, minimum, apiBaseURL, dashboardBaseURL, announce, nil)
 	if err != nil {
-		return peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion, err)
+		return peerMinimumVersionError(h.callerPluginName, peerName, minimum, previousVersion, err)
 	}
 	if resolved != nil {
 		// Best-effort, like every other install the user did not name. The
