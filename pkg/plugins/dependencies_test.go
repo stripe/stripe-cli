@@ -339,6 +339,27 @@ func TestInstallReChecksAFloorForDependenciesInstalledEarlierInTheOperation(t *t
 	require.False(t, env.installedBinaryExists(t, "parent", "1.0.0"))
 }
 
+func TestInstallDefersDependencyHooksUntilTheChainCompletes(t *testing.T) {
+	env := setUpDependencyTest(t, []dependencyTestPlugin{
+		{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"child": "1.17.0"}},
+		{name: "child", releases: []dependencyTestRelease{{version: "1.17.0", body: "child-one"}}},
+	})
+
+	// A hook is plugin code that can call back into the CLI, so it must only run
+	// once every plugin in the chain is fully installed — here, parent must be on
+	// disk by the time child's hook fires, even though child installed first.
+	parentInstalledAtHookTime := false
+	previous := dependencyPostInstall
+	dependencyPostInstall = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, p *Plugin, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
+		parentInstalledAtHookTime = env.installedBinaryExists(t, "parent", "1.0.0")
+	}
+	t.Cleanup(func() { dependencyPostInstall = previous })
+
+	err := (&Plugin{Shortname: "parent"}).Install(context.Background(), env.config, env.fs, "1.0.0", env.stripeURL, env.stripeURL)
+	require.NoError(t, err)
+	require.True(t, parentInstalledAtHookTime)
+}
+
 func TestInstallNeverReplacesALocalDependencyBuild(t *testing.T) {
 	env := setUpDependencyTest(t, []dependencyTestPlugin{
 		{name: "parent", releases: []dependencyTestRelease{{version: "1.0.0", body: "parent-one"}}, minPeers: map[string]string{"child": "99.0.0"}},
@@ -481,7 +502,7 @@ func stubPeerPluginEnforcement(t *testing.T) *peerEnforcementStubs {
 		}
 		return stubs.resolved, nil
 	}
-	minimumVersionInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, installing map[string]string) error {
+	minimumVersionInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, chain *installChain) error {
 		stubs.installCalls = append(stubs.installCalls, resolved.Plugin.Shortname+"@"+resolved.Version)
 		if stubs.installErr != nil {
 			return stubs.installErr

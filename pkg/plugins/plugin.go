@@ -302,20 +302,23 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 }
 
 // install downloads and persists one plugin version, after first installing any peer
-// plugins the release declares minimum versions for. installing maps each plugin
+// plugins the release declares minimum versions for. chain maps each plugin
 // currently being installed up this call chain to the version going in (nil at the
 // entry point); a dependency found there is checked against its declared floor
 // instead of recursed into, so a cycle ends. See installPluginDependencies.
-func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, installing map[string]string) error {
-	if installing == nil {
-		installing = map[string]string{}
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, chain *installChain) error {
+	if chain == nil {
+		chain = newInstallChain()
+		// The chain's creator settles the dependency hooks it accumulated, once
+		// the whole operation is over; see installChain.
+		defer chain.runDeferredHooks()
 	}
-	installing[p.Shortname] = version
+	chain.inFlight[p.Shortname] = version
 	// Removed on the way out so the map describes the live call chain, not every
 	// install this operation has already finished: a later sibling that declares
 	// its own floor for this plugin must have it checked against what actually
 	// landed on disk, not skipped because the name was seen once.
-	defer delete(installing, p.Shortname)
+	defer delete(chain.inFlight, p.Shortname)
 
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
 
@@ -391,7 +394,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	// as it was: not installed, or still running its previous version.
 	if len(pluginToInstall.MinPluginVersions) > 0 {
 		ansi.StopSpinner(spinner, "", os.Stderr)
-		if err := installPluginDependencies(ctx, cfg, fs, pluginToInstall, apiBaseURL, dashboardBaseURL, installing); err != nil {
+		if err := installPluginDependencies(ctx, cfg, fs, pluginToInstall, apiBaseURL, dashboardBaseURL, chain); err != nil {
 			return err
 		}
 		spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
