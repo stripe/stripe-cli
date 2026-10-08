@@ -51,10 +51,73 @@ func pluginVersionSatisfiesMinimum(installedVersion, minimum string) bool {
 	return !installed.LessThan(required)
 }
 
+// Swappable for test injection, shared by every path that brings a plugin up to
+// a declared floor; see ensurePluginAtLeast.
+var (
+	minimumVersionResolver  = ResolvePluginForUpgrade
+	minimumVersionInstaller func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, installing map[string]string) error
+)
+
+// Assigned here rather than at the declaration: install resolves its own
+// dependencies through ensurePluginAtLeast, so a declaration-time closure over
+// install is an initialization cycle.
+func init() {
+	minimumVersionInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, installing map[string]string) error {
+		return resolved.Plugin.install(ctx, cfg, fs, resolved.Version, apiBaseURL, dashboardBaseURL, resolved.BinaryURL, resolved.BinaryURL != "", installing)
+	}
+}
+
+// ensurePluginAtLeast brings the named plugin up to a declared minimum version:
+// when the installed version is missing or below the floor, it installs the
+// newest release — the minimum is a floor, not a pin — and returns that
+// resolution along with the previously installed version. A floor the installed
+// version already satisfies returns nil with no work done, so the caller knows
+// whether a post-install hook is owed.
+//
+// Errors are bare causes: the caller attributes them to whoever declared the
+// floor, which is the one thing the two callers legitimately say differently.
+func ensurePluginAtLeast(ctx context.Context, cfg config.IConfig, fs afero.Fs, pluginName, minimum, apiBaseURL, dashboardBaseURL string, installing map[string]string) (*ResolvedPluginVersion, string, error) {
+	if err := ValidatePluginShortname(pluginName); err != nil {
+		return nil, "", err
+	}
+
+	// Every error path inside the lookup already reports "", and unreadable is
+	// handled as absent: the ways that can be wrong all end in installing a
+	// release that was already there.
+	installedVersion, _ := (&Plugin{Shortname: pluginName}).lookUpInstalledVersion(cfg, fs)
+	if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
+		return nil, installedVersion, nil
+	}
+
+	resolved, err := minimumVersionResolver(ctx, cfg, fs, pluginName, apiBaseURL, dashboardBaseURL)
+	if err != nil {
+		return nil, installedVersion, err
+	}
+	if resolved == nil || resolved.Plugin == nil || resolved.Version == "" {
+		return nil, installedVersion, errorcategory.Errorf(errorcategory.API, "could not determine the newest release of the %s plugin", pluginName)
+	}
+
+	// The newest release the endpoint offers can sit below the minimum when it
+	// withholds releases this CLI is too old to run. Installing it anyway would
+	// claim success while leaving the requirement unmet, to be rediscovered as
+	// a failure at run time.
+	if !pluginVersionSatisfiesMinimum(resolved.Version, minimum) {
+		return nil, installedVersion, errorcategory.Errorf(
+			errorcategory.API,
+			"v%s or newer is required, but the newest release available to this CLI is v%s. A newer Stripe CLI may be required: https://docs.stripe.com/stripe-cli/upgrade",
+			minimum, resolved.Version,
+		)
+	}
+
+	if err := minimumVersionInstaller(ctx, resolved, cfg, fs, apiBaseURL, dashboardBaseURL, installing); err != nil {
+		return nil, installedVersion, err
+	}
+
+	return resolved, installedVersion, nil
+}
+
 // installPluginDependencies installs or upgrades the peer plugins a release
-// declares minimum versions for, before the release itself is installed. For each
-// declared peer that is missing or below its minimum, it installs the newest
-// release of that peer — the minimum is a floor, not a pin.
+// declares minimum versions for, before the release itself is installed.
 //
 // installing maps the plugins already being installed up this call chain,
 // including the requester itself, to the versions going in. A dependency found
@@ -71,6 +134,10 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 		dependencyNames = append(dependencyNames, dependencyName)
 	}
 	sort.Strings(dependencyNames)
+
+	// The hook gets the user's overrides back out of the resolved URLs install
+	// runs on; see hookBaseURLOverrides.
+	hookAPIBaseURL, hookDashboardBaseURL := hookBaseURLOverrides(apiBaseURL, dashboardBaseURL)
 
 	for _, dependencyName := range dependencyNames {
 		minimum := requester.MinPluginVersions[dependencyName]
@@ -97,55 +164,27 @@ func installPluginDependencies(ctx context.Context, cfg config.IConfig, fs afero
 			))
 		}
 
-		if err := ValidatePluginShortname(dependencyName); err != nil {
+		resolved, previousVersion, err := ensurePluginAtLeast(ctx, cfg, fs, dependencyName, minimum, apiBaseURL, dashboardBaseURL, installing)
+		if err != nil {
 			return dependencyInstallError(requester.Shortname, dependencyName, err)
 		}
-
-		installedVersion, err := (&Plugin{Shortname: dependencyName}).lookUpInstalledVersion(cfg, fs)
-		if err != nil {
-			// Unreadable is handled as absent: the ways this install can be wrong
-			// about that all end in installing a release that was already there.
-			installedVersion = ""
-		}
-		if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
+		if resolved == nil {
 			continue
 		}
 
-		resolved, err := ResolvePluginForUpgrade(ctx, cfg, fs, dependencyName, apiBaseURL, dashboardBaseURL)
-		if err != nil {
-			return dependencyInstallError(requester.Shortname, dependencyName, err)
-		}
-
-		// The newest release the endpoint offers can sit below the minimum when it
-		// withholds releases this CLI is too old to run. Installing it anyway would
-		// claim success while leaving the requirement unmet, to be rediscovered as
-		// a failure at run time.
-		if !pluginVersionSatisfiesMinimum(resolved.Version, minimum) {
-			return dependencyInstallError(requester.Shortname, dependencyName, errorcategory.Errorf(
-				errorcategory.API,
-				"v%s or newer is required, but the newest release available to this CLI is v%s. A newer Stripe CLI may be required: https://docs.stripe.com/stripe-cli/upgrade",
-				minimum, resolved.Version,
-			))
-		}
-
-		if err := resolved.Plugin.install(ctx, cfg, fs, resolved.Version, apiBaseURL, dashboardBaseURL, resolved.BinaryURL, resolved.BinaryURL != "", installing); err != nil {
-			return dependencyInstallError(requester.Shortname, dependencyName, err)
-		}
-
 		// Best-effort, like every other path that installs a plugin the user did
-		// not name. The hook gets the user's overrides back out of the resolved
-		// URLs install runs on; see hookBaseURLOverrides.
-		hookAPIBaseURL, hookDashboardBaseURL := hookBaseURLOverrides(apiBaseURL, dashboardBaseURL)
-		dependencyPostInstall(ctx, cfg, fs, resolved.Plugin, resolved.Version, installedVersion, hookAPIBaseURL, hookDashboardBaseURL, "")
+		// not name.
+		dependencyPostInstall(ctx, cfg, fs, resolved.Plugin, resolved.Version, previousVersion, hookAPIBaseURL, hookDashboardBaseURL, "")
 	}
 
 	return nil
 }
 
-// dependencyPostInstall runs a freshly installed dependency's PostInstall hook.
-// Swappable for test injection. The access base URL is always empty: install
-// never learns it, and a hook that needs it reads an empty value as its own
-// default, which is all the CLI could offer here anyway.
+// dependencyPostInstall runs the PostInstall hook of a plugin that was installed
+// to satisfy a declared floor rather than by name. Swappable for test injection.
+// The base URLs are whatever explicit overrides the caller can vouch for; the
+// install path has no access base URL to offer, and a hook reads an empty value
+// as its own default.
 var dependencyPostInstall = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, p *Plugin, version, previousVersion, apiBaseURL, dashboardBaseURL, accessBaseURL string) {
 	realConfig, isRealConfig := cfg.(*config.Config)
 	if !isRealConfig {

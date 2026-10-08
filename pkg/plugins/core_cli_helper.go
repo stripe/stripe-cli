@@ -598,44 +598,35 @@ func (h *coreCLIHelper) RunPeerPlugin(pluginName string, args []string, cwd stri
 		return errorcategory.Errorf(errorcategory.Internal, "could not run peer plugin %q: config type mismatch", pluginName)
 	}
 
-	installedPeer, lookupErr := LookUpPlugin(h.ctx, h.config, h.fs, pluginName)
-
-	// Enforcement runs before the lookup error is reported: a declared peer that was
-	// never installed is exactly the case it exists to repair.
-	peerToRun, err := h.ensurePeerPluginMinimumVersion(cfg, pluginName)
-	if err != nil {
+	// Enforcement runs before the lookup: a declared peer that was never installed
+	// is exactly the case it exists to repair, and a peer it installs is found by
+	// the lookup through the local metadata the install just persisted — including
+	// the new release's checksum, which dispensing the binary needs.
+	if err := h.ensurePeerPluginMinimumVersion(pluginName); err != nil {
 		return err
 	}
-	if peerToRun == nil {
-		if lookupErr != nil {
-			return fmt.Errorf("peer plugin %q not found: %w", pluginName, lookupErr)
-		}
-		peerToRun = &installedPeer
+
+	plugin, err := LookUpPlugin(h.ctx, h.config, h.fs, pluginName)
+	if err != nil {
+		return fmt.Errorf("peer plugin %q not found: %w", pluginName, err)
 	}
 
-	return peerToRun.run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL, false)
+	return plugin.run(h.ctx, cfg, h.fs, args, cwd, "", h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL, false)
 }
 
-// Swappable for test injection.
-var (
-	peerPluginResolver  = ResolvePluginForUpgrade
-	peerPluginInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
-		return resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL)
-	}
-)
-
 // ensurePeerPluginMinimumVersion enforces the minimum version the calling plugin's
-// installed release recorded for a peer. It returns the freshly installed plugin when
-// enforcement had to install or upgrade the peer — dispensing the new binary needs
-// that release's checksum, which only the fresh metadata carries — and nil when there
-// was nothing to enforce or the installed peer already satisfies the minimum. An error
-// means the peer cannot be brought up to the minimum and the caller must not run it.
-//
-// The minimum is a floor, not a pin: what gets installed is the newest release, which
-// is checked against the floor rather than matched to it.
-func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(cfg *config.Config, peerName string) (*Plugin, error) {
+// installed release recorded for a peer, installing or upgrading the peer when it
+// is missing or below that floor. An error means the peer cannot be brought up to
+// the minimum and the caller must not run it.
+func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(peerName string) error {
 	if h.callerPluginName == "" {
-		return nil, nil
+		return nil
+	}
+
+	// A localdev CLI build runs every plugin at local.build.dev regardless of what is
+	// installed (see run), and that version satisfies every minimum.
+	if PluginsPath != "" {
+		return nil
 	}
 
 	// The caller's requirements were persisted with its local plugin metadata when it
@@ -643,26 +634,16 @@ func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(cfg *config.Config, peerN
 	// and metadata that cannot be read reports none, matching what it records.
 	caller, err := readLocalPluginMetadata(h.config, h.fs, h.callerPluginName)
 	if err != nil {
-		return nil, nil
+		return nil
 	}
 	minimum := caller.MinPluginVersions[peerName]
 	if minimum == "" {
-		return nil, nil
+		return nil
 	}
 
-	// A localdev CLI build runs every plugin at local.build.dev regardless of what is
-	// installed (see run), and that version satisfies every minimum.
-	if PluginsPath != "" {
-		return nil, nil
-	}
-
-	peer := &Plugin{Shortname: peerName}
-	installedVersion, err := peer.lookUpInstalledVersion(h.config, h.fs)
-	if err != nil {
-		installedVersion = ""
-	}
+	installedVersion, _ := (&Plugin{Shortname: peerName}).lookUpInstalledVersion(h.config, h.fs)
 	if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
-		return nil, nil
+		return nil
 	}
 
 	// Said before the download so the calling plugin's pause has a visible reason,
@@ -675,23 +656,18 @@ func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(cfg *config.Config, peerN
 
 	apiBaseURL, dashboardBaseURL := resolveInstallBaseURLs(h.apiBaseURL, h.dashboardBaseURL)
 
-	resolved, err := peerPluginResolver(h.ctx, h.config, h.fs, peerName, apiBaseURL, dashboardBaseURL)
+	resolved, previousVersion, err := ensurePluginAtLeast(h.ctx, h.config, h.fs, peerName, minimum, apiBaseURL, dashboardBaseURL, nil)
 	if err != nil {
-		return nil, peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion, err)
+		return peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion, err)
 	}
-	if !pluginVersionSatisfiesMinimum(resolved.Version, minimum) {
-		return nil, peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion,
-			errorcategory.Errorf(errorcategory.API, "the newest release available to this CLI is v%s", resolved.Version))
-	}
-	if err := peerPluginInstaller(h.ctx, resolved, cfg, h.fs, apiBaseURL, dashboardBaseURL); err != nil {
-		return nil, peerMinimumVersionError(h.callerPluginName, peerName, minimum, installedVersion, err)
+	if resolved != nil {
+		// Best-effort, like every other install the user did not name. The
+		// user-passed base URL overrides are forwarded, same as they will be to
+		// the peer itself.
+		dependencyPostInstall(h.ctx, h.config, h.fs, resolved.Plugin, resolved.Version, previousVersion, h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL)
 	}
 
-	// Best-effort, like every other install the user did not name. The user-passed
-	// base URL overrides are forwarded, same as they will be to the peer itself.
-	runPostInstallHook(h.ctx, cfg, h.fs, resolved.Plugin, resolved.Version, installedVersion, h.apiBaseURL, h.dashboardBaseURL, h.accessBaseURL)
-
-	return resolved.Plugin, nil
+	return nil
 }
 
 // peerMinimumVersionError reports a peer that could not be brought up to the minimum

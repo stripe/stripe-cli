@@ -55,13 +55,6 @@ type ResolvedPluginVersion struct {
 	// AutoUpdateDefault is the backend default from a live metadata response.
 	// Cached metadata leaves it false; explicit user settings take precedence.
 	AutoUpdateDefault bool
-	// MinPluginVersions holds the resolved release's declared minimum versions of
-	// peer plugins, from a live metadata response, keyed by plugin shortname. A
-	// resolution from cached metadata carries whatever the local plugin metadata
-	// recorded at install time, and nil when it recorded none — the behavior every
-	// release had before requirements existed. The same map rides on Plugin, which
-	// is what Install persists.
-	MinPluginVersions map[string]string
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -565,9 +558,8 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		}
 
 		return &ResolvedPluginVersion{
-			Plugin:            cachedPlugin,
-			Version:           resolvedVersion,
-			MinPluginVersions: cachedPlugin.MinPluginVersions,
+			Plugin:  cachedPlugin,
+			Version: resolvedVersion,
 		}, nil
 	}
 
@@ -614,9 +606,8 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		}
 
 		return &ResolvedPluginVersion{
-			Plugin:            cachedPlugin,
-			Version:           version,
-			MinPluginVersions: cachedPlugin.MinPluginVersions,
+			Plugin:  cachedPlugin,
+			Version: version,
 		}, nil
 	}
 
@@ -794,9 +785,8 @@ func resolvePluginForAutoInstall(ctx context.Context, config config.IConfig, fs 
 	}
 
 	return &ResolvedPluginVersion{
-		Plugin:            cachedPlugin,
-		Version:           version,
-		MinPluginVersions: cachedPlugin.MinPluginVersions,
+		Plugin:  cachedPlugin,
+		Version: version,
 	}, nil
 }
 
@@ -890,7 +880,6 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		BinaryURL:         pluginMetadata.BinaryURL,
 		AutoInstall:       pluginMetadata.AutoInstall,
 		AutoUpdateDefault: pluginMetadata.AutoUpdateDefault,
-		MinPluginVersions: pluginMetadata.MinPluginVersions,
 	}, nil
 }
 

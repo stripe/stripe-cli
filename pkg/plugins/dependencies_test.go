@@ -190,10 +190,7 @@ func (env *dependencyTestEnv) installedBinaryExists(t *testing.T, pluginName, ve
 
 func (env *dependencyTestEnv) placeInstalledBinary(t *testing.T, pluginName, version string) {
 	t.Helper()
-
-	installDir := filepath.Join("/plugins", pluginName, version)
-	require.NoError(t, env.fs.MkdirAll(installDir, 0755))
-	require.NoError(t, afero.WriteFile(env.fs, filepath.Join(installDir, "stripe-cli-"+pluginName+GetBinaryExtension()), []byte("bin"), 0755))
+	placeFakeBinary(t, env.fs, "/plugins", pluginName, "stripe-cli-"+pluginName, version)
 }
 
 func TestInstallInstallsMissingDependencyFirst(t *testing.T) {
@@ -449,6 +446,16 @@ func TestInstallForwardsExplicitBaseURLsToDependencyHooks(t *testing.T) {
 	}}, *hookCalls)
 }
 
+// placeFakeBinary writes an installed-looking plugin binary so version lookups
+// find it, without going through a real install.
+func placeFakeBinary(t *testing.T, fs afero.Fs, pluginsDir, pluginName, binaryName, version string) {
+	t.Helper()
+
+	installDir := filepath.Join(pluginsDir, pluginName, version)
+	require.NoError(t, fs.MkdirAll(installDir, 0755))
+	require.NoError(t, afero.WriteFile(fs, filepath.Join(installDir, binaryName+GetBinaryExtension()), []byte("bin"), 0755))
+}
+
 type peerEnforcementStubs struct {
 	resolveCalls []string
 	resolveErr   error
@@ -464,17 +471,17 @@ func stubPeerPluginEnforcement(t *testing.T) *peerEnforcementStubs {
 	t.Helper()
 
 	stubs := &peerEnforcementStubs{}
-	previousResolver := peerPluginResolver
-	previousInstaller := peerPluginInstaller
+	previousResolver := minimumVersionResolver
+	previousInstaller := minimumVersionInstaller
 
-	peerPluginResolver = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
+	minimumVersionResolver = func(ctx context.Context, cfg config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 		stubs.resolveCalls = append(stubs.resolveCalls, pluginName)
 		if stubs.resolveErr != nil {
 			return nil, stubs.resolveErr
 		}
 		return stubs.resolved, nil
 	}
-	peerPluginInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+	minimumVersionInstaller = func(ctx context.Context, resolved *ResolvedPluginVersion, cfg config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, installing map[string]string) error {
 		stubs.installCalls = append(stubs.installCalls, resolved.Plugin.Shortname+"@"+resolved.Version)
 		if stubs.installErr != nil {
 			return stubs.installErr
@@ -486,24 +493,23 @@ func stubPeerPluginEnforcement(t *testing.T) *peerEnforcementStubs {
 	}
 
 	t.Cleanup(func() {
-		peerPluginResolver = previousResolver
-		peerPluginInstaller = previousInstaller
+		minimumVersionResolver = previousResolver
+		minimumVersionInstaller = previousInstaller
 	})
 
 	return stubs
 }
 
 // setUpPeerEnforcement wires appB as the calling plugin, recording the given minimum
-// peer versions in its local metadata, and installs appA (the peer) at
-// peerInstalledVersion when non-empty. It returns a helper created on appB's behalf.
+// peer versions in its local metadata (nil means appB has no local metadata at all,
+// like a plugin installed before requirements were recorded), and installs appA (the
+// peer) at peerInstalledVersion when non-empty. It returns a helper created on appB's
+// behalf.
 func setUpPeerEnforcement(t *testing.T, callerMinimums map[string]string, peerInstalledVersion string) (CoreCLIHelper, *TestConfig, afero.Fs, *peerEnforcementStubs) {
 	t.Helper()
 
 	stubs := stubPeerPluginEnforcement(t)
 	stubs.resolved = runAutoUpgradeResolution("3.0.0")
-	stubs.installWrites = func(resolved *ResolvedPluginVersion) error {
-		return nil
-	}
 
 	fs := setUpFS()
 	cfg := &TestConfig{}
@@ -513,19 +519,19 @@ func setUpPeerEnforcement(t *testing.T, callerMinimums map[string]string, peerIn
 	// TestConfig's "/"; see setUpRunAutoUpgrade for why XDG_CONFIG_HOME is the knob.
 	t.Setenv("XDG_CONFIG_HOME", "/xdg")
 
-	caller, err := LookUpPlugin(context.Background(), cfg, fs, "appB")
-	require.NoError(t, err)
-	caller.MinPluginVersions = callerMinimums
-	require.NoError(t, writeLocalPluginMetadata(&cfg.Config, fs, caller))
+	if callerMinimums != nil {
+		caller, err := LookUpPlugin(context.Background(), cfg, fs, "appB")
+		require.NoError(t, err)
+		caller.MinPluginVersions = callerMinimums
+		require.NoError(t, writeLocalPluginMetadata(&cfg.Config, fs, caller))
+	}
 
 	peer, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
 	require.NoError(t, err)
 	require.NoError(t, writeLocalPluginMetadata(&cfg.Config, fs, peer))
 
 	if peerInstalledVersion != "" {
-		installDir := filepath.Join(getPluginsDir(&cfg.Config), "appA", peerInstalledVersion)
-		require.NoError(t, fs.MkdirAll(installDir, 0755))
-		require.NoError(t, afero.WriteFile(fs, filepath.Join(installDir, "stripe-cli-app-a"+GetBinaryExtension()), []byte("bin"), 0755))
+		placeFakeBinary(t, fs, getPluginsDir(&cfg.Config), "appA", "stripe-cli-app-a", peerInstalledVersion)
 	}
 
 	helper := NewCoreCLIHelperForPlugin(context.Background(), &cfg.Config, fs, "appB", "", "", "")
@@ -552,11 +558,8 @@ func TestRunPeerPluginInstallsMissingDeclaredPeer(t *testing.T) {
 	// Make the stubbed install land on disk, as the real one would, so the run
 	// that follows finds the version instead of starting a network auto-install.
 	stubs.installWrites = func(resolved *ResolvedPluginVersion) error {
-		installDir := filepath.Join(getPluginsDir(&cfg.Config), "appA", resolved.Version)
-		if err := fs.MkdirAll(installDir, 0755); err != nil {
-			return err
-		}
-		return afero.WriteFile(fs, filepath.Join(installDir, "stripe-cli-app-a"+GetBinaryExtension()), []byte("bin"), 0755)
+		placeFakeBinary(t, fs, getPluginsDir(&cfg.Config), "appA", "stripe-cli-app-a", resolved.Version)
+		return nil
 	}
 
 	runErr := helper.RunPeerPlugin("appA", nil, "")
@@ -641,23 +644,10 @@ func TestRunPeerPluginNeverReplacesALocalPeerBuild(t *testing.T) {
 }
 
 func TestRunPeerPluginWithoutRecordedCallerMetadataEnforcesNothing(t *testing.T) {
-	stubs := stubPeerPluginEnforcement(t)
-
-	fs := setUpFS()
-	cfg := &TestConfig{}
-	cfg.InitConfig()
-	t.Setenv("XDG_CONFIG_HOME", "/xdg")
-
 	// The peer exists, but the caller has no local metadata at all — a plugin
 	// installed before requirements were recorded. Nothing is enforced.
-	peer, err := LookUpPlugin(context.Background(), cfg, fs, "appA")
-	require.NoError(t, err)
-	require.NoError(t, writeLocalPluginMetadata(&cfg.Config, fs, peer))
-	installDir := filepath.Join(getPluginsDir(&cfg.Config), "appA", "1.0.1")
-	require.NoError(t, fs.MkdirAll(installDir, 0755))
-	require.NoError(t, afero.WriteFile(fs, filepath.Join(installDir, "stripe-cli-app-a"+GetBinaryExtension()), []byte("bin"), 0755))
+	helper, _, _, stubs := setUpPeerEnforcement(t, nil, "1.0.1")
 
-	helper := NewCoreCLIHelperForPlugin(context.Background(), &cfg.Config, fs, "appB", "", "", "")
 	runErr := helper.RunPeerPlugin("appA", nil, "")
 
 	require.Empty(t, stubs.resolveCalls)
