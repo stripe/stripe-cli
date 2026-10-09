@@ -41,6 +41,7 @@ func TestEventsResendRejectsDotSegments(t *testing.T) {
 		resp, err := client.EventsResend(withAuth(context.Background()), &rpc.EventsResendRequest{EventId: id})
 		require.Nil(t, resp)
 		require.Equal(t, codes.InvalidArgument, status.Code(err))
+		require.Equal(t, "path arguments cannot be . or ..", status.Convert(err).Message())
 		require.Empty(t, requests)
 	}
 }

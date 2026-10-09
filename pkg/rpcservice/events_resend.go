@@ -37,7 +37,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 
 	path, err := stripe.FormatURLPath("/v1/events/{event}/retry", []string{req.EventId})
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "event ID cannot be . or ..")
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	stripeReq := &requests.Base{
