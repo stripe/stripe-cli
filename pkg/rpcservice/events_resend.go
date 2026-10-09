@@ -36,7 +36,10 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		}
 	}
 
-	path := formatURL("/v1/events/{event}/retry", []string{req.EventId})
+	path, err := formatURL("/v1/events/{event}/retry", []string{req.EventId})
+	if err != nil {
+		return nil, err
+	}
 
 	stripeReq := &requests.Base{
 		Method:         strings.ToUpper(http.MethodPost),
@@ -92,16 +95,20 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 	}, nil
 }
 
-func formatURL(path string, urlParams []string) string {
+func formatURL(path string, urlParams []string) (string, error) {
 	s := make([]interface{}, len(urlParams))
 	for i, v := range urlParams {
+		// PathEscape leaves bare dot segments unchanged; URL resolution would remove them.
+		if v == "." || v == ".." {
+			return "", status.Error(codes.InvalidArgument, "event ID cannot be . or ..")
+		}
 		s[i] = url.PathEscape(v)
 	}
 
 	re := regexp.MustCompile(`{\w+}`)
 	format := re.ReplaceAllString(path, "%s")
 
-	return fmt.Sprintf(format, s...)
+	return fmt.Sprintf(format, s...), nil
 }
 
 func getParamsFromReq(req *rpc.EventsResendRequest) (*requests.RequestParameters, error) {

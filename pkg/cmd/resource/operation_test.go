@@ -55,34 +55,94 @@ func TestFormatURL(t *testing.T) {
 		{"query and fragment", "a?b#c", "/v1/customers/a%3Fb%23c"},
 		{"unicode", "café", "/v1/customers/caf%C3%A9"},
 		{"punctuation", "a;b,c@d:e", "/v1/customers/a%3Bb%2Cc@d:e"},
+		{"other dots", "test..", "/v1/customers/test.."},
+		{"dots with suffix", "..?", "/v1/customers/..%3F"},
+		{"pre-encoded dots", "%2E%2E", "/v1/customers/%252E%252E"},
+		{"backslash", `a\..\b`, "/v1/customers/a%5C..%5Cb"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, formatURL("/v1/customers/{customer}", []string{tt.input}))
+			got, err := formatURL("/v1/customers/{customer}", []string{tt.input})
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
+	got, err := formatURL("/v1/accounts/{account}/customers/{customer}", []string{"acct/one", "cus?two"})
+	require.NoError(t, err)
 	require.Equal(t, "/v1/accounts/acct%2Fone/customers/cus%3Ftwo",
-		formatURL("/v1/accounts/{account}/customers/{customer}", []string{"acct/one", "cus?two"}))
+		got)
+
+	for _, value := range []string{".", ".."} {
+		for _, params := range [][]string{{value, "cus_123"}, {"acct_123", value}} {
+			got, err := formatURL("/v1/accounts/{account}/customers/{customer}", params)
+			require.Empty(t, got)
+			require.ErrorContains(t, err, "path arguments cannot be . or ..")
+		}
+	}
+	got, err = formatURL("/v1/customers/{customer}", []string{""})
+	require.Empty(t, got)
+	require.ErrorContains(t, err, "path arguments cannot be empty")
+}
+
+func TestRunOperationCmd_InvalidPathSegmentsRejected(t *testing.T) {
+	for _, value := range []string{"", ".", ".."} {
+		for _, dryRun := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%q/dry-run=%t", value, dryRun), func(t *testing.T) {
+				requests := make(chan struct{}, 1)
+				ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					requests <- struct{}{}
+					w.WriteHeader(http.StatusOK)
+				}))
+				defer ts.Close()
+
+				viper.Reset()
+				parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+				oc := NewOperationCmd(parentCmd, &OperationSpec{
+					Name: "retrieve", Path: "/v1/customers/{customer}/sources/{source}", Method: http.MethodGet,
+				}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+				oc.APIBaseURL = ts.URL
+				oc.DryRun = dryRun
+				err := oc.runOperationCmd(oc.Cmd, []string{value, "src_123"})
+				require.Error(t, err)
+				if value == "" {
+					require.ErrorContains(t, err, "path arguments cannot be empty")
+				} else {
+					require.ErrorContains(t, err, "path arguments cannot be . or ..")
+				}
+				require.Empty(t, requests)
+			})
+		}
+	}
 }
 
 func TestRunOperationCmd_EscapedPathOnWire(t *testing.T) {
-	const wantURI = "/v1/charges/id1%2F..%2F..%2Fcustomers%2Fcus_123"
-	requestPaths := make(chan [2]string, 1)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestPaths <- [2]string{r.RequestURI, r.URL.EscapedPath()}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
+	for _, tt := range []struct {
+		name, id, wantURI string
+	}{
+		{"escaped traversal", "id1/../../customers/cus_123", "/v1/charges/id1%2F..%2F..%2Fcustomers%2Fcus_123"},
+		{"dots with suffix", "..?", "/v1/charges/..%3F"},
+		{"pre-encoded dots", "%2E%2E", "/v1/charges/%252E%252E"},
+		{"backslash", `a\..\b`, "/v1/charges/a%5C..%5Cb"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			requestPaths := make(chan [2]string, 1)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestPaths <- [2]string{r.RequestURI, r.URL.EscapedPath()}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer ts.Close()
 
-	viper.Reset()
-	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, &OperationSpec{
-		Name: "retrieve", Path: "/v1/charges/{charge}", Method: http.MethodGet,
-	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
-	oc.APIBaseURL = ts.URL
-	parentCmd.SetArgs([]string{"retrieve", "id1/../../customers/cus_123"})
-	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
-	require.Equal(t, [2]string{wantURI, wantURI}, <-requestPaths)
+			viper.Reset()
+			parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+			oc := NewOperationCmd(parentCmd, &OperationSpec{
+				Name: "retrieve", Path: "/v1/charges/{charge}", Method: http.MethodGet,
+			}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+			oc.APIBaseURL = ts.URL
+			parentCmd.SetArgs([]string{"retrieve", tt.id})
+			require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+			require.Equal(t, [2]string{tt.wantURI, tt.wantURI}, <-requestPaths)
+		})
+	}
 }
 
 func TestNewOperationCmd_NumberType(t *testing.T) {

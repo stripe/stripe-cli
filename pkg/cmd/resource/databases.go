@@ -489,7 +489,10 @@ func executeDatabaseOperation(cmd *cobra.Command, opCmd *OperationCmd, args []st
 
 	opCmd.Parameters.SetVersion(databaseRequestVersion)
 
-	path := formatURL(opCmd.Path, args)
+	path, err := formatURL(opCmd.Path, args)
+	if err != nil {
+		return nil, err
+	}
 	requestParams := make(map[string]interface{})
 	opCmd.addStringRequestParams(requestParams)
 	opCmd.addIntRequestParams(requestParams)

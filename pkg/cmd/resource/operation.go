@@ -56,7 +56,10 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	creds, credsErr := oc.ResolveCredentials()
 
-	path := formatURL(oc.Path, args)
+	path, err := formatURL(oc.Path, args)
+	if err != nil {
+		return err
+	}
 	requestParams := make(map[string]interface{})
 	oc.addStringRequestParams(requestParams)
 	oc.addIntRequestParams(requestParams)
@@ -119,7 +122,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 	// else
-	_, err := oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
+	_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 
@@ -340,16 +343,23 @@ func extractURLParams(path string) []string {
 	return re.FindAllString(path, -1)
 }
 
-func formatURL(path string, urlParams []string) string {
+func formatURL(path string, urlParams []string) (string, error) {
 	s := make([]interface{}, len(urlParams))
 	for i, v := range urlParams {
+		if v == "" {
+			return "", errorcategory.New(errorcategory.UserInput, "path arguments cannot be empty")
+		}
+		// PathEscape leaves bare dot segments unchanged; URL resolution would remove them.
+		if v == "." || v == ".." {
+			return "", errorcategory.New(errorcategory.UserInput, "path arguments cannot be . or ..")
+		}
 		s[i] = url.PathEscape(v)
 	}
 
 	re := regexp.MustCompile(`{\w+}`)
 	format := re.ReplaceAllString(path, "%s")
 
-	return fmt.Sprintf(format, s...)
+	return fmt.Sprintf(format, s...), nil
 }
 
 func operationUsageTemplate(urlParams []string) string {
