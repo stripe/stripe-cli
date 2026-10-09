@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
@@ -250,11 +249,9 @@ func (rc *reportingQueryRunsRetrieveCmd) runReportingQueryRunsRetrieveCmd(cmd *c
 	if err := stripe.ValidateAPIBaseURL(rc.rb.APIBaseURL); err != nil {
 		return err
 	}
-	if args[0] == "" {
-		return errorcategory.New(errorcategory.UserInput, "path arguments cannot be empty")
-	}
-	if args[0] == "." || args[0] == ".." {
-		return errorcategory.New(errorcategory.UserInput, "path arguments cannot be . or ..")
+	segment, err := stripe.EscapePathSegment(args[0])
+	if err != nil {
+		return err
 	}
 
 	creds, err := rc.rb.ResolveCredentials()
@@ -262,7 +259,7 @@ func (rc *reportingQueryRunsRetrieveCmd) runReportingQueryRunsRetrieveCmd(cmd *c
 		return err
 	}
 
-	path := queryRunsPath + "/" + url.PathEscape(args[0])
+	path := queryRunsPath + "/" + segment
 
 	_, err = rc.rb.MakeRequest(cmd.Context(), creds, path, &requests.RequestParameters{}, nil, true, nil)
 	return err

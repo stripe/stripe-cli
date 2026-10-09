@@ -489,7 +489,7 @@ func executeDatabaseOperation(cmd *cobra.Command, opCmd *OperationCmd, args []st
 
 	opCmd.Parameters.SetVersion(databaseRequestVersion)
 
-	path, err := formatURL(opCmd.Path, args)
+	path, err := stripe.FormatURLPath(opCmd.Path, args)
 	if err != nil {
 		return nil, err
 	}

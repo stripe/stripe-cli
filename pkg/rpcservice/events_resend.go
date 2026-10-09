@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc/codes"
@@ -36,9 +35,9 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		}
 	}
 
-	path, err := formatURL("/v1/events/{event}/retry", []string{req.EventId})
+	path, err := stripe.FormatURLPath("/v1/events/{event}/retry", []string{req.EventId})
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, "event ID cannot be . or ..")
 	}
 
 	stripeReq := &requests.Base{
@@ -93,22 +92,6 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 			Request:         &request,
 		},
 	}, nil
-}
-
-func formatURL(path string, urlParams []string) (string, error) {
-	s := make([]interface{}, len(urlParams))
-	for i, v := range urlParams {
-		// PathEscape leaves bare dot segments unchanged; URL resolution would remove them.
-		if v == "." || v == ".." {
-			return "", status.Error(codes.InvalidArgument, "event ID cannot be . or ..")
-		}
-		s[i] = url.PathEscape(v)
-	}
-
-	re := regexp.MustCompile(`{\w+}`)
-	format := re.ReplaceAllString(path, "%s")
-
-	return fmt.Sprintf(format, s...), nil
 }
 
 func getParamsFromReq(req *rpc.EventsResendRequest) (*requests.RequestParameters, error) {

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -56,7 +55,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	creds, credsErr := oc.ResolveCredentials()
 
-	path, err := formatURL(oc.Path, args)
+	path, err := stripe.FormatURLPath(oc.Path, args)
 	if err != nil {
 		return err
 	}
@@ -341,25 +340,6 @@ func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamS
 func extractURLParams(path string) []string {
 	re := regexp.MustCompile(`{\w+}`)
 	return re.FindAllString(path, -1)
-}
-
-func formatURL(path string, urlParams []string) (string, error) {
-	s := make([]interface{}, len(urlParams))
-	for i, v := range urlParams {
-		if v == "" {
-			return "", errorcategory.New(errorcategory.UserInput, "path arguments cannot be empty")
-		}
-		// PathEscape leaves bare dot segments unchanged; URL resolution would remove them.
-		if v == "." || v == ".." {
-			return "", errorcategory.New(errorcategory.UserInput, "path arguments cannot be . or ..")
-		}
-		s[i] = url.PathEscape(v)
-	}
-
-	re := regexp.MustCompile(`{\w+}`)
-	format := re.ReplaceAllString(path, "%s")
-
-	return fmt.Sprintf(format, s...), nil
 }
 
 func operationUsageTemplate(urlParams []string) string {
