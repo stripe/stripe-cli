@@ -197,6 +197,34 @@ func TestSendEvent(t *testing.T) {
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
+func TestSendEvent_DocsHTTPOutcome(t *testing.T) {
+	for _, outcome := range []string{"", "not_found", "other_4xx", "5xx", "other_non_200"} {
+		t.Run("outcome="+outcome, func(t *testing.T) {
+			forms := make(chan url.Values, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := r.ParseForm(); err != nil {
+					t.Error(err)
+				}
+				forms <- r.PostForm
+			}))
+			defer server.Close()
+			baseURL, err := url.Parse(server.URL)
+			require.NoError(t, err)
+			client := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
+			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "docs", DocsHTTPOutcome: outcome}
+			ctx := stripe.WithEventMetadata(context.Background(), metadata)
+
+			client.SendEvent(ctx, "CLI Error", "api")
+
+			form := <-forms
+			require.Equal(t, "CLI Error", form.Get("event_name"))
+			require.Equal(t, "api", form.Get("event_value"))
+			require.Equal(t, outcome, form.Get("docs_http_outcome"))
+			require.Equal(t, outcome != "", form.Has("docs_http_outcome"))
+		})
+	}
+}
+
 func TestSendEvent_WithAIAgent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)

@@ -250,6 +250,19 @@ func (c *Client) cacheKey(rawURL string) string {
 	return c.cacheKeyPrefix + ":" + rawURL
 }
 
+type httpStatusError struct {
+	url        string
+	statusCode int
+}
+
+func (e *httpStatusError) Error() string {
+	return fmt.Sprintf("docs: %s returned %d", e.url, e.statusCode)
+}
+
+func (e *httpStatusError) HTTPStatusCode() int {
+	return e.statusCode
+}
+
 func (c *Client) do(req *http.Request) (response, error) {
 	req.Header.Set("User-Agent", c.userAgent)
 	c.creds.SetRequestHeaders(req)
@@ -274,7 +287,10 @@ func (c *Client) do(req *http.Request) (response, error) {
 	}).Debug("request complete")
 
 	if resp.StatusCode != http.StatusOK {
-		return response{}, errorcategory.Errorf(errorcategory.API, "docs: %s returned %d", req.URL, resp.StatusCode)
+		return response{}, errorcategory.With(&httpStatusError{
+			url:        req.URL.String(),
+			statusCode: resp.StatusCode,
+		}, errorcategory.API)
 	}
 
 	accept := req.Header.Get("Accept")

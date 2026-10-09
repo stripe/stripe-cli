@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"runtime"
 	"time"
 
@@ -85,7 +86,7 @@ func CaptureException(ctx context.Context, err error) {
 		sentry.CaptureException(err)
 	})
 
-	sendErrorTelemetry(ctx, category)
+	sendErrorTelemetry(ctx, category, err)
 }
 
 // sendErrorTelemetry mirrors a captured Sentry event's category to
@@ -93,7 +94,7 @@ func CaptureException(ctx context.Context, err error) {
 // can key a Prometheus tag directly off it with a fixed values allowlist —
 // nothing free-form (error message, call site) is sent, since that would be
 // unbounded cardinality if ever wired into a tag/gauge/set.
-func sendErrorTelemetry(ctx context.Context, category errorcategory.Category) {
+func sendErrorTelemetry(ctx context.Context, category errorcategory.Category, err error) {
 	telemetryClient := stripe.GetTelemetryClient(ctx)
 	if telemetryClient == nil {
 		return
@@ -107,12 +108,37 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category) {
 	}
 	bucketedMetadata := *metadata
 	bucketedMetadata.CommandPath = commandBucket(metadata)
+	bucketedMetadata.DocsHTTPOutcome = ""
+	if bucketedMetadata.CommandPath == "docs" {
+		bucketedMetadata.DocsHTTPOutcome = docsHTTPOutcome(err)
+	}
 	ctx = stripe.WithEventMetadata(ctx, &bucketedMetadata)
 
 	// Sent synchronously (not fire-and-forget): callers on the error/panic
 	// path exit via os.Exit right after this, which would otherwise race
 	// the request and drop it nondeterministically.
 	telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(category))
+}
+
+// docsHTTPOutcome derives a bounded outcome without inspecting error messages.
+func docsHTTPOutcome(err error) string {
+	var statusErr interface{ HTTPStatusCode() int }
+	if !errors.As(err, &statusErr) {
+		return ""
+	}
+	status := statusErr.HTTPStatusCode()
+	switch {
+	case status <= 0 || status == http.StatusOK:
+		return ""
+	case status == http.StatusNotFound:
+		return "not_found"
+	case status >= 400 && status < 500:
+		return "other_4xx"
+	case status >= 500 && status < 600:
+		return "5xx"
+	default:
+		return "other_non_200"
+	}
 }
 
 // shouldCapture defines the reporting policy for classified errors. Auth covers
@@ -137,7 +163,7 @@ func RecoverAndReport(ctx context.Context, r any) {
 		sentry.CurrentHub().Recover(r)
 	})
 
-	sendErrorTelemetry(ctx, errorcategory.Panic)
+	sendErrorTelemetry(ctx, errorcategory.Panic, nil)
 }
 
 // Flush blocks until all buffered events are delivered or the timeout elapses.
