@@ -21,6 +21,31 @@ import (
 
 const expectedPath = "/v1/events/evt_12345/retry"
 
+func TestEventsResendRejectsDotSegments(t *testing.T) {
+	requests := make(chan struct{}, 1)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- struct{}{}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	oldBaseURL := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = oldBaseURL }()
+
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	for _, id := range []string{".", ".."} {
+		resp, err := client.EventsResend(withAuth(context.Background()), &rpc.EventsResendRequest{EventId: id})
+		require.Nil(t, resp)
+		require.Equal(t, codes.InvalidArgument, status.Code(err))
+		require.Equal(t, "path arguments cannot be . or ..", status.Convert(err).Message())
+		require.Empty(t, requests)
+	}
+}
+
 func TestEventsResendEscapesEventID(t *testing.T) {
 	for _, tt := range []struct {
 		name, id, wantURI string

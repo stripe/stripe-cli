@@ -263,6 +263,50 @@ func TestReportingRetrieveCmd_HTTPRequest(t *testing.T) {
 	assert.Equal(t, requests.StripePreviewVersionHeaderValue, capturedReq.Header.Get("Stripe-Version"))
 }
 
+func TestReportingRetrieveCmd_RejectsInvalidPathSegments(t *testing.T) {
+	requests := make(chan struct{}, 1)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- struct{}{}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	rc := newTestReportingRetrieveCmd(t, ts.URL)
+	for _, tt := range []struct {
+		id, wantError string
+	}{
+		{"", "path arguments cannot be empty"},
+		{".", "path arguments cannot be . or .."},
+		{"..", "path arguments cannot be . or .."},
+	} {
+		err := rc.runReportingQueryRunsRetrieveCmd(rc.cmd, []string{tt.id})
+		require.ErrorContains(t, err, tt.wantError)
+		require.Empty(t, requests)
+	}
+}
+
+func TestReportingRetrieveCmd_DotLikeIDsStayInPath(t *testing.T) {
+	for _, tt := range []struct {
+		id, wantURI string
+	}{
+		{"..?", queryRunsPath + "/..%3F"},
+		{"%2E%2E", queryRunsPath + "/%252E%252E"},
+	} {
+		t.Run(tt.id, func(t *testing.T) {
+			requestURIs := make(chan string, 1)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestURIs <- r.RequestURI
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer ts.Close()
+
+			rc := newTestReportingRetrieveCmd(t, ts.URL)
+			require.NoError(t, rc.runReportingQueryRunsRetrieveCmd(rc.cmd, []string{tt.id}))
+			require.Equal(t, tt.wantURI, <-requestURIs)
+		})
+	}
+}
+
 // --- Unit tests: command construction ---
 
 func TestNewReportingQueryRunsCreateCmd_IsPreview(t *testing.T) {
