@@ -250,6 +250,12 @@ func (rc *reportingQueryRunsRetrieveCmd) runReportingQueryRunsRetrieveCmd(cmd *c
 	if err := stripe.ValidateAPIBaseURL(rc.rb.APIBaseURL); err != nil {
 		return err
 	}
+	if args[0] == "" {
+		return errorcategory.New(errorcategory.UserInput, "path arguments cannot be empty")
+	}
+	if args[0] == "." || args[0] == ".." {
+		return errorcategory.New(errorcategory.UserInput, "path arguments cannot be . or ..")
+	}
 
 	creds, err := rc.rb.ResolveCredentials()
 	if err != nil {
