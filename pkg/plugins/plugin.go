@@ -614,6 +614,23 @@ func buildAdditionalInfo(logger *log.Entry, apiBaseURL, dashboardBaseURL, access
 	}
 }
 
+// pluginEnv returns the environment for a plugin process: the host environment followed by
+// CLI metadata that plugins use for telemetry. Later entries take precedence, so the CLI's
+// values win over any same-named variables already set in the host environment.
+func pluginEnv(config config.IConfig) []string {
+	env := append(os.Environ(),
+		fmt.Sprintf("STRIPE_CLI_USER_AGENT=%s", useragent.GetEncodedUserAgent()),
+		fmt.Sprintf("STRIPE_CLI_VERSION=%s", cliversion.Version),
+		fmt.Sprintf("STRIPE_CLI_AI_AGENT=%s", useragent.DetectAIAgent(os.Getenv)),
+	)
+
+	if accountID, err := config.GetProfile().GetAccountID(); err == nil && accountID != "" {
+		env = append(env, fmt.Sprintf("STRIPE_ACCOUNT_ID=%s", accountID))
+	}
+
+	return env
+}
+
 // dispensePluginInterface launches the plugin binary at the given installed version and
 // returns its dispensed "main" interface, which is one of Dispatcher, DispatcherGRPC, or
 // DispatcherV3 depending on the protocol version the plugin negotiates, along with the
@@ -637,16 +654,7 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		cmd.Dir = cwd
 	}
 
-	// Set environment variables for plugins to access CLI metadata
-	cmd.Env = append(os.Environ(),
-		fmt.Sprintf("STRIPE_CLI_USER_AGENT=%s", useragent.GetEncodedUserAgent()),
-		fmt.Sprintf("STRIPE_CLI_VERSION=%s", cliversion.Version),
-	)
-
-	// Set account ID if available
-	if accountID, err := config.GetProfile().GetAccountID(); err == nil && accountID != "" {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("STRIPE_ACCOUNT_ID=%s", accountID))
-	}
+	cmd.Env = pluginEnv(config)
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
 	timeout, _ := time.ParseDuration("10s")
@@ -665,6 +673,9 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		Logger:           pluginLogger,
 		Managed:          true,
 		StartTimeout:     timeout,
+		// pluginEnv already includes the host environment. Skipping go-plugin's own copy keeps
+		// it from being appended after (and overriding) the CLI metadata variables.
+		SkipHostEnv: true,
 		AllowedProtocols: []hcplugin.Protocol{
 			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
 		},

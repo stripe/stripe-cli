@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/useragent"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 type failRemoveAllFs struct {
@@ -1481,4 +1483,43 @@ func TestVerifyChecksumAndSavePluginRefusesSymlinkedParent(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(victimDir, "plugins", "appA", "2.0.1", "stripe-cli-app-a"+GetBinaryExtension()))
 	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+// lastEnvValue returns the value exec.Cmd will use for key, which is the last entry in env.
+func lastEnvValue(env []string, key string) (string, bool) {
+	value, found := "", false
+	for _, entry := range env {
+		if k, v, ok := strings.Cut(entry, "="); ok && k == key {
+			value, found = v, true
+		}
+	}
+	return value, found
+}
+
+func TestPluginEnv(t *testing.T) {
+	t.Setenv("STRIPE_ACCOUNT_ID", "acct_from_host")
+	t.Setenv("STRIPE_CLI_VERSION", "host-version")
+	t.Setenv("SOME_HOST_VAR", "kept")
+
+	cfg := &TestConfig{}
+	cfg.Profile.AccountID = "acct_from_profile"
+
+	env := pluginEnv(cfg)
+
+	value, ok := lastEnvValue(env, "STRIPE_CLI_USER_AGENT")
+	require.True(t, ok)
+	require.Equal(t, useragent.GetEncodedUserAgent(), value)
+
+	value, _ = lastEnvValue(env, "STRIPE_CLI_VERSION")
+	require.Equal(t, version.Version, value)
+
+	value, ok = lastEnvValue(env, "STRIPE_CLI_AI_AGENT")
+	require.True(t, ok)
+	require.Equal(t, useragent.DetectAIAgent(os.Getenv), value)
+
+	value, _ = lastEnvValue(env, "STRIPE_ACCOUNT_ID")
+	require.Equal(t, "acct_from_profile", value)
+
+	value, _ = lastEnvValue(env, "SOME_HOST_VAR")
+	require.Equal(t, "kept", value)
 }
