@@ -197,7 +197,7 @@ func TestSendEvent(t *testing.T) {
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
-func TestSendEvent_HttpOutcome(t *testing.T) {
+func TestSendEvent_HTTPOutcome(t *testing.T) {
 	for _, outcome := range []string{"", "not_found", "other_4xx", "5xx", "other_non_200"} {
 		t.Run("outcome="+outcome, func(t *testing.T) {
 			forms := make(chan url.Values, 1)
@@ -211,7 +211,7 @@ func TestSendEvent_HttpOutcome(t *testing.T) {
 			baseURL, err := url.Parse(server.URL)
 			require.NoError(t, err)
 			client := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
-			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "get", HttpOutcome: outcome}
+			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "get", HTTPOutcome: outcome}
 			ctx := stripe.WithEventMetadata(context.Background(), metadata)
 
 			client.SendEvent(ctx, "CLI Error", "api")

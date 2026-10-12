@@ -41,7 +41,7 @@ func (c *syncTelemetryClient) SendEvent(ctx context.Context, eventName string, e
 	commandPath, httpOutcome := "", ""
 	if metadata := stripe.GetEventMetadata(ctx); metadata != nil {
 		commandPath = metadata.CommandPath
-		httpOutcome = metadata.HttpOutcome
+		httpOutcome = metadata.HTTPOutcome
 	}
 	c.mu.Lock()
 	c.events = append(c.events, struct{ name, value, commandPath, httpOutcome string }{eventName, eventValue, commandPath, httpOutcome})
@@ -224,7 +224,7 @@ func TestCaptureExceptionBucketsGeneratedResourceTelemetry(t *testing.T) {
 	require.Equal(t, "stripe customers create", metadata.CommandPath)
 }
 
-func TestCaptureExceptionHttpOutcome(t *testing.T) {
+func TestCaptureExceptionHTTPOutcome(t *testing.T) {
 	tests := []struct {
 		name        string
 		commandPath string
@@ -288,7 +288,7 @@ func TestCaptureExceptionHttpOutcome(t *testing.T) {
 	}
 }
 
-func TestCaptureExceptionHttpOutcomeAcrossCommands(t *testing.T) {
+func TestCaptureExceptionHTTPOutcomeAcrossCommands(t *testing.T) {
 	tests := []struct {
 		name        string
 		err         error
@@ -318,7 +318,7 @@ func TestCaptureExceptionHttpOutcomeAcrossCommands(t *testing.T) {
 		{
 			name:       "non HTTP error clears inherited outcome",
 			err:        errors.New("ordinary error"),
-			metadata:   stripe.CLIAnalyticsEventMetadata{CommandPath: "stripe listen", HttpOutcome: "5xx"},
+			metadata:   stripe.CLIAnalyticsEventMetadata{CommandPath: "stripe listen", HTTPOutcome: "5xx"},
 			wantBucket: "listen", wantValue: "internal",
 		},
 	}
@@ -343,7 +343,7 @@ func TestCaptureExceptionHttpOutcomeAcrossCommands(t *testing.T) {
 	}
 }
 
-func TestHttpOutcomeIgnoresSuccessfulOrMissingStatus(t *testing.T) {
+func TestHTTPOutcomeIgnoresSuccessfulOrMissingStatus(t *testing.T) {
 	for _, status := range []int{0, http.StatusOK} {
 		require.Empty(t, httpOutcome(testHTTPStatusError(status)))
 	}

@@ -108,7 +108,7 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category, er
 	}
 	bucketedMetadata := *metadata
 	bucketedMetadata.CommandPath = commandBucket(metadata)
-	bucketedMetadata.HttpOutcome = httpOutcome(err)
+	bucketedMetadata.HTTPOutcome = httpOutcome(err)
 	ctx = stripe.WithEventMetadata(ctx, &bucketedMetadata)
 
 	// Sent synchronously (not fire-and-forget): callers on the error/panic
