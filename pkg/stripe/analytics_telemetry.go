@@ -59,8 +59,8 @@ type CLIAnalyticsEventMetadata struct {
 	InScreen          bool   `url:"in_screen"`                  // whether the CLI was invoked from within GNU Screen
 	TerminalProgram   string `url:"terminal_program,omitempty"` // the terminal program that invoked the CLI, if any
 
-	// DocsHTTPOutcome is a bounded HTTP outcome for docs error events.
-	DocsHTTPOutcome string `url:"docs_http_outcome,omitempty"`
+	// HttpOutcome is a bounded HTTP outcome for error events from any command.
+	HttpOutcome string `url:"http_outcome,omitempty"`
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.

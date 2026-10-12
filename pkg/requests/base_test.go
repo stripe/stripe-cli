@@ -18,6 +18,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
+func TestRequestErrorHTTPStatusCode(t *testing.T) {
+	for _, test := range []struct {
+		err    error
+		status int
+	}{
+		{err: RequestError{StatusCode: http.StatusInternalServerError}, status: http.StatusInternalServerError},
+		{err: &RequestError{StatusCode: http.StatusNotFound}, status: http.StatusNotFound},
+	} {
+		var statusErr interface{ HTTPStatusCode() int }
+		require.True(t, errors.As(fmt.Errorf("wrapped: %w", test.err), &statusErr))
+		require.Equal(t, test.status, statusErr.HTTPStatusCode())
+	}
+}
+
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}
 	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}

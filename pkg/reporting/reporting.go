@@ -108,10 +108,7 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category, er
 	}
 	bucketedMetadata := *metadata
 	bucketedMetadata.CommandPath = commandBucket(metadata)
-	bucketedMetadata.DocsHTTPOutcome = ""
-	if bucketedMetadata.CommandPath == "docs" {
-		bucketedMetadata.DocsHTTPOutcome = docsHTTPOutcome(err)
-	}
+	bucketedMetadata.HttpOutcome = httpOutcome(err)
 	ctx = stripe.WithEventMetadata(ctx, &bucketedMetadata)
 
 	// Sent synchronously (not fire-and-forget): callers on the error/panic
@@ -120,8 +117,9 @@ func sendErrorTelemetry(ctx context.Context, category errorcategory.Category, er
 	telemetryClient.SendEvent(ctx, errorTelemetryEventName, string(category))
 }
 
-// docsHTTPOutcome derives a bounded outcome without inspecting error messages.
-func docsHTTPOutcome(err error) string {
+// httpOutcome derives a bounded outcome from errors implementing HTTPStatusCode,
+// including wrapped errors, without inspecting error messages.
+func httpOutcome(err error) string {
 	var statusErr interface{ HTTPStatusCode() int }
 	if !errors.As(err, &statusErr) {
 		return ""
