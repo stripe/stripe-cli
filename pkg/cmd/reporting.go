@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
@@ -250,13 +249,17 @@ func (rc *reportingQueryRunsRetrieveCmd) runReportingQueryRunsRetrieveCmd(cmd *c
 	if err := stripe.ValidateAPIBaseURL(rc.rb.APIBaseURL); err != nil {
 		return err
 	}
+	segment, err := stripe.EscapePathSegment(args[0])
+	if err != nil {
+		return err
+	}
 
 	creds, err := rc.rb.ResolveCredentials()
 	if err != nil {
 		return err
 	}
 
-	path := queryRunsPath + "/" + url.PathEscape(args[0])
+	path := queryRunsPath + "/" + segment
 
 	_, err = rc.rb.MakeRequest(cmd.Context(), creds, path, &requests.RequestParameters{}, nil, true, nil)
 	return err

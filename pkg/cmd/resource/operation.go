@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"regexp"
@@ -56,7 +55,10 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	creds, credsErr := oc.ResolveCredentials()
 
-	path := formatURL(oc.Path, args)
+	path, err := stripe.FormatURLPath(oc.Path, args)
+	if err != nil {
+		return err
+	}
 	requestParams := make(map[string]interface{})
 	oc.addStringRequestParams(requestParams)
 	oc.addIntRequestParams(requestParams)
@@ -119,7 +121,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 	// else
-	_, err := oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
+	_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 
@@ -338,18 +340,6 @@ func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamS
 func extractURLParams(path string) []string {
 	re := regexp.MustCompile(`{\w+}`)
 	return re.FindAllString(path, -1)
-}
-
-func formatURL(path string, urlParams []string) string {
-	s := make([]interface{}, len(urlParams))
-	for i, v := range urlParams {
-		s[i] = url.PathEscape(v)
-	}
-
-	re := regexp.MustCompile(`{\w+}`)
-	format := re.ReplaceAllString(path, "%s")
-
-	return fmt.Sprintf(format, s...)
 }
 
 func operationUsageTemplate(urlParams []string) string {
