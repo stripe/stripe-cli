@@ -202,7 +202,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	requestCtx := req.Context()
 	if metadata := GetEventMetadata(requestCtx); metadata != nil {
 		requestMetadata := *metadata
-		requestMetadata.HTTPStatusCode = resp.StatusCode
+		requestMetadata.HTTPOutcome = HTTPOutcomeForStatusCode(resp.StatusCode)
 		requestCtx = WithEventMetadata(requestCtx, &requestMetadata)
 	}
 

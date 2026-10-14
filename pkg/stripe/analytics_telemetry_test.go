@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -199,7 +198,39 @@ func TestSendEvent(t *testing.T) {
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
-func TestSendAPIRequestEvent_HTTPStatusCode(t *testing.T) {
+func TestHTTPOutcomeForStatusCode(t *testing.T) {
+	for _, test := range []struct {
+		status int
+		want   string
+	}{
+		{status: -1, want: ""},
+		{status: 0, want: ""},
+		{status: 100, want: "other_non_200"},
+		{status: 199, want: "other_non_200"},
+		{status: 200, want: "2xx"},
+		{status: 201, want: "2xx"},
+		{status: 204, want: "2xx"},
+		{status: 299, want: "2xx"},
+		{status: 300, want: "other_non_200"},
+		{status: 302, want: "other_non_200"},
+		{status: 399, want: "other_non_200"},
+		{status: 400, want: "other_4xx"},
+		{status: 401, want: "other_4xx"},
+		{status: 403, want: "other_4xx"},
+		{status: 404, want: "not_found"},
+		{status: 429, want: "other_4xx"},
+		{status: 499, want: "other_4xx"},
+		{status: 500, want: "5xx"},
+		{status: 599, want: "5xx"},
+		{status: 600, want: "other_non_200"},
+	} {
+		t.Run(fmt.Sprint(test.status), func(t *testing.T) {
+			require.Equal(t, test.want, stripe.HTTPOutcomeForStatusCode(test.status))
+		})
+	}
+}
+
+func TestSendAPIRequestEvent_HTTPOutcome(t *testing.T) {
 	for _, status := range []int{0, 200, 201, 204, 302, 400, 401, 403, 404, 429, 500} {
 		t.Run(fmt.Sprint(status), func(t *testing.T) {
 			forms := make(chan url.Values, 1)
@@ -213,7 +244,8 @@ func TestSendAPIRequestEvent_HTTPStatusCode(t *testing.T) {
 			baseURL, err := url.Parse(server.URL)
 			require.NoError(t, err)
 			client := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
-			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "stripe get", HTTPStatusCode: status}
+			outcome := stripe.HTTPOutcomeForStatusCode(status)
+			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "stripe get", HTTPOutcome: outcome}
 			ctx := stripe.WithEventMetadata(context.Background(), metadata)
 
 			resp, err := client.SendAPIRequestEvent(ctx, "", false)
@@ -222,11 +254,9 @@ func TestSendAPIRequestEvent_HTTPStatusCode(t *testing.T) {
 
 			form := <-forms
 			require.Equal(t, "API Request", form.Get("event_name"))
-			require.Equal(t, status != 0, form.Has("http_status_code"))
-			if status != 0 {
-				require.Equal(t, strconv.Itoa(status), form.Get("http_status_code"))
-			}
-			require.False(t, form.Has("http_outcome"))
+			require.Equal(t, outcome, form.Get("http_outcome"))
+			require.Equal(t, outcome != "", form.Has("http_outcome"))
+			require.False(t, form.Has("http_status_code"))
 		})
 	}
 }

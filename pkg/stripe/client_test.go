@@ -97,7 +97,7 @@ func (c *apiStatusTelemetryClient) SendEvent(ctx context.Context, _ string, _ st
 	c.statuses <- GetEventMetadata(ctx)
 }
 
-func TestPerformRequest_TelemetryHTTPStatusCode(t *testing.T) {
+func TestPerformRequest_TelemetryHTTPOutcome(t *testing.T) {
 	statuses := []int{200, 201, 204, 302, 400, 401, 403, 404, 429, 500}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		status, err := strconv.Atoi(r.URL.Query().Get("status"))
@@ -133,26 +133,25 @@ func TestPerformRequest_TelemetryHTTPStatusCode(t *testing.T) {
 	}
 	wg.Wait()
 
-	var gotStatuses []int
+	var gotOutcomes []string
 	for range statuses {
 		select {
 		case eventMetadata := <-telemetry.statuses:
 			require.NotSame(t, metadata, eventMetadata)
 			require.Equal(t, original.CommandPath, eventMetadata.CommandPath)
 			require.Equal(t, original.InvocationID, eventMetadata.InvocationID)
-			require.Empty(t, eventMetadata.HTTPOutcome)
-			gotStatuses = append(gotStatuses, eventMetadata.HTTPStatusCode)
+			gotOutcomes = append(gotOutcomes, eventMetadata.HTTPOutcome)
 		case <-time.After(time.Second):
 			t.Fatal("timed out waiting for API request telemetry")
 		}
 	}
-	require.ElementsMatch(t, statuses, gotStatuses)
+	require.ElementsMatch(t, []string{"2xx", "2xx", "2xx", "other_non_200", "other_4xx", "other_4xx", "other_4xx", "not_found", "other_4xx", "5xx"}, gotOutcomes)
 	require.Equal(t, original, *metadata)
 	telemetry.SendEvent(ctx, "Command Invoked", "")
-	require.Zero(t, (<-telemetry.statuses).HTTPStatusCode)
+	require.Empty(t, (<-telemetry.statuses).HTTPOutcome)
 }
 
-func TestPerformRequest_NoResponseHasNoStatusTelemetry(t *testing.T) {
+func TestPerformRequest_NoResponseHasNoOutcomeTelemetry(t *testing.T) {
 	baseURL, err := url.Parse("http://127.0.0.1")
 	require.NoError(t, err)
 	client := Client{BaseURL: baseURL}

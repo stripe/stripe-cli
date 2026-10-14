@@ -125,18 +125,11 @@ func httpOutcome(err error) string {
 		return ""
 	}
 	status := statusErr.HTTPStatusCode()
-	switch {
-	case status <= 0 || status == http.StatusOK:
+	// A 200 response with invalid content is not an HTTP-status failure.
+	if status == http.StatusOK {
 		return ""
-	case status == http.StatusNotFound:
-		return "not_found"
-	case status >= 400 && status < 500:
-		return "other_4xx"
-	case status >= 500 && status < 600:
-		return "5xx"
-	default:
-		return "other_non_200"
 	}
+	return stripe.HTTPOutcomeForStatusCode(status)
 }
 
 // shouldCapture defines the reporting policy for classified errors. Auth covers

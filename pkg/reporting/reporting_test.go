@@ -242,7 +242,7 @@ func TestCaptureExceptionHTTPOutcome(t *testing.T) {
 		{name: "last client error", commandPath: "stripe docs", status: 499, wantOutcome: "other_4xx", wantBucket: "docs"},
 		{name: "last server error", commandPath: "stripe docs", status: 599, wantOutcome: "5xx", wantBucket: "docs"},
 		{name: "redirect", commandPath: "stripe docs", status: 302, wantOutcome: "other_non_200", wantBucket: "docs"},
-		{name: "created", commandPath: "stripe docs", status: 201, wantOutcome: "other_non_200", wantBucket: "docs"},
+		{name: "created", commandPath: "stripe docs", status: 201, wantOutcome: "2xx", wantBucket: "docs"},
 		{name: "unsupported content type", commandPath: "stripe docs", status: 200, contentType: "text/html", wantBucket: "docs"},
 		{name: "other command", commandPath: "stripe listen", status: 404, wantOutcome: "not_found", wantBucket: "listen"},
 		{name: "unknown command", commandPath: "stripe custom", status: 500, wantOutcome: "5xx", wantBucket: "other"},
