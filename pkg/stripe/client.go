@@ -198,9 +198,17 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
+	// Keep response metadata local to this event, not the shared invocation.
+	requestCtx := req.Context()
+	if metadata := GetEventMetadata(requestCtx); metadata != nil {
+		requestMetadata := *metadata
+		requestMetadata.HTTPStatusCode = resp.StatusCode
+		requestCtx = WithEventMetadata(requestCtx, &requestMetadata)
+	}
+
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	go sendTelemetryEvent(ctx, requestID, c.Credentials.Livemode())
+	go sendTelemetryEvent(requestCtx, requestID, c.Credentials.Livemode())
 	return resp, nil
 }
 

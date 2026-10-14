@@ -61,6 +61,9 @@ type CLIAnalyticsEventMetadata struct {
 
 	// HTTPOutcome is a bounded HTTP outcome for error events from any command.
 	HTTPOutcome string `url:"http_outcome,omitempty"`
+
+	// HTTPStatusCode is the response status for an API Request event.
+	HTTPStatusCode int `url:"http_status_code,omitempty"`
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
