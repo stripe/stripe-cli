@@ -41,15 +41,15 @@ func PluginConfigKey(scope, field string) string {
 }
 
 // PluginUpdatesEnabled reports whether automatic updates are enabled for the
-// named plugin, per `stripe plugin auto-update`.
+// named plugin, per `stripe plugin auto-update`. A per-plugin choice overrides a
+// global choice; defaultEnabled applies only when neither is set.
 //
-// Updates are off unless the user turned them on. Nothing should download a new
-// plugin version on its own just because no one said otherwise.
-func PluginUpdatesEnabled(pluginName string) bool {
-	return pluginUpdatesEnabled(viper.GetViper(), pluginName)
+// Pass the backend's auto_update_default when deciding whether to install an update.
+func PluginUpdatesEnabled(pluginName string, defaultEnabled bool) bool {
+	return pluginUpdatesEnabled(viper.GetViper(), pluginName, defaultEnabled)
 }
 
-func pluginUpdatesEnabled(v *viper.Viper, pluginName string) bool {
+func pluginUpdatesEnabled(v *viper.Viper, pluginName string, defaultEnabled bool) bool {
 	// A setting on the plugin itself answers alone, so `--disable` on one plugin
 	// holds under a global `--enable` and the reverse. A value that is neither "on"
 	// nor "off" counts as set: the user configured this plugin, which is enough to
@@ -61,8 +61,10 @@ func pluginUpdatesEnabled(v *viper.Viper, pluginName string) bool {
 		}
 	}
 
-	enabled, _ := pluginConfigToggle(v, PluginConfigGlobalScope, PluginConfigUpdatesField)
-	return enabled
+	if enabled, isSet := pluginConfigToggle(v, PluginConfigGlobalScope, PluginConfigUpdatesField); isSet {
+		return enabled
+	}
+	return defaultEnabled
 }
 
 // pluginConfigToggle reads one on/off plugin config field. isSet distinguishes a

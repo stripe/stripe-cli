@@ -1018,7 +1018,7 @@ func TestSandboxNamespaceExecution(t *testing.T) {
 				command := newSandboxCreateCmd()
 				command.client = client
 				command.isInteractive = func(*cobra.Command) bool { return true }
-				command.reauth = func(context.Context, string, string) error {
+				command.reauth = func(context.Context, string, string, *config.Profile) error {
 					t.Fatal("non-interactive creation must not reauthorize")
 					return nil
 				}
@@ -1615,7 +1615,7 @@ func TestSandboxCreateCmdOAuthPromptedNameThenAuthorizes(t *testing.T) {
 	command.cmd.SetIn(strings.NewReader("Prompted sandbox\nyes\n"))
 
 	reauthCalls := 0
-	command.reauth = func(context.Context, string, string) error {
+	command.reauth = func(context.Context, string, string, *config.Profile) error {
 		reauthCalls++
 		return nil
 	}
@@ -1633,6 +1633,7 @@ func TestSandboxCreateCmdOAuthPromptedNameThenAuthorizes(t *testing.T) {
 func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *testing.T) {
 	cleanup := setupSandboxTestConfig(t)
 	defer cleanup()
+	Config.Profile.ProfileName = "sandbox-team"
 
 	previousAccessBase := rootAccessBaseURL
 	rootAccessBaseURL = login.QAAccessBaseURL
@@ -1641,9 +1642,9 @@ func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *test
 	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_live", Livemode: true})
 	require.NoError(t, err)
 	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
-		config.UATKeychainItemKey:            []byte("oak_original"),
-		config.OAuthUATExpiresAtKeychainKey:  []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
-		config.OAuthActiveContextKeychainKey: activeContext,
+		Config.Profile.KeyringKey(config.UATKeychainItemKey):            []byte("oak_original"),
+		Config.Profile.KeyringKey(config.OAuthUATExpiresAtKeychainKey):  []byte(time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)),
+		Config.Profile.KeyringKey(config.OAuthActiveContextKeychainKey): activeContext,
 	})
 	previousRefresher := config.OAuthTokenRefresher
 	t.Cleanup(func() { config.OAuthTokenRefresher = previousRefresher })
@@ -1667,12 +1668,14 @@ func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *test
 	var reauthContext context.Context
 	var reauthAccessBaseURL string
 	var reauthAccessToken string
+	var reauthProfile *config.Profile
 	reauthCalls := 0
-	command.reauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+	command.reauth = func(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 		reauthCalls++
 		reauthContext = ctx
 		reauthAccessBaseURL = accessBaseURL
 		reauthAccessToken = accessToken
+		reauthProfile = profile
 		return nil
 	}
 
@@ -1687,6 +1690,8 @@ func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *test
 	assert.Equal(t, ctx, reauthContext)
 	assert.Equal(t, login.QAAccessBaseURL, reauthAccessBaseURL)
 	assert.Equal(t, "oak_refreshed", reauthAccessToken)
+	assert.Same(t, &Config.Profile, reauthProfile)
+	assert.Equal(t, "sandbox-team", reauthProfile.ProfileName)
 	assert.Contains(t, stdout.String(), "Authorize this sandbox with the CLI now? [y/N]:")
 	assert.Contains(t, stdout.String(), "stripe login")
 	assert.Empty(t, stderr.String())
@@ -1707,7 +1712,7 @@ func TestSandboxCreateCmdOAuth_InteractiveDeclinesWithoutReauth(t *testing.T) {
 			command.cmd.SetArgs([]string{"Created sandbox"})
 
 			reauthCalls := 0
-			command.reauth = func(context.Context, string, string) error {
+			command.reauth = func(context.Context, string, string, *config.Profile) error {
 				reauthCalls++
 				return nil
 			}
@@ -1736,7 +1741,7 @@ func TestSandboxCreateCmdOAuth_NonInteractiveDoesNotPrompt(t *testing.T) {
 	command.isInteractive = func(*cobra.Command) bool { return false }
 	command.cmd.SetArgs([]string{"Created sandbox"})
 
-	command.reauth = func(context.Context, string, string) error {
+	command.reauth = func(context.Context, string, string, *config.Profile) error {
 		t.Fatal("reauth should not run for a non-interactive caller")
 		return nil
 	}
@@ -1781,7 +1786,7 @@ func TestSandboxCreateCmdOAuthExplicitNonInteractiveDoesNotPrompt(t *testing.T) 
 			command.isInteractive = func(*cobra.Command) bool { return true }
 			command.cmd.SetIn(iotest.ErrReader(errors.New("stdin should not be read")))
 			command.cmd.SetArgs(test.args)
-			command.reauth = func(context.Context, string, string) error {
+			command.reauth = func(context.Context, string, string, *config.Profile) error {
 				t.Fatal("reauth should not run for an explicitly non-interactive caller")
 				return nil
 			}
@@ -1846,7 +1851,7 @@ func TestSandboxCreateCmdOAuth_InvalidUATAfterCreationWarnsWithoutReauth(t *test
 			command.cmd.SetArgs([]string{"Created sandbox"})
 
 			reauthCalls := 0
-			command.reauth = func(context.Context, string, string) error {
+			command.reauth = func(context.Context, string, string, *config.Profile) error {
 				reauthCalls++
 				return nil
 			}
@@ -1876,7 +1881,7 @@ func TestSandboxCreateCmdOAuth_ReauthFailurePreservesCreationSuccess(t *testing.
 	command.isInteractive = func(*cobra.Command) bool { return true }
 	command.cmd.SetIn(strings.NewReader("yes\n"))
 	command.cmd.SetArgs([]string{"Created sandbox"})
-	command.reauth = func(context.Context, string, string) error {
+	command.reauth = func(context.Context, string, string, *config.Profile) error {
 		return fmt.Errorf("reauth failed")
 	}
 
@@ -1951,7 +1956,7 @@ func TestSandboxCreateCmdOAuthReturnsClientErrorWithoutSuccessOutput(t *testing.
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return true }
 	command.cmd.SetIn(strings.NewReader("yes\n"))
-	command.reauth = func(context.Context, string, string) error {
+	command.reauth = func(context.Context, string, string, *config.Profile) error {
 		t.Fatal("reauth should not run when creation fails")
 		return nil
 	}

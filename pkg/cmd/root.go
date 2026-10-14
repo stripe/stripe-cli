@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -62,8 +63,7 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"resources": "resources",
 		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandboxes create` (provisions a claimable sandbox without a browser).\n" +
-			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
-			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
+			"  Run `stripe agent setup` to install or update the Stripe plugin.\n" +
 			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to install, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
@@ -184,6 +184,11 @@ func Execute(ctx context.Context) {
 		return
 	}
 
+	args := os.Args[1:]
+	if normalized := resource.NormalizeBooleanRequestArgs(rootCmd, args); !slices.Equal(args, normalized) {
+		rootCmd.SetArgs(normalized)
+	}
+
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 
@@ -194,7 +199,7 @@ func Execute(ctx context.Context) {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case errors.Is(err, errCommandRemoved):
-			// the shim already printed the downgrade guidance; just exit non-zero
+			// the shim already printed the removal guidance; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isMorePermissionsRequiredError(err):
@@ -369,6 +374,9 @@ func init() {
 	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
+	if terminalCmd, ok := cmdutil.FindSubCmd(rootCmd, "terminal"); ok {
+		terminalCmd.AddCommand(newTerminalQuickstartCmd())
+	}
 	registerHTTPCmds(rootCmd)
 	err := resource.AddDatabasesCmd(rootCmd, &Config)
 	if err != nil {

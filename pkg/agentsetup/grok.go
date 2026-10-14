@@ -21,9 +21,7 @@ const (
 
 // GrokProvider detects and installs the Stripe plugin for Grok Build (xAI).
 type GrokProvider struct {
-	Scanner    Scanner
-	RunCommand RunCommandFunc
-	RunOutput  RunOutputFunc
+	ProviderConfig
 }
 
 // NewGrokProvider returns a Grok Build setup provider.
@@ -32,30 +30,26 @@ func NewGrokProvider(scanner Scanner, runCommand RunCommandFunc) Provider {
 		runCommand = RunCommand
 	}
 	return GrokProvider{
-		Scanner:    scanner,
-		RunCommand: runCommand,
-		RunOutput:  runCommandOutput,
+		ProviderConfig: ProviderConfig{
+			Scanner:     scanner,
+			Client:      ClientGrok,
+			BinaryName:  GrokBinaryName,
+			DisplayName: GrokDisplayName,
+			RunCommand:  runCommand,
+		},
 	}
 }
 
-func (p GrokProvider) ID() string { return ClientGrok }
+func (p GrokProvider) ID() string { return p.Client }
 
 func (p GrokProvider) Detect() Status {
-	s := p.Scanner.withDefaults()
-
-	status := Status{
-		Client:      ClientGrok,
-		DisplayName: GrokDisplayName,
-		Status:      StatusNotDetected,
-	}
-
-	binPath, err := s.LookPath(GrokBinaryName)
-	if err != nil {
+	status := detectAgentExecutable(
+		p.ProviderConfig,
+		StatusMissing,
+	)
+	if !status.Detected {
 		return status
 	}
-	status.Detected = true
-	status.ExecutablePath = binPath
-	status.Status = StatusMissing
 
 	ctx, cancel := context.WithTimeout(context.Background(), grokListTimeout)
 	defer cancel()
@@ -80,11 +74,11 @@ func (p GrokProvider) Detect() Status {
 // Stripe plugin is installed. When the command fails (e.g. an old Grok
 // version without plugin support), supportsPlugins is false.
 func (p GrokProvider) stripePluginStatus(ctx context.Context) (plugin grokInstalledPlugin, installed bool, supportsPlugins bool) {
-	runOutput := p.RunOutput
-	if runOutput == nil {
-		runOutput = runCommandOutput
+	runCommand := p.RunCommand
+	if runCommand == nil {
+		runCommand = RunCommand
 	}
-	out, err := runOutput(ctx, GrokBinaryName, "plugin", "list", "--json")
+	out, err := runCommand(ctx, p.BinaryName, "plugin", "list", "--json")
 	if err != nil {
 		return grokInstalledPlugin{}, false, false
 	}
@@ -124,22 +118,13 @@ func grokPluginIsStripe(plugin grokInstalledPlugin) bool {
 }
 
 func (p GrokProvider) Plan(status Status, force bool) Plan {
-	switch {
-	case status.Status == StatusError:
-		return Plan{Action: ActionNone}
-	case !status.Detected:
-		return Plan{Action: ActionNone}
-	case status.Plugin.Installed && force:
-		// `grok plugin install` is idempotent when already installed — it
-		// prints "Plugin stripe is already installed ... Run `grok plugin
-		// update stripe` to update it" rather than reinstalling, so a forced
-		// refresh has to go through `update` instead.
-		return Plan{Action: ActionReinstall, Command: []string{GrokBinaryName, "plugin", "update", GrokPluginName}}
-	case status.Plugin.Installed:
-		return Plan{Action: ActionNone}
-	default:
-		return Plan{Action: ActionInstall, Command: []string{GrokBinaryName, "plugin", "install", GrokPluginName, "--trust"}}
-	}
+	installCommand := [][]string{{p.BinaryName, "plugin", "install", GrokPluginName, "--trust"}}
+	// `grok plugin install` is idempotent when already installed — it prints
+	// "Plugin stripe is already installed ... Run `grok plugin update stripe`
+	// to update it" rather than reinstalling, so a forced refresh has to go
+	// through `update` instead.
+	reinstallCommand := [][]string{{p.BinaryName, "plugin", "update", GrokPluginName}}
+	return getPlanByStatus(status, force, installCommand, reinstallCommand)
 }
 
 // Apply installs (or updates) the Stripe Grok plugin. Unlike Codex's
@@ -150,8 +135,10 @@ func (p GrokProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
 	if plan.Action == ActionNone {
 		return nil
 	}
-	if len(plan.Command) == 0 {
+	if len(plan.Commands) == 0 {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
-	return p.RunCommand(ctx, plan.Command[0], plan.Command[1:]...)
+	command := plan.Commands[0]
+	_, err := p.RunCommand(ctx, command[0], command[1:]...)
+	return err
 }

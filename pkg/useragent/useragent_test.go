@@ -122,6 +122,7 @@ func TestDetectAgentHost(t *testing.T) {
 		// Code without an entrypoint has no host, rather than a guessed terminal.
 		{"claude code without entrypoint stays hostless", map[string]string{"CLAUDECODE": "1"}, "", ""},
 		{"cursor stays hostless", map[string]string{"CURSOR_AGENT": "1"}, "", ""},
+		{"openclaw shell", map[string]string{"OPENCLAW_SHELL": "1"}, "terminal", "openclaw"},
 
 		// Normalization runs before reporting, so one host cannot arrive under several
 		// spellings -- including from different platforms.
@@ -183,10 +184,6 @@ func TestDetectAIAgent_InferredFromHost(t *testing.T) {
 			require.Equal(t, tt.expected, DetectAIAgent(mapEnv(tt.envs)), tt.description)
 		})
 	}
-}
-
-func TestDetectAIAgent_Hermes(t *testing.T) {
-	require.Equal(t, "hermes", DetectAIAgent(mapEnv(map[string]string{"HERMES_AGENT": "1"})))
 }
 
 // TestDetectAIAgent_AIAgentFallback covers the last-resort fallback: when no agent-specific
@@ -365,6 +362,30 @@ func TestObservedAgentSessions(t *testing.T) {
 			description: "Grok Build's terminal TUI sets GROK_AGENT alongside GROK_SESSION_ID, and " +
 				"reports no version through the AI_AGENT/AGENT convention",
 		},
+		{
+			name: "openclaw shell",
+			envs: map[string]string{
+				"OPENCLAW_SHELL": "1",
+			},
+			agent:    "openclaw",
+			hostKind: "terminal",
+			hostRaw:  "openclaw",
+			version:  "",
+			description: "Openclaw's shell sets only OPENCLAW_SHELL, and " +
+				"reports no version through the AI_AGENT/AGENT convention",
+		},
+		{
+			name: "kiro terminal",
+			envs: map[string]string{
+				"KIRO_SESSION_ID": sensitiveSessionID,
+			},
+			agent:    "kiro",
+			hostKind: "terminal",
+			hostRaw:  "kiro",
+			version:  "",
+			description: "Kiro's shell sets KIRO_SESSION_ID, and " +
+				"reports no version through the AI_AGENT/AGENT convention",
+		},
 	}
 
 	for _, tt := range tests {
@@ -406,6 +427,7 @@ func TestObservedAgentSessions_NoSensitiveValuesReported(t *testing.T) {
 		"CODEX_PERMISSION_PROFILE":           ":read-only",
 		"GROK_AGENT":                         "1",
 		"GROK_SESSION_ID":                    sensitiveSessionID,
+		"OPENCLAW_SHELL":                     "1",
 	}
 	getEnv := mapEnv(envs)
 

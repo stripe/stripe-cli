@@ -52,6 +52,9 @@ type ResolvedPluginVersion struct {
 	// back to cached metadata leaves it false, so a machine that cannot reach the
 	// endpoint keeps prompting rather than installing on a stale answer.
 	AutoInstall bool
+	// AutoUpdateDefault is the backend default from a live metadata response.
+	// Cached metadata leaves it false; explicit user settings take precedence.
+	AutoUpdateDefault bool
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -82,11 +85,24 @@ func ValidatePluginShortname(pluginName string) error {
 	}
 }
 
+// HookBaseURLs are the base URL overrides a plugin hook may hear about: exactly
+// what the user explicitly passed on the command line, and empty otherwise. A
+// plugin reads an empty value as "use your own default", so these deliberately
+// never carry the defaults the CLI resolves for its own metadata requests —
+// forwarding those would replace a plugin's choice with the CLI's. They ride
+// the install chain so the hooks of dependencies installed along the way hear
+// the same overrides the plugin the user named does.
+type HookBaseURLs struct {
+	APIBaseURL       string
+	DashboardBaseURL string
+	AccessBaseURL    string
+}
+
 // Install installs the resolved plugin version. If the metadata lookup already
 // resolved a concrete binary URL, it reuses that result and skips a second
 // metadata request. Otherwise it retries metadata during install so cached
 // local metadata can still recover fresh release details.
-func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, hookBaseURLs HookBaseURLs) error {
 	switch {
 	case r == nil:
 		return errorcategory.New(errorcategory.Internal, "missing resolved plugin version")
@@ -95,8 +111,17 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
-		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "")
+		chain := newInstallChain(hookBaseURLs)
+		defer chain.runDeferredHooks()
+		return r.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, chain)
 	}
+}
+
+// install is Install without the entry-point guards or chain setup, for
+// dependency-chain callers that have already validated the resolution and hold
+// the chain to thread through.
+func (r *ResolvedPluginVersion) install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, chain *installChain) error {
+	return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", chain)
 }
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
@@ -865,11 +890,18 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		return nil, err
 	}
 
+	// Per-release peer requirements ride on the response, not the manifest, so the
+	// plugin that resolution hands around (and install persists) picks them up here.
+	// Set unconditionally: a release that declares none must not inherit requirements
+	// cached from whichever release was installed before.
+	plugin.MinPluginVersions = pluginMetadata.MinPluginVersions
+
 	return &ResolvedPluginVersion{
-		Plugin:      plugin,
-		Version:     resolvedVersion,
-		BinaryURL:   pluginMetadata.BinaryURL,
-		AutoInstall: pluginMetadata.AutoInstall,
+		Plugin:            plugin,
+		Version:           resolvedVersion,
+		BinaryURL:         pluginMetadata.BinaryURL,
+		AutoInstall:       pluginMetadata.AutoInstall,
+		AutoUpdateDefault: pluginMetadata.AutoUpdateDefault,
 	}, nil
 }
 
@@ -1191,6 +1223,9 @@ func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 // after such a decline. Those runs now say nothing at all. The alternative is charging
 // every auto-updating command a request to say it, and a check that keeps declining is
 // better reported by the check itself than inferred from a hint here.
+//
+// When following the backend default, reuse the pre-run check's resolution. A
+// default of false still gets an upgrade hint, at the same interval as the check.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
 	// PluginsPath alone, deliberately narrower than the same-looking guard in
 	// maybeAutoUpgrade: a `localdev` build has no published release to be behind, but
@@ -1215,8 +1250,19 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	// Asked of pluginsDirOverride rather than the environment directly, even though the
 	// guard above has already returned for the compiled-in half of it, so that this and
 	// maybeAutoUpgrade keep reading the same answer from the same place.
-	if pluginsDirOverride() == "" && pluginUpdatesEnabled(plugin.Shortname) {
-		return
+	var resolvedPlugin *ResolvedPluginVersion
+	if pluginsDirOverride() == "" {
+		if pluginUpdatesEnabled(plugin.Shortname, false) {
+			return
+		}
+		if plugin.autoUpgradeCheck != nil && pluginUpdatesEnabled(plugin.Shortname, true) {
+			// With no explicit setting, reuse the pre-run decision. This also keeps
+			// throttled and failed checks from causing another request on exit.
+			resolvedPlugin = plugin.autoUpgradeCheck.resolved
+			if resolvedPlugin == nil || resolvedPlugin.AutoUpdateDefault {
+				return
+			}
+		}
 	}
 
 	installedVersion := plugin.InstalledVersion(config, fs)
@@ -1235,9 +1281,12 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	ctx, cancel := context.WithTimeout(ctx, checkLatestPluginVersionTimeout)
 	defer cancel()
 
-	resolvedPlugin, err := checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
-	if err != nil {
-		return
+	if resolvedPlugin == nil {
+		var err error
+		resolvedPlugin, err = checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
+		if err != nil || resolvedPlugin == nil {
+			return
+		}
 	}
 
 	latestVersion := resolvedPlugin.Version

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"io"
 	"path/filepath"
 	"testing"
 
@@ -45,7 +46,7 @@ func TestGlobalEnable(t *testing.T) {
 	err := ac.run(ac.Cmd, []string{})
 	require.NoError(t, err)
 	assert.Equal(t, "on", viper.GetString(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
-	assert.Equal(t, "Automatic updates are enabled for all plugins\n\nDisable them with 'stripe plugin auto-update --disable'\n", output.String())
+	assert.Equal(t, "Automatic updates are enabled for all plugins\n\nDisable them with 'stripe plugin auto-update --disable'\nFollow each plugin's default with 'stripe plugin auto-update --unset'\n", output.String())
 }
 
 // -- global --disable -------------------------------------------------------
@@ -62,7 +63,30 @@ func TestGlobalDisable(t *testing.T) {
 	err := ac.run(ac.Cmd, []string{})
 	require.NoError(t, err)
 	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
-	assert.Equal(t, "Automatic updates are disabled for all plugins\n\nEnable them with 'stripe plugin auto-update --enable'\n", output.String())
+	assert.Equal(t, "Automatic updates are disabled for all plugins\n\nEnable them with 'stripe plugin auto-update --enable'\nFollow each plugin's default with 'stripe plugin auto-update --unset'\n", output.String())
+}
+
+// -- global --unset ---------------------------------------------------------
+
+func TestGlobalUnset(t *testing.T) {
+	cfg, cleanup := setupAutoUpdateTest(t)
+	defer cleanup()
+
+	require.NoError(t, cfg.WriteConfigField("installed_plugins", []string{"apps"}))
+	require.NoError(t, cfg.WriteConfigField(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField), config.PluginConfigOn))
+	require.NoError(t, cfg.WriteConfigField(config.PluginConfigKey("apps", config.PluginConfigUpdatesField), config.PluginConfigOff))
+
+	ac := NewAutoUpdateCmd(cfg)
+	ac.unset = true
+	var output bytes.Buffer
+	ac.Cmd.SetOut(&output)
+
+	err := ac.run(ac.Cmd, []string{})
+	require.NoError(t, err)
+	assert.False(t, viper.IsSet(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
+	// Only the global choice is cleared; a per-plugin choice still answers for its plugin.
+	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
+	assert.Equal(t, "Automatic updates now follow each plugin's default\n\nEnable them with 'stripe plugin auto-update --enable'\nDisable them with 'stripe plugin auto-update --disable'\n", output.String())
 }
 
 // -- no flags → help --------------------------------------------------------
@@ -114,7 +138,65 @@ func TestPluginDisable(t *testing.T) {
 	err := ac.run(ac.Cmd, []string{"apps"})
 	require.NoError(t, err)
 	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
-	assert.Equal(t, "Automatic updates are disabled for the Apps plugin\n\nEnable it with 'stripe plugin auto-update apps --enable'\nFollow the global setting with 'stripe plugin auto-update apps --unset' (current: disabled)\n", output.String())
+	assert.Equal(t, "Automatic updates are disabled for the Apps plugin\n\nEnable it with 'stripe plugin auto-update apps --enable'\nFollow the global setting with 'stripe plugin auto-update apps --unset' (current: plugin default)\n", output.String())
+}
+
+// -- per-plugin --unset -----------------------------------------------------
+
+func TestPluginUnset(t *testing.T) {
+	cfg, cleanup := setupAutoUpdateTest(t)
+	defer cleanup()
+
+	require.NoError(t, cfg.WriteConfigField("installed_plugins", []string{"apps"}))
+	require.NoError(t, cfg.WriteConfigField(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField), config.PluginConfigOn))
+	require.NoError(t, cfg.WriteConfigField(config.PluginConfigKey("apps", config.PluginConfigUpdatesField), config.PluginConfigOff))
+
+	ac := NewAutoUpdateCmd(cfg)
+	var output bytes.Buffer
+	ac.Cmd.SetOut(&output)
+	// Parsed rather than set on the struct: the per-plugin output advertises this exact
+	// command line, so it has to be one the CLI accepts.
+	ac.Cmd.SetArgs([]string{"apps", "--unset"})
+
+	require.NoError(t, ac.Cmd.Execute())
+	assert.False(t, viper.IsSet(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
+	assert.Equal(t, "on", viper.GetString(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
+	assert.Equal(t, "Automatic updates for the Apps plugin now follow the global setting (current: enabled)\n\nEnable it with 'stripe plugin auto-update apps --enable'\nDisable it with 'stripe plugin auto-update apps --disable'\n", output.String())
+}
+
+// Clearing a choice that was never made is already the state the user asked for.
+func TestPluginUnsetWithNothingSet(t *testing.T) {
+	cfg, cleanup := setupAutoUpdateTest(t)
+	defer cleanup()
+
+	require.NoError(t, cfg.WriteConfigField("installed_plugins", []string{"apps"}))
+
+	ac := NewAutoUpdateCmd(cfg)
+	ac.unset = true
+	var output bytes.Buffer
+	ac.Cmd.SetOut(&output)
+
+	err := ac.run(ac.Cmd, []string{"apps"})
+	require.NoError(t, err)
+	assert.False(t, viper.IsSet(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
+	assert.Equal(t, "Automatic updates for the Apps plugin now follow the global setting (current: plugin default)\n\nEnable it with 'stripe plugin auto-update apps --enable'\nDisable it with 'stripe plugin auto-update apps --disable'\n", output.String())
+}
+
+func TestUnsetExcludesEnableAndDisable(t *testing.T) {
+	for _, other := range []string{"--enable", "--disable"} {
+		t.Run(other, func(t *testing.T) {
+			cfg, cleanup := setupAutoUpdateTest(t)
+			defer cleanup()
+
+			ac := NewAutoUpdateCmd(cfg)
+			ac.Cmd.SetOut(io.Discard)
+			ac.Cmd.SetErr(io.Discard)
+			ac.Cmd.SetArgs([]string{"--unset", other})
+
+			require.ErrorContains(t, ac.Cmd.Execute(), "none of the others can be")
+			assert.False(t, viper.IsSet(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
+		})
+	}
 }
 
 // -- per-plugin not installed -----------------------------------------------

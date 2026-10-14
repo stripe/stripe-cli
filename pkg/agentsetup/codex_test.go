@@ -12,13 +12,13 @@ import (
 const codexTestMarketplaceList = `{"marketplaces":[{"name":"openai-curated"},{"name":"openai-api-curated"}]}`
 
 func TestScanCodex_NotDetected(t *testing.T) {
-	provider := CodexProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			t.Fatal("plugin list should not run when Codex is not detected")
-			return nil, nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	runCommand := func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("plugin list should not run when Codex is not detected")
+		return nil, nil
 	}
+	provider := NewCodexProvider(scanner, nil).(CodexProvider)
+	provider.RunCommand = runCommand
 
 	status := provider.Detect()
 
@@ -36,7 +36,7 @@ func TestScanCodex_PluginMissing(t *testing.T) {
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
 	require.Equal(t, "stripe@openai-curated", status.Plugin.ID)
-	require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", "stripe@openai-curated"}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"codex", "plugin", "add", "stripe@openai-curated"}}}, provider.Plan(status, false))
 }
 
 func TestScanCodex_PluginInstalled(t *testing.T) {
@@ -64,12 +64,12 @@ func TestScanCodex_PluginInstalledByNameAndMarketplace(t *testing.T) {
 
 func TestScanCodex_APIPluginInstalled(t *testing.T) {
 	provider := codexTestProvider(`{"installed":[{"pluginId":"stripe@openai-api-curated","version":"1.0.0"}]}`, nil, nil)
-	runOutput := provider.RunOutput
-	provider.RunOutput = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+	runCommand := provider.RunCommand
+	provider.RunCommand = func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		if args[1] == "marketplace" {
 			return []byte(`{"marketplaces":[{"name":"openai-api-curated"}]}`), nil
 		}
-		return runOutput(ctx, name, args...)
+		return runCommand(ctx, name, args...)
 	}
 	status := provider.Detect()
 
@@ -78,13 +78,12 @@ func TestScanCodex_APIPluginInstalled(t *testing.T) {
 	require.Equal(t, "stripe@openai-api-curated", status.Plugin.ID)
 	require.Equal(t, "1.0.0", status.Plugin.Version)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionReinstall, Command: []string{"codex", "plugin", "add", "stripe@openai-api-curated"}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"codex", "plugin", "add", "stripe@openai-api-curated"}}}, provider.Plan(status, true))
 }
 
 func TestScanCodex_DoesNotFallBackAfterLookupError(t *testing.T) {
-	provider := codexTestProvider("", nil, nil)
 	var marketplaces []string
-	provider.RunOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+	provider := codexTestProviderWithCustomRun(func(_ context.Context, _ string, args ...string) ([]byte, error) {
 		if args[1] == "marketplace" {
 			return []byte(codexTestMarketplaceList), nil
 		}
@@ -94,7 +93,7 @@ func TestScanCodex_DoesNotFallBackAfterLookupError(t *testing.T) {
 			return nil, errors.New("marketplace unavailable")
 		}
 		return []byte(`{"installed":[{"pluginId":"stripe@openai-api-curated","version":"1.0.0"}]}`), nil
-	}
+	})
 
 	status := provider.Detect()
 
@@ -121,9 +120,9 @@ func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
 func TestCodexApply_DoesNotFallBack(t *testing.T) {
 	for _, installErr := range []error{nil, errors.New("marketplace unavailable")} {
 		var attempts []string
-		provider := codexTestProvider(`{"installed":[]}`, nil, func(_ context.Context, _ string, args ...string) error {
+		provider := codexTestProvider(`{"installed":[]}`, nil, func(_ context.Context, _ string, args ...string) ([]byte, error) {
 			attempts = append(attempts, args[2])
-			return installErr
+			return nil, installErr
 		})
 
 		status := provider.Detect()
@@ -168,15 +167,18 @@ func TestCodexSetup_AvailableMarketplaces(t *testing.T) {
 			var queried, attempts []string
 			discoveries := 0
 			installed := ""
-			provider := codexTestProvider("", nil, func(_ context.Context, name string, args ...string) error {
+			install := func(_ context.Context, name string, args ...string) ([]byte, error) {
 				require.Equal(t, "codex", name)
 				require.Equal(t, []string{"plugin", "add"}, args[:2])
 				attempts = append(attempts, args[2])
 				installed = args[2]
-				return nil
-			})
-			provider.RunOutput = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+				return nil, nil
+			}
+			provider := codexTestProviderWithCustomRun(func(ctx context.Context, name string, args ...string) ([]byte, error) {
 				require.Equal(t, "codex", name)
+				if args[1] == "add" {
+					return install(ctx, name, args...)
+				}
 				require.NoError(t, ctx.Err())
 				if args[1] == "marketplace" {
 					require.Equal(t, []string{"plugin", "marketplace", "list", "--json"}, args)
@@ -190,7 +192,7 @@ func TestCodexSetup_AvailableMarketplaces(t *testing.T) {
 					return []byte(fmt.Sprintf(`{"installed":[{"pluginId":%q,"version":"1.0.0"}]}`, installed)), nil
 				}
 				return []byte(`{"installed":[]}`), nil
-			}
+			})
 
 			status := provider.Detect()
 			require.Equal(t, StatusMissing, status.Status)
@@ -199,7 +201,7 @@ func TestCodexSetup_AvailableMarketplaces(t *testing.T) {
 			pluginID := "stripe@" + tt.marketplace
 			require.Equal(t, pluginID, status.Plugin.ID)
 			plan := provider.Plan(status, false)
-			require.Equal(t, Plan{Action: ActionInstall, Command: []string{"codex", "plugin", "add", pluginID}}, plan)
+			require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"codex", "plugin", "add", pluginID}}}, plan)
 			require.NoError(t, provider.Apply(context.Background(), nil, plan))
 			require.Equal(t, []string{pluginID}, attempts)
 			require.Equal(t, 1, discoveries, "Plan and Apply must reuse the selection from Detect")
@@ -250,16 +252,12 @@ func TestScanCodex_MarketplaceDiscoveryFailures(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			provider := codexTestProvider("", nil, func(context.Context, string, ...string) error {
-				t.Fatal("must not install without a detected marketplace")
-				return nil
-			})
 			discoveries := 0
-			provider.RunOutput = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+			provider := codexTestProviderWithCustomRun(func(_ context.Context, _ string, args ...string) ([]byte, error) {
 				require.Equal(t, []string{"plugin", "marketplace", "list", "--json"}, args)
 				discoveries++
 				return []byte(tt.listOutput), tt.listErr
-			}
+			})
 
 			status := provider.Detect()
 			require.Equal(t, StatusError, status.Status)
@@ -275,18 +273,26 @@ func TestScanCodex_MarketplaceDiscoveryFailures(t *testing.T) {
 	}
 }
 
-func codexTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) CodexProvider {
-	return CodexProvider{
-		Scanner:    Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }},
-		RunCommand: runCommand,
-		RunOutput: func(_ context.Context, _ string, args ...string) ([]byte, error) {
-			if listErr != nil {
-				return nil, listErr
+func codexTestProviderWithCustomRun(testCommand RunCommandFunc) CodexProvider {
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/codex", nil }}
+	provider := NewCodexProvider(scanner, testCommand).(CodexProvider)
+	return provider
+}
+
+func codexTestProvider(listOutput string, listErr error, installCommand RunCommandFunc) CodexProvider {
+	return codexTestProviderWithCustomRun(func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		if args[1] == "add" {
+			if installCommand != nil {
+				return installCommand(ctx, name, args...)
 			}
-			if args[1] == "marketplace" {
-				return []byte(codexTestMarketplaceList), nil
-			}
-			return []byte(listOutput), nil
-		},
-	}
+			return nil, nil
+		}
+		if listErr != nil {
+			return nil, listErr
+		}
+		if args[1] == "marketplace" {
+			return []byte(codexTestMarketplaceList), nil
+		}
+		return []byte(listOutput), nil
+	})
 }

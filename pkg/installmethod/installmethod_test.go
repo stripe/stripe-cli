@@ -23,8 +23,8 @@ func marker(exe string) string {
 }
 
 // stubs describes a simulated host: the value of STRIPE_INSTALL_METHOD, where the
-// executable is and what it resolves to, which files exist, and what a stamped
-// method file holds.
+// executable is and what it resolves to, which files exist, what a stamped method
+// file holds, and the user's home directory.
 type stubs struct {
 	installMethod string
 	exe           string
@@ -32,6 +32,7 @@ type stubs struct {
 	links         map[string]string
 	files         map[string]string
 	present       []string
+	home          string
 }
 
 func (s stubs) env() Env {
@@ -62,6 +63,12 @@ func (s stubs) env() Env {
 				return []byte(contents), nil
 			}
 			return nil, errors.New("no such file")
+		},
+		HomeDir: func() (string, error) {
+			if s.home == "" {
+				return "", errors.New("no home directory")
+			}
+			return s.home, nil
 		},
 	}
 }
@@ -149,6 +156,25 @@ func TestDetect(t *testing.T) {
 				files: map[string]string{marker("/home/user/.stripe/bin/stripe"): "script\n"},
 			},
 			expected: Script,
+		},
+		{
+			name:     "install script in its default directory, with no stamped method",
+			host:     stubs{exe: "/home/user/.stripe/bin/stripe", home: "/home/user"},
+			expected: Script,
+		},
+		{
+			name: "install script in its default directory, under a symlinked home",
+			host: stubs{
+				exe:   "/data/user/.stripe/bin/stripe",
+				home:  "/home/user",
+				links: map[string]string{filepath.Join("/home/user", ".stripe", "bin"): "/data/user/.stripe/bin"},
+			},
+			expected: Script,
+		},
+		{
+			name:     "a directory that only starts like the default is not a script install",
+			host:     stubs{exe: "/home/user/.stripe/binaries/stripe", home: "/home/user"},
+			expected: Unknown,
 		},
 		{
 			// STRIPE_INSTALL_DIR lets the scripts install anywhere, so the stamped

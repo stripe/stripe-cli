@@ -61,7 +61,7 @@ type sandboxCreateCmd struct {
 	apiBaseURL     string
 	dashboardURL   string
 	client         sandboxCreateClient
-	reauth         func(context.Context, string, string) error
+	reauth         func(context.Context, string, string, *config.Profile) error
 	isInteractive  func(*cobra.Command) bool
 }
 
@@ -744,7 +744,7 @@ func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 	if reauth == nil {
 		reauth = login.ReauthImmediately
 	}
-	if err := reauth(cmd.Context(), rootAccessBaseURL, uat); err != nil {
+	if err := reauth(cmd.Context(), rootAccessBaseURL, uat, &Config.Profile); err != nil {
 		scc.warnAuthorizationFailure(cmd, err)
 	}
 }

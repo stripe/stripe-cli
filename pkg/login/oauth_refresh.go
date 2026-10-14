@@ -26,7 +26,7 @@ func refreshOAuthToken(p *config.Profile) error {
 		return errorcategory.New(errorcategory.Auth, "keyring unavailable; run 'stripe login' to re-authenticate")
 	}
 
-	refreshTokenBytes, err := config.KeyRing.Get(config.OAuthRefreshTokenKeychainKey)
+	refreshTokenBytes, err := config.KeyRing.Get(p.KeyringKey(config.OAuthRefreshTokenKeychainKey))
 	if err != nil {
 		if errors.Is(err, keyring.ErrKeyNotFound) {
 			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
@@ -60,19 +60,19 @@ func refreshOAuthToken(p *config.Profile) error {
 	}
 
 	if tokenResp.RefreshToken != "" {
-		if err := config.KeyRing.Set(config.OAuthRefreshTokenKeychainKey, []byte(tokenResp.RefreshToken), "Stripe CLI refresh token"); err != nil {
+		if err := config.KeyRing.Set(p.KeyringKey(config.OAuthRefreshTokenKeychainKey), []byte(tokenResp.RefreshToken), "Stripe CLI refresh token"); err != nil {
 			return err
 		}
 	} else {
 		// Per spec: no refresh token in response means the submitted token was
 		// consumed and no replacement was issued. Remove it so the next expiry
 		// triggers a re-login rather than another invalid_grant attempt.
-		_ = config.KeyRing.Remove(config.OAuthRefreshTokenKeychainKey)
+		_ = config.KeyRing.Remove(p.KeyringKey(config.OAuthRefreshTokenKeychainKey))
 	}
 
 	if tokenResp.ExpiresIn > 0 {
 		expiresAt := time.Now().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
-		if err := config.SaveUATExpiresAt(expiresAt); err != nil {
+		if err := p.SaveUATExpiresAt(expiresAt); err != nil {
 			return err
 		}
 	}

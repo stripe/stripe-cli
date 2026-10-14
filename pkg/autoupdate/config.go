@@ -1,13 +1,14 @@
-// Package autoupdate implements automatic version updates for curl-installed Stripe CLI binaries.
+// Package autoupdate implements automatic version updates for Stripe CLI binaries installed with the install script.
 package autoupdate
 
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
+
+	"github.com/stripe/stripe-cli/pkg/installmethod"
 )
 
 // IsOptedOut reports whether the user has disabled auto-update.
@@ -40,37 +41,10 @@ func IsOptedOut() bool {
 	return false
 }
 
-// IsCurlInstall reports whether the current binary was installed via curl (lives in ~/.stripe/bin/).
-func IsCurlInstall() bool {
-	if method := os.Getenv("STRIPE_INSTALL_METHOD"); method != "" {
-		return method == "curl"
-	}
-
-	exe, err := os.Executable()
-	if err != nil {
-		return false
-	}
-
-	exe, err = filepath.EvalSymlinks(exe)
-	if err != nil {
-		return false
-	}
-
-	home, err := homedir.Dir()
-	if err != nil {
-		return false
-	}
-
-	stripeBinDir := filepath.Join(home, ".stripe", "bin")
-	stripeBinDir, err = filepath.EvalSymlinks(stripeBinDir)
-	if err != nil {
-		return false
-	}
-
-	exeLower := strings.ToLower(filepath.ToSlash(exe))
-	expectedLower := strings.ToLower(filepath.ToSlash(stripeBinDir))
-
-	return strings.HasPrefix(exeLower, expectedLower)
+// IsScriptInstall reports whether the current binary was installed by the install
+// script, the only install method that auto-update replaces the binary for.
+func IsScriptInstall() bool {
+	return installmethod.Detect(installmethod.OSEnv()) == installmethod.Script
 }
 
 func getConfigFolder() string {

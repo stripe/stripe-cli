@@ -50,11 +50,11 @@ func TestSaveOAuthCredentials(t *testing.T) {
 	err := saveOAuthCredentials(cfg, resp)
 	require.NoError(t, err)
 
-	uat, err := config.KeyRing.Get(config.UATKeychainItemKey)
+	uat, err := config.KeyRing.Get(cfg.Profile.KeyringKey(config.UATKeychainItemKey))
 	require.NoError(t, err)
 	assert.Equal(t, "oaac_test_access", string(uat))
 
-	rt, err := config.KeyRing.Get(OAuthRefreshTokenKeychainKey)
+	rt, err := config.KeyRing.Get(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey))
 	require.NoError(t, err)
 	assert.Equal(t, "oart_test_refresh", string(rt))
 }
@@ -64,8 +64,8 @@ func TestUpdateOAuthTokens_WithNewRefreshToken(t *testing.T) {
 	defer cleanup()
 
 	// Seed initial tokens.
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oaac_old"), ""))
-	require.NoError(t, config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte("oart_old"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.UATKeychainItemKey), []byte("oaac_old"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey), []byte("oart_old"), ""))
 
 	resp := &OAuthTokenResponse{
 		AccessToken:  "oaac_new",
@@ -73,11 +73,11 @@ func TestUpdateOAuthTokens_WithNewRefreshToken(t *testing.T) {
 	}
 	require.NoError(t, UpdateOAuthTokens(cfg, resp))
 
-	uat, err := config.KeyRing.Get(config.UATKeychainItemKey)
+	uat, err := config.KeyRing.Get(cfg.Profile.KeyringKey(config.UATKeychainItemKey))
 	require.NoError(t, err)
 	assert.Equal(t, "oaac_new", string(uat))
 
-	rt, err := config.KeyRing.Get(OAuthRefreshTokenKeychainKey)
+	rt, err := config.KeyRing.Get(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey))
 	require.NoError(t, err)
 	assert.Equal(t, "oart_new", string(rt))
 }
@@ -87,8 +87,8 @@ func TestUpdateOAuthTokens_NoRefreshToken(t *testing.T) {
 	defer cleanup()
 
 	// Seed initial tokens.
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oaac_old"), ""))
-	require.NoError(t, config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte("oart_old"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.UATKeychainItemKey), []byte("oaac_old"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey), []byte("oart_old"), ""))
 
 	// Response with no refresh token — old RT must be preserved.
 	resp := &OAuthTokenResponse{
@@ -97,11 +97,11 @@ func TestUpdateOAuthTokens_NoRefreshToken(t *testing.T) {
 	}
 	require.NoError(t, UpdateOAuthTokens(cfg, resp))
 
-	uat, err := config.KeyRing.Get(config.UATKeychainItemKey)
+	uat, err := config.KeyRing.Get(cfg.Profile.KeyringKey(config.UATKeychainItemKey))
 	require.NoError(t, err)
 	assert.Equal(t, "oaac_new", string(uat))
 
-	rt, err := config.KeyRing.Get(OAuthRefreshTokenKeychainKey)
+	rt, err := config.KeyRing.Get(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey))
 	require.NoError(t, err)
 	assert.Equal(t, "oart_old", string(rt), "refresh token must not change when response omits it")
 }
@@ -111,20 +111,20 @@ func TestClearOAuthCredentials(t *testing.T) {
 	defer cleanup()
 
 	// Seed tokens.
-	require.NoError(t, config.KeyRing.Set(config.UATKeychainItemKey, []byte("oaac_to_clear"), ""))
-	require.NoError(t, config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte("oart_to_clear"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.UATKeychainItemKey), []byte("oaac_to_clear"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey), []byte("oart_to_clear"), ""))
 
 	require.NoError(t, ClearOAuthCredentials(cfg))
 
-	_, err := config.KeyRing.Get(config.UATKeychainItemKey)
+	_, err := config.KeyRing.Get(cfg.Profile.KeyringKey(config.UATKeychainItemKey))
 	assert.Error(t, err, "access token should be removed")
 
-	_, err = config.KeyRing.Get(OAuthRefreshTokenKeychainKey)
+	_, err = config.KeyRing.Get(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey))
 	assert.Error(t, err, "refresh token should be removed")
 }
 
 func TestRevokeToken_DoesNotFollowRedirectToAttackerHost(t *testing.T) {
-	_, cleanup := setupOAuthTestConfig(t)
+	cfg, cleanup := setupOAuthTestConfig(t)
 	defer cleanup()
 
 	var attackerReceivedRefreshToken bool
@@ -142,9 +142,9 @@ func TestRevokeToken_DoesNotFollowRedirectToAttackerHost(t *testing.T) {
 	}))
 	defer accessSrv.Close()
 
-	require.NoError(t, config.KeyRing.Set(OAuthRefreshTokenKeychainKey, []byte("oart_secret_refresh"), ""))
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(OAuthRefreshTokenKeychainKey), []byte("oart_secret_refresh"), ""))
 
-	err := RevokeToken(context.Background(), accessSrv.URL)
+	err := RevokeToken(context.Background(), accessSrv.URL, &cfg.Profile)
 	require.Error(t, err, "the disabled redirect must surface as a non-2xx/redirect response, not a followed request")
 	assert.False(t, attackerReceivedRefreshToken, "the refresh token must never reach a redirect-controlled host")
 }

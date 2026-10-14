@@ -132,7 +132,7 @@ func shouldCheck() bool {
 	if IsOptedOut() {
 		return false
 	}
-	if !IsCurlInstall() {
+	if !IsScriptInstall() {
 		return false
 	}
 

@@ -49,7 +49,7 @@ func ApplyIfPending() {
 	if version.Version == "master" {
 		return
 	}
-	if !IsCurlInstall() {
+	if !IsScriptInstall() {
 		return
 	}
 
