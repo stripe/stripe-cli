@@ -161,6 +161,9 @@ func TestPerformRequest_NoResponseHasNoOutcomeTelemetry(t *testing.T) {
 	cancel()
 
 	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v1/test", "", nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 
 	require.ErrorIs(t, err, context.Canceled)
 	require.Nil(t, resp)
