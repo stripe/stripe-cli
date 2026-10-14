@@ -275,7 +275,11 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	}
 
 	fmt.Printf("To authorize, visit %s\n\n", browserURL)
-	fmt.Println("When prompted, enter your verification code:")
+	if authResp.VerificationURIComplete != "" {
+		fmt.Println("Confirm the code shown matches:")
+	} else {
+		fmt.Println("When prompted, enter your verification code:")
+	}
 	fmt.Println()
 	fmt.Println(ansi.Purple(authResp.UserCode))
 	fmt.Println()
