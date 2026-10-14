@@ -231,7 +231,9 @@ func upgradePluginForConfigV2(ctx context.Context, cfg *config.Config, fs afero.
 		return "", errorcategory.Errorf(errorcategory.Internal, "latest %s version %s cannot read the v2 config format (need %s)", incompatibility.Plugin, resolved.Version, incompatibility.MinimumVersion)
 	}
 
-	if err := resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL); err != nil {
+	// No explicit base URL overrides exist here: the migration runs on the CLI's
+	// own defaults, so dependency hooks fall back to each plugin's own.
+	if err := resolved.Install(ctx, cfg, fs, apiBaseURL, dashboardBaseURL, plugins.HookBaseURLs{}); err != nil {
 		return "", err
 	}
 

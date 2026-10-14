@@ -147,6 +147,16 @@ func TestAIAgentHelp_NotDetected(t *testing.T) {
 	assert.Empty(t, aiAgentHelp(child))
 }
 
+func TestWrappedRequestParamsFlagUsages_BooleanValues(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("disabled", false, "Disable the endpoint")
+	cmd.Flags().Lookup("disabled").Annotations = map[string][]string{
+		"request": {"true"},
+		"apitype": {"boolean"},
+	}
+	require.Contains(t, WrappedRequestParamsFlagUsages(cmd), "--disabled[=true|false]")
+}
+
 func TestWrappedRequestParamsFlagUsages_FormatAnnotation(t *testing.T) {
 	cmd := &cobra.Command{Use: "create", Annotations: make(map[string]string)}
 

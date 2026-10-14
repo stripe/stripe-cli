@@ -520,7 +520,7 @@ func TestManagementClientDelete(t *testing.T) {
 	require.Equal(t, "false", closeHeaders.Get("Stripe-Livemode"))
 	require.Empty(t, closeHeaders.Get("Stripe-Account"))
 
-	activeContext, err := config.GetActiveContext()
+	activeContext, err := profile.GetActiveContext()
 	require.NoError(t, err)
 	require.Equal(t, &config.ActiveContext{AccountID: "acct_live_parent", Livemode: true}, activeContext)
 }
@@ -590,7 +590,7 @@ func TestManagementClientDeleteRefreshPreservesTarget(t *testing.T) {
 		require.Empty(t, headers.Get("Stripe-Account"))
 	}
 
-	activeContext, err := config.GetActiveContext()
+	activeContext, err := profile.GetActiveContext()
 	require.NoError(t, err)
 	require.Equal(t, &config.ActiveContext{AccountID: "acct_live_parent", Livemode: true}, activeContext)
 }
@@ -846,7 +846,7 @@ func TestManagementClientListAccessibleEmpty(t *testing.T) {
 
 func TestManagementClientReusesProactivelyRefreshedCredentials(t *testing.T) {
 	profile := managementTestProfile(t, "acct_live_123", true, "oak_initial")
-	require.NoError(t, config.SaveUATExpiresAt(time.Now().Add(30*time.Second)))
+	require.NoError(t, profile.SaveUATExpiresAt(time.Now().Add(30*time.Second)))
 	refreshes := 0
 	config.OAuthTokenRefresher = func(p *config.Profile) error {
 		refreshes++

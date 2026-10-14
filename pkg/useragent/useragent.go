@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 
+	"golang.org/x/term"
+
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -103,6 +105,10 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("OPENCLAW_SHELL") != "" {
 		return "openclaw"
 	}
+	// TERM_PROGRAM=kiro is set by both the IDE terminal and the CLI agent, so gate on no_tty to avoid misdetecting a human at the integrated terminal.
+	if (getEnv("TERM_PROGRAM") == "kiro" && !term.IsTerminal(int(os.Stdin.Fd()))) || getEnv("KIRO_SESSION_ID") != "" {
+		return "kiro"
+	}
 
 	// No agent-specific variable matched. The two host variables below are set by these
 	// agents to name their own surface, so their presence is itself evidence of an agent.
@@ -154,6 +160,18 @@ func DetectAIAgent(getEnv func(string) string) string {
 func DetectAgentHost(getEnv func(string) string) (kind string, raw string) {
 	if getEnv("HERMES_DESKTOP") != "" {
 		return "desktop", "hermes"
+	}
+
+	if getEnv("OPENCLAW_SHELL") != "" {
+		return "terminal", "openclaw"
+	}
+
+	if getEnv("TERM_PROGRAM") == "kiro" {
+		return "ide", "kiro"
+	}
+
+	if getEnv("KIRO_SESSION_ID") != "" {
+		return "terminal", "kiro"
 	}
 
 	host := getEnv("CLAUDE_CODE_ENTRYPOINT")

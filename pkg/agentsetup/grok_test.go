@@ -9,13 +9,12 @@ import (
 )
 
 func TestGrok_NotDetected(t *testing.T) {
-	provider := GrokProvider{
-		Scanner: Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }},
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			t.Fatal("plugin list should not run when Grok is not detected")
-			return nil, nil
-		},
+	scanner := Scanner{LookPath: func(string) (string, error) { return "", errors.New("missing") }}
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("plugin list should not run when Grok is not detected")
+		return nil, nil
 	}
+	provider := NewGrokProvider(scanner, testCommand).(GrokProvider)
 
 	status := provider.Detect()
 
@@ -23,10 +22,11 @@ func TestGrok_NotDetected(t *testing.T) {
 	require.Equal(t, "Grok", status.DisplayName)
 	require.False(t, status.Detected)
 	require.Equal(t, StatusNotDetected, status.Status)
+	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 }
 
 func TestGrok_PluginMissing(t *testing.T) {
-	provider := grokTestProvider(`[]`, nil, nil)
+	provider := grokTestProvider(`[]`, nil)
 
 	status := provider.Detect()
 
@@ -34,7 +34,7 @@ func TestGrok_PluginMissing(t *testing.T) {
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
 	require.Equal(t,
-		Plan{Action: ActionInstall, Command: []string{"grok", "plugin", "install", GrokPluginName, "--trust"}},
+		Plan{Action: ActionInstall, Commands: [][]string{{"grok", "plugin", "install", GrokPluginName, "--trust"}}},
 		provider.Plan(status, false))
 }
 
@@ -43,7 +43,7 @@ func TestGrok_PluginInstalled(t *testing.T) {
 		{"status":"installed","name":"stripe","repo_key":"plugin-760cfec9","version":"0.7.1",
 		 "path":"/Users/x/.grok/installed-plugins/plugin-760cfec9",
 		 "source":"https://github.com/stripe/ai.git","marketplace":"xAI Official"}
-	]`, nil, nil)
+	]`, nil)
 
 	status := provider.Detect()
 
@@ -53,10 +53,11 @@ func TestGrok_PluginInstalled(t *testing.T) {
 	require.Equal(t, "0.7.1", status.Plugin.Version)
 	require.Equal(t, "/Users/x/.grok/installed-plugins/plugin-760cfec9", status.Plugin.StatePath)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"grok", "plugin", "update", GrokPluginName}}}, provider.Plan(status, true))
 }
 
 func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
-	provider := grokTestProvider("", errors.New("unrecognized subcommand 'plugin'"), nil)
+	provider := grokTestProvider("", errors.New("unrecognized subcommand 'plugin'"))
 
 	status := provider.Detect()
 
@@ -65,29 +66,17 @@ func TestGrok_OldVersionWithoutPluginSupport(t *testing.T) {
 	require.Contains(t, status.Error, "upgrade Grok Build")
 }
 
-func TestGrok_PlanReinstallWhenForced(t *testing.T) {
-	status := Status{Detected: true, Plugin: PluginStatus{Installed: true}}
-	provider := GrokProvider{}
-
-	plan := provider.Plan(status, true)
-
-	require.Equal(t, ActionReinstall, plan.Action)
-	require.Equal(t, []string{"grok", "plugin", "update", GrokPluginName}, plan.Command)
-}
-
 func TestGrokApply_RunsInstallCommand(t *testing.T) {
 	var gotName string
 	var gotArgs []string
-
-	provider := GrokProvider{
-		RunCommand: func(_ context.Context, name string, args ...string) error {
-			gotName = name
-			gotArgs = args
-			return nil
-		},
+	testCommand := func(_ context.Context, name string, args ...string) ([]byte, error) {
+		gotName = name
+		gotArgs = args
+		return nil, nil
 	}
+	provider := NewGrokProvider(Scanner{}, testCommand).(GrokProvider)
 
-	plan := Plan{Action: ActionInstall, Command: []string{"grok", "plugin", "install", GrokPluginName, "--trust"}}
+	plan := Plan{Action: ActionInstall, Commands: [][]string{{"grok", "plugin", "install", GrokPluginName, "--trust"}}}
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)
@@ -96,27 +85,25 @@ func TestGrokApply_RunsInstallCommand(t *testing.T) {
 }
 
 func TestGrokApply_NoneIsNoop(t *testing.T) {
-	provider := GrokProvider{
-		RunCommand: func(context.Context, string, ...string) error {
-			t.Fatal("RunCommand should not run for ActionNone")
-			return nil
-		},
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("RunCommand should not run for ActionNone")
+		return nil, nil
 	}
+	provider := NewGrokProvider(Scanner{}, testCommand).(GrokProvider)
 
 	err := provider.Apply(context.Background(), nil, Plan{Action: ActionNone})
 
 	require.NoError(t, err)
 }
 
-func grokTestProvider(listOutput string, listErr error, runCommand RunCommandFunc) GrokProvider {
-	return GrokProvider{
-		Scanner:    Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }},
-		RunCommand: runCommand,
-		RunOutput: func(context.Context, string, ...string) ([]byte, error) {
-			if listErr != nil {
-				return nil, listErr
-			}
-			return []byte(listOutput), nil
-		},
+func grokTestProvider(listOutput string, listErr error) GrokProvider {
+	scanner := Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/grok", nil }}
+	testCommand := func(context.Context, string, ...string) ([]byte, error) {
+		if listErr != nil {
+			return nil, listErr
+		}
+		return []byte(listOutput), nil
 	}
+	provider := NewGrokProvider(scanner, testCommand).(GrokProvider)
+	return provider
 }

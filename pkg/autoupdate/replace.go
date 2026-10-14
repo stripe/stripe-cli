@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // oldSuffix names the outgoing binary while it is being replaced.
@@ -13,6 +14,40 @@ const oldSuffix = ".old"
 // rename is indirected so tests can fail the second move and check that the
 // working binary comes back.
 var rename = os.Rename
+
+// isRetryable and renameBackoff are indirected so tests can drive the retry on
+// any platform, without a real lock and without waiting out the real delays.
+var (
+	isRetryable = isTransientLock
+
+	// Roughly a second and a half in all, which covers an antivirus scan of a
+	// binary this size. It runs before the command the user typed, so it is kept
+	// short: giving up only costs this update attempt, not the command.
+	renameBackoff = []time.Duration{
+		50 * time.Millisecond,
+		100 * time.Millisecond,
+		200 * time.Millisecond,
+		400 * time.Millisecond,
+		800 * time.Millisecond,
+	}
+)
+
+// renameRetrying is rename, tried again while the failure is another process
+// briefly holding one of the files open.
+func renameRetrying(from, to string) error {
+	err := rename(from, to)
+
+	for _, delay := range renameBackoff {
+		if err == nil || !isRetryable(err) {
+			return err
+		}
+
+		time.Sleep(delay)
+		err = rename(from, to)
+	}
+
+	return err
+}
 
 // replaceBinary moves staged into place at dst, which is the image of the process
 // calling it.
@@ -36,18 +71,18 @@ func replaceBinary(dst, staged string) error {
 	movedAside := false
 
 	if _, err := os.Stat(dst); err == nil {
-		if err := rename(dst, aside); err != nil {
+		if err := renameRetrying(dst, aside); err != nil {
 			return fmt.Errorf("cannot move %s aside: %w", dst, err)
 		}
 
 		movedAside = true
 	}
 
-	if err := rename(staged, dst); err != nil {
+	if err := renameRetrying(staged, dst); err != nil {
 		if movedAside {
 			// Put the working binary back. Failing to install an update is
 			// recoverable; leaving no stripe on PATH at all is not.
-			_ = rename(aside, dst)
+			_ = renameRetrying(aside, dst)
 		}
 
 		return fmt.Errorf("cannot replace binary: %w", err)

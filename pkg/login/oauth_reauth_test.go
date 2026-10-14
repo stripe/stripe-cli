@@ -253,13 +253,71 @@ func TestReauthImmediatelyValidatesURLBeforeDisplayingOrOpening(t *testing.T) {
 
 	var reauthErr error
 	stdout, _ := captureReauthOutput(t, func() {
-		reauthErr = ReauthImmediately(context.Background(), srv.URL, "oak_test")
+		reauthErr = ReauthImmediately(context.Background(), srv.URL, "oak_test", &config.Profile{})
 	})
 
 	require.Error(t, reauthErr)
 	assert.Contains(t, reauthErr.Error(), "untrusted URL")
 	assert.NotContains(t, stdout, untrustedURL)
 	assert.Equal(t, 0, openCalls)
+}
+
+func TestReauthImmediatelyPreservesSelectedProfileContext(t *testing.T) {
+	const reauthURL = "https://dashboard.stripe.com/reauth"
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+	require.NoError(t, cfg.Profile.SaveActiveContext("acct_selected", true))
+	defaultProfile := config.Profile{ProfileName: "default"}
+	require.NoError(t, defaultProfile.SaveActiveContext("acct_other", false))
+	t.Setenv("SSH_TTY", "")
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_CLIENT", "")
+
+	origOpenBrowser, origCanOpenBrowser := openBrowser, canOpenBrowser
+	t.Cleanup(func() {
+		openBrowser, canOpenBrowser = origOpenBrowser, origCanOpenBrowser
+	})
+	var openedURL string
+	openBrowser = func(url string) error {
+		openedURL = url
+		return nil
+	}
+	canOpenBrowser = func() bool { return true }
+
+	accounts := []config.AuthorizedAccount{{ID: "acct_selected", Name: "Selected account", Modes: []string{"live"}}}
+	var accountCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/stripecli/oauth2/token/accounts":
+			result := accounts
+			if accountCalls.Add(1) > 1 {
+				result = append(append([]config.AuthorizedAccount{}, accounts...), config.AuthorizedAccount{
+					ID: "acct_created", Name: "Created sandbox", Modes: []string{"test"},
+				})
+			}
+			json.NewEncoder(w).Encode(listAccountsResponse{Accounts: result}) //nolint:errcheck
+		case "/stripecli/oauth2/token/reauth":
+			json.NewEncoder(w).Encode(reauthResponse{ReauthURL: reauthURL}) //nolint:errcheck
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	var reauthErr error
+	stdout, stderr := captureReauthOutput(t, func() {
+		reauthErr = ReauthImmediately(ctx, srv.URL, "oak_test", &cfg.Profile)
+	})
+
+	require.NoError(t, reauthErr)
+	assert.Equal(t, reauthURL, openedURL)
+	assert.NotContains(t, stdout, "Press enter")
+	assert.Contains(t, stdout, "Created sandbox")
+	assert.Contains(t, stdout, "Currently active: Selected account · live (acct_selected)")
+	assert.Empty(t, stderr)
 }
 
 func captureReauthOutput(t *testing.T, fn func()) (string, string) {

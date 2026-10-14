@@ -23913,7 +23913,7 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 		},
 		"customer_details.email": {
 			Type:             "string",
-			ShortDescription: "The customer's phone number",
+			ShortDescription: "The customer's email address",
 		},
 		"customer_details.name": {
 			Type:             "string",
@@ -24259,7 +24259,7 @@ var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
 		},
 		"customer_details.email": {
 			Type:             "string",
-			ShortDescription: "The customer's phone number",
+			ShortDescription: "The customer's email address",
 		},
 		"customer_details.name": {
 			Type:             "string",

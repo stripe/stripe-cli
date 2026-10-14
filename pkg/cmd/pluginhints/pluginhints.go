@@ -205,9 +205,9 @@ func newPluginHintCmd(cfg *config.Config, name, description string, runPlugin Pl
 			if err != nil {
 				return err
 			}
-			if err := resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
-				return err
-			}
+			// Worked out before the install rather than after, so the hooks of any
+			// dependencies the install pulls in hear the same overrides the
+			// plugin's own hook does.
 			apiBaseURLOverride, dashboardBaseURLOverride, accessBaseURLOverride := "", "", ""
 			if p.Command != nil {
 				accessBaseURLOverride = explicitFlagValue(p.Command, "access-base", p.accessBaseURL)
@@ -230,6 +230,14 @@ func newPluginHintCmd(cfg *config.Config, name, description string, runPlugin Pl
 					return err
 				}
 				dashboardBaseURLOverride = explicitFlagValue(p.Command, "dashboard-base", rawDashboardBase)
+			}
+			hookBaseURLs := plugins.HookBaseURLs{
+				APIBaseURL:       apiBaseURLOverride,
+				DashboardBaseURL: dashboardBaseURLOverride,
+				AccessBaseURL:    accessBaseURLOverride,
+			}
+			if err := resolvedPlugin.Install(ctx, cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL, hookBaseURLs); err != nil {
+				return err
 			}
 			runPostInstallHook(ctx, cfg, fs, resolvedPlugin, apiBaseURLOverride, dashboardBaseURLOverride, accessBaseURLOverride)
 			return nil

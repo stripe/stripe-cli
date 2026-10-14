@@ -125,7 +125,7 @@ func findPendingOAuthLoginSession(accessBaseURL string) *OAuthLoginSession {
 		return nil
 	}
 	return &OAuthLoginSession{
-		BrowserURL:       cont.VerificationURI,
+		BrowserURL:       cont.browserURL(),
 		VerificationCode: cont.UserCode,
 		ExpiresIn:        int(remaining.Seconds()),
 	}
@@ -151,25 +151,27 @@ func mintOAuthDeviceLogin(ctx context.Context, accessBaseURL string) (*OAuthLogi
 	if err != nil {
 		return nil, fmt.Errorf("failed to request device code: %w", err)
 	}
-	if err := validateBrowserURL(authResp.VerificationURI, accessBaseURL); err != nil {
+	browserURL := authResp.BrowserURL()
+	if err := validateBrowserURL(browserURL, accessBaseURL); err != nil {
 		return nil, err
 	}
 
 	cont := &oauthContinuation{
-		DeviceCode:      authResp.DeviceCode,
-		Interval:        authResp.Interval,
-		ExpiresIn:       authResp.ExpiresIn,
-		AccessBaseURL:   accessBaseURL,
-		VerificationURI: authResp.VerificationURI,
-		UserCode:        authResp.UserCode,
-		IssuedAt:        time.Now(),
+		DeviceCode:              authResp.DeviceCode,
+		Interval:                authResp.Interval,
+		ExpiresIn:               authResp.ExpiresIn,
+		AccessBaseURL:           accessBaseURL,
+		VerificationURI:         authResp.VerificationURI,
+		VerificationURIComplete: authResp.VerificationURIComplete,
+		UserCode:                authResp.UserCode,
+		IssuedAt:                time.Now(),
 	}
 	if err := savePendingDeviceAuth(cont); err != nil {
 		return nil, fmt.Errorf("failed to save pending auth state: %w", err)
 	}
 
 	return &OAuthLoginSession{
-		BrowserURL:       authResp.VerificationURI,
+		BrowserURL:       browserURL,
 		VerificationCode: authResp.UserCode,
 		ExpiresIn:        authResp.ExpiresIn,
 	}, nil

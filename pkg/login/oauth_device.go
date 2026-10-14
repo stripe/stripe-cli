@@ -48,11 +48,23 @@ func (e *OAuthError) Error() string {
 
 // DeviceAuthResponse holds the device authorization endpoint response.
 type DeviceAuthResponse struct {
-	DeviceCode      string `json:"device_code"`
-	UserCode        string `json:"user_code"`
-	VerificationURI string `json:"verification_uri"`
-	ExpiresIn       int    `json:"expires_in"`
-	Interval        int    `json:"interval"`
+	DeviceCode              string `json:"device_code"`
+	UserCode                string `json:"user_code"`
+	VerificationURI         string `json:"verification_uri"`
+	VerificationURIComplete string `json:"verification_uri_complete"`
+	ExpiresIn               int    `json:"expires_in"`
+	Interval                int    `json:"interval"`
+}
+
+// BrowserURL returns the URL to display/open for the user to complete
+// authorization: VerificationURIComplete (which already has UserCode baked
+// in, so the user doesn't have to type it) when access-srv provides one,
+// falling back to VerificationURI otherwise.
+func (r *DeviceAuthResponse) BrowserURL() string {
+	if r.VerificationURIComplete != "" {
+		return r.VerificationURIComplete
+	}
+	return r.VerificationURI
 }
 
 // OAuthTokenResponse holds the token endpoint response.
@@ -257,11 +269,12 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 	if err != nil {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
-	if err := validateBrowserURL(authResp.VerificationURI, accessBaseURL); err != nil {
+	browserURL := authResp.BrowserURL()
+	if err := validateBrowserURL(browserURL, accessBaseURL); err != nil {
 		return err
 	}
 
-	fmt.Printf("To authorize, visit %s\n\n", authResp.VerificationURI)
+	fmt.Printf("To authorize, visit %s\n\n", browserURL)
 	fmt.Println("When prompted, enter your verification code:")
 	fmt.Println()
 	fmt.Println(ansi.Purple(authResp.UserCode))
@@ -273,7 +286,7 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 		fmt.Printf("Press enter to open the browser (^C to quit)\n")
 		go func() {
 			fmt.Scanln() //nolint:errcheck
-			if err := openBrowser(authResp.VerificationURI); err != nil {
+			if err := openBrowser(browserURL); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to open browser: %s\n", err)
 			}
 			close(browserOpened)
