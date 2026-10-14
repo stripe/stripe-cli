@@ -853,7 +853,10 @@ func setUpRunAutoUpgrade(t *testing.T, installedVersion string) (*autoUpgradeStu
 	t.Helper()
 
 	stubs := stubAutoUpgrade(t)
-	stubs.resolved = runAutoUpgradeResolution("3.0.0")
+	// Same major as the installed 1.0.1: auto-upgrade refuses to cross a major
+	// version boundary on its own, so a 2.x+ resolution here would test the refusal
+	// rather than the wiring.
+	stubs.resolved = runAutoUpgradeResolution("1.5.0")
 
 	fs := setUpFS()
 	cfg := &TestConfig{}
@@ -885,17 +888,17 @@ func TestRunAutoUpgradesTheInstalledVersion(t *testing.T) {
 	require.Equal(t, "appA", stubs.resolveCalls[0].pluginName)
 
 	// 1.0.1 is what was on disk, so it is what the upgrade had to be told is installed
-	// -- both to decide 3.0.0 is newer and to tell the plugin what to migrate from.
+	// -- both to decide 1.5.0 is newer and to tell the plugin what to migrate from.
 	require.Equal(t, []autoUpgradeInstallCall{{
-		version:          "3.0.0",
+		version:          "1.5.0",
 		apiBaseURL:       "https://api.stripe.com",
 		dashboardBaseURL: "https://dashboard.stripe.com",
 	}}, stubs.installCalls)
-	require.Equal(t, []autoUpgradePostInstallCall{{version: "3.0.0", previousVersion: "1.0.1"}}, stubs.postInstallCalls)
+	require.Equal(t, []autoUpgradePostInstallCall{{version: "1.5.0", previousVersion: "1.0.1"}}, stubs.postInstallCalls)
 
 	// Run gets no further than launching the binary, because the stubbed install never
 	// wrote one. Which version it got that far with is the point: appA's own metadata
-	// has no 3.0.0 release, so failing anywhere later than the checksum lookup means
+	// has no 1.5.0 release, so failing anywhere later than the checksum lookup means
 	// Run took both the version and the plugin metadata the upgrade handed back.
 	require.Error(t, runErr)
 	require.NotContains(t, runErr.Error(), "could not locate a valid checksum")
