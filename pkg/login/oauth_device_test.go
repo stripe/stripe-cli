@@ -294,14 +294,14 @@ func TestLoginWithDeviceCode_VerificationMessage(t *testing.T) {
 		{
 			name:                    "verification_uri_complete present",
 			verificationURIComplete: "https://dashboard.stripe.com/verify?user_code=ABCD-EFGH",
-			wantText:                "Confirm the code shown matches:",
+			wantText:                "When prompted, confirm your verification code:",
 			dontWantText:            "When prompted, enter your verification code:",
 		},
 		{
 			name:                    "verification_uri_complete absent",
 			verificationURIComplete: "",
 			wantText:                "When prompted, enter your verification code:",
-			dontWantText:            "Confirm the code shown matches:",
+			dontWantText:            "When prompted, confirm your verification code:",
 		},
 	}
 
