@@ -1001,6 +1001,130 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenLoggedIn(t *testing.
 	require.Equal(t, "nonexistent", pluginNotFound.Name)
 }
 
+// pinnedVersionTestManifest describes a plugin whose 0.0.5 release exists only on
+// another platform, with 1.5.0 through 1.21.0 available on the platform the tests
+// run on -- the shape of the real apps plugin on linux/arm64.
+func pinnedVersionTestManifest() string {
+	return fmt.Sprintf(`[[Plugin]]
+  Shortname = "appA"
+  Shortdesc = "App A"
+  Binary = "stripe-cli-app-a"
+  MagicCookieValue = "APP-A-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "otherarch"
+    OS = "otheros"
+    Version = "0.0.5"
+    Sum = "aaa111"
+
+  [[Plugin.Release]]
+    Arch = "%[1]s"
+    OS = "%[2]s"
+    Version = "1.5.0"
+    Sum = "bbb222"
+
+  [[Plugin.Release]]
+    Arch = "%[1]s"
+    OS = "%[2]s"
+    Version = "1.21.0"
+    Sum = "ccc333"
+`, runtime.GOARCH, runtime.GOOS)
+}
+
+// newPinnedVersionTestServer answers a pinned metadata request with the bare 404 the
+// real endpoint sends when it has no matching build, and an unpinned request with the
+// plugin's full manifest.
+func newPinnedVersionTestServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/v1/stripecli/get-plugin-metadata":
+			if req.URL.Query().Get("version") != "" {
+				res.WriteHeader(http.StatusNotFound)
+				_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
+				return
+			}
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/1.21.0",
+				PluginManifest: pinnedVersionTestManifest(),
+			})
+			require.NoError(t, err)
+			_, _ = res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+}
+
+func TestResolvePluginForInstallExplainsPinnedVersionMissingForPlatform(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	server := newPinnedVersionTestServer(t)
+	defer server.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "0.0.5", server.URL, server.URL)
+	require.Error(t, err)
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+	require.EqualError(t, err, fmt.Sprintf(
+		"version 0.0.5 of the appA plugin has no build for %s (it exists for otheros/otherarch); versions available for %s range from 1.5.0 to 1.21.0",
+		platform, platform,
+	))
+}
+
+func TestResolvePluginForInstallExplainsPinnedVersionThatDoesNotExist(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	server := newPinnedVersionTestServer(t)
+	defer server.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "0.0.9", server.URL, server.URL)
+	require.Error(t, err)
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+	require.EqualError(t, err, fmt.Sprintf(
+		"version 0.0.9 of the appA plugin does not exist; versions available for %s range from 1.5.0 to 1.21.0",
+		platform,
+	))
+}
+
+func TestResolvePluginForInstallExplainsPinnedVersionMissingFromCachedMetadata(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	config := &TestConfig{}
+	config.InitConfig()
+
+	// Cached local metadata resolves the plugin but has no 0.0.5 release, so the
+	// cached fallback fails on the version rather than the plugin -- the shape of
+	// a machine that already has the plugin installed.
+	localPlugin := Plugin{
+		Shortname:        "appA",
+		Binary:           "stripe-cli-app-a",
+		MagicCookieValue: "APP-A-COOKIE",
+		Releases: []Release{
+			{
+				Arch:    runtime.GOARCH,
+				OS:      runtime.GOOS,
+				Version: "1.5.0",
+				Sum:     "bbb222",
+			},
+		},
+	}
+	require.NoError(t, writeLocalPluginMetadata(config, fs, localPlugin))
+
+	server := newPinnedVersionTestServer(t)
+	defer server.Close()
+
+	_, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "0.0.5", server.URL, server.URL)
+	require.Error(t, err)
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+	require.EqualError(t, err, fmt.Sprintf(
+		"version 0.0.5 of the appA plugin has no build for %s (it exists for otheros/otherarch); versions available for %s range from 1.5.0 to 1.21.0",
+		platform, platform,
+	))
+}
+
 func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}

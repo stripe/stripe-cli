@@ -576,6 +576,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	if cachedErr == nil {
 		resolvedVersion, versionErr := resolveVersionFromReleases(cachedPlugin, pluginName, version, cachedPluginMetadata)
 		if versionErr != nil {
+			if explained := explainPinnedVersionNotFound(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey); explained != nil {
+				return nil, explained
+			}
 			return nil, versionErr
 		}
 
@@ -586,6 +589,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	}
 
 	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && os.IsNotExist(cachedErr) {
+		if explained := explainPinnedVersionNotFound(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey); explained != nil {
+			return nil, explained
+		}
 		return nil, normalizedErr
 	}
 
@@ -1147,6 +1153,84 @@ func normalizePluginMetadataError(pluginName string, err error) error {
 	default:
 		return nil
 	}
+}
+
+// explainPinnedVersionNotFound makes a second, unpinned metadata request to work
+// out why installing a pinned version came back not-found. The endpoint answers a
+// pinned request the same way for a plugin that does not exist and for a version
+// that was never built for this platform -- a bare 404, before the CLI ever sees a
+// release list -- so the pinned response alone cannot tell a mistyped plugin name
+// from `apps@0.0.5` on a linux/arm64 machine. The unpinned response carries the
+// plugin's full release list, which can.
+//
+// It returns nil whenever it cannot improve on the error the caller already has:
+// no version was pinned, the second request failed too (the plugin really is
+// unknown, or the endpoint is unreachable -- either way there is nothing more to
+// say), or the manifest contradicts the failure by carrying the pinned release
+// after all, which means the first request failed for some other, likely
+// transient, reason that the original error describes better.
+//
+// The extra request is spent only on an install that is already about to fail,
+// so it costs nothing on any path that succeeds.
+func explainPinnedVersionNotFound(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey string) error {
+	if version == "" {
+		return nil
+	}
+
+	resolved, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL, apiKey)
+	if err != nil || resolved == nil || resolved.Plugin == nil {
+		return nil
+	}
+
+	plugin := resolved.Plugin
+	if plugin.getReleaseForVersion(version) != nil {
+		return nil
+	}
+
+	platform := runtime.GOOS + "/" + runtime.GOARCH
+
+	var platformVersions []string
+	var otherPlatforms []string
+	for _, release := range plugin.Releases {
+		if release.OS == runtime.GOOS && release.Arch == runtime.GOARCH {
+			platformVersions = append(platformVersions, release.Version)
+		} else if release.Version == version {
+			otherPlatforms = append(otherPlatforms, release.OS+"/"+release.Arch)
+		}
+	}
+
+	available := describeAvailableVersions(platformVersions, platform)
+	if len(otherPlatforms) > 0 {
+		return errorcategory.Errorf(errorcategory.UserInput, "version %s of the %s plugin has no build for %s (it exists for %s); %s", version, pluginName, platform, strings.Join(otherPlatforms, ", "), available)
+	}
+
+	return errorcategory.Errorf(errorcategory.UserInput, "version %s of the %s plugin does not exist; %s", version, pluginName, available)
+}
+
+// describeAvailableVersions names the versions a user on this platform could pin
+// instead. A range rather than a list, because a long-lived plugin has over a
+// hundred releases and the two ends are what answer the question being asked:
+// "how far back could I go, and what would I get today?"
+func describeAvailableVersions(versions []string, platform string) string {
+	if len(versions) == 0 {
+		return fmt.Sprintf("no versions are available for %s", platform)
+	}
+
+	earliest, latest := versions[0], versions[0]
+	for _, v := range versions[1:] {
+		if comparePluginVersions(v, earliest) < 0 {
+			earliest = v
+		}
+		if comparePluginVersions(v, latest) > 0 {
+			latest = v
+		}
+	}
+
+	if earliest == latest {
+		return fmt.Sprintf("the only version available for %s is %s", platform, earliest)
+	}
+
+	return fmt.Sprintf("versions available for %s range from %s to %s", platform, earliest, latest)
 }
 
 // ErrPluginNotFound is returned when a plugin cannot be found via the
