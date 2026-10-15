@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	semver "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 
@@ -163,6 +164,29 @@ func recordAutoUpgradeCheck(cfg config.IConfig, fs afero.Fs, pluginName string) 
 	return afero.WriteFile(fs, path, []byte(autoUpgradeNow().UTC().Format(time.RFC3339)+"\n"), 0644)
 }
 
+// isMajorPluginUpgrade reports whether moving from installed to latest crosses a
+// major version boundary, which auto-upgrade refuses to do on its own -- the same
+// line the CLI's own auto-update draws (see autoupdate.CheckForUpdate). A major
+// release is where breaking changes are allowed to live, so crossing one is a
+// decision for the user, not for a check that runs before the command they typed.
+//
+// A version that does not parse as semver answers false, as on the CLI side:
+// unparseable versions can't be compared by major, and refusing to upgrade over
+// them would strand exactly the installs whose version strings are already odd.
+func isMajorPluginUpgrade(installed, latest string) bool {
+	installedVersion, err := semver.NewVersion(installed)
+	if err != nil {
+		return false
+	}
+
+	latestVersion, err := semver.NewVersion(latest)
+	if err != nil {
+		return false
+	}
+
+	return installedVersion.Segments()[0] != latestVersion.Segments()[0]
+}
+
 // maybeAutoUpgrade upgrades a plugin to the newest release available to this CLI
 // before it runs, when enabled by the user's setting or the backend default. It
 // returns the newly installed plugin and version when it upgraded, and the pair
@@ -278,6 +302,27 @@ func maybeAutoUpgrade(ctx context.Context, cfg *config.Config, fs afero.Fs, p *P
 	// downgraded. Accepting anything but ">" would roll the plugin back, and would do
 	// it again on every command.
 	if comparePluginVersions(installedVersion, resolved.Version) >= 0 {
+		return p, installedVersion
+	}
+
+	// A major version is where breaking changes live, so it is not installed behind
+	// the user's back -- the same line the CLI's own auto-update draws. Said out loud
+	// rather than skipped silently, because the upgrade hint is suppressed for a
+	// plugin that auto-updates (see CheckLatestPluginVersion): this is the only place
+	// the user can hear that a major release exists, and running the named command is
+	// how they grant permission to cross it. At most once per
+	// autoUpgradeCheckInterval, since only a due check gets this far.
+	//
+	// Ahead of the binary-URL check below: deciding "not without being asked" needs
+	// only the version, so a cached resolution that could never auto-install still
+	// surfaces the major release instead of staying quiet about it.
+	if isMajorPluginUpgrade(installedVersion, resolved.Version) {
+		logger.Debugf("skipping auto-upgrade, v%s -> v%s is a major version change", installedVersion, resolved.Version)
+		color := ansi.Color(os.Stderr)
+		fmt.Fprintln(os.Stderr, color.Yellow(fmt.Sprintf(
+			"A new major version of the %s plugin is available (v%s → v%s). Major versions may include breaking changes, so it was not installed automatically. Run `stripe plugin upgrade %s` to update.",
+			p.Shortname, installedVersion, resolved.Version, p.Shortname,
+		)).String())
 		return p, installedVersion
 	}
 

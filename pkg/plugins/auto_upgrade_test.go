@@ -671,6 +671,85 @@ func TestMaybeAutoUpgradeSkips(t *testing.T) {
 	}
 }
 
+// A major release is where breaking changes live, so auto-upgrade stops at the
+// boundary and hands the decision to the user -- the same line the CLI's own
+// auto-update draws. Not in the skip table above: every skip there is silent, and
+// this one deliberately is not, because the upgrade hint stays quiet for a plugin
+// that auto-updates, making this notice the only word the user gets that a major
+// release exists.
+func TestMaybeAutoUpgradeDoesNotCrossMajorVersions(t *testing.T) {
+	tests := []struct {
+		name     string
+		resolved *ResolvedPluginVersion
+	}{
+		{name: "a live resolution", resolved: autoUpgradeResolvedPlugin("2.0.0")},
+		{
+			// Declining needs only the version, so a cached resolution that could never
+			// auto-install anyway still surfaces the major release instead of staying quiet.
+			name:     "a cached resolution without a binary URL",
+			resolved: autoUpgradeCachedResolution("2.0.0"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stubs := stubAutoUpgrade(t)
+			stubs.resolved = tt.resolved
+
+			cfg := autoUpgradeTestConfig()
+			fs := afero.NewMemMapFs()
+			installed := autoUpgradeTestPlugin("1.2.0")
+
+			var gotPlugin *Plugin
+			var gotVersion string
+			output := captureStderr(t, func() {
+				gotPlugin, gotVersion = maybeAutoUpgrade(context.Background(), cfg, fs,
+					installed, "1.2.0", "", "", "")
+			})
+
+			require.Same(t, installed, gotPlugin)
+			require.Equal(t, "1.2.0", gotVersion)
+			require.Empty(t, stubs.installCalls)
+			require.Empty(t, stubs.postInstallCalls)
+
+			// Crossing the boundary is the user's call, so the notice has to name the
+			// release on offer and the command that is how they say yes.
+			require.Contains(t, output, "v1.2.0 → v2.0.0")
+			require.Contains(t, output, "stripe plugin upgrade apps")
+
+			// The lookup was spent, so the interval is claimed like any other check; the
+			// notice repeats once per interval, not once per command.
+			require.True(t, autoUpgradeCheckStampExists(t, cfg, fs, "apps"))
+		})
+	}
+}
+
+func TestIsMajorPluginUpgrade(t *testing.T) {
+	tests := []struct {
+		name      string
+		installed string
+		latest    string
+		want      bool
+	}{
+		{name: "patch bump", installed: "1.2.0", latest: "1.2.1"},
+		{name: "minor bump", installed: "1.2.0", latest: "1.3.0"},
+		{name: "major bump", installed: "1.9.9", latest: "2.0.0", want: true},
+		{name: "major bump with v prefixes", installed: "v1.2.0", latest: "v2.0.0", want: true},
+		{name: "prerelease of the next major", installed: "1.2.0", latest: "2.0.0-beta.1", want: true},
+		// Mirrors the CLI's auto-update: a version that cannot be compared by major is
+		// not treated as one, rather than stranding installs whose version strings are
+		// already odd.
+		{name: "installed version does not parse", installed: "not-a-version", latest: "2.0.0"},
+		{name: "latest version does not parse", installed: "1.2.0", latest: "not-a-version"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isMajorPluginUpgrade(tt.installed, tt.latest))
+		})
+	}
+}
+
 // A download that breaks leaves a working plugin behind, so the command the user
 // actually ran still has something to run.
 func TestMaybeAutoUpgradeKeepsInstalledVersionWhenInstallFails(t *testing.T) {
