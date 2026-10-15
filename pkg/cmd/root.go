@@ -62,7 +62,7 @@ var rootCmd = &cobra.Command{
 		"listen":    "webhooks",
 		"logs":      "stripe",
 		"resources": "resources",
-		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
+		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandboxes create` (provisions a claimable sandbox without a browser).\n" +
 			"  Run `stripe agent setup` to install or update the Stripe plugin.\n" +
 			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to install, or use `stripe plugin install <name>`.",
 	},
@@ -216,7 +216,7 @@ func Execute(ctx context.Context) {
 				fmt.Fprintln(os.Stderr, "  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.")
 				fmt.Fprintln(os.Stderr, "  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).")
 				if useragent.DetectAIAgent(os.Getenv) != "" {
-					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox).")
+					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandboxes create` (provisions a claimable sandbox).")
 				}
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))

@@ -42,6 +42,44 @@ func TestFetchAuthorizedAccounts_non200(t *testing.T) {
 	assert.ErrorContains(t, err, "404")
 }
 
+func TestFetchAuthorizedAccounts_paginates(t *testing.T) {
+	requests := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		assert.Equal(t, "100", r.URL.Query().Get("limit"))
+		w.Header().Set("Content-Type", "application/json")
+		switch requests {
+		case 1:
+			assert.Empty(t, r.URL.Query().Get("starting_after"))
+			json.NewEncoder(w).Encode(listAccountsResponse{
+				Accounts: []config.AuthorizedAccount{{ID: "acct_first", Name: "First", Modes: []string{"live"}}},
+				HasMore:  true,
+			})
+		case 2:
+			assert.Equal(t, "acct_first", r.URL.Query().Get("starting_after"))
+			json.NewEncoder(w).Encode(listAccountsResponse{
+				Accounts: []config.AuthorizedAccount{{ID: "acct_second", Name: "Second", Modes: []string{"test"}}},
+			})
+		default:
+			t.Fatalf("unexpected request %d", requests)
+		}
+	}))
+	defer srv.Close()
+
+	got, err := fetchAuthorizedAccounts(context.Background(), srv.URL, "oak_test")
+	require.NoError(t, err)
+	assert.Equal(t, []config.AuthorizedAccount{
+		{ID: "acct_first", Name: "First", Modes: []string{"live"}},
+		{ID: "acct_second", Name: "Second", Modes: []string{"test"}},
+	}, got)
+	assert.Equal(t, 2, requests)
+}
+
+func TestIsAuthorizedAccountsUnauthorized(t *testing.T) {
+	assert.True(t, IsAuthorizedAccountsUnauthorized(&accountsRequestError{statusCode: http.StatusUnauthorized}))
+	assert.False(t, IsAuthorizedAccountsUnauthorized(&accountsRequestError{statusCode: http.StatusForbidden}))
+}
+
 func TestListAuthorizedAccounts_returnsRealDataWhenAvailable(t *testing.T) {
 	want := []config.AuthorizedAccount{
 		{ID: "acct_real", Name: "Real Business", Modes: []string{"live", "test"}},
