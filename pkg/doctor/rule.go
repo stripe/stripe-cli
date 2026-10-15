@@ -12,33 +12,19 @@ type ParamMatch struct {
 }
 
 // A Rule is a lint check over request parameters. Action declares what the
-// remediation is: "remove" rules are auto-fixable (span deletion); "advise"
-// rules detect and explain but never edit (renames, value changes, and
-// anything whose fix needs a primitive the engine doesn't have yet).
+// finding means: "remove" rules name a parameter that should be deleted by
+// hand (judged against account facts — see verdict.go); "advise" rules
+// detect and explain a rename or value change for the human to apply.
 // IntroducedIn is the API version that made the change — packs become
 // selectable by the user's version window.
 type Rule struct {
 	ID           string
 	Severity     string
-	Action       string // "remove" (fixable) | "advise" (detect-only)
+	Action       string // "remove" (judged against account facts) | "advise" (detect-only)
 	IntroducedIn string // API version the change shipped in, "" = not versioned
 	Message      string
 	Docs         string
 	Match        []ParamMatch
-	// Companion, when set, forks `fix` by account API version: at/after the
-	// rule's IntroducedIn cutoff the parameter is simply removed (the new
-	// behavior is the default there); below it — or when the version is
-	// unknowable — the removal becomes a REPLACEMENT that inserts this
-	// parameter, because bare removal would silently change behavior.
-	Companion *Companion
-}
-
-// A Companion describes the parameter `fix` inserts in place of a removed one
-// on accounts whose traffic predates the rule's cutoff.
-type Companion struct {
-	Param     string   // canonical name, e.g. "automatic_payment_methods"
-	ForParam  string   // only replacements of THIS matched param (top-level)
-	Resources []string // API resources that accept it, e.g. payment_intents
 }
 
 type Finding struct {

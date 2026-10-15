@@ -1,15 +1,15 @@
 package doctor
 
 // cmd.go — the command surface, shaped like the real product would be:
-// generic verbs (doctor, fix) with the migration TOPIC as an argument,
+// a generic verb (doctor) with the migration TOPIC as an argument,
 // mirroring the architecture (generic engine, rule packs as data).
 //
 //	stripe doctor [topic] [dir]   diagnose; degrades to scan-only without creds
-//	stripe doctor fix    [topic] [dir]   remediate; dry-run default, --apply writes
 //	stripe doctor guide                  agent playbook
 //
 // scan/drill are no longer commands: scan is doctor's credential-less
-// degradation and the webhook drill is `doctor --live`.
+// degradation and the webhook drill is `doctor --live`. doctor only
+// diagnoses — remediation is manual, guided by each finding's verdict.
 //
 // Every command supports --json (pure JSON on stdout, logs on stderr) and the
 // exit-code contract: 0 clean/verified, 1 findings/not-verified, 2 error.
@@ -17,7 +17,6 @@ package doctor
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -31,7 +30,6 @@ import (
 var (
 	flagJSON          bool
 	flagStripeAccount string
-	flagYes           bool
 )
 
 // A Pack pairs a rule with its declared signals (expected webhook events,
@@ -113,20 +111,16 @@ func commonFlags(c *cobra.Command) {
 }
 
 // NewDoctorCmd builds the `stripe doctor` command tree: diagnosis is the
-// root action, with fix, guide, and the hidden parse-dump nested beneath it
-// — none of them make sense as top-level verbs in the CLI's namespace.
-// Topic names and subcommand names never overlap, so `doctor dpm .` and
-// `doctor fix dpm .` resolve unambiguously. cfg supplies profile
-// credentials (test-mode keys only — enforced downstream).
+// root action, with guide and the hidden parse-dump nested beneath it —
+// neither makes sense as a top-level verb in the CLI's namespace. Topic
+// names and subcommand names never overlap, so `doctor dpm .` and
+// `doctor guide` resolve unambiguously. cfg supplies profile credentials
+// (test-mode keys only — enforced downstream).
 func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 	root := newDoctorCmd(cfg)
 	commonFlags(root)
 
-	fix := newFixCmd(cfg)
-	commonFlags(fix)
-	fix.Flags().BoolVarP(&flagYes, "yes", "y", false, "assume yes for confirmations (non-interactive)")
-
-	root.AddCommand(fix, newGuideCmd(), newDumpCmd())
+	root.AddCommand(newGuideCmd(), newDumpCmd())
 	return root
 }
 
@@ -136,7 +130,7 @@ func newDoctorCmd(cfg *config.Config) *cobra.Command {
 	var live, offline bool
 	c := &cobra.Command{
 		Use:   "doctor [topic] [dir]",
-		Short: "Diagnose a migration: code findings + account verdicts (read-only)",
+		Short: "Diagnose a migration: code findings checked against your live account (read-only)",
 		Long: `Scans the directory for the topic's findings and judges each against live
 account facts (API versions in recent traffic, Dashboard configuration).
 Without credentials it degrades to scan-only. --live additionally proves
@@ -207,132 +201,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 	c.Flags().BoolVar(&live, "live", false, "also run behavioral checks (spawns stripe listen/trigger)")
 	c.Flags().BoolVar(&offline, "offline", false, "skip account facts; scan-only")
 	return c
-}
-
-func newFixCmd(cfg *config.Config) *cobra.Command {
-	var apply, all, offline bool
-	var returnURL string
-	c := &cobra.Command{
-		Use:   "fix [topic] [dir]",
-		Short: "Remediate findings: span-verified removals (dry-run; --apply writes)",
-		Args:  cobra.MaximumNArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			topic, dir, err := topicAndDir(args)
-			if err != nil {
-				fail(err)
-			}
-			rule := packs[topic].Rule
-			if returnURL != "" {
-				if err := validateReturnURL(returnURL); err != nil {
-					fail(err)
-				}
-			}
-			// Version fork: rules with a companion consult account facts to
-			// choose remove vs replace before any span is computed.
-			var dec *companionDecision
-			if rule.Companion != nil {
-				_ = withSpinnerUnlessJSON("Checking account API versions (read-only)", func() error {
-					dec = resolveCompanion(rule, cfg, flagStripeAccount, dir, offline)
-					return nil
-				})
-				dec.returnURL = returnURL
-			}
-			// Non-interactive JSON writes need explicit consent up front —
-			// there is no prompt to give it later, and a half-JSON abort
-			// message would corrupt the output contract.
-			if apply && flagJSON && !flagYes {
-				fail(errorcategory.Errorf(errorcategory.UserInput, "--apply with --json requires --yes (non-interactive write consent)"))
-			}
-			// Disclosure BEFORE consent: --apply first computes and renders
-			// the dry-run (which sites get which companion variant, what the
-			// gate skips), offers a return_url when pinned/gated confirm
-			// sites exist, RE-RENDERS if the answer changed the edit set,
-			// and only then asks to write.
-			if apply && !flagJSON {
-				preview, err := fixRun(dir, rule, false, all, dec)
-				if err != nil {
-					fail(topicHint(err, dir))
-				}
-				preview.Topic = topic
-				renderFix(preview)
-				if !flagYes && dec != nil && dec.returnURL == "" && wantsReturnURL(preview) {
-					if url := promptLine("return_url for the server-side-confirmation site(s) above (blank = keep the allow_redirects:\"never\" pin / leave gated sites gated):"); url != "" {
-						if err := validateReturnURL(url); err != nil {
-							fail(err)
-						}
-						dec.returnURL = url
-						// The answer changes which edits happen — the user
-						// must consent to the NEW set, not the stale one.
-						fmt.Println(infoLine("recomputed with return_url " + url + ":"))
-						preview, err = fixRun(dir, rule, false, all, dec)
-						if err != nil {
-							fail(topicHint(err, dir))
-						}
-						preview.Topic = topic
-						renderFix(preview)
-					}
-				}
-				if !confirm("Apply the changes above? (only reparse-clean files are written)", flagYes) {
-					fmt.Println(infoLine("aborted; nothing written"))
-					exitWith(1)
-				}
-			}
-			rep, err := fixRun(dir, rule, apply, all, dec)
-			if err != nil {
-				fail(topicHint(err, dir))
-			}
-			rep.Topic = topic
-			if flagJSON {
-				emitJSON(rep)
-			} else {
-				renderFix(rep)
-			}
-			if !rep.AllClean {
-				exitWith(1)
-			}
-			return nil
-		},
-	}
-	c.Flags().BoolVar(&apply, "apply", false, "write changes (dry-run without this flag)")
-	c.Flags().BoolVar(&all, "all", false, "include dynamic/deliberate findings the gate would skip")
-	c.Flags().BoolVar(&offline, "offline", false, "skip account lookups (companion rules then insert, the safe-at-any-version choice)")
-	c.Flags().StringVar(&returnURL, "return-url", "", "return_url to add at server-side-confirmation sites (enables redirect-based payment methods; without it those sites get allow_redirects:\"never\")")
-	return c
-}
-
-// validateReturnURL rejects values that would break the generated code or
-// smuggle extra API parameters: the URL is spliced into source verbatim, so
-// quotes, backslashes, whitespace, and non-http schemes are refused outright.
-func validateReturnURL(s string) error {
-	u, err := url.Parse(s)
-	if err != nil {
-		return fmt.Errorf("--return-url: %w", err)
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return errorcategory.Errorf(errorcategory.UserInput, "--return-url must be http(s), got %q", s)
-	}
-	if u.Host == "" {
-		return errorcategory.Errorf(errorcategory.UserInput, "--return-url has no host: %q", s)
-	}
-	if strings.ContainsAny(s, "'\"\\` \t\n\r") {
-		return errorcategory.Errorf(errorcategory.UserInput, "--return-url contains characters that cannot be spliced into source code: %q", s)
-	}
-	return nil
-}
-
-// wantsReturnURL reports whether the preview found server-side-confirmation
-// sites that a return_url would improve: pinned sites, or confirm-redirect
-// gated skips.
-func wantsReturnURL(r *FixReport) bool {
-	if r.Companion != nil && len(r.Companion.PinnedSites) > 0 {
-		return true
-	}
-	for _, sk := range r.Skipped {
-		if sk.Intent == "confirm-redirect" {
-			return true
-		}
-	}
-	return false
 }
 
 func newDumpCmd() *cobra.Command {

@@ -13,24 +13,26 @@ package doctor
 // the parts a static scan can act on are consumed:
 //   - a "logic" item whose postParams is a single "entry" (param key, operator
 //     "exist") becomes one ParamMatch — the Operations prefix (method + path)
-//     is used only to derive a resource name (dedupResources/
-//     resourceFromOperation), so the exact path shape doesn't matter.
+//     is read only to classify the match, since the exact path shape doesn't
+//     matter to a presence scanner.
 //   - a "logic" item whose postParams is a "conditionGroup" (the dpm rule's
 //     STRIPE_VERSION-gated item, describing when a bare request lacks BOTH
 //     payment_method_types and automatic_payment_methods on a pre-cutoff API
 //     version) contributes no ParamMatch at all: the engine already derives
-//     that condition from the account's live API version (companion.go,
+//     that condition from the account's live API version (verdict.go,
 //     Rule.IntroducedIn), so this item is only read for its cutoff version.
 //
-// Fixes are declared per logic item via "doctorFixIds", not per rule: a
-// "removeParam" fix is a bare deletion; "upsertParam" becomes a Companion
-// insertion. The engine, however, only has one rule-level Action/Companion
-// pair (fix.go, companion.go) and no way to scope removal to a subset of
-// matches — so converting requires every match-producing item to declare at
-// least one fix id before the rule is treated as "remove"-fixable at all. An
-// item with no doctorFixIds means the migration isn't fully modeled yet, and
-// the whole rule falls back to "advise": better to detect-and-explain
-// everything than to silently delete sites nobody has reviewed for safety.
+// Fixes are declared per logic item via "doctorFixIds", not per rule, in the
+// upstream catalog format. doctor's engine only cares whether a match-
+// producing item declares at least one fix id at all — that marks the
+// parameter as a reviewed "remove" target with per-account judgment (see
+// verdict.go) rather than a bare "advise" detection. An item with no
+// doctorFixIds means the migration isn't fully modeled yet, and the whole
+// rule falls back to "advise": better to detect-and-explain everything than
+// to call a site safe nobody has reviewed. The specific fix kind
+// ("removeParam" vs "upsertParam") only matters to a code-editing tool this
+// package no longer has, so it's validated for catalog sanity and otherwise
+// ignored.
 
 import (
 	_ "embed"
@@ -131,9 +133,8 @@ func loadCatalogPack(raw []byte) (Rule, PackSignals) {
 
 	// allFixable only stays true if every match-producing item declares a fix
 	// id — one bare item is enough to drop the whole rule to "advise", since
-	// the engine can't scope removal to a subset of matches.
+	// the engine can't scope the "remove" judgment to a subset of matches.
 	allFixable := false
-	var companionResources []string
 	for _, item := range e.Logic[0].Items {
 		if len(item.PostParams) != 1 || item.PostParams[0].MatcherType != "entry" {
 			// Not a param-usage match (e.g. the STRIPE_VERSION-gated
@@ -164,18 +165,14 @@ func loadCatalogPack(raw []byte) (Rule, PackSignals) {
 				panic(fmt.Sprintf("doctor: catalog entry %q: unknown fix id %q", e.Topic, fixID))
 			}
 			switch fix.Kind {
-			case "removeParam":
-				// Bare deletion; no companion.
-			case "upsertParam":
-				rule.Companion = &Companion{Param: fix.Param, ForParam: cond.Key}
-				companionResources = append(companionResources, item.Method+" "+item.Path.Value)
+			case "removeParam", "upsertParam":
+				// Either kind marks the parameter as a reviewed "remove"
+				// target; which kind it is only mattered to the code editor
+				// this package no longer has.
 			default:
 				panic(fmt.Sprintf("doctor: catalog entry %q: unsupported fix kind %q", e.Topic, fix.Kind))
 			}
 		}
-	}
-	if rule.Companion != nil {
-		rule.Companion.Resources = dedupResources(companionResources)
 	}
 	if allFixable {
 		rule.Action = "remove"
@@ -202,39 +199,6 @@ func versionCutoff(item catalogLogicItem) string {
 	for _, h := range item.RequestHeaders {
 		if h.Key == "STRIPE_VERSION" && h.Matcher != nil && h.Matcher.Operator == "less_than" {
 			return h.Matcher.Value
-		}
-	}
-	return ""
-}
-
-// dedupResources extracts each operation's resource (the first non-templated
-// path segment after /v1/) in first-seen order. This is deliberately
-// distinct from scan.go's resourceFromOperation, which takes the LAST
-// segment to build its SDK-token prefilter set and would misread
-// ".../{intent}/confirm" as resource "confirm" instead of "payment_intents".
-func dedupResources(operations []string) []string {
-	seen := map[string]bool{}
-	var out []string
-	for _, op := range operations {
-		r := firstResourceSegment(op)
-		if r == "" || seen[r] {
-			continue
-		}
-		seen[r] = true
-		out = append(out, r)
-	}
-	return out
-}
-
-func firstResourceSegment(op string) string {
-	parts := strings.Fields(op)
-	if len(parts) != 2 {
-		return ""
-	}
-	segs := strings.Split(strings.TrimPrefix(parts[1], "/"), "/")
-	for _, s := range segs[1:] {
-		if !strings.HasPrefix(s, "{") {
-			return s
 		}
 	}
 	return ""

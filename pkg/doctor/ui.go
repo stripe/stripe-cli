@@ -6,10 +6,8 @@ package doctor
 // to stdout, logs to stderr.
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -51,41 +49,4 @@ func withSpinner(msg string, fn func() error) error {
 	err := fn()
 	s.Stop()
 	return err
-}
-
-// confirm asks a y/N question; assumeYes short-circuits for non-interactive
-// runs (agents, CI, --yes).
-func confirm(prompt string, assumeYes bool) bool {
-	if assumeYes {
-		// In --json mode stdout carries ONLY the report; notes go to stderr.
-		w := os.Stdout
-		if flagJSON {
-			w = os.Stderr
-		}
-		fmt.Fprintln(w, infoLine(prompt+" "+mutedStyle.Render("(auto-approved by --yes)")))
-		return true
-	}
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		// Never hang a CI/agent session on an invisible prompt.
-		fmt.Fprintln(os.Stderr, failLine("confirmation required but stdin is not a terminal — pass --yes"))
-		return false
-	}
-	fmt.Printf("  %s %s ", accentStyle.Render("?"), prompt+" [y/N]")
-	r := bufio.NewReader(os.Stdin)
-	line, _ := r.ReadString('\n')
-	line = strings.ToLower(strings.TrimSpace(line))
-	return line == "y" || line == "yes"
-}
-
-// promptLine asks a free-text question on a TTY; returns "" when stdin is
-// not a terminal (CI/agents use flags instead) or the answer is blank.
-func promptLine(prompt string) string {
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		fmt.Fprintln(os.Stderr, infoLine("stdin is not a terminal — skipping prompt: "+prompt))
-		return ""
-	}
-	fmt.Printf("  %s %s\n    ", accentStyle.Render("?"), prompt)
-	r := bufio.NewReader(os.Stdin)
-	line, _ := r.ReadString('\n')
-	return strings.TrimSpace(line)
 }

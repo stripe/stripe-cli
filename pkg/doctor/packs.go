@@ -6,8 +6,8 @@ package doctor
 // fixture corpus and packs_test.go for exact expected counts).
 //
 // All four are action=advise: their remediations are renames or value
-// rewrites, primitives the fixer does not have yet. `fix` refuses them with
-// a pointer to the docs; `doctor` detects and explains.
+// rewrites that `doctor` can only detect and explain, pointing at the docs
+// for the human to apply by hand.
 //
 // KNOWN ENGINE ISSUE (found during pack verification): resource-token
 // matching is substring-based, so PascalSingular("subscription_schedules") =

@@ -1,6 +1,6 @@
 package doctor
 
-// Human renderers for the doctor and fix reports.
+// Human renderers for the doctor report.
 
 import (
 	"fmt"
@@ -149,67 +149,6 @@ func renderSignals(r *DoctorReport) {
 	if r.LiveDrill != nil {
 		fmt.Println()
 		renderDrill(r.LiveDrill)
-	}
-}
-
-// ---------- fix ----------
-
-func renderFix(r *FixReport) {
-	mode := "dry-run (nothing written)"
-	if r.Applied {
-		mode = "APPLIED"
-	}
-	fmt.Println(titleStyle.Render("Removals — " + mode))
-	if c := r.Companion; c != nil {
-		who := ""
-		if c.Account != "" {
-			who = " [" + c.Account + "]"
-		}
-		switch {
-		case c.Mode == "insert":
-			fmt.Println(infoLine("companion: inserting " + c.Param + who + " — " + c.Reason))
-		case c.Inserts > 0:
-			fmt.Println(infoLine("companion: plain sites need none" + who + " — " + c.Reason))
-			fmt.Println(warnLine("confirm site(s) below still required an explicit companion (see edits marked never-pin / return_url)"))
-		default:
-			fmt.Println(infoLine("companion: not needed" + who + " — " + c.Reason))
-		}
-		for _, p := range c.PinnedSites {
-			fmt.Println(warnLine(fmt.Sprintf("pinned allow_redirects:\"never\" at %s:%d — redirect-based methods stay off at this site without a return_url", p.File, p.Line)))
-		}
-		for _, n := range c.Notes {
-			fmt.Println(warnLine(n))
-		}
-	}
-	for _, f := range r.Files {
-		labels := map[string]int{}
-		for _, e := range f.Edits {
-			labels[e.Label]++
-		}
-		var ls []string
-		for l, n := range labels {
-			ls = append(ls, fmt.Sprintf("%s×%d", l, n))
-		}
-		sort.Strings(ls)
-		delta := fmt.Sprintf("−%d bytes", f.BytesRemoved)
-		if f.BytesAdded > 0 {
-			delta = fmt.Sprintf("−%d/+%d bytes", f.BytesRemoved, f.BytesAdded)
-		}
-		line := fmt.Sprintf("%s  %s  %s", f.Path, delta, mutedStyle.Render(strings.Join(ls, ", ")))
-		switch {
-		case f.Reparse == "error":
-			fmt.Println(failLine(line + "  reparse ERROR — not written"))
-		case f.Written:
-			fmt.Println(okLine(line + "  written"))
-		default:
-			fmt.Println(okLine(line + "  reparse clean"))
-		}
-	}
-	for _, sk := range r.Skipped {
-		fmt.Println(warnLine(fmt.Sprintf("skipped %s:%d %s — %s", sk.File, sk.Line, mutedStyle.Render("["+sk.Intent+"]"), sk.Reason)))
-	}
-	if len(r.Files) == 0 && len(r.Skipped) == 0 {
-		fmt.Println(infoLine("nothing to fix"))
 	}
 }
 
