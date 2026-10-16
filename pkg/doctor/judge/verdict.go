@@ -32,6 +32,7 @@ type Finding struct {
 type AccountSummary struct {
 	ID             string         `json:"id"`
 	Name           string         `json:"name,omitempty"`
+	Livemode       bool           `json:"livemode"`
 	EventVersions  map[string]int `json:"event_api_versions"`
 	VersionsOK     bool           `json:"versions_at_or_after_cutoff"`
 	VersionsMixed  bool           `json:"versions_mixed"`
@@ -182,7 +183,7 @@ func verdict(intent, value string, f *accountFacts) string {
 // gets an ADVISE verdict carrying the rule's remediation message (its
 // account precondition is the version window, shown as context).
 func Judge(findings []catalog.Finding, cfg *config.Config, stripeAccount string, rule catalog.Rule) (*Report, error) {
-	creds, err := loadTestCredentials(cfg)
+	creds, err := loadCredentials(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -195,6 +196,7 @@ func Judge(findings []catalog.Finding, cfg *config.Config, stripeAccount string,
 		Account: AccountSummary{
 			ID:             facts.AccountID,
 			Name:           facts.DisplayName,
+			Livemode:       facts.Livemode,
 			EventVersions:  facts.EventVersions,
 			VersionsOK:     facts.VersionsOK,
 			VersionsMixed:  facts.VersionsMixed,

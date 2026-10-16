@@ -17,135 +17,215 @@
       "id": "switch_to_apm",
       "kind": "upsertParam",
       "param": "automatic_payment_methods",
-      "value": { "enabled": true }
+      "value": "{\"enabled\":true}"
     }
   ],
   "logic": [
     {
-      "logicalOperator": "or",
-      "matcherType": "conditionGroup",
-      "items": [
-        {
-          "path": { "operator": "start_with", "value": "/v1/payment_intents" },
-          "method": "POST",
-          "requestHeaders": null,
-          "postParams": [
-            {
-              "matcherType": "entry",
-              "key": "payment_method_types",
-              "matcher": { "operator": "exist", "value": null },
-              "patternMatcher": null,
-              "compareVersions": null,
-              "fuzzyMatchKey": null
-            }
-          ],
-          "key": null,
-          "doctorFixIds": ["remove_pmt", "switch_to_apm"],
-          "dataType": "request",
-          "matcherType": "entry"
-        },
-        {
-          "path": { "operator": "start_with", "value": "/v1/setup_intents" },
-          "method": "POST",
-          "requestHeaders": null,
-          "postParams": [
-            {
-              "matcherType": "entry",
-              "key": "payment_method_types",
-              "matcher": { "operator": "exist", "value": null },
-              "patternMatcher": null,
-              "compareVersions": null,
-              "fuzzyMatchKey": null
-            }
-          ],
-          "key": null,
-          "doctorFixIds": ["remove_pmt", "switch_to_apm"],
-          "dataType": "request",
-          "matcherType": "entry"
-        },
-        {
-          "path": { "operator": "start_with", "value": "/v1/checkout/sessions" },
-          "method": "POST",
-          "requestHeaders": null,
-          "postParams": [
-            {
-              "matcherType": "entry",
-              "key": "payment_method_types",
-              "matcher": { "operator": "exist", "value": null },
-              "patternMatcher": null,
-              "compareVersions": null,
-              "fuzzyMatchKey": null
-            }
-          ],
-          "key": null,
-          "doctorFixIds": ["remove_pmt"],
-          "dataType": "request",
-          "matcherType": "entry"
-        },
-        {
-          "path": { "operator": "regexp", "value": "^/v1/(payment_intents|setup_intents)$" },
-          "method": "POST",
-          "requestHeaders": [
-            {
-              "key": "STRIPE_VERSION",
-              "matcher": { "operator": "less_than", "value": "2023-08-16" },
-              "patternMatcher": "(\\d{4}-\\d{2}-\\d{2})",
-              "compareVersions": null,
-              "fuzzyMatchKey": null,
-              "matcherType": "entry"
-            }
-          ],
-          "postParams": [
-            {
-              "matcherType": "conditionGroup",
-              "logicalOperator": "and",
-              "items": [
+      "chapter": null,
+      "condition_group": {
+        "items": [
+          {
+            "chapter": null,
+            "condition_group": null,
+            "entry": {
+              "data_type": "request",
+              "doctor_fix_ids": [
+                "remove_pmt",
+                "switch_to_apm"
+              ],
+              "key": null,
+              "method": "POST",
+              "path": {
+                "operator": "start_with",
+                "value": "/v1/payment_intents"
+              },
+              "post_params": [
                 {
-                  "matcherType": "entry",
+                  "compare_versions": null,
+                  "fuzzy_match_key": null,
+                  "items": [],
                   "key": "payment_method_types",
-                  "matcher": { "operator": "not_exist", "value": null },
-                  "patternMatcher": null,
-                  "compareVersions": null,
-                  "fuzzyMatchKey": null
-                },
+                  "logical_operator": null,
+                  "matcher": {
+                    "operator": "exist",
+                    "value": null
+                  },
+                  "matcher_type": "entry",
+                  "pattern_matcher": null
+                }
+              ],
+              "request_headers": []
+            },
+            "matcher_type": "entry"
+          },
+          {
+            "chapter": null,
+            "condition_group": null,
+            "entry": {
+              "data_type": "request",
+              "doctor_fix_ids": [
+                "remove_pmt",
+                "switch_to_apm"
+              ],
+              "key": null,
+              "method": "POST",
+              "path": {
+                "operator": "start_with",
+                "value": "/v1/setup_intents"
+              },
+              "post_params": [
                 {
-                  "matcherType": "conditionGroup",
-                  "logicalOperator": "or",
+                  "compare_versions": null,
+                  "fuzzy_match_key": null,
+                  "items": [],
+                  "key": "payment_method_types",
+                  "logical_operator": null,
+                  "matcher": {
+                    "operator": "exist",
+                    "value": null
+                  },
+                  "matcher_type": "entry",
+                  "pattern_matcher": null
+                }
+              ],
+              "request_headers": []
+            },
+            "matcher_type": "entry"
+          },
+          {
+            "chapter": null,
+            "condition_group": null,
+            "entry": {
+              "data_type": "request",
+              "doctor_fix_ids": [
+                "remove_pmt"
+              ],
+              "key": null,
+              "method": "POST",
+              "path": {
+                "operator": "start_with",
+                "value": "/v1/checkout/sessions"
+              },
+              "post_params": [
+                {
+                  "compare_versions": null,
+                  "fuzzy_match_key": null,
+                  "items": [],
+                  "key": "payment_method_types",
+                  "logical_operator": null,
+                  "matcher": {
+                    "operator": "exist",
+                    "value": null
+                  },
+                  "matcher_type": "entry",
+                  "pattern_matcher": null
+                }
+              ],
+              "request_headers": []
+            },
+            "matcher_type": "entry"
+          },
+          {
+            "chapter": null,
+            "condition_group": null,
+            "entry": {
+              "data_type": "request",
+              "doctor_fix_ids": [
+                "switch_to_apm"
+              ],
+              "key": null,
+              "method": "POST",
+              "path": {
+                "operator": "regexp",
+                "value": "^/v1/(payment_intents|setup_intents)$"
+              },
+              "post_params": [
+                {
+                  "compare_versions": null,
+                  "fuzzy_match_key": null,
                   "items": [
                     {
-                      "matcherType": "entry",
-                      "key": "automatic_payment_methods.enabled",
-                      "matcher": { "operator": "not_exist", "value": null },
-                      "patternMatcher": null,
-                      "compareVersions": null,
-                      "fuzzyMatchKey": null
+                      "compare_versions": null,
+                      "fuzzy_match_key": null,
+                      "items": [],
+                      "key": "payment_method_types",
+                      "logical_operator": null,
+                      "matcher": {
+                        "operator": "not_exist",
+                        "value": null
+                      },
+                      "matcher_type": "entry",
+                      "pattern_matcher": null
                     },
                     {
-                      "matcherType": "entry",
-                      "key": "automatic_payment_methods.enabled",
-                      "matcher": { "operator": "equal", "value": "false" },
-                      "patternMatcher": null,
-                      "compareVersions": null,
-                      "fuzzyMatchKey": null
+                      "compare_versions": null,
+                      "fuzzy_match_key": null,
+                      "items": [
+                        {
+                          "compare_versions": null,
+                          "fuzzy_match_key": null,
+                          "items": [],
+                          "key": "automatic_payment_methods.enabled",
+                          "logical_operator": null,
+                          "matcher": {
+                            "operator": "not_exist",
+                            "value": null
+                          },
+                          "matcher_type": "entry",
+                          "pattern_matcher": null
+                        },
+                        {
+                          "compare_versions": null,
+                          "fuzzy_match_key": null,
+                          "items": [],
+                          "key": "automatic_payment_methods.enabled",
+                          "logical_operator": null,
+                          "matcher": {
+                            "operator": "equal",
+                            "value": "false"
+                          },
+                          "matcher_type": "entry",
+                          "pattern_matcher": null
+                        }
+                      ],
+                      "key": null,
+                      "logical_operator": "or",
+                      "matcher": null,
+                      "matcher_type": "conditionGroup",
+                      "pattern_matcher": null
                     }
-                  ]
+                  ],
+                  "key": null,
+                  "logical_operator": "and",
+                  "matcher": null,
+                  "matcher_type": "conditionGroup",
+                  "pattern_matcher": null
+                }
+              ],
+              "request_headers": [
+                {
+                  "compare_versions": null,
+                  "fuzzy_match_key": null,
+                  "items": [],
+                  "key": "STRIPE_VERSION",
+                  "logical_operator": null,
+                  "matcher": {
+                    "operator": "less_than",
+                    "value": "2023-08-16"
+                  },
+                  "matcher_type": "entry",
+                  "pattern_matcher": "(\\d{4}-\\d{2}-\\d{2})"
                 }
               ]
-            }
-          ],
-          "key": null,
-          "doctorFixIds": ["switch_to_apm"],
-          "dataType": "request",
-          "matcherType": "entry"
-        }
-      ]
+            },
+            "matcher_type": "entry"
+          }
+        ],
+        "logical_operator": "or"
+      },
+      "entry": null,
+      "matcher_type": "conditionGroup"
     }
-  ],
-  "signals": {
-    "webhookEvents": [
-      { "event": "checkout.session.completed", "note": "fires when checkout finishes — for a delayed method (OXXO, bank transfer, ...) that means the customer committed to pay, not that payment is confirmed yet" },
-      { "event": "checkout.session.async_payment_succeeded", "note": "fires later, out of band, when a delayed payment method actually clears — without this handler, those orders never get fulfilled" },
-      { "event": "checkout.session.async_payment_failed", "note": "fires later if a delayed payment method expires or fails — without this handler, those orders never get reconciled or refunded" }
-    ]
-  }
+  ]
 }

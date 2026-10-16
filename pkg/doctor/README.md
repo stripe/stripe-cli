@@ -23,8 +23,13 @@ on all of them; none of them depend on it or on each other except where
 listed.
 
 1. **`catalog`** — pure data: `Rule`/`ParamMatch`/`Finding`, the `Packs`
-   topic registry (today: just `dpm`), and the JSON-catalog parser (embeds
-   `catalog/dpm.json`). Depends on nothing else in this module.
+   topic registry (today: just `dpm`), and `ParseAPIRule`, which parses one
+   rule in the shape the live doctor_rules API serves it in. `DpmRule` is
+   parsed from an embedded snapshot (`catalog/dpm.json`) at startup — the
+   offline/fallback source; `judge.FetchDPMRule` fetches the live version.
+   `DpmSignals` (`dpm_signals.go`) is hardcoded Go, patched onto whichever
+   Rule wins, since the API has no signals field yet. Depends on nothing
+   else in this module.
 2. **`scan`** — the AST-based matching engine: cgo-free tree-sitter over 7
    languages (Ruby, Python, PHP, JS/TS, Go, Java, C#). Resolution follows
    variables, typed builders, and target-typed declarations to the Stripe
@@ -38,8 +43,10 @@ listed.
    the removed non-dpm topics returning; see git history.)
 4. **`judge`** — fetches read-only account facts and judges findings against
    them: the API versions recent traffic actually runs at, the governing
-   payment-method configuration (toggle AND capability availability).
-   Depends on `catalog` for the `Rule`/`Finding` shapes.
+   payment-method configuration (toggle AND capability availability). Also
+   owns `FetchDPMRule` (the live rule fetch), since it already has the
+   credential/HTTP plumbing. Depends on `catalog` for the `Rule`/`Finding`
+   shapes.
 5. **`drill`** — the live webhook round-trip check behind `doctor --live`.
    Fully standalone.
 
@@ -50,10 +57,16 @@ calling `judge.ScanOnly` instead of `judge.Judge`.
 
 - `--json`: one JSON object on stdout, logs on stderr (`reports.go` is the
   schema). Exit codes: 0 clean/verified, 1 findings/not-verified, 2 error.
-- Account access is read-only GETs, sandbox/test-mode only: the CLI's stored
-  user access token (from `stripe login`) is preferred, falling back to a
-  test-mode API key; live-mode API keys are refused. `--stripe-account`
+- Account access, and the live dpm rule fetch, are read-only GETs: the
+  CLI's stored user access token (from `stripe login`) is preferred,
+  falling back to an API key. Calls run in whichever mode (test or live)
+  the active context is actually logged into — no `--live` flag needed;
+  `judge.AccountSummary.Livemode` (JSON: `account.livemode`) says which.
+  `--offline` skips both and uses the embedded rule. `--stripe-account`
   scopes Connect direct-charge diagnosis to the connected account.
+- The doctor_rules endpoints aren't publicly shipped yet, so
+  `judge.FetchDPMRule` pins `Stripe-Version: 2026-10-12-16.internal` on
+  that call only — remove once the API is GA.
 - Binary size: `make build` and the release configs always pass the
   `grammar_subset` build tags (see GRAMMAR_TAGS in the Makefile), embedding
   only the grammars for the languages the doctor supports (+10 MB over the

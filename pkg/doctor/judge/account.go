@@ -28,6 +28,7 @@ const dpmCutoff = "2023-08-16"
 type accountFacts struct {
 	AccountID   string
 	DisplayName string
+	Livemode    bool // which mode the resolved credentials actually ran against
 
 	// EventVersions maps api_version -> count over the sampled events.
 	EventVersions map[string]int
@@ -50,25 +51,28 @@ type accountFacts struct {
 	VersionsMixed      bool // some but not all versions >= dpmCutoff
 }
 
-// loadTestCredentials resolves sandbox/test-mode credentials through the
-// CLI's own profile machinery: the user access token (UAT) from `stripe
-// login` when present, falling back to an API key (which already honors
-// STRIPE_API_KEY). Live-mode API keys are refused — every account call here
-// is read-only and test-mode by design. UAT credentials need no such check:
-// ResolveCredentials(false) already scopes them to test mode via the
-// Stripe-Livemode header, erroring out if the active context is live.
-func loadTestCredentials(cfg *config.Config) (stripe.Credentials, error) {
+// loadCredentials resolves credentials through the CLI's own profile
+// machinery, in whichever mode the active context actually is: the user
+// access token (UAT) from `stripe login` when present, falling back to an
+// API key (which already honors STRIPE_API_KEY). No --live flag or other
+// gate is required — ResolveCredentialsForAnyMode requests test mode but
+// transparently retries in live mode if that's what the active context is
+// logged into, so account calls always run in the account's real mode.
+func loadCredentials(cfg *config.Config) (stripe.Credentials, error) {
 	if cfg == nil {
 		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.Internal, "no CLI configuration available")
 	}
-	creds, err := cfg.GetProfile().ResolveCredentials(false)
-	if err != nil {
-		return stripe.Credentials{}, err
+	return cfg.GetProfile().ResolveCredentialsForAnyMode(false)
+}
+
+// isLivemode reports which mode creds actually resolved to: OAK credentials
+// carry it explicitly, while a plain API key's own prefix (sk_live_/rk_live_
+// vs sk_test_/rk_test_) determines it.
+func isLivemode(creds stripe.Credentials) bool {
+	if creds.OAKLivemode != nil {
+		return *creds.OAKLivemode
 	}
-	if creds.OAKLivemode == nil && !strings.HasPrefix(creds.Token, "sk_test_") && !strings.HasPrefix(creds.Token, "rk_test_") {
-		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.UserInput, "resolved key is not a test-mode key (sk_test_/rk_test_); refusing")
-	}
-	return creds, nil
+	return strings.HasPrefix(creds.Token, "sk_live_") || strings.HasPrefix(creds.Token, "rk_live_")
 }
 
 // newAccountClient builds the shared stripe.Client used for account.go's
@@ -86,9 +90,14 @@ func newAccountClient(creds stripe.Credentials) (*stripe.Client, error) {
 // response into out. query is the raw (already-encoded) query string, e.g.
 // "limit=20"; it is applied via PerformRequest rather than appended to path
 // since PerformRequest overwrites any query already present on path.
-func stripeGET(client *stripe.Client, stripeAccount, path, query string, out any) error {
+// headers, when non-nil, are set on the request in addition to the usual
+// auth/account headers — e.g. a Stripe-Version pin for an unreleased API.
+func stripeGET(client *stripe.Client, stripeAccount, path, query string, headers map[string]string, out any) error {
 	configure := func(req *http.Request) error {
 		client.Credentials.ApplyAccountContextHeaders(req.Header, stripeAccount, "")
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
 		return nil
 	}
 	resp, err := client.PerformRequest(context.Background(), http.MethodGet, path, query, configure)
@@ -114,7 +123,7 @@ func fetchAccountFacts(creds stripe.Credentials, stripeAccount string) (*account
 	if err != nil {
 		return nil, err
 	}
-	f := &accountFacts{EventVersions: map[string]int{}}
+	f := &accountFacts{EventVersions: map[string]int{}, Livemode: isLivemode(creds)}
 
 	var acct struct {
 		ID       string `json:"id"`
@@ -124,7 +133,7 @@ func fetchAccountFacts(creds stripe.Credentials, stripeAccount string) (*account
 			} `json:"dashboard"`
 		} `json:"settings"`
 	}
-	if err := stripeGET(client, stripeAccount, "/v1/account", "", &acct); err != nil {
+	if err := stripeGET(client, stripeAccount, "/v1/account", "", nil, &acct); err != nil {
 		return nil, err
 	}
 	f.AccountID, f.DisplayName = acct.ID, acct.Settings.Dashboard.DisplayName
@@ -135,7 +144,7 @@ func fetchAccountFacts(creds stripe.Credentials, stripeAccount string) (*account
 	var pmc struct {
 		Data []map[string]any `json:"data"`
 	}
-	if err := stripeGET(client, stripeAccount, "/v1/payment_method_configurations", "", &pmc); err != nil {
+	if err := stripeGET(client, stripeAccount, "/v1/payment_method_configurations", "", nil, &pmc); err != nil {
 		return nil, err
 	}
 	// Choose ONE governing config — strictly the default (the one the API
@@ -195,7 +204,7 @@ func fetchAccountFacts(creds stripe.Credentials, stripeAccount string) (*account
 			APIVersion string `json:"api_version"`
 		} `json:"data"`
 	}
-	if err := stripeGET(client, stripeAccount, "/v1/events", "limit=20", &evts); err != nil {
+	if err := stripeGET(client, stripeAccount, "/v1/events", "limit=20", nil, &evts); err != nil {
 		return nil, err
 	}
 	ge := 0

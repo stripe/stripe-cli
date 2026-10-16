@@ -26,7 +26,11 @@ func renderAccount(a judge.AccountSummary) {
 	if a.Name != "" {
 		name += " — " + a.Name
 	}
-	fmt.Println(titleStyle.Render("Account ") + name + mutedStyle.Render("  ·  test mode"))
+	mode := mutedStyle.Render("  ·  test mode")
+	if a.Livemode {
+		mode = warnStyle.Render("  ·  LIVE MODE")
+	}
+	fmt.Println(titleStyle.Render("Account ") + name + mode)
 
 	var vs []string
 	for v, n := range a.EventVersions {

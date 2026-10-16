@@ -97,8 +97,9 @@ func commonFlags(c *cobra.Command) {
 // root action, with guide and the hidden parse-dump nested beneath it —
 // neither makes sense as a top-level verb in the CLI's namespace. Topic
 // names and subcommand names never overlap, so `doctor dpm .` and
-// `doctor guide` resolve unambiguously. cfg supplies profile credentials
-// (test-mode keys only — enforced downstream).
+// `doctor guide` resolve unambiguously. cfg supplies profile credentials,
+// resolved downstream in whichever mode (test or live) the active context
+// is actually logged into.
 func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 	root := newDoctorCmd(cfg)
 	commonFlags(root)
@@ -125,6 +126,22 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 				fail(err)
 			}
 			rule := catalog.Packs[topic].Rule
+			// dpm is the only topic with a live rule source today; this is
+			// deliberately special-cased rather than a generic per-pack
+			// hook until a second one shows up.
+			if topic == "dpm" && !offline {
+				err := withSpinnerUnlessJSON("Fetching migration rules (read-only)", func() error {
+					liveRule, derr := judge.FetchDPMRule(cfg, flagStripeAccount)
+					if derr != nil {
+						return derr
+					}
+					rule = liveRule
+					return nil
+				})
+				if err != nil {
+					fmt.Fprintln(os.Stderr, warnLine(fmt.Sprintf("live catalog fetch failed (%s) — using embedded dpm.json", err.Error())))
+				}
+			}
 
 			findings, scanned, parsed, err := scan.Scan(dir, rule)
 			if err != nil {
@@ -186,7 +203,7 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 		},
 	}
 	c.Flags().BoolVar(&live, "live", false, "also run behavioral checks (spawns stripe listen/trigger)")
-	c.Flags().BoolVar(&offline, "offline", false, "skip account facts; scan-only")
+	c.Flags().BoolVar(&offline, "offline", false, "skip account facts and the live rule fetch; scan-only with the embedded rule")
 	return c
 }
 
