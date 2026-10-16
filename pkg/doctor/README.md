@@ -8,8 +8,12 @@ verdict message names the exact change to make by hand.
 ```bash
 stripe doctor dpm .              # diagnose: findings + account verdicts (read-only)
 stripe doctor guide              # the agent playbook (--json + exit-code contract)
-stripe doctor elements .         # triage: WHICH Payment Element migration applies
 ```
+
+`dpm` is the only topic today — the steel thread. Other migrations
+previously lived here as detect-only "advise" topics and were removed to
+keep this tool scoped to one working path; they may return later (see git
+history).
 
 ## Architecture
 
@@ -18,19 +22,20 @@ the top-level `doctor` package (`cmd.go`, `render.go`, `reports.go`) depends
 on all of them; none of them depend on it or on each other except where
 listed.
 
-1. **`catalog`** — pure data: `Rule`/`ParamMatch`/`Finding`, the hand-authored
-   packs, the JSON-catalog parser (embeds `catalog/dpm.json`), and the
-   `Packs` topic registry. Depends on nothing else in this module.
+1. **`catalog`** — pure data: `Rule`/`ParamMatch`/`Finding`, the `Packs`
+   topic registry (today: just `dpm`), and the JSON-catalog parser (embeds
+   `catalog/dpm.json`). Depends on nothing else in this module.
 2. **`scan`** — the AST-based matching engine: cgo-free tree-sitter over 7
    languages (Ruby, Python, PHP, JS/TS, Go, Java, C#). Resolution follows
    variables, typed builders, and target-typed declarations to the Stripe
    call site; matching alone never produces advice. Depends on `catalog` for
    the `Rule`/`Finding` shapes.
-3. **`signals`** — substring/manifest code-signal scanning: expected webhook
-   events, legacy frontend tokens, package version floors, and the
-   `elements` triage. Honest about its strength — these are signals, never
-   verdicts. Depends on `catalog` for the declared-signal shapes and `scan`
-   only to know which file extensions it can read.
+3. **`signals`** — substring code-signal scanning: expected webhook events.
+   Honest about its strength — these are signals, never verdicts. Depends
+   on `catalog` for the declared-signal shapes and `scan` only to know
+   which file extensions it can read. (Frontend tokens, package-version-
+   floor checks, and the which-migration triage aren't supported pending
+   the removed non-dpm topics returning; see git history.)
 4. **`judge`** — fetches read-only account facts and judges findings against
    them: the API versions recent traffic actually runs at, the governing
    payment-method configuration (toggle AND capability availability).
@@ -57,6 +62,5 @@ calling `judge.ScanOnly` instead of `judge.Judge`.
 
 ## Adding a migration
 
-Add a `Pack` to `catalog.Packs` — a rule (parameters + operations + action),
-and optionally signals (expected webhook events, frontend tokens, manifest
-floors) and triage branches. The verbs never change.
+Add a `Pack` to `catalog.Packs` — a rule (parameters + operations + action)
+and optionally signals (expected webhook events). The verbs never change.

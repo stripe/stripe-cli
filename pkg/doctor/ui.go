@@ -16,12 +16,11 @@ import (
 )
 
 var (
-	titleStyle  = lipgloss.NewStyle().Bold(true)
-	okStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	warnStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-	failStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	accentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-	mutedStyle  = lipgloss.NewStyle().Faint(true)
+	titleStyle = lipgloss.NewStyle().Bold(true)
+	okStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	warnStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	failStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	mutedStyle = lipgloss.NewStyle().Faint(true)
 )
 
 func isTTY() bool { return term.IsTerminal(int(os.Stdout.Fd())) }

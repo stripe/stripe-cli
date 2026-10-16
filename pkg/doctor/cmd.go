@@ -157,8 +157,7 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 			}
 
 			// Code signals need no credentials — attach in every mode.
-			rep.WebhookHandlers, rep.FrontendSignals, rep.ManifestChecks = signals.ScanSignals(dir, catalog.Packs[topic].Signals)
-			rep.Triage = signals.ScanTriage(dir, catalog.Packs[topic].Triage)
+			rep.WebhookHandlers = signals.ScanSignals(dir, catalog.Packs[topic].Signals)
 
 			failedLive := false
 			if live {

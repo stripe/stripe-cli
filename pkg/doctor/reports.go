@@ -45,11 +45,5 @@ type DoctorReport struct {
 	Stats     ScanStats            `json:"stats"`
 	LiveDrill *drill.Report        `json:"live_drill,omitempty"`
 	// Code signals (substring-level, honest about their strength):
-	WebhookHandlers *signals.HandlerSignals   `json:"webhook_handlers,omitempty"`
-	FrontendSignals []signals.FrontendWarning `json:"frontend_warnings,omitempty"`
-	ManifestChecks  []signals.ManifestCheck   `json:"manifest_checks,omitempty"`
-	// Triage: which integration from-states were detected and which migration
-	// guide applies to each — the "which of these three docs do I follow"
-	// answer, with file-level evidence.
-	Triage []signals.TriageResult `json:"triage,omitempty"`
+	WebhookHandlers *signals.HandlerSignals `json:"webhook_handlers,omitempty"`
 }

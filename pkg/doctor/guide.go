@@ -26,45 +26,13 @@ func newGuideCmd() *cobra.Command {
 
 const agentGuide = `# Migration doctor — agent playbook
 
-Verbs are generic; the migration is a topic argument. doctor only
-diagnoses: every finding's verdict message says exactly what to change,
-but the code edit itself is manual (by you or the human). Topics:
-  dpm                payment_method_types removal readiness (judged
-                     against account facts — see step 1's verdict_class)
-  elements           WHICH Payment Element migration applies? Run this first
-                     when unsure: .triage detects each from-state with file
-                     evidence — Charges-era (prerequisite migration), legacy
-                     Card Element (-> pe or ewcs), PaymentMethod server
-                     handoff (-> ct, mandatory: from-state is unsupported),
-                     and already-migrated markers
-  pe                 legacy per-PM Elements -> Payment Element (advise;
-                     signals: confirm<PM>Payment/Setup family, card Element;
-                     expected events payment_intent.succeeded/processing/
-                     payment_failed; note: Stripe prefers ewcs for most)
-  ct                 PaymentMethod handoff -> Confirmation Tokens (advise;
-                     anchor mandate_data@PI create/confirm; signals:
-                     createPaymentMethod, paymentMethodId handoff)
-  ewcs               Elements with Checkout Sessions readiness report (advise;
-                     recommendation-class — no version gate; the doctor report
-                     carries the machine-checkable prerequisites: .findings are
-                     the create calls to migrate, .webhook_handlers diffs the
-                     four expected checkout.session.* events, .frontend_warnings
-                     lists from-state client tokens with their replacements,
-                     .manifest_checks enforces @stripe/stripe-js>=8 and
-                     @stripe/react-stripe-js>=5; the actual rewrite is agent/
-                     human work per the docs link)
-  flex               flexible payment features beta->GA (advise; account-gated,
-                     not version-gated: anchors the incremental-auth rename and
-                     final_capture semantics; the other features are param
-                     ADDITIONS a presence scanner cannot see — follow the doc)
-  tax-percent        tax_percent removed 2020-08-27 (advise: needs TaxRate objects)
-  collection-method  billing -> collection_method rename, 2019-10-17 (advise)
-  prorate            prorate -> proration_behavior, 2020-08-27 (advise)
-  source-types       allowed_source_types -> payment_method_types, 2019-02-11 (advise)
-Advise topics: doctor detects (verdict_class ADVISE, works offline) and the
-message names the replacement — apply the rename by hand per the docs, then
-re-run doctor for exit 0. For source-types, run topic dpm afterwards: the
-renamed param is dpm's target.
+doctor only diagnoses: every finding's verdict message says exactly what
+to change, but the code edit itself is manual (by you or the human).
+Verbs are generic and take a topic argument, but today there is only one
+topic: dpm (payment_method_types removal readiness, judged against
+account facts — see step 1's verdict_class). Other migrations previously
+lived here as detect-only "advise" topics; they were removed to keep this
+tool to one steel thread and may return later.
 Every command supports --json (single JSON object on stdout; logs on
 stderr). Exit codes: 0 clean/verified, 1 findings-present/not-verified,
 2 operational error.
@@ -106,10 +74,11 @@ CONNECTED account's configuration and traffic govern the verdicts.
 Also in the doctor report, credentials or not:
   .webhook_handlers  does YOUR code mention the three delayed-notification
                      event types (all_present should be true before enabling
-                     delayed methods)
-  .frontend_warnings legacy Card Element signals — dashboard-managed methods
-                     cannot render there; server-side removal alone strands
-                     them. Surface these to the human.
+                     delayed methods); each event in .events[] carries a
+                     .note explaining what breaks if that handler is missing
+                     — surface it to the human when .present is false.
+Frontend signals (e.g. legacy Card Element detection) aren't implemented
+yet — deferred pending a redesign.
 Also in doctor's .account: enabled_but_unavailable lists methods toggled
 ON whose capability is inactive — they will NOT render; treat them as
 missing when judging method coverage.

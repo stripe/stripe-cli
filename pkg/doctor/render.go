@@ -164,49 +164,13 @@ func renderSignals(r *DoctorReport) {
 		for _, e := range r.WebhookHandlers.Events {
 			if e.Present {
 				fmt.Println(okLine(fmt.Sprintf("%-46s %s", e.Event, mutedStyle.Render(e.Files[0]))))
+			} else if e.Note != "" {
+				fmt.Println(warnLine(fmt.Sprintf("%-46s not found — %s", e.Event, e.Note)))
 			} else {
 				fmt.Println(warnLine(fmt.Sprintf("%-46s not found in scanned code", e.Event)))
 			}
 		}
 	}
-	if len(r.FrontendSignals) > 0 {
-		fmt.Println("\n" + titleStyle.Render("Frontend warnings"))
-		for _, w := range r.FrontendSignals {
-			note := w.Note
-			if note == "" {
-				note = "legacy client-side token"
-			}
-			fmt.Println(failLine(fmt.Sprintf("%q in %s — %s", w.Signal, w.File, note)))
-		}
-	}
-	if len(r.Triage) > 0 {
-		fmt.Println("\n" + titleStyle.Render("Which migration applies"))
-		for _, t := range r.Triage {
-			fmt.Println(okLine(titleStyle.Render("detected: ") + t.Detected))
-			fmt.Println(kv("", accentStyle.Render(t.Recommend)))
-			max := len(t.Evidence)
-			if max > 3 {
-				max = 3
-			}
-			for _, ev := range t.Evidence[:max] {
-				fmt.Println(kv("", mutedStyle.Render(fmt.Sprintf("%s  (%s)", ev.File, ev.Token))))
-			}
-		}
-	}
-	if len(r.ManifestChecks) > 0 {
-		fmt.Println("\n" + titleStyle.Render("Package version floors"))
-		for _, m := range r.ManifestChecks {
-			switch {
-			case m.Found == "":
-				fmt.Println(infoLine(fmt.Sprintf("%-28s not in package.json (floor %s applies only if used)", m.Package, m.Floor)))
-			case m.OK:
-				fmt.Println(okLine(fmt.Sprintf("%-28s %s (floor %s)", m.Package, m.Found, m.Floor)))
-			default:
-				fmt.Println(failLine(fmt.Sprintf("%-28s %s is below required %s", m.Package, m.Found, m.Floor)))
-			}
-		}
-	}
-
 	if r.LiveDrill != nil {
 		fmt.Println()
 		renderDrill(r.LiveDrill)

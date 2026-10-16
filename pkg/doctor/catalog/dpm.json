@@ -143,15 +143,9 @@
   ],
   "signals": {
     "webhookEvents": [
-      "checkout.session.completed",
-      "checkout.session.async_payment_succeeded",
-      "checkout.session.async_payment_failed"
-    ],
-    "frontendTokens": [
-      { "token": "confirmCardPayment", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" },
-      { "token": "createToken(", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" },
-      { "token": "elements.create('card'", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" },
-      { "token": "elements.create(\"card\"", "note": "legacy Card Element flow — dashboard-managed methods cannot render there" }
+      { "event": "checkout.session.completed", "note": "fires when checkout finishes — for a delayed method (OXXO, bank transfer, ...) that means the customer committed to pay, not that payment is confirmed yet" },
+      { "event": "checkout.session.async_payment_succeeded", "note": "fires later, out of band, when a delayed payment method actually clears — without this handler, those orders never get fulfilled" },
+      { "event": "checkout.session.async_payment_failed", "note": "fires later if a delayed payment method expires or fails — without this handler, those orders never get reconciled or refunded" }
     ]
   }
 }

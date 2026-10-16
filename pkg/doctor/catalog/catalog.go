@@ -91,20 +91,12 @@ type catalogParamCondition struct {
 }
 
 type catalogSignals struct {
-	WebhookEvents  []string               `json:"webhookEvents"`
-	FrontendTokens []catalogFrontendToken `json:"frontendTokens"`
-	ManifestFloors []catalogManifestFloor `json:"manifestFloors"`
+	WebhookEvents []catalogWebhookEvent `json:"webhookEvents"`
 }
 
-type catalogFrontendToken struct {
-	Token string `json:"token"`
+type catalogWebhookEvent struct {
+	Event string `json:"event"`
 	Note  string `json:"note"`
-}
-
-type catalogManifestFloor struct {
-	Ecosystem string `json:"ecosystem"`
-	Package   string `json:"package"`
-	Min       string `json:"min"`
 }
 
 // loadCatalogPack parses one catalog entry and converts it into a Rule plus
@@ -182,12 +174,8 @@ func loadCatalogPack(raw []byte) (Rule, PackSignals) {
 
 	var sig PackSignals
 	if e.Signals != nil {
-		sig.WebhookEvents = e.Signals.WebhookEvents
-		for _, t := range e.Signals.FrontendTokens {
-			sig.FrontendTokens = append(sig.FrontendTokens, FrontendToken(t))
-		}
-		for _, f := range e.Signals.ManifestFloors {
-			sig.ManifestFloors = append(sig.ManifestFloors, ManifestFloor{Package: f.Package, Min: f.Min})
+		for _, ev := range e.Signals.WebhookEvents {
+			sig.WebhookEvents = append(sig.WebhookEvents, WebhookEvent(ev))
 		}
 	}
 	return rule, sig
