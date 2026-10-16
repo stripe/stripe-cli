@@ -220,6 +220,8 @@ const (
 	CoreCLIHelper_OAuthInitiateLogin_FullMethodName           = "/proto.CoreCLIHelper/OAuthInitiateLogin"
 	CoreCLIHelper_OAuthFindPendingLogin_FullMethodName        = "/proto.CoreCLIHelper/OAuthFindPendingLogin"
 	CoreCLIHelper_OAuthCheckLoginStatus_FullMethodName        = "/proto.CoreCLIHelper/OAuthCheckLoginStatus"
+	CoreCLIHelper_SendCommandOutput_FullMethodName            = "/proto.CoreCLIHelper/SendCommandOutput"
+	CoreCLIHelper_Prompt_FullMethodName                       = "/proto.CoreCLIHelper/Prompt"
 )
 
 // CoreCLIHelperClient is the client API for CoreCLIHelper service.
@@ -279,6 +281,18 @@ type CoreCLIHelperClient interface {
 	// the user; call it again later (e.g. on your own poll loop) to keep
 	// checking.
 	OAuthCheckLoginStatus(ctx context.Context, in *OAuthCheckLoginStatusRequest, opts ...grpc.CallOption) (*OAuthCheckLoginStatusResponse, error)
+	// Centralized UI Rendering
+	//
+	// Every kind of output is an OutputBlock, so this one RPC carries incremental
+	// chatter and the command's final result alike. Callers set final on the last
+	// request; see SendCommandOutputRequest.
+	//
+	// Plugins detect support from this RPC alone: an older core CLI returns gRPC
+	// Unimplemented, which is the only transport signal that a plugin may treat
+	// as "render locally instead". Keeping the surface at one method keeps that
+	// signal to a single capability probe.
+	SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error)
+	Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -440,6 +454,26 @@ func (c *coreCLIHelperClient) OAuthCheckLoginStatus(ctx context.Context, in *OAu
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) SendCommandOutput(ctx context.Context, in *SendCommandOutputRequest, opts ...grpc.CallOption) (*SendCommandOutputResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendCommandOutputResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_SendCommandOutput_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) Prompt(ctx context.Context, in *PromptRequest, opts ...grpc.CallOption) (*PromptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PromptResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_Prompt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
@@ -497,6 +531,18 @@ type CoreCLIHelperServer interface {
 	// the user; call it again later (e.g. on your own poll loop) to keep
 	// checking.
 	OAuthCheckLoginStatus(context.Context, *OAuthCheckLoginStatusRequest) (*OAuthCheckLoginStatusResponse, error)
+	// Centralized UI Rendering
+	//
+	// Every kind of output is an OutputBlock, so this one RPC carries incremental
+	// chatter and the command's final result alike. Callers set final on the last
+	// request; see SendCommandOutputRequest.
+	//
+	// Plugins detect support from this RPC alone: an older core CLI returns gRPC
+	// Unimplemented, which is the only transport signal that a plugin may treat
+	// as "render locally instead". Keeping the surface at one method keeps that
+	// signal to a single capability probe.
+	SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error)
+	Prompt(context.Context, *PromptRequest) (*PromptResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -551,6 +597,12 @@ func (UnimplementedCoreCLIHelperServer) OAuthFindPendingLogin(context.Context, *
 }
 func (UnimplementedCoreCLIHelperServer) OAuthCheckLoginStatus(context.Context, *OAuthCheckLoginStatusRequest) (*OAuthCheckLoginStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method OAuthCheckLoginStatus not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) SendCommandOutput(context.Context, *SendCommandOutputRequest) (*SendCommandOutputResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendCommandOutput not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) Prompt(context.Context, *PromptRequest) (*PromptResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Prompt not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -843,6 +895,42 @@ func _CoreCLIHelper_OAuthCheckLoginStatus_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_SendCommandOutput_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCommandOutputRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).SendCommandOutput(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_SendCommandOutput_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).SendCommandOutput(ctx, req.(*SendCommandOutputRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_Prompt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).Prompt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_Prompt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).Prompt(ctx, req.(*PromptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -909,6 +997,14 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OAuthCheckLoginStatus",
 			Handler:    _CoreCLIHelper_OAuthCheckLoginStatus_Handler,
+		},
+		{
+			MethodName: "SendCommandOutput",
+			Handler:    _CoreCLIHelper_SendCommandOutput_Handler,
+		},
+		{
+			MethodName: "Prompt",
+			Handler:    _CoreCLIHelper_Prompt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
