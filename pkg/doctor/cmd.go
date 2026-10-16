@@ -115,32 +115,30 @@ func newDoctorCmd(cfg *config.Config) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "doctor [topic] [dir]",
 		Short: "Diagnose a migration: code findings checked against your live account (read-only)",
-		Long: `Scans the directory for the topic's findings and judges each against live
-account facts (API versions in recent traffic, Dashboard configuration).
-Without credentials it degrades to scan-only. --live additionally proves
-runtime behavior (webhook round-trip via stripe listen/trigger).`,
+		Long: `Fetches the migration rule live, scans the directory for its findings, and
+judges each against live account facts (API versions in recent traffic,
+Dashboard configuration). --offline skips the account-facts judgment only
+— the rule fetch itself always requires network access. --live additionally
+proves runtime behavior (webhook round-trip via stripe listen/trigger).`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			topic, dir, err := topicAndDir(args)
 			if err != nil {
 				fail(err)
 			}
-			rule := catalog.Packs[topic].Rule
-			// dpm is the only topic with a live rule source today; this is
+			// dpm has no local rule copy — it only exists via a live fetch
+			// from the doctor_rules API (--offline skips account facts, not
+			// this: there's nothing to scan with otherwise). This is
 			// deliberately special-cased rather than a generic per-pack
-			// hook until a second one shows up.
-			if topic == "dpm" && !offline {
-				err := withSpinnerUnlessJSON("Fetching migration rules (read-only)", func() error {
-					liveRule, derr := judge.FetchDPMRule(cfg, flagStripeAccount)
-					if derr != nil {
-						return derr
-					}
-					rule = liveRule
-					return nil
-				})
-				if err != nil {
-					fmt.Fprintln(os.Stderr, warnLine(fmt.Sprintf("live catalog fetch failed (%s) — using embedded dpm.json", err.Error())))
-				}
+			// hook until a second topic needs its own live source.
+			var rule catalog.Rule
+			err = withSpinnerUnlessJSON("Fetching migration rules (read-only)", func() error {
+				var derr error
+				rule, derr = judge.FetchDPMRule(cfg, flagStripeAccount)
+				return derr
+			})
+			if err != nil {
+				fail(err)
 			}
 
 			findings, scanned, parsed, err := scan.Scan(dir, rule)
@@ -203,7 +201,7 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 		},
 	}
 	c.Flags().BoolVar(&live, "live", false, "also run behavioral checks (spawns stripe listen/trigger)")
-	c.Flags().BoolVar(&offline, "offline", false, "skip account facts and the live rule fetch; scan-only with the embedded rule")
+	c.Flags().BoolVar(&offline, "offline", false, "skip account facts; scan-only (the migration rule itself is still fetched live)")
 	return c
 }
 

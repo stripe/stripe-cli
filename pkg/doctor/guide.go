@@ -95,10 +95,11 @@ Adds .live_drill (webhook round-trip via stripe listen/trigger); require
 
 ## Notes
 - All account access, and the dpm rule itself (fetched live from the
-  not-yet-public doctor_rules API), are read-only GETs with the CLI's
-  stored credentials, in whichever mode (test or live) the active context
-  is actually logged into — no --live flag needed. .account.livemode says
-  which. --offline skips both and uses the embedded rule. Nothing is ever
+  not-yet-public doctor_rules API — there is no local copy), are read-only
+  GETs with the CLI's stored credentials, in whichever mode (test or live)
+  the active context is actually logged into — no --live flag needed.
+  .account.livemode says which. --offline skips the account-facts GETs
+  only; the rule fetch always requires network access. Nothing is ever
   written to the Stripe account.
 `
 

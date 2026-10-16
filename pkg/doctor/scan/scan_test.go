@@ -10,6 +10,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
 )
 
+// testRule exercises the engine against the same param/operations shape as
+// the real dpm rule (payment_method_types on payment_intents/setup_intents/
+// checkout_sessions) without depending on catalog's live-fetched data —
+// scan's own tests must stay hermetic (dpm has no local rule copy anymore;
+// see judge.FetchDPMRule).
+var testRule = catalog.Rule{
+	ID: "dpm",
+	Match: []catalog.ParamMatch{
+		{Param: "payment_method_types", Operations: []string{"POST /v1/payment_intents"}},
+		{Param: "payment_method_types", Operations: []string{"POST /v1/setup_intents"}},
+		{Param: "payment_method_types", Operations: []string{"POST /v1/checkout/sessions"}},
+	},
+}
+
 // want is the exact expected finding set: file:line:col. Anything extra is a
 // false positive; anything missing is a false negative. The fixtures live in
 // ../testdata, shared with the top-level package's signals-integration test.
@@ -30,7 +44,7 @@ var want = []string{
 }
 
 func TestScanExactFindings(t *testing.T) {
-	findings, scanned, parsed, err := Scan("../testdata", catalog.DpmRule)
+	findings, scanned, parsed, err := Scan("../testdata", testRule)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +84,7 @@ func TestScanExactFindings(t *testing.T) {
 // TestNegativesRejected names the adversarial cases explicitly so a regression
 // that starts matching them is obvious from the test name alone.
 func TestNegativesRejected(t *testing.T) {
-	findings, _, _, err := Scan("../testdata", catalog.DpmRule)
+	findings, _, _, err := Scan("../testdata", testRule)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +107,7 @@ func TestNegativesRejected(t *testing.T) {
 // TestResolutionMechanisms asserts each indirection path stays exercised, so a
 // regression in one cannot hide behind the others still passing.
 func TestResolutionMechanisms(t *testing.T) {
-	findings, _, _, err := Scan("../testdata", catalog.DpmRule)
+	findings, _, _, err := Scan("../testdata", testRule)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +129,7 @@ func TestResolutionMechanisms(t *testing.T) {
 
 // TestPrefilterSkipsCleanFiles guards the property that makes large repos fast.
 func TestPrefilterSkipsCleanFiles(t *testing.T) {
-	_, scanned, parsed, _ := Scan("../testdata", catalog.DpmRule)
+	_, scanned, parsed, _ := Scan("../testdata", testRule)
 	if parsed >= scanned {
 		t.Errorf("prefilter skipped nothing: scanned=%d parsed=%d", scanned, parsed)
 	}
@@ -142,7 +156,7 @@ func BenchmarkScanSyntheticRepo(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		findings, scanned, parsed, _ := Scan(dir, catalog.DpmRule)
+		findings, scanned, parsed, _ := Scan(dir, testRule)
 		if len(findings) != dirty {
 			b.Fatalf("got %d findings, want %d (scanned=%d parsed=%d)",
 				len(findings), dirty, scanned, parsed)

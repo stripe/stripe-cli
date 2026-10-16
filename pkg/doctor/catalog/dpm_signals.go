@@ -2,10 +2,9 @@ package catalog
 
 // DpmSignals is a stopgap: the live doctor_rules API (see apirule.go,
 // judge.FetchDPMRule) doesn't return a "signals" block yet, so this stays
-// hardcoded here and is patched onto the Rule regardless of whether it
-// came from the live fetch or the embedded dpm.json fallback. Remove this
-// file once the API grows real signals support, and read WebhookEvents
-// from the response instead.
+// hardcoded here and is patched onto the fetched Rule. Remove this file
+// once the API grows real signals support, and read WebhookEvents from
+// the response instead.
 var DpmSignals = PackSignals{
 	WebhookEvents: []WebhookEvent{
 		{Event: "checkout.session.completed", Note: "fires when checkout finishes — for a delayed method (OXXO, bank transfer, ...) that means the customer committed to pay, not that payment is confirmed yet"},

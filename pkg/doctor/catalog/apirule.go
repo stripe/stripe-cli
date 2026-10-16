@@ -2,9 +2,9 @@ package catalog
 
 // apirule.go parses one rule object as returned by the live doctor_rules
 // API (GET /v2/integ_hlth/doctor_rules or .../doctor_rules/{topic}) into
-// the engine's Rule. This is the real shape; see dpm.json (a snapshot of
-// it, used as the offline/fallback source) and the judge package (which
-// fetches it live).
+// the engine's Rule. There is no local copy of the rule itself — see the
+// judge package (judge.FetchDPMRule), which fetches it live and is the
+// only caller of ParseAPIRule.
 //
 // "logic" is shaped like a request matcher (method/path/headers/body
 // params) because that is how the API describes a migration generically,
@@ -99,8 +99,8 @@ type apiParamNode struct {
 	Matcher     *apiMatcher `json:"matcher"`
 }
 
-// ParseAPIRule converts one rule object from the live doctor_rules API (or
-// a snapshot of one, e.g. the embedded dpm.json) into a Rule.
+// ParseAPIRule converts one rule object from the live doctor_rules API
+// into a Rule.
 func ParseAPIRule(raw []byte) (Rule, error) {
 	var e apiRule
 	if err := json.Unmarshal(raw, &e); err != nil {

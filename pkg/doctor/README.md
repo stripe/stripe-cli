@@ -23,13 +23,13 @@ on all of them; none of them depend on it or on each other except where
 listed.
 
 1. **`catalog`** — pure data: `Rule`/`ParamMatch`/`Finding`, the `Packs`
-   topic registry (today: just `dpm`), and `ParseAPIRule`, which parses one
-   rule in the shape the live doctor_rules API serves it in. `DpmRule` is
-   parsed from an embedded snapshot (`catalog/dpm.json`) at startup — the
-   offline/fallback source; `judge.FetchDPMRule` fetches the live version.
-   `DpmSignals` (`dpm_signals.go`) is hardcoded Go, patched onto whichever
-   Rule wins, since the API has no signals field yet. Depends on nothing
-   else in this module.
+   topic registry (today: just `dpm`, with no local `Rule` — see below),
+   and `ParseAPIRule`, which parses one rule in the shape the live
+   doctor_rules API serves it in. There is no embedded/offline copy of the
+   dpm rule: `judge.FetchDPMRule` fetches it live and is the only caller of
+   `ParseAPIRule`. `DpmSignals` (`dpm_signals.go`) is hardcoded Go, patched
+   onto the fetched Rule, since the API has no signals field yet. Depends
+   on nothing else in this module.
 2. **`scan`** — the AST-based matching engine: cgo-free tree-sitter over 7
    languages (Ruby, Python, PHP, JS/TS, Go, Java, C#). Resolution follows
    variables, typed builders, and target-typed declarations to the Stripe
@@ -62,8 +62,10 @@ calling `judge.ScanOnly` instead of `judge.Judge`.
   falling back to an API key. Calls run in whichever mode (test or live)
   the active context is actually logged into — no `--live` flag needed;
   `judge.AccountSummary.Livemode` (JSON: `account.livemode`) says which.
-  `--offline` skips both and uses the embedded rule. `--stripe-account`
-  scopes Connect direct-charge diagnosis to the connected account.
+  `--offline` skips the account-facts GETs only — the rule fetch has no
+  local fallback, so it always requires network access, with or without
+  `--offline`. `--stripe-account` scopes Connect direct-charge diagnosis
+  to the connected account.
 - The doctor_rules endpoints aren't publicly shipped yet, so
   `judge.FetchDPMRule` pins `Stripe-Version: 2026-10-12-16.internal` on
   that call only — remove once the API is GA.
