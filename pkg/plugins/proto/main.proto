@@ -121,6 +121,19 @@ service CoreCLIHelper {
   // the user; call it again later (e.g. on your own poll loop) to keep
   // checking.
   rpc OAuthCheckLoginStatus(OAuthCheckLoginStatusRequest) returns (OAuthCheckLoginStatusResponse);
+
+  // Centralized UI Rendering
+  //
+  // Every kind of output is an OutputBlock, so this one RPC carries incremental
+  // chatter and the command's final result alike. Callers set final on the last
+  // request; see SendCommandOutputRequest.
+  //
+  // Plugins detect support from this RPC alone: an older core CLI returns gRPC
+  // Unimplemented, which is the only transport signal that a plugin may treat
+  // as "render locally instead". Keeping the surface at one method keeps that
+  // signal to a single capability probe.
+  rpc SendCommandOutput(SendCommandOutputRequest) returns (SendCommandOutputResponse);
+  rpc Prompt(PromptRequest) returns (PromptResponse);
 }
 
 message EchoRequest {
@@ -280,4 +293,84 @@ message OAuthCheckLoginStatusResponse {
   // that case the other fields are empty and callers should call
   // OAuthCheckLoginStatus again later to keep checking.
   bool logged_in = 4;
+}
+
+// --- Centralized UI Rendering messages ---
+
+enum MessageLevel {
+  INFO = 0;
+  SUCCESS = 1;
+  WARNING = 2;
+  ERROR = 3;
+}
+
+enum ProgressType {
+  PROGRESS_INFO = 0;
+  STEP = 1;
+  SPINNER_START = 2;
+  SPINNER_UPDATE = 3;
+  SPINNER_STOP = 4;
+}
+
+enum PromptType {
+  TEXT = 0;
+  CONFIRM = 1;
+  SELECT = 2;
+}
+
+// OutputBlock is a single unit of plugin output. All output types are
+// expressed as blocks, and the rendering engine dispatches on the variant.
+//
+// A variant this core does not know decodes to an empty block rather than an
+// error, so the renderer reports unknown blocks instead of dropping them
+// silently. Prefer a new DataBlock type over a new variant: type is a string,
+// so it needs no protocol change at all.
+message OutputBlock {
+  oneof block {
+    MessageBlock message = 1;
+    DataBlock data = 2;
+    ProgressBlock progress = 3;
+  }
+}
+
+message MessageBlock {
+  string message = 1;
+  MessageLevel level = 2;
+}
+
+message DataBlock {
+  string type = 1;               // "data", "warning", "nextstep", "error"
+  string payload = 2;            // JSON-encoded payload (shape varies per type)
+}
+
+message ProgressBlock {
+  string id = 1;                 // caller-generated, supports concurrent spinners
+  string message = 2;
+  ProgressType type = 3;
+  bool success = 4;              // relevant on SPINNER_STOP only
+}
+
+message SendCommandOutputRequest {
+  string command = 1;
+  repeated OutputBlock blocks = 2;
+
+  // final marks the request that ends the command's output. The renderer uses
+  // it to tear down spinners before printing, and to close the JSON envelope.
+  // It is explicit rather than inferred from the block kinds so that a command
+  // emitting data mid-run is not mistaken for a finished one.
+  bool final = 3;
+}
+
+message SendCommandOutputResponse {
+}
+
+message PromptRequest {
+  string message = 1;
+  PromptType type = 2;
+  repeated string options = 3;   // required for SELECT
+  string default_value = 4;
+}
+
+message PromptResponse {
+  string value = 1;              // "true"/"false" for CONFIRM, selected value for SELECT
 }

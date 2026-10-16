@@ -21,6 +21,162 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type MessageLevel int32
+
+const (
+	MessageLevel_INFO    MessageLevel = 0
+	MessageLevel_SUCCESS MessageLevel = 1
+	MessageLevel_WARNING MessageLevel = 2
+	MessageLevel_ERROR   MessageLevel = 3
+)
+
+// Enum value maps for MessageLevel.
+var (
+	MessageLevel_name = map[int32]string{
+		0: "INFO",
+		1: "SUCCESS",
+		2: "WARNING",
+		3: "ERROR",
+	}
+	MessageLevel_value = map[string]int32{
+		"INFO":    0,
+		"SUCCESS": 1,
+		"WARNING": 2,
+		"ERROR":   3,
+	}
+)
+
+func (x MessageLevel) Enum() *MessageLevel {
+	p := new(MessageLevel)
+	*p = x
+	return p
+}
+
+func (x MessageLevel) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MessageLevel) Descriptor() protoreflect.EnumDescriptor {
+	return file_pkg_plugins_proto_main_proto_enumTypes[0].Descriptor()
+}
+
+func (MessageLevel) Type() protoreflect.EnumType {
+	return &file_pkg_plugins_proto_main_proto_enumTypes[0]
+}
+
+func (x MessageLevel) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MessageLevel.Descriptor instead.
+func (MessageLevel) EnumDescriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{0}
+}
+
+type ProgressType int32
+
+const (
+	ProgressType_PROGRESS_INFO  ProgressType = 0
+	ProgressType_STEP           ProgressType = 1
+	ProgressType_SPINNER_START  ProgressType = 2
+	ProgressType_SPINNER_UPDATE ProgressType = 3
+	ProgressType_SPINNER_STOP   ProgressType = 4
+)
+
+// Enum value maps for ProgressType.
+var (
+	ProgressType_name = map[int32]string{
+		0: "PROGRESS_INFO",
+		1: "STEP",
+		2: "SPINNER_START",
+		3: "SPINNER_UPDATE",
+		4: "SPINNER_STOP",
+	}
+	ProgressType_value = map[string]int32{
+		"PROGRESS_INFO":  0,
+		"STEP":           1,
+		"SPINNER_START":  2,
+		"SPINNER_UPDATE": 3,
+		"SPINNER_STOP":   4,
+	}
+)
+
+func (x ProgressType) Enum() *ProgressType {
+	p := new(ProgressType)
+	*p = x
+	return p
+}
+
+func (x ProgressType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ProgressType) Descriptor() protoreflect.EnumDescriptor {
+	return file_pkg_plugins_proto_main_proto_enumTypes[1].Descriptor()
+}
+
+func (ProgressType) Type() protoreflect.EnumType {
+	return &file_pkg_plugins_proto_main_proto_enumTypes[1]
+}
+
+func (x ProgressType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ProgressType.Descriptor instead.
+func (ProgressType) EnumDescriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{1}
+}
+
+type PromptType int32
+
+const (
+	PromptType_TEXT    PromptType = 0
+	PromptType_CONFIRM PromptType = 1
+	PromptType_SELECT  PromptType = 2
+)
+
+// Enum value maps for PromptType.
+var (
+	PromptType_name = map[int32]string{
+		0: "TEXT",
+		1: "CONFIRM",
+		2: "SELECT",
+	}
+	PromptType_value = map[string]int32{
+		"TEXT":    0,
+		"CONFIRM": 1,
+		"SELECT":  2,
+	}
+)
+
+func (x PromptType) Enum() *PromptType {
+	p := new(PromptType)
+	*p = x
+	return p
+}
+
+func (x PromptType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PromptType) Descriptor() protoreflect.EnumDescriptor {
+	return file_pkg_plugins_proto_main_proto_enumTypes[2].Descriptor()
+}
+
+func (PromptType) Type() protoreflect.EnumType {
+	return &file_pkg_plugins_proto_main_proto_enumTypes[2]
+}
+
+func (x PromptType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PromptType.Descriptor instead.
+func (PromptType) EnumDescriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{2}
+}
+
 type RunCommandRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	AdditionalInfo  *AdditionalInfo        `protobuf:"bytes,1,opt,name=additional_info,json=additionalInfo,proto3" json:"additional_info,omitempty"`
@@ -1958,6 +2114,495 @@ func (x *OAuthCheckLoginStatusResponse) GetLoggedIn() bool {
 	return false
 }
 
+// OutputBlock is a single unit of plugin output. All output types are
+// expressed as blocks, and the rendering engine dispatches on the variant.
+//
+// A variant this core does not know decodes to an empty block rather than an
+// error, so the renderer reports unknown blocks instead of dropping them
+// silently. Prefer a new DataBlock type over a new variant: type is a string,
+// so it needs no protocol change at all.
+type OutputBlock struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Block:
+	//
+	//	*OutputBlock_Message
+	//	*OutputBlock_Data
+	//	*OutputBlock_Progress
+	Block         isOutputBlock_Block `protobuf_oneof:"block"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OutputBlock) Reset() {
+	*x = OutputBlock{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OutputBlock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OutputBlock) ProtoMessage() {}
+
+func (x *OutputBlock) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OutputBlock.ProtoReflect.Descriptor instead.
+func (*OutputBlock) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *OutputBlock) GetBlock() isOutputBlock_Block {
+	if x != nil {
+		return x.Block
+	}
+	return nil
+}
+
+func (x *OutputBlock) GetMessage() *MessageBlock {
+	if x != nil {
+		if x, ok := x.Block.(*OutputBlock_Message); ok {
+			return x.Message
+		}
+	}
+	return nil
+}
+
+func (x *OutputBlock) GetData() *DataBlock {
+	if x != nil {
+		if x, ok := x.Block.(*OutputBlock_Data); ok {
+			return x.Data
+		}
+	}
+	return nil
+}
+
+func (x *OutputBlock) GetProgress() *ProgressBlock {
+	if x != nil {
+		if x, ok := x.Block.(*OutputBlock_Progress); ok {
+			return x.Progress
+		}
+	}
+	return nil
+}
+
+type isOutputBlock_Block interface {
+	isOutputBlock_Block()
+}
+
+type OutputBlock_Message struct {
+	Message *MessageBlock `protobuf:"bytes,1,opt,name=message,proto3,oneof"`
+}
+
+type OutputBlock_Data struct {
+	Data *DataBlock `protobuf:"bytes,2,opt,name=data,proto3,oneof"`
+}
+
+type OutputBlock_Progress struct {
+	Progress *ProgressBlock `protobuf:"bytes,3,opt,name=progress,proto3,oneof"`
+}
+
+func (*OutputBlock_Message) isOutputBlock_Block() {}
+
+func (*OutputBlock_Data) isOutputBlock_Block() {}
+
+func (*OutputBlock_Progress) isOutputBlock_Block() {}
+
+type MessageBlock struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Level         MessageLevel           `protobuf:"varint,2,opt,name=level,proto3,enum=proto.MessageLevel" json:"level,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MessageBlock) Reset() {
+	*x = MessageBlock{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MessageBlock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MessageBlock) ProtoMessage() {}
+
+func (x *MessageBlock) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MessageBlock.ProtoReflect.Descriptor instead.
+func (*MessageBlock) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *MessageBlock) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *MessageBlock) GetLevel() MessageLevel {
+	if x != nil {
+		return x.Level
+	}
+	return MessageLevel_INFO
+}
+
+type DataBlock struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`       // "data", "warning", "nextstep", "error"
+	Payload       string                 `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"` // JSON-encoded payload (shape varies per type)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DataBlock) Reset() {
+	*x = DataBlock{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DataBlock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DataBlock) ProtoMessage() {}
+
+func (x *DataBlock) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DataBlock.ProtoReflect.Descriptor instead.
+func (*DataBlock) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *DataBlock) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *DataBlock) GetPayload() string {
+	if x != nil {
+		return x.Payload
+	}
+	return ""
+}
+
+type ProgressBlock struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // caller-generated, supports concurrent spinners
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Type          ProgressType           `protobuf:"varint,3,opt,name=type,proto3,enum=proto.ProgressType" json:"type,omitempty"`
+	Success       bool                   `protobuf:"varint,4,opt,name=success,proto3" json:"success,omitempty"` // relevant on SPINNER_STOP only
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProgressBlock) Reset() {
+	*x = ProgressBlock{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProgressBlock) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProgressBlock) ProtoMessage() {}
+
+func (x *ProgressBlock) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProgressBlock.ProtoReflect.Descriptor instead.
+func (*ProgressBlock) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *ProgressBlock) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ProgressBlock) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ProgressBlock) GetType() ProgressType {
+	if x != nil {
+		return x.Type
+	}
+	return ProgressType_PROGRESS_INFO
+}
+
+func (x *ProgressBlock) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+type SendCommandOutputRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Command string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	Blocks  []*OutputBlock         `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+	// final marks the request that ends the command's output. The renderer uses
+	// it to tear down spinners before printing, and to close the JSON envelope.
+	// It is explicit rather than inferred from the block kinds so that a command
+	// emitting data mid-run is not mistaken for a finished one.
+	Final         bool `protobuf:"varint,3,opt,name=final,proto3" json:"final,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendCommandOutputRequest) Reset() {
+	*x = SendCommandOutputRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendCommandOutputRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendCommandOutputRequest) ProtoMessage() {}
+
+func (x *SendCommandOutputRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendCommandOutputRequest.ProtoReflect.Descriptor instead.
+func (*SendCommandOutputRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *SendCommandOutputRequest) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *SendCommandOutputRequest) GetBlocks() []*OutputBlock {
+	if x != nil {
+		return x.Blocks
+	}
+	return nil
+}
+
+func (x *SendCommandOutputRequest) GetFinal() bool {
+	if x != nil {
+		return x.Final
+	}
+	return false
+}
+
+type SendCommandOutputResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendCommandOutputResponse) Reset() {
+	*x = SendCommandOutputResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendCommandOutputResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendCommandOutputResponse) ProtoMessage() {}
+
+func (x *SendCommandOutputResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendCommandOutputResponse.ProtoReflect.Descriptor instead.
+func (*SendCommandOutputResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{43}
+}
+
+type PromptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Type          PromptType             `protobuf:"varint,2,opt,name=type,proto3,enum=proto.PromptType" json:"type,omitempty"`
+	Options       []string               `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"` // required for SELECT
+	DefaultValue  string                 `protobuf:"bytes,4,opt,name=default_value,json=defaultValue,proto3" json:"default_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PromptRequest) Reset() {
+	*x = PromptRequest{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PromptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PromptRequest) ProtoMessage() {}
+
+func (x *PromptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PromptRequest.ProtoReflect.Descriptor instead.
+func (*PromptRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *PromptRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *PromptRequest) GetType() PromptType {
+	if x != nil {
+		return x.Type
+	}
+	return PromptType_TEXT
+}
+
+func (x *PromptRequest) GetOptions() []string {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+func (x *PromptRequest) GetDefaultValue() string {
+	if x != nil {
+		return x.DefaultValue
+	}
+	return ""
+}
+
+type PromptResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Value         string                 `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"` // "true"/"false" for CONFIRM, selected value for SELECT
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PromptResponse) Reset() {
+	*x = PromptResponse{}
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PromptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PromptResponse) ProtoMessage() {}
+
+func (x *PromptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_plugins_proto_main_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PromptResponse.ProtoReflect.Descriptor instead.
+func (*PromptResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *PromptResponse) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 var File_pkg_plugins_proto_main_proto protoreflect.FileDescriptor
 
 const file_pkg_plugins_proto_main_proto_rawDesc = "" +
@@ -2081,13 +2726,57 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"account_id\x18\x01 \x01(\tR\taccountId\x12!\n" +
 	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12\x1a\n" +
 	"\blivemode\x18\x03 \x01(\bR\blivemode\x12\x1b\n" +
-	"\tlogged_in\x18\x04 \x01(\bR\bloggedIn2\xd8\x01\n" +
+	"\tlogged_in\x18\x04 \x01(\bR\bloggedIn\"\xa3\x01\n" +
+	"\vOutputBlock\x12/\n" +
+	"\amessage\x18\x01 \x01(\v2\x13.proto.MessageBlockH\x00R\amessage\x12&\n" +
+	"\x04data\x18\x02 \x01(\v2\x10.proto.DataBlockH\x00R\x04data\x122\n" +
+	"\bprogress\x18\x03 \x01(\v2\x14.proto.ProgressBlockH\x00R\bprogressB\a\n" +
+	"\x05block\"S\n" +
+	"\fMessageBlock\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12)\n" +
+	"\x05level\x18\x02 \x01(\x0e2\x13.proto.MessageLevelR\x05level\"9\n" +
+	"\tDataBlock\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
+	"\apayload\x18\x02 \x01(\tR\apayload\"|\n" +
+	"\rProgressBlock\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12'\n" +
+	"\x04type\x18\x03 \x01(\x0e2\x13.proto.ProgressTypeR\x04type\x12\x18\n" +
+	"\asuccess\x18\x04 \x01(\bR\asuccess\"v\n" +
+	"\x18SendCommandOutputRequest\x12\x18\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\x12*\n" +
+	"\x06blocks\x18\x02 \x03(\v2\x12.proto.OutputBlockR\x06blocks\x12\x14\n" +
+	"\x05final\x18\x03 \x01(\bR\x05final\"\x1b\n" +
+	"\x19SendCommandOutputResponse\"\x8f\x01\n" +
+	"\rPromptRequest\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12%\n" +
+	"\x04type\x18\x02 \x01(\x0e2\x11.proto.PromptTypeR\x04type\x12\x18\n" +
+	"\aoptions\x18\x03 \x03(\tR\aoptions\x12#\n" +
+	"\rdefault_value\x18\x04 \x01(\tR\fdefaultValue\"&\n" +
+	"\x0ePromptResponse\x12\x14\n" +
+	"\x05value\x18\x01 \x01(\tR\x05value*=\n" +
+	"\fMessageLevel\x12\b\n" +
+	"\x04INFO\x10\x00\x12\v\n" +
+	"\aSUCCESS\x10\x01\x12\v\n" +
+	"\aWARNING\x10\x02\x12\t\n" +
+	"\x05ERROR\x10\x03*d\n" +
+	"\fProgressType\x12\x11\n" +
+	"\rPROGRESS_INFO\x10\x00\x12\b\n" +
+	"\x04STEP\x10\x01\x12\x11\n" +
+	"\rSPINNER_START\x10\x02\x12\x12\n" +
+	"\x0eSPINNER_UPDATE\x10\x03\x12\x10\n" +
+	"\fSPINNER_STOP\x10\x04*/\n" +
+	"\n" +
+	"PromptType\x12\b\n" +
+	"\x04TEXT\x10\x00\x12\v\n" +
+	"\aCONFIRM\x10\x01\x12\n" +
+	"\n" +
+	"\x06SELECT\x10\x022\xd8\x01\n" +
 	"\x04Main\x12A\n" +
 	"\n" +
 	"RunCommand\x12\x18.proto.RunCommandRequest\x1a\x19.proto.RunCommandResponse\x12D\n" +
 	"\vPostInstall\x12\x19.proto.PostInstallRequest\x1a\x1a.proto.PostInstallResponse\x12G\n" +
-	"\fPreUninstall\x12\x1a.proto.PreUninstallRequest\x1a\x1b.proto.PreUninstallResponse2\xb4\n" +
-	"\n" +
+	"\fPreUninstall\x12\x1a.proto.PreUninstallRequest\x1a\x1b.proto.PreUninstallResponse2\xc3\v\n" +
 	"\rCoreCLIHelper\x12/\n" +
 	"\x04Echo\x12\x12.proto.EchoRequest\x1a\x13.proto.EchoResponse\x12J\n" +
 	"\rSendAnalytics\x12\x1b.proto.SendAnalyticsRequest\x1a\x1c.proto.SendAnalyticsResponse\x12\\\n" +
@@ -2103,7 +2792,9 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\x05Login\x12\x13.proto.LoginRequest\x1a\x14.proto.LoginResponse\x12Y\n" +
 	"\x12OAuthInitiateLogin\x12 .proto.OAuthInitiateLoginRequest\x1a!.proto.OAuthInitiateLoginResponse\x12b\n" +
 	"\x15OAuthFindPendingLogin\x12#.proto.OAuthFindPendingLoginRequest\x1a$.proto.OAuthFindPendingLoginResponse\x12b\n" +
-	"\x15OAuthCheckLoginStatus\x12#.proto.OAuthCheckLoginStatusRequest\x1a$.proto.OAuthCheckLoginStatusResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
+	"\x15OAuthCheckLoginStatus\x12#.proto.OAuthCheckLoginStatusRequest\x1a$.proto.OAuthCheckLoginStatusResponse\x12V\n" +
+	"\x11SendCommandOutput\x12\x1f.proto.SendCommandOutputRequest\x1a .proto.SendCommandOutputResponse\x125\n" +
+	"\x06Prompt\x12\x14.proto.PromptRequest\x1a\x15.proto.PromptResponseB,Z*github.com/stripe/stripe-cli/plugins/protob\x06proto3"
 
 var (
 	file_pkg_plugins_proto_main_proto_rawDescOnce sync.Once
@@ -2117,95 +2808,118 @@ func file_pkg_plugins_proto_main_proto_rawDescGZIP() []byte {
 	return file_pkg_plugins_proto_main_proto_rawDescData
 }
 
-var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_pkg_plugins_proto_main_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_pkg_plugins_proto_main_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_pkg_plugins_proto_main_proto_goTypes = []any{
-	(*RunCommandRequest)(nil),               // 0: proto.RunCommandRequest
-	(*RunCommandResponse)(nil),              // 1: proto.RunCommandResponse
-	(*PostInstallRequest)(nil),              // 2: proto.PostInstallRequest
-	(*PostInstallResponse)(nil),             // 3: proto.PostInstallResponse
-	(*PreUninstallRequest)(nil),             // 4: proto.PreUninstallRequest
-	(*PreUninstallResponse)(nil),            // 5: proto.PreUninstallResponse
-	(*AdditionalInfo)(nil),                  // 6: proto.AdditionalInfo
-	(*IsTerminal)(nil),                      // 7: proto.IsTerminal
-	(*TerminalDimensions)(nil),              // 8: proto.TerminalDimensions
-	(*EchoRequest)(nil),                     // 9: proto.EchoRequest
-	(*EchoResponse)(nil),                    // 10: proto.EchoResponse
-	(*SendAnalyticsRequest)(nil),            // 11: proto.SendAnalyticsRequest
-	(*SendAnalyticsResponse)(nil),           // 12: proto.SendAnalyticsResponse
-	(*KeychainGetPasswordRequest)(nil),      // 13: proto.KeychainGetPasswordRequest
-	(*KeychainGetPasswordResponse)(nil),     // 14: proto.KeychainGetPasswordResponse
-	(*KeychainSetPasswordRequest)(nil),      // 15: proto.KeychainSetPasswordRequest
-	(*KeychainSetPasswordResponse)(nil),     // 16: proto.KeychainSetPasswordResponse
-	(*KeychainDeletePasswordRequest)(nil),   // 17: proto.KeychainDeletePasswordRequest
-	(*KeychainDeletePasswordResponse)(nil),  // 18: proto.KeychainDeletePasswordResponse
-	(*KeychainFindCredentialsRequest)(nil),  // 19: proto.KeychainFindCredentialsRequest
-	(*KeychainFindCredentialsResponse)(nil), // 20: proto.KeychainFindCredentialsResponse
-	(*RunPeerPluginRequest)(nil),            // 21: proto.RunPeerPluginRequest
-	(*RunPeerPluginResponse)(nil),           // 22: proto.RunPeerPluginResponse
-	(*ResolveCredentialsRequest)(nil),       // 23: proto.ResolveCredentialsRequest
-	(*ResolveCredentialsResponse)(nil),      // 24: proto.ResolveCredentialsResponse
-	(*SwitchContextRequest)(nil),            // 25: proto.SwitchContextRequest
-	(*SwitchContextResponse)(nil),           // 26: proto.SwitchContextResponse
-	(*ListAuthorizedAccountsRequest)(nil),   // 27: proto.ListAuthorizedAccountsRequest
-	(*AuthorizedAccount)(nil),               // 28: proto.AuthorizedAccount
-	(*ListAuthorizedAccountsResponse)(nil),  // 29: proto.ListAuthorizedAccountsResponse
-	(*LoginRequest)(nil),                    // 30: proto.LoginRequest
-	(*LoginResponse)(nil),                   // 31: proto.LoginResponse
-	(*OAuthInitiateLoginRequest)(nil),       // 32: proto.OAuthInitiateLoginRequest
-	(*OAuthInitiateLoginResponse)(nil),      // 33: proto.OAuthInitiateLoginResponse
-	(*OAuthFindPendingLoginRequest)(nil),    // 34: proto.OAuthFindPendingLoginRequest
-	(*OAuthFindPendingLoginResponse)(nil),   // 35: proto.OAuthFindPendingLoginResponse
-	(*OAuthCheckLoginStatusRequest)(nil),    // 36: proto.OAuthCheckLoginStatusRequest
-	(*OAuthCheckLoginStatusResponse)(nil),   // 37: proto.OAuthCheckLoginStatusResponse
+	(MessageLevel)(0),                       // 0: proto.MessageLevel
+	(ProgressType)(0),                       // 1: proto.ProgressType
+	(PromptType)(0),                         // 2: proto.PromptType
+	(*RunCommandRequest)(nil),               // 3: proto.RunCommandRequest
+	(*RunCommandResponse)(nil),              // 4: proto.RunCommandResponse
+	(*PostInstallRequest)(nil),              // 5: proto.PostInstallRequest
+	(*PostInstallResponse)(nil),             // 6: proto.PostInstallResponse
+	(*PreUninstallRequest)(nil),             // 7: proto.PreUninstallRequest
+	(*PreUninstallResponse)(nil),            // 8: proto.PreUninstallResponse
+	(*AdditionalInfo)(nil),                  // 9: proto.AdditionalInfo
+	(*IsTerminal)(nil),                      // 10: proto.IsTerminal
+	(*TerminalDimensions)(nil),              // 11: proto.TerminalDimensions
+	(*EchoRequest)(nil),                     // 12: proto.EchoRequest
+	(*EchoResponse)(nil),                    // 13: proto.EchoResponse
+	(*SendAnalyticsRequest)(nil),            // 14: proto.SendAnalyticsRequest
+	(*SendAnalyticsResponse)(nil),           // 15: proto.SendAnalyticsResponse
+	(*KeychainGetPasswordRequest)(nil),      // 16: proto.KeychainGetPasswordRequest
+	(*KeychainGetPasswordResponse)(nil),     // 17: proto.KeychainGetPasswordResponse
+	(*KeychainSetPasswordRequest)(nil),      // 18: proto.KeychainSetPasswordRequest
+	(*KeychainSetPasswordResponse)(nil),     // 19: proto.KeychainSetPasswordResponse
+	(*KeychainDeletePasswordRequest)(nil),   // 20: proto.KeychainDeletePasswordRequest
+	(*KeychainDeletePasswordResponse)(nil),  // 21: proto.KeychainDeletePasswordResponse
+	(*KeychainFindCredentialsRequest)(nil),  // 22: proto.KeychainFindCredentialsRequest
+	(*KeychainFindCredentialsResponse)(nil), // 23: proto.KeychainFindCredentialsResponse
+	(*RunPeerPluginRequest)(nil),            // 24: proto.RunPeerPluginRequest
+	(*RunPeerPluginResponse)(nil),           // 25: proto.RunPeerPluginResponse
+	(*ResolveCredentialsRequest)(nil),       // 26: proto.ResolveCredentialsRequest
+	(*ResolveCredentialsResponse)(nil),      // 27: proto.ResolveCredentialsResponse
+	(*SwitchContextRequest)(nil),            // 28: proto.SwitchContextRequest
+	(*SwitchContextResponse)(nil),           // 29: proto.SwitchContextResponse
+	(*ListAuthorizedAccountsRequest)(nil),   // 30: proto.ListAuthorizedAccountsRequest
+	(*AuthorizedAccount)(nil),               // 31: proto.AuthorizedAccount
+	(*ListAuthorizedAccountsResponse)(nil),  // 32: proto.ListAuthorizedAccountsResponse
+	(*LoginRequest)(nil),                    // 33: proto.LoginRequest
+	(*LoginResponse)(nil),                   // 34: proto.LoginResponse
+	(*OAuthInitiateLoginRequest)(nil),       // 35: proto.OAuthInitiateLoginRequest
+	(*OAuthInitiateLoginResponse)(nil),      // 36: proto.OAuthInitiateLoginResponse
+	(*OAuthFindPendingLoginRequest)(nil),    // 37: proto.OAuthFindPendingLoginRequest
+	(*OAuthFindPendingLoginResponse)(nil),   // 38: proto.OAuthFindPendingLoginResponse
+	(*OAuthCheckLoginStatusRequest)(nil),    // 39: proto.OAuthCheckLoginStatusRequest
+	(*OAuthCheckLoginStatusResponse)(nil),   // 40: proto.OAuthCheckLoginStatusResponse
+	(*OutputBlock)(nil),                     // 41: proto.OutputBlock
+	(*MessageBlock)(nil),                    // 42: proto.MessageBlock
+	(*DataBlock)(nil),                       // 43: proto.DataBlock
+	(*ProgressBlock)(nil),                   // 44: proto.ProgressBlock
+	(*SendCommandOutputRequest)(nil),        // 45: proto.SendCommandOutputRequest
+	(*SendCommandOutputResponse)(nil),       // 46: proto.SendCommandOutputResponse
+	(*PromptRequest)(nil),                   // 47: proto.PromptRequest
+	(*PromptResponse)(nil),                  // 48: proto.PromptResponse
 }
 var file_pkg_plugins_proto_main_proto_depIdxs = []int32{
-	6,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
-	6,  // 1: proto.PostInstallRequest.additional_info:type_name -> proto.AdditionalInfo
-	6,  // 2: proto.PreUninstallRequest.additional_info:type_name -> proto.AdditionalInfo
-	7,  // 3: proto.AdditionalInfo.is_terminal:type_name -> proto.IsTerminal
-	8,  // 4: proto.AdditionalInfo.terminal_dimensions:type_name -> proto.TerminalDimensions
-	28, // 5: proto.ListAuthorizedAccountsResponse.accounts:type_name -> proto.AuthorizedAccount
-	0,  // 6: proto.Main.RunCommand:input_type -> proto.RunCommandRequest
-	2,  // 7: proto.Main.PostInstall:input_type -> proto.PostInstallRequest
-	4,  // 8: proto.Main.PreUninstall:input_type -> proto.PreUninstallRequest
-	9,  // 9: proto.CoreCLIHelper.Echo:input_type -> proto.EchoRequest
-	11, // 10: proto.CoreCLIHelper.SendAnalytics:input_type -> proto.SendAnalyticsRequest
-	13, // 11: proto.CoreCLIHelper.KeychainGetPassword:input_type -> proto.KeychainGetPasswordRequest
-	15, // 12: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
-	17, // 13: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
-	19, // 14: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
-	21, // 15: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
-	23, // 16: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
-	23, // 17: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
-	25, // 18: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
-	27, // 19: proto.CoreCLIHelper.ListAuthorizedAccounts:input_type -> proto.ListAuthorizedAccountsRequest
-	30, // 20: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
-	32, // 21: proto.CoreCLIHelper.OAuthInitiateLogin:input_type -> proto.OAuthInitiateLoginRequest
-	34, // 22: proto.CoreCLIHelper.OAuthFindPendingLogin:input_type -> proto.OAuthFindPendingLoginRequest
-	36, // 23: proto.CoreCLIHelper.OAuthCheckLoginStatus:input_type -> proto.OAuthCheckLoginStatusRequest
-	1,  // 24: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
-	3,  // 25: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
-	5,  // 26: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
-	10, // 27: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
-	12, // 28: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
-	14, // 29: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
-	16, // 30: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
-	18, // 31: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
-	20, // 32: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
-	22, // 33: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
-	24, // 34: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
-	24, // 35: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
-	26, // 36: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
-	29, // 37: proto.CoreCLIHelper.ListAuthorizedAccounts:output_type -> proto.ListAuthorizedAccountsResponse
-	31, // 38: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
-	33, // 39: proto.CoreCLIHelper.OAuthInitiateLogin:output_type -> proto.OAuthInitiateLoginResponse
-	35, // 40: proto.CoreCLIHelper.OAuthFindPendingLogin:output_type -> proto.OAuthFindPendingLoginResponse
-	37, // 41: proto.CoreCLIHelper.OAuthCheckLoginStatus:output_type -> proto.OAuthCheckLoginStatusResponse
-	24, // [24:42] is the sub-list for method output_type
-	6,  // [6:24] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	9,  // 0: proto.RunCommandRequest.additional_info:type_name -> proto.AdditionalInfo
+	9,  // 1: proto.PostInstallRequest.additional_info:type_name -> proto.AdditionalInfo
+	9,  // 2: proto.PreUninstallRequest.additional_info:type_name -> proto.AdditionalInfo
+	10, // 3: proto.AdditionalInfo.is_terminal:type_name -> proto.IsTerminal
+	11, // 4: proto.AdditionalInfo.terminal_dimensions:type_name -> proto.TerminalDimensions
+	31, // 5: proto.ListAuthorizedAccountsResponse.accounts:type_name -> proto.AuthorizedAccount
+	42, // 6: proto.OutputBlock.message:type_name -> proto.MessageBlock
+	43, // 7: proto.OutputBlock.data:type_name -> proto.DataBlock
+	44, // 8: proto.OutputBlock.progress:type_name -> proto.ProgressBlock
+	0,  // 9: proto.MessageBlock.level:type_name -> proto.MessageLevel
+	1,  // 10: proto.ProgressBlock.type:type_name -> proto.ProgressType
+	41, // 11: proto.SendCommandOutputRequest.blocks:type_name -> proto.OutputBlock
+	2,  // 12: proto.PromptRequest.type:type_name -> proto.PromptType
+	3,  // 13: proto.Main.RunCommand:input_type -> proto.RunCommandRequest
+	5,  // 14: proto.Main.PostInstall:input_type -> proto.PostInstallRequest
+	7,  // 15: proto.Main.PreUninstall:input_type -> proto.PreUninstallRequest
+	12, // 16: proto.CoreCLIHelper.Echo:input_type -> proto.EchoRequest
+	14, // 17: proto.CoreCLIHelper.SendAnalytics:input_type -> proto.SendAnalyticsRequest
+	16, // 18: proto.CoreCLIHelper.KeychainGetPassword:input_type -> proto.KeychainGetPasswordRequest
+	18, // 19: proto.CoreCLIHelper.KeychainSetPassword:input_type -> proto.KeychainSetPasswordRequest
+	20, // 20: proto.CoreCLIHelper.KeychainDeletePassword:input_type -> proto.KeychainDeletePasswordRequest
+	22, // 21: proto.CoreCLIHelper.KeychainFindCredentials:input_type -> proto.KeychainFindCredentialsRequest
+	24, // 22: proto.CoreCLIHelper.RunPeerPlugin:input_type -> proto.RunPeerPluginRequest
+	26, // 23: proto.CoreCLIHelper.ResolveCredentials:input_type -> proto.ResolveCredentialsRequest
+	26, // 24: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:input_type -> proto.ResolveCredentialsRequest
+	28, // 25: proto.CoreCLIHelper.SwitchContext:input_type -> proto.SwitchContextRequest
+	30, // 26: proto.CoreCLIHelper.ListAuthorizedAccounts:input_type -> proto.ListAuthorizedAccountsRequest
+	33, // 27: proto.CoreCLIHelper.Login:input_type -> proto.LoginRequest
+	35, // 28: proto.CoreCLIHelper.OAuthInitiateLogin:input_type -> proto.OAuthInitiateLoginRequest
+	37, // 29: proto.CoreCLIHelper.OAuthFindPendingLogin:input_type -> proto.OAuthFindPendingLoginRequest
+	39, // 30: proto.CoreCLIHelper.OAuthCheckLoginStatus:input_type -> proto.OAuthCheckLoginStatusRequest
+	45, // 31: proto.CoreCLIHelper.SendCommandOutput:input_type -> proto.SendCommandOutputRequest
+	47, // 32: proto.CoreCLIHelper.Prompt:input_type -> proto.PromptRequest
+	4,  // 33: proto.Main.RunCommand:output_type -> proto.RunCommandResponse
+	6,  // 34: proto.Main.PostInstall:output_type -> proto.PostInstallResponse
+	8,  // 35: proto.Main.PreUninstall:output_type -> proto.PreUninstallResponse
+	13, // 36: proto.CoreCLIHelper.Echo:output_type -> proto.EchoResponse
+	15, // 37: proto.CoreCLIHelper.SendAnalytics:output_type -> proto.SendAnalyticsResponse
+	17, // 38: proto.CoreCLIHelper.KeychainGetPassword:output_type -> proto.KeychainGetPasswordResponse
+	19, // 39: proto.CoreCLIHelper.KeychainSetPassword:output_type -> proto.KeychainSetPasswordResponse
+	21, // 40: proto.CoreCLIHelper.KeychainDeletePassword:output_type -> proto.KeychainDeletePasswordResponse
+	23, // 41: proto.CoreCLIHelper.KeychainFindCredentials:output_type -> proto.KeychainFindCredentialsResponse
+	25, // 42: proto.CoreCLIHelper.RunPeerPlugin:output_type -> proto.RunPeerPluginResponse
+	27, // 43: proto.CoreCLIHelper.ResolveCredentials:output_type -> proto.ResolveCredentialsResponse
+	27, // 44: proto.CoreCLIHelper.ResolveCredentialsForAnyMode:output_type -> proto.ResolveCredentialsResponse
+	29, // 45: proto.CoreCLIHelper.SwitchContext:output_type -> proto.SwitchContextResponse
+	32, // 46: proto.CoreCLIHelper.ListAuthorizedAccounts:output_type -> proto.ListAuthorizedAccountsResponse
+	34, // 47: proto.CoreCLIHelper.Login:output_type -> proto.LoginResponse
+	36, // 48: proto.CoreCLIHelper.OAuthInitiateLogin:output_type -> proto.OAuthInitiateLoginResponse
+	38, // 49: proto.CoreCLIHelper.OAuthFindPendingLogin:output_type -> proto.OAuthFindPendingLoginResponse
+	40, // 50: proto.CoreCLIHelper.OAuthCheckLoginStatus:output_type -> proto.OAuthCheckLoginStatusResponse
+	46, // 51: proto.CoreCLIHelper.SendCommandOutput:output_type -> proto.SendCommandOutputResponse
+	48, // 52: proto.CoreCLIHelper.Prompt:output_type -> proto.PromptResponse
+	33, // [33:53] is the sub-list for method output_type
+	13, // [13:33] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_pkg_plugins_proto_main_proto_init() }
@@ -2213,18 +2927,24 @@ func file_pkg_plugins_proto_main_proto_init() {
 	if File_pkg_plugins_proto_main_proto != nil {
 		return
 	}
+	file_pkg_plugins_proto_main_proto_msgTypes[38].OneofWrappers = []any{
+		(*OutputBlock_Message)(nil),
+		(*OutputBlock_Data)(nil),
+		(*OutputBlock_Progress)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_plugins_proto_main_proto_rawDesc), len(file_pkg_plugins_proto_main_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   38,
+			NumEnums:      3,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
 		GoTypes:           file_pkg_plugins_proto_main_proto_goTypes,
 		DependencyIndexes: file_pkg_plugins_proto_main_proto_depIdxs,
+		EnumInfos:         file_pkg_plugins_proto_main_proto_enumTypes,
 		MessageInfos:      file_pkg_plugins_proto_main_proto_msgTypes,
 	}.Build()
 	File_pkg_plugins_proto_main_proto = out.File

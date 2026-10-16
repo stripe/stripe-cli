@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	"google.golang.org/grpc"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -18,6 +20,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
+	"github.com/stripe/stripe-cli/pkg/plugins/rendering"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -75,10 +78,32 @@ type CoreCLIHelper interface {
 	// the device code expired or the user denied authorization, in which case a new
 	// OAuthInitiateLogin call is required to try again.
 	OAuthCheckLoginStatus() (accountID string, accountName string, livemode bool, loggedIn bool, err error)
+
+	// Centralized UI Rendering
+	//
+	// SendCommandOutput carries every kind of output as an OutputBlock, so it may
+	// be called repeatedly during a command. The call with Final set is the last.
+	SendCommandOutput(req *proto.SendCommandOutputRequest) error
+	Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error)
 }
 
 type CoreCLIHelperClient struct {
 	client proto.CoreCLIHelperClient
+	// outputCallOpts apply to the centralized-output RPCs, whose payloads can
+	// exceed gRPC's default per-message limit.
+	outputCallOpts []grpc.CallOption
+}
+
+// NewCoreCLIHelperClient wraps a generated gRPC client for use by a plugin,
+// raising the message-size limit on the output RPCs.
+func NewCoreCLIHelperClient(client proto.CoreCLIHelperClient) *CoreCLIHelperClient {
+	return &CoreCLIHelperClient{
+		client: client,
+		outputCallOpts: []grpc.CallOption{
+			grpc.MaxCallSendMsgSize(maxHelperMessageSize),
+			grpc.MaxCallRecvMsgSize(maxHelperMessageSize),
+		},
+	}
 }
 
 func (c *CoreCLIHelperClient) Echo(input string) (string, error) {
@@ -204,6 +229,19 @@ func (c *CoreCLIHelperClient) OAuthCheckLoginStatus() (string, string, bool, boo
 		return "", "", false, false, err
 	}
 	return resp.AccountId, resp.AccountName, resp.Livemode, resp.LoggedIn, nil
+}
+
+func (c *CoreCLIHelperClient) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
+	_, err := c.client.SendCommandOutput(context.Background(), req, c.outputCallOpts...)
+	return err
+}
+
+func (c *CoreCLIHelperClient) Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error) {
+	resp, err := c.client.Prompt(context.Background(), req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 type CoreCLIHelperServer struct {
@@ -335,6 +373,18 @@ func (s *CoreCLIHelperServer) OAuthCheckLoginStatus(ctx context.Context, req *pr
 	return &proto.OAuthCheckLoginStatusResponse{AccountId: accountID, AccountName: accountName, Livemode: livemode, LoggedIn: loggedIn}, nil
 }
 
+func (s *CoreCLIHelperServer) SendCommandOutput(ctx context.Context, req *proto.SendCommandOutputRequest) (*proto.SendCommandOutputResponse, error) {
+	err := s.Impl.SendCommandOutput(req)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.SendCommandOutputResponse{}, nil
+}
+
+func (s *CoreCLIHelperServer) Prompt(ctx context.Context, req *proto.PromptRequest) (*proto.PromptResponse, error) {
+	return s.Impl.Prompt(req)
+}
+
 // coreCLIHelper is the real implementation of the CoreCLIHelper interface.
 type coreCLIHelper struct {
 	ctx    context.Context
@@ -356,6 +406,9 @@ type coreCLIHelper struct {
 	callerPluginName string
 	// Snapshot for this caller; later installs must not change its requirements.
 	minPluginVersions map[string]string
+
+	// renderingEngine renders output plugins send through SendCommandOutput.
+	renderingEngine *rendering.Engine
 }
 
 var _ CoreCLIHelper = &coreCLIHelper{}
@@ -480,7 +533,17 @@ func NewCoreCLIHelperForPlugin(ctx context.Context, cfg config.IConfig, fs afero
 		accessBaseURL:     accessBaseURL,
 		callerPluginName:  callerPluginName,
 		minPluginVersions: minimums,
+		renderingEngine:   rendering.NewEngine(rendering.FormatText),
 	}
+}
+
+// NewCoreCLIHelperWithWriters creates a CoreCLIHelper that renders plugin output
+// to the given streams in the given format. Plugin output is always written by
+// the host, never forwarded through the plugin's own stdio.
+func NewCoreCLIHelperWithWriters(ctx context.Context, cfg config.IConfig, fs afero.Fs, format rendering.Format, stdout, stderr io.Writer) CoreCLIHelper {
+	h := NewCoreCLIHelper(ctx, cfg, fs, "", "", "").(*coreCLIHelper)
+	h.renderingEngine = rendering.NewEngineWithWriters(format, stdout, stderr)
+	return h
 }
 
 // Echo echoes the input string.
@@ -818,4 +881,13 @@ func (h *coreCLIHelper) OAuthCheckLoginStatus() (string, string, bool, bool, err
 		return "", "", false, false, nil
 	}
 	return result.ActiveAccountID, result.ActiveDisplayName, result.ActiveLivemode, true, nil
+}
+
+func (h *coreCLIHelper) SendCommandOutput(req *proto.SendCommandOutputRequest) error {
+	h.renderingEngine.HandleCommandOutput(req)
+	return nil
+}
+
+func (h *coreCLIHelper) Prompt(req *proto.PromptRequest) (*proto.PromptResponse, error) {
+	return h.renderingEngine.HandlePrompt(req), nil
 }
