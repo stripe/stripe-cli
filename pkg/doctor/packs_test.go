@@ -4,16 +4,20 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/scan"
+	"github.com/stripe/stripe-cli/pkg/doctor/signals"
 )
 
 // TestPacks asserts each authored pack's fixture corpus produces exactly the
 // expected finding count per file — positives fire, negatives stay silent.
 func TestPacks(t *testing.T) {
 	cases := map[string]struct {
-		rule   Rule
+		rule   catalog.Rule
 		expect map[string]int
 	}{
-		"tax-percent": {rule: taxPercentRule, expect: map[string]int{
+		"tax-percent": {rule: catalog.TaxPercentRule, expect: map[string]int{
 			"negative.js":  0,
 			"negative.py":  0,
 			"negative.rb":  0,
@@ -22,7 +26,7 @@ func TestPacks(t *testing.T) {
 			"positive.py":  1,
 			"positive.rb":  2,
 		}},
-		"collection-method": {rule: collectionMethodRule, expect: map[string]int{
+		"collection-method": {rule: catalog.CollectionMethodRule, expect: map[string]int{
 			"negative.js":  0,
 			"negative.php": 0,
 			"negative.py":  0,
@@ -32,7 +36,7 @@ func TestPacks(t *testing.T) {
 			"positive.py":  2,
 			"positive.rb":  4,
 		}},
-		"prorate": {rule: prorateRule, expect: map[string]int{
+		"prorate": {rule: catalog.ProrateRule, expect: map[string]int{
 			"negative.js":  0,
 			"negative.py":  0,
 			"negative.rb":  0,
@@ -41,7 +45,7 @@ func TestPacks(t *testing.T) {
 			"positive.py":  1,
 			"positive.rb":  2,
 		}},
-		"source-types": {rule: sourceTypesRule, expect: map[string]int{
+		"source-types": {rule: catalog.SourceTypesRule, expect: map[string]int{
 			"negative_comment.py":         0,
 			"negative_source_resource.rb": 0,
 			"negative_unbound_object.js":  0,
@@ -50,23 +54,23 @@ func TestPacks(t *testing.T) {
 			"positive_create.rb":          1,
 			"positive_update.js":          1,
 		}},
-		"ewcs": {rule: ewcsRule, expect: map[string]int{
+		"ewcs": {rule: catalog.EwcsRule, expect: map[string]int{
 			"server.js":        1,
 			"subscribe.rb":     1,
 			"checkout_form.js": 0,
 			"webhook.rb":       0,
 			"negative.js":      0,
 		}},
-		"pe": {rule: peRule, expect: map[string]int{
+		"pe": {rule: catalog.PeRule, expect: map[string]int{
 			"checkout.js": 0,
 			"webhook.rb":  0,
 		}},
-		"ct": {rule: ctRule, expect: map[string]int{
+		"ct": {rule: catalog.CtRule, expect: map[string]int{
 			"server.js":   1,
 			"client.js":   0,
 			"migrated.js": 0,
 		}},
-		"flex": {rule: flexRule, expect: map[string]int{
+		"flex": {rule: catalog.FlexRule, expect: map[string]int{
 			"positive.rb": 1,
 			"capture.js":  1,
 			"negative.py": 0,
@@ -75,7 +79,7 @@ func TestPacks(t *testing.T) {
 	for topic, c := range cases {
 		t.Run(topic, func(t *testing.T) {
 			dir := fmt.Sprintf("testdata-packs/%s", topic)
-			findings, _, _, err := scan(dir, c.rule)
+			findings, _, _, err := scan.Scan(dir, c.rule)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -102,7 +106,7 @@ func TestPacks(t *testing.T) {
 // tokens present, and both package floors violated — while the DPM fixtures
 // keep their original three-events-present / Card-Element-warning behavior.
 func TestPackSignals(t *testing.T) {
-	h, fw, mc := scanSignals("testdata-packs/ewcs", &ewcsSignals)
+	h, fw, mc := signals.ScanSignals("testdata-packs/ewcs", &catalog.EwcsSignals)
 	if h.AllPresent {
 		t.Error("ewcs: expected missing checkout.session.* handlers")
 	}
@@ -124,7 +128,7 @@ func TestPackSignals(t *testing.T) {
 		t.Errorf("ewcs: expected 2 failed manifest floors, got %d (%v)", bad, mc)
 	}
 
-	h2, fw2, _ := scanSignals("testdata", &dpmSignals)
+	h2, fw2, _ := signals.ScanSignals("testdata", &catalog.DpmSignals)
 	if !h2.AllPresent {
 		t.Errorf("dpm: expected all three delayed-notification events present: %+v", h2.Events)
 	}
@@ -137,7 +141,7 @@ func TestPackSignals(t *testing.T) {
 // four branches, each with file evidence, and the ct pack's signals must stay
 // silent on already-migrated code.
 func TestTriage(t *testing.T) {
-	results := scanTriage("testdata-packs/elements", elementsTriage)
+	results := signals.ScanTriage("testdata-packs/elements", catalog.ElementsTriage)
 	if len(results) != 4 {
 		t.Fatalf("expected all 4 triage branches to fire, got %d: %+v", len(results), results)
 	}
@@ -159,7 +163,7 @@ func TestTriage(t *testing.T) {
 	}
 
 	// ct signals: fire on the legacy client, silent on migrated code
-	_, fw, _ := scanSignals("testdata-packs/ct", &ctSignals)
+	_, fw, _ := signals.ScanSignals("testdata-packs/ct", &catalog.CtSignals)
 	hitLegacy, hitMigrated := false, false
 	for _, w := range fw {
 		if strings.HasSuffix(w.File, "client.js") {
@@ -177,7 +181,7 @@ func TestTriage(t *testing.T) {
 	}
 
 	// pe signals: partial webhook coverage must read as not-all-present
-	h, fw2, _ := scanSignals("testdata-packs/pe", &peSignals)
+	h, fw2, _ := signals.ScanSignals("testdata-packs/pe", &catalog.PeSignals)
 	if h.AllPresent {
 		t.Error("pe: only payment_intent.succeeded is handled; AllPresent must be false")
 	}

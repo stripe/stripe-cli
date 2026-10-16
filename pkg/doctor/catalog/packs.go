@@ -1,4 +1,4 @@
-package doctor
+package catalog
 
 // packs.go — additional migration rule packs, authored from changelog and
 // spec research (each match list grounded in docs.stripe.com/changelog and
@@ -15,19 +15,43 @@ package doctor
 // SubscriptionSchedule call can spuriously satisfy a subscriptions-scoped
 // match. Fix is word-boundary token matching in resolve.go (follow-up).
 
-var taxPercentRule = Rule{
+// A Pack pairs a rule with its declared signals (expected webhook events,
+// legacy frontend tokens, package version floors). Adding a migration means
+// adding an entry to Packs — the verbs never change.
+type Pack struct {
+	Rule    Rule
+	Signals *PackSignals
+	Triage  []TriageBranch
+}
+
+// Packs is the topic registry: every migration doctor knows about, keyed by
+// the topic name used on the command line (`stripe doctor <topic> <dir>`).
+var Packs = map[string]Pack{
+	"dpm":               {Rule: DpmRule, Signals: &DpmSignals},
+	"tax-percent":       {Rule: TaxPercentRule},
+	"collection-method": {Rule: CollectionMethodRule},
+	"prorate":           {Rule: ProrateRule},
+	"source-types":      {Rule: SourceTypesRule},
+	"ewcs":              {Rule: EwcsRule, Signals: &EwcsSignals},
+	"flex":              {Rule: FlexRule},
+	"pe":                {Rule: PeRule, Signals: &PeSignals},
+	"ct":                {Rule: CtRule, Signals: &CtSignals},
+	"elements":          {Rule: ElementsRule, Triage: ElementsTriage},
+}
+
+var TaxPercentRule = Rule{
 	ID:           "tax-migration/no-tax-percent",
 	Severity:     "warn",
 	Action:       "advise",
 	IntroducedIn: "2020-08-27",
-	Message:      "Replace `tax_percent` with `default_tax_rates` referencing a Stripe Tax Rate object \u2014 `tax_percent` was removed from Subscription and Invoice requests in API version 2020-08-27.",
+	Message:      "Replace `tax_percent` with `default_tax_rates` referencing a Stripe Tax Rate object — `tax_percent` was removed from Subscription and Invoice requests in API version 2020-08-27.",
 	Docs:         "https://docs.stripe.com/billing/migration/taxes",
 	Match: []ParamMatch{
 		{Param: "tax_percent", Operations: []string{"POST /v1/subscriptions", "POST /v1/subscriptions/{subscription_exposed_id}", "POST /v1/invoices", "POST /v1/invoices/{invoice}"}},
 	},
 }
 
-var collectionMethodRule = Rule{
+var CollectionMethodRule = Rule{
 	ID:           "billing-collection-method-rename/rename-billing",
 	Severity:     "warn",
 	Action:       "advise",
@@ -41,7 +65,7 @@ var collectionMethodRule = Rule{
 	},
 }
 
-var prorateRule = Rule{
+var ProrateRule = Rule{
 	ID:           "billing/prorate-proration-behavior",
 	Severity:     "warn",
 	Action:       "advise",
@@ -53,7 +77,7 @@ var prorateRule = Rule{
 	},
 }
 
-var sourceTypesRule = Rule{
+var SourceTypesRule = Rule{
 	ID:           "pi-rename/allowed-source-types",
 	Severity:     "warn",
 	Action:       "advise",
@@ -75,7 +99,7 @@ var sourceTypesRule = Rule{
 // Known limit (documented): zero-argument setup_intents.create() cannot be
 // anchored by a (param, operations) match — needs the operation-level match
 // primitive.
-var ewcsRule = Rule{
+var EwcsRule = Rule{
 	ID:       "ewcs/migrate-to-checkout-sessions",
 	Severity: "info",
 	Action:   "advise",
@@ -94,7 +118,7 @@ var ewcsRule = Rule{
 	}},
 }
 
-var ewcsSignals = PackSignals{
+var EwcsSignals = PackSignals{
 	WebhookEvents: []string{
 		"checkout.session.completed",
 		"checkout.session.async_payment_succeeded",
@@ -126,7 +150,7 @@ var ewcsSignals = PackSignals{
 // express beta enrollment and is left empty). Only two request-side anchors
 // exist in the entire doc; the rest is param ADDITION (invisible to a
 // presence matcher) and response/webhook semantics carried in the messages.
-var flexRule = Rule{
+var FlexRule = Rule{
 	ID:       "flex/beta-to-ga",
 	Severity: "warn",
 	Action:   "advise",
@@ -155,7 +179,7 @@ var flexRule = Rule{
 // (payment_method_types-without-automatic_payment_methods is corroborating
 // evidence only — and dpm's territory). Note the guide itself steers most
 // users to ewcs; the triage topic carries that decision.
-var peRule = Rule{
+var PeRule = Rule{
 	ID:       "pe/legacy-elements-to-payment-element",
 	Severity: "info",
 	Action:   "advise",
@@ -164,7 +188,7 @@ var peRule = Rule{
 	Match:    []ParamMatch{},
 }
 
-var peSignals = PackSignals{
+var PeSignals = PackSignals{
 	// The migrated flow is webhook-driven; the guide names these three.
 	WebhookEvents: []string{
 		"payment_intent.succeeded",
@@ -196,7 +220,7 @@ var peSignals = PackSignals{
 // Doc trap recorded during mapping: migration-ct.md's markdown rendering
 // DROPS the removed lines from its Before snippets — the authoritative
 // from-state code lives on finalize-payments-on-the-server-legacy.md.
-var ctRule = Rule{
+var CtRule = Rule{
 	ID:       "ct/payment-method-handoff-to-confirmation-tokens",
 	Severity: "warn",
 	Action:   "advise",
@@ -211,7 +235,7 @@ var ctRule = Rule{
 	}},
 }
 
-var ctSignals = PackSignals{
+var CtSignals = PackSignals{
 	FrontendTokens: []FrontendToken{
 		{Token: "stripe.createPaymentMethod", Note: "replace with stripe.createConfirmationToken({elements, params:{payment_method_data,...}}) — the from-state is branded unsupported"},
 		{Token: "paymentMethodId", Note: "the client->server handoff key becomes confirmationTokenId (confirmationToken.id)"},
@@ -223,7 +247,7 @@ var ctSignals = PackSignals{
 // The three Payment Element migration guides are disjoint by from-state plus
 // one orthogonal axis; a repo can be in several states at once. This topic
 // detects each from-state with file-level evidence and names the guide.
-var elementsRule = Rule{
+var ElementsRule = Rule{
 	ID:       "elements/triage",
 	Severity: "info",
 	Action:   "advise",
@@ -232,7 +256,7 @@ var elementsRule = Rule{
 	Match:    []ParamMatch{},
 }
 
-var elementsTriage = []TriageBranch{
+var ElementsTriage = []TriageBranch{
 	{
 		Detected:  "Charges-era integration (tokens / direct charge creation)",
 		Recommend: "PREREQUISITE: migrate Charges -> PaymentIntents first (docs.stripe.com/payments/payment-intents/migration) — none of the Payment Element guides apply until then",
@@ -254,8 +278,3 @@ var elementsTriage = []TriageBranch{
 		Tokens:    []string{"initCheckoutElementsSdk", "createConfirmationToken", "confirmation_token", `elements.create("payment"`, "elements.create('payment'", "automatic_payment_methods"},
 	},
 }
-
-// dpmRule and dpmSignals are now defined in catalog.go, converted from the
-// embedded catalog/dpm.json entry.
-
-// ---------- Findings ----------

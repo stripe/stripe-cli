@@ -24,6 +24,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/drill"
+	"github.com/stripe/stripe-cli/pkg/doctor/judge"
+	"github.com/stripe/stripe-cli/pkg/doctor/scan"
+	"github.com/stripe/stripe-cli/pkg/doctor/signals"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
@@ -32,32 +37,10 @@ var (
 	flagStripeAccount string
 )
 
-// A Pack pairs a rule with its declared signals (expected webhook events,
-// legacy frontend tokens, package version floors). Adding a migration means
-// adding an entry here — the verbs never change.
-type Pack struct {
-	Rule    Rule
-	Signals *PackSignals
-	Triage  []TriageBranch
-}
-
-var packs = map[string]Pack{
-	"dpm":               {Rule: dpmRule, Signals: &dpmSignals},
-	"tax-percent":       {Rule: taxPercentRule},
-	"collection-method": {Rule: collectionMethodRule},
-	"prorate":           {Rule: prorateRule},
-	"source-types":      {Rule: sourceTypesRule},
-	"ewcs":              {Rule: ewcsRule, Signals: &ewcsSignals},
-	"flex":              {Rule: flexRule},
-	"pe":                {Rule: peRule, Signals: &peSignals},
-	"ct":                {Rule: ctRule, Signals: &ctSignals},
-	"elements":          {Rule: elementsRule, Triage: elementsTriage},
-}
-
 // topicList renders the registry for help and error text.
 func topicList() string {
 	var names []string
-	for n := range packs {
+	for n := range catalog.Packs {
 		names = append(names, n)
 	}
 	sort.Strings(names)
@@ -87,7 +70,7 @@ func topicAndDir(args []string) (string, string, error) {
 	topic, dir := "dpm", "."
 	var nonTopic []string
 	for _, a := range args {
-		if _, ok := packs[a]; ok {
+		if _, ok := catalog.Packs[a]; ok {
 			topic = a
 		} else {
 			nonTopic = append(nonTopic, a)
@@ -141,50 +124,55 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 			if err != nil {
 				fail(err)
 			}
-			rule := packs[topic].Rule
+			rule := catalog.Packs[topic].Rule
 
-			findings, scanned, parsed, err := scan(dir, rule)
+			findings, scanned, parsed, err := scan.Scan(dir, rule)
 			if err != nil {
 				fail(topicHint(err, dir))
 			}
-			sortFindings(findings)
+			scan.SortFindings(findings)
 			stats := ScanStats{FilesScanned: scanned, FilesParsed: parsed, Skipped: scanned - parsed}
 
-			var rep *DoctorReport
+			rep := &DoctorReport{Command: "doctor", Topic: topic, Stats: stats}
+			applyJudgment := func(jr *judge.Report) {
+				rep.Account, rep.Findings, rep.Summary = jr.Account, jr.Findings, jr.Summary
+			}
 			if offline {
-				rep = scanOnlyReport(topic, rule, findings, stats, "offline requested (--offline)")
+				rep.Degraded = "offline requested (--offline)"
+				applyJudgment(judge.ScanOnly(rule, findings, rep.Degraded))
 			} else {
+				var jr *judge.Report
 				err := withSpinnerUnlessJSON("Fetching account facts (read-only)", func() error {
 					var derr error
-					rep, derr = buildDoctorReport(findings, cfg, flagStripeAccount, rule)
+					jr, derr = judge.Judge(findings, cfg, flagStripeAccount, rule)
 					return derr
 				})
 				if err != nil {
 					// Graceful degradation: no creds -> scan-only, clearly labeled.
-					rep = scanOnlyReport(topic, rule, findings, stats, err.Error())
+					rep.Degraded = err.Error()
+					applyJudgment(judge.ScanOnly(rule, findings, rep.Degraded))
 				} else {
-					rep.Topic = topic
-					rep.Stats = stats
+					applyJudgment(jr)
 				}
 			}
 
 			// Code signals need no credentials — attach in every mode.
-			rep.WebhookHandlers, rep.FrontendSignals, rep.ManifestChecks = scanSignals(dir, packs[topic].Signals)
-			rep.Triage = scanTriage(dir, packs[topic].Triage)
+			rep.WebhookHandlers, rep.FrontendSignals, rep.ManifestChecks = signals.ScanSignals(dir, catalog.Packs[topic].Signals)
+			rep.Triage = signals.ScanTriage(dir, catalog.Packs[topic].Triage)
 
 			failedLive := false
 			if live {
-				var drill *DrillReport
+				var drillResult *drill.Report
 				err := withSpinnerUnlessJSON("Live check: webhook round-trip (listen + trigger)", func() error {
 					var derr error
-					drill, derr = drillRun()
+					drillResult, derr = drill.Run()
 					return derr
 				})
 				if err != nil {
 					fail(err)
 				}
-				rep.LiveDrill = drill
-				failedLive = !drill.Verified
+				rep.LiveDrill = drillResult
+				failedLive = !drillResult.Verified
 			}
 
 			if flagJSON {
@@ -214,7 +202,7 @@ func newDumpCmd() *cobra.Command {
 			if len(args) > 0 {
 				d = args[0]
 			}
-			dumpTrees(d)
+			scan.DumpTrees(d)
 		},
 	}
 }
@@ -222,7 +210,7 @@ func newDumpCmd() *cobra.Command {
 // topicHint decorates a scan error when the "directory" looks like a typo'd
 // topic name (e.g. `doctor dmp`).
 func topicHint(err error, dir string) error {
-	for name := range packs {
+	for name := range catalog.Packs {
 		if dir != name && editDistanceAtMost2(dir, name) {
 			return fmt.Errorf("%w (did you mean topic %q?)", err, name)
 		}

@@ -1,4 +1,8 @@
-package doctor
+// Package scan is the AST-based scanning engine: walk, prefilter, parse, and
+// match rule parameters against resolved Stripe call sites. It depends on
+// catalog for the Rule/Finding shapes but never the other way around, and
+// knows nothing about accounts, verdicts, or rendering.
+package scan
 
 // The scanner: walk, prefilter, parse, and match rule parameters against
 // resolved Stripe call sites.
@@ -12,10 +16,13 @@ import (
 
 	ts "github.com/odvcencio/gotreesitter"
 
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-func scan(root string, rule Rule) (findings []Finding, scanned, parsed int, err error) {
+// Scan walks root and returns every finding matching rule, plus how many
+// files were scanned (seen) and parsed (passed the prefilter).
+func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, parsed int, err error) {
 	info, statErr := os.Stat(root)
 	if statErr != nil {
 		return nil, 0, 0, fmt.Errorf("cannot scan %q: %w", root, statErr)
@@ -135,7 +142,7 @@ func scan(root string, rule Rule) (findings []Finding, scanned, parsed int, err 
 						continue
 					}
 					seen[key] = true
-					findings = append(findings, Finding{
+					findings = append(findings, catalog.Finding{
 						Value:    extractValue(c.Node, spec, lang, src),
 						File:     path,
 						Line:     int(p.Row) + 1,
@@ -162,7 +169,7 @@ func scan(root string, rule Rule) (findings []Finding, scanned, parsed int, err 
 // extractValue returns the value expression paired with a matched key: the
 // last named child of the enclosing pair-like node, or for Java's flat builder
 // plain substring test in this SDK's spelling. Cheap; runs on every file.
-func prefilter(src []byte, rule Rule, spec langSpec) bool {
+func prefilter(src []byte, rule catalog.Rule, spec langSpec) bool {
 	s := string(src)
 	for _, pm := range rule.Match {
 		if strings.Contains(s, spec.spell(leafParam(pm.Param))) {
@@ -247,7 +254,8 @@ func firstLine(s string) string {
 	return s
 }
 
-func sortFindings(findings []Finding) {
+// SortFindings orders findings by file, then by line, for stable output.
+func SortFindings(findings []catalog.Finding) {
 	sort.Slice(findings, func(i, j int) bool {
 		if findings[i].File != findings[j].File {
 			return findings[i].File < findings[j].File

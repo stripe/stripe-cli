@@ -1,4 +1,4 @@
-package doctor
+package scan
 
 // Hidden grammar-debugging helper behind `stripe parse-dump`.
 
@@ -11,7 +11,9 @@ import (
 	ts "github.com/odvcencio/gotreesitter"
 )
 
-func dumpTrees(root string) {
+// DumpTrees prints the parsed S-expression tree for every file in root whose
+// extension this package supports.
+func DumpTrees(root string) {
 	files, _ := filepath.Glob(filepath.Join(root, "*"))
 	for _, f := range files {
 		spec, ok := specs[strings.ToLower(filepath.Ext(f))]

@@ -1,7 +1,10 @@
-package doctor
-
-// Pack-declared code signals: expected webhook events, legacy frontend
-// tokens, package version floors, and the which-migration triage.
+// Package signals scans a repo for pack-declared code signals: expected
+// webhook events, legacy frontend tokens, package version floors, and the
+// which-migration triage. These are honest substring/manifest checks,
+// reported as signals — never verdicts. It depends on catalog for the
+// declared-signal shapes and on scan only to know which file extensions the
+// AST engine (and so this package) can read.
+package signals
 
 import (
 	"encoding/json"
@@ -9,40 +12,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/scan"
 )
 
-// PackSignals are a pack's declared code signals: which webhook events the
-// migrated integration must handle, which frontend tokens indicate
-// from-state code, and which package version floors apply.
-type PackSignals struct {
-	WebhookEvents  []string
-	FrontendTokens []FrontendToken
-	ManifestFloors []ManifestFloor
-}
-
-type FrontendToken struct {
-	Token string
-	Note  string
-}
-
-type ManifestFloor struct {
-	Package string
-	Min     string // "8.0.0"
-}
-
-// TriageBranch describes one detectable integration from-state and which
-// migration guide applies to it. Branches are evaluated independently — a
-// repo can legitimately be in several states at once (that is the point of
-// triage).
-type TriageBranch struct {
-	Detected  string   // what this evidence means
-	Recommend string   // which topic/guide to follow, and why
-	Tokens    []string // code tokens whose presence constitutes evidence
-}
-
-// scanTriage evaluates each branch's tokens over the tree and returns the
+// ScanTriage evaluates each branch's tokens over the tree and returns the
 // branches with evidence, in declaration order.
-func scanTriage(root string, branches []TriageBranch) []TriageResult {
+func ScanTriage(root string, branches []catalog.TriageBranch) []TriageResult {
 	if len(branches) == 0 {
 		return nil
 	}
@@ -61,7 +38,7 @@ func scanTriage(root string, branches []TriageBranch) []TriageResult {
 			}
 			return nil
 		}
-		if _, ok := specs[strings.ToLower(filepath.Ext(path))]; !ok {
+		if !scan.SupportsExt(strings.ToLower(filepath.Ext(path))) {
 			return nil
 		}
 		src, err := os.ReadFile(path)
@@ -87,10 +64,10 @@ func scanTriage(root string, branches []TriageBranch) []TriageResult {
 	return out
 }
 
-// scanSignals walks the scanned directory for the pack's declared signals.
+// ScanSignals walks the scanned directory for the pack's declared signals.
 // These are honest substring/manifest checks, reported as signals — never
 // verdicts.
-func scanSignals(root string, sig *PackSignals) (*HandlerSignals, []FrontendWarning, []ManifestCheck) {
+func ScanSignals(root string, sig *catalog.PackSignals) (*HandlerSignals, []FrontendWarning, []ManifestCheck) {
 	if sig == nil {
 		return nil, nil, nil
 	}
@@ -117,7 +94,7 @@ func scanSignals(root string, sig *PackSignals) (*HandlerSignals, []FrontendWarn
 			mc = append(mc, checkManifest(path, sig.ManifestFloors)...)
 			return nil
 		}
-		if _, ok := specs[strings.ToLower(filepath.Ext(path))]; !ok {
+		if !scan.SupportsExt(strings.ToLower(filepath.Ext(path))) {
 			return nil
 		}
 		src, err := os.ReadFile(path)
@@ -150,7 +127,7 @@ func scanSignals(root string, sig *PackSignals) (*HandlerSignals, []FrontendWarn
 
 // checkManifest compares declared dependency versions against pack floors.
 // Absent packages are OK (the floor applies only when the package is used).
-func checkManifest(path string, floors []ManifestFloor) []ManifestCheck {
+func checkManifest(path string, floors []catalog.ManifestFloor) []ManifestCheck {
 	var out []ManifestCheck
 	raw, err := os.ReadFile(path)
 	if err != nil {

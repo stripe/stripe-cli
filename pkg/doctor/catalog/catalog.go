@@ -1,4 +1,4 @@
-package doctor
+package catalog
 
 // catalog.go — packs expressed in the shape a future `stripe doctor` API
 // would serve them in: topic/severity/docs/message/action, a set of named
@@ -19,14 +19,14 @@ package doctor
 //     STRIPE_VERSION-gated item, describing when a bare request lacks BOTH
 //     payment_method_types and automatic_payment_methods on a pre-cutoff API
 //     version) contributes no ParamMatch at all: the engine already derives
-//     that condition from the account's live API version (verdict.go,
+//     that condition from the account's live API version (the judge package,
 //     Rule.IntroducedIn), so this item is only read for its cutoff version.
 //
 // Fixes are declared per logic item via "doctorFixIds", not per rule, in the
 // upstream catalog format. doctor's engine only cares whether a match-
 // producing item declares at least one fix id at all — that marks the
-// parameter as a reviewed "remove" target with per-account judgment (see
-// verdict.go) rather than a bare "advise" detection. An item with no
+// parameter as a reviewed "remove" target with per-account judgment (see the
+// judge package) rather than a bare "advise" detection. An item with no
 // doctorFixIds means the migration isn't fully modeled yet, and the whole
 // rule falls back to "advise": better to detect-and-explain everything than
 // to call a site safe nobody has reviewed. The specific fix kind
@@ -41,7 +41,7 @@ import (
 	"strings"
 )
 
-//go:embed catalog/dpm.json
+//go:embed dpm.json
 var dpmCatalogJSON []byte
 
 type catalogEntry struct {
@@ -204,4 +204,5 @@ func versionCutoff(item catalogLogicItem) string {
 	return ""
 }
 
-var dpmRule, dpmSignals = loadCatalogPack(dpmCatalogJSON)
+// DpmRule and DpmSignals are converted from the embedded dpm.json entry.
+var DpmRule, DpmSignals = loadCatalogPack(dpmCatalogJSON)

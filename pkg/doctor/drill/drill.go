@@ -1,9 +1,9 @@
-package doctor
-
-// flow.go — the live behavioral check behind `doctor --live`: start a local
-// webhook handler (the doc's Ruby sample, in Go), run `stripe listen
-// --forward-to` it, `stripe trigger checkout.session.async_payment_succeeded`,
-// and verify the event arrives with a valid signature. All test mode.
+// Package drill implements the live behavioral check behind `doctor --live`:
+// start a local webhook handler (the doc's Ruby sample, in Go), run `stripe
+// listen --forward-to` it, `stripe trigger
+// checkout.session.async_payment_succeeded`, and verify the event arrives
+// with a valid signature. All test mode.
+package drill
 
 import (
 	"crypto/hmac"
@@ -22,13 +22,28 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-// drillRun implements the doc's delayed-notification handler and proves it
-// works by round-tripping a triggered event through `stripe listen`. The
-// local handler binds an OS-assigned port, so nothing collides with the
-// classic 4242.
-func drillRun() (*DrillReport, error) {
-	r := &DrillReport{Command: "drill", Events: []DrillEvent{}}
-	received := make(chan DrillEvent, 8)
+// Report is the webhook round-trip evidence (doctor --live).
+type Report struct {
+	Command     string  `json:"command"`
+	ListenReady bool    `json:"listen_ready"`
+	Triggered   string  `json:"triggered_event,omitempty"`
+	Events      []Event `json:"events_received"`
+	Verified    bool    `json:"verified"`
+	Note        string  `json:"note,omitempty"`
+}
+
+type Event struct {
+	Type      string `json:"type"`
+	Signature string `json:"signature"` // verified | invalid
+}
+
+// Run implements the doc's delayed-notification handler and proves it works
+// by round-tripping a triggered event through `stripe listen`. The local
+// handler binds an OS-assigned port, so nothing collides with the classic
+// 4242.
+func Run() (*Report, error) {
+	r := &Report{Command: "drill", Events: []Event{}}
+	received := make(chan Event, 8)
 	var secret string
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -47,14 +62,14 @@ func drillRun() (*DrillReport, error) {
 		_ = json.Unmarshal(payload, &evt)
 		if !verifySignature(payload, sig, secret) {
 			w.WriteHeader(400)
-			received <- DrillEvent{Type: evt.Type, Signature: "invalid"}
+			received <- Event{Type: evt.Type, Signature: "invalid"}
 			return
 		}
 		switch evt.Type {
 		case "checkout.session.completed",
 			"checkout.session.async_payment_succeeded",
 			"checkout.session.async_payment_failed":
-			received <- DrillEvent{Type: evt.Type, Signature: "verified"}
+			received <- Event{Type: evt.Type, Signature: "verified"}
 		}
 		w.WriteHeader(200)
 	})

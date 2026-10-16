@@ -1,4 +1,8 @@
-package doctor
+// Package judge fetches read-only Stripe account facts and judges scanned
+// findings against them, producing the account summary and per-finding
+// verdicts doctor renders. It depends on catalog for the Rule/Finding shapes
+// but knows nothing about scanning, rendering, or the CLI surface.
+package judge
 
 // Read-only account facts: profile credentials, payment-method
 // configurations (with capability availability), and the events census.

@@ -1,4 +1,4 @@
-package doctor
+package scan
 
 import (
 	"strings"
@@ -190,6 +190,15 @@ func init() {
 	tsx.name = "tsx"
 	tsx.lang = grammars.TsxLanguage
 	specs[".tsx"] = tsx
+}
+
+// SupportsExt reports whether ext (lowercased, with its leading dot — e.g.
+// ".rb") names a language this package can scan. Lets other packages (e.g.
+// signals, which walks the same tree for substring checks) skip files this
+// engine would skip too, without reaching into the language table itself.
+func SupportsExt(ext string) bool {
+	_, ok := specs[ext]
+	return ok
 }
 
 func identity(s string) string { return s }

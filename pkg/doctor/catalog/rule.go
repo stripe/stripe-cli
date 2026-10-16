@@ -1,7 +1,8 @@
-package doctor
-
-// Rules are pure data: a rule declares what to find and how to remediate;
-// the engine stays language- and rule-agnostic.
+// Package catalog is pure data: migration rules (what to find and how to
+// judge it) plus the packs that register them under a topic name. The
+// scanning engine and the account-judgment engine both consume this package
+// but never the other way around.
+package catalog
 
 // ParamMatch is one (parameter, operations) pair. Operations are hand-copied
 // from api/openapi-spec/spec3.cli.json and verified against it; a follow-up
@@ -13,8 +14,8 @@ type ParamMatch struct {
 
 // A Rule is a lint check over request parameters. Action declares what the
 // finding means: "remove" rules name a parameter that should be deleted by
-// hand (judged against account facts — see verdict.go); "advise" rules
-// detect and explain a rename or value change for the human to apply.
+// hand (judged against account facts — see the judge package); "advise"
+// rules detect and explain a rename or value change for the human to apply.
 // IntroducedIn is the API version that made the change — packs become
 // selectable by the user's version window.
 type Rule struct {
@@ -40,5 +41,3 @@ type Finding struct {
 	Message  string `json:"message"`
 	Docs     string `json:"docs"`
 }
-
-// ---------- Engine ----------

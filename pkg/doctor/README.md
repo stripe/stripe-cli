@@ -13,20 +13,33 @@ stripe doctor elements .         # triage: WHICH Payment Element migration appli
 
 ## Architecture
 
-Two layers, deliberately separated:
+Five packages, each a compiler-enforced boundary around one concern. Only
+the top-level `doctor` package (`cmd.go`, `render.go`, `reports.go`) depends
+on all of them; none of them depend on it or on each other except where
+listed.
 
-1. **Scanner** (`scan.go`, `langs.go`, `resolve.go`) — cgo-free tree-sitter
-   over 7 languages (Ruby, Python, PHP, JS/TS, Go, Java, C#). Rules are data
-   (`rule.go`, `packs.go`): a parameter plus the API operations it belongs
-   to, derived from the vendored OpenAPI spec. Resolution follows
-   variables, typed builders, and target-typed declarations to the Stripe call
-   site; matching alone never produces advice.
-2. **Doctor** (`account.go`, `verdict.go`, `signals.go`, `drill.go`) — judges
-   findings against read-only account facts: the API versions recent traffic
-   actually runs at, the governing payment-method configuration (toggle AND
-   capability availability), plus pack-declared code signals (webhook
-   handlers, frontend tokens, package floors) and the `elements` triage.
-   Degrades to scan-only without credentials, honestly labeled.
+1. **`catalog`** — pure data: `Rule`/`ParamMatch`/`Finding`, the hand-authored
+   packs, the JSON-catalog parser (embeds `catalog/dpm.json`), and the
+   `Packs` topic registry. Depends on nothing else in this module.
+2. **`scan`** — the AST-based matching engine: cgo-free tree-sitter over 7
+   languages (Ruby, Python, PHP, JS/TS, Go, Java, C#). Resolution follows
+   variables, typed builders, and target-typed declarations to the Stripe
+   call site; matching alone never produces advice. Depends on `catalog` for
+   the `Rule`/`Finding` shapes.
+3. **`signals`** — substring/manifest code-signal scanning: expected webhook
+   events, legacy frontend tokens, package version floors, and the
+   `elements` triage. Honest about its strength — these are signals, never
+   verdicts. Depends on `catalog` for the declared-signal shapes and `scan`
+   only to know which file extensions it can read.
+4. **`judge`** — fetches read-only account facts and judges findings against
+   them: the API versions recent traffic actually runs at, the governing
+   payment-method configuration (toggle AND capability availability).
+   Depends on `catalog` for the `Rule`/`Finding` shapes.
+5. **`drill`** — the live webhook round-trip check behind `doctor --live`.
+   Fully standalone.
+
+`doctor` degrades to scan-only without credentials, honestly labeled, by
+calling `judge.ScanOnly` instead of `judge.Judge`.
 
 ## Contracts
 
@@ -44,6 +57,6 @@ Two layers, deliberately separated:
 
 ## Adding a migration
 
-Add a `Pack` to `packs.go` — a rule (parameters + operations + action), and
-optionally signals (expected webhook events, frontend tokens, manifest
+Add a `Pack` to `catalog.Packs` — a rule (parameters + operations + action),
+and optionally signals (expected webhook events, frontend tokens, manifest
 floors) and triage branches. The verbs never change.

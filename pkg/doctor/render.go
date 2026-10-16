@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/doctor/drill"
+	"github.com/stripe/stripe-cli/pkg/doctor/judge"
 )
 
 func renderDoctor(r *DoctorReport) {
@@ -18,7 +21,7 @@ func renderDoctor(r *DoctorReport) {
 	renderSignals(r)
 }
 
-func renderAccount(a AccountSummary) {
+func renderAccount(a judge.AccountSummary) {
 	name := a.ID
 	if a.Name != "" {
 		name += " — " + a.Name
@@ -210,7 +213,7 @@ func renderSignals(r *DoctorReport) {
 	}
 }
 
-func renderDrill(r *DrillReport) {
+func renderDrill(r *drill.Report) {
 	fmt.Println(titleStyle.Render("Live check: delayed-notification webhooks"))
 	if r.ListenReady {
 		fmt.Println(okLine("stripe listen ready (signing secret captured, not shown)"))

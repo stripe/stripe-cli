@@ -1,4 +1,4 @@
-package doctor
+package judge
 
 // Verdicts: account facts + finding intent -> a judgment per finding.
 
@@ -8,7 +8,45 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
 )
+
+// Report is one topic's judgment: the account facts digest plus every
+// finding judged against them.
+type Report struct {
+	Account  AccountSummary
+	Findings []Finding
+	Summary  map[string]int // verdict class -> count
+}
+
+// Finding is one scanned Finding plus the judgment reached about it.
+type Finding struct {
+	catalog.Finding
+	Intent  string `json:"intent"`
+	Verdict string `json:"verdict"`
+	Class   string `json:"verdict_class"` // CANDIDATE | SKIP | REVIEW | CAUTION | BLOCKED | ADVISE | UNKNOWN
+}
+
+// AccountSummary is the read-only account evidence a Report's verdicts were
+// judged against.
+type AccountSummary struct {
+	ID             string         `json:"id"`
+	Name           string         `json:"name,omitempty"`
+	EventVersions  map[string]int `json:"event_api_versions"`
+	VersionsOK     bool           `json:"versions_at_or_after_cutoff"`
+	VersionsMixed  bool           `json:"versions_mixed"`
+	Cutoff         string         `json:"dpm_cutoff"`
+	Configs        int            `json:"payment_method_configurations"`
+	ActiveConfig   string         `json:"active_configuration,omitempty"`
+	ActiveConfigID string         `json:"active_configuration_id,omitempty"`
+	MethodsOn      int            `json:"methods_on"`
+	MethodsOff     int            `json:"methods_off"`
+	EnabledMethods []string       `json:"enabled_methods,omitempty"`
+	// Unavailable: toggled ON but capability inactive — will not render.
+	Unavailable    []string `json:"enabled_but_unavailable,omitempty"`
+	NoRecentEvents bool     `json:"no_recent_events"`
+	ConfiguredOK   bool     `json:"dashboard_configured"`
+}
 
 var identRe = regexp.MustCompile(`[A-Za-z_$][A-Za-z0-9_$]*`)
 
@@ -138,11 +176,12 @@ func verdict(intent, value string, f *accountFacts) string {
 	}
 }
 
-// buildDoctorReport combines scan findings with account facts. The rule
-// decides the judgment style: the dpm pack gets full account verdicts;
-// advise packs get ADVISE verdicts carrying the rule's remediation message
-// (their account precondition is the version window, shown as context).
-func buildDoctorReport(findings []Finding, cfg *config.Config, stripeAccount string, rule Rule) (*DoctorReport, error) {
+// Judge fetches read-only account facts and judges every finding against
+// them. The rule decides the judgment style: a "remove" rule gets full
+// account verdicts (CANDIDATE/SKIP/REVIEW/CAUTION/BLOCKED); an "advise" rule
+// gets an ADVISE verdict carrying the rule's remediation message (its
+// account precondition is the version window, shown as context).
+func Judge(findings []catalog.Finding, cfg *config.Config, stripeAccount string, rule catalog.Rule) (*Report, error) {
 	creds, err := loadTestCredentials(cfg)
 	if err != nil {
 		return nil, err
@@ -152,8 +191,7 @@ func buildDoctorReport(findings []Finding, cfg *config.Config, stripeAccount str
 		return nil, err
 	}
 
-	r := &DoctorReport{
-		Command: "doctor",
+	r := &Report{
 		Account: AccountSummary{
 			ID:             facts.AccountID,
 			Name:           facts.DisplayName,
@@ -188,19 +226,19 @@ func buildDoctorReport(findings []Finding, cfg *config.Config, stripeAccount str
 		if i := strings.Index(v, ":"); i > 0 {
 			class = v[:i]
 		}
-		r.Findings = append(r.Findings, DoctorFinding{Finding: f, Intent: intent, Verdict: v, Class: class})
+		r.Findings = append(r.Findings, Finding{Finding: f, Intent: intent, Verdict: v, Class: class})
 		r.Summary[class]++
 	}
 	return r, nil
 }
 
-// ---------- code signals (substring-level, no credentials needed) ----------
-
-// PackSignals is the pack-declared signal set: which webhook event types the
-// migrated integration is expected to handle, which legacy client-side tokens
-
-func scanOnlyReport(topic string, rule Rule, findings []Finding, stats ScanStats, why string) *DoctorReport {
-	rep := &DoctorReport{Command: "doctor", Topic: topic, Degraded: why, Summary: map[string]int{}, Stats: stats}
+// ScanOnly judges findings without account access (offline, or credentials
+// unavailable). "advise" rules still carry their remediation message; other
+// rules get UNKNOWN, since a "remove" verdict needs account facts this mode
+// doesn't have. why names the reason account access was skipped, for the
+// UNKNOWN verdict message.
+func ScanOnly(rule catalog.Rule, findings []catalog.Finding, why string) *Report {
+	r := &Report{Summary: map[string]int{}}
 	for _, f := range findings {
 		intent := classifyIntent(f.Value)
 		v, class := "UNKNOWN: account facts unavailable — "+why, "UNKNOWN"
@@ -212,8 +250,8 @@ func scanOnlyReport(topic string, rule Rule, findings []Finding, stats ScanStats
 				v += " (API " + rule.IntroducedIn + ")"
 			}
 		}
-		rep.Findings = append(rep.Findings, DoctorFinding{Finding: f, Intent: intent, Verdict: v, Class: class})
-		rep.Summary[class]++
+		r.Findings = append(r.Findings, Finding{Finding: f, Intent: intent, Verdict: v, Class: class})
+		r.Summary[class]++
 	}
-	return rep
+	return r
 }
