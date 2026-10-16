@@ -88,6 +88,13 @@ file/line/col, via (resolution mechanism), value, and verdict_class:
              actually used — then get a return_url from the human
              first. Surface the verdict message to the human; it names
              the exact condition and the exact replacement.
+  CAUTION/BLOCKED  (Dashboard-config variant) the governing payment-method
+             configuration has no methods on, or is missing methods this
+             code hardcodes. The verdict message includes a ready-to-run
+             stripe payment_method_configurations update/create command
+             (one --<method>[display_preference][preference]=on flag per
+             missing method) — run it as-is rather than re-deriving the
+             flags.
   UNKNOWN    account facts unavailable (.degraded says why) — treat
              as REVIEW.
 .account carries the evidence (event_api_versions, dashboard_configured).

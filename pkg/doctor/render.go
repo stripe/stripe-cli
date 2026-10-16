@@ -19,43 +19,101 @@ func renderDoctor(r *DoctorReport) {
 }
 
 func renderAccount(a AccountSummary) {
-	{
-		name := a.ID
-		if a.Name != "" {
-			name += " (" + a.Name + ")"
-		}
-		fmt.Println(titleStyle.Render("Account ") + name + mutedStyle.Render("  test mode"))
-		var vs []string
-		for v, n := range a.EventVersions {
-			vs = append(vs, fmt.Sprintf("%s ×%d", v, n))
-		}
-		sort.Strings(vs)
-		fmt.Println(kv("event API versions", strings.Join(vs, ", ")))
-		verLine := fmt.Sprintf("all at/after %s", a.Cutoff)
-		if !a.VersionsOK {
-			verLine = failStyle.Render(fmt.Sprintf("traffic predates %s", a.Cutoff))
-		}
-		fmt.Println(kv("DPM version cutoff", verLine))
-		cfg := fmt.Sprintf("%d configuration(s), %d methods on / %d off", a.Configs, a.MethodsOn, a.MethodsOff)
-		if a.ActiveConfig != "" {
-			cfg += mutedStyle.Render(" — active: " + a.ActiveConfig)
-		}
-		fmt.Println(kv("dashboard methods", cfg))
-		if len(a.Unavailable) > 0 {
-			fmt.Println(warnLine("toggled ON but NOT available (capability inactive — will not render): " + strings.Join(a.Unavailable, ", ")))
-		}
-		if a.Configs > 1 {
-			fmt.Println(infoLine(fmt.Sprintf("%d active configurations — verdicts use the default; call sites passing payment_method_configuration explicitly are governed by that config instead", a.Configs)))
-		}
+	name := a.ID
+	if a.Name != "" {
+		name += " — " + a.Name
 	}
+	fmt.Println(titleStyle.Render("Account ") + name + mutedStyle.Render("  ·  test mode"))
+
+	var vs []string
+	for v, n := range a.EventVersions {
+		vs = append(vs, fmt.Sprintf("%s (%d)", v, n))
+	}
+	sort.Strings(vs)
+	fmt.Println(kv("API version, recent activity", strings.Join(vs, ", ")))
+	fmt.Println(infoLine("sampled from the last 20 events on this account (Stripe's Events API — not webhooks)"))
+
+	verLine := fmt.Sprintf("safe — recent traffic is already on API version %s or later", a.Cutoff)
+	switch {
+	case a.VersionsMixed:
+		verLine = warnStyle.Render(fmt.Sprintf("risky — safe once ALL recent traffic is on API version %s or later; some requests are still older, so removing it now would silently drop payment methods on those unless automatic_payment_methods[enabled]=true is also added", a.Cutoff))
+	case !a.VersionsOK:
+		verLine = failStyle.Render(fmt.Sprintf("unsafe on its own — becomes safe once this account's traffic moves to API version %s or later; until then, removing it would silently drop payment methods unless automatic_payment_methods[enabled]=true is also added", a.Cutoff))
+	}
+	fmt.Println(kv("removing payment_method_types", verLine))
+
+	total := a.MethodsOn + a.MethodsOff
+	cfg := "no active payment-method configuration found in the Dashboard"
+	if a.Configs > 0 {
+		cfg = fmt.Sprintf("%d of %d payment methods turned on", a.MethodsOn, total)
+		cfg += mutedStyle.Render(fmt.Sprintf(", in the %q configuration", a.ActiveConfig))
+	}
+	fmt.Println(kv("Dashboard payment methods", cfg))
+
+	if len(a.Unavailable) > 0 {
+		fmt.Println(warnLine("enabled in the Dashboard but not available on this account, so they will NOT render for customers: " + strings.Join(a.Unavailable, ", ")))
+	}
+	if a.Configs > 1 {
+		fmt.Println(infoLine(fmt.Sprintf("%d payment-method configurations exist — this report follows the default one; code that passes payment_method_configuration explicitly follows that configuration instead", a.Configs)))
+	}
+}
+
+// classLabel turns a verdict_class into a short, plain-English phrase for
+// the human renderer. The JSON field keeps the original CAPS value.
+func classLabel(class string) string {
+	switch class {
+	case "CANDIDATE":
+		return "safe to remove"
+	case "SKIP":
+		return "skip — looks intentional"
+	case "REVIEW":
+		return "needs review"
+	case "CAUTION":
+		return "caution"
+	case "BLOCKED":
+		return "blocked (unsafe to just delete)"
+	case "UNKNOWN":
+		return "unknown"
+	case "ADVISE":
+		return "advisory"
+	default:
+		return strings.ToLower(class)
+	}
+}
+
+// intentLabel turns a finding's intent bucket into a short, plain-English
+// description of the hardcoded value, instead of the internal bucket name.
+func intentLabel(intent string) string {
+	switch intent {
+	case "default-shaped":
+		return "hardcoded to card/link only"
+	case "deliberate":
+		return "hardcoded to one payment method"
+	case "static":
+		return "hardcoded list of payment methods"
+	case "dynamic":
+		return "computed at runtime"
+	default:
+		return intent
+	}
+}
+
+// withoutClassPrefix strips the "CLASS: " lead-in from a verdict string,
+// since the renderer already shows the class via classLabel and a glyph.
+func withoutClassPrefix(verdict string) string {
+	if i := strings.Index(verdict, ": "); i > 0 {
+		return verdict[i+2:]
+	}
+	return verdict
 }
 
 func renderFindings(r *DoctorReport) {
 	if len(r.Findings) == 0 {
 		fmt.Println("\n" + okLine(fmt.Sprintf("no findings — %d files scanned, %d parsed", r.Stats.FilesScanned, r.Stats.FilesParsed)))
 	} else {
-		// An account-level verdict (BLOCKED/CAUTION/UNKNOWN) is one fact, not
-		// N facts: state it once as a headline and list findings compactly.
+		// A single account-level judgment (BLOCKED/CAUTION/UNKNOWN) is one
+		// fact, not N facts: state it once as a headline and list findings
+		// compactly.
 		shared := r.Findings[0].Verdict
 		sharedClass := r.Findings[0].Class
 		for _, f := range r.Findings {
@@ -72,7 +130,7 @@ func renderFindings(r *DoctorReport) {
 			if sharedClass != "BLOCKED" {
 				glyph = warnLine
 			}
-			fmt.Println(glyph(titleStyle.Render("all findings: ") + shared))
+			fmt.Println(glyph(titleStyle.Render(classLabel(sharedClass)+": ") + withoutClassPrefix(shared)))
 			fmt.Println()
 		}
 		for _, f := range r.Findings {
@@ -83,23 +141,23 @@ func renderFindings(r *DoctorReport) {
 			case "BLOCKED":
 				glyph = failLine
 			}
-			fmt.Println(glyph(fmt.Sprintf("%s:%d  %s %s", f.File, f.Line, mutedStyle.Render("["+f.Intent+"]"), f.Value)))
+			fmt.Println(glyph(fmt.Sprintf("%s:%d  %s %s", f.File, f.Line, mutedStyle.Render("["+intentLabel(f.Intent)+"]"), f.Value)))
 			if !accountLevel {
-				fmt.Println(kv("", f.Verdict))
+				fmt.Println(kv(classLabel(f.Class), withoutClassPrefix(f.Verdict)))
 			}
 		}
 		var sum []string
 		for class, n := range r.Summary {
-			sum = append(sum, fmt.Sprintf("%s ×%d", class, n))
+			sum = append(sum, fmt.Sprintf("%d %s", n, classLabel(class)))
 		}
 		sort.Strings(sum)
-		fmt.Println("\n" + mutedStyle.Render("  "+strings.Join(sum, "  ")))
+		fmt.Println("\n" + mutedStyle.Render("  Summary: "+strings.Join(sum, ", ")))
 	}
 }
 
 func renderSignals(r *DoctorReport) {
 	if r.WebhookHandlers != nil && len(r.WebhookHandlers.Events) > 0 {
-		fmt.Println("\n" + titleStyle.Render("Expected webhook handlers in YOUR code"))
+		fmt.Println("\n" + titleStyle.Render("Expected webhook handlers in your code"))
 		for _, e := range r.WebhookHandlers.Events {
 			if e.Present {
 				fmt.Println(okLine(fmt.Sprintf("%-46s %s", e.Event, mutedStyle.Render(e.Files[0]))))

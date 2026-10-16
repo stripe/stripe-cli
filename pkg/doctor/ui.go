@@ -33,7 +33,7 @@ func infoLine(s string) string { return "  " + mutedStyle.Render("·") + " " + s
 
 // kv renders an aligned key/value detail line.
 func kv(k, v string) string {
-	return fmt.Sprintf("    %s %s", mutedStyle.Render(fmt.Sprintf("%-22s", k)), v)
+	return fmt.Sprintf("    %s %s", mutedStyle.Render(fmt.Sprintf("%-30s", k)), v)
 }
 
 // withSpinner runs fn behind a spinner when stdout is a TTY; otherwise it

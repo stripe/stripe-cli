@@ -30,10 +30,11 @@ type accountFacts struct {
 	OldestVersion string
 
 	// PMConfigs summarizes /v1/payment_method_configurations.
-	ConfigCount  int
-	ActiveConfig string
-	MethodsOn    int
-	MethodsOff   int
+	ConfigCount    int
+	ActiveConfig   string
+	ActiveConfigID string // "" when no active config exists — create, don't update
+	MethodsOn      int
+	MethodsOff     int
 	// EnabledMethods are toggled ON in the chosen config;
 	// UnavailableMethods is the subset whose `available` is false (toggle on
 	// but capability inactive — they will NOT render; both are required).
@@ -153,6 +154,9 @@ func fetchAccountFacts(creds stripe.Credentials, stripeAccount string) (*account
 	if chosen != nil {
 		if name, ok := chosen["name"].(string); ok {
 			f.ActiveConfig = name
+		}
+		if id, ok := chosen["id"].(string); ok {
+			f.ActiveConfigID = id
 		}
 		for field, v := range chosen {
 			m, ok := v.(map[string]any)

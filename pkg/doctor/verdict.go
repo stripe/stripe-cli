@@ -3,6 +3,7 @@ package doctor
 // Verdicts: account facts + finding intent -> a judgment per finding.
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -54,21 +55,48 @@ func quotedMethods(value string) []string {
 	return out
 }
 
+// pmConfigCommand builds the exact `stripe payment_method_configurations`
+// command that would turn the given methods on, so a verdict can name the
+// fix instead of just pointing at the Dashboard. configID "" means no
+// active configuration exists yet, so the command creates one instead of
+// updating. Each method name doubles as the API field name
+// (payment_method_configurations' per-method params are snake_case, same
+// as the SDK's payment_method_types strings), so no translation is needed.
+func pmConfigCommand(configID string, methods []string) string {
+	var b strings.Builder
+	b.WriteString("stripe payment_method_configurations ")
+	if configID == "" {
+		b.WriteString("create")
+	} else {
+		b.WriteString("update " + configID)
+	}
+	for _, m := range methods {
+		fmt.Fprintf(&b, " --%s[display_preference][preference]=on", m)
+	}
+	return b.String()
+}
+
 // verdict combines one finding's intent and value with the account facts.
 func verdict(intent, value string, f *accountFacts) string {
 	if f.NoEvents {
 		// No traffic sampled: fabricating a version claim would be worse
 		// than admitting ignorance.
-		return "REVIEW: no recent API traffic to infer the account's effective version — confirm it is >= " + dpmCutoff + " before removing"
+		return "REVIEW: couldn't find any recent API traffic for this account, so its API version is unknown. Confirm it's at/after " + dpmCutoff + " before removing payment_method_types — on an older version, removing it by itself silently drops payment methods."
 	}
 	if !f.VersionsOK {
 		if f.VersionsMixed {
-			return "CAUTION: some recent traffic predates " + dpmCutoff + " — removal there silently drops methods unless automatic_payment_methods[enabled]=true is added instead"
+			return "CAUTION: this account's recent traffic mixes API versions from before and after " + dpmCutoff + ". Plain removal is only safe for the newer requests; on the older ones, removing payment_method_types by itself would silently drop payment methods — add automatic_payment_methods[enabled]=true instead, which keeps them working on every version."
 		}
-		return "BLOCKED: recent traffic runs before " + dpmCutoff + " — removal alone would drop methods; add automatic_payment_methods[enabled]=true in place of the removed parameter instead"
+		return "BLOCKED: this account's recent traffic is entirely on API versions from before " + dpmCutoff + ". Plain removal only becomes safe once this account's traffic moves to " + dpmCutoff + " or later — until then, removing payment_method_types by itself silently drops payment methods. Add automatic_payment_methods[enabled]=true in its place instead of just deleting it."
 	}
 	if !f.ConfiguredOK {
-		return "BLOCKED: no active Dashboard payment-method configuration — configure methods before removing"
+		msg := "BLOCKED: this account has no payment methods turned on in an active Dashboard configuration."
+		if methods := quotedMethods(value); len(methods) > 0 {
+			msg += " Turn on the methods this code expects first — `" + pmConfigCommand(f.ActiveConfigID, methods) + "` — "
+		} else {
+			msg += " Turn on the payment methods you need first, e.g. `" + pmConfigCommand(f.ActiveConfigID, nil) + " --card[display_preference][preference]=on` — "
+		}
+		return msg + "before removing payment_method_types from your code."
 	}
 	// The doc's loudest warning: migration only keeps methods the Dashboard
 	// has ON *and available* (toggle + active capability — both required to
@@ -92,21 +120,21 @@ func verdict(intent, value string, f *accountFacts) string {
 			}
 		}
 		if len(missing) > 0 {
-			return "CAUTION: " + strings.Join(missing, ", ") + " hardcoded here but OFF in the Dashboard config — enable in the Dashboard first or customers lose them on removal"
+			return "CAUTION: " + strings.Join(missing, ", ") + " — your code hardcodes these payment methods, but they're turned OFF in the Dashboard. Turn them on first — `" + pmConfigCommand(f.ActiveConfigID, missing) + "` — or customers will stop seeing them once this code is removed."
 		}
 		if len(inactive) > 0 {
-			return "CAUTION: " + strings.Join(inactive, ", ") + " toggled ON but not available (capability inactive) — it will not render after removal; activate the capability first"
+			return "CAUTION: " + strings.Join(inactive, ", ") + " — your code hardcodes these payment methods, and they're turned ON in the Dashboard, but Stripe hasn't activated the capability for this account yet (not something payment_method_configurations can toggle — check Settings > Payment methods, or contact support), so they don't render for customers today either way. Activate them first."
 		}
 	}
 	switch intent {
 	case "default-shaped":
-		return "CANDIDATE: static card/link list, account preconditions met — removal enables Dashboard-managed methods (verify frontend is Payment Element)"
+		return "CANDIDATE: hardcoded to card/link only, and the account is ready — removing this lets the Dashboard manage payment methods instead (confirm the frontend uses Payment Element)"
 	case "deliberate":
-		return "SKIP: single-method integration, restriction looks intentional — consider excluded_payment_method_types instead"
+		return "SKIP: restricted to a single payment method, which looks intentional — consider excluded_payment_method_types instead"
 	case "dynamic":
-		return "REVIEW: value computed at runtime — understand the routing logic before changing"
+		return "REVIEW: this value is computed at runtime — understand the routing logic before changing it"
 	default:
-		return "REVIEW: static multi-method list — confirm whether the restriction is still wanted"
+		return "REVIEW: hardcoded list of multiple payment methods — confirm whether the restriction is still wanted"
 	}
 }
 
@@ -135,6 +163,7 @@ func buildDoctorReport(findings []Finding, cfg *config.Config, stripeAccount str
 			Cutoff:         dpmCutoff,
 			Configs:        facts.ConfigCount,
 			ActiveConfig:   facts.ActiveConfig,
+			ActiveConfigID: facts.ActiveConfigID,
 			MethodsOn:      facts.MethodsOn,
 			MethodsOff:     facts.MethodsOff,
 			EnabledMethods: facts.EnabledMethods,

@@ -98,6 +98,7 @@ type AccountSummary struct {
 	Cutoff         string         `json:"dpm_cutoff"`
 	Configs        int            `json:"payment_method_configurations"`
 	ActiveConfig   string         `json:"active_configuration,omitempty"`
+	ActiveConfigID string         `json:"active_configuration_id,omitempty"`
 	MethodsOn      int            `json:"methods_on"`
 	MethodsOff     int            `json:"methods_off"`
 	EnabledMethods []string       `json:"enabled_methods,omitempty"`
