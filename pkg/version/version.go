@@ -3,13 +3,16 @@ package version
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/google/go-github/v72/github"
+	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -31,23 +34,85 @@ var Template = fmt.Sprintf("stripe version %s\n", Version)
 // users to run an upgrade command that cannot find the new version yet.
 const releaseGracePeriod = 24 * time.Hour
 
-// CheckLatestVersion makes a request to the GitHub API to pull the latest
-// release of the CLI
+// checkInterval is how long a lookup of the latest release is reused, whether it
+// succeeded or failed. The GitHub API is unauthenticated and rate-limited per
+// source IP, so a script running the CLI in a loop would otherwise make a request
+// on every run, and once rate-limited, keep making failed ones.
+const checkInterval = 24 * time.Hour
+
+// noUpdateCheckEnv turns off the update check entirely, for automated callers
+// that never read the notice.
+const noUpdateCheckEnv = "STRIPE_NO_UPDATE_CHECK"
+
+// CheckLatestVersion tells the user when a newer release of the CLI is available.
 func CheckLatestVersion() {
 	// master is the dev version, we don't want to check against that every time
-	if Version != "master" {
-		s := ansi.StartNewSpinner("Checking for new versions...", os.Stdout)
-		latest, publishedAt := getLatestVersion()
+	if Version == "master" || os.Getenv(noUpdateCheckEnv) != "" {
+		return
+	}
 
-		ansi.StopSpinner(s, "", os.Stdout)
+	latest, publishedAt := latestRelease(time.Now())
 
-		if needsToUpgrade(Version, latest) && releaseIsSettled(publishedAt, time.Now()) {
-			method := installmethod.Detect(installmethod.OSEnv())
-			if notice := upgradeNotice(latest, installmethod.UpgradeAdvice(method, runtime.GOOS)); notice != "" {
-				fmt.Println(notice)
+	if needsToUpgrade(Version, latest) && releaseIsSettled(publishedAt, time.Now()) {
+		method := installmethod.Detect(installmethod.OSEnv())
+		if notice := upgradeNotice(latest, installmethod.UpgradeAdvice(method, runtime.GOOS)); notice != "" {
+			fmt.Println(notice)
+		}
+	}
+}
+
+// releaseCheck is the cached result of the last lookup of the latest release.
+// Tag is empty when the lookup failed.
+type releaseCheck struct {
+	Tag         string    `json:"tag"`
+	PublishedAt time.Time `json:"published_at"`
+	CheckedAt   time.Time `json:"checked_at"`
+}
+
+// stateDir is overridden in tests to keep the cache out of the real home directory.
+var stateDir = func() string {
+	home, err := homedir.Dir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".stripe", "state")
+}
+
+func releaseCheckPath() string {
+	dir := stateDir()
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, "latest_release.json")
+}
+
+// latestRelease returns the latest release tag and publish time, looking them up
+// on GitHub only if the cached lookup is older than checkInterval.
+func latestRelease(now time.Time) (string, time.Time) {
+	path := releaseCheckPath()
+
+	if path != "" {
+		if data, err := os.ReadFile(path); err == nil {
+			var cached releaseCheck
+			if json.Unmarshal(data, &cached) == nil && now.Sub(cached.CheckedAt) < checkInterval {
+				return cached.Tag, cached.PublishedAt
 			}
 		}
 	}
+
+	s := ansi.StartNewSpinner("Checking for new versions...", os.Stdout)
+	tag, publishedAt := getLatestVersion()
+	ansi.StopSpinner(s, "", os.Stdout)
+
+	if path != "" {
+		if data, err := json.Marshal(releaseCheck{Tag: tag, PublishedAt: publishedAt, CheckedAt: now}); err == nil {
+			if os.MkdirAll(filepath.Dir(path), 0755) == nil {
+				_ = os.WriteFile(path, data, 0644)
+			}
+		}
+	}
+
+	return tag, publishedAt
 }
 
 // upgradeNotice builds the out-of-date message, naming the command that upgrades
