@@ -2,18 +2,18 @@
 # on our build without publishing: https://goreleaser.com/customization/snapshots/
 
 name: test-snapshot
-permissions:
-  contents: read
+permissions: {}
 on:
   push:
+    branches: [master]
     paths:
     - '.goreleaser/**'
+    - '.github/workflows/test-snapshot.yml'
   pull_request:
     paths:
-    - 'goreleaser/**'
-  merge_group:
-    paths:
     - '.goreleaser/**'
+    - '.github/workflows/test-snapshot.yml'
+  merge_group:
 
 jobs:
   build-linux:
@@ -28,13 +28,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      -
-        name: Docker Login
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: |
-          echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       - name: Set up Go
@@ -50,6 +43,3 @@ jobs:
           distribution: goreleaser
           version: "~> v2"
           args: release -f .goreleaser/linux.yml --clean --snapshot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
