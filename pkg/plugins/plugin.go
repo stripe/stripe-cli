@@ -652,6 +652,7 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		Logger:           pluginLogger,
 		Managed:          true,
 		StartTimeout:     timeout,
+		AutoMTLS:         true,
 		AllowedProtocols: []hcplugin.Protocol{
 			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
 		},
