@@ -124,3 +124,54 @@ func TestGetReleaseNotes_NotFound(t *testing.T) {
 	_, err := GetReleaseNotesFn("999.0.0")
 	require.Error(t, err)
 }
+
+// withReleaseCheck runs CheckLatestVersion as a released build against a fake
+// GitHub that responds with status, and returns how many requests reached it.
+func withReleaseCheck(t *testing.T, status int) *int {
+	t.Helper()
+
+	requests := 0
+	withFakeGithub(t, func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.WriteHeader(status)
+		fmt.Fprint(w, `{"tag_name": "v1.0.0"}`)
+	})
+
+	dir := t.TempDir()
+	originalStateDir := stateDir
+	stateDir = func() string { return dir }
+	t.Cleanup(func() { stateDir = originalStateDir })
+
+	originalVersion := Version
+	Version = "1.0.0"
+	t.Cleanup(func() { Version = originalVersion })
+
+	return &requests
+}
+
+func TestCheckLatestVersion_ReusesRecentCheck(t *testing.T) {
+	requests := withReleaseCheck(t, http.StatusOK)
+
+	CheckLatestVersion()
+	CheckLatestVersion()
+
+	require.Equal(t, 1, *requests)
+}
+
+func TestCheckLatestVersion_ReusesRecentFailedCheck(t *testing.T) {
+	requests := withReleaseCheck(t, http.StatusForbidden)
+
+	CheckLatestVersion()
+	CheckLatestVersion()
+
+	require.Equal(t, 1, *requests)
+}
+
+func TestCheckLatestVersion_OptOut(t *testing.T) {
+	requests := withReleaseCheck(t, http.StatusOK)
+	t.Setenv(noUpdateCheckEnv, "1")
+
+	CheckLatestVersion()
+
+	require.Equal(t, 0, *requests)
+}
