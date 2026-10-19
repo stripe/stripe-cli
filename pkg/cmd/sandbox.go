@@ -146,7 +146,7 @@ subsequent stripe commands work immediately.`,
 		RunE: scc.runSandboxCreateCmd,
 	}
 
-	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address")
+	scc.cmd.Flags().StringVar(&scc.email, "email", "", "Your email address is used to prefill the account registration form when you claim the sandbox.")
 	scc.cmd.Flags().BoolVar(&scc.fromGit, "from-git", false, "Infer email and full name from git config")
 	scc.cmd.Flags().StringVar(&scc.name, "full-name", "", "Your full name (optional)")
 	scc.cmd.Flags().BoolVar(&scc.nonInteractive, "non-interactive", false, "Print output directly without waiting for input")
