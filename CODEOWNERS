@@ -5,5 +5,5 @@
 /pkg/cmd/docs/ @stripe/developer-products @stripe/docs-product
 
 # `stripe sandbox` commands + client package
-/pkg/cmd/sandbox*.go @stripe/sandboxes-engineering
-/pkg/sandbox/ @stripe/sandboxes-engineering
+/pkg/cmd/sandbox*.go @stripe/sandboxes-engineering @stripe/developer-products @stripe/developer-ai
+/pkg/sandbox/ @stripe/sandboxes-engineering @stripe/developer-products @stripe/developer-ai
