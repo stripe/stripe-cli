@@ -160,13 +160,6 @@ func (c *Config) InitConfig() {
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(configFile)
 		viper.SetConfigPermissions(os.FileMode(0600))
-
-		// Try to change permissions manually, because we used to create files
-		// with default permissions (0644)
-		err := os.Chmod(configFile, os.FileMode(0600))
-		if err != nil && !os.IsNotExist(err) {
-			log.Fatalf("%s", err)
-		}
 	}
 
 	// If a profiles file is found, read it in.
@@ -556,10 +549,10 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 		deleteLivemodeKey(LiveModeAPIKeyName, profileName)
 	}
 
-	deleteTopLevelLivemodeKey(UATKeychainItemKey)
-	deleteTopLevelLivemodeKey(OAuthRefreshTokenKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthActiveContextKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthUATExpiresAtKeychainKey)
+	// The OAuth session keyring keys are scoped by profileName directly (see
+	// Profile.KeyringKey), independent of whether a matching entry exists in
+	// the config file, so clear them unconditionally here.
+	(&Profile{ProfileName: profileName}).deleteOAuthSessionKeys()
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
@@ -578,12 +571,14 @@ func (c *Config) RemoveAllAuthFields() error {
 		p := &Profile{ProfileName: entry.name}
 		runtimeViper = p.deleteAuthFields(runtimeViper)
 		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
+		p.deleteOAuthSessionKeys()
 	}
 
-	deleteTopLevelLivemodeKey(UATKeychainItemKey)
-	deleteTopLevelLivemodeKey(OAuthRefreshTokenKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthActiveContextKeychainKey)
-	deleteTopLevelLivemodeKey(OAuthUATExpiresAtKeychainKey)
+	// The "default" profile's OAuth session keys are unscoped (see
+	// Profile.KeyringKey), so they're covered above only when a "default"
+	// entry actually exists in the config file. Clear them unconditionally
+	// too, since a session can exist without any config file entries yet.
+	(&Profile{}).deleteOAuthSessionKeys()
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
@@ -596,14 +591,6 @@ func (c *Config) RemoveAllAuthFields() error {
 func deleteLivemodeKey(key string, profile string) error {
 	fieldID := profile + "." + key
 	err := KeyRing.Remove(fieldID)
-	if errors.Is(err, keyring.ErrKeyNotFound) {
-		return nil
-	}
-	return err
-}
-
-func deleteTopLevelLivemodeKey(key string) error {
-	err := KeyRing.Remove(key)
 	if errors.Is(err, keyring.ErrKeyNotFound) {
 		return nil
 	}
@@ -799,6 +786,24 @@ func toStringMap(value interface{}) (map[string]interface{}, bool) {
 func (c *Config) WriteConfigField(field string, value interface{}) error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(field, value)
+
+	return writeConfig(runtimeViper)
+}
+
+// DeleteConfigField removes a configuration field and writes the updated
+// configuration to disk. A field that is not set leaves the file untouched.
+func (c *Config) DeleteConfigField(field string) error {
+	runtimeViper := viper.GetViper()
+	if !runtimeViper.IsSet(field) {
+		return nil
+	}
+
+	// removeKey walks AllSettings, where viper has lowercased every key, but only
+	// lowercases the last segment of the path it is given.
+	runtimeViper, err := removeKey(runtimeViper, strings.ToLower(field))
+	if err != nil {
+		return err
+	}
 
 	return writeConfig(runtimeViper)
 }

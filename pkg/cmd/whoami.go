@@ -104,6 +104,10 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 		if err := stripe.ValidateAPIBaseURL(wc.apiBaseURL); err != nil {
 			return err
 		}
+		uat, err := config.RefreshUATIfNeeded(profile, uat)
+		if err != nil {
+			return err
+		}
 		return wc.runWhoamiOAuth(cmd, uat)
 	}
 
@@ -153,7 +157,10 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
-	ac, _ := config.GetActiveContext()
+	ac, err := wc.profile.GetActiveContext()
+	if err != nil {
+		return err
+	}
 
 	var info requests.UserInfo
 	if ac != nil {
@@ -161,7 +168,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		// Fail open: the user's info is less important than the authorized contexts
 		info, _ = requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
 	}
-	expiresAt, expiresAtErr := config.GetUATExpiresAt()
+	expiresAt, expiresAtErr := wc.profile.GetUATExpiresAt()
 
 	out := buildOAuthWhoamiOutput(accounts, ac, info, expiresAt, expiresAtErr == nil)
 
@@ -194,7 +201,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		fmt.Fprintln(w)
 	}
 
-	login.PrintAuthorizedContextsList(accounts)
+	login.PrintAuthorizedContextsList(wc.profile, accounts)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 	fmt.Fprintln(w, "Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")

@@ -242,6 +242,22 @@ func TestDatabaseHelp(t *testing.T) {
 	require.NotContains(t, deleteHelp, "--stripe-version")
 }
 
+func TestDatabaseCommandsRejectInvalidPathSegments(t *testing.T) {
+	for _, args := range [][]string{
+		{"retrieve", "..", "--dry-run"},
+		{"users", "retrieve", "db_123", ".", "--dry-run"},
+	} {
+		root := newDatabaseTestRoot(&config.Config{})
+		output, err := executeDatabaseCommand(root, nil, args...)
+		require.ErrorContains(t, err, "path arguments cannot be . or ..")
+		require.NotContains(t, output, `"dry_run"`)
+	}
+	root := newDatabaseTestRoot(&config.Config{})
+	output, err := executeDatabaseCommand(root, nil, "retrieve", "", "--dry-run")
+	require.ErrorContains(t, err, "path arguments cannot be empty")
+	require.NotContains(t, output, `"dry_run"`)
+}
+
 func TestDatabaseCommands(t *testing.T) {
 	t.Run("create prints created database details", func(t *testing.T) {
 		root := newDatabaseFixtureTestRoot(t)

@@ -122,7 +122,7 @@ func TestGetPluginMetadataSurfacesRequiresNewerCLI(t *testing.T) {
 
 	profile := &config.Profile{APIKey: "sk_test_1234"}
 
-	_, err := GetPluginMetadata(context.Background(), server.URL, server.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64", "uuid")
+	_, err := GetPluginMetadata(context.Background(), server.URL, server.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64")
 	require.Error(t, err)
 
 	minCoreVersion, ok := PluginRequiresNewerCLI(err)

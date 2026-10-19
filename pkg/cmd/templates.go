@@ -123,7 +123,7 @@ func writeFlagLine(sb *strings.Builder, flag *pflag.Flag, descIndent string, ter
 		case "array":
 			fmt.Fprintf(sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
 		case "boolean":
-			fmt.Fprintf(sb, "      --%s true|false\n", flag.Name)
+			fmt.Fprintf(sb, "      --%s[=true|false]\n", flag.Name)
 		case "clearable_object":
 			fmt.Fprintf(sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
 		default:
@@ -286,7 +286,7 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 		sb.WriteString(extra + "\n")
 	}
 
-	fmt.Fprintf(&sb, "  If you do not have an account: run %s (provisions a claimable sandbox without a browser).\n", ansi.Bold("stripe sandbox create"))
+	fmt.Fprintf(&sb, "  If you do not have an account: run %s (provisions a claimable sandbox without a browser).\n", ansi.Bold("stripe sandboxes create"))
 	fmt.Fprintf(&sb, "  If you already have a key: use %s (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
 	fmt.Fprintf(&sb, "  Nested API fields use bracket flags, e.g. %s, not dotted %s.\n", ansi.Bold("--parent[child]=value"), ansi.Bold("--parent.child=value"))
 

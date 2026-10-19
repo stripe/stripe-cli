@@ -59,7 +59,7 @@ func TestFormatAgentGuidance(t *testing.T) {
 	output := formatAgentGuidance(cmd)
 	require.NotEmpty(t, output)
 	assert.Contains(t, output, "[Agent guidance]")
-	assert.Contains(t, output, "stripe sandbox create")
+	assert.Contains(t, output, "stripe sandboxes create")
 	assert.Contains(t, output, "--api-key")
 	assert.Contains(t, output, "STRIPE_API_KEY")
 	assert.Contains(t, output, "stripe --map")
@@ -145,6 +145,16 @@ func TestAIAgentHelp_NotDetected(t *testing.T) {
 
 	assert.Empty(t, aiAgentHelpTop(root))
 	assert.Empty(t, aiAgentHelp(child))
+}
+
+func TestWrappedRequestParamsFlagUsages_BooleanValues(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("disabled", false, "Disable the endpoint")
+	cmd.Flags().Lookup("disabled").Annotations = map[string][]string{
+		"request": {"true"},
+		"apitype": {"boolean"},
+	}
+	require.Contains(t, WrappedRequestParamsFlagUsages(cmd), "--disabled[=true|false]")
 }
 
 func TestWrappedRequestParamsFlagUsages_FormatAnnotation(t *testing.T) {

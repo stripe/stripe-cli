@@ -1,0 +1,43 @@
+package agentsetup
+
+const (
+	gitBinaryName = "git"
+)
+
+// detectAgentExecutable checks if the executable for the agent is available. defaultPluginStatus is the
+// default status to report for the plugin when the executable exists.
+func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus string) Status {
+	scanner := providerConfig.Scanner.withDefaults()
+
+	status := Status{
+		Client:      providerConfig.Client,
+		DisplayName: providerConfig.DisplayName,
+		Status:      StatusNotDetected,
+	}
+
+	path, err := scanner.LookPath(providerConfig.BinaryName)
+	if err != nil {
+		return status
+	}
+
+	status.Detected = true
+	status.ExecutablePath = path
+	status.Status = defaultPluginStatus
+	return status
+}
+
+// getPlanByStatus returns the common install plan for providers
+func getPlanByStatus(status Status, force bool, installCommands [][]string, reinstallCommands [][]string) Plan {
+	switch {
+	case status.Status == StatusError:
+		return Plan{Action: ActionNone}
+	case !status.Detected:
+		return Plan{Action: ActionNone}
+	case status.Plugin.Installed && force:
+		return Plan{Action: ActionUpdate, Commands: reinstallCommands}
+	case status.Plugin.Installed:
+		return Plan{Action: ActionNone}
+	default:
+		return Plan{Action: ActionInstall, Commands: installCommands}
+	}
+}

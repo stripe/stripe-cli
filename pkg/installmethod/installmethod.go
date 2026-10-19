@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 //
@@ -43,6 +45,7 @@ type Env struct {
 	EvalSymlinks func(string) (string, error)
 	Stat         func(string) error
 	ReadFile     func(string) ([]byte, error)
+	HomeDir      func() (string, error)
 }
 
 // Advice is what to tell a user whose CLI is out of date.
@@ -70,6 +73,7 @@ func OSEnv() Env {
 		EvalSymlinks: filepath.EvalSymlinks,
 		Stat:         func(path string) error { _, err := os.Stat(path); return err },
 		ReadFile:     os.ReadFile,
+		HomeDir:      homedir.Dir,
 	}
 }
 
@@ -209,6 +213,8 @@ func detectFromExecutable(env Env) string {
 		}
 	}
 
+	scriptDirs := defaultScriptDirs(env)
+
 	for _, path := range candidates {
 		// Lowercased and slash-separated so that one set of checks covers Windows
 		// paths and the case-insensitive filesystems macOS and Windows default to.
@@ -239,9 +245,40 @@ func detectFromExecutable(env Env) string {
 		if strings.Contains(normalized, "/winget/") {
 			return Winget
 		}
+
+		// The install scripts' default directory. They stamp methodFile too, but
+		// only since v1.50.10, so an earlier script install is recognized by where
+		// it put the binary.
+		for _, dir := range scriptDirs {
+			if strings.HasPrefix(normalized, dir) {
+				return Script
+			}
+		}
 	}
 
 	return ""
+}
+
+// defaultScriptDirs returns the install scripts' default directory,
+// ~/.stripe/bin, normalized the way detectFromExecutable normalizes paths and
+// with a trailing slash, so that only paths inside it match. The resolved
+// directory is included as well, for a home directory reached through a symlink.
+func defaultScriptDirs(env Env) []string {
+	home, err := env.HomeDir()
+	if err != nil || home == "" {
+		return nil
+	}
+
+	dir := filepath.Join(home, ".stripe", "bin")
+	dirs := []string{dir}
+	if resolved, err := env.EvalSymlinks(dir); err == nil && resolved != dir {
+		dirs = append(dirs, resolved)
+	}
+
+	for i, d := range dirs {
+		dirs[i] = strings.ToLower(strings.ReplaceAll(d, `\`, "/")) + "/"
+	}
+	return dirs
 }
 
 // methodFromFile reads a method stamped next to the binary by its installer,

@@ -54,6 +54,15 @@ type Plugin struct {
 	Releases         []Release     `toml:"Release" json:"releases"`
 	MagicCookieValue string        `toml:"MagicCookieValue" json:"magic_cookie_value,omitempty"`
 	Commands         []CommandInfo `toml:"Command,omitempty" json:"commands,omitempty"`
+	// MinPluginVersions holds the minimum versions of other plugins the installed
+	// release declares it needs, keyed by plugin shortname. It arrives on the
+	// plugin metadata response for a single resolved release — not in the manifest,
+	// which lists many releases — and is persisted in the local plugin metadata so
+	// RunPeerPlugin can enforce it without a network request. Plugins installed
+	// before this was recorded have none, which means no requirements to enforce.
+	MinPluginVersions map[string]string `toml:"MinPluginVersions,omitempty" json:"min_plugin_versions,omitempty"`
+	// Kept only for this invocation so the post-command hint can reuse the lookup.
+	autoUpgradeCheck *autoUpgradeCheckResult
 }
 
 // PluginList contains a list of plugins
@@ -287,13 +296,30 @@ func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
 	return ""
 }
 
-// Install installs the plugin of the given version.
-func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string) error {
-	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false)
+// Install installs the plugin of the given version. hookBaseURLs carries the
+// base URL overrides the user explicitly passed, for the hooks of any
+// dependencies installed along the way; see HookBaseURLs.
+func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL string, hookBaseURLs HookBaseURLs) error {
+	chain := newInstallChain(hookBaseURLs)
+	defer chain.runDeferredHooks()
+	return p.install(ctx, cfg, fs, version, apiBaseURL, dashboardBaseURL, "", false, chain)
 }
 
-func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool) error {
-	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stderr)
+// install downloads and persists one plugin version, after first installing any peer
+// plugins the release declares minimum versions for. chain is never nil: every
+// entry point creates one — and settles its deferred hooks — while recursive
+// dependency installs thread the enclosing chain through, which is both the
+// cycle guard and where their hooks defer. See installPluginDependencies.
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, chain *installChain) error {
+	chain.inFlight[p.Shortname] = version
+	// Removed on the way out so the map describes the live call chain, not every
+	// install this operation has already finished: a later sibling that declares
+	// its own floor for this plugin must have it checked against what actually
+	// landed on disk, not skipped because the name was seen once.
+	defer delete(chain.inFlight, p.Shortname)
+
+	spinnerLabel := ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version))
+	spinner := ansi.StartNewSpinner(spinnerLabel, os.Stderr)
 
 	creds, _ := cfg.GetProfile().ResolveCredentialsForAnyMode(false)
 	apiKey := creds.Token
@@ -321,7 +347,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 			"arch":     runtime.GOARCH,
 		}).Debug("Fetching plugin metadata for install")
 
-		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, cfg.GetMachineUUID())
+		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH)
 		if err != nil {
 			// Returned rather than kept as metadataLookupErr, which surfaces further down
 			// as a missing download URL. The install fails either way -- this lookup only
@@ -344,6 +370,12 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 				return err
 			}
 
+			// The manifest in the response lists releases but not peer requirements;
+			// those ride on the response itself, for the one resolved release this
+			// install is about. Attached unconditionally so a release that declares
+			// none persists none, rather than inheriting whatever was on disk.
+			pluginFromMetadata.MinPluginVersions = pluginMetadata.MinPluginVersions
+
 			pluginToInstall = pluginFromMetadata
 			pluginDownloadURL = pluginMetadata.BinaryURL
 		}
@@ -357,8 +389,18 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		return errorcategory.Errorf(errorcategory.API, "could not resolve download URL for plugin '%s' v%s: the plugin metadata endpoint did not return a binary URL", p.Shortname, version)
 	}
 
+	// Dependencies go in first, so a dependency that fails leaves this plugin exactly
+	// as it was: not installed, or still running its previous version.
+	if len(pluginToInstall.MinPluginVersions) > 0 {
+		ansi.StopSpinner(spinner, "", os.Stderr)
+		if err := installPluginDependencies(ctx, cfg, fs, pluginToInstall, apiBaseURL, dashboardBaseURL, chain); err != nil {
+			return err
+		}
+		spinner = ansi.StartNewSpinner(spinnerLabel, os.Stderr)
+	}
+
 	// Pull down bin, verify, and save to disk
-	if err := pluginToInstall.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version); err != nil {
+	if err := pluginToInstall.downloadAndSavePlugin(ctx, cfg, pluginDownloadURL, fs, version); err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stderr)
 		return err
 	}
@@ -443,11 +485,23 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
+	// Last, and deliberately not part of the rollback above. The stamp only rations how
+	// often the CLI asks about upgrades, so an uninstall that has already removed the
+	// binary and the metadata has succeeded whether or not this cache goes with it --
+	// and putting a whole uninstall back because a timestamp would not delete would be
+	// far worse than leaving the timestamp.
+	if err := removeAutoUpgradeCheckStamp(config, fs, p.Shortname); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Uninstall",
+			"plugin": p.Shortname,
+		}).Debugf("could not remove the upgrade check stamp: %s", err)
+	}
+
 	return nil
 }
 
-func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
-	body, err := FetchRemoteResource(pluginDownloadURL)
+func (p *Plugin) downloadAndSavePlugin(ctx context.Context, config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
+	body, err := FetchRemoteResource(ctx, pluginDownloadURL)
 	if err != nil {
 		return err
 	}
@@ -643,7 +697,41 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 // so it can target the same non-default environment as the CLI that launched it. They should be
 // empty unless the user explicitly passed --api-base/--dashboard-base/--access-base; an empty
 // value tells the plugin to fall back to its own default rather than the CLI's resolved default.
+//
+// When automatic updates are enabled by the user or backend default, this upgrades
+// the plugin before running it; see maybeAutoUpgrade.
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string) error {
+	return p.run(ctx, config, fs, args, cwd, versionOverride, apiBaseURL, dashboardBaseURL, accessBaseURL, true)
+}
+
+// RunWithoutAutoUpgrade is Run for a handoff that should not spend a metadata request
+// on the auto-upgrade check. Two callers want this, for different reasons:
+//
+// Printing the plugin's own help, which the CLI hands to the plugin because the plugin
+// owns that text rather than the manifest. `--help` is a question about a command, and
+// answering it should not download and install software: someone reading help is usually
+// deciding whether to run something, or has just been told they got the flags wrong, and
+// neither is a moment for an upgrade they did not ask for.
+//
+// Running a plugin that was installed earlier in this same invocation, where the install
+// already resolved the newest release -- so a check here would spend a second request to
+// be told what the first one just said. This mirrors what run's own auto-install branch
+// does when the install happens inside it.
+//
+// Either way the upgrade is deferred, not lost: the next command that does real work on
+// an already-installed plugin makes the check.
+//
+// An install still happens here when the binary is missing, since there is nowhere else
+// for the plugin or its help text to come from.
+func (p *Plugin) RunWithoutAutoUpgrade(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string) error {
+	return p.run(ctx, config, fs, args, cwd, versionOverride, apiBaseURL, dashboardBaseURL, accessBaseURL, false)
+}
+
+// run is Run with the auto-upgrade check made optional, so that callers with nothing to
+// gain from it can leave it out. See CoreCLIHelper.RunPeerPlugin and
+// RunWithoutAutoUpgrade.
+func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string, allowAutoUpgrade bool) error {
+	p.autoUpgradeCheck = nil
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
 	})
@@ -683,11 +771,20 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 			p = resolvedPlugin.Plugin
 			version = resolvedPlugin.Version
-			if err := resolvedPlugin.Install(ctx, config, fs, installAPIBaseURL, installDashboardBaseURL); err != nil {
+			hookBaseURLs := HookBaseURLs{APIBaseURL: apiBaseURL, DashboardBaseURL: dashboardBaseURL, AccessBaseURL: accessBaseURL}
+			if err := resolvedPlugin.Install(ctx, config, fs, installAPIBaseURL, installDashboardBaseURL, hookBaseURLs); err != nil {
 				return err
 			}
 
 			runPostInstallHook(ctx, config, fs, p, version, "", apiBaseURL, dashboardBaseURL, accessBaseURL)
+		} else if allowAutoUpgrade {
+			// Only this branch of the switch, and only when it found a version already on
+			// disk. The other two branches are asking for a specific version -- whatever
+			// the caller pinned via versionOverride, or the local dev build -- and
+			// upgrading past either of those would be answering a question nobody asked.
+			// The install just above already resolved the newest release, so checking
+			// again there would only spend a second request to be told the same thing.
+			p, version = maybeAutoUpgrade(ctx, config, fs, p, version, apiBaseURL, dashboardBaseURL, accessBaseURL)
 		}
 	}
 
@@ -708,17 +805,17 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	case Dispatcher:
 		logger.Debug("negotiated net/rpc with plugin process")
 		if _, err = d.RunCommand(args); err != nil {
-			return err
+			return pluginReportedError{err}
 		}
 	case DispatcherGRPC:
 		logger.Debug("negotiated gRPC with plugin process")
 		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args); err != nil {
-			return err
+			return pluginReportedError{err}
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
-			return err
+		if err = d.RunCommand(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), args, NewCoreCLIHelperForPlugin(ctx, config, fs, p.Shortname, apiBaseURL, dashboardBaseURL, accessBaseURL)); err != nil {
+			return pluginReportedError{err}
 		}
 	default:
 		return errorcategory.New(errorcategory.Internal, "dispensed an unknown plugin interface")
@@ -766,7 +863,7 @@ func (p *Plugin) PostInstall(ctx context.Context, config *config.Config, fs afer
 		return nil
 	}
 
-	return d.PostInstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, previousVersion, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL))
+	return d.PostInstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, previousVersion, NewCoreCLIHelperForPlugin(ctx, config, fs, p.Shortname, apiBaseURL, dashboardBaseURL, accessBaseURL))
 }
 
 // PreUninstall calls the plugin's PreUninstall hook for the currently installed version, if
@@ -791,5 +888,5 @@ func (p *Plugin) PreUninstall(ctx context.Context, config *config.Config, fs afe
 		return nil
 	}
 
-	return d.PreUninstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, NewCoreCLIHelper(ctx, config, fs, apiBaseURL, dashboardBaseURL, accessBaseURL))
+	return d.PreUninstall(buildAdditionalInfo(logger, apiBaseURL, dashboardBaseURL, accessBaseURL), version, NewCoreCLIHelperForPlugin(ctx, config, fs, p.Shortname, apiBaseURL, dashboardBaseURL, accessBaseURL))
 }

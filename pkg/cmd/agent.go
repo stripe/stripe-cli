@@ -32,6 +32,9 @@ var agentClientID = map[string]string{
 	"claude_code": agentsetup.ClientClaudeCode,
 	"codex_cli":   agentsetup.ClientCodex,
 	"cursor":      agentsetup.ClientCursor,
+	"grok":        agentsetup.ClientGrok,
+	"openclaw":    agentsetup.ClientOpenclaw,
+	"kiro":        agentsetup.ClientKiro,
 }
 
 // providerOrder is the canonical display order for known clients. Providers not
@@ -40,6 +43,9 @@ var providerOrder = []string{
 	agentsetup.ClientClaudeCode,
 	agentsetup.ClientCodex,
 	agentsetup.ClientCursor,
+	agentsetup.ClientGrok,
+	agentsetup.ClientOpenclaw,
+	agentsetup.ClientKiro,
 }
 
 type agentCmd struct {
@@ -410,6 +416,12 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		plan := provider.Plan(status, asc.force)
 
 		fmt.Fprintf(out, "\n  %s\n", status.DisplayName)
+		if status.Status == agentsetup.StatusError {
+			fmt.Fprintf(out, "  %s error: %s\n", cross, status.Error)
+			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":error")
+			errCount++
+			continue
+		}
 		switch plan.Action {
 		case agentsetup.ActionNone:
 			fmt.Fprintln(out, "  already set up")
@@ -651,14 +663,14 @@ func (asc *agentSetupCmd) writeJSON(w io.Writer, providers map[string]agentsetup
 		}
 		if skillsScopeNeedsUpdate(view.scopes.Local) || skillsScopeNeedsUpdate(view.scopes.Global) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
-				Action:  "update_skills",
-				Command: []string{"stripe", "agent", "setup"},
+				Action:   "update_skills",
+				Commands: [][]string{{"stripe", "agent", "setup"}},
 			})
 		} else if view.allowInstall && !skillsScopesHasInstalled(view.scopes) &&
 			(skillsScopeNeedsInstall(view.scopes.Local) || skillsScopeNeedsInstall(view.scopes.Global)) {
 			result.Actions = append(result.Actions, agentsetup.Plan{
-				Action:  "install_skills",
-				Command: []string{"stripe", "agent", "setup"},
+				Action:   "install_skills",
+				Commands: [][]string{{"stripe", "agent", "setup"}},
 			})
 		}
 	}
@@ -858,6 +870,9 @@ Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
+  • Grok Build    https://x.ai/build
+  • OpenClaw      https://openclaw.ai
+  • Kiro          https://kiro.dev/
 
 You can still install Stripe skills.
 `)
@@ -870,6 +885,9 @@ Supported clients for automatic setup:
   • Claude Code   https://claude.ai/code
   • Cursor        https://cursor.com
   • Codex CLI     https://openai.com/codex/
+  • Grok Build    https://x.ai/build
+  • OpenClaw      https://openclaw.ai
+  • Kiro          https://kiro.dev/
 
 Once a client is installed, re-run: stripe agent setup
 `)

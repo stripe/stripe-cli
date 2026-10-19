@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,42 @@ func TestRemoveKey(t *testing.T) {
 
 	require.EqualValues(t, []string{"stay"}, nv.AllKeys())
 	require.ElementsMatch(t, []string{"stay", "remove"}, v.AllKeys())
+}
+
+// The table name is mixed case on purpose: viper stores it lowercased, and the
+// delete has to find that table rather than drop the whole thing.
+func TestDeleteConfigFieldRemovesOnlyThatField(t *testing.T) {
+	c, profilesFile, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	pluginKey := PluginConfigKey("appA", PluginConfigUpdatesField)
+	siblingKey := PluginConfigKey("appA", "sibling")
+	globalKey := PluginConfigKey(PluginConfigGlobalScope, PluginConfigUpdatesField)
+	require.NoError(t, c.WriteConfigField(pluginKey, PluginConfigOn))
+	require.NoError(t, c.WriteConfigField(siblingKey, "kept"))
+	require.NoError(t, c.WriteConfigField(globalKey, PluginConfigOff))
+
+	require.NoError(t, c.DeleteConfigField(pluginKey))
+
+	onDisk := viper.New()
+	onDisk.SetConfigFile(profilesFile)
+	require.NoError(t, onDisk.ReadInConfig())
+	require.False(t, onDisk.IsSet(pluginKey))
+	require.Equal(t, "kept", onDisk.GetString(siblingKey))
+	require.Equal(t, PluginConfigOff, onDisk.GetString(globalKey))
+
+	require.False(t, viper.IsSet(pluginKey))
+}
+
+func TestDeleteConfigFieldLeavesAnUnsetFieldAlone(t *testing.T) {
+	c, profilesFile, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	require.NoError(t, c.DeleteConfigField(PluginConfigKey("apps", PluginConfigUpdatesField)))
+
+	// Nothing to remove means nothing to write, so the file is never created.
+	_, err := os.Stat(profilesFile)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func setupTestConfig(t *testing.T) (*Config, string, func()) {
@@ -314,6 +351,58 @@ func TestRemoveAuthFieldsWithDottedName(t *testing.T) {
 	v := viper.GetViper()
 	require.Empty(t, v.GetString("example.project.test_mode_api_key"))
 	require.Equal(t, "sk_test_sibling", v.GetString("example.test_mode_api_key"))
+}
+
+// TestRemoveAuthFieldsClearsOAuthSessionWithoutConfigEntry guards against a
+// regression where OAuth session keyring keys were only cleared when the
+// profile had a matching entry in the config file. A profile can have OAuth
+// session state (UAT, active context, etc.) in the keyring without ever
+// having been written to the config file, so the keyring keys must be
+// cleared unconditionally by profile name.
+func TestRemoveAuthFieldsClearsOAuthSessionWithoutConfigEntry(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	p := &Profile{ProfileName: "default"}
+	require.NoError(t, KeyRing.Set(p.KeyringKey(UATKeychainItemKey), []byte("oak_test"), ""))
+	require.NoError(t, p.SaveActiveContext("acct_123", true))
+	require.NoError(t, p.SaveUATExpiresAt(time.Now().Add(time.Hour)))
+
+	require.NoError(t, c.RemoveAuthFields("default"))
+
+	_, err := KeyRing.Get(p.KeyringKey(UATKeychainItemKey))
+	require.Error(t, err)
+	ac, err := p.GetActiveContext()
+	require.NoError(t, err)
+	require.Nil(t, ac)
+	_, err = p.GetUATExpiresAt()
+	require.Error(t, err)
+}
+
+// TestRemoveAuthFieldsDoesNotDisturbOtherProfilesOAuthSession verifies that
+// logging out of one profile leaves another profile's independent OAuth
+// session (UAT, active context) intact.
+func TestRemoveAuthFieldsDoesNotDisturbOtherProfilesOAuthSession(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	work := Profile{ProfileName: "work", DisplayName: "Work", AccountID: "acct_work"}
+	require.NoError(t, work.CreateProfile())
+	personal := Profile{ProfileName: "personal", DisplayName: "Personal", AccountID: "acct_personal"}
+	require.NoError(t, personal.CreateProfile())
+
+	require.NoError(t, work.SaveActiveContext("acct_work", true))
+	require.NoError(t, personal.SaveActiveContext("acct_personal", false))
+
+	require.NoError(t, c.RemoveAuthFields("work"))
+
+	workCtx, err := work.GetActiveContext()
+	require.NoError(t, err)
+	require.Nil(t, workCtx, "work's active context should be cleared")
+
+	personalCtx, err := personal.GetActiveContext()
+	require.NoError(t, err)
+	require.Equal(t, "acct_personal", personalCtx.AccountID)
 }
 
 func TestSwitchProfile(t *testing.T) {

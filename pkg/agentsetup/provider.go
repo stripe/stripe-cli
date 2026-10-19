@@ -14,9 +14,9 @@ const (
 	StatusUnknown     = "unknown"
 	StatusError       = "error"
 
-	ActionNone      = "none"
-	ActionInstall   = "install"
-	ActionReinstall = "reinstall"
+	ActionNone    = "none"
+	ActionInstall = "install"
+	ActionUpdate  = "update"
 	// ActionManual means setup cannot be automated and the user must perform a
 	// step themselves (e.g. Cursor plugins are installed from inside Cursor).
 	ActionManual = "manual"
@@ -30,16 +30,31 @@ type Provider interface {
 	Apply(context.Context, io.Writer, Plan) error
 }
 
+// ProviderConfig holds the configuration for a provider.
+type ProviderConfig struct {
+	Scanner     Scanner
+	Client      string
+	BinaryName  string
+	DisplayName string
+	RunCommand  RunCommandFunc
+}
+
 // DefaultProviders returns production setup providers keyed by client id.
 func DefaultProviders() map[string]Provider {
 	scanner := DefaultScanner()
 	claude := NewClaudeProvider(scanner, RunCommand)
-	cursor := NewCursorProvider(scanner, RunCommand)
 	codex := NewCodexProvider(scanner, RunCommand)
+	cursor := NewCursorProvider(scanner)
+	grok := NewGrokProvider(scanner, RunCommand)
+	kiro := NewKiroProvider(scanner)
+	openclaw := NewOpenclawProvider(scanner, RunCommand)
 	return map[string]Provider{
-		claude.ID(): claude,
-		cursor.ID(): cursor,
-		codex.ID():  codex,
+		claude.ID():   claude,
+		codex.ID():    codex,
+		cursor.ID():   cursor,
+		grok.ID():     grok,
+		kiro.ID():     kiro,
+		openclaw.ID(): openclaw,
 	}
 }
 
@@ -75,8 +90,9 @@ type PluginStatus struct {
 
 // Plan describes the next setup action for a provider.
 type Plan struct {
-	Action  string   `json:"action"`
-	Command []string `json:"command,omitempty"`
+	Action string `json:"action"`
+	// Commands holds the commands to run based on the Action
+	Commands [][]string `json:"commands,omitempty"`
 	// Manual holds the instruction shown for ActionManual plans.
 	Manual string `json:"manual,omitempty"`
 }

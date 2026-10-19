@@ -3,10 +3,13 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -15,6 +18,21 @@ import (
 
 type listAccountsResponse struct {
 	Accounts []config.AuthorizedAccount `json:"accounts"`
+	HasMore  bool                       `json:"has_more"`
+}
+
+type accountsRequestError struct {
+	statusCode int
+	body       string
+}
+
+func (e *accountsRequestError) Error() string {
+	return fmt.Sprintf("accounts request failed (status %d): %s", e.statusCode, e.body)
+}
+
+func IsAuthorizedAccountsUnauthorized(err error) bool {
+	var requestErr *accountsRequestError
+	return errors.As(err, &requestErr) && requestErr.statusCode == http.StatusUnauthorized
 }
 
 // ListAuthorizedAccounts returns the Stripe accounts accessible to accessToken.
@@ -23,51 +41,105 @@ func ListAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken stri
 }
 
 func fetchAuthorizedAccounts(ctx context.Context, accessBaseURL, accessToken string) ([]config.AuthorizedAccount, error) {
-	endpoint := accessBaseURL + accessAPNPath + "/token/accounts"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	resp, err := accessSrvHTTPClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	endpoint, err := url.Parse(accessBaseURL + accessAPNPath + "/token/accounts")
 	if err != nil {
 		return nil, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "accounts request failed (status %d): %s", resp.StatusCode, string(body))
+	var accounts []config.AuthorizedAccount
+	startingAfter := ""
+	for {
+		query := endpoint.Query()
+		query.Set("limit", "100")
+		if startingAfter != "" {
+			query.Set("starting_after", startingAfter)
+		}
+		endpoint.RawQuery = query.Encode()
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+
+		resp, err := accessSrvHTTPClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		body, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, errorcategory.With(&accountsRequestError{statusCode: resp.StatusCode, body: string(body)}, errorcategory.Auth)
+		}
+
+		var result listAccountsResponse
+		if err := json.Unmarshal(body, &result); err != nil {
+			return nil, fmt.Errorf("failed to parse accounts response: %w", err)
+		}
+		accounts = append(accounts, result.Accounts...)
+		if !result.HasMore {
+			return accounts, nil
+		}
+		if len(result.Accounts) == 0 {
+			return nil, errorcategory.Errorf(errorcategory.API, "accounts response indicated more results but returned an empty page")
+		}
+		startingAfter = result.Accounts[len(result.Accounts)-1].ID
+	}
+}
+
+// AuthorizedAccountsResult bundles the accounts a user has authorized with which account and
+// mode are currently active.
+type AuthorizedAccountsResult struct {
+	Accounts        []config.AuthorizedAccount
+	ActiveAccountID string
+	ActiveLivemode  bool
+}
+
+// ListAuthorizedAccountsForActiveSession fetches the accounts authorized for cfg's stored OAuth
+// session, along with which account and mode are currently active. Returns an error if cfg
+// isn't logged in via OAuth.
+func ListAuthorizedAccountsForActiveSession(ctx context.Context, accessBaseURL string, cfg *config.Config) (*AuthorizedAccountsResult, error) {
+	uat, err := cfg.Profile.GetUAT()
+	if err != nil {
+		return nil, err
+	}
+	if !strings.HasPrefix(uat, "oak_") {
+		return nil, errorcategory.Errorf(errorcategory.Auth, "not logged in; run 'stripe login' first")
 	}
 
-	var result listAccountsResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse accounts response: %w", err)
+	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, uat)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
-	return result.Accounts, nil
+
+	result := &AuthorizedAccountsResult{Accounts: accounts}
+	if ac, _ := cfg.Profile.GetActiveContext(); ac != nil {
+		result.ActiveAccountID = ac.AccountID
+		result.ActiveLivemode = ac.Livemode
+	}
+	return result, nil
 }
 
 // PrintAuthorizedContexts fetches the authorized accounts for accessToken and
 // prints them as a formatted list, marking the active context.
-func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken string) error {
+func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
-	PrintAuthorizedContextsList(accounts)
+	PrintAuthorizedContextsList(profile, accounts)
 	return nil
 }
 
 // PrintAuthorizedContextsList prints already-fetched authorized accounts as a
 // formatted list, marking the active context.
-func PrintAuthorizedContextsList(accounts []config.AuthorizedAccount) {
-	ac, _ := config.GetActiveContext()
+func PrintAuthorizedContextsList(profile *config.Profile, accounts []config.AuthorizedAccount) {
+	ac, _ := profile.GetActiveContext()
 	activeID, activeMode := "", "test"
 	if ac != nil {
 		activeID = ac.AccountID
@@ -152,7 +224,7 @@ func populateProfileFromAccounts(cfg *config.Config, accounts []config.Authorize
 		return errorcategory.Errorf(errorcategory.Auth, "no authorized accounts returned")
 	}
 
-	if err := config.SaveActiveContext(activeID, activeLivemode); err != nil {
+	if err := cfg.Profile.SaveActiveContext(activeID, activeLivemode); err != nil {
 		return err
 	}
 

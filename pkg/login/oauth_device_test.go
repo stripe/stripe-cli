@@ -1,11 +1,13 @@
 package login
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -53,6 +55,23 @@ func TestRequestDeviceCode_NonOK(t *testing.T) {
 	_, err := RequestDeviceCode(context.Background(), ts.URL, "test-client-id")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "404")
+}
+
+func TestDeviceAuthResponse_BrowserURL(t *testing.T) {
+	t.Run("prefers verification_uri_complete when present", func(t *testing.T) {
+		resp := &DeviceAuthResponse{
+			VerificationURI:         "https://qa-access.stripe.com/stripecli/oauth2/device",
+			VerificationURIComplete: "https://qa-access.stripe.com/stripecli/oauth2/device?user_code=BZFN-KXNJ",
+		}
+		assert.Equal(t, "https://qa-access.stripe.com/stripecli/oauth2/device?user_code=BZFN-KXNJ", resp.BrowserURL())
+	})
+
+	t.Run("falls back to verification_uri when absent", func(t *testing.T) {
+		resp := &DeviceAuthResponse{
+			VerificationURI: "https://qa-access.stripe.com/stripecli/oauth2/device",
+		}
+		assert.Equal(t, "https://qa-access.stripe.com/stripecli/oauth2/device", resp.BrowserURL())
+	})
 }
 
 func TestPollDeviceToken_Success(t *testing.T) {
@@ -263,6 +282,76 @@ func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 	err := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch account info")
+}
+
+func TestLoginWithDeviceCode_VerificationMessage(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		verificationURIComplete string
+		wantText                string
+		dontWantText            string
+	}{
+		{
+			name:                    "verification_uri_complete present",
+			verificationURIComplete: "https://dashboard.stripe.com/verify?user_code=ABCD-EFGH",
+			wantText:                "When prompted, confirm your verification code:",
+			dontWantText:            "When prompted, enter your verification code:",
+		},
+		{
+			name:                    "verification_uri_complete absent",
+			verificationURIComplete: "",
+			wantText:                "When prompted, enter your verification code:",
+			dontWantText:            "When prompted, confirm your verification code:",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			origCanOpenBrowser := canOpenBrowser
+			canOpenBrowser = func() bool { return false }
+			t.Cleanup(func() { canOpenBrowser = origCanOpenBrowser })
+
+			cfg, cleanup := setupOAuthTestConfig(t)
+			defer cleanup()
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/stripecli/oauth2/device/authorization":
+					json.NewEncoder(w).Encode(DeviceAuthResponse{ //nolint:errcheck
+						DeviceCode:              "device-code",
+						UserCode:                "ABCD-EFGH",
+						VerificationURI:         "https://dashboard.stripe.com/verify",
+						VerificationURIComplete: tc.verificationURIComplete,
+						ExpiresIn:               30,
+						Interval:                1,
+					})
+				case "/stripecli/oauth2/token/accounts":
+					http.Error(w, "unavailable", http.StatusInternalServerError)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer ts.Close()
+
+			oldStdout := os.Stdout
+			r, w, err := os.Pipe()
+			require.NoError(t, err)
+			os.Stdout = w
+
+			loginErr := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
+
+			w.Close()
+			os.Stdout = oldStdout
+			var buf bytes.Buffer
+			buf.ReadFrom(r) //nolint:errcheck
+
+			require.Error(t, loginErr)
+			output := buf.String()
+			assert.Contains(t, output, tc.wantText)
+			assert.NotContains(t, output, tc.dontWantText)
+		})
+	}
 }
 
 func TestRefreshAccessToken_NoRefreshTokenInResponse(t *testing.T) {

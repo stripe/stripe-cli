@@ -91,7 +91,8 @@ func NeedsMigration() bool {
 // migration itself always agree on whether there is work to do.
 func hasFlatProfileTable(v *viper.Viper) bool {
 	for key, value := range v.AllSettings() {
-		if reservedTopLevelKeys[key] {
+		if key == ProfilesTableName {
+			// The v2 container: everything inside it is already migrated.
 			continue
 		}
 
@@ -203,6 +204,8 @@ func planMigration(contents []byte) (*migrationPlan, bool, error) {
 	alreadyV2 := version == ConfigVersionV2
 
 	// Start from the profiles already in the v2 table, if there are any.
+	// nestedIsContainer tells the v2 container apart from a v1 profile named
+	// "profiles"; only the container holds profiles that are already in place.
 	nested, nestedIsContainer := profilesContainer(doc, alreadyV2)
 	if nestedIsContainer {
 		for name, value := range nested {
@@ -250,15 +253,16 @@ func planMigration(contents []byte) (*migrationPlan, bool, error) {
 // reservedProfileNameException reports whether a top-level key must be treated
 // as a setting rather than as a profile. Only the profiles table itself
 // qualifies, and only when it is acting as the v2 container.
+//
+// Every other key is judged on contents rather than on its name: a table holding
+// profile fields is a profile even when a settings key already owns that name, and
+// separating the two is what the v2 layout is for.
 func reservedProfileNameException(key string, nestedIsContainer bool) bool {
-	if key == ProfilesTableName {
-		return nestedIsContainer
-	}
-
-	return reservedTopLevelKeys[key]
+	return key == ProfilesTableName && nestedIsContainer
 }
 
-// profilesContainer returns the v2 profiles table, if the document has one.
+// profilesContainer returns the v2 profiles table and whether the document has
+// one at all.
 //
 // A v1 file can contain a profile literally named "profiles", which occupies the
 // same key as the v2 container: nothing stops `stripe login --project-name
@@ -479,4 +483,37 @@ func writeAndSync(file *os.File, contents []byte) error {
 	}
 
 	return file.Sync()
+}
+
+// StampNewConfigFile creates a config file that records the v2 layout, so that the
+// first write into it nests profiles under the profiles table instead of writing
+// the flat layout and needing a migration on the next command.
+//
+// The document is the one encodePlan produces for an empty plan, so a file created
+// here is indistinguishable from one the migration would have produced.
+//
+// It refuses to touch a file that already exists: picking the layout of a file that
+// already holds something is MigrateConfigFile's job, and it has a backup and a
+// verification pass for exactly that reason.
+func StampNewConfigFile(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return errorcategory.Errorf(errorcategory.Filesystem,
+			"refusing to stamp %s: the file already exists", path)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	if err := makePath(path); err != nil {
+		return err
+	}
+
+	contents, err := encodePlan(&migrationPlan{
+		profiles: make(map[string]map[string]interface{}),
+		settings: make(map[string]interface{}),
+	})
+	if err != nil {
+		return err
+	}
+
+	return writeFileSync(path, contents)
 }

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -60,15 +61,10 @@ var rootCmd = &cobra.Command{
 		"trigger":   "webhooks",
 		"listen":    "webhooks",
 		"logs":      "stripe",
-		"status":    "stripe",
 		"resources": "resources",
-		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox without a browser).\n" +
-			"  Visit https://docs.stripe.com/llms.txt?utm_source=cli for latest guidance on how to integrate correctly.\n" +
-			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.\n" +
-			// `stripe directory` installs itself on first use once the auto-install
-			// rollout reaches a machine, but until that flag is fully rolled out the
-			// prompt is still what most callers get, so describe that.
-			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to be prompted, or use `stripe plugin install <name>`.",
+		AIAgentHelpAnnotationKey: "  If you do not have an account, run `stripe sandboxes create` (provisions a claimable sandbox without a browser).\n" +
+			"  Run `stripe agent setup` to install or update the Stripe plugin.\n" +
+			"  Additional commands (apps, directory, generate, projects) are available as installable plugins — run the command directly to install, or use `stripe plugin install <name>`.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -163,7 +159,13 @@ func Execute(ctx context.Context) {
 
 	reporting.SetAccountIDProvider(Config.Profile.GetAccountID)
 
-	telemetryMetadata := stripe.NewEventMetadata()
+	// Reuse metadata the caller already attached to ctx (main.go does this so
+	// a panic recovered outside Execute still shares the same populated
+	// metadata pointer) rather than always creating a fresh one.
+	telemetryMetadata := stripe.GetEventMetadata(ctx)
+	if telemetryMetadata == nil {
+		telemetryMetadata = stripe.NewEventMetadata()
+	}
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
 
 	rootCmd.SetUsageTemplate(getUsageTemplate())
@@ -182,6 +184,11 @@ func Execute(ctx context.Context) {
 		return
 	}
 
+	args := os.Args[1:]
+	if normalized := resource.NormalizeBooleanRequestArgs(rootCmd, args); !slices.Equal(args, normalized) {
+		rootCmd.SetArgs(normalized)
+	}
+
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 
@@ -192,7 +199,7 @@ func Execute(ctx context.Context) {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case errors.Is(err, errCommandRemoved):
-			// the shim already printed the downgrade guidance; just exit non-zero
+			// the shim already printed the removal guidance; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, apiKeyExpiredMessage(projectNameFlag))
 		case isMorePermissionsRequiredError(err):
@@ -209,7 +216,7 @@ func Execute(ctx context.Context) {
 				fmt.Fprintln(os.Stderr, "  If you already have a key: set STRIPE_API_KEY or pass --api-key <key>.")
 				fmt.Fprintln(os.Stderr, "  To authenticate to an existing account: run `stripe login` (outputs a browser URL for the user).")
 				if useragent.DetectAIAgent(os.Getenv) != "" {
-					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandbox create` (provisions a claimable sandbox).")
+					fmt.Fprintln(os.Stderr, "  If you do not have an account, run `stripe sandboxes create` (provisions a claimable sandbox).")
 				}
 			} else {
 				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
@@ -223,10 +230,10 @@ func Execute(ctx context.Context) {
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
-			recordUnknownCommand(updatedCtx, strings.Join(os.Args[1:], " "))
+			recordUnknownCommand(updatedCtx, sanitizeUnknownCommand(os.Args[1:]))
 
 		default:
-			reporting.CaptureException(err)
+			reporting.CaptureException(updatedCtx, err)
 			fmt.Fprintln(os.Stderr, err)
 		}
 
@@ -356,6 +363,7 @@ func init() {
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd())
 	rootCmd.AddCommand(newServeCmd())
+	rootCmd.AddCommand(newStatusCmd())
 	rootCmd.AddCommand(newSwitchCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
@@ -366,6 +374,9 @@ func init() {
 	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
+	if terminalCmd, ok := cmdutil.FindSubCmd(rootCmd, "terminal"); ok {
+		terminalCmd.AddCommand(newTerminalQuickstartCmd())
+	}
 	registerHTTPCmds(rootCmd)
 	err := resource.AddDatabasesCmd(rootCmd, &Config)
 	if err != nil {

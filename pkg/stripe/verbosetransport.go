@@ -24,6 +24,11 @@ var inspectHeaders = []string{
 	"Stripe-Version",
 }
 
+// DefaultPrintableHeaders returns the headers printed in verbose mode by default.
+func DefaultPrintableHeaders() []string {
+	return append([]string(nil), inspectHeaders...)
+}
+
 type verboseTransport struct {
 	Transport        http.RoundTripper
 	Out              io.Writer

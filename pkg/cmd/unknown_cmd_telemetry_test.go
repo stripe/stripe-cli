@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -102,6 +103,23 @@ func TestRecordUnknownCommand_InAgentEnv_SendsAtBatchSize(t *testing.T) {
 	assert.Len(t, entries, 10)
 	assert.Equal(t, "stripe bazqux", entries[0].Command)
 	assert.Equal(t, "claude_code", entries[0].Agent)
+}
+
+func TestSanitizeUnknownCommand_StopsAtFirstFlag(t *testing.T) {
+	assert.Equal(t, "foobar create", sanitizeUnknownCommand([]string{"foobar", "create", "--api-key", "sk_live_secret"}))
+}
+
+func TestSanitizeUnknownCommand_CapsTokenCount(t *testing.T) {
+	assert.Equal(t, "a b c", sanitizeUnknownCommand([]string{"a", "b", "c", "d", "e"}))
+}
+
+func TestSanitizeUnknownCommand_CapsTokenLength(t *testing.T) {
+	long := strings.Repeat("x", 100)
+	assert.Equal(t, strings.Repeat("x", unknownCmdMaxTokenLen), sanitizeUnknownCommand([]string{long}))
+}
+
+func TestSanitizeUnknownCommand_NoArgs(t *testing.T) {
+	assert.Equal(t, "", sanitizeUnknownCommand(nil))
 }
 
 func TestRecordUnknownCommand_NoTelemetryClient(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -19,6 +20,63 @@ import (
 )
 
 const expectedPath = "/v1/events/evt_12345/retry"
+
+func TestEventsResendRejectsDotSegments(t *testing.T) {
+	requests := make(chan struct{}, 1)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- struct{}{}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	oldBaseURL := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = oldBaseURL }()
+
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	for _, id := range []string{".", ".."} {
+		resp, err := client.EventsResend(withAuth(context.Background()), &rpc.EventsResendRequest{EventId: id})
+		require.Nil(t, resp)
+		require.Equal(t, codes.InvalidArgument, status.Code(err))
+		require.Equal(t, "path arguments cannot be . or ..", status.Convert(err).Message())
+		require.Empty(t, requests)
+	}
+}
+
+func TestEventsResendEscapesEventID(t *testing.T) {
+	for _, tt := range []struct {
+		name, id, wantURI string
+	}{
+		{"traversal", "evt_1/../../customers/cus_123", "/v1/events/evt_1%2F..%2F..%2Fcustomers%2Fcus_123/retry"},
+		// An already encoded slash is still a literal part of the raw event ID.
+		{"pre-encoded slash", "evt_%2F", "/v1/events/evt_%252F/retry"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			requestPaths := make(chan [2]string, 1)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, http.MethodPost, r.Method)
+				requestPaths <- [2]string{r.RequestURI, r.URL.EscapedPath()}
+				_, err := w.Write(rawEvent)
+				assert.NoError(t, err)
+			}))
+			defer ts.Close()
+			oldBaseURL := baseURL
+			baseURL = ts.URL
+			defer func() { baseURL = oldBaseURL }()
+
+			conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+			require.NoError(t, err)
+			defer conn.Close()
+			resp, err := rpc.NewStripeCLIClient(conn).EventsResend(withAuth(context.Background()), &rpc.EventsResendRequest{EventId: tt.id})
+			require.NoError(t, err)
+			require.Equal(t, "evt_12345", resp.StripeEvent.Id)
+			require.Equal(t, [2]string{tt.wantURI, tt.wantURI}, <-requestPaths)
+		})
+	}
+}
 
 var rawEvent = []byte(`{
 	"id": "evt_12345",

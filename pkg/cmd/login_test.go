@@ -50,7 +50,7 @@ func TestLoginNewSessionRevokesPreviousToken(t *testing.T) {
 	})
 
 	var revokeCalled, initiateLoginCalled bool
-	revokeToken = func(ctx context.Context, accessBaseURL string) error {
+	revokeToken = func(ctx context.Context, accessBaseURL string, profile *config.Profile) error {
 		revokeCalled = true
 		rt, err := config.KeyRing.Get(config.OAuthRefreshTokenKeychainKey)
 		require.NoError(t, err)
@@ -186,7 +186,7 @@ func TestLoginReauthorizesNonExpiredSession(t *testing.T) {
 		assert.Equal(t, "oak_current_uat", accessToken)
 		return nil
 	}
-	reauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+	reauth = func(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 		reauthCalled = true
 		return nil
 	}
@@ -218,7 +218,7 @@ func TestLoginCompleteReauthPollsPendingReauth(t *testing.T) {
 	t.Cleanup(func() { pollPendingReauth = origPollPendingReauth })
 
 	var pollCalled bool
-	pollPendingReauth = func(ctx context.Context, accessBaseURL, accessToken string) error {
+	pollPendingReauth = func(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
 		pollCalled = true
 		assert.Equal(t, "oak_current_uat", accessToken)
 		return nil

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -17,7 +18,35 @@ const (
 	unknownCmdBatchFile = "unknown_commands.json"
 	unknownCmdBatchSize = 10
 	unknownCmdEventName = "Unknown Command Attempted"
+
+	// unknownCmdMaxTokens bounds how many leading argv tokens are recorded,
+	// and unknownCmdMaxTokenLen bounds each token's length, so a mistyped
+	// command can't carry flag values or other positional user data (IDs,
+	// emails, secrets) into telemetry.
+	unknownCmdMaxTokens   = 3
+	unknownCmdMaxTokenLen = 40
 )
+
+// sanitizeUnknownCommand returns the leading run of non-flag argv tokens,
+// capped in count and length, for use as the "command" telemetry field.
+// It stops at the first flag so flag values are never recorded, since
+// anything past the attempted command name is not a command name.
+func sanitizeUnknownCommand(args []string) string {
+	tokens := make([]string, 0, unknownCmdMaxTokens)
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			break
+		}
+		if len(arg) > unknownCmdMaxTokenLen {
+			arg = arg[:unknownCmdMaxTokenLen]
+		}
+		tokens = append(tokens, arg)
+		if len(tokens) == unknownCmdMaxTokens {
+			break
+		}
+	}
+	return strings.Join(tokens, " ")
+}
 
 type unknownCommandEntry struct {
 	Command   string `json:"command"`

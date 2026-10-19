@@ -46,12 +46,15 @@ type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
-	// AutoInstall carries the metadata endpoint's answer to "may this machine
-	// install this plugin without being asked?". It is only ever true for a
+	// AutoInstall carries the backend's per-plugin setting for installing on first
+	// use without prompting. It is only ever true for a
 	// resolution that came from a live metadata response: a resolution that fell
 	// back to cached metadata leaves it false, so a machine that cannot reach the
 	// endpoint keeps prompting rather than installing on a stale answer.
 	AutoInstall bool
+	// AutoUpdateDefault is the backend default from a live metadata response.
+	// Cached metadata leaves it false; explicit user settings take precedence.
+	AutoUpdateDefault bool
 }
 
 // checkLatestPluginVersionResolver is swappable for test injection.
@@ -82,11 +85,24 @@ func ValidatePluginShortname(pluginName string) error {
 	}
 }
 
+// HookBaseURLs are the base URL overrides a plugin hook may hear about: exactly
+// what the user explicitly passed on the command line, and empty otherwise. A
+// plugin reads an empty value as "use your own default", so these deliberately
+// never carry the defaults the CLI resolves for its own metadata requests —
+// forwarding those would replace a plugin's choice with the CLI's. They ride
+// the install chain so the hooks of dependencies installed along the way hear
+// the same overrides the plugin the user named does.
+type HookBaseURLs struct {
+	APIBaseURL       string
+	DashboardBaseURL string
+	AccessBaseURL    string
+}
+
 // Install installs the resolved plugin version. If the metadata lookup already
 // resolved a concrete binary URL, it reuses that result and skips a second
 // metadata request. Otherwise it retries metadata during install so cached
 // local metadata can still recover fresh release details.
-func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string) error {
+func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, hookBaseURLs HookBaseURLs) error {
 	switch {
 	case r == nil:
 		return errorcategory.New(errorcategory.Internal, "missing resolved plugin version")
@@ -95,8 +111,17 @@ func (r *ResolvedPluginVersion) Install(ctx context.Context, config config.IConf
 	case r.Version == "":
 		return errorcategory.New(errorcategory.Internal, "missing plugin version")
 	default:
-		return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "")
+		chain := newInstallChain(hookBaseURLs)
+		defer chain.runDeferredHooks()
+		return r.install(ctx, config, fs, apiBaseURL, dashboardBaseURL, chain)
 	}
+}
+
+// install is Install without the entry-point guards or chain setup, for
+// dependency-chain callers that have already validated the resolution and hold
+// the chain to thread through.
+func (r *ResolvedPluginVersion) install(ctx context.Context, config config.IConfig, fs afero.Fs, apiBaseURL, dashboardBaseURL string, chain *installChain) error {
+	return r.Plugin.install(ctx, config, fs, r.Version, apiBaseURL, dashboardBaseURL, r.BinaryURL, r.BinaryURL != "", chain)
 }
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
@@ -108,22 +133,34 @@ func GetBinaryExtension() string {
 	return ""
 }
 
-// getPluginsDir computes where plugins are installed locally
-func getPluginsDir(config config.IConfig) string {
-	var pluginsDir string
-	tempEnvPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH")
-
-	switch {
-	case tempEnvPluginsPath != "":
-		pluginsDir = tempEnvPluginsPath
-	case PluginsPath != "":
-		pluginsDir = PluginsPath
-	default:
-		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		pluginsDir = filepath.Join(configPath, "plugins")
+// pluginsDirOverride returns the directory plugins have been pointed at instead of the
+// CLI's own, or "" when they have not been.
+//
+// There are two ways to do that -- the STRIPE_PLUGINS_PATH environment variable, and
+// PluginsPath compiled in by a `localdev` build -- and anything deciding what the CLI may
+// do to a plugin directory has to ask about both. Checking only PluginsPath is what let
+// auto-upgrade overwrite a plugin under STRIPE_PLUGINS_PATH: the same directory, with
+// none of the protection, because the guard knew only the other spelling of it.
+//
+// The env var wins where both are set, matching the order these have always resolved in:
+// a variable set for one invocation is a narrower statement than one baked into a binary.
+func pluginsDirOverride() string {
+	if envPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH"); envPluginsPath != "" {
+		return envPluginsPath
 	}
 
-	return pluginsDir
+	return PluginsPath
+}
+
+// getPluginsDir computes where plugins are installed locally
+func getPluginsDir(config config.IConfig) string {
+	if override := pluginsDirOverride(); override != "" {
+		return override
+	}
+
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+
+	return filepath.Join(configPath, "plugins")
 }
 
 func getLocalPluginMetadataDir(config config.IConfig) string {
@@ -830,7 +867,7 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		basePlugin = &cachedPlugin
 	}
 
-	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, config.GetMachineUUID())
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		// Translated here rather than left to normalizePluginMetadataError, which only
 		// runs once the cached lookup has failed too. The endpoint is the only thing that
@@ -853,11 +890,18 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		return nil, err
 	}
 
+	// Per-release peer requirements ride on the response, not the manifest, so the
+	// plugin that resolution hands around (and install persists) picks them up here.
+	// Set unconditionally: a release that declares none must not inherit requirements
+	// cached from whichever release was installed before.
+	plugin.MinPluginVersions = pluginMetadata.MinPluginVersions
+
 	return &ResolvedPluginVersion{
-		Plugin:      plugin,
-		Version:     resolvedVersion,
-		BinaryURL:   pluginMetadata.BinaryURL,
-		AutoInstall: pluginMetadata.AutoInstall,
+		Plugin:            plugin,
+		Version:           resolvedVersion,
+		BinaryURL:         pluginMetadata.BinaryURL,
+		AutoInstall:       pluginMetadata.AutoInstall,
+		AutoUpdateDefault: pluginMetadata.AutoUpdateDefault,
 	}, nil
 }
 
@@ -1115,11 +1159,16 @@ func (e *ErrPluginNotFound) Error() string {
 	return fmt.Sprintf("no plugin named %q exists", e.Name)
 }
 
-// FetchRemoteResource returns the remote resource body
-func FetchRemoteResource(url string) ([]byte, error) {
+// FetchRemoteResource returns the remote resource body.
+//
+// The context covers the body transfer, not just getting a response, because the
+// resource this fetches is a plugin binary: by the time the wait is long enough to
+// be worth abandoning, the download has already started. Canceling only the
+// handshake would leave Ctrl+C with nothing to interrupt.
+func FetchRemoteResource(ctx context.Context, url string) ([]byte, error) {
 	t := &requests.TracedTransport{}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		return nil, err
@@ -1160,9 +1209,60 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 // CheckLatestPluginVersion prints an upgrade hint to stderr if live metadata
 // has a newer version of the plugin than what is currently installed.
+//
+// It stays quiet for a plugin that auto-updates, whose owner asked the CLI to handle
+// upgrades rather than be told about them -- for as long as the CLI can actually handle
+// them, which the guard below is about. Where maybeAutoUpgrade already ran this
+// invocation, this is a second lookup of the same thing, ending in advice about an
+// upgrade the CLI just made. Where it did not run -- which is most invocations, since
+// it checks at most once per autoUpgradeCheckInterval -- this would spend exactly the
+// per-command request that throttle exists to avoid, and undo it from the other end.
+//
+// What that gives up is every case where the pre-run check knows a newer version exists
+// but declines to install it: a resolution from cached metadata, or the whole interval
+// after such a decline. Those runs now say nothing at all. The alternative is charging
+// every auto-updating command a request to say it, and a check that keeps declining is
+// better reported by the check itself than inferred from a hint here.
+//
+// When following the backend default, reuse the pre-run check's resolution. A
+// default of false still gets an upgrade hint, at the same interval as the check.
 func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afero.Fs, plugin Plugin, apiBaseURL, dashboardBaseURL string) {
+	// PluginsPath alone, deliberately narrower than the same-looking guard in
+	// maybeAutoUpgrade: a `localdev` build has no published release to be behind, but
+	// someone who merely relocated their plugins with STRIPE_PLUGINS_PATH still wants to
+	// hear about upgrades. Printing a line can only be wrong; installing over the
+	// directory can delete a build, which is why that side asks the broader question.
 	if PluginsPath != "" {
 		return
+	}
+
+	// Handing the job to the pre-run check, but only where that check will take it.
+	// maybeAutoUpgrade refuses a plugins directory the user pointed the CLI at, so
+	// deferring to it there would leave a plugin that auto-updates under
+	// STRIPE_PLUGINS_PATH with no upgrade and no word that one exists -- silently behind,
+	// on the strength of a setting asking for the opposite.
+	//
+	// Not the same as deferring across the throttle, which this still does: that decline
+	// is for the current invocation and some later one will upgrade, so the silence costs
+	// a few hours. An overridden directory is refused on every invocation there will ever
+	// be, so nothing arrives to break it.
+	//
+	// Asked of pluginsDirOverride rather than the environment directly, even though the
+	// guard above has already returned for the compiled-in half of it, so that this and
+	// maybeAutoUpgrade keep reading the same answer from the same place.
+	var resolvedPlugin *ResolvedPluginVersion
+	if pluginsDirOverride() == "" {
+		if pluginUpdatesEnabled(plugin.Shortname, false) {
+			return
+		}
+		if plugin.autoUpgradeCheck != nil && pluginUpdatesEnabled(plugin.Shortname, true) {
+			// With no explicit setting, reuse the pre-run decision. This also keeps
+			// throttled and failed checks from causing another request on exit.
+			resolvedPlugin = plugin.autoUpgradeCheck.resolved
+			if resolvedPlugin == nil || resolvedPlugin.AutoUpdateDefault {
+				return
+			}
+		}
 	}
 
 	installedVersion := plugin.InstalledVersion(config, fs)
@@ -1181,9 +1281,12 @@ func CheckLatestPluginVersion(ctx context.Context, config config.IConfig, fs afe
 	ctx, cancel := context.WithTimeout(ctx, checkLatestPluginVersionTimeout)
 	defer cancel()
 
-	resolvedPlugin, err := checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
-	if err != nil {
-		return
+	if resolvedPlugin == nil {
+		var err error
+		resolvedPlugin, err = checkLatestPluginVersionResolver(ctx, config, fs, plugin.Shortname, apiBaseURL, dashboardBaseURL)
+		if err != nil || resolvedPlugin == nil {
+			return
+		}
 	}
 
 	latestVersion := resolvedPlugin.Version

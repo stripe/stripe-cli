@@ -1,0 +1,35 @@
+name: Generate release notes
+description: >-
+  Generate the release notes for a tag and tidy GitHub's boilerplate out of
+  them, writing the result to release-notes.md in the workspace for GoReleaser
+  to publish with --release-notes. Requires Go to already be set up.
+
+inputs:
+  tag:
+    description: The tag being released.
+    required: true
+  token:
+    description: >-
+      A token with write access to repository contents, which is what the
+      generate release notes api requires.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Generate and tidy the release notes
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        TAG: ${{ inputs.tag }}
+      # GitHub builds the notes from the categories in .github/release.yml, then
+      # tidy-release-notes strips the boilerplate GitHub gives us no way to turn
+      # off. Both halves fail loudly: an api error trips pipefail, and empty
+      # input makes tidy-release-notes exit non-zero.
+      run: |
+        set -euo pipefail
+        gh api --method POST "repos/$REPO/releases/generate-notes" \
+          -f tag_name="$TAG" --jq .body \
+          | go run ./internal/releasenotes/cmd > release-notes.md
+        cat release-notes.md
