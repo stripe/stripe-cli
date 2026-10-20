@@ -105,3 +105,8 @@ require (
 	github.com/tidwall/match v1.2.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 )
+
+// Patched locally: AutoMTLS's generateCert() uses P-256 instead of upstream's P-521, needed
+// for TypeScript-based plugins running on Bun (see
+// third_party/hashicorp/go-plugin/STRIPE_PATCHES.md for why).
+replace github.com/hashicorp/go-plugin => ./third_party/hashicorp/go-plugin
