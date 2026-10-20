@@ -95,3 +95,8 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261026165753-2ffab32bce7e // indirect
 )
+
+// Patched locally: AutoMTLS's generateCert() uses P-256 instead of upstream's P-521, needed
+// for TypeScript-based plugins running on Bun (see
+// third_party/hashicorp/go-plugin/STRIPE_PATCHES.md for why).
+replace github.com/hashicorp/go-plugin => ./third_party/hashicorp/go-plugin
