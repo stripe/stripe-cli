@@ -76,7 +76,6 @@ jobs:
   build-linux:
     needs: [approve-release]
     runs-on: ubuntu-22.04
-    environment: release
     permissions:
       contents: write # GoReleaser publishes the GitHub release
     env:
