@@ -53,6 +53,12 @@ message AdditionalInfo {
   string api_base_url = 3;
   string dashboard_base_url = 4;
   string access_base_url = 5;
+  // cli_version is the version of the Stripe CLI running the plugin, as printed
+  // by `stripe version` (e.g. "1.53.0"), so a plugin can require a minimum CLI
+  // version itself. A CLI built from source sends "master". CLIs from before this
+  // field send nothing, so a plugin should treat an empty value as unknown rather
+  // than as too old.
+  string cli_version = 6;
 }
 
 message IsTerminal {

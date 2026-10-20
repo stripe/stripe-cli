@@ -330,8 +330,14 @@ type AdditionalInfo struct {
 	ApiBaseUrl       string `protobuf:"bytes,3,opt,name=api_base_url,json=apiBaseUrl,proto3" json:"api_base_url,omitempty"`
 	DashboardBaseUrl string `protobuf:"bytes,4,opt,name=dashboard_base_url,json=dashboardBaseUrl,proto3" json:"dashboard_base_url,omitempty"`
 	AccessBaseUrl    string `protobuf:"bytes,5,opt,name=access_base_url,json=accessBaseUrl,proto3" json:"access_base_url,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// cli_version is the version of the Stripe CLI running the plugin, as printed
+	// by `stripe version` (e.g. "1.53.0"), so a plugin can require a minimum CLI
+	// version itself. A CLI built from source sends "master". CLIs from before this
+	// field send nothing, so a plugin should treat an empty value as unknown rather
+	// than as too old.
+	CliVersion    string `protobuf:"bytes,6,opt,name=cli_version,json=cliVersion,proto3" json:"cli_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AdditionalInfo) Reset() {
@@ -395,6 +401,13 @@ func (x *AdditionalInfo) GetDashboardBaseUrl() string {
 func (x *AdditionalInfo) GetAccessBaseUrl() string {
 	if x != nil {
 		return x.AccessBaseUrl
+	}
+	return ""
+}
+
+func (x *AdditionalInfo) GetCliVersion() string {
+	if x != nil {
+		return x.CliVersion
 	}
 	return ""
 }
@@ -1978,7 +1991,7 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\x0fadditional_info\x18\x01 \x01(\v2\x15.proto.AdditionalInfoR\x0eadditionalInfo\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12+\n" +
 	"\x12core_cli_helper_id\x18\x03 \x01(\rR\x0fcoreCliHelperId\"\x16\n" +
-	"\x14PreUninstallResponse\"\x88\x02\n" +
+	"\x14PreUninstallResponse\"\xa9\x02\n" +
 	"\x0eAdditionalInfo\x122\n" +
 	"\vis_terminal\x18\x01 \x01(\v2\x11.proto.IsTerminalR\n" +
 	"isTerminal\x12J\n" +
@@ -1986,7 +1999,9 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\fapi_base_url\x18\x03 \x01(\tR\n" +
 	"apiBaseUrl\x12,\n" +
 	"\x12dashboard_base_url\x18\x04 \x01(\tR\x10dashboardBaseUrl\x12&\n" +
-	"\x0faccess_base_url\x18\x05 \x01(\tR\raccessBaseUrl\"R\n" +
+	"\x0faccess_base_url\x18\x05 \x01(\tR\raccessBaseUrl\x12\x1f\n" +
+	"\vcli_version\x18\x06 \x01(\tR\n" +
+	"cliVersion\"R\n" +
 	"\n" +
 	"IsTerminal\x12\x14\n" +
 	"\x05stdin\x18\x01 \x01(\bR\x05stdin\x12\x16\n" +
