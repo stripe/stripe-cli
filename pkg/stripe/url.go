@@ -82,6 +82,29 @@ func ValidateAPIBaseURL(apiBaseURL string) error {
 	return errInvalidAPIBaseURL
 }
 
+// ValidateFixtureAPIBaseURL restricts destinations embedded in fixtures, which
+// must not redirect CLI credentials to arbitrary or local servers.
+func ValidateFixtureAPIBaseURL(raw string) error {
+	u, ok := parseBaseURL(raw)
+	if !ok || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#") {
+		return errInvalidAPIBaseURL
+	}
+
+	host := strings.ToLower(u.Hostname())
+	if isDevHost(host) {
+		return nil
+	}
+	if u.Scheme != "https" || u.Host != u.Hostname() || (u.Path != "" && u.Path != "/" && !apiVersionPathRegexp.MatchString(u.Path)) {
+		return errInvalidAPIBaseURL
+	}
+	switch host {
+	case "api.stripe.com", "files.stripe.com", "meter-events.stripe.com", "qa-api.stripe.com":
+		return nil
+	default:
+		return errInvalidAPIBaseURL
+	}
+}
+
 // ValidateDashboardBaseURL returns an error if dashboardBaseURL isn't allowed
 func ValidateDashboardBaseURL(dashboardBaseURL string) error {
 	if dashboardBaseURL == DefaultDashboardBaseURL || dashboardBaseURL == qaDashboardBaseURL {

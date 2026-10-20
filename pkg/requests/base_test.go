@@ -15,8 +15,31 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+func TestWebhookEndpointCreatePreservesDestinationAndEvents(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "sk_test_example")
+	calls := make(chan struct{}, 1)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertions := require.New(t)
+		assertions.Equal(http.MethodPost, r.Method)
+		assertions.Equal("/v1/webhook_endpoints", r.URL.Path)
+		assertions.Equal("Bearer sk_test_example", r.Header.Get("Authorization"))
+		assertions.NoError(r.ParseForm())
+		assertions.Equal("https://example.com/webhook", r.Form.Get("url"))
+		assertions.Equal([]string{"*"}, r.Form["enabled_events[]"])
+		assertions.Equal("example", r.Form.Get("description"))
+		assertions.Equal("true", r.Form.Get("connect"))
+		calls <- struct{}{}
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+	err := WebhookEndpointCreate(context.Background(), ts.URL, stripe.APIVersion, "https://example.com/webhook", "example", true, &config.Profile{})
+	require.NoError(t, err)
+	require.Len(t, calls, 1)
+}
 
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}

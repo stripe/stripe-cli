@@ -2,7 +2,7 @@ package rpcservice
 
 import (
 	"context"
-	"fmt"
+	"crypto/subtle"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -34,18 +34,14 @@ func newWrappedStream(stream grpc.ServerStream, methodName string, server *RPCSe
 	return &WrappedServerStream{stream, newCtx}
 }
 
-// Only allow requests from clients that have the required header. This helps prevent malicious
-// websites from making requests. See https://fetch.spec.whatwg.org/#forbidden-header-name
-func authorize(ctx context.Context) error {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return status.Errorf(codes.InvalidArgument, "Retrieving metadata failed")
+// authorize requires the secret issued by this daemon instance.
+func (srv *RPCService) authorize(ctx context.Context) error {
+	md, _ := metadata.FromIncomingContext(ctx)
+	values := md.Get(requiredHeader)
+	if len(values) != 1 || values[0] == "" || srv.token == "" ||
+		subtle.ConstantTimeCompare([]byte(values[0]), []byte(srv.token)) != 1 {
+		return status.Error(codes.Unauthenticated, "Invalid daemon credentials")
 	}
-
-	if _, ok := md[requiredHeader]; !ok {
-		return status.Errorf(codes.Unauthenticated, "%s", fmt.Sprintf("%s header is not supplied", requiredHeader))
-	}
-
 	return nil
 }
 
@@ -94,13 +90,14 @@ func serverStreamInterceptor(
 	info *grpc.StreamServerInfo,
 	handler grpc.StreamHandler,
 ) error {
+	server := srv.(*RPCService)
+	if err := server.authorize(stream.Context()); err != nil {
+		return err
+	}
 	log.WithFields(log.Fields{
 		"prefix": "gRPC",
 	}).Debugf("Streaming method invoked: %v", info.FullMethod)
-	wrappedStream := newWrappedStream(stream, info.FullMethod, srv.(*RPCService))
-	if err := authorize(wrappedStream.Context()); err != nil {
-		return err
-	}
+	wrappedStream := newWrappedStream(stream, info.FullMethod, server)
 	sendCommandInvocationEvent(wrappedStream.Context())
 	return handler(srv, wrappedStream)
 }
@@ -112,13 +109,14 @@ func serverUnaryInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
+	server := info.Server.(*RPCService)
+	if err := server.authorize(ctx); err != nil {
+		return nil, err
+	}
 	log.WithFields(log.Fields{
 		"prefix": "gRPC",
 	}).Debugf("Unary method invoked: %v, req: %v", info.FullMethod, req)
-	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, info.Server.(*RPCService))
-	if err := authorize(newCtx); err != nil {
-		return nil, err
-	}
+	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, server)
 	go sendCommandInvocationEvent(newCtx)
 	return handler(newCtx, req)
 }

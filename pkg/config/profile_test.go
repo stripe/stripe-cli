@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +17,49 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
+
+func TestOverrideAPIKeyMode(t *testing.T) {
+	for _, source := range []string{"environment", "profile"} {
+		for _, live := range []bool{false, true} {
+			for _, tt := range []struct {
+				key  string
+				live bool
+			}{
+				{"sk_test_example", false},
+				{"sk_live_example", true},
+				{"rk_test_example", false},
+				{"rk_live_example", true},
+			} {
+				key := tt.key
+				t.Run(fmt.Sprintf("%s/live=%t/%s", source, live, key), func(t *testing.T) {
+					t.Setenv("STRIPE_API_KEY", "")
+					p := &Profile{}
+					if source == "environment" {
+						t.Setenv("STRIPE_API_KEY", key)
+					} else {
+						p.APIKey = key
+					}
+					got, err := p.GetAPIKey(live)
+					creds, resolveErr := p.ResolveCredentials(live)
+					if tt.live == live {
+						require.NoError(t, err)
+						require.Equal(t, key, got)
+						require.NoError(t, resolveErr)
+						require.Equal(t, key, creds.Token)
+					} else {
+						require.Error(t, err)
+						require.Empty(t, got)
+						require.Error(t, resolveErr)
+						require.Empty(t, creds.Token)
+						category, ok := errorcategory.Get(err)
+						require.True(t, ok)
+						require.Equal(t, errorcategory.Auth, category)
+					}
+				})
+			}
+		}
+	}
+}
 
 const dottedNameError = `profile name "example.project" cannot contain a period; use a hyphen or underscore instead`
 

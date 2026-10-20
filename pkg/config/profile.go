@@ -451,6 +451,9 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			return "", err
 		}
 
+		if isLivemodeKey(envKey) != livemode {
+			return "", errorcategory.New(errorcategory.Auth, "API key mode does not match the requested mode")
+		}
 		return envKey, nil
 	}
 
@@ -460,6 +463,9 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			return "", err
 		}
 
+		if isLivemodeKey(p.APIKey) != livemode {
+			return "", errorcategory.New(errorcategory.Auth, "API key mode does not match the requested mode")
+		}
 		return p.APIKey, nil
 	}
 

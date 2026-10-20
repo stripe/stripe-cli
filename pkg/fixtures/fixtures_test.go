@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -89,6 +90,55 @@ const file = "test_fixture.json"
 const customersPath = "/v1/customers"
 const chargePath = "/v1/charges"
 const capturePath = "/v1/charges/char_12345/capture"
+
+func TestRawFixtureDestinationValidation(t *testing.T) {
+	requests := make(chan struct{}, 4)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- struct{}{}
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+	for _, destination := range []string{"https://evil.example", ts.URL, ""} {
+		t.Run(destination, func(t *testing.T) {
+			raw := fmt.Sprintf(`{"_meta":{"template_version":0},"fixtures":[{"name":"request","path":"/v1/products","method":"post","api_base":%q}]}`, destination)
+			fxt, err := NewFixtureFromRawString(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", ts.URL, raw)
+			require.NoError(t, err)
+			_, err = fxt.Execute(context.Background(), "")
+			if destination == "" {
+				require.NoError(t, err)
+				require.Len(t, requests, 1)
+				<-requests
+			} else {
+				require.ErrorContains(t, err, "invalid API base URL")
+				category, ok := errorcategory.Get(err)
+				require.True(t, ok)
+				require.Equal(t, errorcategory.UserInput, category)
+				require.Empty(t, requests)
+			}
+		})
+	}
+}
+
+func TestBillingMeterFixtureDestinations(t *testing.T) {
+	for _, file := range []string{
+		"triggers/v1.billing.meter.no_meter_found.json",
+		"triggers/v1.billing.meter.error_report_triggered.json",
+	} {
+		t.Run(file, func(t *testing.T) {
+			fxt, err := NewFixtureFromFile(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", "", file, nil, nil, nil, nil, false)
+			require.NoError(t, err)
+			found := false
+			for _, request := range fxt.FixtureData.Requests {
+				if request.APIBase != "" {
+					require.Equal(t, "https://meter-events.stripe.com", request.APIBase)
+					require.NoError(t, stripe.ValidateFixtureAPIBaseURL(request.APIBase))
+					found = true
+				}
+			}
+			require.True(t, found)
+		})
+	}
+}
 
 func TestAccountCreationFixtureError(t *testing.T) {
 	fxt, err := NewFixtureFromFile(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", "", "triggers/account.updated.json", nil, nil, nil, nil, false)

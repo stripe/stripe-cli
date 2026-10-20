@@ -371,6 +371,11 @@ func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.R
 }
 
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
+	if data.APIBase != "" {
+		if err := stripe.ValidateFixtureAPIBaseURL(data.APIBase); err != nil {
+			return nil, err
+		}
+	}
 	req := requests.Base{
 		Method:         strings.ToUpper(data.Method),
 		SuppressOutput: true,

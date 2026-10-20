@@ -1,18 +1,136 @@
 package canary
 
 import (
+	"bytes"
+	"context"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/stripe/stripe-cli/canary/testutil"
+	"github.com/stripe/stripe-cli/rpc"
 )
 
 // =============================================================================
 // Version & Help Tests
 // =============================================================================
+
+func TestOfflineDaemonAuthentication(t *testing.T) {
+	runner := getRunner(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, runner.BinaryPath, "--config", filepath.Join(t.TempDir(), "config.toml"), "daemon")
+	cmd.Env = append(os.Environ(), "STRIPE_CLI_TELEMETRY_OPTOUT=1", "STRIPE_API_KEY=sk_test_example")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal("Failed to open daemon stdout")
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal("Failed to start daemon")
+	}
+	var cfg struct {
+		Host  string `json:"host"`
+		Port  int    `json:"port"`
+		Token string `json:"token"`
+	}
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		if cfg.Token != "" && strings.Contains(stderr.String(), cfg.Token) {
+			t.Error("Daemon logged its authentication token")
+		}
+	})
+	if err := json.NewDecoder(stdout).Decode(&cfg); err != nil {
+		t.Fatal("Failed to parse daemon configuration")
+	}
+	secret, err := hex.DecodeString(cfg.Token)
+	if err != nil || len(secret) != 32 {
+		t.Fatal("Daemon must issue a 256-bit token")
+	}
+	conn, err := grpc.NewClient(net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatal("Failed to connect to daemon")
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+	for _, tt := range []struct {
+		name   string
+		values []string
+	}{
+		{"missing", nil},
+		{"empty", []string{""}},
+		{"wrong", []string{"wrong-token"}},
+		{"legacy", []string{"1"}},
+		{"multiple", []string{cfg.Token, cfg.Token}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			md := metadata.MD{}
+			md.Set("sec-x-stripe-cli", tt.values...)
+			callCtx := metadata.NewOutgoingContext(ctx, md)
+			if _, err := client.Version(callCtx, &rpc.VersionRequest{}); status.Code(err) != codes.Unauthenticated {
+				t.Error("Version accepted invalid daemon credentials")
+			}
+			if _, err := client.Trigger(callCtx, &rpc.TriggerRequest{Raw: `{"fixtures":[{"name":"request","method":"post","path":"/v1/products","api_base":"http://127.0.0.1:1"}]}`}); status.Code(err) != codes.Unauthenticated {
+				t.Error("Trigger accepted invalid daemon credentials")
+			}
+			if _, err := client.EventsResend(callCtx, &rpc.EventsResendRequest{EventId: "example", Live: true}); status.Code(err) != codes.Unauthenticated {
+				t.Error("EventsResend accepted invalid daemon credentials")
+			}
+			if _, err := client.WebhookEndpointCreate(callCtx, &rpc.WebhookEndpointCreateRequest{Url: "https://example.com/webhook"}); status.Code(err) != codes.Unauthenticated {
+				t.Error("WebhookEndpointCreate accepted invalid daemon credentials")
+			}
+			stream, err := client.Listen(callCtx, &rpc.ListenRequest{Live: true})
+			if err != nil {
+				t.Fatal("Failed to start Listen call")
+			}
+			if resp, err := stream.Recv(); resp != nil || status.Code(err) != codes.Unauthenticated {
+				t.Error("Listen accepted invalid daemon credentials")
+			}
+		})
+	}
+	callCtx := metadata.NewOutgoingContext(ctx, metadata.Pairs("sec-x-stripe-cli", cfg.Token))
+	if _, err := client.Version(callCtx, &rpc.VersionRequest{}); err != nil {
+		t.Fatal("Version rejected valid daemon credentials")
+	}
+	requests := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case requests <- struct{}{}:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	for _, destination := range []string{"https://evil.example", server.URL} {
+		raw := fmt.Sprintf(`{"_meta":{"template_version":0},"fixtures":[{"name":"request","path":"/v1/products","method":"post","api_base":%q}]}`, destination)
+		resp, err := client.Trigger(callCtx, &rpc.TriggerRequest{Raw: raw})
+		if resp != nil || err == nil || !strings.Contains(err.Error(), "invalid API base URL") {
+			t.Error("Trigger did not reject an unsafe fixture destination")
+		}
+	}
+	if len(requests) != 0 {
+		t.Error("Trigger sent a request to an unsafe fixture destination")
+	}
+}
 
 func TestOfflineVersion(t *testing.T) {
 	runner := getRunner(t)
