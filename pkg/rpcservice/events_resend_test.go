@@ -15,11 +15,38 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
 const expectedPath = "/v1/events/evt_12345/retry"
+
+func TestEventsResendLiveAuthentication(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "sk_live_example")
+	requests := make(chan string, 2)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- r.Header.Get("Authorization")
+		w.Write([]byte(`{"id":"example","livemode":true}`))
+	}))
+	defer ts.Close()
+	oldBaseURL := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = oldBaseURL }()
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(requiredHeader, "wrong-token"))
+	resp, err := client.EventsResend(ctx, &rpc.EventsResendRequest{EventId: "example", Live: true})
+	require.Equal(t, codes.Unauthenticated, status.Code(err))
+	require.Nil(t, resp)
+	require.Empty(t, requests)
+	resp, err = client.EventsResend(withAuth(context.Background()), &rpc.EventsResendRequest{EventId: "example", Live: true})
+	require.NoError(t, err)
+	require.True(t, resp.StripeEvent.Livemode)
+	require.Equal(t, "Bearer sk_live_example", <-requests)
+}
 
 func TestEventsResendRejectsDotSegments(t *testing.T) {
 	requests := make(chan struct{}, 1)

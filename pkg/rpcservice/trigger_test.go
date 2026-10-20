@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,10 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const customerPath = "/v1/customers"
@@ -23,6 +27,49 @@ const customerPayload = `{"id": "cust_12345", "foo": "bar"}`
 const productPath = "/v1/products"
 const pricePath = "/v1/prices"
 const subscriptionPath = "/v1/subscriptions"
+
+func TestTriggerCredentialDestinationProtection(t *testing.T) {
+	requests := make(chan struct{}, 4)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- struct{}{}
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+	oldBaseURL := baseURL
+	baseURL = ts.URL
+	defer func() { baseURL = oldBaseURL }()
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+	for _, destination := range []string{"https://evil.example", ts.URL} {
+		for _, token := range []string{"wrong-token", testDaemonToken} {
+			t.Run(destination+"/"+token, func(t *testing.T) {
+				ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(requiredHeader, token))
+				raw := fmt.Sprintf(`{"_meta":{"template_version":0},"fixtures":[{"name":"request","path":"/v1/products","method":"post","api_base":%q}]}`, destination)
+				resp, err := client.Trigger(ctx, &rpc.TriggerRequest{Raw: raw})
+				require.Nil(t, resp)
+				if token != testDaemonToken {
+					require.Equal(t, codes.Unauthenticated, status.Code(err))
+				} else {
+					require.ErrorContains(t, err, "invalid API base URL")
+				}
+				require.Empty(t, requests)
+			})
+		}
+	}
+}
+
+func TestTriggerRejectsLiveOverride(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "sk_live_example")
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+	resp, err := rpc.NewStripeCLIClient(conn).Trigger(withAuth(context.Background()), &rpc.TriggerRequest{Event: "product.created"})
+	require.Equal(t, codes.Unauthenticated, status.Code(err))
+	require.ErrorContains(t, err, "API key mode does not match")
+	require.Nil(t, resp)
+}
 
 func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
 	ctx := withAuth(context.Background())

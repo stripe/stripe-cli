@@ -39,11 +39,15 @@ Currently, stripe daemon only supports a subset of CLI commands. Documentation i
 
 func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
 	telemetryClient := stripe.GetTelemetryClient(cmd.Context())
-	srv := rpcservice.New(&rpcservice.Config{
+	srv, err := rpcservice.New(&rpcservice.Config{
 		Port:    dc.port,
 		Log:     log.StandardLogger(),
 		UserCfg: dc.cfg,
 	}, telemetryClient)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{

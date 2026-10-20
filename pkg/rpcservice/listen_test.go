@@ -9,14 +9,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -29,6 +32,43 @@ type mockProxy struct {
 
 func (mp *mockProxy) Run(ctx context.Context) error {
 	return runProxy(ctx)
+}
+
+func TestListenLiveAuthentication(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "sk_live_example")
+	original := createProxy
+	defer func() { createProxy = original }()
+	calls := make(chan string, 2)
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
+		calls <- cfg.Client.(*stripe.Client).Credentials.Token
+		runProxy = func(ctx context.Context) error {
+			select {
+			case cfg.OutCh <- websocket.StateElement{State: websocket.Ready}:
+			case <-ctx.Done():
+			}
+			return nil
+		}
+		return &mockProxy{OutCh: cfg.OutCh}, nil
+	}
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+	ctx := metadata.NewOutgoingContext(context.Background(), metadata.Pairs(requiredHeader, "wrong-token"))
+	stream, err := client.Listen(ctx, &rpc.ListenRequest{Live: true})
+	require.NoError(t, err)
+	resp, err := stream.Recv()
+	require.Equal(t, codes.Unauthenticated, status.Code(err))
+	require.Nil(t, resp)
+	require.Empty(t, calls)
+	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+	defer cancel()
+	stream, err = client.Listen(ctx, &rpc.ListenRequest{Live: true})
+	require.NoError(t, err)
+	resp, err = stream.Recv()
+	require.NoError(t, err)
+	require.Equal(t, rpc.ListenResponse_STATE_READY, resp.GetState())
+	require.Equal(t, "sk_live_example", <-calls)
 }
 
 func TestListenStreamsState(t *testing.T) {
