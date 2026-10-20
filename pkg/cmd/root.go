@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"slices"
 	"strings"
+	"syscall"
 	"unicode"
 
 	log "github.com/sirupsen/logrus"
@@ -152,9 +154,31 @@ func showSuggestion() {
 		os.Args[1], rootCmd.CommandPath(), suggStr))
 }
 
+// installPluginReaper guarantees every plugin subprocess this CLI launched -- including
+// peer plugins started on another plugin's behalf via CoreCLIHelper.RunPeerPlugin -- gets
+// killed if this process is interrupted or terminated, not just when a plugin's blocking
+// RunCommand call returns normally. Without this, a peer plugin can be left running
+// indefinitely past the end of the command that started it: the OS doesn't reliably deliver
+// the parent's signal to it, and the host's RPC call to its own direct child plugin isn't
+// wired to any cancellable context, so nothing here today reaps it on its own.
+//
+// plugins.CleanupAllClients kills every client go-plugin is tracking for this process, so one
+// handler covers both the plain "launch one plugin" case and the nested peer-plugin case.
+func installPluginReaper() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		plugins.CleanupAllClients()
+		os.Exit(1)
+	}()
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
+	installPluginReaper()
+
 	emitClaudeCodePluginHint()
 
 	reporting.SetAccountIDProvider(Config.Profile.GetAccountID)
