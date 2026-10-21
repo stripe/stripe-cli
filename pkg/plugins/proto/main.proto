@@ -341,6 +341,12 @@ message MessageBlock {
 message DataBlock {
   string type = 1;               // "data", "warning", "nextstep", "error"
   string payload = 2;            // JSON-encoded payload (shape varies per type)
+
+  // text is the plugin's own human-readable rendering of a "data" block. Text
+  // mode prints it in place of the generic rendering of payload, so a plugin
+  // keeps the output it would have printed itself; an empty text prints
+  // nothing. JSON mode ignores it and uses payload.
+  optional string text = 3;
 }
 
 message ProgressBlock {

@@ -167,11 +167,20 @@ func (s *Spinner) Stop(finalMsg string, success bool) error {
 type OutputBlock struct {
 	blockType string
 	payload   interface{}
+	// text is set only by DataWithText.
+	text *string
 }
 
 // Data creates a data block with arbitrary key-value payload.
 func Data(v interface{}) OutputBlock {
 	return OutputBlock{blockType: "data", payload: v}
+}
+
+// DataWithText creates a data block that the core prints as text in text mode,
+// instead of its generic rendering of v. An empty text prints nothing. JSON
+// mode still uses v.
+func DataWithText(v interface{}, text string) OutputBlock {
+	return OutputBlock{blockType: "data", payload: v, text: &text}
 }
 
 // Warning creates a warning block.
@@ -231,6 +240,7 @@ func (c *CLI) Output(command string, blocks ...OutputBlock) error {
 			Block: &proto.OutputBlock_Data{Data: &proto.DataBlock{
 				Type:    b.blockType,
 				Payload: string(payload),
+				Text:    b.text,
 			}},
 		})
 	}
