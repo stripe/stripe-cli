@@ -79,6 +79,16 @@ func TestRequestMediaType(t *testing.T) {
 	require.Contains(t, rendered.String(), `RequestMediaType: "multipart/form-data"`)
 	require.Contains(t, rendered.String(), `Format: "binary"`)
 	require.Contains(t, rendered.String(), `ServerURL: "https://files.stripe.com"`)
+
+	for _, mediaType := range []string{"", "application/x-www-form-urlencoded", "application/json"} {
+		t.Run("render default "+mediaType, func(t *testing.T) {
+			ordinary := *generated
+			ordinary.RequestMediaType = mediaType
+			var output bytes.Buffer
+			require.NoError(t, tmpl.Execute(&output, []varEntry{{VarName: ordinary.VarName, Op: &ordinary}}))
+			require.NotContains(t, output.String(), "RequestMediaType:")
+		})
+	}
 }
 
 func TestRequestMediaTypeAbsentAndFallback(t *testing.T) {
