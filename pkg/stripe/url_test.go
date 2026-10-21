@@ -10,7 +10,7 @@ func TestValidateFixtureAPIBaseURL(t *testing.T) {
 	for _, raw := range []string{
 		"https://api.stripe.com", "https://api.stripe.com/v1", "https://api.stripe.com/v2",
 		"https://files.stripe.com/", "https://meter-events.stripe.com", "https://qa-api.stripe.com",
-		"http://example-api-dev.dev.stripe.me:8080", "https://example-api-dev.dev.stripe.me/",
+		"https://example-api-dev.dev.stripe.me/",
 	} {
 		t.Run(raw, func(t *testing.T) { assert.NoError(t, ValidateFixtureAPIBaseURL(raw)) })
 	}
@@ -25,6 +25,7 @@ func TestValidateFixtureAPIBaseURL(t *testing.T) {
 		"https://meter-events.stripe.com?", "https://api.stripe.com#",
 		"http://api.stripe.com", "http://meter-events.stripe.com", "http://files.stripe.com", "http://qa-api.stripe.com",
 		"https://api.stripe.com:8080", "https://api.stripe.com:", "https://api.stripe.com/other", "https://api.stripe.com./",
+		"http://example-api-dev.dev.stripe.me:8080", "http://example-api-dev.dev.stripe.me",
 	} {
 		t.Run(raw, func(t *testing.T) { assert.ErrorIs(t, ValidateFixtureAPIBaseURL(raw), errInvalidAPIBaseURL) })
 	}

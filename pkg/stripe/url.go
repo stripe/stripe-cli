@@ -90,12 +90,13 @@ func ValidateFixtureAPIBaseURL(raw string) error {
 		return errInvalidAPIBaseURL
 	}
 
+	if u.Scheme != "https" || u.Host != u.Hostname() || (u.Path != "" && u.Path != "/" && !apiVersionPathRegexp.MatchString(u.Path)) {
+		return errInvalidAPIBaseURL
+	}
+
 	host := strings.ToLower(u.Hostname())
 	if isDevHost(host) {
 		return nil
-	}
-	if u.Scheme != "https" || u.Host != u.Hostname() || (u.Path != "" && u.Path != "/" && !apiVersionPathRegexp.MatchString(u.Path)) {
-		return errInvalidAPIBaseURL
 	}
 	switch host {
 	case "api.stripe.com", "files.stripe.com", "meter-events.stripe.com", "qa-api.stripe.com":
