@@ -269,7 +269,13 @@ func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
 // Similar to making a multipart request using curl, add the local filepath to params arg with @ prefix.
 // e.g. params.AppendData([]string{"photo=@/path/to/local/file.png"})
-func (rb *Base) MakeMultiPartRequest(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool) ([]byte, error) {
+func (rb *Base) MakeMultiPartRequest(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+	return rb.MakeMultiPartRequestWithAdditionalParams(ctx, creds, path, params, nil, errOnStatus)
+}
+
+// MakeMultiPartRequestWithAdditionalParams behaves like MakeMultiPartRequest, but also merges
+// additionalParams (e.g. non-file flag values) into the multipart request body.
+func (rb *Base) MakeMultiPartRequestWithAdditionalParams(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool) ([]byte, error) {
 	bodyParams, err := createV1Params(params, additionalParams, nil)
 	if err != nil {
 		return nil, err

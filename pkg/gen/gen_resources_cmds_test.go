@@ -98,6 +98,6 @@ func TestRequestMediaTypeAbsentAndFallback(t *testing.T) {
 		"text/plain": {}, "application/json": {},
 	}}}
 	for i := 0; i < 20; i++ {
-		require.Equal(t, "application/json", getMediaType(V1Namespace, op))
+		require.Empty(t, getMediaType(V1Namespace, op))
 	}
 }

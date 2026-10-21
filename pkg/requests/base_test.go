@@ -335,7 +335,24 @@ func TestMakeMultiPartRequest(t *testing.T) {
 		version:       "2025-01-01",
 		headers:       []string{"X-Test-Header: test-value"},
 	}
-	_, err := rb.MakeMultiPartRequest(context.Background(), stripe.NewAPIKeyCredentials("test-token"), "/foo/bar", params, map[string]interface{}{"description": "ordinary text"}, true)
+	_, err := rb.MakeMultiPartRequestWithAdditionalParams(context.Background(), stripe.NewAPIKeyCredentials("test-token"), "/foo/bar", params, map[string]interface{}{"description": "ordinary text"}, true)
+	require.NoError(t, err)
+}
+
+func TestMakeMultiPartRequestBackwardCompatibleSignature(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "fixture.pdf")
+	require.NoError(t, os.WriteFile(filePath, []byte("data"), 0600))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseMultipartForm(1<<20))
+		defer r.MultipartForm.RemoveAll()
+		require.Equal(t, []string{"app_upload"}, r.MultipartForm.Value["purpose"])
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost, SuppressOutput: true}
+	params := &RequestParameters{data: []string{"purpose=app_upload", "file=@" + filePath}}
+	_, err := rb.MakeMultiPartRequest(context.Background(), stripe.NewAPIKeyCredentials("test-token"), "/foo/bar", params, true)
 	require.NoError(t, err)
 }
 
@@ -353,7 +370,7 @@ func TestMakeMultiPartRequestInvalidInput(t *testing.T) {
 		{"unreadable file", []string{"file=@" + t.TempDir()}, nil, "upload file"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := rb.MakeMultiPartRequest(context.Background(), stripe.Credentials{}, "/upload", &RequestParameters{data: tc.data}, tc.additional, false)
+			_, err := rb.MakeMultiPartRequestWithAdditionalParams(context.Background(), stripe.Credentials{}, "/upload", &RequestParameters{data: tc.data}, tc.additional, false)
 			require.ErrorContains(t, err, tc.message)
 			category, ok := errorcategory.Get(err)
 			require.True(t, ok)

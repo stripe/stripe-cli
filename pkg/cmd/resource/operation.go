@@ -116,7 +116,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 	}
 	if oc.RequestMediaType == "multipart/form-data" {
-		_, err = oc.MakeMultiPartRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false)
+		_, err = oc.MakeMultiPartRequestWithAdditionalParams(cmd.Context(), creds, path, &oc.Parameters, requestParams, false)
 	} else {
 		_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
 	}

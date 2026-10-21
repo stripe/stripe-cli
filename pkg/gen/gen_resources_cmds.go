@@ -694,14 +694,6 @@ func getMediaType(apiNamespace ApiNamespace, op *spec.Operation) string {
 	if _, ok := content["multipart/form-data"]; ok {
 		return "multipart/form-data"
 	}
-	mediaTypes := make([]string, 0, len(content))
-	for mediaType := range content {
-		mediaTypes = append(mediaTypes, mediaType)
-	}
-	sort.Strings(mediaTypes)
-	if len(mediaTypes) > 0 {
-		return mediaTypes[0]
-	}
 	return ""
 }
 
