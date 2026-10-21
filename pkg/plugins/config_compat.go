@@ -18,10 +18,30 @@ import (
 // arbitrarily old. Migrating the config file out from under one that only knows
 // the flat layout would leave it unable to find any profile — hence the gate.
 //
-// The map is empty until those plugin releases exist. While it is empty the CLI
-// cannot tell a compatible plugin from an incompatible one, so ConfigV2Ready
-// reports false and the migration does not run at all.
-var configV2MinimumVersions = map[string]string{}
+// While the map is empty the CLI cannot tell a compatible plugin from an
+// incompatible one, so ConfigV2Ready reports false and the migration does not run
+// at all.
+//
+// Every installable plugin needs an entry before the map is populated at all.
+// readsConfigV2 reports false for an unmapped plugin, and
+// upgradePluginForConfigV2 cannot then satisfy it, so a user who has that plugin
+// installed is told to upgrade to a version that does not exist -- on every
+// command, indefinitely. That is strictly worse than leaving the map empty.
+var configV2MinimumVersions = map[string]string{
+	// TODO(config-v2): uncomment once the apps release containing
+	// stripe/stripe-cli-apps-plugin#346 ships. 1.19.0 links stripe-cli v1.50.6,
+	// which has no v2 read path at all.
+	// "apps": "",
+
+	// 0.3.1 predates bootstrap 0.11.0 and has no v2 read path; 0.3.2 was built
+	// after it and does. Verified against the published binaries, since 0.3.2 was
+	// released out-of-band and has no version-bump commit on master.
+	"directory": "0.3.2",
+
+	"pay":      "0.4.3",
+	"projects": "0.37.0",
+	"tools":    "0.9.1",
+}
 
 // ConfigV2Ready reports whether the CLI knows which plugin releases can read a
 // migrated config file. Until it does, migrating would break every installed
