@@ -130,6 +130,9 @@ func writeFlagLine(sb *strings.Builder, flag *pflag.Flag, descIndent string, ter
 			label := typeName
 			if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
 				label = formatVals[0]
+				if label == "binary" {
+					label = "file-path"
+				}
 			}
 			fmt.Fprintf(sb, "      --%s <%s>\n", flag.Name, label)
 		}

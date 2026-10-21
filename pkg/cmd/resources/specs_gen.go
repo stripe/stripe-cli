@@ -5,9 +5,10 @@ package resources
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
 var V1AccountLinksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/account_links",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/account_links",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
 			Type:             "string",
@@ -63,9 +64,10 @@ var V1AccountLinksCreate = resource.OperationSpec{
 }
 
 var V1AccountSessionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/account_sessions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/account_sessions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
 			Type:             "string",
@@ -377,15 +379,17 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 }
 
 var V1AccountsCapabilities = resource.OperationSpec{
-	Name:   "capabilities",
-	Path:   "/v1/accounts/{account}/capabilities",
-	Method: "GET",
+	Name:             "capabilities",
+	Path:             "/v1/accounts/{account}/capabilities",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AccountsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/accounts",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/accounts",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
@@ -1549,15 +1553,17 @@ var V1AccountsCreate = resource.OperationSpec{
 }
 
 var V1AccountsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/accounts/{account}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/accounts/{account}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AccountsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/accounts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/accounts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -1579,9 +1585,10 @@ var V1AccountsList = resource.OperationSpec{
 }
 
 var V1AccountsPersons = resource.OperationSpec{
-	Name:   "persons",
-	Path:   "/v1/accounts/{account}/persons",
-	Method: "GET",
+	Name:             "persons",
+	Path:             "/v1/accounts/{account}/persons",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -1599,9 +1606,10 @@ var V1AccountsPersons = resource.OperationSpec{
 }
 
 var V1AccountsReject = resource.OperationSpec{
-	Name:   "reject",
-	Path:   "/v1/accounts/{account}/reject",
-	Method: "POST",
+	Name:             "reject",
+	Path:             "/v1/accounts/{account}/reject",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payouts_action": {
 			Type:             "string",
@@ -1631,21 +1639,24 @@ var V1AccountsReject = resource.OperationSpec{
 }
 
 var V1AccountsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/account",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/account",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AccountsUnreject = resource.OperationSpec{
-	Name:   "unreject",
-	Path:   "/v1/accounts/{account}/unreject",
-	Method: "POST",
+	Name:             "unreject",
+	Path:             "/v1/accounts/{account}/unreject",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AccountsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/accounts/{account}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/accounts/{account}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
@@ -2774,9 +2785,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 }
 
 var V1ApplePayDomainsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/apple_pay/domains",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/apple_pay/domains",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
 			Type:       "string",
@@ -2787,15 +2799,17 @@ var V1ApplePayDomainsCreate = resource.OperationSpec{
 }
 
 var V1ApplePayDomainsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/apple_pay/domains/{domain}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/apple_pay/domains/{domain}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ApplePayDomainsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/apple_pay/domains",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/apple_pay/domains",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
 			Type: "string",
@@ -2816,15 +2830,17 @@ var V1ApplePayDomainsList = resource.OperationSpec{
 }
 
 var V1ApplePayDomainsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/apple_pay/domains/{domain}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/apple_pay/domains/{domain}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ApplicationFeesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/application_fees",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/application_fees",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"charge": {
 			Type:             "string",
@@ -2850,15 +2866,17 @@ var V1ApplicationFeesList = resource.OperationSpec{
 }
 
 var V1ApplicationFeesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/application_fees/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/application_fees/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AppsInstallsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/apps/installs",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/apps/installs",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"app": {
 			Type:             "string",
@@ -2891,9 +2909,10 @@ var V1AppsInstallsCreate = resource.OperationSpec{
 }
 
 var V1AppsInstallsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/apps/installs",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/apps/installs",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
 			Type:             "string",
@@ -2952,27 +2971,31 @@ var V1AppsInstallsList = resource.OperationSpec{
 }
 
 var V1AppsInstallsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/apps/installs/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/apps/installs/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AppsInstallsUninstall = resource.OperationSpec{
-	Name:   "uninstall",
-	Path:   "/v1/apps/installs/{id}/uninstall",
-	Method: "POST",
+	Name:             "uninstall",
+	Path:             "/v1/apps/installs/{id}/uninstall",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AppsInstallsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/apps/installs/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/apps/installs/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1AppsSecretsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/apps/secrets",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/apps/secrets",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
 			Type:             "integer",
@@ -3010,9 +3033,10 @@ var V1AppsSecretsCreate = resource.OperationSpec{
 }
 
 var V1AppsSecretsDeleteWhere = resource.OperationSpec{
-	Name:   "delete_where",
-	Path:   "/v1/apps/secrets/delete",
-	Method: "POST",
+	Name:             "delete_where",
+	Path:             "/v1/apps/secrets/delete",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"name": {
 			Type:             "string",
@@ -3038,9 +3062,10 @@ var V1AppsSecretsDeleteWhere = resource.OperationSpec{
 }
 
 var V1AppsSecretsFind = resource.OperationSpec{
-	Name:   "find",
-	Path:   "/v1/apps/secrets/find",
-	Method: "GET",
+	Name:             "find",
+	Path:             "/v1/apps/secrets/find",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"name": {
 			Type:             "string",
@@ -3051,9 +3076,10 @@ var V1AppsSecretsFind = resource.OperationSpec{
 }
 
 var V1AppsSecretsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/apps/secrets",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/apps/secrets",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -3071,21 +3097,24 @@ var V1AppsSecretsList = resource.OperationSpec{
 }
 
 var V1BalanceRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/balance",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/balance",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BalanceSettingsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/balance_settings",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/balance_settings",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BalanceSettingsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/balance_settings",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/balance_settings",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payments.debit_negative_balances": {
 			Type:             "boolean",
@@ -3133,9 +3162,10 @@ var V1BalanceSettingsUpdate = resource.OperationSpec{
 }
 
 var V1BalanceTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/balance_transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/balance_transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -3174,21 +3204,24 @@ var V1BalanceTransactionsList = resource.OperationSpec{
 }
 
 var V1BalanceTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/balance_transactions/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/balance_transactions/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BankAccountsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BankAccountsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_holder_name": {
 			Type:             "string",
@@ -3261,9 +3294,10 @@ var V1BankAccountsUpdate = resource.OperationSpec{
 }
 
 var V1BankAccountsVerify = resource.OperationSpec{
-	Name:   "verify",
-	Path:   "/v1/customers/{customer}/sources/{id}/verify",
-	Method: "POST",
+	Name:             "verify",
+	Path:             "/v1/customers/{customer}/sources/{id}/verify",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
 			Type:             "array",
@@ -3274,21 +3308,24 @@ var V1BankAccountsVerify = resource.OperationSpec{
 }
 
 var V1BillingAlertsActivate = resource.OperationSpec{
-	Name:   "activate",
-	Path:   "/v1/billing/alerts/{id}/activate",
-	Method: "POST",
+	Name:             "activate",
+	Path:             "/v1/billing/alerts/{id}/activate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingAlertsArchive = resource.OperationSpec{
-	Name:   "archive",
-	Path:   "/v1/billing/alerts/{id}/archive",
-	Method: "POST",
+	Name:             "archive",
+	Path:             "/v1/billing/alerts/{id}/archive",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingAlertsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing/alerts",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing/alerts",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"alert_type": {
 			Type:             "string",
@@ -3327,15 +3364,17 @@ var V1BillingAlertsCreate = resource.OperationSpec{
 }
 
 var V1BillingAlertsDeactivate = resource.OperationSpec{
-	Name:   "deactivate",
-	Path:   "/v1/billing/alerts/{id}/deactivate",
-	Method: "POST",
+	Name:             "deactivate",
+	Path:             "/v1/billing/alerts/{id}/deactivate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingAlertsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing/alerts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing/alerts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"alert_type": {
 			Type:             "string",
@@ -3364,15 +3403,17 @@ var V1BillingAlertsList = resource.OperationSpec{
 }
 
 var V1BillingAlertsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing/alerts/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing/alerts/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingCreditBalanceSummariesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing/credit_balance_summary",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing/credit_balance_summary",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -3386,9 +3427,10 @@ var V1BillingCreditBalanceSummariesRetrieve = resource.OperationSpec{
 }
 
 var V1BillingCreditBalanceTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing/credit_balance_transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing/credit_balance_transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"credit_grant": {
 			Type:             "string",
@@ -3418,15 +3460,17 @@ var V1BillingCreditBalanceTransactionsList = resource.OperationSpec{
 }
 
 var V1BillingCreditBalanceTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing/credit_balance_transactions/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing/credit_balance_transactions/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingCreditGrantsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing/credit_grants",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing/credit_grants",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount.monetary.currency": {
 			Type:             "string",
@@ -3498,15 +3542,17 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 }
 
 var V1BillingCreditGrantsExpire = resource.OperationSpec{
-	Name:   "expire",
-	Path:   "/v1/billing/credit_grants/{id}/expire",
-	Method: "POST",
+	Name:             "expire",
+	Path:             "/v1/billing/credit_grants/{id}/expire",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingCreditGrantsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing/credit_grants",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing/credit_grants",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -3532,15 +3578,17 @@ var V1BillingCreditGrantsList = resource.OperationSpec{
 }
 
 var V1BillingCreditGrantsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing/credit_grants/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing/credit_grants/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingCreditGrantsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/billing/credit_grants/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/billing/credit_grants/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
 			Type:             "integer",
@@ -3551,15 +3599,17 @@ var V1BillingCreditGrantsUpdate = resource.OperationSpec{
 }
 
 var V1BillingCreditGrantsVoidGrant = resource.OperationSpec{
-	Name:   "void_grant",
-	Path:   "/v1/billing/credit_grants/{id}/void",
-	Method: "POST",
+	Name:             "void_grant",
+	Path:             "/v1/billing/credit_grants/{id}/void",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingFeedbackOptionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing/feedback_options",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing/feedback_options",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -3571,15 +3621,17 @@ var V1BillingFeedbackOptionsCreate = resource.OperationSpec{
 }
 
 var V1BillingFeedbackOptionsDeactivate = resource.OperationSpec{
-	Name:   "deactivate",
-	Path:   "/v1/billing/feedback_options/{id}/deactivate",
-	Method: "POST",
+	Name:             "deactivate",
+	Path:             "/v1/billing/feedback_options/{id}/deactivate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingFeedbackOptionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing/feedback_options",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing/feedback_options",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -3605,15 +3657,17 @@ var V1BillingFeedbackOptionsList = resource.OperationSpec{
 }
 
 var V1BillingFeedbackOptionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing/feedback_options/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing/feedback_options/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingFeedbackOptionsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/billing/feedback_options/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/billing/feedback_options/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -3624,9 +3678,10 @@ var V1BillingFeedbackOptionsUpdate = resource.OperationSpec{
 }
 
 var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing/meter_event_adjustments",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing/meter_event_adjustments",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cancel.identifier": {
 			Type:             "string",
@@ -3651,9 +3706,10 @@ var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 }
 
 var V1BillingMeterEventSummariesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing/meters/{id}/event_summaries",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing/meters/{id}/event_summaries",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -3696,9 +3752,10 @@ var V1BillingMeterEventSummariesList = resource.OperationSpec{
 }
 
 var V1BillingMeterEventsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing/meter_events",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing/meter_events",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"event_name": {
 			Type:             "string",
@@ -3721,9 +3778,10 @@ var V1BillingMeterEventsCreate = resource.OperationSpec{
 }
 
 var V1BillingMetersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing/meters",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing/meters",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer_mapping.event_payload_key": {
 			Type:             "string",
@@ -3779,15 +3837,17 @@ var V1BillingMetersCreate = resource.OperationSpec{
 }
 
 var V1BillingMetersDeactivate = resource.OperationSpec{
-	Name:   "deactivate",
-	Path:   "/v1/billing/meters/{id}/deactivate",
-	Method: "POST",
+	Name:             "deactivate",
+	Path:             "/v1/billing/meters/{id}/deactivate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingMetersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing/meters",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing/meters",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -3813,21 +3873,24 @@ var V1BillingMetersList = resource.OperationSpec{
 }
 
 var V1BillingMetersReactivate = resource.OperationSpec{
-	Name:   "reactivate",
-	Path:   "/v1/billing/meters/{id}/reactivate",
-	Method: "POST",
+	Name:             "reactivate",
+	Path:             "/v1/billing/meters/{id}/reactivate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingMetersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing/meters/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing/meters/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingMetersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/billing/meters/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/billing/meters/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"display_name": {
 			Type:             "string",
@@ -3838,9 +3901,10 @@ var V1BillingMetersUpdate = resource.OperationSpec{
 }
 
 var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing_portal/configurations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing_portal/configurations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"business_profile.headline": {
 			Type:             "string",
@@ -3959,9 +4023,10 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 }
 
 var V1BillingPortalConfigurationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/billing_portal/configurations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/billing_portal/configurations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -3987,15 +4052,17 @@ var V1BillingPortalConfigurationsList = resource.OperationSpec{
 }
 
 var V1BillingPortalConfigurationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/billing_portal/configurations/{configuration}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/billing_portal/configurations/{configuration}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/billing_portal/configurations/{configuration}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/billing_portal/configurations/{configuration}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -4119,9 +4186,10 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 }
 
 var V1BillingPortalSessionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/billing_portal/sessions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/billing_portal/sessions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"configuration": {
 			Type:             "string",
@@ -4258,21 +4326,24 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 }
 
 var V1CapabilitiesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/accounts/{account}/capabilities",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/accounts/{account}/capabilities",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CapabilitiesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/accounts/{account}/capabilities/{capability}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/accounts/{account}/capabilities/{capability}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CapabilitiesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/accounts/{account}/capabilities/{capability}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/accounts/{account}/capabilities/{capability}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"requested": {
 			Type:             "boolean",
@@ -4283,15 +4354,17 @@ var V1CapabilitiesUpdate = resource.OperationSpec{
 }
 
 var V1CardsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CardsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_holder_name": {
 			Type:             "string",
@@ -4364,15 +4437,17 @@ var V1CardsUpdate = resource.OperationSpec{
 }
 
 var V1CashBalancesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/customers/{customer}/cash_balance",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/customers/{customer}/cash_balance",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CashBalancesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/customers/{customer}/cash_balance",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/customers/{customer}/cash_balance",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"settings.reconciliation_mode": {
 			Type:             "string",
@@ -4387,9 +4462,10 @@ var V1CashBalancesUpdate = resource.OperationSpec{
 }
 
 var V1ChargesCapture = resource.OperationSpec{
-	Name:   "capture",
-	Path:   "/v1/charges/{charge}/capture",
-	Method: "POST",
+	Name:             "capture",
+	Path:             "/v1/charges/{charge}/capture",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -4432,9 +4508,10 @@ var V1ChargesCapture = resource.OperationSpec{
 }
 
 var V1ChargesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/charges",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/charges",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -4567,9 +4644,10 @@ var V1ChargesCreate = resource.OperationSpec{
 }
 
 var V1ChargesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/charges",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/charges",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -4603,15 +4681,17 @@ var V1ChargesList = resource.OperationSpec{
 }
 
 var V1ChargesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/charges/{charge}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/charges/{charge}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ChargesSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/charges/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/charges/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -4630,9 +4710,10 @@ var V1ChargesSearch = resource.OperationSpec{
 }
 
 var V1ChargesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/charges/{charge}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/charges/{charge}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -4706,9 +4787,10 @@ var V1ChargesUpdate = resource.OperationSpec{
 }
 
 var V1CheckoutSessionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/checkout/sessions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/checkout/sessions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"adaptive_pricing.enabled": {
 			Type:             "boolean",
@@ -6285,15 +6367,17 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 }
 
 var V1CheckoutSessionsExpire = resource.OperationSpec{
-	Name:   "expire",
-	Path:   "/v1/checkout/sessions/{session}/expire",
-	Method: "POST",
+	Name:             "expire",
+	Path:             "/v1/checkout/sessions/{session}/expire",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CheckoutSessionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/checkout/sessions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/checkout/sessions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -6344,9 +6428,10 @@ var V1CheckoutSessionsList = resource.OperationSpec{
 }
 
 var V1CheckoutSessionsListLineItems = resource.OperationSpec{
-	Name:   "list_line_items",
-	Path:   "/v1/checkout/sessions/{session}/line_items",
-	Method: "GET",
+	Name:             "list_line_items",
+	Path:             "/v1/checkout/sessions/{session}/line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -6364,15 +6449,17 @@ var V1CheckoutSessionsListLineItems = resource.OperationSpec{
 }
 
 var V1CheckoutSessionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/checkout/sessions/{session}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/checkout/sessions/{session}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CheckoutSessionsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/checkout/sessions/{session}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/checkout/sessions/{session}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"collected_information.shipping_details.address.city": {
 			Type:             "string",
@@ -6406,15 +6493,17 @@ var V1CheckoutSessionsUpdate = resource.OperationSpec{
 }
 
 var V1ClimateOrdersCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/climate/orders/{order}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/climate/orders/{order}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ClimateOrdersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/climate/orders",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/climate/orders",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -6447,9 +6536,10 @@ var V1ClimateOrdersCreate = resource.OperationSpec{
 }
 
 var V1ClimateOrdersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/climate/orders",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/climate/orders",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -6467,15 +6557,17 @@ var V1ClimateOrdersList = resource.OperationSpec{
 }
 
 var V1ClimateOrdersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/climate/orders/{order}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/climate/orders/{order}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ClimateOrdersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/climate/orders/{order}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/climate/orders/{order}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"beneficiary": {
 			Type:       "clearable_object",
@@ -6490,9 +6582,10 @@ var V1ClimateOrdersUpdate = resource.OperationSpec{
 }
 
 var V1ClimateProductsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/climate/products",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/climate/products",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -6510,15 +6603,17 @@ var V1ClimateProductsList = resource.OperationSpec{
 }
 
 var V1ClimateProductsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/climate/products/{product}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/climate/products/{product}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ClimateSuppliersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/climate/suppliers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/climate/suppliers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -6536,21 +6631,24 @@ var V1ClimateSuppliersList = resource.OperationSpec{
 }
 
 var V1ClimateSuppliersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/climate/suppliers/{supplier}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/climate/suppliers/{supplier}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ConfirmationTokensRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/confirmation_tokens/{confirmation_token}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/confirmation_tokens/{confirmation_token}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/confirmation_tokens",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/confirmation_tokens",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payment_method": {
 			Type:             "string",
@@ -7026,9 +7124,10 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 }
 
 var V1CountrySpecsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/country_specs",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/country_specs",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -7046,15 +7145,17 @@ var V1CountrySpecsList = resource.OperationSpec{
 }
 
 var V1CountrySpecsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/country_specs/{country}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/country_specs/{country}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CouponsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/coupons",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/coupons",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount_off": {
 			Type:             "integer",
@@ -7112,15 +7213,17 @@ var V1CouponsCreate = resource.OperationSpec{
 }
 
 var V1CouponsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/coupons/{coupon}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/coupons/{coupon}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CouponsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/coupons",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/coupons",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -7142,15 +7245,17 @@ var V1CouponsList = resource.OperationSpec{
 }
 
 var V1CouponsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/coupons/{coupon}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/coupons/{coupon}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CouponsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/coupons/{coupon}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/coupons/{coupon}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"name": {
 			Type:             "string",
@@ -7161,9 +7266,10 @@ var V1CouponsUpdate = resource.OperationSpec{
 }
 
 var V1CreditNoteLineItemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/credit_notes/{credit_note}/lines",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/credit_notes/{credit_note}/lines",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -7181,9 +7287,10 @@ var V1CreditNoteLineItemsList = resource.OperationSpec{
 }
 
 var V1CreditNotesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/credit_notes",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/credit_notes",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -7244,9 +7351,10 @@ var V1CreditNotesCreate = resource.OperationSpec{
 }
 
 var V1CreditNotesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/credit_notes",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/credit_notes",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -7280,9 +7388,10 @@ var V1CreditNotesList = resource.OperationSpec{
 }
 
 var V1CreditNotesPreview = resource.OperationSpec{
-	Name:   "preview",
-	Path:   "/v1/credit_notes/preview",
-	Method: "GET",
+	Name:             "preview",
+	Path:             "/v1/credit_notes/preview",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -7336,9 +7445,10 @@ var V1CreditNotesPreview = resource.OperationSpec{
 }
 
 var V1CreditNotesPreviewLines = resource.OperationSpec{
-	Name:   "preview_lines",
-	Path:   "/v1/credit_notes/preview/lines",
-	Method: "GET",
+	Name:             "preview_lines",
+	Path:             "/v1/credit_notes/preview/lines",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -7404,15 +7514,17 @@ var V1CreditNotesPreviewLines = resource.OperationSpec{
 }
 
 var V1CreditNotesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/credit_notes/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/credit_notes/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CreditNotesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/credit_notes/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/credit_notes/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"memo": {
 			Type:             "string",
@@ -7423,15 +7535,17 @@ var V1CreditNotesUpdate = resource.OperationSpec{
 }
 
 var V1CreditNotesVoidCreditNote = resource.OperationSpec{
-	Name:   "void_credit_note",
-	Path:   "/v1/credit_notes/{id}/void",
-	Method: "POST",
+	Name:             "void_credit_note",
+	Path:             "/v1/credit_notes/{id}/void",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomerBalanceTransactionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/customers/{customer}/balance_transactions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/customers/{customer}/balance_transactions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -7455,9 +7569,10 @@ var V1CustomerBalanceTransactionsCreate = resource.OperationSpec{
 }
 
 var V1CustomerBalanceTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/customers/{customer}/balance_transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/customers/{customer}/balance_transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -7483,15 +7598,17 @@ var V1CustomerBalanceTransactionsList = resource.OperationSpec{
 }
 
 var V1CustomerBalanceTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/customers/{customer}/balance_transactions/{transaction}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/customers/{customer}/balance_transactions/{transaction}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomerBalanceTransactionsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/customers/{customer}/balance_transactions/{transaction}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/customers/{customer}/balance_transactions/{transaction}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -7502,9 +7619,10 @@ var V1CustomerBalanceTransactionsUpdate = resource.OperationSpec{
 }
 
 var V1CustomerCashBalanceTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/customers/{customer}/cash_balance_transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/customers/{customer}/cash_balance_transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -7522,15 +7640,17 @@ var V1CustomerCashBalanceTransactionsList = resource.OperationSpec{
 }
 
 var V1CustomerCashBalanceTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/customers/{customer}/cash_balance_transactions/{transaction}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/customers/{customer}/cash_balance_transactions/{transaction}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomerSessionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/customer_sessions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/customer_sessions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"components.active_entitlements.enabled": {
 			Type:             "boolean",
@@ -7662,9 +7782,10 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 }
 
 var V1CustomersBalanceTransactions = resource.OperationSpec{
-	Name:   "balance_transactions",
-	Path:   "/v1/customers/{customer}/balance_transactions",
-	Method: "GET",
+	Name:             "balance_transactions",
+	Path:             "/v1/customers/{customer}/balance_transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -7690,9 +7811,10 @@ var V1CustomersBalanceTransactions = resource.OperationSpec{
 }
 
 var V1CustomersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/customers",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/customers",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"address": {
 			Type:       "clearable_object",
@@ -7878,9 +8000,10 @@ var V1CustomersCreate = resource.OperationSpec{
 }
 
 var V1CustomersCreateFundingInstructions = resource.OperationSpec{
-	Name:   "create_funding_instructions",
-	Path:   "/v1/customers/{customer}/funding_instructions",
-	Method: "POST",
+	Name:             "create_funding_instructions",
+	Path:             "/v1/customers/{customer}/funding_instructions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"bank_transfer.eu_bank_transfer.country": {
 			Type:             "string",
@@ -7923,21 +8046,24 @@ var V1CustomersCreateFundingInstructions = resource.OperationSpec{
 }
 
 var V1CustomersDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/customers/{customer}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/customers/{customer}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomersDeleteDiscount = resource.OperationSpec{
-	Name:   "delete_discount",
-	Path:   "/v1/customers/{customer}/discount",
-	Method: "DELETE",
+	Name:             "delete_discount",
+	Path:             "/v1/customers/{customer}/discount",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/customers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/customers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -7967,9 +8093,10 @@ var V1CustomersList = resource.OperationSpec{
 }
 
 var V1CustomersListPaymentMethods = resource.OperationSpec{
-	Name:   "list_payment_methods",
-	Path:   "/v1/customers/{customer}/payment_methods",
-	Method: "GET",
+	Name:             "list_payment_methods",
+	Path:             "/v1/customers/{customer}/payment_methods",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allow_redisplay": {
 			Type:             "string",
@@ -8059,21 +8186,24 @@ var V1CustomersListPaymentMethods = resource.OperationSpec{
 }
 
 var V1CustomersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/customers/{customer}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/customers/{customer}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomersRetrievePaymentMethod = resource.OperationSpec{
-	Name:   "retrieve_payment_method",
-	Path:   "/v1/customers/{customer}/payment_methods/{payment_method}",
-	Method: "GET",
+	Name:             "retrieve_payment_method",
+	Path:             "/v1/customers/{customer}/payment_methods/{payment_method}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1CustomersSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/customers/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/customers/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -8092,9 +8222,10 @@ var V1CustomersSearch = resource.OperationSpec{
 }
 
 var V1CustomersTestHelpersFundCashBalance = resource.OperationSpec{
-	Name:   "fund_cash_balance",
-	Path:   "/v1/test_helpers/customers/{customer}/fund_cash_balance",
-	Method: "POST",
+	Name:             "fund_cash_balance",
+	Path:             "/v1/test_helpers/customers/{customer}/fund_cash_balance",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -8117,9 +8248,10 @@ var V1CustomersTestHelpersFundCashBalance = resource.OperationSpec{
 }
 
 var V1CustomersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/customers/{customer}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/customers/{customer}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"address": {
 			Type:       "clearable_object",
@@ -8302,15 +8434,17 @@ var V1CustomersUpdate = resource.OperationSpec{
 }
 
 var V1DisputesClose = resource.OperationSpec{
-	Name:   "close",
-	Path:   "/v1/disputes/{dispute}/close",
-	Method: "POST",
+	Name:             "close",
+	Path:             "/v1/disputes/{dispute}/close",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1DisputesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/disputes",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/disputes",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"charge": {
 			Type:             "string",
@@ -8340,15 +8474,17 @@ var V1DisputesList = resource.OperationSpec{
 }
 
 var V1DisputesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/disputes/{dispute}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/disputes/{dispute}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1DisputesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/disputes/{dispute}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/disputes/{dispute}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"evidence.access_activity_log": {
 			Type:             "string",
@@ -8531,9 +8667,10 @@ var V1DisputesUpdate = resource.OperationSpec{
 }
 
 var V1EntitlementsActiveEntitlementsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/entitlements/active_entitlements",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/entitlements/active_entitlements",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -8556,15 +8693,17 @@ var V1EntitlementsActiveEntitlementsList = resource.OperationSpec{
 }
 
 var V1EntitlementsActiveEntitlementsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/entitlements/active_entitlements/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/entitlements/active_entitlements/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1EntitlementsFeaturesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/entitlements/features",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/entitlements/features",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"lookup_key": {
 			Type:             "string",
@@ -8582,9 +8721,10 @@ var V1EntitlementsFeaturesCreate = resource.OperationSpec{
 }
 
 var V1EntitlementsFeaturesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/entitlements/features",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/entitlements/features",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"archived": {
 			Type:             "boolean",
@@ -8610,15 +8750,17 @@ var V1EntitlementsFeaturesList = resource.OperationSpec{
 }
 
 var V1EntitlementsFeaturesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/entitlements/features/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/entitlements/features/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1EntitlementsFeaturesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/entitlements/features/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/entitlements/features/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -8633,9 +8775,10 @@ var V1EntitlementsFeaturesUpdate = resource.OperationSpec{
 }
 
 var V1EphemeralKeysCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/ephemeral_keys",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/ephemeral_keys",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -8661,15 +8804,17 @@ var V1EphemeralKeysCreate = resource.OperationSpec{
 }
 
 var V1EphemeralKeysDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/ephemeral_keys/{key}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/ephemeral_keys/{key}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1EventsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/events",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/events",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -8703,15 +8848,17 @@ var V1EventsList = resource.OperationSpec{
 }
 
 var V1EventsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/events/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/events/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ExchangeRatesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/exchange_rates",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/exchange_rates",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -8729,15 +8876,17 @@ var V1ExchangeRatesList = resource.OperationSpec{
 }
 
 var V1ExchangeRatesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/exchange_rates/{rate_id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/exchange_rates/{rate_id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ExternalAccountsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/accounts/{account}/external_accounts",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/accounts/{account}/external_accounts",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"default_for_currency": {
 			Type:             "boolean",
@@ -8753,15 +8902,17 @@ var V1ExternalAccountsCreate = resource.OperationSpec{
 }
 
 var V1ExternalAccountsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ExternalAccountsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/accounts/{account}/external_accounts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/accounts/{account}/external_accounts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -8787,15 +8938,17 @@ var V1ExternalAccountsList = resource.OperationSpec{
 }
 
 var V1ExternalAccountsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ExternalAccountsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/accounts/{account}/external_accounts/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/accounts/{account}/external_accounts/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_holder_name": {
 			Type:             "string",
@@ -8868,9 +9021,10 @@ var V1ExternalAccountsUpdate = resource.OperationSpec{
 }
 
 var V1FeeRefundsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/application_fees/{id}/refunds",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/application_fees/{id}/refunds",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -8881,9 +9035,10 @@ var V1FeeRefundsCreate = resource.OperationSpec{
 }
 
 var V1FeeRefundsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/application_fees/{id}/refunds",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/application_fees/{id}/refunds",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -8901,21 +9056,24 @@ var V1FeeRefundsList = resource.OperationSpec{
 }
 
 var V1FeeRefundsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/application_fees/{fee}/refunds/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/application_fees/{fee}/refunds/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FeeRefundsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/application_fees/{fee}/refunds/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/application_fees/{fee}/refunds/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FileLinksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/file_links",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/file_links",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
 			Type:             "integer",
@@ -8933,9 +9091,10 @@ var V1FileLinksCreate = resource.OperationSpec{
 }
 
 var V1FileLinksList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/file_links",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/file_links",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -8965,15 +9124,17 @@ var V1FileLinksList = resource.OperationSpec{
 }
 
 var V1FileLinksRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/file_links/{link}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/file_links/{link}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FileLinksUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/file_links/{link}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/file_links/{link}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
 			Type:             "string",
@@ -8984,16 +9145,59 @@ var V1FileLinksUpdate = resource.OperationSpec{
 }
 
 var V1FilesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v1/files",
-	Method:    "POST",
-	ServerURL: "https://files.stripe.com/",
+	Name:             "create",
+	Path:             "/v1/files",
+	Method:           "POST",
+	RequestMediaType: "multipart/form-data",
+	ServerURL:        "https://files.stripe.com/",
+	Params: map[string]*resource.ParamSpec{
+		"file": {
+			Type:             "string",
+			ShortDescription: "A file to upload",
+			Required:         true,
+			MostCommon:       true,
+			Format:           "binary",
+		},
+		"file_link_data.create": {
+			Type:             "boolean",
+			ShortDescription: "Set this to `true` to create a file link for the newly created file",
+		},
+		"file_link_data.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The link isn't available after this future timestamp",
+			Format:           "unix-time",
+		},
+		"purpose": {
+			Type:             "string",
+			ShortDescription: "The [purpose](https://docs.stripe.com/file-upload#uploading-a-file) of the uploaded file",
+			Required:         true,
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "account_requirement"},
+				{Value: "additional_verification"},
+				{Value: "business_icon"},
+				{Value: "business_logo"},
+				{Value: "customer_signature"},
+				{Value: "dispute_evidence"},
+				{Value: "identity_document"},
+				{Value: "issuing_regulatory_reporting"},
+				{Value: "pci_document"},
+				{Value: "platform_terms_of_service"},
+				{Value: "tax_document_user_upload"},
+				{Value: "terminal_android_apk"},
+				{Value: "terminal_reader_splashscreen"},
+				{Value: "terminal_wifi_certificate"},
+				{Value: "terminal_wifi_private_key"},
+			},
+		},
+	},
 }
 
 var V1FilesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/files",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/files",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -9042,21 +9246,24 @@ var V1FilesList = resource.OperationSpec{
 }
 
 var V1FilesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/files/{file}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/files/{file}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FinancialConnectionsAccountsDisconnect = resource.OperationSpec{
-	Name:   "disconnect",
-	Path:   "/v1/financial_connections/accounts/{account}/disconnect",
-	Method: "POST",
+	Name:             "disconnect",
+	Path:             "/v1/financial_connections/accounts/{account}/disconnect",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FinancialConnectionsAccountsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/financial_connections/accounts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/financial_connections/accounts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -9078,9 +9285,10 @@ var V1FinancialConnectionsAccountsList = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsAccountsListOwners = resource.OperationSpec{
-	Name:   "list_owners",
-	Path:   "/v1/financial_connections/accounts/{account}/owners",
-	Method: "GET",
+	Name:             "list_owners",
+	Path:             "/v1/financial_connections/accounts/{account}/owners",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -9103,9 +9311,10 @@ var V1FinancialConnectionsAccountsListOwners = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
-	Name:   "refresh",
-	Path:   "/v1/financial_connections/accounts/{account}/refresh",
-	Method: "POST",
+	Name:             "refresh",
+	Path:             "/v1/financial_connections/accounts/{account}/refresh",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"features": {
 			Type:             "array",
@@ -9117,15 +9326,17 @@ var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsAccountsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/financial_connections/accounts/{account}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/financial_connections/accounts/{account}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
-	Name:   "subscribe",
-	Path:   "/v1/financial_connections/accounts/{account}/subscribe",
-	Method: "POST",
+	Name:             "subscribe",
+	Path:             "/v1/financial_connections/accounts/{account}/subscribe",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"features": {
 			Type:             "array",
@@ -9137,9 +9348,10 @@ var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
-	Name:   "unsubscribe",
-	Path:   "/v1/financial_connections/accounts/{account}/unsubscribe",
-	Method: "POST",
+	Name:             "unsubscribe",
+	Path:             "/v1/financial_connections/accounts/{account}/unsubscribe",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"features": {
 			Type:             "array",
@@ -9151,9 +9363,10 @@ var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/financial_connections/sessions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/financial_connections/sessions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_holder.account": {
 			Type:             "string",
@@ -9227,15 +9440,17 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsSessionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/financial_connections/sessions/{session}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/financial_connections/sessions/{session}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1FinancialConnectionsTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/financial_connections/transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/financial_connections/transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
 			Type:             "string",
@@ -9262,15 +9477,17 @@ var V1FinancialConnectionsTransactionsList = resource.OperationSpec{
 }
 
 var V1FinancialConnectionsTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/financial_connections/transactions/{transaction}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/financial_connections/transactions/{transaction}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ForwardingRequestsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/forwarding/requests",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/forwarding/requests",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payment_method": {
 			Type:             "string",
@@ -9298,9 +9515,10 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 }
 
 var V1ForwardingRequestsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/forwarding/requests",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/forwarding/requests",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -9318,15 +9536,17 @@ var V1ForwardingRequestsList = resource.OperationSpec{
 }
 
 var V1ForwardingRequestsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/forwarding/requests/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/forwarding/requests/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IdentityVerificationReportsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/identity/verification_reports",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/identity/verification_reports",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_reference_id": {
 			Type:             "string",
@@ -9364,21 +9584,24 @@ var V1IdentityVerificationReportsList = resource.OperationSpec{
 }
 
 var V1IdentityVerificationReportsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/identity/verification_reports/{report}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/identity/verification_reports/{report}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IdentityVerificationSessionsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/identity/verification_sessions/{session}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/identity/verification_sessions/{session}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/identity/verification_sessions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/identity/verification_sessions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_reference_id": {
 			Type:             "string",
@@ -9452,9 +9675,10 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 }
 
 var V1IdentityVerificationSessionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/identity/verification_sessions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/identity/verification_sessions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_reference_id": {
 			Type:             "string",
@@ -9498,21 +9722,24 @@ var V1IdentityVerificationSessionsList = resource.OperationSpec{
 }
 
 var V1IdentityVerificationSessionsRedact = resource.OperationSpec{
-	Name:   "redact",
-	Path:   "/v1/identity/verification_sessions/{session}/redact",
-	Method: "POST",
+	Name:             "redact",
+	Path:             "/v1/identity/verification_sessions/{session}/redact",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IdentityVerificationSessionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/identity/verification_sessions/{session}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/identity/verification_sessions/{session}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/identity/verification_sessions/{session}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/identity/verification_sessions/{session}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"options.document.allowed_types": {
 			Type:             "array",
@@ -9551,9 +9778,10 @@ var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
 }
 
 var V1InvoiceLineItemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/invoices/{invoice}/lines",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/invoices/{invoice}/lines",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -9571,9 +9799,10 @@ var V1InvoiceLineItemsList = resource.OperationSpec{
 }
 
 var V1InvoiceLineItemsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/invoices/{invoice}/lines/{line_item_id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/invoices/{invoice}/lines/{line_item_id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -9678,9 +9907,10 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 }
 
 var V1InvoicePaymentsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/invoice_payments",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/invoice_payments",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -9715,21 +9945,24 @@ var V1InvoicePaymentsList = resource.OperationSpec{
 }
 
 var V1InvoicePaymentsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/invoice_payments/{invoice_payment}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/invoice_payments/{invoice_payment}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoiceRenderingTemplatesArchive = resource.OperationSpec{
-	Name:   "archive",
-	Path:   "/v1/invoice_rendering_templates/{template}/archive",
-	Method: "POST",
+	Name:             "archive",
+	Path:             "/v1/invoice_rendering_templates/{template}/archive",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoiceRenderingTemplatesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/invoice_rendering_templates",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/invoice_rendering_templates",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -9754,9 +9987,10 @@ var V1InvoiceRenderingTemplatesList = resource.OperationSpec{
 }
 
 var V1InvoiceRenderingTemplatesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/invoice_rendering_templates/{template}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/invoice_rendering_templates/{template}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"version": {
 			Type: "integer",
@@ -9765,15 +9999,17 @@ var V1InvoiceRenderingTemplatesRetrieve = resource.OperationSpec{
 }
 
 var V1InvoiceRenderingTemplatesUnarchive = resource.OperationSpec{
-	Name:   "unarchive",
-	Path:   "/v1/invoice_rendering_templates/{template}/unarchive",
-	Method: "POST",
+	Name:             "unarchive",
+	Path:             "/v1/invoice_rendering_templates/{template}/unarchive",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoiceitemsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/invoiceitems",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/invoiceitems",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -9891,15 +10127,17 @@ var V1InvoiceitemsCreate = resource.OperationSpec{
 }
 
 var V1InvoiceitemsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/invoiceitems/{invoiceitem}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/invoiceitems/{invoiceitem}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoiceitemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/invoiceitems",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/invoiceitems",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -9937,15 +10175,17 @@ var V1InvoiceitemsList = resource.OperationSpec{
 }
 
 var V1InvoiceitemsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/invoiceitems/{invoiceitem}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/invoiceitems/{invoiceitem}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoiceitemsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/invoiceitems/{invoiceitem}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/invoiceitems/{invoiceitem}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -10039,9 +10279,10 @@ var V1InvoiceitemsUpdate = resource.OperationSpec{
 }
 
 var V1InvoicesAddLines = resource.OperationSpec{
-	Name:   "add_lines",
-	Path:   "/v1/invoices/{invoice}/add_lines",
-	Method: "POST",
+	Name:             "add_lines",
+	Path:             "/v1/invoices/{invoice}/add_lines",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"invoice_metadata": {
 			Type:       "clearable_object",
@@ -10051,9 +10292,10 @@ var V1InvoicesAddLines = resource.OperationSpec{
 }
 
 var V1InvoicesAttachPayment = resource.OperationSpec{
-	Name:   "attach_payment",
-	Path:   "/v1/invoices/{invoice}/attach_payment",
-	Method: "POST",
+	Name:             "attach_payment",
+	Path:             "/v1/invoices/{invoice}/attach_payment",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payment_intent": {
 			Type:             "string",
@@ -10069,9 +10311,10 @@ var V1InvoicesAttachPayment = resource.OperationSpec{
 }
 
 var V1InvoicesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/invoices",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/invoices",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_tax_ids": {
 			Type:             "array",
@@ -10566,9 +10809,10 @@ var V1InvoicesCreate = resource.OperationSpec{
 }
 
 var V1InvoicesCreatePreview = resource.OperationSpec{
-	Name:   "create_preview",
-	Path:   "/v1/invoices/create_preview",
-	Method: "POST",
+	Name:             "create_preview",
+	Path:             "/v1/invoices/create_preview",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
@@ -10849,15 +11093,17 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 }
 
 var V1InvoicesDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/invoices/{invoice}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/invoices/{invoice}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoicesFinalizeInvoice = resource.OperationSpec{
-	Name:   "finalize_invoice",
-	Path:   "/v1/invoices/{invoice}/finalize",
-	Method: "POST",
+	Name:             "finalize_invoice",
+	Path:             "/v1/invoices/{invoice}/finalize",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"auto_advance": {
 			Type:             "boolean",
@@ -10868,9 +11114,10 @@ var V1InvoicesFinalizeInvoice = resource.OperationSpec{
 }
 
 var V1InvoicesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/invoices",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/invoices",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"collection_method": {
 			Type:             "string",
@@ -10926,15 +11173,17 @@ var V1InvoicesList = resource.OperationSpec{
 }
 
 var V1InvoicesMarkUncollectible = resource.OperationSpec{
-	Name:   "mark_uncollectible",
-	Path:   "/v1/invoices/{invoice}/mark_uncollectible",
-	Method: "POST",
+	Name:             "mark_uncollectible",
+	Path:             "/v1/invoices/{invoice}/mark_uncollectible",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoicesPay = resource.OperationSpec{
-	Name:   "pay",
-	Path:   "/v1/invoices/{invoice}/pay",
-	Method: "POST",
+	Name:             "pay",
+	Path:             "/v1/invoices/{invoice}/pay",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"forgive": {
 			Type:             "boolean",
@@ -10964,9 +11213,10 @@ var V1InvoicesPay = resource.OperationSpec{
 }
 
 var V1InvoicesRemoveLines = resource.OperationSpec{
-	Name:   "remove_lines",
-	Path:   "/v1/invoices/{invoice}/remove_lines",
-	Method: "POST",
+	Name:             "remove_lines",
+	Path:             "/v1/invoices/{invoice}/remove_lines",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"invoice_metadata": {
 			Type:       "clearable_object",
@@ -10976,15 +11226,17 @@ var V1InvoicesRemoveLines = resource.OperationSpec{
 }
 
 var V1InvoicesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/invoices/{invoice}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/invoices/{invoice}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoicesSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/invoices/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/invoices/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -11003,15 +11255,17 @@ var V1InvoicesSearch = resource.OperationSpec{
 }
 
 var V1InvoicesSendInvoice = resource.OperationSpec{
-	Name:   "send_invoice",
-	Path:   "/v1/invoices/{invoice}/send",
-	Method: "POST",
+	Name:             "send_invoice",
+	Path:             "/v1/invoices/{invoice}/send",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1InvoicesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/invoices/{invoice}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/invoices/{invoice}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account_tax_ids": {
 			Type:             "array",
@@ -11475,9 +11729,10 @@ var V1InvoicesUpdate = resource.OperationSpec{
 }
 
 var V1InvoicesUpdateLines = resource.OperationSpec{
-	Name:   "update_lines",
-	Path:   "/v1/invoices/{invoice}/update_lines",
-	Method: "POST",
+	Name:             "update_lines",
+	Path:             "/v1/invoices/{invoice}/update_lines",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"invoice_metadata": {
 			Type:       "clearable_object",
@@ -11487,15 +11742,17 @@ var V1InvoicesUpdateLines = resource.OperationSpec{
 }
 
 var V1InvoicesVoidInvoice = resource.OperationSpec{
-	Name:   "void_invoice",
-	Path:   "/v1/invoices/{invoice}/void",
-	Method: "POST",
+	Name:             "void_invoice",
+	Path:             "/v1/invoices/{invoice}/void",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingAuthorizationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/authorizations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/authorizations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"card": {
 			Type:             "string",
@@ -11535,15 +11792,17 @@ var V1IssuingAuthorizationsList = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/authorizations/{authorization}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/authorizations/{authorization}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
-	Name:   "capture",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/capture",
-	Method: "POST",
+	Name:             "capture",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/capture",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"capture_amount": {
 			Type:             "integer",
@@ -11686,9 +11945,10 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/issuing/authorizations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/issuing/authorizations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -12310,15 +12570,17 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsTestHelpersExpire = resource.OperationSpec{
-	Name:   "expire",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
-	Method: "POST",
+	Name:             "expire",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
-	Name:   "finalize_amount",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
-	Method: "POST",
+	Name:             "finalize_amount",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"final_amount": {
 			Type:             "integer",
@@ -12427,9 +12689,10 @@ var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsTestHelpersIncrement = resource.OperationSpec{
-	Name:   "increment",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/increment",
-	Method: "POST",
+	Name:             "increment",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/increment",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"increment_amount": {
 			Type:             "integer",
@@ -12446,9 +12709,10 @@ var V1IssuingAuthorizationsTestHelpersIncrement = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsTestHelpersRespond = resource.OperationSpec{
-	Name:   "respond",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond",
-	Method: "POST",
+	Name:             "respond",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"confirmed": {
 			Type:             "boolean",
@@ -12460,9 +12724,10 @@ var V1IssuingAuthorizationsTestHelpersRespond = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsTestHelpersReverse = resource.OperationSpec{
-	Name:   "reverse",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/reverse",
-	Method: "POST",
+	Name:             "reverse",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/reverse",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"reverse_amount": {
 			Type:             "integer",
@@ -12473,15 +12738,17 @@ var V1IssuingAuthorizationsTestHelpersReverse = resource.OperationSpec{
 }
 
 var V1IssuingAuthorizationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/authorizations/{authorization}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/authorizations/{authorization}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardholdersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/issuing/cardholders",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/issuing/cardholders",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing.address.city": {
 			Type:             "string",
@@ -12624,9 +12891,10 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 }
 
 var V1IssuingCardholdersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/cardholders",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/cardholders",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -12673,15 +12941,17 @@ var V1IssuingCardholdersList = resource.OperationSpec{
 }
 
 var V1IssuingCardholdersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/cardholders/{cardholder}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/cardholders/{cardholder}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardholdersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/cardholders/{cardholder}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/cardholders/{cardholder}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing.address.city": {
 			Type:             "string",
@@ -12806,9 +13076,10 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 }
 
 var V1IssuingCardsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/issuing/cards",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/issuing/cards",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cardholder": {
 			Type:             "string",
@@ -12982,9 +13253,10 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 }
 
 var V1IssuingCardsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/cards",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/cards",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cardholder": {
 			Type:             "string",
@@ -13042,45 +13314,52 @@ var V1IssuingCardsList = resource.OperationSpec{
 }
 
 var V1IssuingCardsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/cards/{card}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/cards/{card}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardsTestHelpersDeliverCard = resource.OperationSpec{
-	Name:   "deliver_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
-	Method: "POST",
+	Name:             "deliver_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardsTestHelpersFailCard = resource.OperationSpec{
-	Name:   "fail_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
-	Method: "POST",
+	Name:             "fail_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardsTestHelpersReturnCard = resource.OperationSpec{
-	Name:   "return_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/return",
-	Method: "POST",
+	Name:             "return_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardsTestHelpersShipCard = resource.OperationSpec{
-	Name:   "ship_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
-	Method: "POST",
+	Name:             "ship_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardsTestHelpersSubmitCard = resource.OperationSpec{
-	Name:   "submit_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
-	Method: "POST",
+	Name:             "submit_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingCardsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/cards/{card}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/cards/{card}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
 			Type:             "string",
@@ -13206,9 +13485,10 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 }
 
 var V1IssuingDisputesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/issuing/disputes",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/issuing/disputes",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -13421,9 +13701,10 @@ var V1IssuingDisputesCreate = resource.OperationSpec{
 }
 
 var V1IssuingDisputesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/disputes",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/disputes",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -13460,21 +13741,24 @@ var V1IssuingDisputesList = resource.OperationSpec{
 }
 
 var V1IssuingDisputesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/disputes/{dispute}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/disputes/{dispute}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingDisputesSubmit = resource.OperationSpec{
-	Name:   "submit",
-	Path:   "/v1/issuing/disputes/{dispute}/submit",
-	Method: "POST",
+	Name:             "submit",
+	Path:             "/v1/issuing/disputes/{dispute}/submit",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingDisputesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/disputes/{dispute}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/disputes/{dispute}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -13678,9 +13962,10 @@ var V1IssuingDisputesUpdate = resource.OperationSpec{
 }
 
 var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/issuing/personalization_designs",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/issuing/personalization_designs",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"card_logo": {
 			Type:             "string",
@@ -13733,9 +14018,10 @@ var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
 }
 
 var V1IssuingPersonalizationDesignsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/personalization_designs",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/personalization_designs",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -13767,27 +14053,31 @@ var V1IssuingPersonalizationDesignsList = resource.OperationSpec{
 }
 
 var V1IssuingPersonalizationDesignsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/personalization_designs/{personalization_design}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/personalization_designs/{personalization_design}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingPersonalizationDesignsTestHelpersActivate = resource.OperationSpec{
-	Name:   "activate",
-	Path:   "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate",
-	Method: "POST",
+	Name:             "activate",
+	Path:             "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingPersonalizationDesignsTestHelpersDeactivate = resource.OperationSpec{
-	Name:   "deactivate",
-	Path:   "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate",
-	Method: "POST",
+	Name:             "deactivate",
+	Path:             "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingPersonalizationDesignsTestHelpersReject = resource.OperationSpec{
-	Name:   "reject",
-	Path:   "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject",
-	Method: "POST",
+	Name:             "reject",
+	Path:             "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"rejection_reasons.card_logo": {
 			Type:             "array",
@@ -13801,9 +14091,10 @@ var V1IssuingPersonalizationDesignsTestHelpersReject = resource.OperationSpec{
 }
 
 var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/personalization_designs/{personalization_design}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/personalization_designs/{personalization_design}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"card_logo": {
 			Type:             "string",
@@ -13863,9 +14154,10 @@ var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
 }
 
 var V1IssuingPhysicalBundlesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/physical_bundles",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/physical_bundles",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -13900,15 +14192,17 @@ var V1IssuingPhysicalBundlesList = resource.OperationSpec{
 }
 
 var V1IssuingPhysicalBundlesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/physical_bundles/{physical_bundle}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/physical_bundles/{physical_bundle}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingTokensList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/tokens",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/tokens",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"card": {
 			Type:             "string",
@@ -13945,15 +14239,17 @@ var V1IssuingTokensList = resource.OperationSpec{
 }
 
 var V1IssuingTokensRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/tokens/{token}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/tokens/{token}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingTokensUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/tokens/{token}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/tokens/{token}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"status": {
 			Type:             "string",
@@ -13970,9 +14266,10 @@ var V1IssuingTokensUpdate = resource.OperationSpec{
 }
 
 var V1IssuingTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/issuing/transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/issuing/transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"card": {
 			Type:             "string",
@@ -14010,15 +14307,17 @@ var V1IssuingTransactionsList = resource.OperationSpec{
 }
 
 var V1IssuingTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/issuing/transactions/{transaction}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/issuing/transactions/{transaction}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
-	Name:   "create_force_capture",
-	Path:   "/v1/test_helpers/issuing/transactions/create_force_capture",
-	Method: "POST",
+	Name:             "create_force_capture",
+	Path:             "/v1/test_helpers/issuing/transactions/create_force_capture",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -14501,9 +14800,10 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 }
 
 var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpec{
-	Name:   "create_unlinked_refund",
-	Path:   "/v1/test_helpers/issuing/transactions/create_unlinked_refund",
-	Method: "POST",
+	Name:             "create_unlinked_refund",
+	Path:             "/v1/test_helpers/issuing/transactions/create_unlinked_refund",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -14986,9 +15286,10 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 }
 
 var V1IssuingTransactionsTestHelpersRefund = resource.OperationSpec{
-	Name:   "refund",
-	Path:   "/v1/test_helpers/issuing/transactions/{transaction}/refund",
-	Method: "POST",
+	Name:             "refund",
+	Path:             "/v1/test_helpers/issuing/transactions/{transaction}/refund",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"refund_amount": {
 			Type:             "integer",
@@ -14999,15 +15300,17 @@ var V1IssuingTransactionsTestHelpersRefund = resource.OperationSpec{
 }
 
 var V1IssuingTransactionsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/issuing/transactions/{transaction}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/issuing/transactions/{transaction}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1LineItemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/invoices/{invoice}/lines",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/invoices/{invoice}/lines",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -15025,9 +15328,10 @@ var V1LineItemsList = resource.OperationSpec{
 }
 
 var V1LineItemsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/invoices/{invoice}/lines/{line_item_id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/invoices/{invoice}/lines/{line_item_id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -15132,21 +15436,24 @@ var V1LineItemsUpdate = resource.OperationSpec{
 }
 
 var V1LoginLinksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/accounts/{account}/login_links",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/accounts/{account}/login_links",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1MandatesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/mandates/{mandate}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/mandates/{mandate}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentAttemptRecordsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_attempt_records",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_attempt_records",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -15165,15 +15472,17 @@ var V1PaymentAttemptRecordsList = resource.OperationSpec{
 }
 
 var V1PaymentAttemptRecordsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_attempt_records/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_attempt_records/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentIntentAmountDetailsLineItemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_intents/{intent}/amount_details_line_items",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_intents/{intent}/amount_details_line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -15191,9 +15500,10 @@ var V1PaymentIntentAmountDetailsLineItemsList = resource.OperationSpec{
 }
 
 var V1PaymentIntentsApplyCustomerBalance = resource.OperationSpec{
-	Name:   "apply_customer_balance",
-	Path:   "/v1/payment_intents/{intent}/apply_customer_balance",
-	Method: "POST",
+	Name:             "apply_customer_balance",
+	Path:             "/v1/payment_intents/{intent}/apply_customer_balance",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -15210,9 +15520,10 @@ var V1PaymentIntentsApplyCustomerBalance = resource.OperationSpec{
 }
 
 var V1PaymentIntentsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/payment_intents/{intent}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/payment_intents/{intent}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
 			Type:             "string",
@@ -15229,9 +15540,10 @@ var V1PaymentIntentsCancel = resource.OperationSpec{
 }
 
 var V1PaymentIntentsCapture = resource.OperationSpec{
-	Name:   "capture",
-	Path:   "/v1/payment_intents/{intent}/capture",
-	Method: "POST",
+	Name:             "capture",
+	Path:             "/v1/payment_intents/{intent}/capture",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount_details.discount_amount": {
 			Type:             "integer",
@@ -15301,9 +15613,10 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 }
 
 var V1PaymentIntentsConfirm = resource.OperationSpec{
-	Name:   "confirm",
-	Path:   "/v1/payment_intents/{intent}/confirm",
-	Method: "POST",
+	Name:             "confirm",
+	Path:             "/v1/payment_intents/{intent}/confirm",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allowed_payment_method_types": {
 			Type:             "array",
@@ -17216,9 +17529,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 }
 
 var V1PaymentIntentsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/payment_intents",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/payment_intents",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allowed_payment_method_types": {
 			Type:             "array",
@@ -19211,9 +19525,10 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 }
 
 var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
-	Name:   "increment_authorization",
-	Path:   "/v1/payment_intents/{intent}/increment_authorization",
-	Method: "POST",
+	Name:             "increment_authorization",
+	Path:             "/v1/payment_intents/{intent}/increment_authorization",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -19279,9 +19594,10 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 }
 
 var V1PaymentIntentsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_intents",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_intents",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -19311,9 +19627,10 @@ var V1PaymentIntentsList = resource.OperationSpec{
 }
 
 var V1PaymentIntentsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_intents/{intent}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_intents/{intent}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_secret": {
 			Type:             "string",
@@ -19323,9 +19640,10 @@ var V1PaymentIntentsRetrieve = resource.OperationSpec{
 }
 
 var V1PaymentIntentsSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/payment_intents/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/payment_intents/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -19344,9 +19662,10 @@ var V1PaymentIntentsSearch = resource.OperationSpec{
 }
 
 var V1PaymentIntentsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/payment_intents/{intent}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/payment_intents/{intent}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allowed_payment_method_types": {
 			Type:             "array",
@@ -21259,9 +21578,10 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 }
 
 var V1PaymentIntentsVerifyMicrodeposits = resource.OperationSpec{
-	Name:   "verify_microdeposits",
-	Path:   "/v1/payment_intents/{intent}/verify_microdeposits",
-	Method: "POST",
+	Name:             "verify_microdeposits",
+	Path:             "/v1/payment_intents/{intent}/verify_microdeposits",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
 			Type:             "array",
@@ -21277,9 +21597,10 @@ var V1PaymentIntentsVerifyMicrodeposits = resource.OperationSpec{
 }
 
 var V1PaymentLinksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/payment_links",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/payment_links",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"after_completion.hosted_confirmation.custom_message": {
 			Type:             "string",
@@ -21579,9 +21900,10 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 }
 
 var V1PaymentLinksList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_links",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_links",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -21603,9 +21925,10 @@ var V1PaymentLinksList = resource.OperationSpec{
 }
 
 var V1PaymentLinksListLineItems = resource.OperationSpec{
-	Name:   "list_line_items",
-	Path:   "/v1/payment_links/{payment_link}/line_items",
-	Method: "GET",
+	Name:             "list_line_items",
+	Path:             "/v1/payment_links/{payment_link}/line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -21623,15 +21946,17 @@ var V1PaymentLinksListLineItems = resource.OperationSpec{
 }
 
 var V1PaymentLinksRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_links/{payment_link}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_links/{payment_link}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentLinksUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/payment_links/{payment_link}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/payment_links/{payment_link}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -21929,9 +22254,10 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 }
 
 var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/payment_method_configurations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/payment_method_configurations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"acss_debit.display_preference.preference": {
 			Type:             "string",
@@ -22505,9 +22831,10 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 }
 
 var V1PaymentMethodConfigurationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_method_configurations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_method_configurations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -22533,15 +22860,17 @@ var V1PaymentMethodConfigurationsList = resource.OperationSpec{
 }
 
 var V1PaymentMethodConfigurationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_method_configurations/{configuration}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_method_configurations/{configuration}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/payment_method_configurations/{configuration}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/payment_method_configurations/{configuration}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"acss_debit.display_preference.preference": {
 			Type:             "string",
@@ -23115,9 +23444,10 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 }
 
 var V1PaymentMethodDomainsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/payment_method_domains",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/payment_method_domains",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
 			Type:             "string",
@@ -23134,9 +23464,10 @@ var V1PaymentMethodDomainsCreate = resource.OperationSpec{
 }
 
 var V1PaymentMethodDomainsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_method_domains",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_method_domains",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
 			Type:             "string",
@@ -23162,15 +23493,17 @@ var V1PaymentMethodDomainsList = resource.OperationSpec{
 }
 
 var V1PaymentMethodDomainsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_method_domains/{payment_method_domain}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_method_domains/{payment_method_domain}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentMethodDomainsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/payment_method_domains/{payment_method_domain}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/payment_method_domains/{payment_method_domain}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"enabled": {
 			Type:             "boolean",
@@ -23181,15 +23514,17 @@ var V1PaymentMethodDomainsUpdate = resource.OperationSpec{
 }
 
 var V1PaymentMethodDomainsValidate = resource.OperationSpec{
-	Name:   "validate",
-	Path:   "/v1/payment_method_domains/{payment_method_domain}/validate",
-	Method: "POST",
+	Name:             "validate",
+	Path:             "/v1/payment_method_domains/{payment_method_domain}/validate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentMethodsAttach = resource.OperationSpec{
-	Name:   "attach",
-	Path:   "/v1/payment_methods/{payment_method}/attach",
-	Method: "POST",
+	Name:             "attach",
+	Path:             "/v1/payment_methods/{payment_method}/attach",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -23205,9 +23540,10 @@ var V1PaymentMethodsAttach = resource.OperationSpec{
 }
 
 var V1PaymentMethodsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/payment_methods",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/payment_methods",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"acss_debit.account_number": {
 			Type:             "string",
@@ -23652,15 +23988,17 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 }
 
 var V1PaymentMethodsDetach = resource.OperationSpec{
-	Name:   "detach",
-	Path:   "/v1/payment_methods/{payment_method}/detach",
-	Method: "POST",
+	Name:             "detach",
+	Path:             "/v1/payment_methods/{payment_method}/detach",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentMethodsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_methods",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_methods",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allow_redisplay": {
 			Type:             "string",
@@ -23758,15 +24096,17 @@ var V1PaymentMethodsList = resource.OperationSpec{
 }
 
 var V1PaymentMethodsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_methods/{payment_method}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_methods/{payment_method}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentMethodsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/payment_methods/{payment_method}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/payment_methods/{payment_method}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allow_redisplay": {
 			Type:             "string",
@@ -23854,9 +24194,10 @@ var V1PaymentMethodsUpdate = resource.OperationSpec{
 }
 
 var V1PaymentRecordsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payment_records",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payment_records",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created_after": {
 			Type:             "integer",
@@ -23884,9 +24225,10 @@ var V1PaymentRecordsList = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportPayment = resource.OperationSpec{
-	Name:   "report_payment",
-	Path:   "/v1/payment_records/report_payment",
-	Method: "POST",
+	Name:             "report_payment",
+	Path:             "/v1/payment_records/report_payment",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount_requested.currency": {
 			Type:             "string",
@@ -24069,9 +24411,10 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportPaymentAttempt = resource.OperationSpec{
-	Name:   "report_payment_attempt",
-	Path:   "/v1/payment_records/{id}/report_payment_attempt",
-	Method: "POST",
+	Name:             "report_payment_attempt",
+	Path:             "/v1/payment_records/{id}/report_payment_attempt",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"canceled.canceled_at": {
 			Type:             "integer",
@@ -24204,9 +24547,10 @@ var V1PaymentRecordsReportPaymentAttempt = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportPaymentAttemptCanceled = resource.OperationSpec{
-	Name:   "report_payment_attempt_canceled",
-	Path:   "/v1/payment_records/{id}/report_payment_attempt_canceled",
-	Method: "POST",
+	Name:             "report_payment_attempt_canceled",
+	Path:             "/v1/payment_records/{id}/report_payment_attempt_canceled",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"canceled_at": {
 			Type:             "integer",
@@ -24219,9 +24563,10 @@ var V1PaymentRecordsReportPaymentAttemptCanceled = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportPaymentAttemptFailed = resource.OperationSpec{
-	Name:   "report_payment_attempt_failed",
-	Path:   "/v1/payment_records/{id}/report_payment_attempt_failed",
-	Method: "POST",
+	Name:             "report_payment_attempt_failed",
+	Path:             "/v1/payment_records/{id}/report_payment_attempt_failed",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"failed_at": {
 			Type:             "integer",
@@ -24234,9 +24579,10 @@ var V1PaymentRecordsReportPaymentAttemptFailed = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportPaymentAttemptGuaranteed = resource.OperationSpec{
-	Name:   "report_payment_attempt_guaranteed",
-	Path:   "/v1/payment_records/{id}/report_payment_attempt_guaranteed",
-	Method: "POST",
+	Name:             "report_payment_attempt_guaranteed",
+	Path:             "/v1/payment_records/{id}/report_payment_attempt_guaranteed",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"guaranteed_at": {
 			Type:             "integer",
@@ -24249,9 +24595,10 @@ var V1PaymentRecordsReportPaymentAttemptGuaranteed = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
-	Name:   "report_payment_attempt_informational",
-	Path:   "/v1/payment_records/{id}/report_payment_attempt_informational",
-	Method: "POST",
+	Name:             "report_payment_attempt_informational",
+	Path:             "/v1/payment_records/{id}/report_payment_attempt_informational",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer_details.customer": {
 			Type:             "string",
@@ -24316,9 +24663,10 @@ var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
 }
 
 var V1PaymentRecordsReportRefund = resource.OperationSpec{
-	Name:   "report_refund",
-	Path:   "/v1/payment_records/{id}/report_refund",
-	Method: "POST",
+	Name:             "report_refund",
+	Path:             "/v1/payment_records/{id}/report_refund",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",
@@ -24369,15 +24717,17 @@ var V1PaymentRecordsReportRefund = resource.OperationSpec{
 }
 
 var V1PaymentRecordsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payment_records/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payment_records/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PaymentSourcesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/customers/{customer}/sources",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/customers/{customer}/sources",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"source": {
 			Type:             "string",
@@ -24392,9 +24742,10 @@ var V1PaymentSourcesCreate = resource.OperationSpec{
 }
 
 var V1PaymentSourcesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/customers/{customer}/sources",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/customers/{customer}/sources",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -24416,21 +24767,24 @@ var V1PaymentSourcesList = resource.OperationSpec{
 }
 
 var V1PaymentSourcesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/customers/{customer}/sources/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/customers/{customer}/sources/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PayoutsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/payouts/{payout}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/payouts/{payout}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PayoutsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/payouts",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/payouts",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -24484,9 +24838,10 @@ var V1PayoutsCreate = resource.OperationSpec{
 }
 
 var V1PayoutsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/payouts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/payouts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"arrival_date": {
 			Type:             "integer",
@@ -24520,27 +24875,31 @@ var V1PayoutsList = resource.OperationSpec{
 }
 
 var V1PayoutsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/payouts/{payout}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/payouts/{payout}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PayoutsReverse = resource.OperationSpec{
-	Name:   "reverse",
-	Path:   "/v1/payouts/{payout}/reverse",
-	Method: "POST",
+	Name:             "reverse",
+	Path:             "/v1/payouts/{payout}/reverse",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PayoutsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/payouts/{payout}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/payouts/{payout}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PersonsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/accounts/{account}/persons",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/accounts/{account}/persons",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"additional_tos_acceptances.account.date": {
 			Type:             "integer",
@@ -24840,15 +25199,17 @@ var V1PersonsCreate = resource.OperationSpec{
 }
 
 var V1PersonsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/accounts/{account}/persons/{person}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/accounts/{account}/persons/{person}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PersonsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/accounts/{account}/persons",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/accounts/{account}/persons",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -24866,15 +25227,17 @@ var V1PersonsList = resource.OperationSpec{
 }
 
 var V1PersonsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/accounts/{account}/persons/{person}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/accounts/{account}/persons/{person}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PersonsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/accounts/{account}/persons/{person}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/accounts/{account}/persons/{person}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"additional_tos_acceptances.account.date": {
 			Type:             "integer",
@@ -25174,9 +25537,10 @@ var V1PersonsUpdate = resource.OperationSpec{
 }
 
 var V1PlansCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/plans",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/plans",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25306,15 +25670,17 @@ var V1PlansCreate = resource.OperationSpec{
 }
 
 var V1PlansDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/plans/{plan}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/plans/{plan}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PlansList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/plans",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/plans",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25344,15 +25710,17 @@ var V1PlansList = resource.OperationSpec{
 }
 
 var V1PlansRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/plans/{plan}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/plans/{plan}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PlansUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/plans/{plan}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/plans/{plan}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25376,9 +25744,10 @@ var V1PlansUpdate = resource.OperationSpec{
 }
 
 var V1PricesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/prices",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/prices",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25541,9 +25910,10 @@ var V1PricesCreate = resource.OperationSpec{
 }
 
 var V1PricesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/prices",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/prices",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25590,15 +25960,17 @@ var V1PricesList = resource.OperationSpec{
 }
 
 var V1PricesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/prices/{price}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/prices/{price}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PricesSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/prices/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/prices/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -25617,9 +25989,10 @@ var V1PricesSearch = resource.OperationSpec{
 }
 
 var V1PricesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/prices/{price}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/prices/{price}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25656,9 +26029,10 @@ var V1PricesUpdate = resource.OperationSpec{
 }
 
 var V1ProductCatalogTrialOffersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/product_catalog/trial_offers",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/product_catalog/trial_offers",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25698,9 +26072,10 @@ var V1ProductCatalogTrialOffersCreate = resource.OperationSpec{
 }
 
 var V1ProductCatalogTrialOffersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/product_catalog/trial_offers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/product_catalog/trial_offers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25730,15 +26105,17 @@ var V1ProductCatalogTrialOffersList = resource.OperationSpec{
 }
 
 var V1ProductCatalogTrialOffersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/product_catalog/trial_offers/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/product_catalog/trial_offers/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ProductCatalogTrialOffersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/product_catalog/trial_offers/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/product_catalog/trial_offers/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25749,9 +26126,10 @@ var V1ProductCatalogTrialOffersUpdate = resource.OperationSpec{
 }
 
 var V1ProductFeaturesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/products/{product}/features",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/products/{product}/features",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"entitlement_feature": {
 			Type:             "string",
@@ -25763,15 +26141,17 @@ var V1ProductFeaturesCreate = resource.OperationSpec{
 }
 
 var V1ProductFeaturesDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/products/{product}/features/{id}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/products/{product}/features/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ProductFeaturesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/products/{product}/features",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/products/{product}/features",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -25789,15 +26169,17 @@ var V1ProductFeaturesList = resource.OperationSpec{
 }
 
 var V1ProductFeaturesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/products/{product}/features/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/products/{product}/features/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ProductsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/products",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/products",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25934,15 +26316,17 @@ var V1ProductsCreate = resource.OperationSpec{
 }
 
 var V1ProductsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/products/{id}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/products/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ProductsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/products",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/products",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -25988,15 +26372,17 @@ var V1ProductsList = resource.OperationSpec{
 }
 
 var V1ProductsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/products/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/products/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ProductsSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/products/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/products/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -26015,9 +26401,10 @@ var V1ProductsSearch = resource.OperationSpec{
 }
 
 var V1ProductsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/products/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/products/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -26101,9 +26488,10 @@ var V1ProductsUpdate = resource.OperationSpec{
 }
 
 var V1PromotionCodesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/promotion_codes",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/promotion_codes",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -26161,9 +26549,10 @@ var V1PromotionCodesCreate = resource.OperationSpec{
 }
 
 var V1PromotionCodesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/promotion_codes",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/promotion_codes",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -26205,15 +26594,17 @@ var V1PromotionCodesList = resource.OperationSpec{
 }
 
 var V1PromotionCodesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/promotion_codes/{promotion_code}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/promotion_codes/{promotion_code}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1PromotionCodesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/promotion_codes/{promotion_code}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/promotion_codes/{promotion_code}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -26223,21 +26614,24 @@ var V1PromotionCodesUpdate = resource.OperationSpec{
 }
 
 var V1QuotesAccept = resource.OperationSpec{
-	Name:   "accept",
-	Path:   "/v1/quotes/{quote}/accept",
-	Method: "POST",
+	Name:             "accept",
+	Path:             "/v1/quotes/{quote}/accept",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1QuotesCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/quotes/{quote}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/quotes/{quote}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1QuotesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/quotes",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/quotes",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"application_fee_amount": {
 			Type:             "integer",
@@ -26387,9 +26781,10 @@ var V1QuotesCreate = resource.OperationSpec{
 }
 
 var V1QuotesFinalizeQuote = resource.OperationSpec{
-	Name:   "finalize_quote",
-	Path:   "/v1/quotes/{quote}/finalize",
-	Method: "POST",
+	Name:             "finalize_quote",
+	Path:             "/v1/quotes/{quote}/finalize",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
 			Type:             "integer",
@@ -26400,9 +26795,10 @@ var V1QuotesFinalizeQuote = resource.OperationSpec{
 }
 
 var V1QuotesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/quotes",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/quotes",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -26442,9 +26838,10 @@ var V1QuotesList = resource.OperationSpec{
 }
 
 var V1QuotesListComputedUpfrontLineItems = resource.OperationSpec{
-	Name:   "list_computed_upfront_line_items",
-	Path:   "/v1/quotes/{quote}/computed_upfront_line_items",
-	Method: "GET",
+	Name:             "list_computed_upfront_line_items",
+	Path:             "/v1/quotes/{quote}/computed_upfront_line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -26462,9 +26859,10 @@ var V1QuotesListComputedUpfrontLineItems = resource.OperationSpec{
 }
 
 var V1QuotesListLineItems = resource.OperationSpec{
-	Name:   "list_line_items",
-	Path:   "/v1/quotes/{quote}/line_items",
-	Method: "GET",
+	Name:             "list_line_items",
+	Path:             "/v1/quotes/{quote}/line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -26482,22 +26880,25 @@ var V1QuotesListLineItems = resource.OperationSpec{
 }
 
 var V1QuotesPdf = resource.OperationSpec{
-	Name:      "pdf",
-	Path:      "/v1/quotes/{quote}/pdf",
-	Method:    "GET",
-	ServerURL: "https://files.stripe.com/",
+	Name:             "pdf",
+	Path:             "/v1/quotes/{quote}/pdf",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
+	ServerURL:        "https://files.stripe.com/",
 }
 
 var V1QuotesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/quotes/{quote}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/quotes/{quote}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1QuotesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/quotes/{quote}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/quotes/{quote}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"application_fee_amount": {
 			Type:             "integer",
@@ -26619,9 +27020,10 @@ var V1QuotesUpdate = resource.OperationSpec{
 }
 
 var V1RadarEarlyFraudWarningsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/radar/early_fraud_warnings",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/radar/early_fraud_warnings",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"charge": {
 			Type:             "string",
@@ -26651,15 +27053,17 @@ var V1RadarEarlyFraudWarningsList = resource.OperationSpec{
 }
 
 var V1RadarEarlyFraudWarningsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/radar/early_fraud_warnings/{early_fraud_warning}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/radar/early_fraud_warnings/{early_fraud_warning}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/radar/payment_evaluations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/radar/payment_evaluations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_device_metadata_details.radar_session": {
 			Type:             "string",
@@ -26809,9 +27213,10 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 }
 
 var V1RadarValueListItemsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/radar/value_list_items",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/radar/value_list_items",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"value": {
 			Type:             "string",
@@ -26829,15 +27234,17 @@ var V1RadarValueListItemsCreate = resource.OperationSpec{
 }
 
 var V1RadarValueListItemsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/radar/value_list_items/{item}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/radar/value_list_items/{item}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RadarValueListItemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/radar/value_list_items",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/radar/value_list_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -26868,15 +27275,17 @@ var V1RadarValueListItemsList = resource.OperationSpec{
 }
 
 var V1RadarValueListItemsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/radar/value_list_items/{item}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/radar/value_list_items/{item}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RadarValueListsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/radar/value_lists",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/radar/value_lists",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"alias": {
 			Type:             "string",
@@ -26913,15 +27322,17 @@ var V1RadarValueListsCreate = resource.OperationSpec{
 }
 
 var V1RadarValueListsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/radar/value_lists/{value_list}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/radar/value_lists/{value_list}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RadarValueListsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/radar/value_lists",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/radar/value_lists",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"alias": {
 			Type:             "string",
@@ -26951,15 +27362,17 @@ var V1RadarValueListsList = resource.OperationSpec{
 }
 
 var V1RadarValueListsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/radar/value_lists/{value_list}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/radar/value_lists/{value_list}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RadarValueListsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/radar/value_lists/{value_list}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/radar/value_lists/{value_list}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"alias": {
 			Type:             "string",
@@ -26975,15 +27388,17 @@ var V1RadarValueListsUpdate = resource.OperationSpec{
 }
 
 var V1RefundsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/refunds/{refund}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/refunds/{refund}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RefundsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/refunds",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/refunds",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:       "integer",
@@ -27045,9 +27460,10 @@ var V1RefundsCreate = resource.OperationSpec{
 }
 
 var V1RefundsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/refunds",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/refunds",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"charge": {
 			Type:             "string",
@@ -27077,27 +27493,31 @@ var V1RefundsList = resource.OperationSpec{
 }
 
 var V1RefundsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/refunds/{refund}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/refunds/{refund}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RefundsTestHelpersExpire = resource.OperationSpec{
-	Name:   "expire",
-	Path:   "/v1/test_helpers/refunds/{refund}/expire",
-	Method: "POST",
+	Name:             "expire",
+	Path:             "/v1/test_helpers/refunds/{refund}/expire",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1RefundsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/refunds/{refund}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/refunds/{refund}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ReportingReportRunsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/reporting/report_runs",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/reporting/report_runs",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"parameters.columns": {
 			Type:             "array",
@@ -27784,9 +28204,10 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 }
 
 var V1ReportingReportRunsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/reporting/report_runs",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/reporting/report_runs",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -27808,33 +28229,38 @@ var V1ReportingReportRunsList = resource.OperationSpec{
 }
 
 var V1ReportingReportRunsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/reporting/report_runs/{report_run}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/reporting/report_runs/{report_run}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ReportingReportTypesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/reporting/report_types",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/reporting/report_types",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ReportingReportTypesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/reporting/report_types/{report_type}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/reporting/report_types/{report_type}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ReviewsApprove = resource.OperationSpec{
-	Name:   "approve",
-	Path:   "/v1/reviews/{review}/approve",
-	Method: "POST",
+	Name:             "approve",
+	Path:             "/v1/reviews/{review}/approve",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ReviewsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/reviews",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/reviews",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -27856,15 +28282,17 @@ var V1ReviewsList = resource.OperationSpec{
 }
 
 var V1ReviewsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/reviews/{review}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/reviews/{review}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ScheduledQueryRunsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/sigma/scheduled_query_runs",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/sigma/scheduled_query_runs",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -27882,15 +28310,17 @@ var V1ScheduledQueryRunsList = resource.OperationSpec{
 }
 
 var V1ScheduledQueryRunsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/sigma/scheduled_query_runs/{scheduled_query_run}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/sigma/scheduled_query_runs/{scheduled_query_run}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SetupAttemptsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/setup_attempts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/setup_attempts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -27917,9 +28347,10 @@ var V1SetupAttemptsList = resource.OperationSpec{
 }
 
 var V1SetupIntentsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/setup_intents/{intent}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/setup_intents/{intent}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
 			Type:             "string",
@@ -27935,9 +28366,10 @@ var V1SetupIntentsCancel = resource.OperationSpec{
 }
 
 var V1SetupIntentsConfirm = resource.OperationSpec{
-	Name:   "confirm",
-	Path:   "/v1/setup_intents/{intent}/confirm",
-	Method: "POST",
+	Name:             "confirm",
+	Path:             "/v1/setup_intents/{intent}/confirm",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allowed_payment_method_types": {
 			Type:             "array",
@@ -28861,9 +29293,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 }
 
 var V1SetupIntentsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/setup_intents",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/setup_intents",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allowed_payment_method_types": {
 			Type:             "array",
@@ -29857,9 +30290,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 }
 
 var V1SetupIntentsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/setup_intents",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/setup_intents",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"attach_to_self": {
 			Type:             "boolean",
@@ -29897,9 +30331,10 @@ var V1SetupIntentsList = resource.OperationSpec{
 }
 
 var V1SetupIntentsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/setup_intents/{intent}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/setup_intents/{intent}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_secret": {
 			Type:             "string",
@@ -29909,9 +30344,10 @@ var V1SetupIntentsRetrieve = resource.OperationSpec{
 }
 
 var V1SetupIntentsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/setup_intents/{intent}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/setup_intents/{intent}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allowed_payment_method_types": {
 			Type:             "array",
@@ -30829,9 +31265,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 }
 
 var V1SetupIntentsVerifyMicrodeposits = resource.OperationSpec{
-	Name:   "verify_microdeposits",
-	Path:   "/v1/setup_intents/{intent}/verify_microdeposits",
-	Method: "POST",
+	Name:             "verify_microdeposits",
+	Path:             "/v1/setup_intents/{intent}/verify_microdeposits",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
 			Type:             "array",
@@ -30847,9 +31284,10 @@ var V1SetupIntentsVerifyMicrodeposits = resource.OperationSpec{
 }
 
 var V1ShippingRatesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/shipping_rates",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/shipping_rates",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"delivery_estimate.maximum.unit": {
 			Type:             "string",
@@ -30925,9 +31363,10 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 }
 
 var V1ShippingRatesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/shipping_rates",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/shipping_rates",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -30958,15 +31397,17 @@ var V1ShippingRatesList = resource.OperationSpec{
 }
 
 var V1ShippingRatesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/shipping_rates/{shipping_rate_token}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/shipping_rates/{shipping_rate_token}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ShippingRatesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/shipping_rates/{shipping_rate_token}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/shipping_rates/{shipping_rate_token}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -30987,9 +31428,10 @@ var V1ShippingRatesUpdate = resource.OperationSpec{
 }
 
 var V1SourcesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/sources",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/sources",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -31214,15 +31656,17 @@ var V1SourcesCreate = resource.OperationSpec{
 }
 
 var V1SourcesDetach = resource.OperationSpec{
-	Name:   "detach",
-	Path:   "/v1/customers/{customer}/sources/{id}",
-	Method: "DELETE",
+	Name:             "detach",
+	Path:             "/v1/customers/{customer}/sources/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SourcesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/sources/{source}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/sources/{source}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"client_secret": {
 			Type:             "string",
@@ -31232,9 +31676,10 @@ var V1SourcesRetrieve = resource.OperationSpec{
 }
 
 var V1SourcesSourceTransactions = resource.OperationSpec{
-	Name:   "source_transactions",
-	Path:   "/v1/sources/{source}/source_transactions",
-	Method: "GET",
+	Name:             "source_transactions",
+	Path:             "/v1/sources/{source}/source_transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -31252,9 +31697,10 @@ var V1SourcesSourceTransactions = resource.OperationSpec{
 }
 
 var V1SourcesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/sources/{source}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/sources/{source}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -31418,9 +31864,10 @@ var V1SourcesUpdate = resource.OperationSpec{
 }
 
 var V1SourcesVerify = resource.OperationSpec{
-	Name:   "verify",
-	Path:   "/v1/sources/{source}/verify",
-	Method: "POST",
+	Name:             "verify",
+	Path:             "/v1/sources/{source}/verify",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"values": {
 			Type:             "array",
@@ -31432,9 +31879,10 @@ var V1SourcesVerify = resource.OperationSpec{
 }
 
 var V1SubscriptionItemsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/subscription_items",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/subscription_items",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing_thresholds": {
 			Type: "clearable_object",
@@ -31542,15 +31990,17 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 }
 
 var V1SubscriptionItemsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/subscription_items/{item}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/subscription_items/{item}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SubscriptionItemsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/subscription_items",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/subscription_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -31573,15 +32023,17 @@ var V1SubscriptionItemsList = resource.OperationSpec{
 }
 
 var V1SubscriptionItemsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/subscription_items/{item}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/subscription_items/{item}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SubscriptionItemsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/subscription_items/{item}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/subscription_items/{item}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing_thresholds": {
 			Type: "clearable_object",
@@ -31687,9 +32139,10 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 }
 
 var V1SubscriptionSchedulesCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/subscription_schedules/{schedule}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/subscription_schedules/{schedule}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"invoice_now": {
 			Type:             "boolean",
@@ -31704,9 +32157,10 @@ var V1SubscriptionSchedulesCancel = resource.OperationSpec{
 }
 
 var V1SubscriptionSchedulesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/subscription_schedules",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/subscription_schedules",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing_mode.flexible.proration_discounts": {
 			Type:             "string",
@@ -31846,9 +32300,10 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 }
 
 var V1SubscriptionSchedulesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/subscription_schedules",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/subscription_schedules",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"canceled_at": {
 			Type:             "integer",
@@ -31894,9 +32349,10 @@ var V1SubscriptionSchedulesList = resource.OperationSpec{
 }
 
 var V1SubscriptionSchedulesRelease = resource.OperationSpec{
-	Name:   "release",
-	Path:   "/v1/subscription_schedules/{schedule}/release",
-	Method: "POST",
+	Name:             "release",
+	Path:             "/v1/subscription_schedules/{schedule}/release",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"preserve_cancel_date": {
 			Type:             "boolean",
@@ -31906,15 +32362,17 @@ var V1SubscriptionSchedulesRelease = resource.OperationSpec{
 }
 
 var V1SubscriptionSchedulesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/subscription_schedules/{schedule}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/subscription_schedules/{schedule}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/subscription_schedules/{schedule}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/subscription_schedules/{schedule}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"default_settings.application_fee_percent": {
 			Type:             "number",
@@ -32030,15 +32488,17 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 }
 
 var V1SubscriptionsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/subscriptions/{subscription_exposed_id}",
-	Method: "DELETE",
+	Name:             "cancel",
+	Path:             "/v1/subscriptions/{subscription_exposed_id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SubscriptionsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/subscriptions",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/subscriptions",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"application_fee_percent": {
 			Type:             "number",
@@ -32532,15 +32992,17 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 }
 
 var V1SubscriptionsDeleteDiscount = resource.OperationSpec{
-	Name:   "delete_discount",
-	Path:   "/v1/subscriptions/{subscription_exposed_id}/discount",
-	Method: "DELETE",
+	Name:             "delete_discount",
+	Path:             "/v1/subscriptions/{subscription_exposed_id}/discount",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SubscriptionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/subscriptions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/subscriptions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"collection_method": {
 			Type:             "string",
@@ -32614,9 +33076,10 @@ var V1SubscriptionsList = resource.OperationSpec{
 }
 
 var V1SubscriptionsMigrate = resource.OperationSpec{
-	Name:   "migrate",
-	Path:   "/v1/subscriptions/{subscription}/migrate",
-	Method: "POST",
+	Name:             "migrate",
+	Path:             "/v1/subscriptions/{subscription}/migrate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing_mode.flexible.proration_discounts": {
 			Type:             "string",
@@ -32639,9 +33102,10 @@ var V1SubscriptionsMigrate = resource.OperationSpec{
 }
 
 var V1SubscriptionsPause = resource.OperationSpec{
-	Name:   "pause",
-	Path:   "/v1/subscriptions/{subscription}/pause",
-	Method: "POST",
+	Name:             "pause",
+	Path:             "/v1/subscriptions/{subscription}/pause",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"bill_for.outstanding_usage_through.type": {
 			Type:             "string",
@@ -32681,9 +33145,10 @@ var V1SubscriptionsPause = resource.OperationSpec{
 }
 
 var V1SubscriptionsResume = resource.OperationSpec{
-	Name:   "resume",
-	Path:   "/v1/subscriptions/{subscription}/resume",
-	Method: "POST",
+	Name:             "resume",
+	Path:             "/v1/subscriptions/{subscription}/resume",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"billing_cycle_anchor.type": {
 			Type:             "string",
@@ -32721,15 +33186,17 @@ var V1SubscriptionsResume = resource.OperationSpec{
 }
 
 var V1SubscriptionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/subscriptions/{subscription_exposed_id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/subscriptions/{subscription_exposed_id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1SubscriptionsSearch = resource.OperationSpec{
-	Name:   "search",
-	Path:   "/v1/subscriptions/search",
-	Method: "GET",
+	Name:             "search",
+	Path:             "/v1/subscriptions/search",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:             "integer",
@@ -32748,9 +33215,10 @@ var V1SubscriptionsSearch = resource.OperationSpec{
 }
 
 var V1SubscriptionsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/subscriptions/{subscription_exposed_id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/subscriptions/{subscription_exposed_id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"application_fee_percent": {
 			Type:             "number",
@@ -33234,9 +33702,10 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 }
 
 var V1TaxAssociationsFind = resource.OperationSpec{
-	Name:   "find",
-	Path:   "/v1/tax/associations/find",
-	Method: "GET",
+	Name:             "find",
+	Path:             "/v1/tax/associations/find",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payment_intent": {
 			Type:             "string",
@@ -33247,9 +33716,10 @@ var V1TaxAssociationsFind = resource.OperationSpec{
 }
 
 var V1TaxCalculationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/tax/calculations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/tax/calculations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"currency": {
 			Type:             "string",
@@ -33359,9 +33829,10 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 }
 
 var V1TaxCalculationsListLineItems = resource.OperationSpec{
-	Name:   "list_line_items",
-	Path:   "/v1/tax/calculations/{calculation}/line_items",
-	Method: "GET",
+	Name:             "list_line_items",
+	Path:             "/v1/tax/calculations/{calculation}/line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -33379,15 +33850,17 @@ var V1TaxCalculationsListLineItems = resource.OperationSpec{
 }
 
 var V1TaxCalculationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax/calculations/{calculation}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax/calculations/{calculation}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxCodesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/tax_codes",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/tax_codes",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -33405,15 +33878,17 @@ var V1TaxCodesList = resource.OperationSpec{
 }
 
 var V1TaxCodesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax_codes/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax_codes/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxIdsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/customers/{customer}/tax_ids",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/customers/{customer}/tax_ids",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"type": {
 			Type:             "string",
@@ -33550,15 +34025,17 @@ var V1TaxIdsCreate = resource.OperationSpec{
 }
 
 var V1TaxIdsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/customers/{customer}/tax_ids/{id}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/customers/{customer}/tax_ids/{id}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxIdsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/customers/{customer}/tax_ids",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/customers/{customer}/tax_ids",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -33576,15 +34053,17 @@ var V1TaxIdsList = resource.OperationSpec{
 }
 
 var V1TaxIdsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/customers/{customer}/tax_ids/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/customers/{customer}/tax_ids/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxLocationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/tax/locations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/tax/locations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"address.city": {
 			Type:             "string",
@@ -33630,9 +34109,10 @@ var V1TaxLocationsCreate = resource.OperationSpec{
 }
 
 var V1TaxLocationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/tax/locations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/tax/locations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -33658,15 +34138,17 @@ var V1TaxLocationsList = resource.OperationSpec{
 }
 
 var V1TaxLocationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax/locations/{location}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax/locations/{location}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxRatesCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/tax_rates",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/tax_rates",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -33739,9 +34221,10 @@ var V1TaxRatesCreate = resource.OperationSpec{
 }
 
 var V1TaxRatesList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/tax_rates",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/tax_rates",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -33771,15 +34254,17 @@ var V1TaxRatesList = resource.OperationSpec{
 }
 
 var V1TaxRatesRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax_rates/{tax_rate}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax_rates/{tax_rate}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxRatesUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/tax_rates/{tax_rate}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/tax_rates/{tax_rate}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
 			Type:             "boolean",
@@ -33839,9 +34324,10 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 }
 
 var V1TaxRegistrationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/tax/registrations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/tax/registrations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active_from": {
 			Type:             "string",
@@ -35208,9 +35694,10 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 }
 
 var V1TaxRegistrationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/tax/registrations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/tax/registrations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -35238,15 +35725,17 @@ var V1TaxRegistrationsList = resource.OperationSpec{
 }
 
 var V1TaxRegistrationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax/registrations/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax/registrations/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxRegistrationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/tax/registrations/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/tax/registrations/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"active_from": {
 			Type:             "string",
@@ -35262,15 +35751,17 @@ var V1TaxRegistrationsUpdate = resource.OperationSpec{
 }
 
 var V1TaxSettingsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax/settings",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax/settings",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TaxSettingsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/tax/settings",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/tax/settings",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"defaults.tax_behavior": {
 			Type:             "string",
@@ -35313,9 +35804,10 @@ var V1TaxSettingsUpdate = resource.OperationSpec{
 }
 
 var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
-	Name:   "create_from_calculation",
-	Path:   "/v1/tax/transactions/create_from_calculation",
-	Method: "POST",
+	Name:             "create_from_calculation",
+	Path:             "/v1/tax/transactions/create_from_calculation",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"calculation": {
 			Type:             "string",
@@ -35338,9 +35830,10 @@ var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
 }
 
 var V1TaxTransactionsCreateReversal = resource.OperationSpec{
-	Name:   "create_reversal",
-	Path:   "/v1/tax/transactions/create_reversal",
-	Method: "POST",
+	Name:             "create_reversal",
+	Path:             "/v1/tax/transactions/create_reversal",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"flat_amount": {
 			Type:             "integer",
@@ -35381,9 +35874,10 @@ var V1TaxTransactionsCreateReversal = resource.OperationSpec{
 }
 
 var V1TaxTransactionsListLineItems = resource.OperationSpec{
-	Name:   "list_line_items",
-	Path:   "/v1/tax/transactions/{transaction}/line_items",
-	Method: "GET",
+	Name:             "list_line_items",
+	Path:             "/v1/tax/transactions/{transaction}/line_items",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -35401,15 +35895,17 @@ var V1TaxTransactionsListLineItems = resource.OperationSpec{
 }
 
 var V1TaxTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tax/transactions/{transaction}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tax/transactions/{transaction}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalConfigurationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/terminal/configurations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/terminal/configurations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"bbpos_wisepad3.splashscreen": {
 			Type:             "string",
@@ -35789,15 +36285,17 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 }
 
 var V1TerminalConfigurationsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/terminal/configurations/{configuration}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/terminal/configurations/{configuration}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalConfigurationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/terminal/configurations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/terminal/configurations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -35819,15 +36317,17 @@ var V1TerminalConfigurationsList = resource.OperationSpec{
 }
 
 var V1TerminalConfigurationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/terminal/configurations/{configuration}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/terminal/configurations/{configuration}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalConfigurationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/terminal/configurations/{configuration}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/terminal/configurations/{configuration}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"bbpos_wisepad3": {
 			Type:       "clearable_object",
@@ -36245,9 +36745,10 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 }
 
 var V1TerminalConnectionTokensCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/terminal/connection_tokens",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/terminal/connection_tokens",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"location": {
 			Type:             "string",
@@ -36258,9 +36759,10 @@ var V1TerminalConnectionTokensCreate = resource.OperationSpec{
 }
 
 var V1TerminalLocationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/terminal/locations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/terminal/locations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"address.city": {
 			Type:             "string",
@@ -36368,15 +36870,17 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 }
 
 var V1TerminalLocationsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/terminal/locations/{location}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/terminal/locations/{location}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalLocationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/terminal/locations",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/terminal/locations",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -36394,15 +36898,17 @@ var V1TerminalLocationsList = resource.OperationSpec{
 }
 
 var V1TerminalLocationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/terminal/locations/{location}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/terminal/locations/{location}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalLocationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/terminal/locations/{location}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/terminal/locations/{location}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"address.city": {
 			Type:             "string",
@@ -36509,9 +37015,10 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 }
 
 var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/terminal/onboarding_links",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/terminal/onboarding_links",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"link_options.apple_terms_and_conditions.allow_relinking": {
 			Type:             "boolean",
@@ -36539,21 +37046,24 @@ var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
 }
 
 var V1TerminalReadersCancelAction = resource.OperationSpec{
-	Name:   "cancel_action",
-	Path:   "/v1/terminal/readers/{reader}/cancel_action",
-	Method: "POST",
+	Name:             "cancel_action",
+	Path:             "/v1/terminal/readers/{reader}/cancel_action",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalReadersCollectInputs = resource.OperationSpec{
-	Name:   "collect_inputs",
-	Path:   "/v1/terminal/readers/{reader}/collect_inputs",
-	Method: "POST",
+	Name:             "collect_inputs",
+	Path:             "/v1/terminal/readers/{reader}/collect_inputs",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
-	Name:   "collect_payment_method",
-	Path:   "/v1/terminal/readers/{reader}/collect_payment_method",
-	Method: "POST",
+	Name:             "collect_payment_method",
+	Path:             "/v1/terminal/readers/{reader}/collect_payment_method",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"collect_config.allow_redisplay": {
 			Type:             "string",
@@ -36586,9 +37096,10 @@ var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
 }
 
 var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
-	Name:   "confirm_payment_intent",
-	Path:   "/v1/terminal/readers/{reader}/confirm_payment_intent",
-	Method: "POST",
+	Name:             "confirm_payment_intent",
+	Path:             "/v1/terminal/readers/{reader}/confirm_payment_intent",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"confirm_config.return_url": {
 			Type:             "string",
@@ -36604,9 +37115,10 @@ var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
 }
 
 var V1TerminalReadersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/terminal/readers",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/terminal/readers",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"label": {
 			Type:             "string",
@@ -36628,15 +37140,17 @@ var V1TerminalReadersCreate = resource.OperationSpec{
 }
 
 var V1TerminalReadersDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/terminal/readers/{reader}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/terminal/readers/{reader}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalReadersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/terminal/readers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/terminal/readers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"device_type": {
 			Type:             "string",
@@ -36695,9 +37209,10 @@ var V1TerminalReadersList = resource.OperationSpec{
 }
 
 var V1TerminalReadersProcessPaymentIntent = resource.OperationSpec{
-	Name:   "process_payment_intent",
-	Path:   "/v1/terminal/readers/{reader}/process_payment_intent",
-	Method: "POST",
+	Name:             "process_payment_intent",
+	Path:             "/v1/terminal/readers/{reader}/process_payment_intent",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payment_intent": {
 			Type:             "string",
@@ -36734,9 +37249,10 @@ var V1TerminalReadersProcessPaymentIntent = resource.OperationSpec{
 }
 
 var V1TerminalReadersProcessSetupIntent = resource.OperationSpec{
-	Name:   "process_setup_intent",
-	Path:   "/v1/terminal/readers/{reader}/process_setup_intent",
-	Method: "POST",
+	Name:             "process_setup_intent",
+	Path:             "/v1/terminal/readers/{reader}/process_setup_intent",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"allow_redisplay": {
 			Type:             "string",
@@ -36763,9 +37279,10 @@ var V1TerminalReadersProcessSetupIntent = resource.OperationSpec{
 }
 
 var V1TerminalReadersRefundPayment = resource.OperationSpec{
-	Name:   "refund_payment",
-	Path:   "/v1/terminal/readers/{reader}/refund_payment",
-	Method: "POST",
+	Name:             "refund_payment",
+	Path:             "/v1/terminal/readers/{reader}/refund_payment",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -36800,15 +37317,17 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 }
 
 var V1TerminalReadersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/terminal/readers/{reader}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/terminal/readers/{reader}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
-	Name:   "set_reader_display",
-	Path:   "/v1/terminal/readers/{reader}/set_reader_display",
-	Method: "POST",
+	Name:             "set_reader_display",
+	Path:             "/v1/terminal/readers/{reader}/set_reader_display",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"cart.currency": {
 			Type:             "string",
@@ -36838,9 +37357,10 @@ var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
 }
 
 var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
-	Name:   "present_payment_method",
-	Path:   "/v1/test_helpers/terminal/readers/{reader}/present_payment_method",
-	Method: "POST",
+	Name:             "present_payment_method",
+	Path:             "/v1/test_helpers/terminal/readers/{reader}/present_payment_method",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount_tip": {
 			Type:             "integer",
@@ -36884,9 +37404,10 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 }
 
 var V1TerminalReadersTestHelpersSucceedInputCollection = resource.OperationSpec{
-	Name:   "succeed_input_collection",
-	Path:   "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection",
-	Method: "POST",
+	Name:             "succeed_input_collection",
+	Path:             "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"skip_non_required_inputs": {
 			Type:             "string",
@@ -36901,15 +37422,17 @@ var V1TerminalReadersTestHelpersSucceedInputCollection = resource.OperationSpec{
 }
 
 var V1TerminalReadersTestHelpersTimeoutInputCollection = resource.OperationSpec{
-	Name:   "timeout_input_collection",
-	Path:   "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection",
-	Method: "POST",
+	Name:             "timeout_input_collection",
+	Path:             "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TerminalReadersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/terminal/readers/{reader}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/terminal/readers/{reader}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"label": {
 			Type:             "string",
@@ -36920,9 +37443,10 @@ var V1TerminalReadersUpdate = resource.OperationSpec{
 }
 
 var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/confirmation_tokens",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/confirmation_tokens",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"payment_method": {
 			Type:             "string",
@@ -37398,9 +37922,10 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 }
 
 var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
-	Name:   "fund_cash_balance",
-	Path:   "/v1/test_helpers/customers/{customer}/fund_cash_balance",
-	Method: "POST",
+	Name:             "fund_cash_balance",
+	Path:             "/v1/test_helpers/customers/{customer}/fund_cash_balance",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -37423,9 +37948,10 @@ var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
-	Name:   "capture",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/capture",
-	Method: "POST",
+	Name:             "capture",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/capture",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"capture_amount": {
 			Type:             "integer",
@@ -37568,9 +38094,10 @@ var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/issuing/authorizations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/issuing/authorizations",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -38192,15 +38719,17 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingAuthorizationsExpire = resource.OperationSpec{
-	Name:   "expire",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
-	Method: "POST",
+	Name:             "expire",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
-	Name:   "finalize_amount",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
-	Method: "POST",
+	Name:             "finalize_amount",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"final_amount": {
 			Type:             "integer",
@@ -38309,9 +38838,10 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingAuthorizationsIncrement = resource.OperationSpec{
-	Name:   "increment",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/increment",
-	Method: "POST",
+	Name:             "increment",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/increment",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"increment_amount": {
 			Type:             "integer",
@@ -38328,9 +38858,10 @@ var V1TestHelpersIssuingAuthorizationsIncrement = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingAuthorizationsRespond = resource.OperationSpec{
-	Name:   "respond",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond",
-	Method: "POST",
+	Name:             "respond",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"confirmed": {
 			Type:             "boolean",
@@ -38342,9 +38873,10 @@ var V1TestHelpersIssuingAuthorizationsRespond = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingAuthorizationsReverse = resource.OperationSpec{
-	Name:   "reverse",
-	Path:   "/v1/test_helpers/issuing/authorizations/{authorization}/reverse",
-	Method: "POST",
+	Name:             "reverse",
+	Path:             "/v1/test_helpers/issuing/authorizations/{authorization}/reverse",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"reverse_amount": {
 			Type:             "integer",
@@ -38355,51 +38887,59 @@ var V1TestHelpersIssuingAuthorizationsReverse = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingCardsDeliverCard = resource.OperationSpec{
-	Name:   "deliver_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
-	Method: "POST",
+	Name:             "deliver_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingCardsFailCard = resource.OperationSpec{
-	Name:   "fail_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
-	Method: "POST",
+	Name:             "fail_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingCardsReturnCard = resource.OperationSpec{
-	Name:   "return_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/return",
-	Method: "POST",
+	Name:             "return_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingCardsShipCard = resource.OperationSpec{
-	Name:   "ship_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
-	Method: "POST",
+	Name:             "ship_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingCardsSubmitCard = resource.OperationSpec{
-	Name:   "submit_card",
-	Path:   "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
-	Method: "POST",
+	Name:             "submit_card",
+	Path:             "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingPersonalizationDesignsActivate = resource.OperationSpec{
-	Name:   "activate",
-	Path:   "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate",
-	Method: "POST",
+	Name:             "activate",
+	Path:             "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingPersonalizationDesignsDeactivate = resource.OperationSpec{
-	Name:   "deactivate",
-	Path:   "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate",
-	Method: "POST",
+	Name:             "deactivate",
+	Path:             "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersIssuingPersonalizationDesignsReject = resource.OperationSpec{
-	Name:   "reject",
-	Path:   "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject",
-	Method: "POST",
+	Name:             "reject",
+	Path:             "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"rejection_reasons.card_logo": {
 			Type:             "array",
@@ -38413,9 +38953,10 @@ var V1TestHelpersIssuingPersonalizationDesignsReject = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
-	Name:   "create_force_capture",
-	Path:   "/v1/test_helpers/issuing/transactions/create_force_capture",
-	Method: "POST",
+	Name:             "create_force_capture",
+	Path:             "/v1/test_helpers/issuing/transactions/create_force_capture",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -38898,9 +39439,10 @@ var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
 }
 
 var V1TestHelpersIssuingTransactionsCreateUnlinkedRefund = resource.OperationSpec{
-	Name:   "create_unlinked_refund",
-	Path:   "/v1/test_helpers/issuing/transactions/create_unlinked_refund",
-	Method: "POST",
+	Name:             "create_unlinked_refund",
+	Path:             "/v1/test_helpers/issuing/transactions/create_unlinked_refund",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -39383,9 +39925,10 @@ var V1TestHelpersIssuingTransactionsCreateUnlinkedRefund = resource.OperationSpe
 }
 
 var V1TestHelpersIssuingTransactionsRefund = resource.OperationSpec{
-	Name:   "refund",
-	Path:   "/v1/test_helpers/issuing/transactions/{transaction}/refund",
-	Method: "POST",
+	Name:             "refund",
+	Path:             "/v1/test_helpers/issuing/transactions/{transaction}/refund",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"refund_amount": {
 			Type:             "integer",
@@ -39396,15 +39939,17 @@ var V1TestHelpersIssuingTransactionsRefund = resource.OperationSpec{
 }
 
 var V1TestHelpersRefundsExpire = resource.OperationSpec{
-	Name:   "expire",
-	Path:   "/v1/test_helpers/refunds/{refund}/expire",
-	Method: "POST",
+	Name:             "expire",
+	Path:             "/v1/test_helpers/refunds/{refund}/expire",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
-	Name:   "present_payment_method",
-	Path:   "/v1/test_helpers/terminal/readers/{reader}/present_payment_method",
-	Method: "POST",
+	Name:             "present_payment_method",
+	Path:             "/v1/test_helpers/terminal/readers/{reader}/present_payment_method",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount_tip": {
 			Type:             "integer",
@@ -39448,9 +39993,10 @@ var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
 }
 
 var V1TestHelpersTerminalReadersSucceedInputCollection = resource.OperationSpec{
-	Name:   "succeed_input_collection",
-	Path:   "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection",
-	Method: "POST",
+	Name:             "succeed_input_collection",
+	Path:             "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"skip_non_required_inputs": {
 			Type:             "string",
@@ -39465,15 +40011,17 @@ var V1TestHelpersTerminalReadersSucceedInputCollection = resource.OperationSpec{
 }
 
 var V1TestHelpersTerminalReadersTimeoutInputCollection = resource.OperationSpec{
-	Name:   "timeout_input_collection",
-	Path:   "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection",
-	Method: "POST",
+	Name:             "timeout_input_collection",
+	Path:             "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTestClocksAdvance = resource.OperationSpec{
-	Name:   "advance",
-	Path:   "/v1/test_helpers/test_clocks/{test_clock}/advance",
-	Method: "POST",
+	Name:             "advance",
+	Path:             "/v1/test_helpers/test_clocks/{test_clock}/advance",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"frozen_time": {
 			Type:             "integer",
@@ -39486,9 +40034,10 @@ var V1TestHelpersTestClocksAdvance = resource.OperationSpec{
 }
 
 var V1TestHelpersTestClocksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/test_clocks",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/test_clocks",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -39510,15 +40059,17 @@ var V1TestHelpersTestClocksCreate = resource.OperationSpec{
 }
 
 var V1TestHelpersTestClocksDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/test_helpers/test_clocks/{test_clock}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/test_helpers/test_clocks/{test_clock}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTestClocksList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/test_helpers/test_clocks",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/test_helpers/test_clocks",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -39536,15 +40087,17 @@ var V1TestHelpersTestClocksList = resource.OperationSpec{
 }
 
 var V1TestHelpersTestClocksRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/test_helpers/test_clocks/{test_clock}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/test_helpers/test_clocks/{test_clock}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryInboundTransfersFail = resource.OperationSpec{
-	Name:   "fail",
-	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/fail",
-	Method: "POST",
+	Name:             "fail",
+	Path:             "/v1/test_helpers/treasury/inbound_transfers/{id}/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"failure_details.code": {
 			Type:             "string",
@@ -39569,33 +40122,38 @@ var V1TestHelpersTreasuryInboundTransfersFail = resource.OperationSpec{
 }
 
 var V1TestHelpersTreasuryInboundTransfersReturnInboundTransfer = resource.OperationSpec{
-	Name:   "return_inbound_transfer",
-	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
-	Method: "POST",
+	Name:             "return_inbound_transfer",
+	Path:             "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryInboundTransfersSucceed = resource.OperationSpec{
-	Name:   "succeed",
-	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed",
-	Method: "POST",
+	Name:             "succeed",
+	Path:             "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryOutboundPaymentsFail = resource.OperationSpec{
-	Name:   "fail",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}/fail",
-	Method: "POST",
+	Name:             "fail",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryOutboundPaymentsPost = resource.OperationSpec{
-	Name:   "post",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}/post",
-	Method: "POST",
+	Name:             "post",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}/post",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryOutboundPaymentsReturnOutboundPayment = resource.OperationSpec{
-	Name:   "return_outbound_payment",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}/return",
-	Method: "POST",
+	Name:             "return_outbound_payment",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"returned_details.code": {
 			Type:             "string",
@@ -39617,9 +40175,10 @@ var V1TestHelpersTreasuryOutboundPaymentsReturnOutboundPayment = resource.Operat
 }
 
 var V1TestHelpersTreasuryOutboundPaymentsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
@@ -39651,21 +40210,24 @@ var V1TestHelpersTreasuryOutboundPaymentsUpdate = resource.OperationSpec{
 }
 
 var V1TestHelpersTreasuryOutboundTransfersFail = resource.OperationSpec{
-	Name:   "fail",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail",
-	Method: "POST",
+	Name:             "fail",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryOutboundTransfersPost = resource.OperationSpec{
-	Name:   "post",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post",
-	Method: "POST",
+	Name:             "post",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TestHelpersTreasuryOutboundTransfersReturnOutboundTransfer = resource.OperationSpec{
-	Name:   "return_outbound_transfer",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return",
-	Method: "POST",
+	Name:             "return_outbound_transfer",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"returned_details.code": {
 			Type:             "string",
@@ -39687,9 +40249,10 @@ var V1TestHelpersTreasuryOutboundTransfersReturnOutboundTransfer = resource.Oper
 }
 
 var V1TestHelpersTreasuryOutboundTransfersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
@@ -39721,9 +40284,10 @@ var V1TestHelpersTreasuryOutboundTransfersUpdate = resource.OperationSpec{
 }
 
 var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/treasury/received_credits",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/treasury/received_credits",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -39784,9 +40348,10 @@ var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
 }
 
 var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/treasury/received_debits",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/treasury/received_debits",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -39845,15 +40410,17 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 }
 
 var V1ThreeDSecureAuthenticationsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/three_d_secure/authentications/{authentication}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/three_d_secure/authentications/{authentication}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ThreeDSecureAuthenticationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/three_d_secure/authentications",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/three_d_secure/authentications",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"acquirer_details.acquirer_bin": {
 			Type:             "string",
@@ -40196,9 +40763,10 @@ var V1ThreeDSecureAuthenticationsCreate = resource.OperationSpec{
 }
 
 var V1ThreeDSecureAuthenticationsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/three_d_secure/authentications",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/three_d_secure/authentications",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -40232,15 +40800,17 @@ var V1ThreeDSecureAuthenticationsList = resource.OperationSpec{
 }
 
 var V1ThreeDSecureAuthenticationsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/three_d_secure/authentications/{authentication}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/three_d_secure/authentications/{authentication}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1ThreeDSecureAuthenticationsSubmit = resource.OperationSpec{
-	Name:   "submit",
-	Path:   "/v1/three_d_secure/authentications/{authentication}/submit",
-	Method: "POST",
+	Name:             "submit",
+	Path:             "/v1/three_d_secure/authentications/{authentication}/submit",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"fingerprinting_result": {
 			Type:             "string",
@@ -40251,9 +40821,10 @@ var V1ThreeDSecureAuthenticationsSubmit = resource.OperationSpec{
 }
 
 var V1TokensCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/tokens",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/tokens",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"account.business_type": {
 			Type:             "string",
@@ -41164,21 +41735,24 @@ var V1TokensCreate = resource.OperationSpec{
 }
 
 var V1TokensRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/tokens/{token}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/tokens/{token}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TopupsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/topups/{topup}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/topups/{topup}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TopupsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/topups",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/topups",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -41223,9 +41797,10 @@ var V1TopupsCreate = resource.OperationSpec{
 }
 
 var V1TopupsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/topups",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/topups",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -41261,15 +41836,17 @@ var V1TopupsList = resource.OperationSpec{
 }
 
 var V1TopupsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/topups/{topup}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/topups/{topup}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TopupsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/topups/{topup}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/topups/{topup}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -41280,9 +41857,10 @@ var V1TopupsUpdate = resource.OperationSpec{
 }
 
 var V1TransferReversalsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/transfers/{id}/reversals",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/transfers/{id}/reversals",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -41302,9 +41880,10 @@ var V1TransferReversalsCreate = resource.OperationSpec{
 }
 
 var V1TransferReversalsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/transfers/{id}/reversals",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/transfers/{id}/reversals",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -41322,21 +41901,24 @@ var V1TransferReversalsList = resource.OperationSpec{
 }
 
 var V1TransferReversalsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/transfers/{transfer}/reversals/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/transfers/{transfer}/reversals/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TransferReversalsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/transfers/{transfer}/reversals/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/transfers/{transfer}/reversals/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TransfersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/transfers",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/transfers",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -41382,9 +41964,10 @@ var V1TransfersCreate = resource.OperationSpec{
 }
 
 var V1TransfersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/transfers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/transfers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -41414,15 +41997,17 @@ var V1TransfersList = resource.OperationSpec{
 }
 
 var V1TransfersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/transfers/{transfer}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/transfers/{transfer}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TransfersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/transfers/{transfer}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/transfers/{transfer}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -41433,9 +42018,10 @@ var V1TransfersUpdate = resource.OperationSpec{
 }
 
 var V1TreasuryCreditReversalsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/treasury/credit_reversals",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/treasury/credit_reversals",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"received_credit": {
 			Type:             "string",
@@ -41447,9 +42033,10 @@ var V1TreasuryCreditReversalsCreate = resource.OperationSpec{
 }
 
 var V1TreasuryCreditReversalsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/credit_reversals",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/credit_reversals",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -41485,15 +42072,17 @@ var V1TreasuryCreditReversalsList = resource.OperationSpec{
 }
 
 var V1TreasuryCreditReversalsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/credit_reversals/{credit_reversal}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/credit_reversals/{credit_reversal}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryDebitReversalsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/treasury/debit_reversals",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/treasury/debit_reversals",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"received_debit": {
 			Type:             "string",
@@ -41505,9 +42094,10 @@ var V1TreasuryDebitReversalsCreate = resource.OperationSpec{
 }
 
 var V1TreasuryDebitReversalsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/debit_reversals",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/debit_reversals",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -41551,15 +42141,17 @@ var V1TreasuryDebitReversalsList = resource.OperationSpec{
 }
 
 var V1TreasuryDebitReversalsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/debit_reversals/{debit_reversal}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/debit_reversals/{debit_reversal}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryFinancialAccountsClose = resource.OperationSpec{
-	Name:   "close",
-	Path:   "/v1/treasury/financial_accounts/{financial_account}/close",
-	Method: "POST",
+	Name:             "close",
+	Path:             "/v1/treasury/financial_accounts/{financial_account}/close",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"forwarding_settings.financial_account": {
 			Type:             "string",
@@ -41582,9 +42174,10 @@ var V1TreasuryFinancialAccountsClose = resource.OperationSpec{
 }
 
 var V1TreasuryFinancialAccountsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/treasury/financial_accounts",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/treasury/financial_accounts",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"features.card_issuing.requested": {
 			Type:             "boolean",
@@ -41653,9 +42246,10 @@ var V1TreasuryFinancialAccountsCreate = resource.OperationSpec{
 }
 
 var V1TreasuryFinancialAccountsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/financial_accounts",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/financial_accounts",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -41685,21 +42279,24 @@ var V1TreasuryFinancialAccountsList = resource.OperationSpec{
 }
 
 var V1TreasuryFinancialAccountsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/financial_accounts/{financial_account}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/financial_accounts/{financial_account}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryFinancialAccountsRetrieveFeatures = resource.OperationSpec{
-	Name:   "retrieve_features",
-	Path:   "/v1/treasury/financial_accounts/{financial_account}/features",
-	Method: "GET",
+	Name:             "retrieve_features",
+	Path:             "/v1/treasury/financial_accounts/{financial_account}/features",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/treasury/financial_accounts/{financial_account}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/treasury/financial_accounts/{financial_account}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"features.card_issuing.requested": {
 			Type:             "boolean",
@@ -41779,9 +42376,10 @@ var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
 }
 
 var V1TreasuryFinancialAccountsUpdateFeatures = resource.OperationSpec{
-	Name:   "update_features",
-	Path:   "/v1/treasury/financial_accounts/{financial_account}/features",
-	Method: "POST",
+	Name:             "update_features",
+	Path:             "/v1/treasury/financial_accounts/{financial_account}/features",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"card_issuing.requested": {
 			Type:             "boolean",
@@ -41826,15 +42424,17 @@ var V1TreasuryFinancialAccountsUpdateFeatures = resource.OperationSpec{
 }
 
 var V1TreasuryInboundTransfersCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/treasury/inbound_transfers/{inbound_transfer}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/treasury/inbound_transfers/{inbound_transfer}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryInboundTransfersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/treasury/inbound_transfers",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/treasury/inbound_transfers",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -41875,9 +42475,10 @@ var V1TreasuryInboundTransfersCreate = resource.OperationSpec{
 }
 
 var V1TreasuryInboundTransfersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/inbound_transfers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/inbound_transfers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -41910,15 +42511,17 @@ var V1TreasuryInboundTransfersList = resource.OperationSpec{
 }
 
 var V1TreasuryInboundTransfersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/inbound_transfers/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/inbound_transfers/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryInboundTransfersTestHelpersFail = resource.OperationSpec{
-	Name:   "fail",
-	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/fail",
-	Method: "POST",
+	Name:             "fail",
+	Path:             "/v1/test_helpers/treasury/inbound_transfers/{id}/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"failure_details.code": {
 			Type:             "string",
@@ -41943,27 +42546,31 @@ var V1TreasuryInboundTransfersTestHelpersFail = resource.OperationSpec{
 }
 
 var V1TreasuryInboundTransfersTestHelpersReturnInboundTransfer = resource.OperationSpec{
-	Name:   "return_inbound_transfer",
-	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
-	Method: "POST",
+	Name:             "return_inbound_transfer",
+	Path:             "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryInboundTransfersTestHelpersSucceed = resource.OperationSpec{
-	Name:   "succeed",
-	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed",
-	Method: "POST",
+	Name:             "succeed",
+	Path:             "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundPaymentsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/treasury/outbound_payments/{id}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/treasury/outbound_payments/{id}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/treasury/outbound_payments",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/treasury/outbound_payments",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -42102,9 +42709,10 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 }
 
 var V1TreasuryOutboundPaymentsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/outbound_payments",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/outbound_payments",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -42146,27 +42754,31 @@ var V1TreasuryOutboundPaymentsList = resource.OperationSpec{
 }
 
 var V1TreasuryOutboundPaymentsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/outbound_payments/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/outbound_payments/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundPaymentsTestHelpersFail = resource.OperationSpec{
-	Name:   "fail",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}/fail",
-	Method: "POST",
+	Name:             "fail",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundPaymentsTestHelpersPost = resource.OperationSpec{
-	Name:   "post",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}/post",
-	Method: "POST",
+	Name:             "post",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}/post",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundPaymentsTestHelpersReturnOutboundPayment = resource.OperationSpec{
-	Name:   "return_outbound_payment",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}/return",
-	Method: "POST",
+	Name:             "return_outbound_payment",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"returned_details.code": {
 			Type:             "string",
@@ -42188,9 +42800,10 @@ var V1TreasuryOutboundPaymentsTestHelpersReturnOutboundPayment = resource.Operat
 }
 
 var V1TreasuryOutboundPaymentsTestHelpersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/test_helpers/treasury/outbound_payments/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/test_helpers/treasury/outbound_payments/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
@@ -42222,15 +42835,17 @@ var V1TreasuryOutboundPaymentsTestHelpersUpdate = resource.OperationSpec{
 }
 
 var V1TreasuryOutboundTransfersCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v1/treasury/outbound_transfers/{outbound_transfer}/cancel",
-	Method: "POST",
+	Name:             "cancel",
+	Path:             "/v1/treasury/outbound_transfers/{outbound_transfer}/cancel",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/treasury/outbound_transfers",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/treasury/outbound_transfers",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -42290,9 +42905,10 @@ var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
 }
 
 var V1TreasuryOutboundTransfersList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/outbound_transfers",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/outbound_transfers",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -42326,27 +42942,31 @@ var V1TreasuryOutboundTransfersList = resource.OperationSpec{
 }
 
 var V1TreasuryOutboundTransfersRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/outbound_transfers/{outbound_transfer}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/outbound_transfers/{outbound_transfer}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundTransfersTestHelpersFail = resource.OperationSpec{
-	Name:   "fail",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail",
-	Method: "POST",
+	Name:             "fail",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundTransfersTestHelpersPost = resource.OperationSpec{
-	Name:   "post",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post",
-	Method: "POST",
+	Name:             "post",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryOutboundTransfersTestHelpersReturnOutboundTransfer = resource.OperationSpec{
-	Name:   "return_outbound_transfer",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return",
-	Method: "POST",
+	Name:             "return_outbound_transfer",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"returned_details.code": {
 			Type:             "string",
@@ -42368,9 +42988,10 @@ var V1TreasuryOutboundTransfersTestHelpersReturnOutboundTransfer = resource.Oper
 }
 
 var V1TreasuryOutboundTransfersTestHelpersUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
@@ -42402,9 +43023,10 @@ var V1TreasuryOutboundTransfersTestHelpersUpdate = resource.OperationSpec{
 }
 
 var V1TreasuryReceivedCreditsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/received_credits",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/received_credits",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -42435,15 +43057,17 @@ var V1TreasuryReceivedCreditsList = resource.OperationSpec{
 }
 
 var V1TreasuryReceivedCreditsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/received_credits/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/received_credits/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/treasury/received_credits",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/treasury/received_credits",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -42504,9 +43128,10 @@ var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
 }
 
 var V1TreasuryReceivedDebitsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/received_debits",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/received_debits",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -42537,15 +43162,17 @@ var V1TreasuryReceivedDebitsList = resource.OperationSpec{
 }
 
 var V1TreasuryReceivedDebitsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/received_debits/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/received_debits/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryReceivedDebitsTestHelpersCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/test_helpers/treasury/received_debits",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/test_helpers/treasury/received_debits",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:             "integer",
@@ -42604,9 +43231,10 @@ var V1TreasuryReceivedDebitsTestHelpersCreate = resource.OperationSpec{
 }
 
 var V1TreasuryTransactionEntrysList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/transaction_entries",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/transaction_entries",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -42648,15 +43276,17 @@ var V1TreasuryTransactionEntrysList = resource.OperationSpec{
 }
 
 var V1TreasuryTransactionEntrysRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/transaction_entries/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/transaction_entries/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1TreasuryTransactionsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/treasury/transactions",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/treasury/transactions",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"created": {
 			Type:             "integer",
@@ -42700,15 +43330,17 @@ var V1TreasuryTransactionsList = resource.OperationSpec{
 }
 
 var V1TreasuryTransactionsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/treasury/transactions/{id}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/treasury/transactions/{id}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1WebhookEndpointsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v1/webhook_endpoints",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v1/webhook_endpoints",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"api_version": {
 			Type:             "string",
@@ -42870,15 +43502,17 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 }
 
 var V1WebhookEndpointsDelete = resource.OperationSpec{
-	Name:   "delete",
-	Path:   "/v1/webhook_endpoints/{webhook_endpoint}",
-	Method: "DELETE",
+	Name:             "delete",
+	Path:             "/v1/webhook_endpoints/{webhook_endpoint}",
+	Method:           "DELETE",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1WebhookEndpointsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v1/webhook_endpoints",
-	Method: "GET",
+	Name:             "list",
+	Path:             "/v1/webhook_endpoints",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:             "string",
@@ -42896,15 +43530,17 @@ var V1WebhookEndpointsList = resource.OperationSpec{
 }
 
 var V1WebhookEndpointsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v1/webhook_endpoints/{webhook_endpoint}",
-	Method: "GET",
+	Name:             "retrieve",
+	Path:             "/v1/webhook_endpoints/{webhook_endpoint}",
+	Method:           "GET",
+	RequestMediaType: "application/x-www-form-urlencoded",
 }
 
 var V1WebhookEndpointsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v1/webhook_endpoints/{webhook_endpoint}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v1/webhook_endpoints/{webhook_endpoint}",
+	Method:           "POST",
+	RequestMediaType: "application/x-www-form-urlencoded",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -42929,9 +43565,10 @@ var V1WebhookEndpointsUpdate = resource.OperationSpec{
 }
 
 var V2BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/billing/meter_event_adjustments",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/billing/meter_event_adjustments",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"cancel.identifier": {
 			Type:             "string",
@@ -42961,9 +43598,10 @@ var V2BillingMeterEventSessionsCreate = resource.OperationSpec{
 }
 
 var V2BillingMeterEventsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/billing/meter_events",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/billing/meter_events",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"event_name": {
 			Type:             "string",
@@ -42983,9 +43621,10 @@ var V2BillingMeterEventsCreate = resource.OperationSpec{
 }
 
 var V2CommerceProductCatalogImportsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/commerce/product_catalog/imports",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/commerce/product_catalog/imports",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"feed_type": {
 			Type:             "string",
@@ -43079,9 +43718,10 @@ var V2CommerceProductCatalogImportsRetrieve = resource.OperationSpec{
 }
 
 var V2CoreAccountLinksCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/core/account_links",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/core/account_links",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
 			Type:             "string",
@@ -43149,9 +43789,10 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 }
 
 var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/core/accounts/{account_id}/person_tokens",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/core/accounts/{account_id}/person_tokens",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.shown_and_accepted": {
 			Type:             "boolean",
@@ -43411,9 +44052,10 @@ var V2CoreAccountPersonTokensRetrieve = resource.OperationSpec{
 }
 
 var V2CoreAccountPersonsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/core/accounts/{account_id}/persons",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/core/accounts/{account_id}/persons",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.date": {
 			Type:             "string",
@@ -43708,9 +44350,10 @@ var V2CoreAccountPersonsRetrieve = resource.OperationSpec{
 }
 
 var V2CoreAccountPersonsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v2/core/accounts/{account_id}/persons/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.date": {
 			Type:             "string",
@@ -43977,9 +44620,10 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 }
 
 var V2CoreAccountTokensCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/core/account_tokens",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/core/account_tokens",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"contact_email": {
 			Type:             "string",
@@ -44572,9 +45216,10 @@ var V2CoreAccountTokensRetrieve = resource.OperationSpec{
 }
 
 var V2CoreAccountsClose = resource.OperationSpec{
-	Name:   "close",
-	Path:   "/v2/core/accounts/{id}/close",
-	Method: "POST",
+	Name:             "close",
+	Path:             "/v2/core/accounts/{id}/close",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"applied_configurations": {
 			Type:             "array",
@@ -44584,9 +45229,10 @@ var V2CoreAccountsClose = resource.OperationSpec{
 }
 
 var V2CoreAccountsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/core/accounts",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/core/accounts",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
@@ -45693,9 +46339,10 @@ var V2CoreAccountsRetrieve = resource.OperationSpec{
 }
 
 var V2CoreAccountsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v2/core/accounts/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v2/core/accounts/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
@@ -46817,9 +47464,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 }
 
 var V2CoreEventDestinationsCreate = resource.OperationSpec{
-	Name:   "create",
-	Path:   "/v2/core/event_destinations",
-	Method: "POST",
+	Name:             "create",
+	Path:             "/v2/core/event_destinations",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amazon_eventbridge.aws_account_id": {
 			Type:             "string",
@@ -46950,9 +47598,10 @@ var V2CoreEventDestinationsRetrieve = resource.OperationSpec{
 }
 
 var V2CoreEventDestinationsUpdate = resource.OperationSpec{
-	Name:   "update",
-	Path:   "/v2/core/event_destinations/{id}",
-	Method: "POST",
+	Name:             "update",
+	Path:             "/v2/core/event_destinations/{id}",
+	Method:           "POST",
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -47032,10 +47681,11 @@ var V2PreviewBillingBillSettingVersionsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/bill_settings",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/billing/bill_settings",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"calculation.tax.type": {
 			Type:             "string",
@@ -47103,10 +47753,11 @@ var V2PreviewBillingBillSettingsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/bill_settings/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/billing/bill_settings/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"calculation.tax.type": {
 			Type:             "string",
@@ -47157,10 +47808,11 @@ var V2PreviewBillingCadencesCancel = resource.OperationSpec{
 }
 
 var V2PreviewBillingCadencesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/cadences",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/billing/cadences",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"billing_cycle.day.time.hour": {
 			Type:             "integer",
@@ -47300,10 +47952,11 @@ var V2PreviewBillingCadencesRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewBillingCadencesUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/cadences/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/billing/cadences/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"lookup_key": {
 			Type:             "string",
@@ -47337,10 +47990,11 @@ var V2PreviewBillingCollectionSettingVersionsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/collection_settings",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/billing/collection_settings",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"collection_method": {
 			Type:             "string",
@@ -47510,10 +48164,11 @@ var V2PreviewBillingCollectionSettingsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/collection_settings/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/billing/collection_settings/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"collection_method": {
 			Type:             "string",
@@ -47659,10 +48314,11 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 }
 
 var V2PreviewBillingMeterEventAdjustmentsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/meter_event_adjustments",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/billing/meter_event_adjustments",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"cancel.identifier": {
 			Type:             "string",
@@ -47693,10 +48349,11 @@ var V2PreviewBillingMeterEventSessionsCreate = resource.OperationSpec{
 }
 
 var V2PreviewBillingMeterEventsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/meter_events",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/billing/meter_events",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"event_name": {
 			Type:             "string",
@@ -47716,10 +48373,11 @@ var V2PreviewBillingMeterEventsCreate = resource.OperationSpec{
 }
 
 var V2PreviewBillingProfilesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/profiles",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/billing/profiles",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:             "string",
@@ -47787,10 +48445,11 @@ var V2PreviewBillingProfilesRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewBillingProfilesUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/profiles/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/billing/profiles/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"default_payment_method": {
 			Type:             "string",
@@ -47808,10 +48467,11 @@ var V2PreviewBillingProfilesUpdate = resource.OperationSpec{
 }
 
 var V2PreviewCommerceProductCatalogImportsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/commerce/product_catalog/imports",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/commerce/product_catalog/imports",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"feed_type": {
 			Type:             "string",
@@ -47907,10 +48567,11 @@ var V2PreviewCommerceProductCatalogImportsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/account_links",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/account_links",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
 			Type:             "string",
@@ -47978,10 +48639,11 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/accounts/{account_id}/person_tokens",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/accounts/{account_id}/person_tokens",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.shown_and_accepted": {
 			Type:             "boolean",
@@ -48242,10 +48904,11 @@ var V2PreviewCoreAccountPersonTokensRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/accounts/{account_id}/persons",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/accounts/{account_id}/persons",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.date": {
 			Type:             "string",
@@ -48543,10 +49206,11 @@ var V2PreviewCoreAccountPersonsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.date": {
 			Type:             "string",
@@ -48813,10 +49477,11 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/account_tokens",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/account_tokens",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"contact_email": {
 			Type:             "string",
@@ -49414,10 +50079,11 @@ var V2PreviewCoreAccountTokensRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountsClose = resource.OperationSpec{
-	Name:      "close",
-	Path:      "/v2/core/accounts/{id}/close",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "close",
+	Path:             "/v2/core/accounts/{id}/close",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"applied_configurations": {
 			Type:             "array",
@@ -49427,10 +50093,11 @@ var V2PreviewCoreAccountsClose = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/accounts",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/accounts",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
@@ -50659,10 +51326,11 @@ var V2PreviewCoreAccountsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/accounts/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/core/accounts/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_token": {
 			Type:             "string",
@@ -51938,10 +52606,11 @@ var V2PreviewCoreApprovalRequestsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreApprovalRequestsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/approval_requests/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/core/approval_requests/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"reason": {
 			Type:             "string",
@@ -51958,10 +52627,11 @@ var V2PreviewCoreBatchJobsCancel = resource.OperationSpec{
 }
 
 var V2PreviewCoreBatchJobsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/batch_jobs",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/batch_jobs",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"endpoint.http_method": {
 			Type:             "string",
@@ -52001,10 +52671,11 @@ var V2PreviewCoreBatchJobsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/event_destinations",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/event_destinations",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amazon_eventbridge.aws_account_id": {
 			Type:             "string",
@@ -52141,10 +52812,11 @@ var V2PreviewCoreEventDestinationsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewCoreEventDestinationsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/event_destinations/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/core/event_destinations/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
 			Type:             "string",
@@ -52216,10 +52888,11 @@ var V2PreviewCoreVaultsGbBankAccountsArchive = resource.OperationSpec{
 }
 
 var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/vault/gb_bank_accounts",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/vault/gb_bank_accounts",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_number": {
 			Type:             "string",
@@ -52268,10 +52941,11 @@ var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
 }
 
 var V2PreviewCoreVaultsGbBankAccountsInitiateConfirmationOfPayee = resource.OperationSpec{
-	Name:      "initiate_confirmation_of_payee",
-	Path:      "/v2/core/vault/gb_bank_accounts/{id}/initiate_confirmation_of_payee",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "initiate_confirmation_of_payee",
+	Path:             "/v2/core/vault/gb_bank_accounts/{id}/initiate_confirmation_of_payee",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"business_type": {
 			Type:             "string",
@@ -52320,10 +52994,11 @@ var V2PreviewCoreVaultsUsBankAccountsArchive = resource.OperationSpec{
 }
 
 var V2PreviewCoreVaultsUsBankAccountsConfirmMicrodeposits = resource.OperationSpec{
-	Name:      "confirm_microdeposits",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "confirm_microdeposits",
+	Path:             "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
 			Type:             "array",
@@ -52337,10 +53012,11 @@ var V2PreviewCoreVaultsUsBankAccountsConfirmMicrodeposits = resource.OperationSp
 }
 
 var V2PreviewCoreVaultsUsBankAccountsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/vault/us_bank_accounts",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/core/vault/us_bank_accounts",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_number": {
 			Type:             "string",
@@ -52407,10 +53083,11 @@ var V2PreviewCoreVaultsUsBankAccountsSendMicrodeposits = resource.OperationSpec{
 }
 
 var V2PreviewCoreVaultsUsBankAccountsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/core/vault/us_bank_accounts/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"fedwire_routing_number": {
 			Type:             "string",
@@ -52424,10 +53101,11 @@ var V2PreviewCoreVaultsUsBankAccountsUpdate = resource.OperationSpec{
 }
 
 var V2PreviewDataReportingsQueryRunsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/data/reporting/query_runs",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/data/reporting/query_runs",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"result_options.compress_file": {
 			Type:             "boolean",
@@ -52481,10 +53159,11 @@ var V2PreviewExtendWorkflowRunsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewExtendWorkflowsInvoke = resource.OperationSpec{
-	Name:      "invoke",
-	Path:      "/v2/extend/workflows/{id}/invoke",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "invoke",
+	Path:             "/v2/extend/workflows/{id}/invoke",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 }
 
 var V2PreviewExtendWorkflowsList = resource.OperationSpec{
@@ -52576,10 +53255,11 @@ var V2PreviewMoneyManagementAdjustmentsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementFinancialAccountsClose = resource.OperationSpec{
-	Name:      "close",
-	Path:      "/v2/money_management/financial_accounts/{id}/close",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "close",
+	Path:             "/v2/money_management/financial_accounts/{id}/close",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"forwarding_settings.payment_method": {
 			Type:             "string",
@@ -52593,10 +53273,11 @@ var V2PreviewMoneyManagementFinancialAccountsClose = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementFinancialAccountsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/financial_accounts",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/financial_accounts",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"display_name": {
 			Type:             "string",
@@ -52656,10 +53337,11 @@ var V2PreviewMoneyManagementFinancialAccountsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementFinancialAccountsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/money_management/financial_accounts/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/money_management/financial_accounts/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"display_name": {
 			Type:             "string",
@@ -52669,10 +53351,11 @@ var V2PreviewMoneyManagementFinancialAccountsUpdate = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementFinancialAddressCreditSimulationsTestHelpersCredit = resource.OperationSpec{
-	Name:      "credit",
-	Path:      "/v2/money_management/test_helpers/financial_addresses/{id}/credit",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "credit",
+	Path:             "/v2/money_management/test_helpers/financial_addresses/{id}/credit",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",
@@ -52711,10 +53394,11 @@ var V2PreviewMoneyManagementFinancialAddressGeneratedMicrodepositssTestHelpersGe
 }
 
 var V2PreviewMoneyManagementFinancialAddresssCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/financial_addresses",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/financial_addresses",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"bank_account.country": {
 			Type:             "string",
@@ -52777,10 +53461,11 @@ var V2PreviewMoneyManagementFinancialAddresssRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementInboundTransfersCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/inbound_transfers",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/inbound_transfers",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",
@@ -52843,10 +53528,11 @@ var V2PreviewMoneyManagementInboundTransfersRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementOutboundPaymentQuotesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/outbound_payment_quotes",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/outbound_payment_quotes",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",
@@ -52908,10 +53594,11 @@ var V2PreviewMoneyManagementOutboundPaymentsCancel = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementOutboundPaymentsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/outbound_payments",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/outbound_payments",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",
@@ -53035,10 +53722,11 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCancel = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/outbound_setup_intents",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/outbound_setup_intents",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"payout_method": {
 			Type:             "string",
@@ -53139,10 +53827,11 @@ var V2PreviewMoneyManagementOutboundSetupIntentsRetrieve = resource.OperationSpe
 }
 
 var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/money_management/outbound_setup_intents/{id}",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "update",
+	Path:             "/v2/money_management/outbound_setup_intents/{id}",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"payout_method": {
 			Type:             "string",
@@ -53218,10 +53907,11 @@ var V2PreviewMoneyManagementOutboundTransfersCancel = resource.OperationSpec{
 }
 
 var V2PreviewMoneyManagementOutboundTransfersCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/money_management/outbound_transfers",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/money_management/outbound_transfers",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",
@@ -53509,10 +54199,11 @@ var V2PreviewOrchestratedCommerceAgreementsConfirm = resource.OperationSpec{
 }
 
 var V2PreviewOrchestratedCommerceAgreementsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/orchestrated_commerce/agreements",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/orchestrated_commerce/agreements",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"orchestrator": {
 			Type:             "string",
@@ -53558,10 +54249,11 @@ var V2PreviewOrchestratedCommerceAgreementsTerminate = resource.OperationSpec{
 }
 
 var V2PreviewSignalsAccountActivitysCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/signals/account_activities",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/signals/account_activities",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_details.account": {
 			Type:             "string",
@@ -53675,10 +54367,11 @@ var V2PreviewSignalsAccountActivitysRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewSignalsAccountEvaluationsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/signals/account_evaluations",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "create",
+	Path:             "/v2/signals/account_evaluations",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"account_activity_details.account_activity": {
 			Type:             "string",
@@ -53800,10 +54493,11 @@ var V2PreviewSignalsAccountSignalsRetrieve = resource.OperationSpec{
 }
 
 var V2PreviewTestHelpersMoneyManagementsFinancialAddressCreditSimulationsCredit = resource.OperationSpec{
-	Name:      "credit",
-	Path:      "/v2/money_management/test_helpers/financial_addresses/{id}/credit",
-	Method:    "POST",
-	IsPreview: true,
+	Name:             "credit",
+	Path:             "/v2/money_management/test_helpers/financial_addresses/{id}/credit",
+	Method:           "POST",
+	IsPreview:        true,
+	RequestMediaType: "application/json",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
 			Type:             "string",

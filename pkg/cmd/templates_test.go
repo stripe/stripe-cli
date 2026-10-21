@@ -171,7 +171,13 @@ func TestWrappedRequestParamsFlagUsages_FormatAnnotation(t *testing.T) {
 	cmd.Flags().SetAnnotation("description", "request", []string{"true"})
 	cmd.Flags().SetAnnotation("description", "apitype", []string{"string"})
 
+	cmd.Flags().String("file", "", "")
+	cmd.Flags().SetAnnotation("file", "request", []string{"true"})
+	cmd.Flags().SetAnnotation("file", "apitype", []string{"string"})
+	cmd.Flags().SetAnnotation("file", "format", []string{"binary"})
+
 	output := WrappedRequestParamsFlagUsages(cmd)
+	assert.Contains(t, output, "--file <file-path>")
 	assert.Contains(t, output, "--created <unix-time>")
 	assert.Contains(t, output, "--description <string>")
 }

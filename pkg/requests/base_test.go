@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -293,39 +294,111 @@ func TestMakeRequest_ErrOnAPIKeyExpired(t *testing.T) {
 }
 
 func TestMakeMultiPartRequest(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "fixture.pdf")
+	contents := []byte("upload bytes\x00\xff\n")
+	require.NoError(t, os.WriteFile(filePath, contents, 0600))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("FILES!"))
-
-		reqBody, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/foo/bar", r.URL.Path)
-		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		require.Equal(t, "test-idempotency", r.Header.Get("Idempotency-Key"))
+		require.Equal(t, "test-account", r.Header.Get("Stripe-Account"))
+		require.Equal(t, "test-context", r.Header.Get("Stripe-Context"))
+		require.Equal(t, "2025-01-01", r.Header.Get("Stripe-Version"))
+		require.Equal(t, "test-value", r.Header.Get("X-Test-Header"))
 		require.NotEmpty(t, r.UserAgent())
-		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
-		require.Contains(t, string(reqBody), "purpose")
-		require.Contains(t, string(reqBody), "app_upload")
+		require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data; boundary=")
+		require.NoError(t, r.ParseMultipartForm(1<<20))
+		defer r.MultipartForm.RemoveAll()
+		require.Equal(t, []string{"app_upload"}, r.MultipartForm.Value["purpose"])
+		require.Equal(t, []string{"ordinary text"}, r.MultipartForm.Value["description"])
+		require.Equal(t, []string{"first", "second"}, r.MultipartForm.Value["expand[]"])
+		upload, header, err := r.FormFile("file")
+		require.NoError(t, err)
+		defer upload.Close()
+		require.Equal(t, "fixture.pdf", header.Filename)
+		require.Equal(t, `form-data; name="file"; filename="fixture.pdf"`, header.Header.Get("Content-Disposition"))
+		actual, err := io.ReadAll(upload)
+		require.NoError(t, err)
+		require.Equal(t, contents, actual)
+		w.Write([]byte(`{}`))
 	}))
 	defer ts.Close()
 
-	rb := Base{APIBaseURL: ts.URL}
-	rb.Method = http.MethodPost
-
-	tempFile, err := os.CreateTemp(t.TempDir(), "upload*.zip")
-	if err != nil {
-		t.Error("Error creating temp file")
-	}
-	tempFile.Close()
-
+	rb := Base{APIBaseURL: ts.URL, Method: http.MethodPost, SuppressOutput: true}
 	params := &RequestParameters{
-		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
+		data:          []string{"purpose=app_upload", "file=@" + filePath},
+		expand:        []string{"first", "second"},
+		idempotency:   "test-idempotency",
+		stripeAccount: "test-account",
+		stripeContext: "test-context",
+		version:       "2025-01-01",
+		headers:       []string{"X-Test-Header: test-value"},
 	}
-
-	_, err = rb.MakeMultiPartRequest(context.Background(), stripe.NewAPIKeyCredentials("sk_test_1234"), "/foo/bar", params, true)
+	_, err := rb.MakeMultiPartRequest(context.Background(), stripe.NewAPIKeyCredentials("test-token"), "/foo/bar", params, map[string]interface{}{"description": "ordinary text"}, true)
 	require.NoError(t, err)
+}
+
+func TestMakeMultiPartRequestInvalidInput(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	for _, tc := range []struct {
+		name       string
+		data       []string
+		additional map[string]interface{}
+		message    string
+	}{
+		{"duplicate", []string{"purpose=raw"}, map[string]interface{}{"purpose": "generated"}, `flag "purpose" already set`},
+		{"invalid data", []string{"invalid"}, nil, "invalid data argument"},
+		{"missing file", []string{"file=@" + filepath.Join(t.TempDir(), "missing.pdf")}, nil, "unable to open upload file"},
+		{"unreadable file", []string{"file=@" + t.TempDir()}, nil, "upload file"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := rb.MakeMultiPartRequest(context.Background(), stripe.Credentials{}, "/upload", &RequestParameters{data: tc.data}, tc.additional, false)
+			require.ErrorContains(t, err, tc.message)
+			category, ok := errorcategory.Get(err)
+			require.True(t, ok)
+			require.Equal(t, errorcategory.UserInput, category)
+		})
+	}
+}
+
+func TestBuildDryRunOutputMultipart(t *testing.T) {
+	rb := Base{Method: http.MethodPost, RequestMediaType: "multipart/form-data"}
+	missingPath := "@" + filepath.Join(t.TempDir(), "missing.pdf")
+	params := &RequestParameters{data: []string{"file=" + missingPath}, expand: []string{"first", "second"}}
+	output, err := rb.BuildDryRunOutput(stripe.Credentials{}, "https://example.com", "/v1/example", params, map[string]interface{}{"purpose": "dispute_evidence"})
+	require.NoError(t, err)
+	require.Equal(t, "multipart/form-data", output.DryRun.Headers["Content-Type"])
+	require.Equal(t, missingPath, output.DryRun.Params["file"])
+	require.Equal(t, "dispute_evidence", output.DryRun.Params["purpose"])
+	require.Equal(t, []interface{}{"first", "second"}, output.DryRun.Params["expand"])
+	_, err = rb.BuildDryRunOutput(stripe.Credentials{}, "https://example.com", "/v1/example", params, map[string]interface{}{"file": "duplicate"})
+	require.ErrorContains(t, err, `flag "file" already set`)
+}
+
+func TestMakeRequestEncoding(t *testing.T) {
+	for _, tc := range []struct {
+		path        string
+		contentType string
+		body        string
+	}{
+		{"/v1/example", "application/x-www-form-urlencoded", "description=ordinary+text"},
+		{"/v2/example", "application/json", `{"description":"ordinary text"}`},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, tc.contentType, r.Header.Get("Content-Type"))
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				require.Equal(t, tc.body, string(body))
+				w.Write([]byte(`{}`))
+			}))
+			defer ts.Close()
+			rb := Base{Method: http.MethodPost, APIBaseURL: ts.URL, SuppressOutput: true}
+			_, err := rb.MakeRequest(context.Background(), stripe.Credentials{}, tc.path, &RequestParameters{}, map[string]interface{}{"description": "ordinary text"}, false, nil)
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestGetUserConfirmationRequired(t *testing.T) {
