@@ -352,14 +352,23 @@ func TestEndToEndAgainstNewCore(t *testing.T) {
 
 	require.Equal(t, strings.Join([]string{
 		"starting upload",
-		"uploading",
-		"✔ uploaded",
 		"  app_id: app_123",
 		"⚠ Your app ID is permanent",
 		"→ View status: https://example.test/app_123",
 		"",
 	}, "\n"), stdout.String())
-	require.Empty(t, stderr.String())
+	require.Equal(t, "uploading\n✔ uploaded\n", stderr.String())
+}
+
+func TestEndToEndDataWithText(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	cli := New(newHelperOverGRPC(t, false, stdout, &bytes.Buffer{}))
+
+	require.NoError(t, cli.Output("apps upload",
+		DataWithText(map[string]string{"app_id": "app_123"}, "✔ Uploaded app_123"),
+	))
+
+	require.Equal(t, "✔ Uploaded app_123\n", stdout.String())
 }
 
 // A payload larger than gRPC's 4MB default must cross the helper channel intact.

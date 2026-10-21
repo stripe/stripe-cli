@@ -77,17 +77,23 @@ func NewEngineWithWriters(format Format, stdout, stderr io.Writer) *Engine {
 	}
 }
 
-// messageWriter returns the stream that incremental output goes to.
+// messageWriter returns the stream that messages and prompts go to.
 //
-// In text mode, messages and progress are part of the visible output and go to
-// stdout, matching what plugins print today. In JSON mode stdout is reserved
-// for the single command envelope, so incremental output goes to stderr to
-// avoid corrupting it.
+// In text mode, messages are part of the visible output and go to stdout,
+// matching what plugins print today. In JSON mode stdout is reserved for the
+// single command envelope, so they go to stderr to avoid corrupting it.
 func (e *Engine) messageWriter() io.Writer {
 	if e.format == FormatJSON {
 		return e.stderr
 	}
 	return e.stdout
+}
+
+// progressWriter returns the stream that progress goes to: always stderr.
+// Plugins draw their own spinners on stderr today, so a script reading a
+// command's stdout never sees them, and the core keeps it that way.
+func (e *Engine) progressWriter() io.Writer {
+	return e.stderr
 }
 
 // HandleCommandOutput renders output blocks sent by a plugin.
@@ -212,6 +218,14 @@ func (e *Engine) renderData(data *proto.DataBlock) {
 
 	switch data.GetType() {
 	case blockTypeData:
+		// The plugin's own rendering wins over the generic one, even when it's
+		// empty: a command whose text output is empty prints nothing today.
+		if data.Text != nil {
+			if text := data.GetText(); text != "" {
+				fmt.Fprintln(w, text)
+			}
+			return
+		}
 		fields, err := orderedFields(data.GetPayload())
 		if err != nil {
 			// Never drop output we can't parse — show it verbatim.
@@ -270,7 +284,7 @@ func (e *Engine) renderProgress(p *proto.ProgressBlock) {
 		return
 	}
 
-	w := e.messageWriter()
+	w := e.progressWriter()
 	color := ansi.Color(w)
 
 	switch p.GetType() {
