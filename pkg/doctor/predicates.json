@@ -1,0 +1,31 @@
+{
+  "id": "legacyPaymentMethods",
+  "topic": "dpm",
+  "diagnosis": "Explicit payment method lists or older intent defaults may prevent dynamic payment methods. This is mocked predicate input, not production backend health.",
+  "docs": ["https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods"],
+  "doctorRemediations": [
+    {
+      "id": "adopt_dynamic_payment_methods",
+      "kind": "payment_methods.adopt_dynamic",
+      "version": 1,
+      "options": {"offeringPolicy": "preserve_existing"}
+    }
+  ],
+  "logic": [
+    {
+      "operator": "or",
+      "items": [
+        {"operator": "request", "request": {"id": "intent_pin", "method": "POST", "path": "/v1/payment_intents", "conditions": {"operator": "exists", "key": "payment_method_types"}, "doctorRemediationIds": ["adopt_dynamic_payment_methods"]}},
+        {"operator": "request", "request": {"id": "setup_pin", "method": "POST", "path": "/v1/setup_intents", "conditions": {"operator": "exists", "key": "payment_method_types"}, "doctorRemediationIds": ["adopt_dynamic_payment_methods"]}},
+        {"operator": "request", "request": {"id": "checkout_pin", "method": "POST", "path": "/v1/checkout/sessions", "conditions": {"operator": "exists", "key": "payment_method_types"}, "doctorRemediationIds": ["adopt_dynamic_payment_methods"]}},
+        {
+          "operator": "or",
+          "items": [
+            {"operator": "request", "request": {"id": "intent_old_default", "method": "POST", "path": "/v1/payment_intents", "conditions": {"operator": "and", "items": [{"operator": "before", "key": "Stripe-Version", "value": "2023-08-16"}, {"operator": "absent", "key": "payment_method_types"}, {"operator": "or", "items": [{"operator": "absent", "key": "automatic_payment_methods.enabled"}, {"operator": "equals", "key": "automatic_payment_methods.enabled", "value": "false"}]}]}, "doctorRemediationIds": ["adopt_dynamic_payment_methods"]}},
+            {"operator": "request", "request": {"id": "setup_old_default", "method": "POST", "path": "/v1/setup_intents", "conditions": {"operator": "and", "items": [{"operator": "before", "key": "Stripe-Version", "value": "2023-08-16"}, {"operator": "absent", "key": "payment_method_types"}, {"operator": "or", "items": [{"operator": "absent", "key": "automatic_payment_methods.enabled"}, {"operator": "equals", "key": "automatic_payment_methods.enabled", "value": "false"}]}]}, "doctorRemediationIds": ["adopt_dynamic_payment_methods"]}}
+          ]
+        }
+      ]
+    }
+  ]
+}

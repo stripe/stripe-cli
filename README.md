@@ -14,6 +14,13 @@ The Stripe CLI helps you build, test, and manage your Stripe integration right f
 
 ![demo](docs/demo.gif)
 
+## Read-only migration investigation
+
+`stripe doctor dpm ./source --offline --json` produces a bounded source investigation
+report using embedded **mocked predicates**, without credentials or network access.
+It does not edit source or mutate configuration. See the [doctor guide](pkg/doctor/README.md)
+for the runnable sample, local predicate override, evidence handoff, and approval workflow.
+
 ## Installation
 
 Stripe CLI is available for macOS, Windows, and Linux for distros like Ubuntu, Debian, RedHat and CentOS.

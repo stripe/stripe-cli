@@ -30,6 +30,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/doctor"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -75,6 +76,12 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if cmd.Name() == "doctor" {
+			offline, _ := cmd.Flags().GetBool("offline")
+			if offline {
+				return nil
+			}
+		}
 		if cmd.Name() == "help" {
 			fullHelpMode = true
 		}
@@ -220,6 +227,8 @@ func Execute(ctx context.Context) {
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
+		case errors.Is(err, doctor.ErrIncomplete):
+			// The structured doctor report already explains the nonzero status.
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
 		case errors.Is(err, errCommandRemoved):
@@ -371,6 +380,7 @@ func init() {
 
 	rootCmd.AddCommand(newReportingCmd().cmd)
 	rootCmd.AddCommand(newAgentCmd().cmd)
+	rootCmd.AddCommand(doctor.NewDoctorCmd(&Config))
 	rootCmd.AddCommand(newDataCmd().cmd)
 	rootCmd.AddCommand(cmddocs.New().WithOptions(cmddocs.WithConfig(&Config)).Root())
 	rootCmd.AddCommand(newCompletionCmd().cmd)
@@ -425,6 +435,9 @@ func init() {
 }
 
 func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.Fs) map[string]bool {
+	if doctor.IsOfflineInvocation(os.Args[1:]) {
+		return map[string]bool{}
+	}
 	dashboardBaseURL := stripe.DashboardBaseURLForAPIBaseURL(stripe.DefaultAPIBaseURL)
 	if err := plugins.BackfillMissingInstalledPluginMetadata(context.Background(), cfg, fs, stripe.DefaultAPIBaseURL, dashboardBaseURL); err != nil {
 		log.WithFields(log.Fields{

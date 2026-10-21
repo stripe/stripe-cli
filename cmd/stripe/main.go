@@ -11,6 +11,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/autoupdate"
 	"github.com/stripe/stripe-cli/pkg/cmd"
+	"github.com/stripe/stripe-cli/pkg/doctor"
 	"github.com/stripe/stripe-cli/pkg/reporting"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -19,6 +20,11 @@ import (
 const sentryDSN = "https://0e1c83fa780a5946e14bfc0f6d0a7ddd@errors.stripe.com/11762"
 
 func main() {
+	if doctor.IsOfflineInvocation(os.Args[1:]) {
+		cmd.Execute(context.Background())
+		return
+	}
+
 	// Apply a pending update before anything else: this re-execs the new binary,
 	// so the command the user typed runs on the version they are being moved to.
 	autoupdate.ApplyIfPending()

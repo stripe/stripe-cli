@@ -1,0 +1,200 @@
+package doctor
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func source(t *testing.T, root, name, text string) {
+	t.Helper()
+	p := filepath.Join(root, name)
+	require.NoError(t, os.MkdirAll(filepath.Dir(p), 0700))
+	require.NoError(t, os.WriteFile(p, []byte(text), 0600))
+}
+
+func TestDiscoveryOperationsAndCallers(t *testing.T) {
+	dir := t.TempDir()
+	source(t, dir, "go.mod", "module example\n")
+	source(t, dir, "boundary.go", `package example
+import intent "github.com/stripe/stripe-go/v82/paymentintent"
+import stripe "github.com/stripe/stripe-go/v82"
+func shared(params *stripe.PaymentIntentParams) { intent.New(params) }
+func absent() { intent.New(&stripe.PaymentIntentParams{}) }
+func runtime(params *stripe.PaymentIntentParams) { intent.New(params) }
+func factory() { client.PaymentIntents.Create(ctx, builder()) }
+func direct() { http.NewRequest("POST", "https://api.stripe.com/v1/setup_intents", body) }
+func conditional() {
+ params := &stripe.PaymentIntentParams{PaymentMethodTypes: stripe.StringSlice([]string{"card"})}
+ if flag { params = &stripe.PaymentIntentParams{PaymentMethodTypes: stripe.StringSlice([]string{"ideal"})} }
+ intent.New(params)
+}
+`)
+	source(t, dir, "callers.go", `package example
+import stripe "github.com/stripe/stripe-go/v82"
+func first() { shared(&stripe.PaymentIntentParams{PaymentMethodTypes: stripe.StringSlice([]string{"card", "klarna"}), PaymentMethodConfiguration: stripe.String("configuration_a")}) }
+func second() { shared(&stripe.PaymentIntentParams{PaymentMethodTypes: stripe.StringSlice([]string{"ideal"}), PaymentMethodConfiguration: stripe.String("configuration_b")}) }
+`)
+	source(t, dir, "docs/example.js", `stripe.paymentIntents.create({payment_method_types:["card"]})`)
+	source(t, dir, "node_modules/example.js", `stripe.paymentIntents.create({})`)
+	source(t, dir, "negative_test.go", `package example; func test(){ intent.New(params) }`)
+	source(t, dir, "foreign.py", `import stripe as payments
+payments.PaymentIntent.create(**params)
+`)
+	d, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	assert.Len(t, d.Snapshot, 64)
+	assert.Equal(t, []string{"go.mod"}, d.Coverage.Manifests)
+	assert.Contains(t, d.Coverage.Excluded, "docs")
+	assert.Contains(t, d.Coverage.Excluded, "node_modules")
+	assert.Contains(t, d.Coverage.Excluded, "negative_test.go")
+	known := [][]string{}
+	absent := false
+	unknown := 0
+	for _, f := range d.Flows {
+		assert.Equal(t, d.Snapshot, f.Snapshot)
+		assert.NotEmpty(t, f.Unresolved)
+		switch f.Pinned.Status {
+		case "known":
+			known = append(known, f.Pinned.Values)
+			assert.NotEmpty(t, f.Context.Configuration)
+			assert.NotContains(t, f.Unresolved, "Caller cycle")
+			assert.Len(t, f.Callers, 1)
+			assert.NotEmpty(t, f.Builders)
+		case "absent":
+			absent = true
+		case "unknown":
+			unknown++
+		}
+	}
+	assert.ElementsMatch(t, [][]string{{"card", "klarna"}, {"ideal"}}, known)
+	assert.True(t, absent)
+	assert.GreaterOrEqual(t, unknown, 5)
+	assert.Len(t, d.Queue, len(d.Flows))
+	again, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	assert.Equal(t, d, again)
+}
+
+func TestNestedCallersAndAutomaticFlags(t *testing.T) {
+	dir := t.TempDir()
+	source(t, dir, "flows.go", `package example
+import p "github.com/stripe/stripe-go/v82/paymentintent"
+import stripe "github.com/stripe/stripe-go/v82"
+func boundary(params *stripe.PaymentIntentParams) { p.New(params) }
+func wrapper(params *stripe.PaymentIntentParams) { boundary(params) }
+func first() { wrapper(&stripe.PaymentIntentParams{PaymentMethodTypes:stripe.StringSlice([]string{"card"}), AutomaticPaymentMethods:&stripe.PaymentIntentAutomaticPaymentMethodsParams{Enabled:stripe.Bool(false)}}) }
+func second() { wrapper(&stripe.PaymentIntentParams{AutomaticPaymentMethods:&stripe.PaymentIntentAutomaticPaymentMethodsParams{Enabled:stripe.Bool(true)}}) }
+func mutation() {
+ params := &stripe.PaymentIntentParams{PaymentMethodTypes:stripe.StringSlice([]string{"card"})}
+ params.PaymentMethodTypes = runtime()
+ p.New(params)
+}
+`)
+	d, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	require.Len(t, d.Flows, 3)
+	assert.Equal(t, Methods{Status: "known", Values: []string{"card"}}, d.Flows[0].Pinned)
+	assert.Equal(t, "disabled", d.Flows[0].Automatic)
+	assert.Len(t, d.Flows[0].Callers, 2)
+	assert.Equal(t, "absent", d.Flows[1].Pinned.Status)
+	assert.Equal(t, "enabled", d.Flows[1].Automatic)
+	assert.Equal(t, "unknown", d.Flows[2].Pinned.Status)
+}
+
+func TestManifestAndExclusionEvidence(t *testing.T) {
+	dir := t.TempDir()
+	source(t, dir, "go.mod", "module example\nrequire github.com/stripe/stripe-go/v82 v82.0.0\n")
+	source(t, dir, "package.json", `{"dependencies":{"stripe":"^18.0.0","wrapper":"file:../outside"}}`)
+	source(t, dir, "generated.go", "// Code generated by example. DO NOT EDIT.\npackage example\n")
+	d, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	require.Len(t, d.Coverage.Dependencies, 3)
+	assert.Equal(t, "github.com/stripe/stripe-go/v82", d.Coverage.Dependencies[0].Name)
+	assert.Equal(t, "unknown", d.Coverage.Dependencies[2].Version)
+	assert.Contains(t, d.Coverage.Excluded, "generated.go (generated)")
+}
+
+func TestDiscoveryBoundsCyclesAndZero(t *testing.T) {
+	dir := t.TempDir()
+	source(t, dir, "main.go", `package example
+import p "github.com/stripe/stripe-go/v82/paymentintent"
+func cycle(params interface{}) { cycle(params); p.New(params) }
+`)
+	d, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	require.NotEmpty(t, d.Flows)
+	assert.Contains(t, d.Flows[0].Unresolved, "Caller cycle")
+	limited, err := (Scanner{MaxSteps: 1}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	assert.True(t, limited.Coverage.Truncated)
+	limited, err = (Scanner{MaxBytes: 8}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	assert.True(t, limited.Coverage.Truncated)
+	empty, err := (Scanner{}).Discover(context.Background(), t.TempDir())
+	require.NoError(t, err)
+	assert.Empty(t, empty.Flows)
+	assert.Contains(t, empty.Coverage.Limitations, "Zero candidates is not proof of health; inspect wrappers and unsupported syntax")
+}
+
+func TestSymlinksAndCitations(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	source(t, outside, "outside.go", "package outside")
+	if err := os.Symlink(outside, filepath.Join(dir, "linked")); err != nil {
+		t.Skip("symlinks unavailable")
+	}
+	d, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	assert.Contains(t, d.Coverage.Excluded, "linked (symlink)")
+	_, err = (Scanner{}).Discover(context.Background(), filepath.Join(dir, "linked"))
+	require.Error(t, err)
+	root, err := os.OpenRoot(dir)
+	require.NoError(t, err)
+	defer root.Close()
+	for _, file := range []string{"missing.go", "../outside.go", "linked/outside.go", "/absolute.go"} {
+		assert.Error(t, validateCitation(root, Citation{File: file, Start: 1, End: 1}))
+	}
+	source(t, dir, "local.go", "package example\n")
+	c := Citation{File: "local.go", Symbol: "example", Start: 1, End: 1, SHA256: digest([]byte("package example\n"))}
+	require.NoError(t, validateCitation(root, c))
+	c.SHA256 = "stale"
+	assert.Error(t, validateCitation(root, c))
+}
+
+func TestValidatedHandoff(t *testing.T) {
+	dir := t.TempDir()
+	source(t, dir, "sample.go", `package example
+import p "github.com/stripe/stripe-go/v82/paymentintent"
+func call() { p.New(&Params{}) }
+`)
+	d, err := (Scanner{}).Discover(context.Background(), dir)
+	require.NoError(t, err)
+	require.Len(t, d.Flows, 1)
+	h := Handoff{Snapshot: d.Snapshot, Flows: d.Flows}
+	raw, err := json.Marshal(h)
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "evidence.json")
+	require.NoError(t, os.WriteFile(path, raw, 0600))
+	flows, err := LoadHandoff(path, dir, d)
+	require.NoError(t, err)
+	assert.Contains(t, flows[0].Unresolved, "Agent evidence requires human semantic review; citations prove provenance, not inference")
+	h.Snapshot = "stale"
+	raw, err = json.Marshal(h)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, raw, 0600))
+	_, err = LoadHandoff(path, dir, d)
+	assert.Error(t, err)
+	h.Snapshot = d.Snapshot
+	h.Flows[0].Pinned = Methods{Status: "absent", Values: []string{"card"}}
+	raw, err = json.Marshal(h)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(path, raw, 0600))
+	_, err = LoadHandoff(path, dir, d)
+	assert.Error(t, err)
+}
