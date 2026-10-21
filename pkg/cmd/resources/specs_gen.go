@@ -8984,10 +8984,52 @@ var V1FileLinksUpdate = resource.OperationSpec{
 }
 
 var V1FilesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v1/files",
-	Method:    "POST",
-	ServerURL: "https://files.stripe.com/",
+	Name:             "create",
+	Path:             "/v1/files",
+	Method:           "POST",
+	RequestMediaType: "multipart/form-data",
+	ServerURL:        "https://files.stripe.com/",
+	Params: map[string]*resource.ParamSpec{
+		"file": {
+			Type:             "string",
+			ShortDescription: "A file to upload",
+			Required:         true,
+			MostCommon:       true,
+			Format:           "binary",
+		},
+		"file_link_data.create": {
+			Type:             "boolean",
+			ShortDescription: "Set this to `true` to create a file link for the newly created file",
+		},
+		"file_link_data.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The link isn't available after this future timestamp",
+			Format:           "unix-time",
+		},
+		"purpose": {
+			Type:             "string",
+			ShortDescription: "The [purpose](https://docs.stripe.com/file-upload#uploading-a-file) of the uploaded file",
+			Required:         true,
+			MostCommon:       true,
+			Enum: []resource.EnumSpec{
+				{Value: "account_requirement"},
+				{Value: "additional_verification"},
+				{Value: "business_icon"},
+				{Value: "business_logo"},
+				{Value: "customer_signature"},
+				{Value: "dispute_evidence"},
+				{Value: "identity_document"},
+				{Value: "issuing_regulatory_reporting"},
+				{Value: "pci_document"},
+				{Value: "platform_terms_of_service"},
+				{Value: "tax_document_user_upload"},
+				{Value: "terminal_android_apk"},
+				{Value: "terminal_reader_splashscreen"},
+				{Value: "terminal_wifi_certificate"},
+				{Value: "terminal_wifi_private_key"},
+			},
+		},
+	},
 }
 
 var V1FilesList = resource.OperationSpec{

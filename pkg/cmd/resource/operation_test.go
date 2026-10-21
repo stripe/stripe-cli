@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,6 +22,107 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
+
+func TestRunOperationCmdRequestEncoding(t *testing.T) {
+	filePath := filepath.Join(t.TempDir(), "fixture.pdf")
+	contents := []byte("fixture upload\x00\xff\n")
+	require.NoError(t, os.WriteFile(filePath, contents, 0600))
+	for _, tc := range []struct {
+		name      string
+		path      string
+		mediaType string
+		format    string
+		args      []string
+		upload    bool
+		value     string
+	}{
+		{"binary flag", "/v1/example", "multipart/form-data", "binary", []string{"--file=" + filePath}, true, ""},
+		{"prefixed binary flag", "/v1/example", "multipart/form-data", "binary", []string{"--file=@" + filePath}, true, ""},
+		{"raw upload", "/v1/example", "multipart/form-data", "binary", []string{"-d", "file=@" + filePath}, true, ""},
+		{"raw literal", "/v1/example", "multipart/form-data", "binary", []string{"-d", "file=literal"}, false, "literal"},
+		{"ordinary string flag", "/v1/example", "multipart/form-data", "", []string{"--file=" + filePath}, false, filePath},
+		{"v1 form", "/v1/example", "application/x-www-form-urlencoded", "binary", []string{"--file=" + filePath}, false, filePath},
+		{"v1 default", "/v1/example", "", "binary", []string{"--file=" + filePath}, false, filePath},
+		{"v2 json", "/v2/example", "application/json", "binary", []string{"--file=" + filePath}, false, filePath},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			viper.Reset()
+			called := false
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				called = true
+				switch {
+				case tc.mediaType == "multipart/form-data":
+					require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data; boundary=")
+					require.NoError(t, r.ParseMultipartForm(1<<20))
+					defer r.MultipartForm.RemoveAll()
+					require.Equal(t, "dispute_evidence", r.FormValue("purpose"))
+					if tc.upload {
+						file, header, err := r.FormFile("file")
+						require.NoError(t, err)
+						defer file.Close()
+						require.Equal(t, "fixture.pdf", header.Filename)
+						actual, err := io.ReadAll(file)
+						require.NoError(t, err)
+						require.Equal(t, contents, actual)
+					} else {
+						require.Empty(t, r.MultipartForm.File)
+						require.Equal(t, tc.value, r.FormValue("file"))
+					}
+				case tc.path == "/v2/example":
+					require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+					var data map[string]interface{}
+					require.NoError(t, json.NewDecoder(r.Body).Decode(&data))
+					require.Equal(t, tc.value, data["file"])
+					require.Equal(t, "dispute_evidence", data["purpose"])
+				default:
+					require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+					require.NoError(t, r.ParseForm())
+					require.Equal(t, tc.value, r.PostForm.Get("file"))
+					require.Equal(t, "dispute_evidence", r.PostForm.Get("purpose"))
+				}
+				w.Write([]byte(`{}`))
+			}))
+			defer ts.Close()
+			parent := &cobra.Command{Use: "test", Annotations: make(map[string]string)}
+			oc := NewOperationCmd(parent, &OperationSpec{
+				Name: "create", Path: tc.path, Method: http.MethodPost,
+				RequestMediaType: tc.mediaType, ServerURL: ts.URL,
+				Params: map[string]*ParamSpec{
+					"file":    {Type: "string", Format: tc.format},
+					"purpose": {Type: "string"},
+				},
+			}, &config.Config{Profile: config.Profile{APIKey: "sk_test_placeholder"}})
+			oc.SuppressOutput = true
+			parent.SetArgs(append([]string{"create", "--purpose=dispute_evidence"}, tc.args...))
+			require.NoError(t, parent.ExecuteContext(context.Background()))
+			require.True(t, called)
+		})
+	}
+}
+
+func TestRunOperationCmdMultipartDryRun(t *testing.T) {
+	for _, flag := range []string{"--file=", "--file=@", "--data=file=@"} {
+		t.Run(flag, func(t *testing.T) {
+			viper.Reset()
+			missingPath := filepath.Join(t.TempDir(), "missing.pdf")
+			parent := &cobra.Command{Use: "test", Annotations: make(map[string]string)}
+			oc := NewOperationCmd(parent, &OperationSpec{
+				Name: "create", Path: "/v1/example", Method: http.MethodPost,
+				RequestMediaType: "multipart/form-data",
+				Params:           map[string]*ParamSpec{"file": {Type: "string", Format: "binary", Required: true}},
+			}, &config.Config{})
+			var out bytes.Buffer
+			oc.Cmd.SetOut(&out)
+			parent.SetArgs([]string{"create", "--dry-run", flag + missingPath})
+			require.NoError(t, parent.ExecuteContext(context.Background()))
+			var output requests.DryRunOutput
+			require.NoError(t, json.Unmarshal(out.Bytes(), &output))
+			require.Equal(t, "multipart/form-data", output.DryRun.Headers["Content-Type"])
+			require.Equal(t, "@"+missingPath, output.DryRun.Params["file"])
+			require.Contains(t, buildExamples("test create", &OperationSpec{Params: map[string]*ParamSpec{"file": {Type: "string", Format: "binary", Required: true}}}), "--file <file-path>")
+		})
+	}
+}
 
 func TestNewOperationCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}

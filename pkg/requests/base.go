@@ -140,7 +140,8 @@ type Base struct {
 
 	DarkStyle bool
 
-	APIBaseURL string
+	APIBaseURL       string
+	RequestMediaType string
 
 	Livemode bool
 
@@ -274,7 +275,17 @@ func (rb *Base) ResolveCredentials() (stripe.Credentials, error) {
 // Similar to making a multipart request using curl, add the local filepath to params arg with @ prefix.
 // e.g. params.AppendData([]string{"photo=@/path/to/local/file.png"})
 func (rb *Base) MakeMultiPartRequest(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
-	reqBody, contentType, err := rb.buildMultiPartRequest(params)
+	return rb.MakeMultiPartRequestWithAdditionalParams(ctx, creds, path, params, nil, errOnStatus)
+}
+
+// MakeMultiPartRequestWithAdditionalParams behaves like MakeMultiPartRequest, but also merges
+// additionalParams (e.g. non-file flag values) into the multipart request body.
+func (rb *Base) MakeMultiPartRequestWithAdditionalParams(ctx context.Context, creds stripe.Credentials, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool) ([]byte, error) {
+	bodyParams, err := createV1Params(params, additionalParams, nil)
+	if err != nil {
+		return nil, err
+	}
+	reqBody, contentType, err := rb.buildMultiPartRequest(bodyParams)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -449,7 +460,13 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 // BuildDryRunOutput constructs the dry-run output for a request without executing it.
 func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string, params *RequestParameters, additionalParams map[string]interface{}) (*DryRunOutput, error) {
-	isV2 := stripe.IsV2Path(path)
+	isMultipart := rb.RequestMediaType == "multipart/form-data"
+	isV2 := stripe.IsV2Path(path) && !isMultipart
+	if isMultipart {
+		if _, err := createV1Params(params, additionalParams, nil); err != nil {
+			return nil, err
+		}
+	}
 
 	// Build params map
 	paramsMap := make(map[string]interface{})
@@ -519,11 +536,7 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 	}
 
 	if rb.Method != http.MethodGet {
-		if isV2 {
-			headers["Content-Type"] = "application/json"
-		} else {
-			headers["Content-Type"] = "application/x-www-form-urlencoded"
-		}
+		headers["Content-Type"] = rb.dryRunContentType(path)
 	}
 
 	if params.idempotency != "" {
@@ -562,6 +575,17 @@ func (rb *Base) BuildDryRunOutput(creds stripe.Credentials, baseURL, path string
 			Headers: headers,
 		},
 	}, nil
+}
+
+func (rb *Base) dryRunContentType(path string) string {
+	switch {
+	case rb.RequestMediaType == "multipart/form-data":
+		return "multipart/form-data"
+	case stripe.IsV2Path(path):
+		return "application/json"
+	default:
+		return "application/x-www-form-urlencoded"
+	}
 }
 
 // parseV1DataForDryRun parses v1 key=value data entries into a nested map.
@@ -889,7 +913,6 @@ func setQueryParams(queryParams *url.Values, paramsMap map[string]interface{}) e
 func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer, string, error) {
 	var body bytes.Buffer
 	mp := multipart.NewWriter(&body)
-	defer mp.Close()
 
 	for _, datum := range params.data {
 		splitDatum := strings.SplitN(datum, "=", 2)
@@ -906,17 +929,34 @@ func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer,
 			val = val[1:]
 			file, err := os.Open(val)
 			if err != nil {
-				return nil, "", err
+				return nil, "", errorcategory.Errorf(errorcategory.UserInput, "unable to open upload file %q: %w", val, err)
 			}
-			defer file.Close()
-			part, err := mp.CreateFormFile(key, val)
+			part, err := mp.CreateFormFile(key, filepath.Base(val))
 			if err != nil {
+				file.Close()
 				return nil, "", err
 			}
-			io.Copy(part, file)
+			_, copyErr := io.Copy(part, file)
+			closeErr := file.Close()
+			if copyErr != nil {
+				return nil, "", errorcategory.Errorf(errorcategory.UserInput, "unable to read upload file %q: %w", val, copyErr)
+			}
+			if closeErr != nil {
+				return nil, "", closeErr
+			}
 		} else {
-			mp.WriteField(key, val)
+			if err := mp.WriteField(key, val); err != nil {
+				return nil, "", err
+			}
 		}
+	}
+	for _, field := range params.expand {
+		if err := mp.WriteField("expand[]", field); err != nil {
+			return nil, "", err
+		}
+	}
+	if err := mp.Close(); err != nil {
+		return nil, "", err
 	}
 
 	return &body, mp.FormDataContentType(), nil

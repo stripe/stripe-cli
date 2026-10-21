@@ -114,14 +114,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 			fmt.Println("Exiting without execution. User did not confirm the command.")
 			return nil
 		}
-
-		// if confirmation is provided, make the request
-		_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
-
-		return err
 	}
-	// else
-	_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
+	if oc.RequestMediaType == "multipart/form-data" {
+		_, err = oc.MakeMultiPartRequestWithAdditionalParams(cmd.Context(), creds, path, &oc.Parameters, requestParams, false)
+	} else {
+		_, err = oc.MakeRequest(cmd.Context(), creds, path, &oc.Parameters, requestParams, false, nil)
+	}
 	return err
 }
 
@@ -157,6 +155,7 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
 			Method:           method,
+			RequestMediaType: opSpec.RequestMediaType,
 			Profile:          &cfg.Profile,
 			IsPreviewCommand: opSpec.IsPreview,
 		},
@@ -258,6 +257,9 @@ func paramFlagName(param string) string {
 
 // exampleValue returns the placeholder value string to use in an example for the given param.
 func exampleValue(ps *ParamSpec) string {
+	if ps.Format == "binary" {
+		return "<file-path>"
+	}
 	switch ps.Type {
 	case "integer":
 		return "<integer>"
@@ -417,6 +419,12 @@ func (oc *OperationCmd) addStringRequestParams(requestParams map[string]interfac
 		if oc.Cmd.Flags().Changed(stringProp) {
 			paramName := getParamName(stringProp)
 			val := *stringVal
+			if oc.RequestMediaType == "multipart/form-data" && !strings.HasPrefix(val, "@") {
+				format := oc.Cmd.Flags().Lookup(stringProp).Annotations["format"]
+				if len(format) > 0 && format[0] == "binary" {
+					val = "@" + val
+				}
+			}
 			// For clearable_object flags, "{}" is accepted as an alias for "" for
 			// compatibility with other tools. The v1 API requires an empty string to
 			// clear the field, so translate "{}" accordingly.

@@ -11,6 +11,9 @@ var {{ .VarName }} = resource.OperationSpec{
 {{- if .Op.IsPreview }}
 	IsPreview: true,
 {{- end }}
+{{- if eq .Op.RequestMediaType "multipart/form-data" }}
+	RequestMediaType: {{ .Op.RequestMediaType | quote }},
+{{- end }}
 {{- if .Op.ServerURL }}
 	ServerURL: {{ .Op.ServerURL | quote }},
 {{- end }}

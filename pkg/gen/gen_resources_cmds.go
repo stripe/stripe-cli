@@ -48,13 +48,14 @@ type ResourceData struct {
 }
 
 type OperationData struct {
-	Name      string // operation name, e.g. "create"
-	Path      string
-	HTTPVerb  string
-	IsPreview bool
-	ServerURL string
-	VarName   string
-	Params    map[string]*resource.ParamSpec
+	Name             string // operation name, e.g. "create"
+	Path             string
+	HTTPVerb         string
+	IsPreview        bool
+	ServerURL        string
+	RequestMediaType string
+	VarName          string
+	Params           map[string]*resource.ParamSpec
 }
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
@@ -345,7 +346,8 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 		}
 
 		isPreview := apiNamespace == V1PreviewNamespace || apiNamespace == V2PreviewNamespace
-		params := getOperationParams(apiNamespace, specOp, op)
+		mediaType := getMediaType(apiNamespace, specOp)
+		params := getOperationParams(mediaType, specOp, op)
 
 		serverURL := ""
 		if len(specOp.Servers) > 0 {
@@ -355,13 +357,14 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 		varName := computeVarName(apiNamespace, nsName, resCmdName, subResCmdName, op.MethodName)
 
 		opData := &OperationData{
-			Name:      op.MethodName,
-			Path:      op.Path,
-			HTTPVerb:  httpString,
-			IsPreview: isPreview,
-			ServerURL: serverURL,
-			VarName:   varName,
-			Params:    params,
+			Name:             op.MethodName,
+			Path:             op.Path,
+			HTTPVerb:         httpString,
+			IsPreview:        isPreview,
+			ServerURL:        serverURL,
+			RequestMediaType: mediaType,
+			VarName:          varName,
+			Params:           params,
 		}
 
 		if hasSubResources {
@@ -376,7 +379,7 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 
 // getOperationParams extracts parameter metadata from a spec operation, returning a map of
 // parameter name → ParamSpec. Parameter names use dot notation for nested fields.
-func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op spec.StripeOperation) map[string]*resource.ParamSpec {
+func getOperationParams(mediaType string, specOp *spec.Operation, op spec.StripeOperation) map[string]*resource.ParamSpec {
 	params := make(map[string]*resource.ParamSpec)
 	httpString := string(op.Operation)
 
@@ -385,7 +388,6 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 			return params
 		}
 
-		mediaType := getMediaType(apiNamespace)
 		requestContent := specOp.RequestBody.Content
 
 		if media, ok := requestContent[mediaType]; ok {
@@ -676,12 +678,23 @@ func generateSpecFiles(data *TemplateData, outputDir string) error {
 	return os.WriteFile(filePath, formatted, 0644)
 }
 
-// getMediaType returns the content type for request bodies based on API namespace.
-func getMediaType(apiNamespace ApiNamespace) string {
-	if apiNamespace == V2Namespace || apiNamespace == V2PreviewNamespace {
-		return "application/json"
+// getMediaType selects a declared request encoding, preferring the namespace's default.
+func getMediaType(apiNamespace ApiNamespace, op *spec.Operation) string {
+	if op.RequestBody == nil {
+		return ""
 	}
-	return "application/x-www-form-urlencoded"
+	preferred := "application/x-www-form-urlencoded"
+	if apiNamespace == V2Namespace || apiNamespace == V2PreviewNamespace {
+		preferred = "application/json"
+	}
+	content := op.RequestBody.Content
+	if _, ok := content[preferred]; ok {
+		return preferred
+	}
+	if _, ok := content["multipart/form-data"]; ok {
+		return "multipart/form-data"
+	}
+	return ""
 }
 
 func parseSchemaName(name string) (string, string) {
