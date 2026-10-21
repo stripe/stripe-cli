@@ -2,6 +2,7 @@ package docs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
@@ -230,6 +232,76 @@ func TestFetchPage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFetchPage_HTTPStatusError(t *testing.T) {
+	for _, status := range []int{201, 302, 400, 401, 403, 404, 429, 500, 599} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(status)
+			}))
+			defer server.Close()
+
+			client := NewClient("test").WithOptions(WithBaseURL(server.URL))
+			_, err := client.FetchPage(context.Background(), &url.URL{Path: "/test"})
+			require.EqualError(t, err, fmt.Sprintf("docs: %s/test returned %d", server.URL, status))
+
+			wrapped := fmt.Errorf("lookup failed: %w", err)
+			var statusErr interface{ HTTPStatusCode() int }
+			require.True(t, errors.As(wrapped, &statusErr))
+			assert.Equal(t, status, statusErr.HTTPStatusCode())
+			category, ok := errorcategory.Get(wrapped)
+			require.True(t, ok)
+			assert.Equal(t, errorcategory.API, category)
+		})
+	}
+}
+
+func TestDocsHTTPStatusPropagation(t *testing.T) {
+	for _, authenticated := range []bool{false, true} {
+		for _, operation := range []string{"page", "search"} {
+			t.Run(fmt.Sprintf("authenticated=%t/%s", authenticated, operation), func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusForbidden)
+				}))
+				defer server.Close()
+				client := NewClient("test").WithOptions(WithBaseURL(server.URL), WithAPIBaseURL(server.URL))
+				if authenticated {
+					client.WithOptions(WithAPIKey("test-token"))
+				}
+				var err error
+				if operation == "search" {
+					_, err = client.Search(context.Background(), "test")
+				} else {
+					_, err = client.FetchPage(context.Background(), &url.URL{Path: "/test"})
+				}
+				require.Error(t, err)
+				var statusErr interface{ HTTPStatusCode() int }
+				require.True(t, errors.As(err, &statusErr))
+				assert.Equal(t, http.StatusForbidden, statusErr.HTTPStatusCode())
+				category, ok := errorcategory.Get(err)
+				require.True(t, ok)
+				assert.Equal(t, errorcategory.API, category)
+			})
+		}
+	}
+}
+
+func TestFetchPage_UnsupportedContentTypeHasNoHTTPStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "<html></html>")
+	}))
+	defer server.Close()
+
+	client := NewClient("test").WithOptions(WithBaseURL(server.URL))
+	_, err := client.FetchPage(context.Background(), &url.URL{Path: "/test"})
+	require.EqualError(t, err, fmt.Sprintf("docs: %s/test returned unsupported content type %q", server.URL, "text/html"))
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	assert.Equal(t, errorcategory.API, category)
+	var statusErr interface{ HTTPStatusCode() int }
+	assert.False(t, errors.As(err, &statusErr))
 }
 
 func TestFetchPage_ContextCanceled(t *testing.T) {

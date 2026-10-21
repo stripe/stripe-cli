@@ -2,6 +2,7 @@ package stripe_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -195,6 +196,98 @@ func TestSendEvent(t *testing.T) {
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
+func TestHTTPOutcomeForStatusCode(t *testing.T) {
+	for _, test := range []struct {
+		status int
+		want   string
+	}{
+		{status: -1, want: ""},
+		{status: 0, want: ""},
+		{status: 100, want: "other_non_200"},
+		{status: 199, want: "other_non_200"},
+		{status: 200, want: "2xx"},
+		{status: 201, want: "2xx"},
+		{status: 204, want: "2xx"},
+		{status: 299, want: "2xx"},
+		{status: 300, want: "other_non_200"},
+		{status: 302, want: "other_non_200"},
+		{status: 399, want: "other_non_200"},
+		{status: 400, want: "other_4xx"},
+		{status: 401, want: "other_4xx"},
+		{status: 403, want: "other_4xx"},
+		{status: 404, want: "not_found"},
+		{status: 429, want: "other_4xx"},
+		{status: 499, want: "other_4xx"},
+		{status: 500, want: "5xx"},
+		{status: 599, want: "5xx"},
+		{status: 600, want: "other_non_200"},
+	} {
+		t.Run(fmt.Sprint(test.status), func(t *testing.T) {
+			require.Equal(t, test.want, stripe.HTTPOutcomeForStatusCode(test.status))
+		})
+	}
+}
+
+func TestSendAPIRequestEvent_HTTPOutcome(t *testing.T) {
+	for _, status := range []int{0, 200, 201, 204, 302, 400, 401, 403, 404, 429, 500} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			forms := make(chan url.Values, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := r.ParseForm(); err != nil {
+					t.Error(err)
+				}
+				forms <- r.PostForm
+			}))
+			defer server.Close()
+			baseURL, err := url.Parse(server.URL)
+			require.NoError(t, err)
+			client := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
+			outcome := stripe.HTTPOutcomeForStatusCode(status)
+			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "stripe get", HTTPOutcome: outcome}
+			ctx := stripe.WithEventMetadata(context.Background(), metadata)
+
+			resp, err := client.SendAPIRequestEvent(ctx, "", false)
+			require.NoError(t, err)
+			require.NoError(t, resp.Body.Close())
+
+			form := <-forms
+			require.Equal(t, "API Request", form.Get("event_name"))
+			require.Equal(t, outcome, form.Get("http_outcome"))
+			require.Equal(t, outcome != "", form.Has("http_outcome"))
+			require.False(t, form.Has("http_status_code"))
+		})
+	}
+}
+
+func TestSendEvent_HTTPOutcome(t *testing.T) {
+	for _, outcome := range []string{"", "not_found", "other_4xx", "5xx", "other_non_200"} {
+		t.Run("outcome="+outcome, func(t *testing.T) {
+			forms := make(chan url.Values, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if err := r.ParseForm(); err != nil {
+					t.Error(err)
+				}
+				forms <- r.PostForm
+			}))
+			defer server.Close()
+			baseURL, err := url.Parse(server.URL)
+			require.NoError(t, err)
+			client := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
+			metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "get", HTTPOutcome: outcome}
+			ctx := stripe.WithEventMetadata(context.Background(), metadata)
+
+			client.SendEvent(ctx, "CLI Error", "api")
+
+			form := <-forms
+			require.Equal(t, "CLI Error", form.Get("event_name"))
+			require.Equal(t, "api", form.Get("event_value"))
+			require.Equal(t, outcome, form.Get("http_outcome"))
+			require.Equal(t, outcome != "", form.Has("http_outcome"))
+			require.False(t, form.Has("http_status_code"))
+		})
+	}
 }
 
 func TestSendEvent_WithAIAgent(t *testing.T) {

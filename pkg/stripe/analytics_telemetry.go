@@ -58,6 +58,9 @@ type CLIAnalyticsEventMetadata struct {
 	InTmux            bool   `url:"in_tmux"`                    // whether the CLI was invoked from within tmux
 	InScreen          bool   `url:"in_screen"`                  // whether the CLI was invoked from within GNU Screen
 	TerminalProgram   string `url:"terminal_program,omitempty"` // the terminal program that invoked the CLI, if any
+
+	// HTTPOutcome is a bounded HTTP outcome for API request and error events.
+	HTTPOutcome string `url:"http_outcome,omitempty"`
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
@@ -80,6 +83,25 @@ type NoOpTelemetryClient struct {
 //
 // Public functions
 //
+
+// HTTPOutcomeForStatusCode maps a response status to a bounded telemetry outcome.
+// A nonpositive status indicates no HTTP response and has no outcome.
+func HTTPOutcomeForStatusCode(status int) string {
+	switch {
+	case status <= 0:
+		return ""
+	case status >= 200 && status < 300:
+		return "2xx"
+	case status == http.StatusNotFound:
+		return "not_found"
+	case status >= 400 && status < 500:
+		return "other_4xx"
+	case status >= 500 && status < 600:
+		return "5xx"
+	default:
+		return "other_non_200"
+	}
+}
 
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
 func NewEventMetadata() *CLIAnalyticsEventMetadata {

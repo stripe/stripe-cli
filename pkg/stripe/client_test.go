@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -79,6 +82,92 @@ func TestApplyAccountContextHeaders_UAT(t *testing.T) {
 		require.Equal(t, "acct_a/acct_b", h.Get("Stripe-Account"))
 		require.Empty(t, h.Get("Stripe-Context"))
 	})
+}
+
+type apiStatusTelemetryClient struct {
+	statuses chan *CLIAnalyticsEventMetadata
+}
+
+func (c *apiStatusTelemetryClient) SendAPIRequestEvent(ctx context.Context, _ string, _ bool) (*http.Response, error) {
+	c.statuses <- GetEventMetadata(ctx)
+	return nil, nil
+}
+
+func (c *apiStatusTelemetryClient) SendEvent(ctx context.Context, _ string, _ string) {
+	c.statuses <- GetEventMetadata(ctx)
+}
+
+func TestPerformRequest_TelemetryHTTPOutcome(t *testing.T) {
+	statuses := []int{200, 201, 204, 302, 400, 401, 403, 404, 429, 500}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		status, err := strconv.Atoi(r.URL.Query().Get("status"))
+		if err != nil {
+			t.Error(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(status)
+	}))
+	defer server.Close()
+	baseURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	client := Client{BaseURL: baseURL, httpClient: server.Client()}
+	telemetry := &apiStatusTelemetryClient{statuses: make(chan *CLIAnalyticsEventMetadata, len(statuses)+1)}
+	metadata := &CLIAnalyticsEventMetadata{CommandPath: "stripe get", InvocationID: "test-invocation"}
+	original := *metadata
+	ctx := WithEventMetadata(WithTelemetryClient(context.Background(), telemetry), metadata)
+
+	var wg sync.WaitGroup
+	for _, status := range statuses {
+		wg.Go(func() {
+			resp, err := client.PerformRequest(ctx, http.MethodGet, "/v1/test", "status="+strconv.Itoa(status), nil)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != status {
+				t.Errorf("response status = %d, want %d", resp.StatusCode, status)
+			}
+		})
+	}
+	wg.Wait()
+
+	var gotOutcomes []string
+	for range statuses {
+		select {
+		case eventMetadata := <-telemetry.statuses:
+			require.NotSame(t, metadata, eventMetadata)
+			require.Equal(t, original.CommandPath, eventMetadata.CommandPath)
+			require.Equal(t, original.InvocationID, eventMetadata.InvocationID)
+			gotOutcomes = append(gotOutcomes, eventMetadata.HTTPOutcome)
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for API request telemetry")
+		}
+	}
+	require.ElementsMatch(t, []string{"2xx", "2xx", "2xx", "other_non_200", "other_4xx", "other_4xx", "other_4xx", "not_found", "other_4xx", "5xx"}, gotOutcomes)
+	require.Equal(t, original, *metadata)
+	telemetry.SendEvent(ctx, "Command Invoked", "")
+	require.Empty(t, (<-telemetry.statuses).HTTPOutcome)
+}
+
+func TestPerformRequest_NoResponseHasNoOutcomeTelemetry(t *testing.T) {
+	baseURL, err := url.Parse("http://127.0.0.1")
+	require.NoError(t, err)
+	client := Client{BaseURL: baseURL}
+	telemetry := &apiStatusTelemetryClient{statuses: make(chan *CLIAnalyticsEventMetadata, 1)}
+	ctx := WithEventMetadata(WithTelemetryClient(context.Background(), telemetry), &CLIAnalyticsEventMetadata{})
+	ctx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	resp, err := client.PerformRequest(ctx, http.MethodGet, "/v1/test", "", nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Nil(t, resp)
+	require.Empty(t, telemetry.statuses)
 }
 
 func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {

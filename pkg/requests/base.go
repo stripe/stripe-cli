@@ -95,6 +95,11 @@ func (e RequestError) Error() string {
 	return fmt.Sprintf("%s, status=%d, body=%s", e.msg, e.StatusCode, e.Body)
 }
 
+// HTTPStatusCode returns the response status for status-based error reporting.
+func (e RequestError) HTTPStatusCode() int {
+	return e.StatusCode
+}
+
 // IsAPIKeyExpiredError returns true if the provided error was caused by a
 // request returning an `api_key_expired` error code.
 //

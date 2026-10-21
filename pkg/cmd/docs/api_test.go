@@ -3,6 +3,7 @@ package docs_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,30 @@ import (
 	"github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/markdown"
 )
+
+func TestAPICommand_HTTPStatusSurvivesLookupWrapper(t *testing.T) {
+	for _, status := range []int{http.StatusNotFound, http.StatusInternalServerError} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(status)
+			}))
+			defer server.Close()
+			client := docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))
+			root := cmd.New().WithOptions(cmd.WithClient(client)).Root()
+			var out bytes.Buffer
+			root.SetOut(&out)
+			root.SetErr(&out)
+			root.SetArgs([]string{"api", "product"})
+
+			err := root.ExecuteContext(context.Background())
+
+			require.Error(t, err)
+			var statusErr interface{ HTTPStatusCode() int }
+			require.True(t, errors.As(err, &statusErr))
+			assert.Equal(t, status, statusErr.HTTPStatusCode())
+		})
+	}
+}
 
 func TestAPICommand_MissingArgs(t *testing.T) {
 	root := cmd.New().Root()
