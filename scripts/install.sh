@@ -126,8 +126,8 @@ download_and_verify() {
   elif command -v shasum >/dev/null 2>&1; then
     ACTUAL=$(shasum -a 256 "$TMP_DIR/$ARCHIVE" | cut -d' ' -f1)
   else
-    echo "Warning: no sha256sum or shasum found, skipping verification."
-    ACTUAL="$EXPECTED"
+    echo "Error: sha256sum or shasum is required to verify the download."
+    exit 1
   fi
 
   if [ "$ACTUAL" != "$EXPECTED" ]; then
