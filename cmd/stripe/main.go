@@ -26,7 +26,7 @@ func main() {
 	// Check for the next update after the command has run, so the network call
 	// never delays it. Deferred rather than called at the end of main because
 	// every branch below returns early, and the check has to happen on all of
-	// them. This still does not cover cmd.Execute's os.Exit on command failure.
+	// them. Command failures exit directly from cmd.Execute.
 	defer autoupdate.CheckForUpdate()
 
 	ctx := context.Background()
@@ -57,6 +57,7 @@ func main() {
 		}
 	}
 	ctx = stripe.WithTelemetryClient(ctx, telemetryClient)
+	defer telemetryClient.Wait()
 
 	// Attach event metadata here, before cmd.Execute, and let it populate the
 	// same pointer throughout the command run: that way a panic recovered
@@ -73,7 +74,4 @@ func main() {
 	}()
 
 	cmd.Execute(ctx)
-
-	// Wait for all telemetry calls to finish before exiting the process.
-	telemetryClient.Wait()
 }

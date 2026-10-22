@@ -208,21 +208,24 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	go sendTelemetryEvent(requestCtx, requestID, c.Credentials.Livemode())
+	sendTelemetryEvent(requestCtx, requestID, c.Credentials.Livemode())
 	return resp, nil
 }
 
 func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
 	telemetryClient := GetTelemetryClient(ctx)
 	if telemetryClient != nil {
-		resp, err := telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
-		// Don't throw exception if we fail to send the event
-		if err != nil {
-			log.Debugf("Error while sending telemetry data: %v\n", err)
-		}
-		if resp != nil {
-			resp.Body.Close()
-		}
+		ctx = snapshotEventMetadata(ctx)
+		runTelemetryAsync(telemetryClient, func() {
+			resp, err := telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
+			// Don't throw exception if we fail to send the event
+			if err != nil {
+				log.Debugf("Error while sending telemetry data: %v\n", err)
+			}
+			if resp != nil {
+				resp.Body.Close()
+			}
+		})
 	}
 }
 

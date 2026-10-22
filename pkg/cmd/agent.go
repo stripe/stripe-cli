@@ -899,6 +899,6 @@ func isInteractiveTerminal() bool {
 
 func sendAgentEvent(ctx context.Context, eventName, eventValue string) {
 	if tc := stripe.GetTelemetryClient(ctx); tc != nil {
-		go tc.SendEvent(ctx, eventName, eventValue)
+		stripe.SendEventAsync(ctx, tc, eventName, eventValue)
 	}
 }

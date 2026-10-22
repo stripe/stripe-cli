@@ -7,7 +7,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -196,6 +200,90 @@ func TestSendEvent(t *testing.T) {
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
+func TestSendEventAsyncImmediatelyBeforeWait(t *testing.T) {
+	previous := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(previous)
+
+	forms := make(chan url.Values, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+		}
+		forms <- r.PostForm
+	}))
+	defer server.Close()
+	baseURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	client := &stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
+	metadata := &stripe.CLIAnalyticsEventMetadata{CommandPath: "stripe test"}
+	ctx := stripe.WithEventMetadata(context.Background(), metadata)
+
+	for range 100 {
+		metadata.CommandPath = "stripe test"
+		stripe.SendEventAsync(ctx, client, "foo", "bar")
+		metadata.CommandPath = "changed"
+		client.Wait()
+
+		select {
+		case form := <-forms:
+			require.Equal(t, "foo", form.Get("event_name"))
+			require.Equal(t, "bar", form.Get("event_value"))
+			require.Equal(t, "stripe test", form.Get("command_path"))
+		default:
+			t.Fatal("Wait returned before the event was delivered")
+		}
+	}
+}
+
+func TestSendEventAsyncConcurrentDefaultEndpoint(t *testing.T) {
+	var requests atomic.Int64
+	client := &stripe.AnalyticsTelemetryClient{HTTPClient: &http.Client{
+		Transport: telemetryRoundTripper(func(r *http.Request) (*http.Response, error) {
+			if r.URL.String() != stripe.DefaultTelemetryEndpoint {
+				t.Errorf("unexpected endpoint: %s", r.URL)
+			}
+			requests.Add(1)
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(""))}, nil
+		}),
+	}}
+	ctx := stripe.WithEventMetadata(context.Background(), &stripe.CLIAnalyticsEventMetadata{})
+	for range 100 {
+		stripe.SendEventAsync(ctx, client, "foo", "bar")
+	}
+	client.Wait()
+	require.EqualValues(t, 100, requests.Load())
+}
+
+type telemetryRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f telemetryRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestSendEventAsyncWaitHonorsHTTPTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	baseURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	client := &stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{Timeout: 50 * time.Millisecond}}
+	ctx := stripe.WithEventMetadata(context.Background(), &stripe.CLIAnalyticsEventMetadata{})
+	start := time.Now()
+	for range 10 {
+		stripe.SendEventAsync(ctx, client, "foo", "bar")
+	}
+	client.Wait()
+	require.Less(t, time.Since(start), time.Second)
+}
+
+func TestSendEventAsyncWithoutMetadata(t *testing.T) {
+	client := &stripe.AnalyticsTelemetryClient{}
+	stripe.SendEventAsync(context.Background(), client, "foo", "bar")
+	client.Wait()
 }
 
 func TestHTTPOutcomeForStatusCode(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -149,6 +150,24 @@ func TestPerformRequest_TelemetryHTTPOutcome(t *testing.T) {
 	require.Equal(t, original, *metadata)
 	telemetry.SendEvent(ctx, "Command Invoked", "")
 	require.Empty(t, (<-telemetry.statuses).HTTPOutcome)
+}
+
+func TestAPIRequestTelemetryImmediatelyBeforeWait(t *testing.T) {
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+	}))
+	defer server.Close()
+	baseURL, err := url.Parse(server.URL)
+	require.NoError(t, err)
+	telemetry := &AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: server.Client()}
+	ctx := WithEventMetadata(WithTelemetryClient(context.Background(), telemetry), &CLIAnalyticsEventMetadata{})
+
+	for i := range 100 {
+		sendTelemetryEvent(ctx, "", false)
+		telemetry.Wait()
+		require.EqualValues(t, i+1, requests.Load())
+	}
 }
 
 func TestPerformRequest_NoResponseHasNoOutcomeTelemetry(t *testing.T) {

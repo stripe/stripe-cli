@@ -97,7 +97,7 @@ func TestAPIKeyInput(t *testing.T) {
 	expectedKey := "sk_test_foo1234"
 
 	keyInput := strings.NewReader(expectedKey + "\n")
-	actualKey, err := getConfigureAPIKey(keyInput)
+	actualKey, err := getConfigureAPIKey(context.Background(), keyInput)
 
 	require.Equal(t, expectedKey, actualKey)
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestAPIKeyInputEmpty(t *testing.T) {
 	expectedErrorString := "API key is required, please provide your API key"
 
 	keyInput := strings.NewReader(expectedKey + "\n")
-	actualKey, err := getConfigureAPIKey(keyInput)
+	actualKey, err := getConfigureAPIKey(context.Background(), keyInput)
 
 	require.Equal(t, expectedKey, actualKey)
 	require.NotNil(t, err)

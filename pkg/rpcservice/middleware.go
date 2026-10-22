@@ -75,7 +75,7 @@ func updateContextWithTelemetry(ctx context.Context, methodName string, server *
 func sendCommandInvocationEvent(ctx context.Context) {
 	telemetryClient := stripe.GetTelemetryClient(ctx)
 	if telemetryClient != nil {
-		go telemetryClient.SendEvent(ctx, "Command Invoked", "gRPC")
+		stripe.SendEventAsync(ctx, telemetryClient, "Command Invoked", "gRPC")
 	}
 }
 
@@ -119,6 +119,6 @@ func serverUnaryInterceptor(
 	if err := authorize(newCtx); err != nil {
 		return nil, err
 	}
-	go sendCommandInvocationEvent(newCtx)
+	sendCommandInvocationEvent(newCtx)
 	return handler(newCtx, req)
 }

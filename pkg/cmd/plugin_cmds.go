@@ -234,6 +234,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string, sk
 
 		// We can't return err because it is either already printed or printed just
 		// above, and we can't return nil because the host would exit with code 0.
+		stripe.WaitForTelemetry(ctx)
 		os.Exit(1)
 	}
 

@@ -26,7 +26,7 @@ func InteractiveLogin(ctx context.Context, cfg *config.Config) error {
 }
 
 func interactiveLoginWithParams(ctx context.Context, cfg *config.Config, input io.Reader, baseURL string) error {
-	apiKey, err := getConfigureAPIKey(input)
+	apiKey, err := getConfigureAPIKey(ctx, input)
 	if err != nil {
 		return err
 	}
@@ -69,10 +69,10 @@ func interactiveLoginWithParams(ctx context.Context, cfg *config.Config, input i
 	return nil
 }
 
-func getConfigureAPIKey(input io.Reader) (string, error) {
+func getConfigureAPIKey(ctx context.Context, input io.Reader) (string, error) {
 	fmt.Print("Enter your API key: ")
 
-	apiKey, err := securePrompt(input)
+	apiKey, err := securePrompt(ctx, input)
 	if err != nil {
 		return "", err
 	}
@@ -107,12 +107,12 @@ func getConfigureDeviceName(input io.Reader) string {
 	return deviceName
 }
 
-func securePrompt(input io.Reader) (string, error) {
+func securePrompt(ctx context.Context, input io.Reader) (string, error) {
 	if input == os.Stdin {
 		// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
 		// this results in the terminal input staying hidden after program exit.
 		// We need to manually catch the interrupt and restore terminal state before exiting.
-		signalChan, err := protectTerminalState()
+		signalChan, err := protectTerminalState(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -134,7 +134,7 @@ func securePrompt(input io.Reader) (string, error) {
 	return reader.ReadString('\n')
 }
 
-func protectTerminalState() (chan os.Signal, error) {
+func protectTerminalState(ctx context.Context) (chan os.Signal, error) {
 	originalTerminalState, err := term.GetState(int(syscall.Stdin)) //nolint:unconvert
 	if err != nil {
 		return nil, err
@@ -146,6 +146,7 @@ func protectTerminalState() (chan os.Signal, error) {
 	go func() {
 		<-signalChan
 		term.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
+		stripe.WaitForTelemetry(ctx)
 		os.Exit(1)
 	}()
 

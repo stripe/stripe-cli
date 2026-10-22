@@ -137,7 +137,7 @@ var rootCmd = &cobra.Command{
 func sendCommandInvocationEvent(ctx context.Context) {
 	telemetryClient := stripe.GetTelemetryClient(ctx)
 	if telemetryClient != nil {
-		go telemetryClient.SendEvent(ctx, "Command Invoked", "Cobra")
+		stripe.SendEventAsync(ctx, telemetryClient, "Command Invoked", "Cobra")
 	}
 }
 
@@ -164,12 +164,13 @@ func showSuggestion() {
 //
 // plugins.CleanupAllClients kills every client go-plugin is tracking for this process, so one
 // handler covers both the plain "launch one plugin" case and the nested peer-plugin case.
-func installPluginReaper() {
+func installPluginReaper(ctx context.Context) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
 		plugins.CleanupAllClients()
+		stripe.WaitForTelemetry(ctx)
 		os.Exit(1)
 	}()
 }
@@ -177,7 +178,7 @@ func installPluginReaper() {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
-	installPluginReaper()
+	installPluginReaper(ctx)
 
 	emitClaudeCodePluginHint()
 
@@ -261,6 +262,7 @@ func Execute(ctx context.Context) {
 			fmt.Fprintln(os.Stderr, err)
 		}
 
+		stripe.WaitForTelemetry(updatedCtx)
 		reporting.Flush()
 		os.Exit(1)
 	} else {

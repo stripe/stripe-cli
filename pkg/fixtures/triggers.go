@@ -354,7 +354,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 	// send event triggered
 	telemetryClient := stripe.GetTelemetryClient(ctx)
 	if telemetryClient != nil {
-		go telemetryClient.SendEvent(ctx, "Triggered Event", event)
+		stripe.SendEventAsync(ctx, telemetryClient, "Triggered Event", event)
 	}
 
 	if len(raw) == 0 {

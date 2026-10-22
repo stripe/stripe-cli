@@ -583,6 +583,7 @@ func (p *pluginHintCmd) promptLogin(ctx context.Context) error {
 }
 
 func (p *pluginHintCmd) suggestNotAvailable() error {
+	stripe.WaitForTelemetry(p.Context())
 	accountID, err := p.accountIDFn()
 
 	if err != nil || accountID == "" {

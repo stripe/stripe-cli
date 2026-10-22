@@ -151,6 +151,49 @@ func GetTelemetryClient(ctx context.Context) TelemetryClient {
 	return nil
 }
 
+// SendEventAsync registers an event before starting background delivery.
+// Clients without background delivery support send synchronously.
+func SendEventAsync(ctx context.Context, client TelemetryClient, eventName, eventValue string) {
+	ctx = snapshotEventMetadata(ctx)
+	runTelemetryAsync(client, func() {
+		client.SendEvent(ctx, eventName, eventValue)
+	})
+}
+
+func snapshotEventMetadata(ctx context.Context) context.Context {
+	if metadata := GetEventMetadata(ctx); metadata != nil {
+		copied := *metadata
+		return WithEventMetadata(ctx, &copied)
+	}
+	return ctx
+}
+
+func runTelemetryAsync(client TelemetryClient, send func()) {
+	if async, ok := client.(interface{ runAsync(func()) }); ok {
+		async.runAsync(send)
+	} else {
+		send()
+	}
+}
+
+func (a *AnalyticsTelemetryClient) runAsync(send func()) {
+	a.wg.Add(1)
+	go func() {
+		defer a.wg.Done()
+		send()
+	}()
+}
+
+// WaitForTelemetry waits for pending events when the client supports it.
+func WaitForTelemetry(ctx context.Context) {
+	if ctx == nil {
+		return
+	}
+	if client, ok := GetTelemetryClient(ctx).(interface{ Wait() }); ok {
+		client.Wait()
+	}
+}
+
 // SetCobraCommandContext sets the telemetry values for the command being executed.
 func (e *CLIAnalyticsEventMetadata) SetCobraCommandContext(cmd *cobra.Command) {
 	e.CommandPath = cmd.CommandPath()
@@ -251,15 +294,12 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
 	a.wg.Add(1)
 	defer a.wg.Done()
-	if a.BaseURL == nil {
-		analyticsURL, err := url.Parse(DefaultTelemetryEndpoint)
-		if err != nil {
-			return nil, err
-		}
-		a.BaseURL = analyticsURL
+	endpoint := DefaultTelemetryEndpoint
+	if a.BaseURL != nil {
+		endpoint = a.BaseURL.String()
 	}
 
-	req, err := http.NewRequest(http.MethodPost, a.BaseURL.String(), strings.NewReader(data.Encode()))
+	req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}

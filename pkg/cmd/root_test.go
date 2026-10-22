@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +23,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
@@ -118,6 +121,48 @@ func TestExampleCommands(t *testing.T) {
 	{
 		_, err := executeCommand(rootCmd, "post")
 		require.Equal(t, "`stripe post` requires exactly 1 positional argument. See `stripe post --help` for supported flags and usage", err.Error())
+	}
+}
+
+func TestExecuteWaitsForTelemetryOnError(t *testing.T) {
+	if endpoint := os.Getenv("CLI_TEST_TELEMETRY_ENDPOINT"); endpoint != "" {
+		baseURL, err := url.Parse(endpoint)
+		require.NoError(t, err)
+		telemetry := &stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+		ctx := stripe.WithEventMetadata(stripe.WithTelemetryClient(context.Background(), telemetry), &stripe.CLIAnalyticsEventMetadata{})
+		rootCmd = &cobra.Command{
+			Use: "stripe",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				sendAgentEvent(cmd.Context(), "foo", "bar")
+				return errNotAuthenticated
+			},
+		}
+		rootCmd.PersistentFlags().String("project-name", "default", "")
+		os.Args = []string{"stripe"}
+		Execute(ctx)
+		t.Fatal("expected Execute to exit")
+	}
+
+	forms := make(chan url.Values, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+		}
+		forms <- r.PostForm
+	}))
+	defer server.Close()
+	process := exec.Command(os.Args[0], "-test.run=^TestExecuteWaitsForTelemetryOnError$")
+	process.Env = append(os.Environ(), "CLI_TEST_TELEMETRY_ENDPOINT="+server.URL, "XDG_CONFIG_HOME="+t.TempDir())
+	output, err := process.CombinedOutput()
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr, string(output))
+	require.Equal(t, 1, exitErr.ExitCode(), string(output))
+	select {
+	case form := <-forms:
+		require.Equal(t, "foo", form.Get("event_name"))
+		require.Equal(t, "bar", form.Get("event_value"))
+	default:
+		t.Fatal("process exited before delivering telemetry")
 	}
 }
 

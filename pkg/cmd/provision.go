@@ -117,6 +117,7 @@ func (pc *provisionCmd) runProvisionCmd(cmd *cobra.Command, args []string) error
 			"prefix": "provisionCmd.runProvisionCmd",
 		}).Debug(fmt.Sprintf("Provision command exited with error: %s", err))
 
+		stripe.WaitForTelemetry(ctx)
 		os.Exit(1)
 	}
 

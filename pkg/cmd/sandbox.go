@@ -197,7 +197,7 @@ func sendSandboxCreateRouteEvent(ctx context.Context, route string) {
 		return
 	}
 	if telemetryClient := stripe.GetTelemetryClient(ctx); telemetryClient != nil {
-		go telemetryClient.SendEvent(ctx, sandboxCreateRouteEventName, route)
+		stripe.SendEventAsync(ctx, telemetryClient, sandboxCreateRouteEventName, route)
 	}
 }
 
