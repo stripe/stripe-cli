@@ -209,6 +209,16 @@ func TestV1PrefixAliasesRegistered(t *testing.T) {
 	}
 }
 
+func TestBillingMeterV1Aliases(t *testing.T) {
+	events := getEvents()
+	for _, action := range []string{"created", "updated", "deactivated", "reactivated"} {
+		t.Run(action, func(t *testing.T) {
+			event := "billing.meter." + action
+			require.Equal(t, "triggers/"+event+".json", events["v1."+event])
+		})
+	}
+}
+
 // TestNativeV1EventsNotOverridden ensures that events with a dedicated
 // "triggers/v1.*" fixture file (e.g. v1.billing.meter.error_report_triggered)
 // are not replaced by auto-generated snapshot aliases.
