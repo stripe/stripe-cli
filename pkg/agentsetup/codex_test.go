@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 const codexTestMarketplaceList = `{"marketplaces":[{"name":"openai-curated"},{"name":"openai-api-curated"}]}`
@@ -112,6 +114,10 @@ func TestScanCodex_OldVersionWithoutPluginSupport(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusError, status.Status)
 	require.Contains(t, status.Error, "listing Codex marketplaces")
+	require.EqualError(t, status.DetectionError, status.Error)
+	category, ok := errorcategory.Get(status.DetectionError)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.Internal, category)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, true))
 }
 
@@ -262,6 +268,10 @@ func TestScanCodex_MarketplaceDiscoveryFailures(t *testing.T) {
 			status := provider.Detect()
 			require.Equal(t, StatusError, status.Status)
 			require.Contains(t, status.Error, tt.wantError)
+			require.EqualError(t, status.DetectionError, status.Error)
+			if tt.listErr != nil {
+				require.ErrorIs(t, status.DetectionError, tt.listErr)
+			}
 			require.Empty(t, status.Plugin.ID)
 			for _, force := range []bool{false, true} {
 				plan := provider.Plan(status, force)

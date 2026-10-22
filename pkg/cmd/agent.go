@@ -20,6 +20,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/docs/spinner"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/reporting"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -77,6 +78,8 @@ type agentSetupCmd struct {
 	// isInteractive reports whether an interactive picker can be shown.
 	// Injectable for tests.
 	isInteractive func() bool
+	// selectionTUI is injectable so tests can exercise confirmed picker outcomes.
+	selectionTUI func([]agentsetup.Status, skillsScopes) (*Selection, error)
 }
 
 type agentSetupJSON struct {
@@ -124,6 +127,7 @@ func newAgentSetupCmd() *agentSetupCmd {
 		skillsDirsExist: skillsDirsExist,
 		callingAgent:    func() string { return useragent.DetectAIAgent(os.Getenv) },
 		isInteractive:   isInteractiveTerminal,
+		selectionTUI:    RunSelectionTUI,
 	}
 
 	asc.cmd = &cobra.Command{
@@ -352,7 +356,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		return &Selection{Agents: detected}, "", nil
 	}
 
-	sel, err := RunSelectionTUI(detected, skills)
+	sel, err := asc.selectionTUI(detected, skills)
 	if err != nil {
 		return nil, "", err
 	}
@@ -361,6 +365,7 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 		fmt.Fprintln(out, "Canceled. No changes made.")
 		return nil, "", nil
 	}
+	recordUnselectedAgentPlugins(ctx, detected, *sel)
 	if len(sel.Agents) == 0 && !sel.InstallSkills {
 		sendAgentEvent(ctx, "Agent Setup: TUI", "nothing_selected")
 		fmt.Fprintln(out, "Nothing selected. No changes made.")
@@ -384,6 +389,43 @@ func (asc *agentSetupCmd) resolveSelection(cmd *cobra.Command, out io.Writer, de
 	}
 
 	return sel, "", nil
+}
+
+// recordUnselectedAgentPlugins records missing plugins omitted by a confirmed
+// picker. Installed plugins and canceled pickers do not get extra install events.
+func recordUnselectedAgentPlugins(ctx context.Context, detected []agentsetup.Status, sel Selection) {
+	selected := make(map[string]bool, len(sel.Agents))
+	for _, status := range sel.Agents {
+		selected[status.Client] = true
+	}
+	for _, status := range detected {
+		if status.Plugin.Installed || selected[status.Client] {
+			continue
+		}
+		outcome := "not_selected"
+		if status.Error != "" && status.Status != agentsetup.StatusError {
+			outcome = "unavailable"
+		}
+		sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":"+outcome)
+	}
+}
+
+// agentSetupReportedError marks a summary whose individual failures were already
+// reported. The command still exits nonzero without reporting the summary again.
+type agentSetupReportedError struct {
+	error
+}
+
+func (e *agentSetupReportedError) Unwrap() error { return e.error }
+
+func reportAgentPluginFailure(ctx context.Context, client, outcome string, err error) {
+	category, ok := errorcategory.Get(err)
+	if !ok {
+		category = errorcategory.Internal
+	}
+	err = errorcategory.With(fmt.Errorf("%s plugin %s: %w", client, outcome, err), category)
+	sendAgentEvent(ctx, "Agent Setup: Plugin Install", client+":"+outcome+":"+string(category))
+	reporting.CaptureException(ctx, err)
 }
 
 // selectedProviders returns the providers to operate on, honoring the --client
@@ -418,7 +460,11 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		fmt.Fprintf(out, "\n  %s\n", status.DisplayName)
 		if status.Status == agentsetup.StatusError {
 			fmt.Fprintf(out, "  %s error: %s\n", cross, status.Error)
-			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":error")
+			err := status.DetectionError
+			if err == nil {
+				err = errorcategory.New(errorcategory.Internal, status.Error)
+			}
+			reportAgentPluginFailure(ctx, status.Client, "detect_error", err)
 			errCount++
 			continue
 		}
@@ -443,7 +489,7 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 			Run(func() error { return provider.Apply(ctx, out, plan) })
 		if err != nil {
 			fmt.Fprintf(out, "  %s error: %v\n", cross, err)
-			sendAgentEvent(ctx, "Agent Setup: Plugin Install", status.Client+":error")
+			reportAgentPluginFailure(ctx, status.Client, "error", err)
 			errCount++
 			continue
 		}
@@ -452,9 +498,11 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 		installedCount++
 	}
 
+	skillsFailed := false
 	if sel.InstallSkills {
 		ok, installed, updated, skipped := asc.installSkills(ctx, out, scope, check, cross)
 		if !ok {
+			skillsFailed = true
 			errCount++
 		} else if !skipped {
 			installedCount += installed
@@ -465,7 +513,11 @@ func (asc *agentSetupCmd) install(ctx context.Context, out io.Writer, providers 
 
 	fmt.Fprintf(out, "\n%d installed, %d updated, %d skipped, %d errors\n", installedCount, updatedCount, skipCount, errCount)
 	if errCount > 0 {
-		return errorcategory.Errorf(errorcategory.Internal, "%d item(s) failed to set up", errCount)
+		err := errorcategory.Errorf(errorcategory.Internal, "%d item(s) failed to set up", errCount)
+		if !skillsFailed {
+			return &agentSetupReportedError{err}
+		}
+		return err
 	}
 	return nil
 }

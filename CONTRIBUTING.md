@@ -67,6 +67,36 @@ return fmt.Errorf("loading configuration: %w", err)
 Tests and generated files are excluded from this check. In the rare case where
 no semantic category can be assigned, use `//nolint:errorcategory` with a reason.
 
+### Agent setup telemetry
+
+`stripe agent setup` emits `Agent Setup: Plugin Detected` with
+`<client>:installed` or `<client>:not_installed`. Detection failures still count
+as `not_installed`.
+
+`Agent Setup: Plugin Install` records the following outcomes:
+
+| Value | Meaning |
+| --- | --- |
+| `<client>:success` | Installation completed. |
+| `<client>:skip` | No installation was needed. |
+| `<client>:manual` | Installation requires a manual step. |
+| `<client>:detect_error:<category>` | Detection failed; installation was not attempted. |
+| `<client>:error:<category>` | An attempted installation failed. |
+| `<client>:not_selected` | The confirmed picker omitted an available client without the plugin. |
+| `<client>:unavailable` | The confirmed picker disabled a client without the plugin because setup is unavailable. |
+
+Failure values include only the category from `pkg/errorcategory`, never error
+messages, paths, or command output. The second colon-separated field remains the
+outcome. Previously, detection and installation failures both used
+`<client>:error`, and omitted picker rows had no install event. Installed picker
+rows and canceled pickers do not emit extra install events. Status and JSON modes
+remain read-only and do not emit install events.
+
+Plugin failures are reported individually through the error reporter. A summary
+containing only those failures still causes a nonzero exit but is not reported
+again. If skills installation also fails, the summary remains reportable because
+that failure is not captured individually.
+
 ### Tests
 
 You can run tests with:

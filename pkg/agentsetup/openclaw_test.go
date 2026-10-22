@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 const testOpenclawHomeDir = "/home/test-user"
@@ -48,6 +50,10 @@ func TestOpenclaw_HomeDirUnresolvable(t *testing.T) {
 
 	require.Equal(t, StatusError, status.Status)
 	require.Equal(t, "Could not resolve home directory for OpenClaw plugin installation", status.Error)
+	require.ErrorIs(t, status.DetectionError, homeDirErr)
+	category, ok := errorcategory.Get(status.DetectionError)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.Filesystem, category)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, true))
 }

@@ -67,6 +67,7 @@ func (p OpenclawProvider) Detect() Status {
 	if err != nil && !ok {
 		status.Error = "Could not resolve home directory for OpenClaw plugin installation"
 		status.Status = StatusError
+		status.DetectionError = errorcategory.Errorf(errorcategory.Filesystem, "resolving OpenClaw home directory: %w", err)
 		return status
 	}
 

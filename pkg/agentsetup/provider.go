@@ -76,6 +76,8 @@ type Status struct {
 	Plugin         PluginStatus `json:"plugin"`
 	Status         string       `json:"status"`
 	Error          string       `json:"error,omitempty"`
+	// DetectionError preserves the cause for reporting without changing JSON output.
+	DetectionError error `json:"-"`
 }
 
 // PluginStatus is the plugin-specific part of a client setup status.

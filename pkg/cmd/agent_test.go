@@ -13,11 +13,262 @@ import (
 	"testing"
 	"time"
 
+	sentry "github.com/getsentry/sentry-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
 	"github.com/stripe/stripe-cli/pkg/agentskills"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+type setupTelemetryProvider struct {
+	status agentsetup.Status
+	plan   agentsetup.Plan
+	err    error
+	calls  int
+}
+
+func (p *setupTelemetryProvider) ID() string                                   { return p.status.Client }
+func (p *setupTelemetryProvider) Detect() agentsetup.Status                    { return p.status }
+func (p *setupTelemetryProvider) Plan(agentsetup.Status, bool) agentsetup.Plan { return p.plan }
+func (p *setupTelemetryProvider) Apply(context.Context, io.Writer, agentsetup.Plan) error {
+	p.calls++
+	return p.err
+}
+
+func setupTelemetryContext() (context.Context, *agentReportUsageTelemetryClient) {
+	client := &agentReportUsageTelemetryClient{events: make(chan agentReportUsageTelemetryEvent, 32)}
+	return stripe.WithTelemetryClient(context.Background(), client), client
+}
+
+func requireSetupTelemetry(t *testing.T, client *agentReportUsageTelemetryClient, want []agentReportUsageTelemetryEvent) {
+	t.Helper()
+	var got []agentReportUsageTelemetryEvent
+	for range want {
+		got = append(got, waitForAgentReportUsageEvent(t, client))
+	}
+	require.ElementsMatch(t, want, got)
+	assertNoAgentReportUsageEvent(t, client)
+}
+
+func bindAgentSetupSentry(t *testing.T) *sentry.MockTransport {
+	t.Helper()
+	transport := &sentry.MockTransport{}
+	client, err := sentry.NewClient(sentry.ClientOptions{
+		Dsn:       "https://public@localhost/1",
+		Transport: transport,
+	})
+	require.NoError(t, err)
+	hub := sentry.CurrentHub()
+	previous := hub.Client()
+	hub.BindClient(client)
+	t.Cleanup(func() { hub.BindClient(previous) })
+	return transport
+}
+
+func TestAgentSetupPluginTelemetryOutcomes(t *testing.T) {
+	cause := errors.New("test cause: /tmp/private-config: command output")
+	for _, tt := range []struct {
+		name       string
+		status     string
+		installed  bool
+		action     string
+		detectErr  error
+		applyErr   error
+		want       string
+		category   string
+		applyCalls int
+	}{
+		{name: "success", status: agentsetup.StatusMissing, action: agentsetup.ActionInstall, want: "success", applyCalls: 1},
+		{name: "skip", status: agentsetup.StatusInstalled, installed: true, action: agentsetup.ActionNone, want: "skip"},
+		{name: "manual", status: agentsetup.StatusMissing, action: agentsetup.ActionManual, want: "manual"},
+		{name: "detect error", status: agentsetup.StatusError, detectErr: errorcategory.With(cause, errorcategory.Filesystem), want: "detect_error:filesystem", category: "filesystem"},
+		{name: "legacy detect error", status: agentsetup.StatusError, want: "detect_error:internal", category: "internal"},
+		{name: "apply error", status: agentsetup.StatusMissing, action: agentsetup.ActionInstall, applyErr: cause, want: "error:internal", category: "internal", applyCalls: 1},
+		{name: "categorized apply error", status: agentsetup.StatusMissing, action: agentsetup.ActionInstall, applyErr: errorcategory.With(cause, errorcategory.Network), want: "error:network", category: "network", applyCalls: 1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			transport := bindAgentSetupSentry(t)
+			ctx, telemetry := setupTelemetryContext()
+			setup := testAgentSetupCmd()
+			setup.callingAgent = func() string { return "" }
+			setup.isInteractive = func() bool { return false }
+			provider := &setupTelemetryProvider{
+				status: agentsetup.Status{Client: agentsetup.ClientCodex, Detected: true, Status: tt.status,
+					Plugin: agentsetup.PluginStatus{Installed: tt.installed}, DetectionError: tt.detectErr},
+				plan: agentsetup.Plan{Action: tt.action}, err: tt.applyErr,
+			}
+			if tt.status == agentsetup.StatusError {
+				provider.status.Error = cause.Error()
+			}
+			setup.providers = map[string]agentsetup.Provider{provider.ID(): provider}
+			setup.cmd.SetContext(ctx)
+			_, err := executeCommand(setup.cmd, "--yes")
+			want := []agentReportUsageTelemetryEvent{
+				{name: "Agent Setup: Client Detected", value: "codex"},
+				{name: "Agent Setup: Plugin Detected", value: "codex:not_installed"},
+				{name: "Agent Setup: Plugin Install", value: "codex:" + tt.want},
+			}
+			if tt.installed {
+				want[1].value = "codex:installed"
+			}
+			if tt.category != "" {
+				require.EqualError(t, err, "1 item(s) failed to set up")
+				var reported *agentSetupReportedError
+				require.ErrorAs(t, err, &reported)
+				category, ok := errorcategory.Get(err)
+				require.True(t, ok)
+				require.Equal(t, errorcategory.Internal, category)
+				want = append(want, agentReportUsageTelemetryEvent{name: "CLI Error", value: tt.category})
+				events := transport.Events()
+				require.Len(t, events, 1)
+				require.Equal(t, tt.category, events[0].Tags["error_category"])
+				var messages []string
+				for _, exception := range events[0].Exception {
+					messages = append(messages, exception.Value)
+				}
+				require.Contains(t, messages, cause.Error())
+			} else {
+				require.NoError(t, err)
+				require.Empty(t, transport.Events())
+			}
+			require.Equal(t, tt.applyCalls, provider.calls)
+			requireSetupTelemetry(t, telemetry, want)
+		})
+	}
+}
+
+func TestAgentSetupPickerPluginTelemetry(t *testing.T) {
+	for _, mode := range []string{"confirmed", "nothing_selected", "canceled", "error"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, telemetry := setupTelemetryContext()
+			setup := testAgentSetupCmd()
+			setup.cmd.SetContext(ctx)
+			setup.callingAgent = func() string { return "" }
+			setup.isInteractive = func() bool { return true }
+			statuses := []agentsetup.Status{
+				{Client: "codex", Detected: true, Status: agentsetup.StatusMissing},
+				{Client: "claude-code", Detected: true, Status: agentsetup.StatusMissing, Error: "upgrade Claude Code to enable plugin support"},
+				{Client: "cursor", Detected: true, Plugin: agentsetup.PluginStatus{Installed: true}},
+				{Client: "openclaw", Detected: true, Status: agentsetup.StatusError, Error: "test detection failure"},
+				{Client: "grok", Detected: true, Status: agentsetup.StatusMissing},
+			}
+			setup.selectionTUI = func(detected []agentsetup.Status, skills skillsScopes) (*Selection, error) {
+				require.Equal(t, statuses, detected)
+				if mode == "canceled" {
+					return nil, nil
+				}
+				if mode == "error" {
+					return nil, errors.New("picker failed")
+				}
+				model := newSelectModel(detected, skills)
+				for i := range model.rows {
+					model.rows[i].selected = false
+				}
+				if mode == "confirmed" {
+					model.rows[4].selected = true
+				}
+				sel := model.selection()
+				return &sel, nil
+			}
+			sel, _, err := setup.resolveSelection(setup.cmd, io.Discard, statuses, skillsScopes{})
+			if mode == "error" {
+				require.EqualError(t, err, "picker failed")
+				assertNoAgentReportUsageEvent(t, telemetry)
+				return
+			}
+			require.NoError(t, err)
+			want := []agentReportUsageTelemetryEvent{{name: "Agent Setup: TUI", value: mode}}
+			if mode == "confirmed" || mode == "nothing_selected" {
+				want = append(want,
+					agentReportUsageTelemetryEvent{name: "Agent Setup: Plugin Install", value: "codex:not_selected"},
+					agentReportUsageTelemetryEvent{name: "Agent Setup: Plugin Install", value: "claude-code:unavailable"},
+					agentReportUsageTelemetryEvent{name: "Agent Setup: Plugin Install", value: "openclaw:not_selected"})
+				if mode == "nothing_selected" {
+					want = append(want, agentReportUsageTelemetryEvent{name: "Agent Setup: Plugin Install", value: "grok:not_selected"})
+				}
+			}
+			if mode == "confirmed" {
+				require.Len(t, sel.Agents, 1)
+				provider := &setupTelemetryProvider{status: sel.Agents[0], plan: agentsetup.Plan{Action: agentsetup.ActionInstall}}
+				require.NoError(t, setup.install(ctx, io.Discard, map[string]agentsetup.Provider{provider.ID(): provider}, *sel, ""))
+				want = append(want, agentReportUsageTelemetryEvent{name: "Agent Setup: Plugin Install", value: "grok:success"})
+			} else {
+				require.Nil(t, sel)
+			}
+			requireSetupTelemetry(t, telemetry, want)
+		})
+	}
+}
+
+func TestAgentSetupReportsEachPluginFailure(t *testing.T) {
+	transport := bindAgentSetupSentry(t)
+	ctx, telemetry := setupTelemetryContext()
+	setup := testAgentSetupCmd()
+	detectionCause := errorcategory.New(errorcategory.Filesystem, "test directory failure")
+	applyCause := errorcategory.New(errorcategory.Internal, "test install failure")
+	detection := &setupTelemetryProvider{status: agentsetup.Status{
+		Client: "openclaw", Status: agentsetup.StatusError, Error: detectionCause.Error(), DetectionError: detectionCause,
+	}}
+	installation := &setupTelemetryProvider{
+		status: agentsetup.Status{Client: "codex", Status: agentsetup.StatusMissing},
+		plan:   agentsetup.Plan{Action: agentsetup.ActionInstall}, err: applyCause,
+	}
+	err := setup.install(ctx, io.Discard, map[string]agentsetup.Provider{
+		"openclaw": detection, "codex": installation,
+	}, Selection{Agents: []agentsetup.Status{detection.status, installation.status}}, "")
+	require.EqualError(t, err, "2 item(s) failed to set up")
+	var reported *agentSetupReportedError
+	require.ErrorAs(t, fmt.Errorf("setup: %w", err), &reported)
+	require.Len(t, transport.Events(), 2)
+	require.Equal(t, 0, detection.calls)
+	require.Equal(t, 1, installation.calls)
+	requireSetupTelemetry(t, telemetry, []agentReportUsageTelemetryEvent{
+		{name: "Agent Setup: Plugin Install", value: "openclaw:detect_error:filesystem"},
+		{name: "CLI Error", value: "filesystem"},
+		{name: "Agent Setup: Plugin Install", value: "codex:error:internal"},
+		{name: "CLI Error", value: "internal"},
+	})
+}
+
+func TestAgentSetupReadOnlyTelemetry(t *testing.T) {
+	for _, flag := range []string{"--status", "--json"} {
+		t.Run(flag, func(t *testing.T) {
+			ctx, telemetry := setupTelemetryContext()
+			setup := testAgentSetupCmd()
+			provider := &setupTelemetryProvider{status: agentsetup.Status{Client: "codex", Detected: true, Status: agentsetup.StatusMissing}, plan: agentsetup.Plan{Action: agentsetup.ActionInstall}}
+			setup.providers = map[string]agentsetup.Provider{provider.ID(): provider}
+			setup.skillsDirsExist = func(string, string) bool { return false }
+			setup.cmd.SetContext(ctx)
+			_, err := executeCommand(setup.cmd, flag)
+			require.NoError(t, err)
+			require.Zero(t, provider.calls)
+			requireSetupTelemetry(t, telemetry, []agentReportUsageTelemetryEvent{{name: "Agent Setup: Client Detected", value: "codex"}})
+		})
+	}
+}
+
+func TestAgentSetupSummaryRetainsUnreportedSkillsFailure(t *testing.T) {
+	bindAgentSetupSentry(t)
+	setup := testAgentSetupCmd()
+	setup.skillsLocalDir = func() (string, error) { return "", errors.New("directory unavailable") }
+	provider := &setupTelemetryProvider{status: agentsetup.Status{Client: "codex", Status: agentsetup.StatusError, Error: "detection failed"}}
+	for _, agents := range [][]agentsetup.Status{nil, {provider.status}} {
+		err := setup.install(context.Background(), io.Discard, map[string]agentsetup.Provider{"codex": provider}, Selection{Agents: agents, InstallSkills: true}, skillsScopeLocal)
+		require.Error(t, err)
+		var reported *agentSetupReportedError
+		require.False(t, errors.As(err, &reported))
+	}
+}
+
+func TestAgentSetupDetectionErrorDoesNotChangeJSON(t *testing.T) {
+	status := agentsetup.Status{Client: "codex", Error: "detection failed", DetectionError: errors.New("private cause")}
+	encoded, err := json.Marshal(status)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "private cause")
+	require.Contains(t, string(encoded), `"error":"detection failed"`)
+}
 
 func TestCheckSkillsScopesChecksBothScopesConcurrently(t *testing.T) {
 	t.Parallel()

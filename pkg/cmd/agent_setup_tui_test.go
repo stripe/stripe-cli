@@ -43,6 +43,35 @@ func TestSelectModel_AgentsSelectedSkillsRowNot(t *testing.T) {
 	require.False(t, m.rows[3].selected)
 }
 
+func TestSelectModel_DisabledAndDeselectedPluginTelemetry(t *testing.T) {
+	for _, client := range []string{agentsetup.ClientCodex, agentsetup.ClientClaudeCode} {
+		t.Run(client, func(t *testing.T) {
+			statuses := []agentsetup.Status{
+				{Client: client, Detected: true, Status: agentsetup.StatusMissing, Error: "upgrade to enable plugin support"},
+				{Client: agentsetup.ClientCursor, Detected: true, Plugin: agentsetup.PluginStatus{Installed: true}},
+				{Client: agentsetup.ClientOpenclaw, Detected: true, Status: agentsetup.StatusError, Error: "test detection failure"},
+			}
+			model := newSelectModel(statuses, testSkillsScopes())
+			require.True(t, model.rows[0].disabled)
+			require.True(t, model.rows[1].disabled)
+			require.False(t, model.rows[2].disabled)
+			model = pressSelect(model, tea.KeySpace)
+			require.False(t, model.rows[0].selected)
+			model.cursor = 2
+			model = pressSelect(model, tea.KeySpace)
+			model = pressSelect(model, tea.KeyEnter)
+			require.True(t, model.done)
+			require.Empty(t, model.selection().Agents)
+			ctx, telemetry := setupTelemetryContext()
+			recordUnselectedAgentPlugins(ctx, statuses, model.selection())
+			requireSetupTelemetry(t, telemetry, []agentReportUsageTelemetryEvent{
+				{name: "Agent Setup: Plugin Install", value: client + ":unavailable"},
+				{name: "Agent Setup: Plugin Install", value: "openclaw:not_selected"},
+			})
+		})
+	}
+}
+
 func TestSelectModel_NoAgentsPreselectsSkills(t *testing.T) {
 	m := newSelectModel(nil, testSkillsScopes())
 

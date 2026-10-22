@@ -216,12 +216,15 @@ func Execute(ctx context.Context) {
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 
+		var reportedSetupError *agentSetupReportedError
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
 		case errors.Is(err, errNotAuthenticated):
 			// whoami already printed output; just exit non-zero
+		case errors.As(err, &reportedSetupError):
+			fmt.Fprintln(os.Stderr, err)
 		case errors.Is(err, errCommandRemoved):
 			// the shim already printed the removal guidance; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):

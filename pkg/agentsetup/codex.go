@@ -65,6 +65,7 @@ func (p CodexProvider) Detect() Status {
 	if err != nil {
 		status.Status = StatusError
 		status.Error = err.Error()
+		status.DetectionError = err
 		return status
 	}
 	status.Plugin.ID = CodexPluginName + "@" + marketplace
