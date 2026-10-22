@@ -9,6 +9,7 @@
       "method": "post",
       "params": {
         "name": "My Cardholder",
+        "phone_number": "+15555550100",
         "type": "individual",
         "individual": {
           "first_name": "My",
