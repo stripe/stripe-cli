@@ -11,7 +11,10 @@
       "params": {
         "amount": 100,
         "currency": "usd",
-        "payment_method_types": ["card"],
+        "automatic_payment_methods": {
+          "enabled": true,
+          "allow_redirects": "never"
+        },
         "payment_method": "pm_card_visa",
         "confirm": true,
         "description": "(created by Stripe CLI)"
