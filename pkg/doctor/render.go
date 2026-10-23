@@ -1,68 +1,153 @@
 package doctor
 
-// Human renderers for the doctor report.
+// Human renderers for the doctor report, in three sections:
+//
+//  1. renderRule       — what the migration is and the recommended action.
+//  2. renderSummary     — a glance at what needs to be done, bucketed into
+//                         source code changes, manual Dashboard actions,
+//                         and webhook changes.
+//  3. renderDetails     — the same three buckets, in full: findings +
+//                         verdicts, the Dashboard-facing remediation's
+//                         message, and the webhook-handler breakdown.
 
 import (
 	"fmt"
 	"sort"
 	"strings"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/drill"
-	"github.com/stripe/stripe-cli/pkg/doctor/judge"
+	"github.com/stripe/stripe-cli/pkg/doctor/codesignals"
+	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
+	"github.com/stripe/stripe-cli/pkg/doctor/webhookcheck"
 )
 
 func renderDoctor(r *DoctorReport) {
-	if r.Degraded != "" {
-		fmt.Println(warnLine("scan-only: " + r.Degraded))
-	} else {
-		renderAccount(r.Account)
+	renderRule(r)
+	renderSummary(r)
+	renderDetails(r)
+	if r.WebhookCheck != nil {
+		fmt.Println()
+		renderWebhookCheck(r.WebhookCheck)
 	}
-	renderFindings(r)
-	renderSignals(r)
 }
 
-func renderAccount(a judge.AccountSummary) {
-	name := a.ID
-	if a.Name != "" {
-		name += " — " + a.Name
-	}
-	mode := mutedStyle.Render("  ·  test mode")
-	if a.Livemode {
-		mode = warnStyle.Render("  ·  LIVE MODE")
-	}
-	fmt.Println(titleStyle.Render("Account ") + name + mode)
+// ---------- section 1: what this is ----------
 
-	var vs []string
-	for v, n := range a.EventVersions {
-		vs = append(vs, fmt.Sprintf("%s (%d)", v, n))
+// renderRule prints the migration rule's own top-level fields (as fetched
+// live from the doctor_rules API): what the migration is and the
+// recommended action, ahead of everything else.
+func renderRule(r *DoctorReport) {
+	if r.Message == "" && r.Action == "" && r.Docs == "" {
+		return
 	}
-	sort.Strings(vs)
-	fmt.Println(kv("API version, recent activity", strings.Join(vs, ", ")))
-	fmt.Println(infoLine("sampled from the last 20 events on this account (Stripe's Events API — not webhooks)"))
+	fmt.Println(titleStyle.Render(strings.ToUpper(r.Topic)))
+	if r.Message != "" {
+		fmt.Println("  " + r.Message)
+	}
+	if r.Action != "" {
+		fmt.Println(kv("Action", r.Action))
+	}
+	if r.Docs != "" {
+		fmt.Println(kv("Docs", r.Docs))
+	}
+}
 
-	verLine := fmt.Sprintf("safe — recent traffic is already on API version %s or later", a.Cutoff)
-	switch {
-	case a.VersionsMixed:
-		verLine = warnStyle.Render(fmt.Sprintf("risky — safe once ALL recent traffic is on API version %s or later; some requests are still older, so removing it now would silently drop payment methods on those unless automatic_payment_methods[enabled]=true is also added", a.Cutoff))
-	case !a.VersionsOK:
-		verLine = failStyle.Render(fmt.Sprintf("unsafe on its own — becomes safe once this account's traffic moves to API version %s or later; until then, removing it would silently drop payment methods unless automatic_payment_methods[enabled]=true is also added", a.Cutoff))
-	}
-	fmt.Println(kv("removing payment_method_types", verLine))
+// ---------- section 2: what needs to be done ----------
 
-	total := a.MethodsOn + a.MethodsOff
-	cfg := "no active payment-method configuration found in the Dashboard"
-	if a.Configs > 0 {
-		cfg = fmt.Sprintf("%d of %d payment methods turned on", a.MethodsOn, total)
-		cfg += mutedStyle.Render(fmt.Sprintf(", in the %q configuration", a.ActiveConfig))
-	}
-	fmt.Println(kv("Dashboard payment methods", cfg))
+// renderSummary prints a one-line-per-bucket summary of what needs to be
+// done: source code changes, manual Dashboard actions, and webhook
+// changes. renderDetails below carries the full version of each.
+func renderSummary(r *DoctorReport) {
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Summary"))
+	fmt.Println(kv("Source code", sourceCodeSummary(r)))
+	fmt.Println(kv("Dashboard", dashboardSummary(r)))
+	fmt.Println(kv("Webhooks", webhookSummary(r)))
+}
 
-	if len(a.Unavailable) > 0 {
-		fmt.Println(warnLine("enabled in the Dashboard but not available on this account, so they will NOT render for customers: " + strings.Join(a.Unavailable, ", ")))
+// sourceCodeSummary tallies findings by verdict class, same counts
+// renderFindings' own trailing summary line shows in detail.
+func sourceCodeSummary(r *DoctorReport) string {
+	if len(r.Findings) == 0 {
+		return fmt.Sprintf("no findings — %d files scanned, %d parsed", r.Stats.FilesScanned, r.Stats.FilesParsed)
 	}
-	if a.Configs > 1 {
-		fmt.Println(infoLine(fmt.Sprintf("%d payment-method configurations exist — this report follows the default one; code that passes payment_method_configuration explicitly follows that configuration instead", a.Configs)))
+	var parts []string
+	for class, n := range r.Summary {
+		parts = append(parts, fmt.Sprintf("%d %s", n, classLabel(class)))
 	}
+	sort.Strings(parts)
+	return strings.Join(parts, ", ")
+}
+
+// dashboardSummary names the declared remediation's status — the
+// Dashboard-facing action doctor computed for it (see renderDashboardActions
+// for the full message).
+func dashboardSummary(r *DoctorReport) string {
+	if r.RemediationResult == nil {
+		return "no Dashboard-facing remediation declared"
+	}
+	return statusLabel(r.RemediationResult.Status)
+}
+
+// webhookSummary counts how many of the expected webhook handlers were
+// found in the scanned code, across whichever remediation's Evidence
+// carries that signal.
+func webhookSummary(r *DoctorReport) string {
+	events := webhookEvents(r)
+	if len(events) == 0 {
+		return "no webhook signals checked"
+	}
+	present := 0
+	for _, e := range events {
+		if e.Present {
+			present++
+		}
+	}
+	if present == len(events) {
+		return fmt.Sprintf("all %d expected handlers found", len(events))
+	}
+	return fmt.Sprintf("%d of %d expected handlers found", present, len(events))
+}
+
+// webhookEvents returns the webhook-handler evidence the declared
+// remediation carries, or nil if there is none.
+func webhookEvents(r *DoctorReport) []codesignals.EventSignal {
+	if r.RemediationResult == nil {
+		return nil
+	}
+	events, _ := r.RemediationResult.Evidence["webhook_events"].([]codesignals.EventSignal)
+	return events
+}
+
+// statusLabel turns a remediation Status into the same short, plain-English
+// voice classLabel uses for verdict classes.
+func statusLabel(s remediation.Status) string {
+	switch s {
+	case remediation.StatusReady:
+		return "ready"
+	case remediation.StatusCaution:
+		return "caution"
+	case remediation.StatusBlocked:
+		return "blocked"
+	case remediation.StatusReview:
+		return "needs review"
+	case remediation.StatusUnknown:
+		return "unknown"
+	default:
+		return string(s)
+	}
+}
+
+// ---------- section 3: the details ----------
+
+// renderDetails prints the full version of each bucket renderSummary
+// condensed: findings + verdicts, the Dashboard-facing remediation's full
+// message, and the webhook-handler breakdown.
+func renderDetails(r *DoctorReport) {
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Details"))
+	renderFindings(r)
+	renderDashboardActions(r)
+	renderWebhookHandlers(r)
 }
 
 // classLabel turns a verdict_class into a short, plain-English phrase for
@@ -75,12 +160,6 @@ func classLabel(class string) string {
 		return "skip — looks intentional"
 	case "REVIEW":
 		return "needs review"
-	case "CAUTION":
-		return "caution"
-	case "BLOCKED":
-		return "blocked (unsafe to just delete)"
-	case "UNKNOWN":
-		return "unknown"
 	case "ADVISE":
 		return "advisory"
 	default:
@@ -114,13 +193,14 @@ func withoutClassPrefix(verdict string) string {
 	return verdict
 }
 
+// renderFindings is the source-code-changes bucket, in detail: every
+// finding with its file/line and the exact verdict message.
 func renderFindings(r *DoctorReport) {
 	if len(r.Findings) == 0 {
 		fmt.Println("\n" + okLine(fmt.Sprintf("no findings — %d files scanned, %d parsed", r.Stats.FilesScanned, r.Stats.FilesParsed)))
 	} else {
-		// A single account-level judgment (BLOCKED/CAUTION/UNKNOWN) is one
-		// fact, not N facts: state it once as a headline and list findings
-		// compactly.
+		// An ADVISE rule's verdict is the same fact for every finding, not N
+		// facts: state it once as a headline and list findings compactly.
 		shared := r.Findings[0].Verdict
 		sharedClass := r.Findings[0].Class
 		for _, f := range r.Findings {
@@ -129,27 +209,23 @@ func renderFindings(r *DoctorReport) {
 				break
 			}
 		}
-		accountLevel := shared != "" && (sharedClass == "BLOCKED" || sharedClass == "CAUTION" || sharedClass == "UNKNOWN")
+		ruleLevel := shared != "" && sharedClass == "ADVISE"
 
 		fmt.Printf("\n%s\n", titleStyle.Render(fmt.Sprintf("Findings (%d)", len(r.Findings))))
-		if accountLevel {
-			glyph := failLine
-			if sharedClass != "BLOCKED" {
-				glyph = warnLine
-			}
-			fmt.Println(glyph(titleStyle.Render(classLabel(sharedClass)+": ") + withoutClassPrefix(shared)))
+		if ruleLevel {
+			fmt.Println(warnLine(titleStyle.Render(classLabel(sharedClass)+": ") + withoutClassPrefix(shared)))
 			fmt.Println()
 		}
-		for _, f := range r.Findings {
+		for i, f := range r.Findings {
+			if i > 0 {
+				fmt.Println()
+			}
 			glyph := warnLine
-			switch f.Class {
-			case "CANDIDATE":
+			if f.Class == "CANDIDATE" {
 				glyph = okLine
-			case "BLOCKED":
-				glyph = failLine
 			}
 			fmt.Println(glyph(fmt.Sprintf("%s:%d  %s %s", f.File, f.Line, mutedStyle.Render("["+intentLabel(f.Intent)+"]"), f.Value)))
-			if !accountLevel {
+			if !ruleLevel {
 				fmt.Println(kv(classLabel(f.Class), withoutClassPrefix(f.Verdict)))
 			}
 		}
@@ -162,26 +238,64 @@ func renderFindings(r *DoctorReport) {
 	}
 }
 
-func renderSignals(r *DoctorReport) {
-	if r.WebhookHandlers != nil && len(r.WebhookHandlers.Events) > 0 {
-		fmt.Println("\n" + titleStyle.Render("Expected webhook handlers in your code"))
-		for _, e := range r.WebhookHandlers.Events {
-			if e.Present {
-				fmt.Println(okLine(fmt.Sprintf("%-46s %s", e.Event, mutedStyle.Render(e.Files[0]))))
-			} else if e.Note != "" {
-				fmt.Println(warnLine(fmt.Sprintf("%-46s not found — %s", e.Event, e.Note)))
-			} else {
-				fmt.Println(warnLine(fmt.Sprintf("%-46s not found in scanned code", e.Event)))
-			}
-		}
+// renderDashboardActions is the manual-Dashboard-actions bucket, in
+// detail: the declared remediation's full message from whatever
+// pkg/doctor/remediation's registry computed for it (see runRemediation
+// in cmd.go) — not just the status renderSummary shows.
+func renderDashboardActions(r *DoctorReport) {
+	if r.RemediationResult == nil {
+		return
 	}
-	if r.LiveDrill != nil {
+	res := r.RemediationResult
+	fmt.Printf("\n%s\n", titleStyle.Render("Dashboard actions"))
+	line := fmt.Sprintf("%s: %s", res.Topic, res.Message)
+	switch res.Status {
+	case remediation.StatusReady:
+		fmt.Println(okLine(line))
+	case remediation.StatusBlocked:
+		fmt.Println(failLine(line))
+	case remediation.StatusUnknown:
+		fmt.Println(infoLine(line))
+	default: // caution, review
+		fmt.Println(warnLine(line))
+	}
+	// Notes are their own action items, independent of Status — e.g. a
+	// Dashboard deep link that always applies — so each gets its own line
+	// rather than trailing onto the message above.
+	if len(res.Notes) > 0 {
 		fmt.Println()
-		renderDrill(r.LiveDrill)
+		for _, n := range res.Notes {
+			fmt.Println(infoLine(n))
+		}
 	}
 }
 
-func renderDrill(r *drill.Report) {
+// renderWebhookHandlers is the webhook-changes bucket, in detail: the same
+// "Expected webhook handlers in your code" breakdown doctor's engine used
+// to render generically — now sourced from whichever remediation's
+// Evidence carries it (today: webhook_events, from the paymentmethods
+// remediation's own codesignals scan).
+func renderWebhookHandlers(r *DoctorReport) {
+	events := webhookEvents(r)
+	if len(events) == 0 {
+		return
+	}
+	fmt.Printf("\n%s\n", titleStyle.Render("Expected webhook handlers in your code"))
+	for i, e := range events {
+		if i > 0 {
+			fmt.Println()
+		}
+		if e.Present {
+			fmt.Println(okLine(fmt.Sprintf("%s: %s", e.Event, mutedStyle.Render(e.Files[0]))))
+		} else if e.Note != "" {
+			fmt.Println(warnLine(fmt.Sprintf("%s: not found — %s", e.Event, e.Note)))
+		} else {
+			fmt.Println(warnLine(fmt.Sprintf("%s: not found in scanned code", e.Event)))
+		}
+	}
+}
+
+func renderWebhookCheck(r *webhookcheck.Report) {
 	fmt.Println(titleStyle.Render("Live check: delayed-notification webhooks"))
 	if r.ListenReady {
 		fmt.Println(okLine("stripe listen ready (signing secret captured, not shown)"))
@@ -191,9 +305,9 @@ func renderDrill(r *drill.Report) {
 	}
 	for _, e := range r.Events {
 		if e.Signature == "verified" {
-			fmt.Println(okLine(fmt.Sprintf("received %-45s signature verified", e.Type)))
+			fmt.Println(okLine(fmt.Sprintf("received %s: signature verified", e.Type)))
 		} else {
-			fmt.Println(failLine(fmt.Sprintf("received %-45s signature INVALID", e.Type)))
+			fmt.Println(failLine(fmt.Sprintf("received %s: signature INVALID", e.Type)))
 		}
 	}
 	if r.Verified {

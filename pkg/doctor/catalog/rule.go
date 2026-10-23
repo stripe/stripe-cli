@@ -1,7 +1,7 @@
 // Package catalog is pure data: migration rules (what to find and how to
 // judge it) plus the packs that register them under a topic name. The
-// scanning engine and the account-judgment engine both consume this package
-// but never the other way around.
+// scanning engine and the judgment engine both consume this package but
+// never the other way around.
 package catalog
 
 // ParamMatch is one (parameter, operations) pair. Operations are hand-copied
@@ -14,18 +14,36 @@ type ParamMatch struct {
 
 // A Rule is a lint check over request parameters. Action declares what the
 // finding means: "remove" rules name a parameter that should be deleted by
-// hand (judged against account facts — see the judge package); "advise"
-// rules detect and explain a rename or value change for the human to apply.
-// IntroducedIn is the API version that made the change — packs become
-// selectable by the user's version window.
+// hand, judged by the finding's intent alone (see the judge package).
+// "advise" rules detect and explain a rename or value change for the human
+// to apply (not currently produced by ParseAPIRule — every topic today is
+// "remove"). IntroducedIn is the API version that made the change — packs
+// become selectable by the user's version window. There is no field here
+// for what a remediation should actually do (e.g. a Dashboard deep link
+// to surface, or which param to touch): that's defined directly in the
+// RemediationTopic's own Go implementation instead — see
+// pkg/doctor/remediation/paymentmethods.
 type Rule struct {
 	ID           string
 	Severity     string
-	Action       string // "remove" (judged against account facts) | "advise" (detect-only)
+	Action       string // "remove" (judged by finding intent) | "advise" (detect-only)
 	IntroducedIn string // API version the change shipped in, "" = not versioned
-	Message      string
-	Docs         string
-	Match        []ParamMatch
+	// Message and ActionText are the API's own "message"/"action" fields,
+	// kept separate (not concatenated) so doctor can render them as two
+	// distinct lines up front. ActionText is the API's human-readable
+	// remediation instruction (e.g. "Remove payment_method_types and let
+	// the Dashboard manage payment methods") — unrelated to Action, above,
+	// which is the engine's own remove/advise classification.
+	Message    string
+	ActionText string
+	Docs       string
+	Match      []ParamMatch
+	// RemediationTopic is the API's "doctorTopic" field — a bare string
+	// (e.g. "dpm") naming which pkg/doctor/remediation.Implementation to
+	// run against this rule. "" means none is declared. doctor's engine
+	// doesn't act on it itself — it just looks this string up in the
+	// remediation registry (see pkg/doctor/remediation).
+	RemediationTopic string
 }
 
 type Finding struct {

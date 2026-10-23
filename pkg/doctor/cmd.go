@@ -2,14 +2,15 @@ package doctor
 
 // cmd.go — the command surface, shaped like the real product would be:
 // a generic verb (doctor) with the migration TOPIC as an argument,
-// mirroring the architecture (generic engine, rule packs as data).
+// mirroring the architecture (generic engine, rules as data).
 //
 //	stripe doctor [topic] [dir]   diagnose; degrades to scan-only without creds
 //	stripe doctor guide                  agent playbook
 //
-// scan/drill are no longer commands: scan is doctor's credential-less
-// degradation and the webhook drill is `doctor --live`. doctor only
-// diagnoses — remediation is manual, guided by each finding's verdict.
+// scan/webhookcheck are no longer commands: scan is doctor's
+// credential-less degradation and the webhook round-trip check is
+// `doctor --live`. doctor only diagnoses — remediation is manual, guided
+// by each finding's verdict.
 //
 // Every command supports --json (pure JSON on stdout, logs on stderr) and the
 // exit-code contract: 0 clean/verified, 1 findings/not-verified, 2 error.
@@ -25,10 +26,15 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
-	"github.com/stripe/stripe-cli/pkg/doctor/drill"
 	"github.com/stripe/stripe-cli/pkg/doctor/judge"
+	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
+	// Registers "dpm" with the remediation registry via init(). Other
+	// teams' topics get the same one-line blank import once their
+	// package exists — see pkg/doctor/remediation's package doc for the
+	// full three-step guide.
+	_ "github.com/stripe/stripe-cli/pkg/doctor/remediation/paymentmethods"
 	"github.com/stripe/stripe-cli/pkg/doctor/scan"
-	"github.com/stripe/stripe-cli/pkg/doctor/signals"
+	"github.com/stripe/stripe-cli/pkg/doctor/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
@@ -40,7 +46,7 @@ var (
 // topicList renders the registry for help and error text.
 func topicList() string {
 	var names []string
-	for n := range catalog.Packs {
+	for n := range catalog.Rules {
 		names = append(names, n)
 	}
 	sort.Strings(names)
@@ -65,12 +71,12 @@ func fail(err error) {
 }
 
 // topicAndDir resolves the optional [topic] [dir] argument pair: an argument
-// naming a known pack is the topic; anything else is the directory.
+// naming a known topic is the topic; anything else is the directory.
 func topicAndDir(args []string) (string, string, error) {
 	topic, dir := "dpm", "."
 	var nonTopic []string
 	for _, a := range args {
-		if _, ok := catalog.Packs[a]; ok {
+		if _, ok := catalog.Rules[a]; ok {
 			topic = a
 		} else {
 			nonTopic = append(nonTopic, a)
@@ -97,9 +103,10 @@ func commonFlags(c *cobra.Command) {
 // root action, with guide and the hidden parse-dump nested beneath it —
 // neither makes sense as a top-level verb in the CLI's namespace. Topic
 // names and subcommand names never overlap, so `doctor dpm .` and
-// `doctor guide` resolve unambiguously. cfg supplies profile credentials,
-// resolved downstream in whichever mode (test or live) the active context
-// is actually logged into.
+// `doctor guide` resolve unambiguously. cfg is currently unused by the
+// doctor command itself (the rule comes from the embedded dpm.json, not a
+// live fetch — see catalog/dpm.go) but is threaded through so this keeps
+// working once judge.FetchDPMRule is swapped back in.
 func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 	root := newDoctorCmd(cfg)
 	commonFlags(root)
@@ -111,35 +118,25 @@ func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 // ---------- doctor ----------
 
 func newDoctorCmd(cfg *config.Config) *cobra.Command {
-	var live, offline bool
+	var live bool
 	c := &cobra.Command{
 		Use:   "doctor [topic] [dir]",
-		Short: "Diagnose a migration: code findings checked against your live account (read-only)",
-		Long: `Fetches the migration rule live, scans the directory for its findings, and
-judges each against live account facts (API versions in recent traffic,
-Dashboard configuration). --offline skips the account-facts judgment only
-— the rule fetch itself always requires network access. --live additionally
-proves runtime behavior (webhook round-trip via stripe listen/trigger).`,
+		Short: "Diagnose a migration: code findings checked against the migration rule (read-only)",
+		Long: `Scans the directory and judges each finding against the migration rule —
+the rule already carries whatever account-dependent guidance applies, so no
+separate account lookup is made. --live additionally proves runtime
+behavior (webhook round-trip via stripe listen/trigger).`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			topic, dir, err := topicAndDir(args)
 			if err != nil {
 				fail(err)
 			}
-			// dpm has no local rule copy — it only exists via a live fetch
-			// from the doctor_rules API (--offline skips account facts, not
-			// this: there's nothing to scan with otherwise). This is
-			// deliberately special-cased rather than a generic per-pack
-			// hook until a second topic needs its own live source.
-			var rule catalog.Rule
-			err = withSpinnerUnlessJSON("Fetching migration rules (read-only)", func() error {
-				var derr error
-				rule, derr = judge.FetchDPMRule(cfg, flagStripeAccount)
-				return derr
-			})
-			if err != nil {
-				fail(err)
-			}
+			// Using the embedded dpm.json for now, not judge.FetchDPMRule's
+			// live doctor_rules fetch, so local edits to it are picked up
+			// immediately — see catalog/dpm.go. Swap this back once that's
+			// no longer needed.
+			rule := catalog.Rules[topic]
 
 			findings, scanned, parsed, err := scan.Scan(dir, rule)
 			if err != nil {
@@ -148,45 +145,41 @@ proves runtime behavior (webhook round-trip via stripe listen/trigger).`,
 			scan.SortFindings(findings)
 			stats := ScanStats{FilesScanned: scanned, FilesParsed: parsed, Skipped: scanned - parsed}
 
-			rep := &DoctorReport{Command: "doctor", Topic: topic, Stats: stats}
-			applyJudgment := func(jr *judge.Report) {
-				rep.Account, rep.Findings, rep.Summary = jr.Account, jr.Findings, jr.Summary
+			rep := &DoctorReport{
+				Command:     "doctor",
+				Topic:       topic,
+				Message:     rule.Message,
+				Action:      rule.ActionText,
+				Docs:        rule.Docs,
+				DoctorTopic: rule.RemediationTopic,
+				Stats:       stats,
 			}
-			if offline {
-				rep.Degraded = "offline requested (--offline)"
-				applyJudgment(judge.ScanOnly(rule, findings, rep.Degraded))
-			} else {
-				var jr *judge.Report
-				err := withSpinnerUnlessJSON("Fetching account facts (read-only)", func() error {
-					var derr error
-					jr, derr = judge.Judge(findings, cfg, flagStripeAccount, rule)
-					return derr
+			jr := judge.Evaluate(rule, findings)
+			rep.Findings, rep.Summary = jr.Findings, jr.Summary
+
+			if rule.RemediationTopic != "" {
+				_ = withSpinnerUnlessJSON("Assessing remediation (read-only)", func() error {
+					rep.RemediationResult = runRemediation(rule, dir, findings, cfg)
+					return nil
 				})
-				if err != nil {
-					// Graceful degradation: no creds -> scan-only, clearly labeled.
-					rep.Degraded = err.Error()
-					applyJudgment(judge.ScanOnly(rule, findings, rep.Degraded))
-				} else {
-					applyJudgment(jr)
+				if rep.RemediationResult != nil && rep.RemediationResult.FindingsVerdict != "" {
+					applyFindingsVerdict(rep, rep.RemediationResult.FindingsVerdict)
 				}
 			}
 
-			// Code signals need no credentials — attach in every mode.
-			rep.WebhookHandlers = signals.ScanSignals(dir, catalog.Packs[topic].Signals)
-
 			failedLive := false
 			if live {
-				var drillResult *drill.Report
+				var checkResult *webhookcheck.Report
 				err := withSpinnerUnlessJSON("Live check: webhook round-trip (listen + trigger)", func() error {
 					var derr error
-					drillResult, derr = drill.Run()
+					checkResult, derr = webhookcheck.Run()
 					return derr
 				})
 				if err != nil {
 					fail(err)
 				}
-				rep.LiveDrill = drillResult
-				failedLive = !drillResult.Verified
+				rep.WebhookCheck = checkResult
+				failedLive = !checkResult.Verified
 			}
 
 			if flagJSON {
@@ -201,7 +194,6 @@ proves runtime behavior (webhook round-trip via stripe listen/trigger).`,
 		},
 	}
 	c.Flags().BoolVar(&live, "live", false, "also run behavioral checks (spawns stripe listen/trigger)")
-	c.Flags().BoolVar(&offline, "offline", false, "skip account facts; scan-only (the migration rule itself is still fetched live)")
 	return c
 }
 
@@ -221,10 +213,63 @@ func newDumpCmd() *cobra.Command {
 	}
 }
 
+// runRemediation runs the rule's declared RemediationTopic through the
+// pkg/doctor/remediation registry. A topic with no registered
+// Implementation (a team's Go code hasn't shipped yet) or one whose Run
+// fails (e.g. a credentials error) is still surfaced as a StatusUnknown
+// Result naming why, rather than being dropped silently — the raw
+// RemediationTopic string is always visible too
+// (DoctorReport.DoctorTopic), so this is purely "what doctor was able to
+// compute from it."
+func runRemediation(rule catalog.Rule, dir string, findings []catalog.Finding, cfg *config.Config) *remediation.Result {
+	topic := rule.RemediationTopic
+	impl, ok := remediation.Lookup(topic)
+	if !ok {
+		return &remediation.Result{
+			Topic:   topic,
+			Status:  remediation.StatusUnknown,
+			Message: fmt.Sprintf("no remediation implementation registered for topic %q", topic),
+		}
+	}
+	res, err := impl.Run(remediation.Context{
+		Dir:           dir,
+		Rule:          rule,
+		Findings:      findings,
+		Config:        cfg,
+		StripeAccount: flagStripeAccount,
+	})
+	if err != nil {
+		res = remediation.Result{Topic: topic, Status: remediation.StatusUnknown, Message: err.Error()}
+	}
+	if res.Topic == "" {
+		res.Topic = topic
+	}
+	return &res
+}
+
+// applyFindingsVerdict substitutes verdict for every finding's own
+// intent-based verdict, uniformly, and retallies rep.Summary to match.
+// Used when a remediation's Result.FindingsVerdict carries an
+// account-wide fact (e.g. API-version safety) that applies the same way
+// to every finding — something judge's per-finding intent classification
+// has no way to see on its own.
+func applyFindingsVerdict(rep *DoctorReport, verdict string) {
+	class := verdict
+	if i := strings.Index(verdict, ":"); i > 0 {
+		class = verdict[:i]
+	}
+	rep.Summary = map[string]int{}
+	for i := range rep.Findings {
+		rep.Findings[i].Verdict = verdict
+		rep.Findings[i].Class = class
+		rep.Summary[class]++
+	}
+}
+
 // topicHint decorates a scan error when the "directory" looks like a typo'd
 // topic name (e.g. `doctor dmp`).
 func topicHint(err error, dir string) error {
-	for name := range catalog.Packs {
+	for name := range catalog.Rules {
 		if dir != name && editDistanceAtMost2(dir, name) {
 			return fmt.Errorf("%w (did you mean topic %q?)", err, name)
 		}

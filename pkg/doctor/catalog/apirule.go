@@ -17,25 +17,29 @@ package catalog
 //   - a logic entry whose postParams is a "conditionGroup" (the dpm rule's
 //     STRIPE_VERSION-gated item, describing when a bare request lacks BOTH
 //     payment_method_types and automatic_payment_methods on a pre-cutoff
-//     API version) contributes no ParamMatch at all: the engine already
-//     derives that condition from the account's live API version (the
-//     judge package, Rule.IntroducedIn), so this item is only read for its
-//     cutoff version.
+//     API version) contributes no ParamMatch — doctor's engine doesn't
+//     probe live account facts to re-derive that condition itself — but its
+//     cutoff version (Rule.IntroducedIn) is still read.
 //
-// Fixes are declared per logic entry via "doctor_fix_ids", not per rule.
-// doctor's engine only cares whether a match-producing entry declares at
-// least one fix id at all — that marks the parameter as a reviewed
-// "remove" target with per-account judgment (see the judge package) rather
-// than a bare "advise" detection. An entry with no doctor_fix_ids means the
-// migration isn't fully modeled yet, and the whole rule falls back to
-// "advise": better to detect-and-explain everything than to call a site
-// safe nobody has reviewed. The specific fix kind ("removeParam" vs
-// "upsertParam") only matters to a code-editing tool this package no
-// longer has, so it's validated for API-response sanity and otherwise
-// ignored.
+// There is no "fixes" field here: what a remediation actually does (which
+// params to touch, what guidance to surface) is no longer data on the
+// rule at all — it's defined directly in that topic's own Go
+// implementation. See pkg/doctor/remediation/paymentmethods for dpm's
+// hardcoded equivalent. Action is therefore always "remove": every topic
+// doctor knows today is a remove-this-parameter migration, judged per
+// finding by intent alone (see the judge package) — a future detect-only
+// topic would need this reconsidered, not derived from fixes data that no
+// longer exists.
 //
-// The API has no "signals" field yet (webhook events, etc.) — see
-// dpm_signals.go for that stopgap.
+// "doctorTopic" is the only remediation-related field left: a bare
+// string (e.g. "dpm") naming which pkg/doctor/remediation.Implementation
+// to run — see catalog.Rule.RemediationTopic. There's no separate
+// per-remediation "kind"/Options data; a topic's implementation is
+// expected to know everything about its own remediation already.
+//
+// The API has no "signals" field (webhook events, etc.) and this package
+// doesn't model one: a remediation that cares about code signals declares
+// and scans for its own — see pkg/doctor/remediation/paymentmethods.
 
 import (
 	"encoding/json"
@@ -44,19 +48,13 @@ import (
 )
 
 type apiRule struct {
-	Topic    string         `json:"topic"`
-	Severity string         `json:"severity"`
-	Docs     []string       `json:"docs"`
-	Message  string         `json:"message"`
-	Action   string         `json:"action"`
-	Fixes    []apiFix       `json:"fixes"`
-	Logic    []apiLogicNode `json:"logic"`
-}
-
-type apiFix struct {
-	ID    string `json:"id"`
-	Kind  string `json:"kind"` // "removeParam" | "upsertParam"
-	Param string `json:"param"`
+	Topic       string         `json:"topic"`
+	Severity    string         `json:"severity"`
+	Docs        []string       `json:"docs"`
+	Message     string         `json:"message"`
+	Action      string         `json:"action"`
+	DoctorTopic string         `json:"doctorTopic"`
+	Logic       []apiLogicNode `json:"logic"`
 }
 
 // apiLogicNode is a discriminated union: MatcherType "entry" means Entry is
@@ -78,7 +76,6 @@ type apiEntry struct {
 	Path           apiMatcher     `json:"path"`
 	RequestHeaders []apiParamNode `json:"request_headers"`
 	PostParams     []apiParamNode `json:"post_params"`
-	DoctorFixIDs   []string       `json:"doctor_fix_ids"`
 }
 
 type apiMatcher struct {
@@ -111,23 +108,16 @@ func ParseAPIRule(raw []byte) (Rule, error) {
 		return Rule{}, fmt.Errorf("doctor: doctor_rule %q: expected exactly one top-level \"or\" condition group", e.Topic)
 	}
 
-	fixByID := make(map[string]apiFix, len(e.Fixes))
-	for _, f := range e.Fixes {
-		fixByID[f.ID] = f
-	}
-
 	rule := Rule{
-		ID:       e.Topic,
-		Severity: e.Severity,
-		Message:  strings.TrimSpace(e.Message + " " + e.Action),
-		Docs:     strings.Join(e.Docs, ", "),
+		ID:               e.Topic,
+		Severity:         e.Severity,
+		Action:           "remove",
+		Message:          strings.TrimSpace(e.Message),
+		ActionText:       strings.TrimSpace(e.Action),
+		Docs:             strings.Join(e.Docs, ", "),
+		RemediationTopic: strings.TrimSpace(e.DoctorTopic),
 	}
 
-	// allFixable only stays true if every match-producing entry declares a
-	// fix id — one bare entry is enough to drop the whole rule to "advise",
-	// since the engine can't scope the "remove" judgment to a subset of
-	// matches.
-	allFixable := false
 	for _, node := range e.Logic[0].ConditionGroup.Items {
 		if node.MatcherType != "entry" || node.Entry == nil {
 			return Rule{}, fmt.Errorf("doctor: doctor_rule %q: expected an \"entry\" node under the top-level group", e.Topic)
@@ -136,7 +126,8 @@ func ParseAPIRule(raw []byte) (Rule, error) {
 
 		if len(entry.PostParams) != 1 || entry.PostParams[0].MatcherType != "entry" {
 			// Not a param-usage match (e.g. the STRIPE_VERSION-gated
-			// companion condition) — only its cutoff version is relevant.
+			// companion condition) — contributes no ParamMatch; only its
+			// cutoff version is relevant.
 			if v := versionCutoff(entry); v != "" {
 				rule.IntroducedIn = v
 			}
@@ -148,34 +139,10 @@ func ParseAPIRule(raw []byte) (Rule, error) {
 			return Rule{}, fmt.Errorf("doctor: doctor_rule %q: unsupported post_params matcher on %q", e.Topic, cond.Key)
 		}
 
-		allFixable = true
 		rule.Match = append(rule.Match, ParamMatch{
 			Param:      cond.Key,
 			Operations: []string{entry.Method + " " + entry.Path.Value},
 		})
-
-		if len(entry.DoctorFixIDs) == 0 {
-			allFixable = false
-		}
-		for _, fixID := range entry.DoctorFixIDs {
-			fix, ok := fixByID[fixID]
-			if !ok {
-				return Rule{}, fmt.Errorf("doctor: doctor_rule %q: unknown fix id %q", e.Topic, fixID)
-			}
-			switch fix.Kind {
-			case "removeParam", "upsertParam":
-				// Either kind marks the parameter as a reviewed "remove"
-				// target; which kind it is only mattered to the code editor
-				// this package no longer has.
-			default:
-				return Rule{}, fmt.Errorf("doctor: doctor_rule %q: unsupported fix kind %q", e.Topic, fix.Kind)
-			}
-		}
-	}
-	if allFixable {
-		rule.Action = "remove"
-	} else {
-		rule.Action = "advise"
 	}
 	return rule, nil
 }

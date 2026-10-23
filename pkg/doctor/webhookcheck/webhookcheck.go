@@ -1,9 +1,9 @@
-// Package drill implements the live behavioral check behind `doctor --live`:
-// start a local webhook handler (the doc's Ruby sample, in Go), run `stripe
-// listen --forward-to` it, `stripe trigger
+// Package webhookcheck implements the live behavioral check behind
+// `doctor --live`: start a local webhook handler (the doc's Ruby sample,
+// in Go), run `stripe listen --forward-to` it, `stripe trigger
 // checkout.session.async_payment_succeeded`, and verify the event arrives
 // with a valid signature. All test mode.
-package drill
+package webhookcheck
 
 import (
 	"crypto/hmac"
@@ -42,7 +42,7 @@ type Event struct {
 // handler binds an OS-assigned port, so nothing collides with the classic
 // 4242.
 func Run() (*Report, error) {
-	r := &Report{Command: "drill", Events: []Event{}}
+	r := &Report{Command: "webhook_check", Events: []Event{}}
 	received := make(chan Event, 8)
 	var secret string
 

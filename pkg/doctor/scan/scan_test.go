@@ -26,7 +26,7 @@ var testRule = catalog.Rule{
 
 // want is the exact expected finding set: file:line:col. Anything extra is a
 // false positive; anything missing is a false negative. The fixtures live in
-// ../testdata, shared with the top-level package's signals-integration test.
+// ../testdata.
 var want = []string{
 	"../testdata/Comp.tsx:7:5",        // direct (TSX grammar, JSX in file)
 	"../testdata/Pi.cs:10:7",          // direct

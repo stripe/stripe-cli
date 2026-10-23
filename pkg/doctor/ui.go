@@ -30,9 +30,12 @@ func warnLine(s string) string { return "  " + warnStyle.Render("!") + " " + s }
 func failLine(s string) string { return "  " + failStyle.Render("✗") + " " + s }
 func infoLine(s string) string { return "  " + mutedStyle.Render("·") + " " + s }
 
-// kv renders an aligned key/value detail line.
+// kv renders a key/value detail line, reading left to right like a
+// sentence rather than a padded table column — fixed-width alignment
+// falls apart anyway once labels vary much in length, and the gap it
+// leaves is harder to read than a plain separator.
 func kv(k, v string) string {
-	return fmt.Sprintf("    %s %s", mutedStyle.Render(fmt.Sprintf("%-30s", k)), v)
+	return fmt.Sprintf("  %s: %s", mutedStyle.Render(k), v)
 }
 
 // withSpinner runs fn behind a spinner when stdout is a TTY; otherwise it

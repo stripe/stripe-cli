@@ -1,4 +1,4 @@
-package signals
+package codesignals
 
 // Output types for this package's substring code-signal scanning — honest
 // about their strength: these are signals, never verdicts.
