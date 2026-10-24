@@ -3,7 +3,7 @@ package catalog
 // apirule.go parses one rule object as returned by the live doctor_rules
 // API (GET /v2/integ_hlth/doctor_rules or .../doctor_rules/{topic}) into
 // the engine's Rule. There is no local copy of the rule itself — see the
-// judge package (judge.FetchDPMRule), which fetches it live and is the
+// judge package (judge.FetchRule), which fetches it live and is the
 // only caller of ParseAPIRule.
 //
 // "logic" is shaped like a request matcher (method/path/headers/body

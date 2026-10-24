@@ -4,35 +4,34 @@
 // should read before writing their own topic's remediation — see
 // pkg/doctor/remediation's package doc for the three steps to plug one in.
 //
-// Run gathers four kinds of evidence, the same four doctor originally
-// checked for the dpm migration before that logic was pared back to pure
-// intent classification (see git history, e.g. judge/account.go as of
-// commit c980a6ee, and judge/verdict.go's old verdict() function):
+// This package owns every piece of dpm's own domain knowledge — none of
+// it lives in doctor's generic engine:
 //
 //  1. Recent API versions (fetchVersionFacts) — removing
 //     payment_method_types only works on its own at/after 2023-08-16.
-//     This is a per-finding fact, not a Dashboard action: findingsVerdict
-//     turns it into a uniform override on Result.FindingsVerdict, which
-//     doctor's engine applies to every finding's verdict in place of
-//     judge's intent-based one.
 //  2. The account's payment-method configuration (fetchPMConfigFacts) —
 //     adopting dynamic methods only preserves what the Dashboard already
 //     offers.
-//  3. The scanned source findings (ctx.Findings, already produced by
-//     doctor's scan engine — not re-scanned here).
-//  4. Webhook handler coverage (fetchWebhookFacts) — this topic declares
-//     its own expected events and scans for them itself (via
-//     pkg/doctor/codesignals), rather than doctor's engine declaring them
-//     generically: whether a remediation needs webhook-handler evidence,
-//     and which events matter, is this topic's own call to make.
+//  3. Per-finding judgment (classifyIntent/intentVerdict, findingVerdicts)
+//     — doctor's judge package has no idea what "card"/"link" or
+//     payment_method_types even mean; it gives every finding a generic
+//     REVIEW by default, and findingVerdicts supplies the real
+//     CANDIDATE/SKIP/REVIEW judgment per finding via Result.FindingVerdicts.
+//  4. Webhook handler coverage, both statically (webhookSignals, scanned
+//     via pkg/doctor/codesignals) and live (LiveCheckEvents, behind
+//     `doctor --live` via pkg/doctor/webhookcheck) — this topic declares
+//     its own expected events; doctor's engine wires in neither
+//     generically.
 //
-// assess combines 2-4 into one Dashboard-facing Result (1 is handled
-// separately — see findingsVerdict). offeringPolicy (below) and
-// dashboardNotes are both hardcoded here rather than read off the rule —
-// there's no more per-remediation data on the rule at all (just the bare
-// "doctorTopic" string that got us to this implementation in the first
-// place); this topic is expected to know everything about its own
-// remediation already, the same way it defines its own webhookSignals.
+// assess combines 1-2 and the webhook-handler evidence into one
+// Dashboard-facing Result, purely about Dashboard/webhook readiness.
+// findingVerdicts (1 again, plus 3) produces the per-finding overrides
+// separately, since those are facts about specific code sites, not
+// Dashboard actions. offeringPolicy and dashboardNotes are hardcoded
+// here rather than read off the rule — there's no more per-remediation
+// data on the rule at all (just the bare "doctorTopic" string that got
+// us to this implementation in the first place); this topic is expected
+// to know everything about its own remediation already.
 package paymentmethods
 
 import (
@@ -40,8 +39,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/codesignals"
-	"github.com/stripe/stripe-cli/pkg/doctor/judge"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 	"github.com/stripe/stripe-cli/pkg/doctor/stripeapi"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -93,6 +92,17 @@ func init() {
 
 type implementation struct{}
 
+// LiveCheckEvents satisfies remediation.LiveChecker: these are the same
+// three webhookSignals events, plus which one `doctor --live` should
+// trigger to exercise the round trip.
+func (implementation) LiveCheckEvents() ([]string, string) {
+	events := make([]string, len(webhookSignals.WebhookEvents))
+	for i, e := range webhookSignals.WebhookEvents {
+		events[i] = e.Event
+	}
+	return events, "checkout.session.async_payment_succeeded"
+}
+
 // Run scans the directory for this kind's own webhook-handler signals
 // first — that needs no credentials and can't fail, so it's always
 // available — then fetches this kind's two pieces of live account
@@ -129,7 +139,9 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 	if err != nil {
 		return unknown(err)
 	}
-	return assess(ctx, vf, pmf, wh), nil
+	result := assess(ctx, vf, pmf, wh)
+	result.FindingVerdicts = findingVerdicts(vf, ctx.Findings)
+	return result, nil
 }
 
 // versionFacts summarizes the API versions this account's recent traffic
@@ -256,20 +268,73 @@ func quotedMethods(value string) []string {
 	return out
 }
 
-// findingsVerdict computes a uniform override for every finding's verdict
-// from the account's live API-version evidence alone — a version problem
-// applies the same way to every payment_method_types removal candidate
-// regardless of that finding's own code shape, so it isn't something
-// judge's per-finding intent classification can see on its own. "" means
-// no override: findings keep whatever judge.Evaluate already computed by
-// intent.
+var identRe = regexp.MustCompile(`[A-Za-z_$][A-Za-z0-9_$]*`)
+
+// classifyIntent inspects a finding's value expression and buckets it.
+// This is dpm's own domain logic (what a hardcoded payment_method_types
+// value shape implies) — doctor's judge package has no idea "card" and
+// "link" are payment method names, so this can't live there.
+//
+//	default-shaped — static list of only card/link: the classic pre-DPM
+//	                 hardcode and the migration's actual target
+//	deliberate     — static single non-card method (['oxxo']): per-method
+//	                 integration, almost certainly intentional
+//	static         — static multi-method list beyond card/link
+//	dynamic        — computed at runtime (identifiers, conditionals)
+func classifyIntent(value string) string {
+	v := strings.TrimSpace(value)
+	quoted := regexp.MustCompile(`["']([a-z0-9_]+)["']`).FindAllStringSubmatch(v, -1)
+	stripped := regexp.MustCompile(`["'][a-z0-9_]*["']|stripe\.StringSlice|\[\]string|Arrays\.asList|List\.of|[\[\]{},()\s]|new|List|string`).ReplaceAllString(v, "")
+	if identRe.MatchString(stripped) || strings.ContainsAny(v, "?:") {
+		return "dynamic"
+	}
+	if len(quoted) == 0 {
+		return "dynamic"
+	}
+	onlyCardLink := true
+	for _, q := range quoted {
+		if q[1] != "card" && q[1] != "link" {
+			onlyCardLink = false
+		}
+	}
+	if onlyCardLink {
+		return "default-shaped"
+	}
+	if len(quoted) == 1 {
+		return "deliberate"
+	}
+	return "static"
+}
+
+// intentVerdict turns a classifyIntent bucket into a CANDIDATE/SKIP/REVIEW
+// judgment — the real per-finding verdict doctor's generic judge package
+// can't produce on its own.
+func intentVerdict(intent string) string {
+	switch intent {
+	case "default-shaped":
+		return "CANDIDATE: hardcoded to card/link only — removing this lets the Dashboard manage payment methods instead (confirm the frontend uses Payment Element)"
+	case "deliberate":
+		return "SKIP: restricted to a single payment method, which looks intentional — consider excluded_payment_method_types instead"
+	case "dynamic":
+		return "REVIEW: this value is computed at runtime — understand the routing logic before changing it"
+	default:
+		return "REVIEW: hardcoded list of multiple payment methods — confirm whether the restriction is still wanted"
+	}
+}
+
+// findingsVersionVerdict computes a uniform account-wide fact from the
+// live API-version evidence alone — a version problem applies the same
+// way to every payment_method_types removal candidate regardless of
+// that finding's own code shape. "" means no version problem: each
+// finding falls through to its own classifyIntent/intentVerdict instead
+// (see findingVerdicts).
 //
 // A pre-cutoff version is CAUTION, not BLOCKED: the fix isn't "do
 // nothing" or "wait for traffic to move versions" — it's "delete
 // payment_method_types AND add automatic_payment_methods[enabled]=true",
 // a known, actionable change, not a dead end. Only NoEvents (no version
 // evidence at all) stays REVIEW, since there's no fix to name yet.
-func findingsVerdict(vf versionFacts) string {
+func findingsVersionVerdict(vf versionFacts) string {
 	switch {
 	case vf.NoEvents:
 		return "REVIEW: couldn't find any recent API traffic for this account, so its API version is unknown. Confirm it's at/after " + dpmCutoff + " before removing payment_method_types — on an older version, removing it by itself silently drops payment methods."
@@ -282,11 +347,32 @@ func findingsVerdict(vf versionFacts) string {
 	}
 }
 
+// findingVerdicts builds the per-finding override map doctor's engine
+// applies in place of judge's generic REVIEW (see
+// remediation.Result.FindingVerdicts). A version problem, when present,
+// overrides every finding uniformly (same key, same message) since it's
+// an account-wide fact; otherwise each finding is classified on its own
+// code shape.
+func findingVerdicts(vf versionFacts, findings []catalog.Finding) map[string]string {
+	gate := findingsVersionVerdict(vf)
+	out := make(map[string]string, len(findings))
+	for _, f := range findings {
+		key := remediation.FindingKey(f.File, f.Line)
+		if gate != "" {
+			out[key] = gate
+			continue
+		}
+		out[key] = intentVerdict(classifyIntent(f.Value))
+	}
+	return out
+}
+
 // assess combines payment-method-configuration facts, the scanned
 // findings, and webhook-handler signals into one Dashboard-facing
-// Result — purely about Dashboard readiness, independent of API-version
-// safety (see findingsVerdict, attached to every Result here instead,
-// since that's a per-finding fact, not a Dashboard action).
+// Result — purely about Dashboard/webhook readiness, independent of
+// API-version safety and per-finding judgment (both handled separately
+// by findingVerdicts, attached by Run instead, since those are facts
+// about specific code sites, not Dashboard actions).
 func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *codesignals.HandlerSignals) remediation.Result {
 	evidence := map[string]any{
 		"versions_sampled":              vf.Sampled,
@@ -302,9 +388,8 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 	}
 	evidence["offering_policy"] = offeringPolicy
 
-	fv := findingsVerdict(vf)
 	result := func(status remediation.Status, msg string) remediation.Result {
-		return remediation.Result{Topic: Topic, Status: status, Message: msg, Evidence: evidence, FindingsVerdict: fv, Notes: dashboardNotes}
+		return remediation.Result{Topic: Topic, Status: status, Message: msg, Evidence: evidence, Notes: dashboardNotes}
 	}
 
 	if !pmf.ConfiguredOK {
@@ -318,7 +403,7 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 	hardcoded := map[string]bool{}
 	hasDynamic := false
 	for _, f := range ctx.Findings {
-		switch judge.ClassifyIntent(f.Value) {
+		switch classifyIntent(f.Value) {
 		case "default-shaped", "static":
 			for _, m := range quotedMethods(f.Value) {
 				hardcoded[m] = true

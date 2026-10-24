@@ -14,7 +14,7 @@ import (
 // the real dpm rule (payment_method_types on payment_intents/setup_intents/
 // checkout_sessions) without depending on catalog's live-fetched data —
 // scan's own tests must stay hermetic (dpm has no local rule copy anymore;
-// see judge.FetchDPMRule).
+// see judge.FetchRule).
 var testRule = catalog.Rule{
 	ID: "dpm",
 	Match: []catalog.ParamMatch{

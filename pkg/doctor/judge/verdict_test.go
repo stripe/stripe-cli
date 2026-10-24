@@ -1,22 +1,50 @@
 package judge
 
-import "testing"
+import (
+	"strings"
+	"testing"
 
-// TestVerdictByIntent pins that the finding's intent alone decides the
-// class now that there's no account state to judge against.
-func TestVerdictByIntent(t *testing.T) {
-	if v := verdict("default-shaped"); !hasPrefix(v, "CANDIDATE") {
-		t.Errorf("card/link only should be CANDIDATE, got %q", v)
+	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+)
+
+// TestEvaluateRemoveIsGenericReview pins that a "remove" rule's findings
+// get a generic REVIEW verdict — judge has no topic-specific domain
+// knowledge (that lives in a registered remediation instead).
+func TestEvaluateRemoveIsGenericReview(t *testing.T) {
+	rule := catalog.Rule{Action: "remove"}
+	findings := []catalog.Finding{{Param: "payment_method_types", Value: `['card']`}}
+
+	r := Evaluate(rule, findings)
+	if len(r.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(r.Findings))
 	}
-	if v := verdict("deliberate"); !hasPrefix(v, "SKIP") {
-		t.Errorf("deliberate should SKIP, got %q", v)
+	got := r.Findings[0]
+	if got.Class != "REVIEW" {
+		t.Errorf("expected class REVIEW, got %q", got.Class)
 	}
-	if v := verdict("dynamic"); !hasPrefix(v, "REVIEW") {
-		t.Errorf("dynamic should REVIEW, got %q", v)
+	if !strings.Contains(got.Verdict, "payment_method_types") {
+		t.Errorf("expected verdict to name the param, got %q", got.Verdict)
 	}
-	if v := verdict("static"); !hasPrefix(v, "REVIEW") {
-		t.Errorf("static multi-method list should REVIEW, got %q", v)
+	if r.Summary["REVIEW"] != 1 {
+		t.Errorf("expected summary REVIEW=1, got %v", r.Summary)
 	}
 }
 
-func hasPrefix(s, p string) bool { return len(s) >= len(p) && s[:len(p)] == p }
+// TestEvaluateAdvise pins that an "advise" rule's findings carry the
+// rule's own message/action/version — all sourced from rule data, not
+// from any topic-specific classification.
+func TestEvaluateAdvise(t *testing.T) {
+	rule := catalog.Rule{Action: "advise", Message: "renamed field", ActionText: "use the new field instead", IntroducedIn: "2024-01-01"}
+	findings := []catalog.Finding{{Param: "old_field"}}
+
+	r := Evaluate(rule, findings)
+	got := r.Findings[0]
+	if got.Class != "ADVISE" {
+		t.Errorf("expected class ADVISE, got %q", got.Class)
+	}
+	for _, want := range []string{"renamed field", "use the new field instead", "2024-01-01"} {
+		if !strings.Contains(got.Verdict, want) {
+			t.Errorf("expected verdict to contain %q, got %q", want, got.Verdict)
+		}
+	}
+}

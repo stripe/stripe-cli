@@ -13,7 +13,7 @@ package catalog
 // the rest of its remediation's logic.
 //
 // dpm's Rule comes from the embedded dpm.json (see dpm.go) for now, not a
-// live fetch — judge.FetchDPMRule still exists for when that's reinstated.
+// live fetch — judge.FetchRule still exists for when that's reinstated.
 
 // Rules is the topic registry: every migration doctor knows about, keyed
 // by the topic name used on the command line (`stripe doctor <topic> <dir>`).

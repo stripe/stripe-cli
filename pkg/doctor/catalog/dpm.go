@@ -3,7 +3,7 @@ package catalog
 // dpm.go embeds a local snapshot of the dpm migration rule, in the exact
 // shape ParseAPIRule parses from the live doctor_rules API's "doctor_rule"
 // object. doctor currently always uses this embedded copy rather than
-// judge.FetchDPMRule's live fetch, so edits to dpm.json can be tested
+// judge.FetchRule's live fetch, so edits to dpm.json can be tested
 // immediately without a round trip to the (not yet public) API. Swap
 // cmd.go back to the live fetch when that's no longer needed.
 

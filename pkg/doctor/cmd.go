@@ -106,7 +106,7 @@ func commonFlags(c *cobra.Command) {
 // `doctor guide` resolve unambiguously. cfg is currently unused by the
 // doctor command itself (the rule comes from the embedded dpm.json, not a
 // live fetch — see catalog/dpm.go) but is threaded through so this keeps
-// working once judge.FetchDPMRule is swapped back in.
+// working once judge.FetchRule is swapped back in.
 func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 	root := newDoctorCmd(cfg)
 	commonFlags(root)
@@ -132,7 +132,7 @@ behavior (webhook round-trip via stripe listen/trigger).`,
 			if err != nil {
 				fail(err)
 			}
-			// Using the embedded dpm.json for now, not judge.FetchDPMRule's
+			// Using the embedded dpm.json for now, not judge.FetchRule's
 			// live doctor_rules fetch, so local edits to it are picked up
 			// immediately — see catalog/dpm.go. Swap this back once that's
 			// no longer needed.
@@ -162,17 +162,21 @@ behavior (webhook round-trip via stripe listen/trigger).`,
 					rep.RemediationResult = runRemediation(rule, dir, findings, cfg)
 					return nil
 				})
-				if rep.RemediationResult != nil && rep.RemediationResult.FindingsVerdict != "" {
-					applyFindingsVerdict(rep, rep.RemediationResult.FindingsVerdict)
+				if rep.RemediationResult != nil {
+					applyFindingVerdicts(rep, rep.RemediationResult.FindingVerdicts)
 				}
 			}
 
 			failedLive := false
 			if live {
+				events, triggerEvent, ok := liveCheckEvents(rule.RemediationTopic)
+				if !ok {
+					fail(errorcategory.Errorf(errorcategory.UserInput, "no live check defined for topic %q", rule.RemediationTopic))
+				}
 				var checkResult *webhookcheck.Report
 				err := withSpinnerUnlessJSON("Live check: webhook round-trip (listen + trigger)", func() error {
 					var derr error
-					checkResult, derr = webhookcheck.Run()
+					checkResult, derr = webhookcheck.Run(events, triggerEvent)
 					return derr
 				})
 				if err != nil {
@@ -247,23 +251,46 @@ func runRemediation(rule catalog.Rule, dir string, findings []catalog.Finding, c
 	return &res
 }
 
-// applyFindingsVerdict substitutes verdict for every finding's own
-// intent-based verdict, uniformly, and retallies rep.Summary to match.
-// Used when a remediation's Result.FindingsVerdict carries an
-// account-wide fact (e.g. API-version safety) that applies the same way
-// to every finding — something judge's per-finding intent classification
-// has no way to see on its own.
-func applyFindingsVerdict(rep *DoctorReport, verdict string) {
-	class := verdict
-	if i := strings.Index(verdict, ":"); i > 0 {
-		class = verdict[:i]
-	}
+// applyFindingVerdicts overrides each finding whose key appears in
+// verdicts (see remediation.Result.FindingVerdicts) with that verdict,
+// and retallies rep.Summary from the final classes. judge.Evaluate has
+// no topic-specific domain knowledge, so this is how a registered
+// remediation supplies real per-finding judgment; a finding with no
+// entry keeps whatever generic verdict judge.Evaluate already gave it.
+// Safe to call with a nil/empty verdicts map — every finding then just
+// keeps its existing verdict.
+func applyFindingVerdicts(rep *DoctorReport, verdicts map[string]string) {
 	rep.Summary = map[string]int{}
 	for i := range rep.Findings {
-		rep.Findings[i].Verdict = verdict
-		rep.Findings[i].Class = class
-		rep.Summary[class]++
+		f := &rep.Findings[i]
+		if v, ok := verdicts[remediation.FindingKey(f.File, f.Line)]; ok {
+			f.Verdict = v
+			f.Class = v
+			if idx := strings.Index(v, ":"); idx > 0 {
+				f.Class = v[:idx]
+			}
+		}
+		rep.Summary[f.Class]++
 	}
+}
+
+// liveCheckEvents looks up topic's registered remediation and, if it
+// satisfies remediation.LiveChecker, returns the events `doctor --live`
+// should listen for and which one to trigger. ok is false if topic has
+// no registered remediation, or that remediation doesn't support a live
+// check — doctor's engine has no fallback event set of its own to guess
+// with.
+func liveCheckEvents(topic string) (events []string, triggerEvent string, ok bool) {
+	impl, found := remediation.Lookup(topic)
+	if !found {
+		return nil, "", false
+	}
+	lc, ok := impl.(remediation.LiveChecker)
+	if !ok {
+		return nil, "", false
+	}
+	events, triggerEvent = lc.LiveCheckEvents()
+	return events, triggerEvent, true
 }
 
 // topicHint decorates a scan error when the "directory" looks like a typo'd

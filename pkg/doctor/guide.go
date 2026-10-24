@@ -80,7 +80,7 @@ Adds .webhook_check (webhook round-trip via stripe listen/trigger); require
 
 ## Notes
 - The dpm rule comes from an embedded local snapshot today, not a live
-  fetch (judge.FetchDPMRule exists but isn't currently called). Any
+  fetch (judge.FetchRule exists but isn't currently called). Any
   remediation that does fetch live account evidence (see
   .remediation_result above) uses LIVE MODE credentials only
   (pkg/doctor/stripeapi) — if the active context is in test mode, that

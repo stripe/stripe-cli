@@ -15,17 +15,17 @@ func finding(value string) catalog.Finding {
 
 // Version-safety facts no longer gate the Dashboard Result (its Status
 // reflects Dashboard-config/webhook readiness only) — they're surfaced as
-// a uniform FindingsVerdict override instead. See findingsVerdict.
+// a per-finding override instead. See findingVerdicts.
 
-func TestFindingsVerdictNoEvents(t *testing.T) {
-	got := findingsVerdict(versionFacts{NoEvents: true})
+func TestFindingsVersionVerdictNoEvents(t *testing.T) {
+	got := findingsVersionVerdict(versionFacts{NoEvents: true})
 	if !strings.HasPrefix(got, "REVIEW:") {
 		t.Errorf("expected REVIEW, got %q", got)
 	}
 }
 
-func TestFindingsVerdictStaleVersion(t *testing.T) {
-	got := findingsVerdict(versionFacts{VersionsOK: false, VersionsMixed: false})
+func TestFindingsVersionVerdictStaleVersion(t *testing.T) {
+	got := findingsVersionVerdict(versionFacts{VersionsOK: false, VersionsMixed: false})
 	// CAUTION, not BLOCKED: the fix is known and actionable (add
 	// automatic_payment_methods[enabled]=true), not a dead end.
 	if !strings.HasPrefix(got, "CAUTION:") {
@@ -36,29 +36,64 @@ func TestFindingsVerdictStaleVersion(t *testing.T) {
 	}
 }
 
-func TestFindingsVerdictMixedVersions(t *testing.T) {
-	got := findingsVerdict(versionFacts{VersionsMixed: true})
+func TestFindingsVersionVerdictMixedVersions(t *testing.T) {
+	got := findingsVersionVerdict(versionFacts{VersionsMixed: true})
 	if !strings.HasPrefix(got, "CAUTION:") {
 		t.Errorf("expected CAUTION, got %q", got)
 	}
 }
 
-func TestFindingsVerdictVersionsOK(t *testing.T) {
-	got := findingsVerdict(versionFacts{VersionsOK: true})
+func TestFindingsVersionVerdictVersionsOK(t *testing.T) {
+	got := findingsVersionVerdict(versionFacts{VersionsOK: true})
 	if got != "" {
 		t.Errorf("expected no override when versions are OK, got %q", got)
 	}
 }
 
-func TestAssessCarriesFindingsVerdict(t *testing.T) {
-	r := assess(remediation.Context{}, versionFacts{NoEvents: true}, pmConfigFacts{}, nil)
-	if !strings.HasPrefix(r.FindingsVerdict, "REVIEW:") {
-		t.Errorf("expected assess to carry the FindingsVerdict override, got %q", r.FindingsVerdict)
+// TestClassifyIntent pins the per-finding code-shape buckets this topic
+// classifies on its own — doctor's judge package has no idea "card"/
+// "link" are payment method names.
+func TestClassifyIntent(t *testing.T) {
+	cases := map[string]string{
+		`['card']`:                "default-shaped",
+		`['card', 'link']`:        "default-shaped",
+		`['oxxo']`:                "deliberate",
+		`['card', 'ideal']`:       "static",
+		`paymentMethods`:          "dynamic",
+		`cond ? ['card'] : ['x']`: "dynamic",
 	}
-	// The Dashboard Result itself is about Dashboard readiness only, not
-	// version safety.
-	if strings.Contains(r.Message, "API version") {
-		t.Errorf("Dashboard message should no longer mention API version, got %q", r.Message)
+	for value, want := range cases {
+		if got := classifyIntent(value); got != want {
+			t.Errorf("classifyIntent(%q) = %q, want %q", value, got, want)
+		}
+	}
+}
+
+// TestFindingVerdicts pins that a version problem overrides every
+// finding uniformly, and that otherwise each finding is classified on
+// its own code shape via classifyIntent/intentVerdict.
+func TestFindingVerdicts(t *testing.T) {
+	findings := []catalog.Finding{
+		{File: "a.rb", Line: 1, Value: `['card']`},       // default-shaped
+		{File: "b.rb", Line: 2, Value: `paymentMethods`}, // dynamic
+	}
+
+	// Version problem: every finding gets the same gate message.
+	gated := findingVerdicts(versionFacts{NoEvents: true}, findings)
+	for _, f := range findings {
+		key := remediation.FindingKey(f.File, f.Line)
+		if !strings.HasPrefix(gated[key], "REVIEW: couldn't find any recent API traffic") {
+			t.Errorf("%s: expected the version-gate message, got %q", key, gated[key])
+		}
+	}
+
+	// Versions OK: each finding classified on its own shape.
+	clean := findingVerdicts(versionFacts{VersionsOK: true}, findings)
+	if !strings.HasPrefix(clean[remediation.FindingKey("a.rb", 1)], "CANDIDATE:") {
+		t.Errorf("expected a.rb:1 to be CANDIDATE, got %q", clean[remediation.FindingKey("a.rb", 1)])
+	}
+	if !strings.HasPrefix(clean[remediation.FindingKey("b.rb", 2)], "REVIEW:") {
+		t.Errorf("expected b.rb:2 to be REVIEW, got %q", clean[remediation.FindingKey("b.rb", 2)])
 	}
 }
 
@@ -157,5 +192,24 @@ func TestAssessNotesAppended(t *testing.T) {
 		if strings.Contains(r.Message, "dashboard.stripe.com") {
 			t.Errorf("%s: expected the note NOT to be appended onto Message, got %q", c.name, r.Message)
 		}
+	}
+}
+
+// TestLiveCheckEvents pins that this topic's live-check events match its
+// static webhookSignals declaration, and that the trigger event is one
+// of them.
+func TestLiveCheckEvents(t *testing.T) {
+	events, trigger := implementation{}.LiveCheckEvents()
+	if len(events) != len(webhookSignals.WebhookEvents) {
+		t.Fatalf("expected %d events, got %d", len(webhookSignals.WebhookEvents), len(events))
+	}
+	found := false
+	for _, e := range events {
+		if e == trigger {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("trigger event %q is not among the listened-for events %v", trigger, events)
 	}
 }

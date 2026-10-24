@@ -47,25 +47,35 @@ const (
 // versions, its payment-method configuration) — doctor doesn't interpret
 // it, just passes it through to --json for debugging/auditing.
 //
-// FindingsVerdict, when non-empty, is a "CLASS: message" string (the same
-// shape judge.Evaluate produces) that doctor's engine substitutes for
-// every finding's own verdict, uniformly. Use it for account-wide facts
-// that apply the same way to every finding regardless of that finding's
-// own code shape — e.g. whether recent traffic is on a safe API version —
-// which a per-finding intent classifier has no way to know on its own.
-// "" means no override: findings keep their intent-based verdict.
+// FindingVerdicts, when non-nil, maps a finding key ("<file>:<line>",
+// matching catalog.Finding.File/Line) to a "CLASS: message" string (the
+// same shape judge.Evaluate produces) that doctor's engine substitutes
+// for that finding's own verdict. judge.Evaluate has no topic-specific
+// domain knowledge, so this is how a registered remediation supplies
+// real per-finding judgment — set the same value for every key to apply
+// one account-wide fact uniformly (e.g. whether recent traffic is on a
+// safe API version), or a different value per key to classify each
+// finding on its own code shape. A finding with no entry keeps whatever
+// generic verdict judge.Evaluate already gave it.
 //
 // Notes are additional action items that apply regardless of Status
 // (e.g. "go turn on the payment methods you want in the Dashboard") —
 // rendered as their own separate actions, not appended onto Message, so
 // they don't get lost as a trailing clause of an unrelated sentence.
 type Result struct {
-	Topic           string         `json:"topic"`
-	Status          Status         `json:"status"`
-	Message         string         `json:"message"`
-	Evidence        map[string]any `json:"evidence,omitempty"`
-	FindingsVerdict string         `json:"findings_verdict,omitempty"`
-	Notes           []string       `json:"notes,omitempty"`
+	Topic           string            `json:"topic"`
+	Status          Status            `json:"status"`
+	Message         string            `json:"message"`
+	Evidence        map[string]any    `json:"evidence,omitempty"`
+	FindingVerdicts map[string]string `json:"finding_verdicts,omitempty"`
+	Notes           []string          `json:"notes,omitempty"`
+}
+
+// FindingKey is the stable key a Result.FindingVerdicts entry is looked
+// up by — the same key doctor's engine computes from each finding's own
+// File/Line when applying overrides.
+func FindingKey(file string, line int) string {
+	return fmt.Sprintf("%s:%d", file, line)
 }
 
 // Context is everything an Implementation's Run gets handed. Findings is
@@ -87,6 +97,18 @@ type Context struct {
 // the Stripe account or the scanned directory — doctor only diagnoses.
 type Implementation interface {
 	Run(ctx Context) (Result, error)
+}
+
+// LiveChecker is an optional interface an Implementation can satisfy to
+// support `doctor --live`'s webhook round-trip check
+// (pkg/doctor/webhookcheck). doctor's engine has no idea which webhook
+// events matter for any given topic; LiveCheckEvents names the full set
+// of events the round-trip check should listen for, and which one of
+// those to trigger to exercise it. A topic with nothing to verify this
+// way simply doesn't implement LiveChecker — doctor --live then fails
+// clearly rather than guessing.
+type LiveChecker interface {
+	LiveCheckEvents() (events []string, triggerEvent string)
 }
 
 var registry = map[string]Implementation{}

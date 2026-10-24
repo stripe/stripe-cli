@@ -1,8 +1,13 @@
 // Package webhookcheck implements the live behavioral check behind
-// `doctor --live`: start a local webhook handler (the doc's Ruby sample,
-// in Go), run `stripe listen --forward-to` it, `stripe trigger
-// checkout.session.async_payment_succeeded`, and verify the event arrives
+// `doctor --live`: start a local webhook handler, run `stripe listen
+// --forward-to` it, `stripe trigger` one event, and verify it arrives
 // with a valid signature. All test mode.
+//
+// This package has no idea which events matter for any given migration
+// topic — Run takes the full set to listen for and which one to trigger,
+// supplied by the topic's own remediation.Implementation (see
+// remediation.LiveChecker). Doctor's generic engine (cmd.go) looks that
+// up per topic rather than assuming any fixed event set.
 package webhookcheck
 
 import (
@@ -37,14 +42,24 @@ type Event struct {
 	Signature string `json:"signature"` // verified | invalid
 }
 
-// Run implements the doc's delayed-notification handler and proves it works
-// by round-tripping a triggered event through `stripe listen`. The local
-// handler binds an OS-assigned port, so nothing collides with the classic
-// 4242.
-func Run() (*Report, error) {
+// Run starts a local webhook handler and proves it works by
+// round-tripping triggerEvent through `stripe listen`, listening for the
+// full events set (triggerEvent must be one of them). The local handler
+// binds an OS-assigned port, so nothing collides with the classic 4242.
+// Verified becomes true once triggerEvent itself arrives with a valid
+// signature; any other declared events that happen to arrive (e.g. ones
+// the same trigger cascades into) are recorded in Events too, but aren't
+// required — this package has no way to know which, if any, a given
+// topic's trigger fires alongside it.
+func Run(events []string, triggerEvent string) (*Report, error) {
 	r := &Report{Command: "webhook_check", Events: []Event{}}
 	received := make(chan Event, 8)
 	var secret string
+
+	wantEvent := make(map[string]bool, len(events))
+	for _, e := range events {
+		wantEvent[e] = true
+	}
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -65,10 +80,7 @@ func Run() (*Report, error) {
 			received <- Event{Type: evt.Type, Signature: "invalid"}
 			return
 		}
-		switch evt.Type {
-		case "checkout.session.completed",
-			"checkout.session.async_payment_succeeded",
-			"checkout.session.async_payment_failed":
+		if wantEvent[evt.Type] {
 			received <- Event{Type: evt.Type, Signature: "verified"}
 		}
 		w.WriteHeader(200)
@@ -86,7 +98,7 @@ func Run() (*Report, error) {
 		}
 	}
 	listen := exec.Command(stripeBin, "listen", "--forward-to", addr+"/webhook",
-		"--events", "checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed")
+		"--events", strings.Join(events, ","))
 	stderrPipe, _ := listen.StderrPipe()
 	if err := listen.Start(); err != nil {
 		return r, fmt.Errorf("stripe listen: %w", err)
@@ -122,13 +134,12 @@ func Run() (*Report, error) {
 		return r, errorcategory.Errorf(errorcategory.Network, "timed out waiting for stripe listen")
 	}
 
-	trigger := exec.Command(stripeBin, "trigger", "checkout.session.async_payment_succeeded")
+	trigger := exec.Command(stripeBin, "trigger", triggerEvent)
 	if out, err := trigger.CombinedOutput(); err != nil {
 		return r, errorcategory.Errorf(errorcategory.Internal, "stripe trigger: %v: %s", err, out)
 	}
-	r.Triggered = "checkout.session.async_payment_succeeded"
+	r.Triggered = triggerEvent
 
-	want := map[string]bool{"checkout.session.completed": false, "checkout.session.async_payment_succeeded": false}
 	deadline := time.After(60 * time.Second)
 	for {
 		select {
@@ -137,19 +148,12 @@ func Run() (*Report, error) {
 			if evt.Signature != "verified" {
 				return r, errorcategory.Errorf(errorcategory.Internal, "event %s arrived with invalid signature", evt.Type)
 			}
-			want[evt.Type] = true
-			all := true
-			for _, got := range want {
-				if !got {
-					all = false
-				}
-			}
-			if all {
+			if evt.Type == triggerEvent {
 				r.Verified = true
 				return r, nil
 			}
 		case <-deadline:
-			r.Note = "timed out before both events arrived"
+			r.Note = "timed out before the triggered event arrived"
 			return r, nil
 		}
 	}

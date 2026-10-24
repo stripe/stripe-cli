@@ -167,23 +167,6 @@ func classLabel(class string) string {
 	}
 }
 
-// intentLabel turns a finding's intent bucket into a short, plain-English
-// description of the hardcoded value, instead of the internal bucket name.
-func intentLabel(intent string) string {
-	switch intent {
-	case "default-shaped":
-		return "hardcoded to card/link only"
-	case "deliberate":
-		return "hardcoded to one payment method"
-	case "static":
-		return "hardcoded list of payment methods"
-	case "dynamic":
-		return "computed at runtime"
-	default:
-		return intent
-	}
-}
-
 // withoutClassPrefix strips the "CLASS: " lead-in from a verdict string,
 // since the renderer already shows the class via classLabel and a glyph.
 func withoutClassPrefix(verdict string) string {
@@ -224,7 +207,7 @@ func renderFindings(r *DoctorReport) {
 			if f.Class == "CANDIDATE" {
 				glyph = okLine
 			}
-			fmt.Println(glyph(fmt.Sprintf("%s:%d  %s %s", f.File, f.Line, mutedStyle.Render("["+intentLabel(f.Intent)+"]"), f.Value)))
+			fmt.Println(glyph(fmt.Sprintf("%s:%d  %s", f.File, f.Line, f.Value)))
 			if !ruleLevel {
 				fmt.Println(kv(classLabel(f.Class), withoutClassPrefix(f.Verdict)))
 			}

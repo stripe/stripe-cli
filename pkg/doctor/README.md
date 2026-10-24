@@ -28,7 +28,7 @@ where listed.
    (`doctorTopic` included — `Rule.RemediationTopic`, the lookup key into
    `pkg/doctor/remediation`). `DpmRule` (`dpm.go`) embeds `dpm.json` — a
    local snapshot in that same API shape, used instead of
-   `judge.FetchDPMRule`'s live fetch for now, so edits to `dpm.json` are
+   `judge.FetchRule`'s live fetch for now, so edits to `dpm.json` are
    picked up immediately. No code-signals concept lives here anymore —
    see `remediation/paymentmethods` below. Depends on nothing else in
    this module.
@@ -54,7 +54,7 @@ where listed.
    by intent (CANDIDATE/SKIP/REVIEW, or ADVISE for a detect-only rule): no
    live account facts and no remediation-level guidance are part of this
    judgment anymore — that's entirely a remediation's own concern now
-   (see `remediation/paymentmethods`). Also owns `FetchDPMRule` (the live
+   (see `remediation/paymentmethods`). Also owns `FetchRule` (the live
    rule fetch, via `stripeapi`), not currently called by `cmd.go` — see
    `catalog.DpmRule` above. Depends on `catalog` for the `Rule`/`Finding`
    shapes.
@@ -89,7 +89,7 @@ where listed.
   fail (surfaced as a `status: unknown` remediation result, not a hard
   error). `--stripe-account` scopes it to a Connect connected account.
 - The doctor_rules endpoints aren't publicly shipped yet, so
-  `judge.FetchDPMRule` pins `Stripe-Version: 2026-10-12-16.internal` on
+  `judge.FetchRule` pins `Stripe-Version: 2026-10-12-16.internal` on
   that call only — remove once the API is GA.
 - Binary size: `make build` and the release configs always pass the
   `grammar_subset` build tags (see GRAMMAR_TAGS in the Makefile), embedding
