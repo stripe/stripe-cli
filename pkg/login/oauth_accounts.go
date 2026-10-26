@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -196,6 +197,14 @@ func displayMode(m string) string {
 	return m
 }
 
+// Indents used when rendering accountRow. They differ in width, so printRow
+// compensates to keep the id and mode columns aligned across rows.
+const (
+	headerIndent       = "  "
+	nestedIndent       = "    └─ "
+	otherSandboxIndent = "    "
+)
+
 type accountRow struct {
 	name   string
 	id     string
@@ -349,12 +358,24 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 	}
 	measure(grouped.otherSandboxRows)
 
+	// Indents vary in width (a plain "  " header indent vs. the wider
+	// "    └─ " tree connector), but the id and mode columns should still
+	// line up regardless of indent. Widen the name field to make up the
+	// difference, so indent width + padded name width is constant.
+	maxIndentWidth := 0
+	for _, indent := range []string{headerIndent, nestedIndent, otherSandboxIndent} {
+		if w := utf8.RuneCountInString(indent); w > maxIndentWidth {
+			maxIndentWidth = w
+		}
+	}
+
 	color := ansi.Color(os.Stdout)
 	printRow := func(indent string, r accountRow) {
+		namePad := nameW + (maxIndentWidth - utf8.RuneCountInString(indent))
 		if r.active {
-			fmt.Printf("%s%-*s  %-*s  %-7s  %s\n", indent, nameW, r.name, idW, r.id, r.mode, color.Green("● active"))
+			fmt.Printf("%s%-*s  %-*s  %-7s  %s\n", indent, namePad, r.name, idW, r.id, r.mode, color.Green("● active"))
 		} else {
-			fmt.Printf("%s%-*s  %-*s  %s\n", indent, nameW, r.name, idW, r.id, r.mode)
+			fmt.Printf("%s%-*s  %-*s  %s\n", indent, namePad, r.name, idW, r.id, r.mode)
 		}
 	}
 
@@ -365,14 +386,14 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 			continue
 		}
 		for _, r := range rows {
-			indent := "  "
+			indent := headerIndent
 			if r.nested {
-				indent = "    └─ "
+				indent = nestedIndent
 			}
 			printRow(indent, r)
 		}
 		for _, r := range grouped.childRows[a.ID] {
-			printRow("    └─ ", r)
+			printRow(nestedIndent, r)
 		}
 	}
 
@@ -380,7 +401,7 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 		fmt.Println()
 		fmt.Println("  Other sandboxes:")
 		for _, r := range grouped.otherSandboxRows {
-			printRow("    ", r)
+			printRow(otherSandboxIndent, r)
 		}
 	}
 }

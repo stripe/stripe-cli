@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -184,6 +185,27 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 	assert.Contains(t, output, "└─ Acme Staging")
 	assert.NotContains(t, output, "└─ Acme Inc", "the parent account's own row shouldn't be nested under itself")
 	assert.NotContains(t, output, "└─ Mystery Sandbox", "sandboxes with no known parent shouldn't get a connector since there's nothing to connect to")
+
+	// The id column should line up across rows even though the header,
+	// nested, and "Other sandboxes" indents are different widths. Measure
+	// the display column (rune count), not the byte offset, since the "└─"
+	// connector is multi-byte UTF-8 but renders as single-width characters.
+	idColumn := func(line string) int {
+		idx := strings.Index(line, "acct_")
+		require.NotEqual(t, -1, idx, "expected line %q to contain an account id", line)
+		return utf8.RuneCountInString(line[:idx])
+	}
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+	var idColumns []int
+	for _, line := range lines {
+		if strings.Contains(line, "acct_") {
+			idColumns = append(idColumns, idColumn(line))
+		}
+	}
+	require.Len(t, idColumns, 4)
+	for _, col := range idColumns[1:] {
+		assert.Equal(t, idColumns[0], col, "the id column should be at the same offset on every row")
+	}
 }
 
 func TestPrintGroupedAuthorizedAccounts_NoParentsKnown(t *testing.T) {
