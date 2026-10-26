@@ -76,6 +76,11 @@ func getContextStatusesBatch(ctx context.Context, apiBaseURL string, profile *co
 		Method:         http.MethodPost,
 		SuppressOutput: true,
 		APIBaseURL:     apiBaseURL,
+		// Needed so a 401 retry re-resolves credentials for the right mode
+		// (see Base.performRequest's refresh-and-retry path); without it,
+		// Livemode defaults to false and a live-context retry fails with a
+		// mode-mismatch error instead of succeeding.
+		Livemode: creds.Livemode(),
 	}
 
 	resp, err := base.MakeRequest(ctx, creds, "/v1/stripecli/context_statuses", &RequestParameters{}, map[string]interface{}{

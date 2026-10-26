@@ -66,6 +66,20 @@ func TestBuildSwitchRows_LegacyCombinedAccountNestsTestMode(t *testing.T) {
 	assert.True(t, rows[1].nested)
 }
 
+func TestBuildSwitchRows_LiveModeRendersBeforeNestedTestModeRegardlessOfAPIOrder(t *testing.T) {
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_legacy", Name: "Acme Inc", Modes: []string{"test", "live"}},
+	}
+
+	rows, _, _ := buildSwitchRows(accounts, nil, "", "test")
+
+	assert.Len(t, rows, 2)
+	assert.Equal(t, "live", rows[0].mode, "the live row should come first even when the API returns test before live")
+	assert.False(t, rows[0].nested)
+	assert.Equal(t, "Test mode", rows[1].name)
+	assert.True(t, rows[1].nested)
+}
+
 func TestBuildSwitchRows_NoSandboxes(t *testing.T) {
 	accounts := []config.AuthorizedAccount{
 		{ID: "acct_live1", Name: "Acme Inc", Modes: []string{"live"}},

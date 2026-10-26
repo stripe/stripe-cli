@@ -250,6 +250,23 @@ func TestPrintGroupedAuthorizedAccounts_LegacyCombinedAccountShowsTestMode(t *te
 	assert.Equal(t, 1, strings.Count(output, "Acme Inc"), "the account name shouldn't be repeated for its own test-mode row")
 }
 
+func TestPrintGroupedAuthorizedAccounts_LiveModeRendersBeforeNestedTestModeRegardlessOfAPIOrder(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_legacy", Name: "Acme Inc", Modes: []string{"test", "live"}},
+	}
+
+	output := capturePrintedOutput(t, func() {
+		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, nil)
+	})
+
+	liveIdx := indexOf(t, output, "Acme Inc")
+	testModeIdx := indexOf(t, output, "└─ Test mode")
+	assert.Less(t, liveIdx, testModeIdx, "the live row should render before its nested test-mode row even when the API returns test before live")
+}
+
 func indexOf(t *testing.T, s, substr string) int {
 	t.Helper()
 	idx := strings.Index(s, substr)

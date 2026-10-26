@@ -2,6 +2,7 @@ package requests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -89,6 +92,60 @@ func TestGetContextStatuses_Batches(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, statuses, 150)
 	require.ElementsMatch(t, []int{100, 50}, requestSizes)
+}
+
+// TestGetContextStatuses_RetriesWithLiveCredentialsAfterTokenRefresh exercises
+// Base.performRequest's 401-refresh-and-retry path for a live active
+// context. The retry re-resolves credentials via
+// Profile.ResolveCredentials(rb.Livemode); if Livemode isn't set to match
+// creds (as GetUserInfo already does), the retry fails with a mode-mismatch
+// error instead of succeeding, silently disabling grouping.
+func TestGetContextStatuses_RetriesWithLiveCredentialsAfterTokenRefresh(t *testing.T) {
+	activeContext, err := json.Marshal(config.ActiveContext{AccountID: "acct_live", Livemode: true})
+	require.NoError(t, err)
+
+	origKeyRing, origRefresher := config.KeyRing, config.OAuthTokenRefresher
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey:            []byte("oak_initial"),
+		config.OAuthActiveContextKeychainKey: activeContext,
+	})
+	t.Cleanup(func() {
+		config.KeyRing = origKeyRing
+		config.OAuthTokenRefresher = origRefresher
+	})
+
+	refreshes := 0
+	config.OAuthTokenRefresher = func(p *config.Profile) error {
+		refreshes++
+		p.UAT = "oak_refreshed"
+		return config.KeyRing.Set(config.UATKeychainItemKey, []byte(p.UAT), "refreshed test token")
+	}
+
+	requests := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error": {"code": "unauthorized", "message": "expired"}}`)) //nolint:errcheck
+			return
+		}
+
+		require.Equal(t, "Bearer oak_refreshed", r.Header.Get("Authorization"))
+		require.Equal(t, "true", r.Header.Get("Stripe-Livemode"), "the retry must resolve live credentials, matching the active context")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"contexts": [{"account_id": "acct_sandbox1", "livemode": false, "valid": true}]}`)) //nolint:errcheck
+	}))
+	defer ts.Close()
+
+	profile := &config.Profile{ProfileName: "default"}
+	creds := stripe.NewOAKCredentials("oak_initial", "acct_live", true)
+	statuses, err := getContextStatusesBatch(context.Background(), ts.URL, profile, creds, []ContextStatusQuery{
+		{AccountID: "acct_sandbox1", Livemode: false},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, refreshes)
+	require.Equal(t, 2, requests)
+	require.Equal(t, []ContextStatus{{AccountID: "acct_sandbox1", Livemode: false, Valid: true}}, statuses)
 }
 
 func TestGetContextStatuses_ErrOnStatus(t *testing.T) {

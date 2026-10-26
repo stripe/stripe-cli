@@ -744,7 +744,7 @@ func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 	if reauth == nil {
 		reauth = login.ReauthImmediately
 	}
-	if err := reauth(cmd.Context(), rootAccessBaseURL, rootAPIBaseURL, uat, &Config.Profile); err != nil {
+	if err := reauth(cmd.Context(), rootAccessBaseURL, scc.apiBaseURL, uat, &Config.Profile); err != nil {
 		scc.warnAuthorizationFailure(cmd, err)
 	}
 }

@@ -128,6 +128,7 @@ func switchRowsForAccount(a config.AuthorizedAccount, nested bool, activeID, act
 		modes = []string{"test"}
 	}
 	isLegacyCombined := accountHasLiveMode(modes)
+	modes = orderModesLiveFirst(modes)
 
 	rows := make([]switchRow, 0, len(modes))
 	for _, m := range modes {

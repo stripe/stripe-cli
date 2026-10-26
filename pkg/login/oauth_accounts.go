@@ -226,6 +226,25 @@ func accountHasLiveMode(modes []string) bool {
 	return false
 }
 
+// orderModesLiveFirst returns modes with "live" moved to the front (other
+// modes keep their relative order). For a legacy combined account, this
+// guarantees the live row renders before its nested test-mode row — the API
+// doesn't promise any particular mode ordering.
+func orderModesLiveFirst(modes []string) []string {
+	ordered := make([]string, 0, len(modes))
+	for _, m := range modes {
+		if m == "live" {
+			ordered = append(ordered, m)
+		}
+	}
+	for _, m := range modes {
+		if m != "live" {
+			ordered = append(ordered, m)
+		}
+	}
+	return ordered
+}
+
 // rowsForAccount builds the row(s) for a single authorized account. A legacy
 // combined account shares one account ID across both modes (no distinct
 // sandbox account); its test-mode row is labeled "Test mode" and marked
@@ -237,6 +256,7 @@ func rowsForAccount(a config.AuthorizedAccount, activeID, activeMode string) []a
 		modes = []string{"test"}
 	}
 	isLegacyCombined := accountHasLiveMode(modes)
+	modes = orderModesLiveFirst(modes)
 
 	rows := make([]accountRow, 0, len(modes))
 	for _, m := range modes {
