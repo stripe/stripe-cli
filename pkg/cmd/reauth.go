@@ -7,12 +7,14 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 type reauthCmd struct {
 	cmd           *cobra.Command
 	accessBaseURL string
+	apiBaseURL    string
 }
 
 func newReauthCmd() *reauthCmd {
@@ -34,6 +36,8 @@ directly, so this command is hidden.`,
 	}
 	rc.cmd.Flags().StringVar(&rc.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	rc.cmd.Flags().MarkHidden("access-base") //nolint:errcheck
+	rc.cmd.Flags().StringVar(&rc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	rc.cmd.Flags().MarkHidden("api-base") //nolint:errcheck
 	return rc
 }
 
@@ -41,9 +45,12 @@ func (rc *reauthCmd) runReauthCmd(cmd *cobra.Command, args []string) error {
 	if err := login.ValidateAccessBaseURL(rc.accessBaseURL); err != nil {
 		return err
 	}
+	if err := stripe.ValidateAPIBaseURL(rc.apiBaseURL); err != nil {
+		return err
+	}
 	uat, _ := Config.Profile.GetUAT()
 	if !strings.HasPrefix(uat, "oak_") {
 		return errorcategory.Errorf(errorcategory.Auth, "reauth requires a valid session; run 'stripe login' to authenticate")
 	}
-	return login.Reauth(cmd.Context(), rc.accessBaseURL, uat, &Config.Profile)
+	return login.Reauth(cmd.Context(), rc.accessBaseURL, rc.apiBaseURL, uat, &Config.Profile)
 }

@@ -1018,7 +1018,7 @@ func TestSandboxNamespaceExecution(t *testing.T) {
 				command := newSandboxCreateCmd()
 				command.client = client
 				command.isInteractive = func(*cobra.Command) bool { return true }
-				command.reauth = func(context.Context, string, string, *config.Profile) error {
+				command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 					t.Fatal("non-interactive creation must not reauthorize")
 					return nil
 				}
@@ -1615,7 +1615,7 @@ func TestSandboxCreateCmdOAuthPromptedNameThenAuthorizes(t *testing.T) {
 	command.cmd.SetIn(strings.NewReader("Prompted sandbox\nyes\n"))
 
 	reauthCalls := 0
-	command.reauth = func(context.Context, string, string, *config.Profile) error {
+	command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 		reauthCalls++
 		return nil
 	}
@@ -1670,7 +1670,7 @@ func TestSandboxCreateCmdOAuth_InteractiveYesRefreshesAndReauthenticates(t *test
 	var reauthAccessToken string
 	var reauthProfile *config.Profile
 	reauthCalls := 0
-	command.reauth = func(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
+	command.reauth = func(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
 		reauthCalls++
 		reauthContext = ctx
 		reauthAccessBaseURL = accessBaseURL
@@ -1712,7 +1712,7 @@ func TestSandboxCreateCmdOAuth_InteractiveDeclinesWithoutReauth(t *testing.T) {
 			command.cmd.SetArgs([]string{"Created sandbox"})
 
 			reauthCalls := 0
-			command.reauth = func(context.Context, string, string, *config.Profile) error {
+			command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 				reauthCalls++
 				return nil
 			}
@@ -1741,7 +1741,7 @@ func TestSandboxCreateCmdOAuth_NonInteractiveDoesNotPrompt(t *testing.T) {
 	command.isInteractive = func(*cobra.Command) bool { return false }
 	command.cmd.SetArgs([]string{"Created sandbox"})
 
-	command.reauth = func(context.Context, string, string, *config.Profile) error {
+	command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 		t.Fatal("reauth should not run for a non-interactive caller")
 		return nil
 	}
@@ -1786,7 +1786,7 @@ func TestSandboxCreateCmdOAuthExplicitNonInteractiveDoesNotPrompt(t *testing.T) 
 			command.isInteractive = func(*cobra.Command) bool { return true }
 			command.cmd.SetIn(iotest.ErrReader(errors.New("stdin should not be read")))
 			command.cmd.SetArgs(test.args)
-			command.reauth = func(context.Context, string, string, *config.Profile) error {
+			command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 				t.Fatal("reauth should not run for an explicitly non-interactive caller")
 				return nil
 			}
@@ -1851,7 +1851,7 @@ func TestSandboxCreateCmdOAuth_InvalidUATAfterCreationWarnsWithoutReauth(t *test
 			command.cmd.SetArgs([]string{"Created sandbox"})
 
 			reauthCalls := 0
-			command.reauth = func(context.Context, string, string, *config.Profile) error {
+			command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 				reauthCalls++
 				return nil
 			}
@@ -1881,7 +1881,7 @@ func TestSandboxCreateCmdOAuth_ReauthFailurePreservesCreationSuccess(t *testing.
 	command.isInteractive = func(*cobra.Command) bool { return true }
 	command.cmd.SetIn(strings.NewReader("yes\n"))
 	command.cmd.SetArgs([]string{"Created sandbox"})
-	command.reauth = func(context.Context, string, string, *config.Profile) error {
+	command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 		return fmt.Errorf("reauth failed")
 	}
 
@@ -1956,7 +1956,7 @@ func TestSandboxCreateCmdOAuthReturnsClientErrorWithoutSuccessOutput(t *testing.
 	command.client = client
 	command.isInteractive = func(*cobra.Command) bool { return true }
 	command.cmd.SetIn(strings.NewReader("yes\n"))
-	command.reauth = func(context.Context, string, string, *config.Profile) error {
+	command.reauth = func(context.Context, string, string, string, *config.Profile) error {
 		t.Fatal("reauth should not run when creation fails")
 		return nil
 	}

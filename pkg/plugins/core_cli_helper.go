@@ -805,6 +805,10 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	if accessBaseURL == "" {
 		accessBaseURL = login.DefaultAccessBaseURL
 	}
+	apiBaseURL := h.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
 
 	ctx := h.ctx
 	if timeoutSeconds > 0 {
@@ -821,7 +825,7 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 		}
 	}
 
-	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, cfg); err != nil {
+	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, apiBaseURL, cfg); err != nil {
 		if ctx.Err() != nil {
 			return "", "", false, false, nil
 		}

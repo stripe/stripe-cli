@@ -186,7 +186,7 @@ func TestLoginReauthorizesNonExpiredSession(t *testing.T) {
 		assert.Equal(t, "oak_current_uat", accessToken)
 		return nil
 	}
-	reauth = func(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
+	reauth = func(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
 		reauthCalled = true
 		return nil
 	}
@@ -218,7 +218,7 @@ func TestLoginCompleteReauthPollsPendingReauth(t *testing.T) {
 	t.Cleanup(func() { pollPendingReauth = origPollPendingReauth })
 
 	var pollCalled bool
-	pollPendingReauth = func(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
+	pollPendingReauth = func(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
 		pollCalled = true
 		assert.Equal(t, "oak_current_uat", accessToken)
 		return nil

@@ -38,19 +38,19 @@ type reauthResponse struct {
 // otherwise the URL is printed for the user to visit manually. It then waits
 // for the authorized-accounts list to change before printing the updated list
 // of authorized contexts.
-func Reauth(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
-	return reauth(ctx, accessBaseURL, accessToken, profile, false)
+func Reauth(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
+	return reauth(ctx, accessBaseURL, apiBaseURL, accessToken, profile, false)
 }
 
 // ReauthImmediately fetches a reauthentication URL for the active OAuth session
 // and opens it without waiting for an additional Enter confirmation. It then
 // waits for the authorized-accounts list to change before printing the updated
 // list of authorized contexts.
-func ReauthImmediately(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
-	return reauth(ctx, accessBaseURL, accessToken, profile, true)
+func ReauthImmediately(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
+	return reauth(ctx, accessBaseURL, apiBaseURL, accessToken, profile, true)
 }
 
-func reauth(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile, openImmediately bool) error {
+func reauth(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile, openImmediately bool) error {
 	before, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func reauth(ctx context.Context, accessBaseURL, accessToken string, profile *con
 		fmt.Scanln() //nolint:errcheck
 	})
 
-	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, browserOpened, nil, profile)
+	return waitForReauthCompletion(ctx, accessBaseURL, apiBaseURL, accessToken, before, browserOpened, nil, profile)
 }
 
 func presentReauthURL(reauthURL string, openImmediately bool, waitForEnter func()) <-chan struct{} {
@@ -142,7 +142,7 @@ func InitiateReauth(ctx context.Context, accessBaseURL, accessToken string) erro
 // this, and one who runs `--complete-reauth` without a snapshot at all (e.g.
 // skipped `--non-interactive`). Only if there's a snapshot and nothing has
 // changed yet does it fall back to waiting/polling for a change.
-func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
+func PollPendingReauth(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
 	before, err := loadPendingReauthAccounts()
 	if err != nil {
 		return err
@@ -157,18 +157,12 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string, p
 		if before != nil {
 			clearPendingReauthAccounts()
 		}
-		ac, _ := profile.GetActiveContext()
-		activeID, activeLivemode := "", false
-		if ac != nil {
-			activeID = ac.AccountID
-			activeLivemode = ac.Livemode
-		}
-		printAuthorizedSummary(accounts, activeID, activeLivemode)
+		printAuthorizedSummary(ctx, apiBaseURL, profile, accessToken, accounts)
 		return nil
 	}
 
 	fmt.Println("Waiting for you to finish in the browser. Press ^C to cancel.")
-	return waitForReauthCompletion(ctx, accessBaseURL, accessToken, before, nil, func([]config.AuthorizedAccount) {
+	return waitForReauthCompletion(ctx, accessBaseURL, apiBaseURL, accessToken, before, nil, func([]config.AuthorizedAccount) {
 		clearPendingReauthAccounts()
 	}, profile)
 }
@@ -179,7 +173,7 @@ func PollPendingReauth(ctx context.Context, accessBaseURL, accessToken string, p
 // so a change to the accounts/scopes returned for the token is used as a
 // proxy for completion. onComplete, if non-nil, runs once a change is
 // detected and before the summary is printed.
-func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken string, before []config.AuthorizedAccount, browserOpened <-chan struct{}, onComplete func([]config.AuthorizedAccount), profile *config.Profile) error {
+func waitForReauthCompletion(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, before []config.AuthorizedAccount, browserOpened <-chan struct{}, onComplete func([]config.AuthorizedAccount), profile *config.Profile) error {
 	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
@@ -204,13 +198,7 @@ func waitForReauthCompletion(ctx context.Context, accessBaseURL, accessToken str
 		onComplete(after)
 	}
 
-	ac, _ := profile.GetActiveContext()
-	activeID, activeLivemode := "", false
-	if ac != nil {
-		activeID = ac.AccountID
-		activeLivemode = ac.Livemode
-	}
-	printAuthorizedSummary(after, activeID, activeLivemode)
+	printAuthorizedSummary(ctx, apiBaseURL, profile, accessToken, after)
 	return nil
 }
 

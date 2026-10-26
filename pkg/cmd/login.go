@@ -191,12 +191,12 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if lc.completeDevice {
-		return login.PollPendingDeviceAuth(cmd.Context(), &Config)
+		return login.PollPendingDeviceAuth(cmd.Context(), lc.apiBaseURL, &Config)
 	}
 
 	if lc.completeReauth {
 		uat, _ := Config.Profile.GetUAT()
-		return pollPendingReauth(cmd.Context(), lc.accessBaseURL, uat, &Config.Profile)
+		return pollPendingReauth(cmd.Context(), lc.accessBaseURL, lc.apiBaseURL, uat, &Config.Profile)
 	}
 
 	if lc.completeURL != "" {
@@ -235,7 +235,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
 
-	return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, &Config)
+	return login.Login(cmd.Context(), lc.dashboardBaseURL, lc.accessBaseURL, lc.apiBaseURL, &Config)
 }
 
 // sessionIsValid reports whether the current OAuth session is still usable,
@@ -269,7 +269,7 @@ func (lc *loginCmd) reauthorizeSession(cmd *cobra.Command, uat string) error {
 		return initiateReauth(cmd.Context(), lc.accessBaseURL, uat)
 	}
 	printAlreadyLoggedIn(cmd, lc.apiBaseURL, lc.accessBaseURL, uat)
-	return reauth(cmd.Context(), lc.accessBaseURL, uat, &Config.Profile)
+	return reauth(cmd.Context(), lc.accessBaseURL, lc.apiBaseURL, uat, &Config.Profile)
 }
 
 // printAlreadyLoggedIn prints a summary of the currently authenticated

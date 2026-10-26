@@ -253,7 +253,7 @@ func TestReauthImmediatelyValidatesURLBeforeDisplayingOrOpening(t *testing.T) {
 
 	var reauthErr error
 	stdout, _ := captureReauthOutput(t, func() {
-		reauthErr = ReauthImmediately(context.Background(), srv.URL, "oak_test", &config.Profile{})
+		reauthErr = ReauthImmediately(context.Background(), srv.URL, srv.URL, "oak_test", &config.Profile{})
 	})
 
 	require.Error(t, reauthErr)
@@ -309,14 +309,16 @@ func TestReauthImmediatelyPreservesSelectedProfileContext(t *testing.T) {
 
 	var reauthErr error
 	stdout, stderr := captureReauthOutput(t, func() {
-		reauthErr = ReauthImmediately(ctx, srv.URL, "oak_test", &cfg.Profile)
+		reauthErr = ReauthImmediately(ctx, srv.URL, srv.URL, "oak_test", &cfg.Profile)
 	})
 
 	require.NoError(t, reauthErr)
 	assert.Equal(t, reauthURL, openedURL)
 	assert.NotContains(t, stdout, "Press enter")
 	assert.Contains(t, stdout, "Created sandbox")
-	assert.Contains(t, stdout, "Currently active: Selected account · live (acct_selected)")
+	assert.Contains(t, stdout, "Selected account")
+	assert.Contains(t, stdout, "acct_selected")
+	assert.Contains(t, stdout, "● active", "the active row should be marked inline, same as whoami/login list/switch")
 	assert.Empty(t, stderr)
 }
 

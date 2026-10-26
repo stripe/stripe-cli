@@ -251,7 +251,7 @@ func newPluginHintCmd(cfg *config.Config, name, description string, runPlugin Pl
 		stderr:        os.Stderr,
 	}
 	p.loginFn = func(ctx context.Context) error {
-		return login.Login(ctx, dashboardBaseURL, p.accessBaseURL, cfg)
+		return login.Login(ctx, dashboardBaseURL, p.accessBaseURL, stripe.DefaultAPIBaseURL, cfg)
 	}
 	if runPlugin != nil {
 		p.runPluginFn = func(cmd *cobra.Command, args []string) error {

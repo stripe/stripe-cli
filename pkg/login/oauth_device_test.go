@@ -279,7 +279,7 @@ func TestLoginWithDeviceCodeFailsWhenAccountsFetchFails(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	err := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
+	err := LoginWithDeviceCode(context.Background(), ts.URL, ts.URL, cfg)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch account info")
 }
@@ -339,7 +339,7 @@ func TestLoginWithDeviceCode_VerificationMessage(t *testing.T) {
 			require.NoError(t, err)
 			os.Stdout = w
 
-			loginErr := LoginWithDeviceCode(context.Background(), ts.URL, cfg)
+			loginErr := LoginWithDeviceCode(context.Background(), ts.URL, ts.URL, cfg)
 
 			w.Close()
 			os.Stdout = oldStdout

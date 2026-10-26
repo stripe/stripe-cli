@@ -264,7 +264,7 @@ func saveDeviceCredentials(ctx context.Context, accessBaseURL string, tokenResp 
 }
 
 // LoginWithDeviceCode runs the full OAuth 2.1 device-code flow and saves credentials.
-func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.Config) error {
+func LoginWithDeviceCode(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 	authResp, clientID, err := RequestDeviceCodeForAccessBase(ctx, accessBaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to request device code: %w", err)
@@ -321,90 +321,53 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL string, cfg *config.
 		}
 	}
 
-	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
+	uat, _ := cfg.Profile.GetUAT()
+	printAuthorizedSummary(ctx, apiBaseURL, &cfg.Profile, uat, result.Accounts)
 	warnIfInsecureStorage()
 	return nil
 }
 
-type contextRow struct {
-	name   string
-	mode   string
-	id     string
-	active bool
-}
-
-func buildContextRows(accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) []contextRow {
-	activeMode := "test"
-	if activeLivemode {
-		activeMode = "live"
-	}
-	var rows []contextRow
+// totalAuthorizedContexts counts (account, mode) pairs across accounts, the
+// unit printAuthorizedSummary uses to decide how much detail to show.
+func totalAuthorizedContexts(accounts []config.AuthorizedAccount) int {
+	count := 0
 	for _, a := range accounts {
-		modes := a.Modes
-		if len(modes) == 0 {
-			modes = []string{"test"}
-		}
-		for _, m := range modes {
-			rows = append(rows, contextRow{
-				name:   a.Name,
-				mode:   m,
-				id:     a.ID,
-				active: a.ID == activeID && m == activeMode,
-			})
+		if len(a.Modes) == 0 {
+			count++
+		} else {
+			count += len(a.Modes)
 		}
 	}
-	return rows
+	return count
 }
 
-// printAuthorizedSummary prints the "Done! The Stripe CLI is authorized for
-// ..." banner and context table shared by login and reauth.
-func printAuthorizedSummary(accounts []config.AuthorizedAccount, activeID string, activeLivemode bool) {
+// printAuthorizedSummary prints the "Done! ..." banner shared by login and
+// reauth. For a single authorized context it prints a short one-liner; for
+// more than one, it prints the same parent-grouped account list whoami,
+// login list, and switch use (see PrintAuthorizedAccounts) — including its
+// own "● active" marker, so there's no need to separately call out which
+// context is active.
+func printAuthorizedSummary(ctx context.Context, apiBaseURL string, profile *config.Profile, uat string, accounts []config.AuthorizedAccount) {
 	color := ansi.Color(os.Stdout)
-	rows := buildContextRows(accounts, activeID, activeLivemode)
 
-	if len(rows) == 0 {
+	switch totalAuthorizedContexts(accounts) {
+	case 0:
 		fmt.Printf("%s Done! The Stripe CLI is configured with your credentials.\n", color.Green("✓"))
-		return
-	}
-
-	if len(rows) == 1 {
-		r := rows[0]
-		ctx := fmt.Sprintf("%s · %s", r.name, displayMode(r.mode))
-		fmt.Printf("%s Done! The Stripe CLI is authorized for %s (%s)\n\n", color.Green("✓"), ctx, r.id)
+	case 1:
+		a := accounts[0]
+		mode := "test"
+		if len(a.Modes) > 0 {
+			mode = a.Modes[0]
+		}
+		fmt.Printf("%s Done! The Stripe CLI is authorized for %s · %s (%s)\n\n", color.Green("✓"), a.Name, displayMode(mode), a.ID)
 		fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
-		return
+	default:
+		fmt.Printf("%s Done!\n\n", color.Green("✓"))
+		PrintAuthorizedAccounts(ctx, apiBaseURL, profile, uat, accounts)
+		fmt.Println()
+		fmt.Println("Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
+		fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 	}
-
-	fmt.Printf("%s Done! The Stripe CLI is authorized for:\n\n", color.Green("✓"))
-
-	nameW, modeW, idW := 0, 0, 0
-	for _, r := range rows {
-		if len(r.name) > nameW {
-			nameW = len(r.name)
-		}
-		if dl := len(displayMode(r.mode)); dl > modeW {
-			modeW = dl
-		}
-		if len(r.id) > idW {
-			idW = len(r.id)
-		}
-	}
-
-	var active contextRow
-	for _, r := range rows {
-		mode := displayMode(r.mode)
-		if r.active {
-			active = r
-			fmt.Printf("  %-*s  %-*s  %-*s  %s active\n", nameW, r.name, modeW, mode, idW, r.id, color.Green("●"))
-		} else {
-			fmt.Printf("  %-*s  %-*s  %s\n", nameW, r.name, modeW, mode, r.id)
-		}
-	}
-
-	fmt.Println()
-	fmt.Printf("Currently active: %s · %s (%s)\n\n", active.name, displayMode(active.mode), active.id)
-	fmt.Println("Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
-	fmt.Println("Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 }
 
 // RefreshAccessToken exchanges a refresh token for a new access token.
