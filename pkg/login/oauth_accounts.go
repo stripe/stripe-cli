@@ -273,7 +273,9 @@ type classifiedAccounts struct {
 // with a live mode of their own, or ones referenced as a parent) and the
 // accounts that nest under each, using parentAccountIDs to resolve sandboxes
 // to their parent. Accounts with no resolvable parent land in
-// otherSandboxes.
+// otherSandboxes, unless there's exactly one such account, in which case it's
+// promoted to a header instead — a single orphaned sandbox doesn't need an
+// "Other sandboxes" heading to itself.
 func classifyAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) classifiedAccounts {
 	byID := make(map[string]config.AuthorizedAccount, len(accounts))
 	for _, a := range accounts {
@@ -309,6 +311,14 @@ func classifyAccountsByParent(accounts []config.AuthorizedAccount, parentAccount
 
 		result.childrenByParent[parentID] = append(result.childrenByParent[parentID], a)
 	}
+
+	// A lone sandbox with no known parent doesn't need an "Other sandboxes"
+	// heading to itself — show it as a regular top-level account instead.
+	if len(result.otherSandboxes) == 1 {
+		result.headers = append(result.headers, result.otherSandboxes[0])
+		result.otherSandboxes = nil
+	}
+
 	return result
 }
 

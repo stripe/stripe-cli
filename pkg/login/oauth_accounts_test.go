@@ -160,6 +160,7 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 		{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
 		{ID: "acct_sandbox2", Name: "Acme Staging", Modes: []string{"test"}},
 		{ID: "acct_orphan", Name: "Mystery Sandbox", Modes: []string{"test"}},
+		{ID: "acct_orphan2", Name: "Second Mystery", Modes: []string{"test"}},
 	}
 	parentAccountIDs := map[string]string{
 		"acct_sandbox1": "acct_live1",
@@ -180,7 +181,7 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 	assert.Less(t, sandbox1Idx, sandbox2Idx)
 	assert.Less(t, sandbox2Idx, otherHeadingIdx, "grouped sandboxes should print before the Other sandboxes section")
 	assert.Less(t, otherHeadingIdx, orphanIdx, "sandboxes without a known parent should print under Other sandboxes")
-	assert.Contains(t, output, "Authorized (4 accounts):")
+	assert.Contains(t, output, "Authorized (5 accounts):")
 	assert.Contains(t, output, "└─ Acme Dev", "sandboxes with a known parent should render with a tree connector showing they belong to it")
 	assert.Contains(t, output, "└─ Acme Staging")
 	assert.NotContains(t, output, "└─ Acme Inc", "the parent account's own row shouldn't be nested under itself")
@@ -202,13 +203,13 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 			idColumns = append(idColumns, idColumn(line))
 		}
 	}
-	require.Len(t, idColumns, 4)
+	require.Len(t, idColumns, 5)
 	for _, col := range idColumns[1:] {
 		assert.Equal(t, idColumns[0], col, "the id column should be at the same offset on every row")
 	}
 }
 
-func TestPrintGroupedAuthorizedAccounts_NoParentsKnown(t *testing.T) {
+func TestPrintGroupedAuthorizedAccounts_SoleSandboxShownAsRegularAccount(t *testing.T) {
 	cfg, cleanup := setupOAuthTestConfig(t)
 	defer cleanup()
 
@@ -220,8 +221,27 @@ func TestPrintGroupedAuthorizedAccounts_NoParentsKnown(t *testing.T) {
 		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, nil)
 	})
 
-	assert.Contains(t, output, "Other sandboxes:")
+	assert.NotContains(t, output, "Other sandboxes", "a single sandbox with no known parent shouldn't get its own heading")
+	assert.NotContains(t, output, "└─", "a promoted lone sandbox isn't nested under anything, so no connector")
 	assert.Contains(t, output, "Solo Sandbox")
+}
+
+func TestPrintGroupedAuthorizedAccounts_MultipleUnknownParentsKeepOtherSandboxesHeading(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_sandbox1", Name: "Solo Sandbox", Modes: []string{"test"}},
+		{ID: "acct_sandbox2", Name: "Another Sandbox", Modes: []string{"test"}},
+	}
+
+	output := capturePrintedOutput(t, func() {
+		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, nil)
+	})
+
+	assert.Contains(t, output, "Other sandboxes:", "two or more sandboxes with no known parent still get grouped under a heading")
+	assert.Contains(t, output, "Solo Sandbox")
+	assert.Contains(t, output, "Another Sandbox")
 }
 
 func TestPrintGroupedAuthorizedAccounts_LegacyCombinedAccountShowsTestMode(t *testing.T) {

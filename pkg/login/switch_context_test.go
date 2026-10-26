@@ -29,6 +29,7 @@ func TestBuildSwitchRows_GroupsSandboxesUnderParent(t *testing.T) {
 		{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
 		{ID: "acct_sandbox2", Name: "Acme Staging", Modes: []string{"test"}},
 		{ID: "acct_orphan", Name: "Mystery Sandbox", Modes: []string{"test"}},
+		{ID: "acct_orphan2", Name: "Second Mystery", Modes: []string{"test"}},
 	}
 	parentAccountIDs := map[string]string{
 		"acct_sandbox1": "acct_live1",
@@ -44,6 +45,7 @@ func TestBuildSwitchRows_GroupsSandboxesUnderParent(t *testing.T) {
 		"<sep>",
 		"<label:Other sandboxes>",
 		"acct_orphan/test",
+		"acct_orphan2/test",
 	}, rowKeys(rows))
 
 	for _, r := range rows {
@@ -55,13 +57,30 @@ func TestBuildSwitchRows_GroupsSandboxesUnderParent(t *testing.T) {
 		if r.id == "acct_sandbox1" || r.id == "acct_sandbox2" {
 			assert.True(t, r.nested, "sandboxes with a known parent should be nested")
 		}
-		if r.id == "acct_live1" || r.id == "acct_orphan" {
+		if r.id == "acct_live1" || r.id == "acct_orphan" || r.id == "acct_orphan2" {
 			assert.False(t, r.nested)
 		}
 	}
 
 	assert.Equal(t, len("Mystery Sandbox"), nameW)
 	assert.Equal(t, len("acct_sandbox1"), idW)
+}
+
+func TestBuildSwitchRows_SoleUnknownParentSandboxShownAsRegularAccount(t *testing.T) {
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_live1", Name: "Acme Inc", Modes: []string{"live"}},
+		{ID: "acct_orphan", Name: "Mystery Sandbox", Modes: []string{"test"}},
+	}
+
+	rows, _, _ := buildSwitchRows(accounts, nil, "", "test")
+
+	assert.Equal(t, []string{
+		"acct_live1/live",
+		"acct_orphan/test",
+	}, rowKeys(rows), "a single sandbox with no known parent should appear as a regular account, not under an Other sandboxes heading")
+	for _, r := range rows {
+		assert.False(t, r.nested)
+	}
 }
 
 func TestBuildSwitchRows_LegacyCombinedAccountNestsTestMode(t *testing.T) {
