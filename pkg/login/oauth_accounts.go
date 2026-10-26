@@ -126,14 +126,15 @@ func ListAuthorizedAccountsForActiveSession(ctx context.Context, accessBaseURL s
 }
 
 // PrintAuthorizedContexts fetches the authorized accounts for accessToken and
-// prints them as a formatted list, marking the active context.
-func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, accessToken string, profile *config.Profile) error {
+// prints them as a formatted list, grouped by parent account where that can
+// be resolved (see PrintAuthorizedAccounts), marking the active context.
+func PrintAuthorizedContexts(ctx context.Context, accessBaseURL, apiBaseURL, accessToken string, profile *config.Profile) error {
 	accounts, err := ListAuthorizedAccounts(ctx, accessBaseURL, accessToken)
 	if err != nil {
 		return fmt.Errorf("failed to fetch authorized accounts: %w", err)
 	}
 
-	PrintAuthorizedContextsList(profile, accounts)
+	PrintAuthorizedAccounts(ctx, apiBaseURL, profile, accessToken, accounts)
 	return nil
 }
 
@@ -257,21 +258,23 @@ func rowsForAccount(a config.AuthorizedAccount, activeID, activeMode string) []a
 	return rows
 }
 
-// groupedAccountRows holds the result of grouping accounts by parent, ready
-// to render. headerRows and childRows are both keyed by the parent/header
-// account's ID.
-type groupedAccountRows struct {
-	headerRows       map[string][]accountRow
-	childRows        map[string][]accountRow
-	otherSandboxRows []accountRow
-	totalRows        int
+// classifiedAccounts partitions accounts by parent: header accounts (in
+// original order), each header's nested child accounts (also in original
+// order, keyed by the header's ID), and accounts whose parent couldn't be
+// resolved. Shared by every presentation of the authorized-accounts list
+// (whoami, login, switch) so they all group the same way.
+type classifiedAccounts struct {
+	headers          []config.AuthorizedAccount
+	childrenByParent map[string][]config.AuthorizedAccount
+	otherSandboxes   []config.AuthorizedAccount
 }
 
-// groupAccountsByParent sorts accounts into grouping headers (accounts with a
-// live mode of their own, or ones referenced as a parent) and the rows that
-// nest under each, using parentAccountIDs to resolve sandboxes to their
-// parent. Sandboxes with no resolvable parent land in otherSandboxRows.
-func groupAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string, activeID, activeMode string) groupedAccountRows {
+// classifyAccountsByParent sorts accounts into grouping headers (accounts
+// with a live mode of their own, or ones referenced as a parent) and the
+// accounts that nest under each, using parentAccountIDs to resolve sandboxes
+// to their parent. Accounts with no resolvable parent land in
+// otherSandboxes.
+func classifyAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) classifiedAccounts {
 	byID := make(map[string]config.AuthorizedAccount, len(accounts))
 	for _, a := range accounts {
 		byID[a.ID] = a
@@ -291,30 +294,63 @@ func groupAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs
 		}
 	}
 
-	result := groupedAccountRows{
-		headerRows: make(map[string][]accountRow, len(accounts)),
-		childRows:  make(map[string][]accountRow),
-	}
-
+	result := classifiedAccounts{childrenByParent: make(map[string][]config.AuthorizedAccount)}
 	for _, a := range accounts {
-		rows := rowsForAccount(a, activeID, activeMode)
-		result.totalRows += len(rows)
-
 		if isHeader[a.ID] {
-			result.headerRows[a.ID] = rows
+			result.headers = append(result.headers, a)
 			continue
 		}
 
 		parentID, hasParent := parentAccountIDs[a.ID]
 		if !hasParent || !isHeader[parentID] {
-			result.otherSandboxRows = append(result.otherSandboxRows, rows...)
+			result.otherSandboxes = append(result.otherSandboxes, a)
 			continue
 		}
 
-		for i := range rows {
-			rows[i].nested = true
+		result.childrenByParent[parentID] = append(result.childrenByParent[parentID], a)
+	}
+	return result
+}
+
+// groupedAccountRows holds the result of grouping accounts by parent, ready
+// to render. headerRows and childRows are both keyed by the parent/header
+// account's ID.
+type groupedAccountRows struct {
+	headerRows       map[string][]accountRow
+	childRows        map[string][]accountRow
+	otherSandboxRows []accountRow
+	totalRows        int
+}
+
+// groupAccountsByParent builds the printable rows for each account, grouped
+// by parent per classifyAccountsByParent.
+func groupAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string, activeID, activeMode string) groupedAccountRows {
+	classified := classifyAccountsByParent(accounts, parentAccountIDs)
+
+	result := groupedAccountRows{
+		headerRows: make(map[string][]accountRow, len(classified.headers)),
+		childRows:  make(map[string][]accountRow, len(classified.childrenByParent)),
+	}
+
+	for _, a := range classified.headers {
+		rows := rowsForAccount(a, activeID, activeMode)
+		result.headerRows[a.ID] = rows
+		result.totalRows += len(rows)
+	}
+	for parentID, children := range classified.childrenByParent {
+		for _, a := range children {
+			rows := rowsForAccount(a, activeID, activeMode)
+			for i := range rows {
+				rows[i].nested = true
+			}
+			result.childRows[parentID] = append(result.childRows[parentID], rows...)
+			result.totalRows += len(rows)
 		}
-		result.childRows[parentID] = append(result.childRows[parentID], rows...)
+	}
+	for _, a := range classified.otherSandboxes {
+		rows := rowsForAccount(a, activeID, activeMode)
+		result.otherSandboxRows = append(result.otherSandboxRows, rows...)
+		result.totalRows += len(rows)
 	}
 
 	return result

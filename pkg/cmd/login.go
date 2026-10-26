@@ -47,12 +47,14 @@ type loginCmd struct {
 type loginListCmd struct {
 	cmd           *cobra.Command
 	accessBaseURL string
+	apiBaseURL    string
 }
 
 type loginSwitchCmd struct {
 	cmd           *cobra.Command
 	livemode      bool
 	accessBaseURL string
+	apiBaseURL    string
 }
 
 func newLoginCmd() *loginCmd {
@@ -148,6 +150,8 @@ works here too, printing a browser_url and a next_step of
 	}
 	listCmd.cmd.Flags().StringVar(&listCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	listCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
+	listCmd.cmd.Flags().StringVar(&listCmd.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	listCmd.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	lc.cmd.AddCommand(listCmd.cmd)
 
@@ -162,6 +166,8 @@ works here too, printing a browser_url and a next_step of
 	switchCmd.cmd.Flags().BoolVar(&switchCmd.livemode, "live", false, "Select live mode for the given account")
 	switchCmd.cmd.Flags().StringVar(&switchCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	switchCmd.cmd.Flags().MarkHidden("access-base") // #nosec G104
+	switchCmd.cmd.Flags().StringVar(&switchCmd.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	switchCmd.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	lc.cmd.AddCommand(switchCmd.cmd)
 	return lc
@@ -288,7 +294,7 @@ func printAlreadyLoggedIn(cmd *cobra.Command, apiBaseURL, accessBaseURL, uat str
 		fmt.Fprintln(cmd.OutOrStdout(), "You're already logged in.")
 	}
 	if contextCount > 1 {
-		login.PrintAuthorizedContextsList(&Config.Profile, accounts)
+		login.PrintAuthorizedAccounts(cmd.Context(), apiBaseURL, &Config.Profile, uat, accounts)
 	}
 }
 
@@ -339,7 +345,10 @@ func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []strin
 		if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
 			return err
 		}
-		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, uat, &Config.Profile)
+		if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
+			return err
+		}
+		return login.PrintAuthorizedContexts(cmd.Context(), lc.accessBaseURL, lc.apiBaseURL, uat, &Config.Profile)
 	}
 	return Config.ListProfiles()
 }
@@ -350,11 +359,14 @@ func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []st
 		if err := login.ValidateAccessBaseURL(lc.accessBaseURL); err != nil {
 			return err
 		}
+		if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
+			return err
+		}
 		accountID := ""
 		if len(args) > 0 {
 			accountID = args[0]
 		}
-		result, err := login.SwitchContext(cmd.Context(), lc.accessBaseURL, &Config, accountID, lc.livemode)
+		result, err := login.SwitchContext(cmd.Context(), lc.accessBaseURL, lc.apiBaseURL, &Config, accountID, lc.livemode)
 		if err != nil {
 			return err
 		}

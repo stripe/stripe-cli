@@ -9,6 +9,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -20,6 +21,7 @@ type switchContextCmd struct {
 	cmd           *cobra.Command
 	livemode      bool
 	accessBaseURL string
+	apiBaseURL    string
 	format        string
 }
 
@@ -73,10 +75,15 @@ func addSwitchContextFlags(cmd *cobra.Command, ctxCmd *switchContextCmd) {
 	cmd.Flags().StringVar(&ctxCmd.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
 	cmd.Flags().StringVar(&ctxCmd.accessBaseURL, "access-base", login.DefaultAccessBaseURL, "Sets the access base URL")
 	cmd.Flags().MarkHidden("access-base") //nolint:errcheck
+	cmd.Flags().StringVar(&ctxCmd.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	cmd.Flags().MarkHidden("api-base") //nolint:errcheck
 }
 
 func (sc *switchContextCmd) run(cmd *cobra.Command, args []string) error {
 	if err := login.ValidateAccessBaseURL(sc.accessBaseURL); err != nil {
+		return err
+	}
+	if err := stripe.ValidateAPIBaseURL(sc.apiBaseURL); err != nil {
 		return err
 	}
 	accountID := ""
@@ -86,7 +93,7 @@ func (sc *switchContextCmd) run(cmd *cobra.Command, args []string) error {
 	if accountID == "" && strings.EqualFold(sc.format, "json") {
 		return errorcategory.UserInputErrorf("--format json requires an account_id argument; the interactive selector isn't scriptable")
 	}
-	result, err := login.SwitchContext(cmd.Context(), sc.accessBaseURL, &Config, accountID, sc.livemode)
+	result, err := login.SwitchContext(cmd.Context(), sc.accessBaseURL, sc.apiBaseURL, &Config, accountID, sc.livemode)
 	if err != nil {
 		return err
 	}

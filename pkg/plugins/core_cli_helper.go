@@ -757,7 +757,11 @@ func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, 
 	if accessBaseURL == "" {
 		accessBaseURL = login.DefaultAccessBaseURL
 	}
-	result, err := loginSwitchContext(h.ctx, accessBaseURL, cfg, accountID, livemode)
+	apiBaseURL := h.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+	result, err := loginSwitchContext(h.ctx, accessBaseURL, apiBaseURL, cfg, accountID, livemode)
 	if err != nil {
 		return "", "", false, false, err
 	}

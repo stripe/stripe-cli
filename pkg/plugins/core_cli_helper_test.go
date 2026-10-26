@@ -475,7 +475,7 @@ func TestSwitchContextSuccess(t *testing.T) {
 	originalSwitchContext := loginSwitchContext
 	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
 
-	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+	loginSwitchContext = func(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
 		require.Equal(t, "acct_123", accountID)
 		require.True(t, livemode)
 		return &login.SwitchResult{
@@ -497,7 +497,7 @@ func TestSwitchContextCancelledReturnsNotSwitched(t *testing.T) {
 	originalSwitchContext := loginSwitchContext
 	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
 
-	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+	loginSwitchContext = func(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
 		return nil, nil
 	}
 
@@ -514,7 +514,7 @@ func TestSwitchContextPropagatesError(t *testing.T) {
 	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
 
 	expectedErr := errors.New("boom")
-	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+	loginSwitchContext = func(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
 		return nil, expectedErr
 	}
 
