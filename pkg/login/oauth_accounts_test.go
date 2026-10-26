@@ -1,10 +1,13 @@
 package login
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +15,26 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 )
+
+// capturePrintedOutput redirects os.Stdout for the duration of fn and returns
+// everything written to it. PrintGroupedAuthorizedAccounts and its siblings
+// write via fmt.Print* directly to os.Stdout rather than an injectable
+// io.Writer, so tests must intercept it at that level.
+func capturePrintedOutput(t *testing.T, fn func()) string {
+	t.Helper()
+	orig := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = orig
+	var buf bytes.Buffer
+	buf.ReadFrom(r) //nolint:errcheck
+	return buf.String()
+}
 
 func TestFetchAuthorizedAccounts_success(t *testing.T) {
 	want := []config.AuthorizedAccount{
@@ -125,4 +148,59 @@ func TestListAuthorizedAccountsForActiveSession_ReturnsAccountsAndActiveContext(
 	assert.Equal(t, want, result.Accounts)
 	assert.Equal(t, "acct_456", result.ActiveAccountID)
 	assert.True(t, result.ActiveLivemode)
+}
+
+func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_live1", Name: "Acme Inc", Modes: []string{"live"}},
+		{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
+		{ID: "acct_sandbox2", Name: "Acme Staging", Modes: []string{"test"}},
+		{ID: "acct_orphan", Name: "Mystery Sandbox", Modes: []string{"test"}},
+	}
+	parentAccountIDs := map[string]string{
+		"acct_sandbox1": "acct_live1",
+		"acct_sandbox2": "acct_live1",
+	}
+
+	output := capturePrintedOutput(t, func() {
+		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, parentAccountIDs)
+	})
+
+	liveIdx := indexOf(t, output, "Acme Inc")
+	sandbox1Idx := indexOf(t, output, "Acme Dev")
+	sandbox2Idx := indexOf(t, output, "Acme Staging")
+	otherHeadingIdx := indexOf(t, output, "Other sandboxes")
+	orphanIdx := indexOf(t, output, "Mystery Sandbox")
+
+	assert.Less(t, liveIdx, sandbox1Idx, "parent account should print before its sandboxes")
+	assert.Less(t, sandbox1Idx, sandbox2Idx)
+	assert.Less(t, sandbox2Idx, otherHeadingIdx, "grouped sandboxes should print before the Other sandboxes section")
+	assert.Less(t, otherHeadingIdx, orphanIdx, "sandboxes without a known parent should print under Other sandboxes")
+	assert.Contains(t, output, "Authorized (4 accounts):")
+}
+
+func TestPrintGroupedAuthorizedAccounts_NoParentsKnown(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_sandbox1", Name: "Solo Sandbox", Modes: []string{"test"}},
+	}
+
+	output := capturePrintedOutput(t, func() {
+		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, nil)
+	})
+
+	assert.Contains(t, output, "Other sandboxes:")
+	assert.Contains(t, output, "Solo Sandbox")
+}
+
+func indexOf(t *testing.T, s, substr string) int {
+	t.Helper()
+	idx := strings.Index(s, substr)
+	require.NotEqual(t, -1, idx, "expected %q to contain %q", s, substr)
+	return idx
 }

@@ -196,6 +196,148 @@ func displayMode(m string) string {
 	return m
 }
 
+type accountRow struct {
+	name   string
+	id     string
+	mode   string
+	active bool
+}
+
+// accountHasLiveMode reports whether modes includes "live".
+func accountHasLiveMode(modes []string) bool {
+	for _, m := range modes {
+		if m == "live" {
+			return true
+		}
+	}
+	return false
+}
+
+// PrintGroupedAuthorizedAccounts prints already-fetched authorized accounts as
+// a formatted list, grouping sandboxes underneath their parent (live)
+// account. parentAccountIDs maps a sandbox's account ID to its parent account
+// ID, as resolved via the Stripe CLI context status API (see
+// requests.GetContextStatuses). Sandboxes missing from the map, or whose
+// resolved parent isn't itself an authorized account, are grouped under an
+// "Other sandboxes" heading.
+func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) {
+	ac, _ := profile.GetActiveContext()
+	activeID, activeMode := "", "test"
+	if ac != nil {
+		activeID = ac.AccountID
+		if ac.Livemode {
+			activeMode = "live"
+		}
+	}
+
+	rowsFor := func(a config.AuthorizedAccount) []accountRow {
+		modes := a.Modes
+		if len(modes) == 0 {
+			modes = []string{"test"}
+		}
+		rows := make([]accountRow, 0, len(modes))
+		for _, m := range modes {
+			rows = append(rows, accountRow{
+				name:   a.Name,
+				id:     a.ID,
+				mode:   displayMode(m),
+				active: a.ID == activeID && m == activeMode,
+			})
+		}
+		return rows
+	}
+
+	byID := make(map[string]config.AuthorizedAccount, len(accounts))
+	for _, a := range accounts {
+		byID[a.ID] = a
+	}
+
+	// An account is a grouping header if it has a live mode of its own, or if
+	// some sandbox resolved it as its parent.
+	isHeader := make(map[string]bool, len(accounts))
+	for _, a := range accounts {
+		if accountHasLiveMode(a.Modes) {
+			isHeader[a.ID] = true
+		}
+	}
+	for _, parentID := range parentAccountIDs {
+		if _, ok := byID[parentID]; ok {
+			isHeader[parentID] = true
+		}
+	}
+
+	headerRows := make(map[string][]accountRow, len(accounts))
+	childRows := make(map[string][]accountRow)
+	var otherSandboxRows []accountRow
+	totalRows := 0
+
+	for _, a := range accounts {
+		rows := rowsFor(a)
+		totalRows += len(rows)
+
+		if isHeader[a.ID] {
+			headerRows[a.ID] = rows
+			continue
+		}
+
+		if parentID, ok := parentAccountIDs[a.ID]; ok && isHeader[parentID] {
+			childRows[parentID] = append(childRows[parentID], rows...)
+		} else {
+			otherSandboxRows = append(otherSandboxRows, rows...)
+		}
+	}
+
+	nameW, idW := 0, 0
+	measure := func(rows []accountRow) {
+		for _, r := range rows {
+			if len(r.name) > nameW {
+				nameW = len(r.name)
+			}
+			if len(r.id) > idW {
+				idW = len(r.id)
+			}
+		}
+	}
+	for _, rows := range headerRows {
+		measure(rows)
+	}
+	for _, rows := range childRows {
+		measure(rows)
+	}
+	measure(otherSandboxRows)
+
+	color := ansi.Color(os.Stdout)
+	printRow := func(indent string, r accountRow) {
+		if r.active {
+			fmt.Printf("%s%-*s  %-*s  %-7s  %s\n", indent, nameW, r.name, idW, r.id, r.mode, color.Green("● active"))
+		} else {
+			fmt.Printf("%s%-*s  %-*s  %s\n", indent, nameW, r.name, idW, r.id, r.mode)
+		}
+	}
+
+	fmt.Printf("Authorized (%d accounts):\n", totalRows)
+	for _, a := range accounts {
+		rows, ok := headerRows[a.ID]
+		if !ok {
+			continue
+		}
+		for _, r := range rows {
+			printRow("  ", r)
+		}
+		for _, r := range childRows[a.ID] {
+			printRow("    ", r)
+		}
+	}
+
+	if len(otherSandboxRows) > 0 {
+		fmt.Println()
+		fmt.Println("  Other sandboxes:")
+		for _, r := range otherSandboxRows {
+			printRow("    ", r)
+		}
+	}
+}
+
 // pickActiveContext selects the active account and livemode from the list of
 // authorized accounts. It prefers the first test-mode account; if none is
 // found it falls back to the first account's first mode.

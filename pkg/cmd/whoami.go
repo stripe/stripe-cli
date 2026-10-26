@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -201,11 +202,53 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		fmt.Fprintln(w)
 	}
 
-	login.PrintAuthorizedContextsList(wc.profile, accounts)
+	parentAccountIDs := wc.resolveParentAccounts(cmd.Context(), uat, accounts)
+	login.PrintGroupedAuthorizedAccounts(wc.profile, accounts, parentAccountIDs)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 	fmt.Fprintln(w, "Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
 	return nil
+}
+
+// resolveParentAccounts looks up the parent (live) account for each sandbox
+// among accounts via the Stripe CLI context status API, so whoami can group
+// sandboxes under their parent. Lookup failures are non-fatal: whoami falls
+// back to listing sandboxes with unresolved parents under "Other sandboxes".
+func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, accounts []config.AuthorizedAccount) map[string]string {
+	var queries []requests.ContextStatusQuery
+	for _, a := range accounts {
+		if accountHasLiveModeForQuery(a.Modes) {
+			continue
+		}
+		queries = append(queries, requests.ContextStatusQuery{AccountID: a.ID, Livemode: false})
+	}
+	if len(queries) == 0 {
+		return nil
+	}
+
+	statuses, err := requests.GetContextStatuses(ctx, wc.apiBaseURL, wc.profile, uat, queries)
+	if err != nil {
+		return nil
+	}
+
+	parentAccountIDs := make(map[string]string, len(statuses))
+	for _, s := range statuses {
+		if s.ParentAccountID != "" {
+			parentAccountIDs[s.AccountID] = s.ParentAccountID
+		}
+	}
+	return parentAccountIDs
+}
+
+// accountHasLiveModeForQuery reports whether modes includes "live", meaning
+// the account doesn't need a parent lookup since it's not a sandbox.
+func accountHasLiveModeForQuery(modes []string) bool {
+	for _, m := range modes {
+		if m == "live" {
+			return true
+		}
+	}
+	return false
 }
 
 // buildOAuthWhoamiOutput assembles the OAuth whoami JSON output. It's a pure
