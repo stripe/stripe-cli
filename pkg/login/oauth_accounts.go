@@ -235,10 +235,18 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 		if len(modes) == 0 {
 			modes = []string{"test"}
 		}
+		// A legacy combined account shares one account ID across both modes
+		// (no distinct sandbox account). Label its test-mode row "Test mode"
+		// rather than repeating the account's name.
+		isLegacyCombined := accountHasLiveMode(modes)
 		rows := make([]accountRow, 0, len(modes))
 		for _, m := range modes {
+			name := a.Name
+			if m == "test" && isLegacyCombined {
+				name = "Test mode"
+			}
 			rows = append(rows, accountRow{
-				name:   a.Name,
+				name:   name,
 				id:     a.ID,
 				mode:   displayMode(m),
 				active: a.ID == activeID && m == activeMode,

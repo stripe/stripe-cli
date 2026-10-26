@@ -198,6 +198,26 @@ func TestPrintGroupedAuthorizedAccounts_NoParentsKnown(t *testing.T) {
 	assert.Contains(t, output, "Solo Sandbox")
 }
 
+func TestPrintGroupedAuthorizedAccounts_LegacyCombinedAccountShowsTestMode(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_legacy", Name: "Acme Inc", Modes: []string{"live", "test"}},
+		{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
+	}
+	parentAccountIDs := map[string]string{"acct_sandbox1": "acct_legacy"}
+
+	output := capturePrintedOutput(t, func() {
+		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, parentAccountIDs)
+	})
+
+	assert.Contains(t, output, "Acme Inc", "the live row should still show the account name")
+	assert.Contains(t, output, "Test mode", "the legacy same-ID test row should be labeled Test mode, not repeat the account name")
+	assert.Contains(t, output, "Acme Dev", "a distinct sandbox account should still show its own name")
+	assert.Equal(t, 1, strings.Count(output, "Acme Inc"), "the account name shouldn't be repeated for its own test-mode row")
+}
+
 func indexOf(t *testing.T, s, substr string) int {
 	t.Helper()
 	idx := strings.Index(s, substr)
