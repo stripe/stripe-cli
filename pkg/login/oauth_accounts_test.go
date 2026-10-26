@@ -180,6 +180,10 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 	assert.Less(t, sandbox2Idx, otherHeadingIdx, "grouped sandboxes should print before the Other sandboxes section")
 	assert.Less(t, otherHeadingIdx, orphanIdx, "sandboxes without a known parent should print under Other sandboxes")
 	assert.Contains(t, output, "Authorized (4 accounts):")
+	assert.Contains(t, output, "└─ Acme Dev", "sandboxes with a known parent should render with a tree connector showing they belong to it")
+	assert.Contains(t, output, "└─ Acme Staging")
+	assert.NotContains(t, output, "└─ Acme Inc", "the parent account's own row shouldn't be nested under itself")
+	assert.NotContains(t, output, "└─ Mystery Sandbox", "sandboxes with no known parent shouldn't get a connector since there's nothing to connect to")
 }
 
 func TestPrintGroupedAuthorizedAccounts_NoParentsKnown(t *testing.T) {
@@ -213,8 +217,8 @@ func TestPrintGroupedAuthorizedAccounts_LegacyCombinedAccountShowsTestMode(t *te
 	})
 
 	assert.Contains(t, output, "Acme Inc", "the live row should still show the account name")
-	assert.Contains(t, output, "Test mode", "the legacy same-ID test row should be labeled Test mode, not repeat the account name")
-	assert.Contains(t, output, "Acme Dev", "a distinct sandbox account should still show its own name")
+	assert.Contains(t, output, "└─ Test mode", "the legacy same-ID test row should be labeled Test mode and connected to its live row")
+	assert.Contains(t, output, "└─ Acme Dev", "a distinct sandbox account should still show its own name, connected to its parent")
 	assert.Equal(t, 1, strings.Count(output, "Acme Inc"), "the account name shouldn't be repeated for its own test-mode row")
 }
 

@@ -201,6 +201,10 @@ type accountRow struct {
 	id     string
 	mode   string
 	active bool
+	// nested marks a row that belongs to another account shown above it
+	// (a sandbox under its parent, or a legacy account's own test-mode row
+	// under its live row), so it renders with a tree connector.
+	nested bool
 }
 
 // accountHasLiveMode reports whether modes includes "live".
@@ -213,48 +217,52 @@ func accountHasLiveMode(modes []string) bool {
 	return false
 }
 
-// PrintGroupedAuthorizedAccounts prints already-fetched authorized accounts as
-// a formatted list, grouping sandboxes underneath their parent (live)
-// account. parentAccountIDs maps a sandbox's account ID to its parent account
-// ID, as resolved via the Stripe CLI context status API (see
-// requests.GetContextStatuses). Sandboxes missing from the map, or whose
-// resolved parent isn't itself an authorized account, are grouped under an
-// "Other sandboxes" heading.
-func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) {
-	ac, _ := profile.GetActiveContext()
-	activeID, activeMode := "", "test"
-	if ac != nil {
-		activeID = ac.AccountID
-		if ac.Livemode {
-			activeMode = "live"
-		}
+// rowsForAccount builds the row(s) for a single authorized account. A legacy
+// combined account shares one account ID across both modes (no distinct
+// sandbox account); its test-mode row is labeled "Test mode" and marked
+// nested, since it belongs to the live row above it rather than standing on
+// its own.
+func rowsForAccount(a config.AuthorizedAccount, activeID, activeMode string) []accountRow {
+	modes := a.Modes
+	if len(modes) == 0 {
+		modes = []string{"test"}
 	}
+	isLegacyCombined := accountHasLiveMode(modes)
 
-	rowsFor := func(a config.AuthorizedAccount) []accountRow {
-		modes := a.Modes
-		if len(modes) == 0 {
-			modes = []string{"test"}
+	rows := make([]accountRow, 0, len(modes))
+	for _, m := range modes {
+		name := a.Name
+		nested := false
+		if m == "test" && isLegacyCombined {
+			name = "Test mode"
+			nested = true
 		}
-		// A legacy combined account shares one account ID across both modes
-		// (no distinct sandbox account). Label its test-mode row "Test mode"
-		// rather than repeating the account's name.
-		isLegacyCombined := accountHasLiveMode(modes)
-		rows := make([]accountRow, 0, len(modes))
-		for _, m := range modes {
-			name := a.Name
-			if m == "test" && isLegacyCombined {
-				name = "Test mode"
-			}
-			rows = append(rows, accountRow{
-				name:   name,
-				id:     a.ID,
-				mode:   displayMode(m),
-				active: a.ID == activeID && m == activeMode,
-			})
-		}
-		return rows
+		rows = append(rows, accountRow{
+			name:   name,
+			id:     a.ID,
+			mode:   displayMode(m),
+			active: a.ID == activeID && m == activeMode,
+			nested: nested,
+		})
 	}
+	return rows
+}
 
+// groupedAccountRows holds the result of grouping accounts by parent, ready
+// to render. headerRows and childRows are both keyed by the parent/header
+// account's ID.
+type groupedAccountRows struct {
+	headerRows       map[string][]accountRow
+	childRows        map[string][]accountRow
+	otherSandboxRows []accountRow
+	totalRows        int
+}
+
+// groupAccountsByParent sorts accounts into grouping headers (accounts with a
+// live mode of their own, or ones referenced as a parent) and the rows that
+// nest under each, using parentAccountIDs to resolve sandboxes to their
+// parent. Sandboxes with no resolvable parent land in otherSandboxRows.
+func groupAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string, activeID, activeMode string) groupedAccountRows {
 	byID := make(map[string]config.AuthorizedAccount, len(accounts))
 	for _, a := range accounts {
 		byID[a.ID] = a
@@ -274,26 +282,53 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 		}
 	}
 
-	headerRows := make(map[string][]accountRow, len(accounts))
-	childRows := make(map[string][]accountRow)
-	var otherSandboxRows []accountRow
-	totalRows := 0
+	result := groupedAccountRows{
+		headerRows: make(map[string][]accountRow, len(accounts)),
+		childRows:  make(map[string][]accountRow),
+	}
 
 	for _, a := range accounts {
-		rows := rowsFor(a)
-		totalRows += len(rows)
+		rows := rowsForAccount(a, activeID, activeMode)
+		result.totalRows += len(rows)
 
 		if isHeader[a.ID] {
-			headerRows[a.ID] = rows
+			result.headerRows[a.ID] = rows
 			continue
 		}
 
-		if parentID, ok := parentAccountIDs[a.ID]; ok && isHeader[parentID] {
-			childRows[parentID] = append(childRows[parentID], rows...)
-		} else {
-			otherSandboxRows = append(otherSandboxRows, rows...)
+		parentID, hasParent := parentAccountIDs[a.ID]
+		if !hasParent || !isHeader[parentID] {
+			result.otherSandboxRows = append(result.otherSandboxRows, rows...)
+			continue
+		}
+
+		for i := range rows {
+			rows[i].nested = true
+		}
+		result.childRows[parentID] = append(result.childRows[parentID], rows...)
+	}
+
+	return result
+}
+
+// PrintGroupedAuthorizedAccounts prints already-fetched authorized accounts as
+// a formatted list, grouping sandboxes underneath their parent (live)
+// account. parentAccountIDs maps a sandbox's account ID to its parent account
+// ID, as resolved via the Stripe CLI context status API (see
+// requests.GetContextStatuses). Sandboxes missing from the map, or whose
+// resolved parent isn't itself an authorized account, are grouped under an
+// "Other sandboxes" heading.
+func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) {
+	ac, _ := profile.GetActiveContext()
+	activeID, activeMode := "", "test"
+	if ac != nil {
+		activeID = ac.AccountID
+		if ac.Livemode {
+			activeMode = "live"
 		}
 	}
+
+	grouped := groupAccountsByParent(accounts, parentAccountIDs, activeID, activeMode)
 
 	nameW, idW := 0, 0
 	measure := func(rows []accountRow) {
@@ -306,13 +341,13 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 			}
 		}
 	}
-	for _, rows := range headerRows {
+	for _, rows := range grouped.headerRows {
 		measure(rows)
 	}
-	for _, rows := range childRows {
+	for _, rows := range grouped.childRows {
 		measure(rows)
 	}
-	measure(otherSandboxRows)
+	measure(grouped.otherSandboxRows)
 
 	color := ansi.Color(os.Stdout)
 	printRow := func(indent string, r accountRow) {
@@ -323,24 +358,28 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 		}
 	}
 
-	fmt.Printf("Authorized (%d accounts):\n", totalRows)
+	fmt.Printf("Authorized (%d accounts):\n", grouped.totalRows)
 	for _, a := range accounts {
-		rows, ok := headerRows[a.ID]
+		rows, ok := grouped.headerRows[a.ID]
 		if !ok {
 			continue
 		}
 		for _, r := range rows {
-			printRow("  ", r)
+			indent := "  "
+			if r.nested {
+				indent = "    └─ "
+			}
+			printRow(indent, r)
 		}
-		for _, r := range childRows[a.ID] {
-			printRow("    ", r)
+		for _, r := range grouped.childRows[a.ID] {
+			printRow("    └─ ", r)
 		}
 	}
 
-	if len(otherSandboxRows) > 0 {
+	if len(grouped.otherSandboxRows) > 0 {
 		fmt.Println()
 		fmt.Println("  Other sandboxes:")
-		for _, r := range otherSandboxRows {
+		for _, r := range grouped.otherSandboxRows {
 			printRow("    ", r)
 		}
 	}
