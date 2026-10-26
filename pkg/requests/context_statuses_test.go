@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestGetContextStatuses(t *testing.T) {
@@ -17,6 +19,10 @@ func TestGetContextStatuses(t *testing.T) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/stripecli/context_statuses", r.URL.Path)
 		require.Equal(t, "Bearer oak_test_123", r.Header.Get("Authorization"))
+		// The API 403s without an OAK context identifying the caller's
+		// active account/livemode, so these must always be sent.
+		require.Equal(t, "acct_live", r.Header.Get("Stripe-Context"))
+		require.Equal(t, "true", r.Header.Get("Stripe-Livemode"))
 
 		require.NoError(t, r.ParseForm())
 		require.Equal(t, "acct_111", r.Form.Get("contexts[0][account_id]"))
@@ -32,7 +38,8 @@ func TestGetContextStatuses(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	statuses, err := GetContextStatuses(context.Background(), ts.URL, nil, "oak_test_123", []ContextStatusQuery{
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_live", true)
+	statuses, err := GetContextStatuses(context.Background(), ts.URL, nil, creds, []ContextStatusQuery{
 		{AccountID: "acct_111", Livemode: true},
 		{AccountID: "acct_222", Livemode: false},
 	})
@@ -44,7 +51,8 @@ func TestGetContextStatuses(t *testing.T) {
 }
 
 func TestGetContextStatuses_Empty(t *testing.T) {
-	statuses, err := GetContextStatuses(context.Background(), "http://unused.example", nil, "oak_test_123", nil)
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_live", true)
+	statuses, err := GetContextStatuses(context.Background(), "http://unused.example", nil, creds, nil)
 	require.NoError(t, err)
 	require.Nil(t, statuses)
 }
@@ -76,7 +84,8 @@ func TestGetContextStatuses_Batches(t *testing.T) {
 		queries[i] = ContextStatusQuery{AccountID: "acct_" + strconv.Itoa(i), Livemode: false}
 	}
 
-	statuses, err := GetContextStatuses(context.Background(), ts.URL, nil, "oak_test_123", queries)
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_live", true)
+	statuses, err := GetContextStatuses(context.Background(), ts.URL, nil, creds, queries)
 	require.NoError(t, err)
 	require.Len(t, statuses, 150)
 	require.ElementsMatch(t, []int{100, 50}, requestSizes)
@@ -89,7 +98,8 @@ func TestGetContextStatuses_ErrOnStatus(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	_, err := GetContextStatuses(context.Background(), ts.URL, nil, "oak_test_123", []ContextStatusQuery{
+	creds := stripe.NewOAKCredentials("oak_test_123", "acct_live", true)
+	_, err := GetContextStatuses(context.Background(), ts.URL, nil, creds, []ContextStatusQuery{
 		{AccountID: "acct_111", Livemode: true},
 	})
 	require.Error(t, err)

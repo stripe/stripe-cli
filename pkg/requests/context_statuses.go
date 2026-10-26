@@ -37,12 +37,15 @@ type contextStatusesResponse struct {
 
 // GetContextStatuses resolves parent-account and validity info for a batch of
 // (account_id, livemode) contexts via POST /v1/stripecli/context_statuses.
-func GetContextStatuses(ctx context.Context, apiBaseURL string, profile *config.Profile, uat string, queries []ContextStatusQuery) ([]ContextStatus, error) {
+// creds must carry an OAK context/livemode (e.g. via stripe.NewOAKCredentials)
+// identifying the caller's active account — the API 403s on a bare token
+// with no Stripe-Context/Stripe-Livemode, since it can't otherwise resolve
+// which permission grant to check the queried contexts against.
+func GetContextStatuses(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, queries []ContextStatusQuery) ([]ContextStatus, error) {
 	if len(queries) == 0 {
 		return nil, nil
 	}
 
-	creds := stripe.Credentials{Token: uat}
 	var results []ContextStatus
 	for start := 0; start < len(queries); start += contextStatusesBatchSize {
 		end := start + contextStatusesBatchSize

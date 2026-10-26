@@ -202,7 +202,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		fmt.Fprintln(w)
 	}
 
-	parentAccountIDs := wc.resolveParentAccounts(cmd.Context(), uat, accounts)
+	parentAccountIDs := wc.resolveParentAccounts(cmd.Context(), uat, ac, accounts)
 	login.PrintGroupedAuthorizedAccounts(wc.profile, accounts, parentAccountIDs)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
@@ -214,7 +214,17 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 // among accounts via the Stripe CLI context status API, so whoami can group
 // sandboxes under their parent. Lookup failures are non-fatal: whoami falls
 // back to listing sandboxes with unresolved parents under "Other sandboxes".
-func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, accounts []config.AuthorizedAccount) map[string]string {
+//
+// The request must be authenticated with the active account/livemode as the
+// OAK context (the same credentials GetUserInfo uses) — the API rejects a
+// bare UAT with no Stripe-Context/Stripe-Livemode with a 403, since it can't
+// otherwise resolve which permission grant applies. Without an active
+// context there's no context to authenticate with, so skip the lookup.
+func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, ac *config.ActiveContext, accounts []config.AuthorizedAccount) map[string]string {
+	if ac == nil {
+		return nil
+	}
+
 	var queries []requests.ContextStatusQuery
 	for _, a := range accounts {
 		if accountHasLiveModeForQuery(a.Modes) {
@@ -226,7 +236,8 @@ func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, acco
 		return nil
 	}
 
-	statuses, err := requests.GetContextStatuses(ctx, wc.apiBaseURL, wc.profile, uat, queries)
+	creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
+	statuses, err := requests.GetContextStatuses(ctx, wc.apiBaseURL, wc.profile, creds, queries)
 	if err != nil {
 		return nil
 	}

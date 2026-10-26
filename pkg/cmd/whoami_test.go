@@ -266,6 +266,11 @@ func TestKeyAvailabilityText(t *testing.T) {
 func TestResolveParentAccounts_OnlyQueriesSandboxes(t *testing.T) {
 	var gotAccountIDs []string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The API 403s without an OAK context identifying the caller's
+		// active account/livemode, so these must always be sent.
+		assert.Equal(t, "acct_live1", r.Header.Get("Stripe-Context"))
+		assert.Equal(t, "true", r.Header.Get("Stripe-Livemode"))
+
 		require.NoError(t, r.ParseForm())
 		gotAccountIDs = append(gotAccountIDs, r.Form.Get("contexts[0][account_id]"), r.Form.Get("contexts[1][account_id]"))
 		w.WriteHeader(http.StatusOK)
@@ -285,8 +290,9 @@ func TestResolveParentAccounts_OnlyQueriesSandboxes(t *testing.T) {
 		{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
 		{ID: "acct_sandbox2", Name: "Acme Staging", Modes: []string{"test"}},
 	}
+	ac := &config.ActiveContext{AccountID: "acct_live1", Livemode: true}
 
-	got := wc.resolveParentAccounts(context.Background(), "oak_test_123", accounts)
+	got := wc.resolveParentAccounts(context.Background(), "oak_test_123", ac, accounts)
 
 	assert.Equal(t, []string{"acct_sandbox1", "acct_sandbox2"}, gotAccountIDs, "accounts with a live mode shouldn't be queried for a parent")
 	assert.Equal(t, map[string]string{"acct_sandbox1": "acct_live1"}, got)
@@ -303,7 +309,28 @@ func TestResolveParentAccounts_FailsOpenOnError(t *testing.T) {
 	wc.apiBaseURL = ts.URL
 
 	accounts := []config.AuthorizedAccount{{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}}}
+	ac := &config.ActiveContext{AccountID: "acct_live1", Livemode: true}
 
-	got := wc.resolveParentAccounts(context.Background(), "oak_test_123", accounts)
+	got := wc.resolveParentAccounts(context.Background(), "oak_test_123", ac, accounts)
 	assert.Nil(t, got, "a lookup failure should fall back to an ungrouped list rather than erroring")
+}
+
+func TestResolveParentAccounts_NoActiveContextSkipsLookup(t *testing.T) {
+	var requestReceived bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{ProfileName: "default"}
+	wc.apiBaseURL = ts.URL
+
+	accounts := []config.AuthorizedAccount{{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}}}
+
+	got := wc.resolveParentAccounts(context.Background(), "oak_test_123", nil, accounts)
+
+	assert.Nil(t, got)
+	assert.False(t, requestReceived, "without an active context there's nothing to authenticate the lookup with, so it shouldn't be attempted")
 }
