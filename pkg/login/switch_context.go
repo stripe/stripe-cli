@@ -102,18 +102,11 @@ const switchNestedIndent = "└─ "
 var switchIndentWidth = utf8.RuneCountInString(switchNestedIndent)
 
 type switchRow struct {
-	isSeparator    bool
-	isSectionLabel bool
-	label          string
-	name           string
-	id             string
-	mode           string
-	active         bool
-	nested         bool
-}
-
-func (r switchRow) selectable() bool {
-	return !r.isSeparator && !r.isSectionLabel
+	name   string
+	id     string
+	mode   string
+	active bool
+	nested bool
 }
 
 type switchContextModel struct {
@@ -157,8 +150,9 @@ func switchRowsForAccount(a config.AuthorizedAccount, nested bool, activeID, act
 
 // buildSwitchRows builds the interactive selector's rows, grouping sandboxes
 // underneath their parent (live) account the same way whoami and login list
-// do (see classifyAccountsByParent). Sandboxes whose parent can't be
-// resolved are grouped under an "Other sandboxes" heading.
+// do (see classifyAccountsByParent). A sandbox whose parent can't be
+// resolved is shown as its own standalone row rather than being grouped
+// under a catch-all heading.
 func buildSwitchRows(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string, activeID, activeMode string) (rows []switchRow, nameW, idW int) {
 	classified := classifyAccountsByParent(accounts, parentAccountIDs)
 
@@ -169,20 +163,7 @@ func buildSwitchRows(accounts []config.AuthorizedAccount, parentAccountIDs map[s
 		}
 	}
 
-	if len(classified.otherSandboxes) > 0 {
-		if len(rows) > 0 {
-			rows = append(rows, switchRow{isSeparator: true})
-		}
-		rows = append(rows, switchRow{isSectionLabel: true, label: "Other sandboxes"})
-		for _, a := range classified.otherSandboxes {
-			rows = append(rows, switchRowsForAccount(a, false, activeID, activeMode)...)
-		}
-	}
-
 	for _, r := range rows {
-		if !r.selectable() {
-			continue
-		}
 		if len(r.name) > nameW {
 			nameW = len(r.name)
 		}
@@ -204,21 +185,12 @@ func newSwitchContextModel(accounts []config.AuthorizedAccount, profile *config.
 
 	rows, nameW, idW := buildSwitchRows(accounts, parentAccountIDs, activeID, activeMode)
 
-	m := switchContextModel{rows: rows, nameW: nameW, idW: idW, cursor: -1}
+	m := switchContextModel{rows: rows, nameW: nameW, idW: idW}
 	for i, r := range rows {
-		if !r.selectable() {
-			continue
-		}
-		if m.cursor == -1 {
-			m.cursor = i
-		}
 		if r.active {
 			m.cursor = i
 			break
 		}
-	}
-	if m.cursor == -1 {
-		m.cursor = 0
 	}
 	return m
 }
@@ -232,18 +204,12 @@ func (m switchContextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	switch {
 	case key.Code == tea.KeyUp || key.Code == 'k':
-		for i := m.cursor - 1; i >= 0; i-- {
-			if m.rows[i].selectable() {
-				m.cursor = i
-				break
-			}
+		if m.cursor > 0 {
+			m.cursor--
 		}
 	case key.Code == tea.KeyDown || key.Code == 'j':
-		for i := m.cursor + 1; i < len(m.rows); i++ {
-			if m.rows[i].selectable() {
-				m.cursor = i
-				break
-			}
+		if m.cursor < len(m.rows)-1 {
+			m.cursor++
 		}
 	case key.Code == tea.KeyEnter:
 		m.done = true
@@ -258,7 +224,6 @@ func (m switchContextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 var (
 	switchHeaderStyle  = lipgloss.NewStyle().Faint(true)
 	switchDividerStyle = lipgloss.NewStyle().Faint(true)
-	switchSectionStyle = lipgloss.NewStyle().Faint(true)
 	switchCursorStyle  = lipgloss.NewStyle().Bold(true)
 	switchActiveStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 )
@@ -283,35 +248,26 @@ func (m switchContextModel) View() tea.View {
 	sb.WriteByte('\n')
 
 	for i, r := range m.rows {
-		switch {
-		case r.isSeparator:
-			sb.WriteString(switchDividerStyle.Render("──"))
-			sb.WriteByte('\n')
-		case r.isSectionLabel:
-			sb.WriteString(switchSectionStyle.Render(r.label))
-			sb.WriteByte('\n')
-		default:
-			pointer := "  "
-			if i == m.cursor {
-				pointer = "▶ "
-			}
-			indent := ""
-			if r.nested {
-				indent = switchNestedIndent
-			}
-			namePad := nameRegion - utf8.RuneCountInString(indent)
-			activeMarker := ""
-			if r.active {
-				activeMarker = "  " + switchActiveStyle.Render("● active")
-			}
-			line := fmt.Sprintf("%s%s%-*s  %-*s  %-7s%s", pointer, indent, namePad, r.name, m.idW, r.id, displayMode(r.mode), activeMarker)
-			line = strings.TrimRight(line, " ")
-			if i == m.cursor {
-				line = switchCursorStyle.Render(line)
-			}
-			sb.WriteString(line)
-			sb.WriteByte('\n')
+		pointer := "  "
+		if i == m.cursor {
+			pointer = "▶ "
 		}
+		indent := ""
+		if r.nested {
+			indent = switchNestedIndent
+		}
+		namePad := nameRegion - utf8.RuneCountInString(indent)
+		activeMarker := ""
+		if r.active {
+			activeMarker = "  " + switchActiveStyle.Render("● active")
+		}
+		line := fmt.Sprintf("%s%s%-*s  %-*s  %-7s%s", pointer, indent, namePad, r.name, m.idW, r.id, displayMode(r.mode), activeMarker)
+		line = strings.TrimRight(line, " ")
+		if i == m.cursor {
+			line = switchCursorStyle.Render(line)
+		}
+		sb.WriteString(line)
+		sb.WriteByte('\n')
 	}
 
 	sb.WriteString("\nRun 'stripe login' to authorize additional accounts or sandboxes.\n\n")

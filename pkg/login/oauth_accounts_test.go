@@ -174,23 +174,25 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 	liveIdx := indexOf(t, output, "Acme Inc")
 	sandbox1Idx := indexOf(t, output, "Acme Dev")
 	sandbox2Idx := indexOf(t, output, "Acme Staging")
-	otherHeadingIdx := indexOf(t, output, "Other sandboxes")
 	orphanIdx := indexOf(t, output, "Mystery Sandbox")
+	orphan2Idx := indexOf(t, output, "Second Mystery")
 
 	assert.Less(t, liveIdx, sandbox1Idx, "parent account should print before its sandboxes")
 	assert.Less(t, sandbox1Idx, sandbox2Idx)
-	assert.Less(t, sandbox2Idx, otherHeadingIdx, "grouped sandboxes should print before the Other sandboxes section")
-	assert.Less(t, otherHeadingIdx, orphanIdx, "sandboxes without a known parent should print under Other sandboxes")
+	assert.Less(t, sandbox2Idx, orphanIdx, "standalone sandboxes should print after the grouped ones")
+	assert.Less(t, orphanIdx, orphan2Idx)
 	assert.Contains(t, output, "Authorized (5 accounts):")
+	assert.NotContains(t, output, "Other sandboxes", "standalone sandboxes shouldn't be grouped under a catch-all heading")
 	assert.Contains(t, output, "└─ Acme Dev", "sandboxes with a known parent should render with a tree connector showing they belong to it")
 	assert.Contains(t, output, "└─ Acme Staging")
 	assert.NotContains(t, output, "└─ Acme Inc", "the parent account's own row shouldn't be nested under itself")
-	assert.NotContains(t, output, "└─ Mystery Sandbox", "sandboxes with no known parent shouldn't get a connector since there's nothing to connect to")
+	assert.NotContains(t, output, "└─ Mystery Sandbox", "a standalone sandbox has no parent to connect to, so no connector")
+	assert.NotContains(t, output, "└─ Second Mystery")
 
-	// The id column should line up across rows even though the header,
-	// nested, and "Other sandboxes" indents are different widths. Measure
-	// the display column (rune count), not the byte offset, since the "└─"
-	// connector is multi-byte UTF-8 but renders as single-width characters.
+	// The id column should line up across rows even though the header and
+	// nested indents are different widths. Measure the display column (rune
+	// count), not the byte offset, since the "└─" connector is multi-byte
+	// UTF-8 but renders as single-width characters.
 	idColumn := func(line string) int {
 		idx := strings.Index(line, "acct_")
 		require.NotEqual(t, -1, idx, "expected line %q to contain an account id", line)
@@ -209,24 +211,7 @@ func TestPrintGroupedAuthorizedAccounts_GroupsSandboxesUnderParent(t *testing.T)
 	}
 }
 
-func TestPrintGroupedAuthorizedAccounts_SoleSandboxShownAsRegularAccount(t *testing.T) {
-	cfg, cleanup := setupOAuthTestConfig(t)
-	defer cleanup()
-
-	accounts := []config.AuthorizedAccount{
-		{ID: "acct_sandbox1", Name: "Solo Sandbox", Modes: []string{"test"}},
-	}
-
-	output := capturePrintedOutput(t, func() {
-		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, nil)
-	})
-
-	assert.NotContains(t, output, "Other sandboxes", "a single sandbox with no known parent shouldn't get its own heading")
-	assert.NotContains(t, output, "└─", "a promoted lone sandbox isn't nested under anything, so no connector")
-	assert.Contains(t, output, "Solo Sandbox")
-}
-
-func TestPrintGroupedAuthorizedAccounts_MultipleUnknownParentsKeepOtherSandboxesHeading(t *testing.T) {
+func TestPrintGroupedAuthorizedAccounts_StandaloneSandboxesShownAsRegularAccounts(t *testing.T) {
 	cfg, cleanup := setupOAuthTestConfig(t)
 	defer cleanup()
 
@@ -239,7 +224,8 @@ func TestPrintGroupedAuthorizedAccounts_MultipleUnknownParentsKeepOtherSandboxes
 		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, nil)
 	})
 
-	assert.Contains(t, output, "Other sandboxes:", "two or more sandboxes with no known parent still get grouped under a heading")
+	assert.NotContains(t, output, "Other sandboxes", "standalone sandboxes shouldn't be grouped under a catch-all heading, no matter how many there are")
+	assert.NotContains(t, output, "└─", "a standalone sandbox isn't nested under anything, so no connector")
 	assert.Contains(t, output, "Solo Sandbox")
 	assert.Contains(t, output, "Another Sandbox")
 }

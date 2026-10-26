@@ -201,9 +201,8 @@ func displayMode(m string) string {
 // Indents used when rendering accountRow. They differ in width, so printRow
 // compensates to keep the id and mode columns aligned across rows.
 const (
-	headerIndent       = "  "
-	nestedIndent       = "    └─ "
-	otherSandboxIndent = "    "
+	headerIndent = "  "
+	nestedIndent = "    └─ "
 )
 
 type accountRow struct {
@@ -259,23 +258,21 @@ func rowsForAccount(a config.AuthorizedAccount, activeID, activeMode string) []a
 }
 
 // classifiedAccounts partitions accounts by parent: header accounts (in
-// original order), each header's nested child accounts (also in original
-// order, keyed by the header's ID), and accounts whose parent couldn't be
-// resolved. Shared by every presentation of the authorized-accounts list
-// (whoami, login, switch) so they all group the same way.
+// original order) and each header's nested child accounts (also in original
+// order, keyed by the header's ID). Shared by every presentation of the
+// authorized-accounts list (whoami, login, switch) so they all group the
+// same way.
 type classifiedAccounts struct {
 	headers          []config.AuthorizedAccount
 	childrenByParent map[string][]config.AuthorizedAccount
-	otherSandboxes   []config.AuthorizedAccount
 }
 
 // classifyAccountsByParent sorts accounts into grouping headers (accounts
-// with a live mode of their own, or ones referenced as a parent) and the
-// accounts that nest under each, using parentAccountIDs to resolve sandboxes
-// to their parent. Accounts with no resolvable parent land in
-// otherSandboxes, unless there's exactly one such account, in which case it's
-// promoted to a header instead — a single orphaned sandbox doesn't need an
-// "Other sandboxes" heading to itself.
+// with a live mode of their own, ones referenced as a parent, or standalone
+// sandboxes with no resolvable parent) and the accounts that nest under each,
+// using parentAccountIDs to resolve sandboxes to their parent. A sandbox with
+// no known parent is shown as its own standalone account rather than being
+// grouped under a catch-all heading.
 func classifyAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) classifiedAccounts {
 	byID := make(map[string]config.AuthorizedAccount, len(accounts))
 	for _, a := range accounts {
@@ -304,19 +301,12 @@ func classifyAccountsByParent(accounts []config.AuthorizedAccount, parentAccount
 		}
 
 		parentID, hasParent := parentAccountIDs[a.ID]
-		if !hasParent || !isHeader[parentID] {
-			result.otherSandboxes = append(result.otherSandboxes, a)
+		if hasParent && isHeader[parentID] {
+			result.childrenByParent[parentID] = append(result.childrenByParent[parentID], a)
 			continue
 		}
 
-		result.childrenByParent[parentID] = append(result.childrenByParent[parentID], a)
-	}
-
-	// A lone sandbox with no known parent doesn't need an "Other sandboxes"
-	// heading to itself — show it as a regular top-level account instead.
-	if len(result.otherSandboxes) == 1 {
-		result.headers = append(result.headers, result.otherSandboxes[0])
-		result.otherSandboxes = nil
+		result.headers = append(result.headers, a)
 	}
 
 	return result
@@ -326,10 +316,9 @@ func classifyAccountsByParent(accounts []config.AuthorizedAccount, parentAccount
 // to render. headerRows and childRows are both keyed by the parent/header
 // account's ID.
 type groupedAccountRows struct {
-	headerRows       map[string][]accountRow
-	childRows        map[string][]accountRow
-	otherSandboxRows []accountRow
-	totalRows        int
+	headerRows map[string][]accountRow
+	childRows  map[string][]accountRow
+	totalRows  int
 }
 
 // groupAccountsByParent builds the printable rows for each account, grouped
@@ -357,11 +346,6 @@ func groupAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs
 			result.totalRows += len(rows)
 		}
 	}
-	for _, a := range classified.otherSandboxes {
-		rows := rowsForAccount(a, activeID, activeMode)
-		result.otherSandboxRows = append(result.otherSandboxRows, rows...)
-		result.totalRows += len(rows)
-	}
 
 	return result
 }
@@ -370,9 +354,9 @@ func groupAccountsByParent(accounts []config.AuthorizedAccount, parentAccountIDs
 // a formatted list, grouping sandboxes underneath their parent (live)
 // account. parentAccountIDs maps a sandbox's account ID to its parent account
 // ID, as resolved via the Stripe CLI context status API (see
-// requests.GetContextStatuses). Sandboxes missing from the map, or whose
-// resolved parent isn't itself an authorized account, are grouped under an
-// "Other sandboxes" heading.
+// requests.GetContextStatuses). A sandbox missing from the map, or whose
+// resolved parent isn't itself an authorized account, is shown as its own
+// standalone account instead of being grouped under a catch-all heading.
 func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) {
 	ac, _ := profile.GetActiveContext()
 	activeID, activeMode := "", "test"
@@ -402,14 +386,13 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 	for _, rows := range grouped.childRows {
 		measure(rows)
 	}
-	measure(grouped.otherSandboxRows)
 
 	// Indents vary in width (a plain "  " header indent vs. the wider
 	// "    └─ " tree connector), but the id and mode columns should still
 	// line up regardless of indent. Widen the name field to make up the
 	// difference, so indent width + padded name width is constant.
 	maxIndentWidth := 0
-	for _, indent := range []string{headerIndent, nestedIndent, otherSandboxIndent} {
+	for _, indent := range []string{headerIndent, nestedIndent} {
 		if w := utf8.RuneCountInString(indent); w > maxIndentWidth {
 			maxIndentWidth = w
 		}
@@ -440,14 +423,6 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 		}
 		for _, r := range grouped.childRows[a.ID] {
 			printRow(nestedIndent, r)
-		}
-	}
-
-	if len(grouped.otherSandboxRows) > 0 {
-		fmt.Println()
-		fmt.Println("  Other sandboxes:")
-		for _, r := range grouped.otherSandboxRows {
-			printRow(otherSandboxIndent, r)
 		}
 	}
 }
