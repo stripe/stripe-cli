@@ -202,8 +202,16 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		fmt.Fprintln(w)
 	}
 
-	parentAccountIDs := wc.resolveParentAccounts(cmd.Context(), uat, ac, accounts)
-	login.PrintGroupedAuthorizedAccounts(wc.profile, accounts, parentAccountIDs)
+	if parentAccountIDs, ok := wc.resolveParentAccounts(cmd.Context(), uat, ac, accounts); ok {
+		login.PrintGroupedAuthorizedAccounts(wc.profile, accounts, parentAccountIDs)
+	} else {
+		// The context status lookup itself failed (as opposed to succeeding
+		// with nothing to report), so we have no trustworthy grouping
+		// information. Fall back to the plain list rather than dumping
+		// every sandbox under "Other sandboxes", which would look like we
+		// checked and found no parent rather than couldn't check at all.
+		login.PrintAuthorizedContextsList(wc.profile, accounts)
+	}
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 	fmt.Fprintln(w, "Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")
@@ -212,17 +220,21 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 
 // resolveParentAccounts looks up the parent (live) account for each sandbox
 // among accounts via the Stripe CLI context status API, so whoami can group
-// sandboxes under their parent. Lookup failures are non-fatal: whoami falls
-// back to listing sandboxes with unresolved parents under "Other sandboxes".
+// sandboxes under their parent. The bool result is false only when the
+// lookup itself failed (as opposed to succeeding with nothing to report);
+// callers should fall back to an ungrouped list in that case rather than
+// treating every sandbox as having no known parent.
 //
 // The request must be authenticated with the active account/livemode as the
 // OAK context (the same credentials GetUserInfo uses) — the API rejects a
 // bare UAT with no Stripe-Context/Stripe-Livemode with a 403, since it can't
 // otherwise resolve which permission grant applies. Without an active
-// context there's no context to authenticate with, so skip the lookup.
-func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, ac *config.ActiveContext, accounts []config.AuthorizedAccount) map[string]string {
+// context there's no context to authenticate with, so skip the lookup (this
+// isn't a failure: there's simply nothing to group beyond what's already
+// derivable locally).
+func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, ac *config.ActiveContext, accounts []config.AuthorizedAccount) (map[string]string, bool) {
 	if ac == nil {
-		return nil
+		return nil, true
 	}
 
 	var queries []requests.ContextStatusQuery
@@ -233,13 +245,13 @@ func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, ac *
 		queries = append(queries, requests.ContextStatusQuery{AccountID: a.ID, Livemode: false})
 	}
 	if len(queries) == 0 {
-		return nil
+		return nil, true
 	}
 
 	creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
 	statuses, err := requests.GetContextStatuses(ctx, wc.apiBaseURL, wc.profile, creds, queries)
 	if err != nil {
-		return nil
+		return nil, false
 	}
 
 	parentAccountIDs := make(map[string]string, len(statuses))
@@ -248,7 +260,7 @@ func (wc *whoamiCmd) resolveParentAccounts(ctx context.Context, uat string, ac *
 			parentAccountIDs[s.AccountID] = s.ParentAccountID
 		}
 	}
-	return parentAccountIDs
+	return parentAccountIDs, true
 }
 
 // accountHasLiveModeForQuery reports whether modes includes "live", meaning
