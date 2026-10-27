@@ -436,7 +436,8 @@ func assertWhoamiBusinessProfile(t *testing.T, out string, err error, format str
 		return
 	}
 	require.NoError(t, err)
-	if format == "json" {
+	switch {
+	case format == "json":
 		var result map[string]json.RawMessage
 		require.NoError(t, json.Unmarshal([]byte(out), &result))
 		if status == http.StatusNotFound {
@@ -444,9 +445,9 @@ func assertWhoamiBusinessProfile(t *testing.T, out string, err error, format str
 		} else {
 			assert.JSONEq(t, `{"id":"profile_test_123","username":"furever"}`, string(result["network_business_profile"]))
 		}
-	} else if status == http.StatusNotFound {
+	case status == http.StatusNotFound:
 		assert.NotContains(t, out, "Network Business Profile")
-	} else {
+	default:
 		assert.Regexp(t, `(?m)^Network Business Profile\s+@furever \(profile_test_123\)$`, out)
 	}
 }
