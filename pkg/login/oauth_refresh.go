@@ -19,10 +19,15 @@ func init() {
 }
 
 // refreshOAuthToken exchanges the stored refresh token for a new access token
-// and updates p in-place. On invalid_grant it clears all OAuth credentials so
-// the next ResolveCredentials call surfaces an actionable re-login error. On
-// invalid_scope (the active account/mode was deauthorized) it leaves
-// credentials intact and points the user at 'stripe switch' instead.
+// and updates p in-place. On invalid_grant or invalid_scope — the latter
+// happens when the active account/mode was deauthorized, so the server won't
+// reissue a token scoped to it — it clears all OAuth credentials so the next
+// ResolveCredentials call surfaces an actionable re-login error. Credentials
+// have to go in both cases: without a usable access token, nothing else
+// (including 'stripe switch', which itself needs a valid token to list
+// accounts) can recover the session, so 'stripe login' is the only way
+// forward; it already falls back to a fresh device-auth flow whenever the
+// existing session can't be revived (see sessionIsValid in cmd/login.go).
 func refreshOAuthToken(p *config.Profile) error {
 	if config.KeyRing == nil {
 		return errorcategory.New(errorcategory.Auth, "keyring unavailable; run 'stripe login' to re-authenticate")
@@ -45,22 +50,13 @@ func refreshOAuthToken(p *config.Profile) error {
 	tokenResp, err := doRefreshToken(context.Background(), accessBaseURL, clientID, string(refreshTokenBytes))
 	if err != nil {
 		var oauthErr *OAuthError
-		if errors.As(err, &oauthErr) {
-			switch oauthErr.Code {
-			case "invalid_grant":
-				// Token is invalid or consumed; clear credentials so the user gets a
-				// clear "run stripe login" error on the next attempt rather than an
-				// opaque 401 from the Stripe API.
-				_ = clearOAuthCredentialsForProfile(p)
-				return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
-			case "invalid_scope":
-				// The refresh grant is still valid, but the active account/mode
-				// isn't authorized anymore (e.g. access was revoked or scoped
-				// down), so the server won't reissue a token for it. Leave
-				// credentials in place: 'stripe switch' doesn't need a fresh
-				// token, just a different active context.
-				return errorcategory.New(errorcategory.Auth, "the active account is no longer authorized; run 'stripe switch' to select an authorized account")
-			}
+		if errors.As(err, &oauthErr) && (oauthErr.Code == "invalid_grant" || oauthErr.Code == "invalid_scope") {
+			// Token is invalid, consumed, or no longer covers an authorized
+			// scope; clear credentials so the user gets a clear "run stripe
+			// login" error on the next attempt rather than an opaque 401 from
+			// the Stripe API.
+			_ = clearOAuthCredentialsForProfile(p)
+			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
 		}
 		return fmt.Errorf("failed to refresh session: %w", err)
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
 // TestRefreshOAuthToken_PreservesProfileMetadata guards against a regression
@@ -55,13 +56,14 @@ func TestRefreshOAuthToken_PreservesProfileMetadata(t *testing.T) {
 	assert.Equal(t, "user_123", viper.GetString(p.GetConfigField(config.UserIDName)))
 }
 
-// TestRefreshOAuthToken_InvalidScopePointsAtSwitch covers the case where the
-// refresh token is still good, but the active account/mode has since been
-// deauthorized: the server refuses to reissue a token scoped to it. Unlike
-// invalid_grant, this shouldn't wipe stored credentials, since 'stripe
-// switch' (the suggested next step) only needs the existing session to list
-// authorized accounts and pick a different one.
-func TestRefreshOAuthToken_InvalidScopePointsAtSwitch(t *testing.T) {
+// TestRefreshOAuthToken_InvalidScopeClearsCredentials covers the case where
+// the active account/mode has since been deauthorized, so the server refuses
+// to reissue a token scoped to it. There's no recovery short of 'stripe
+// login': without a usable access token, even 'stripe switch' can't list
+// authorized accounts (it hit the same wall with a raw 401 from the
+// accounts endpoint when this was tried), so credentials are cleared the
+// same way invalid_grant clears them.
+func TestRefreshOAuthToken_InvalidScopeClearsCredentials(t *testing.T) {
 	cfg, cleanup := setupOAuthTestConfig(t)
 	defer cleanup()
 
@@ -82,8 +84,8 @@ func TestRefreshOAuthToken_InvalidScopePointsAtSwitch(t *testing.T) {
 	}
 	err := refreshOAuthToken(p)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "stripe switch")
+	assert.ErrorContains(t, err, "stripe login")
 
 	_, keyErr := config.KeyRing.Get(cfg.Profile.KeyringKey(config.OAuthRefreshTokenKeychainKey))
-	assert.NoError(t, keyErr, "the refresh token must survive invalid_scope so 'stripe switch' can still use the session")
+	assert.ErrorIs(t, keyErr, keyring.ErrKeyNotFound, "invalid_scope is unrecoverable, so the refresh token should be cleared just like invalid_grant")
 }
