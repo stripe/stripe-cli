@@ -398,6 +398,6 @@ func TestRunWhoamiOAuth_WarnsWhenActiveContextNoLongerAuthorized(t *testing.T) {
 	require.NoError(t, runErr)
 
 	out := buf.String()
-	assert.Contains(t, out, "No longer authorized for this account/mode")
+	assert.Contains(t, out, "Not authorized")
 	assert.Contains(t, out, "stripe switch")
 }

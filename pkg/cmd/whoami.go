@@ -197,6 +197,10 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		} else {
 			fmt.Fprintf(tw, "Account\t%s · %s\n", out.DisplayName, displayModeText(out.Mode))
 		}
+		if out.Authorized != nil && !*out.Authorized {
+			color := ansi.Color(w)
+			fmt.Fprintf(tw, "\t%s Not authorized — run 'stripe switch'\n", color.Yellow("⚠"))
+		}
 		if out.Role != "" {
 			fmt.Fprintf(tw, "Role\t%s\n", out.Role)
 		}
@@ -204,12 +208,6 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 			fmt.Fprintf(tw, "Expires\t%s\n", expiresAt.Local().Format(expiryDisplayFormat))
 		}
 		tw.Flush()
-
-		if out.Authorized != nil && !*out.Authorized {
-			color := ansi.Color(w)
-			fmt.Fprintf(w, "%s No longer authorized for this account/mode. Run 'stripe switch' to select an authorized account, or 'stripe login' to reauthorize.\n", color.Yellow("⚠"))
-		}
-
 		fmt.Fprintln(w)
 	}
 
