@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -59,9 +60,15 @@ type whoamiOAuthOutput struct {
 	Mode                   string                           `json:"mode,omitempty"`
 	Email                  string                           `json:"email,omitempty"`
 	Role                   string                           `json:"role,omitempty"`
+  // Authorized is false when the active account/mode is no longer present
+	// among the UAT's authorized accounts (e.g. access was revoked or scoped
+	// down since the context was selected). Nil when there's no active
+	// context to evaluate.
+	Authorized             *bool                            `json:"authorized,omitempty"`
 	ExpiresAt              *int64                           `json:"expires_at,omitempty"`
 	AuthorizedAccounts     []config.AuthorizedAccount       `json:"authorized_accounts,omitempty"`
 	NetworkBusinessProfile *requests.NetworkBusinessProfile `json:"network_business_profile,omitempty"`
+
 }
 
 func newWhoamiCmd() *whoamiCmd {
@@ -212,6 +219,10 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		} else {
 			fmt.Fprintf(tw, "Account\t%s · %s\n", out.DisplayName, displayModeText(out.Mode))
 		}
+		if out.Authorized != nil && !*out.Authorized {
+			color := ansi.Color(w)
+			fmt.Fprintf(tw, "\t%s Not authorized — run 'stripe switch'\n", color.Yellow("⚠"))
+		}
 		if out.Role != "" {
 			fmt.Fprintf(tw, "Role\t%s\n", out.Role)
 		}
@@ -261,12 +272,45 @@ func buildOAuthWhoamiOutput(accounts []config.AuthorizedAccount, ac *config.Acti
 		out.Mode = "test"
 	}
 
+	authorized := isActiveContextAuthorized(accounts, ac)
+	out.Authorized = &authorized
+
 	if hasExpiry {
 		ts := expiresAt.Unix()
 		out.ExpiresAt = &ts
 	}
 
 	return out
+}
+
+// isActiveContextAuthorized reports whether ac's account and mode are still
+// present among accounts. The stored active context can go stale when access
+// is revoked or scoped down (e.g. from the dashboard) after it was selected,
+// without anything locally updating it.
+func isActiveContextAuthorized(accounts []config.AuthorizedAccount, ac *config.ActiveContext) bool {
+	wantMode := "test"
+	if ac.Livemode {
+		wantMode = "live"
+	}
+
+	for _, a := range accounts {
+		if a.ID != ac.AccountID {
+			continue
+		}
+		modes := a.Modes
+		if len(modes) == 0 {
+			// An account with no reported modes is treated as test-mode-only
+			// everywhere else in the CLI (see switchRowsForAccount).
+			modes = []string{"test"}
+		}
+		for _, m := range modes {
+			if m == wantMode {
+				return true
+			}
+		}
+		return false
+	}
+	return false
 }
 
 // displayModeText maps the internal "test"/"live" mode value to the CLI's

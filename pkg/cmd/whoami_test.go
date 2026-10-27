@@ -242,6 +242,7 @@ func TestBuildOAuthWhoamiOutput_NoActiveContext(t *testing.T) {
 	assert.Empty(t, out.AccountID)
 	assert.Empty(t, out.Mode)
 	assert.Nil(t, out.ExpiresAt)
+	assert.Nil(t, out.Authorized, "no active context means there's nothing to authorize")
 	assert.Equal(t, accounts, out.AuthorizedAccounts)
 }
 
@@ -260,6 +261,8 @@ func TestBuildOAuthWhoamiOutput_TestModeActiveContext(t *testing.T) {
 	assert.Equal(t, "test", out.Mode)
 	require.NotNil(t, out.ExpiresAt)
 	assert.Equal(t, expiresAt.Unix(), *out.ExpiresAt, "expires_at is rendered as a unix timestamp")
+	require.NotNil(t, out.Authorized)
+	assert.True(t, *out.Authorized)
 }
 
 func TestBuildOAuthWhoamiOutput_LiveModeActiveContextUnknownAccount(t *testing.T) {
@@ -272,6 +275,27 @@ func TestBuildOAuthWhoamiOutput_LiveModeActiveContextUnknownAccount(t *testing.T
 	assert.Equal(t, "acct_999", out.DisplayName, "falls back to account ID when not found among authorized accounts")
 	assert.Equal(t, "live", out.Mode)
 	assert.Nil(t, out.ExpiresAt)
+	require.NotNil(t, out.Authorized)
+	assert.False(t, *out.Authorized, "the active account isn't in the authorized accounts list at all")
+}
+
+func TestBuildOAuthWhoamiOutput_ModeRevokedFromActiveAccount(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_123", Name: "Acme", Modes: []string{"test"}}}
+	ac := &config.ActiveContext{AccountID: "acct_123", Livemode: true}
+
+	out := buildOAuthWhoamiOutput(accounts, ac, requests.UserInfo{}, time.Time{}, false)
+
+	assert.Equal(t, "acct_123", out.AccountID)
+	assert.Equal(t, "live", out.Mode)
+	require.NotNil(t, out.Authorized)
+	assert.False(t, *out.Authorized, "the account is authorized, but live mode access was revoked")
+}
+
+func TestIsActiveContextAuthorized_NoModesDefaultsToTest(t *testing.T) {
+	accounts := []config.AuthorizedAccount{{ID: "acct_123", Name: "Acme"}}
+
+	assert.True(t, isActiveContextAuthorized(accounts, &config.ActiveContext{AccountID: "acct_123", Livemode: false}))
+	assert.False(t, isActiveContextAuthorized(accounts, &config.ActiveContext{AccountID: "acct_123", Livemode: true}))
 }
 
 func TestDisplayModeText(t *testing.T) {
@@ -475,4 +499,56 @@ func TestWhoamiOAuthNetworkBusinessProfileNoActiveContext(t *testing.T) {
 	wc.cmd.SetOut(buf)
 	require.NoError(t, wc.runWhoamiOAuth(wc.cmd, "oak_test_123"))
 	assert.NotContains(t, buf.String(), "network_business_profile")
+}
+
+// TestRunWhoamiOAuth_WarnsWhenActiveContextNoLongerAuthorized exercises the
+// OAuth text-output path end to end for a stored active context whose
+// account/mode has since dropped out of the UAT's authorized accounts.
+func TestRunWhoamiOAuth_WarnsWhenActiveContextNoLongerAuthorized(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		config.UATKeychainItemKey: []byte("oak_live_secret_token"),
+	})
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	accessSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"accounts": []config.AuthorizedAccount{
+				{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
+			},
+		})
+	}))
+	defer accessSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer apiSrv.Close()
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{ProfileName: "default"}
+	wc.accessBaseURL = accessSrv.URL
+	wc.apiBaseURL = apiSrv.URL
+	// Active context points at live mode for acct_sandbox1, which the server
+	// above no longer authorizes (only "test" mode is listed).
+	require.NoError(t, wc.profile.SaveActiveContext("acct_sandbox1", true))
+
+	buf := new(bytes.Buffer)
+	wc.cmd.SetContext(context.Background())
+	wc.cmd.SetOut(buf)
+
+	// PrintAuthorizedAccounts writes directly to os.Stdout; swallow it so it
+	// doesn't pollute test output.
+	origStdout := os.Stdout
+	_, pipeW, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = pipeW
+	runErr := wc.runWhoamiOAuth(wc.cmd, "oak_live_secret_token")
+	pipeW.Close()
+	os.Stdout = origStdout
+	require.NoError(t, runErr)
+
+	out := buf.String()
+	assert.Contains(t, out, "Not authorized")
+	assert.Contains(t, out, "stripe switch")
 }
