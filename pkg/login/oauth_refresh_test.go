@@ -54,3 +54,36 @@ func TestRefreshOAuthToken_PreservesProfileMetadata(t *testing.T) {
 	assert.Equal(t, "acct_123", viper.GetString(p.GetConfigField(config.AccountIDName)))
 	assert.Equal(t, "user_123", viper.GetString(p.GetConfigField(config.UserIDName)))
 }
+
+// TestRefreshOAuthToken_InvalidScopePointsAtSwitch covers the case where the
+// refresh token is still good, but the active account/mode has since been
+// deauthorized: the server refuses to reissue a token scoped to it. Unlike
+// invalid_grant, this shouldn't wipe stored credentials, since 'stripe
+// switch' (the suggested next step) only needs the existing session to list
+// authorized accounts and pick a different one.
+func TestRefreshOAuthToken_InvalidScopePointsAtSwitch(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	cfg.Profile.UAT = "oaac_old_access"
+	require.NoError(t, cfg.Profile.CreateProfile())
+	require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.OAuthRefreshTokenKeychainKey), []byte("oart_old_refresh"), "test"))
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(tokenErrorResponse{Error: "invalid_scope", ErrorDescription: "Invalid scope"}) //nolint:errcheck
+	}))
+	defer ts.Close()
+
+	p := &config.Profile{
+		ProfileName:        cfg.Profile.ProfileName,
+		OAuthAccessBaseURL: ts.URL,
+	}
+	err := refreshOAuthToken(p)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "stripe switch")
+
+	_, keyErr := config.KeyRing.Get(cfg.Profile.KeyringKey(config.OAuthRefreshTokenKeychainKey))
+	assert.NoError(t, keyErr, "the refresh token must survive invalid_scope so 'stripe switch' can still use the session")
+}

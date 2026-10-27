@@ -20,7 +20,9 @@ func init() {
 
 // refreshOAuthToken exchanges the stored refresh token for a new access token
 // and updates p in-place. On invalid_grant it clears all OAuth credentials so
-// the next ResolveCredentials call surfaces an actionable re-login error.
+// the next ResolveCredentials call surfaces an actionable re-login error. On
+// invalid_scope (the active account/mode was deauthorized) it leaves
+// credentials intact and points the user at 'stripe switch' instead.
 func refreshOAuthToken(p *config.Profile) error {
 	if config.KeyRing == nil {
 		return errorcategory.New(errorcategory.Auth, "keyring unavailable; run 'stripe login' to re-authenticate")
@@ -43,12 +45,22 @@ func refreshOAuthToken(p *config.Profile) error {
 	tokenResp, err := doRefreshToken(context.Background(), accessBaseURL, clientID, string(refreshTokenBytes))
 	if err != nil {
 		var oauthErr *OAuthError
-		if errors.As(err, &oauthErr) && oauthErr.Code == "invalid_grant" {
-			// Token is invalid or consumed; clear credentials so the user gets a
-			// clear "run stripe login" error on the next attempt rather than an
-			// opaque 401 from the Stripe API.
-			_ = clearOAuthCredentialsForProfile(p)
-			return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
+		if errors.As(err, &oauthErr) {
+			switch oauthErr.Code {
+			case "invalid_grant":
+				// Token is invalid or consumed; clear credentials so the user gets a
+				// clear "run stripe login" error on the next attempt rather than an
+				// opaque 401 from the Stripe API.
+				_ = clearOAuthCredentialsForProfile(p)
+				return errorcategory.New(errorcategory.Auth, "session expired; run 'stripe login' to re-authenticate")
+			case "invalid_scope":
+				// The refresh grant is still valid, but the active account/mode
+				// isn't authorized anymore (e.g. access was revoked or scoped
+				// down), so the server won't reissue a token for it. Leave
+				// credentials in place: 'stripe switch' doesn't need a fresh
+				// token, just a different active context.
+				return errorcategory.New(errorcategory.Auth, "the active account is no longer authorized; run 'stripe switch' to select an authorized account")
+			}
 		}
 		return fmt.Errorf("failed to refresh session: %w", err)
 	}
