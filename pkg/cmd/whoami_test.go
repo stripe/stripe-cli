@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,10 +19,16 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func runWhoami(t *testing.T, wc *whoamiCmd) (string, error) {
 	t.Helper()
+	if wc.apiBaseURL == stripe.DefaultAPIBaseURL {
+		server := httptest.NewServer(http.NotFoundHandler())
+		t.Cleanup(server.Close)
+		wc.apiBaseURL = server.URL
+	}
 	buf := new(bytes.Buffer)
 	wc.cmd.SetOut(buf)
 	err := wc.runWhoamiCmd(wc.cmd, []string{})
@@ -32,15 +40,23 @@ func TestWhoamiNotAuthenticated(t *testing.T) {
 	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
 	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("unauthenticated whoami must not call the API")
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	wc.apiBaseURL = server.URL
 
 	out, err := runWhoami(t, wc)
 	assert.ErrorIs(t, err, errNotAuthenticated)
 	assert.Regexp(t, `Profile:\s+default`, out)
 	assert.Regexp(t, `Authenticated:\s+false`, out)
+	assert.NotContains(t, out, "Network Business Profile")
 }
 
 func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
@@ -48,6 +64,7 @@ func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
@@ -74,6 +91,7 @@ func TestWhoamiWithTestKey(t *testing.T) {
 	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
@@ -99,6 +117,7 @@ func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
 	config.KeyRing = keyring.NewMemoryStore(nil)
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
@@ -123,6 +142,7 @@ func TestWhoamiWithEnvVarKey(t *testing.T) {
 	t.Setenv("STRIPE_API_KEY", "sk_test_envvar1234567890")
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
@@ -146,6 +166,7 @@ func TestWhoamiWithLiveModeEnvVarKey(t *testing.T) {
 	t.Setenv("STRIPE_API_KEY", "rk_live_envvar1234567890")
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
@@ -170,6 +191,7 @@ func TestWhoamiLiveModeKeyDetected(t *testing.T) {
 	})
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 	}
@@ -200,6 +222,7 @@ func TestWhoamiOAuth_RejectsArbitraryAccessBaseWithoutSendingUAT(t *testing.T) {
 	defer attacker.Close()
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{
 		ProfileName: "default",
 		DeviceName:  "test-device",
@@ -287,6 +310,8 @@ func TestRunWhoamiOAuth_FallsBackToFlatListWhenContextStatusLookupFails(t *testi
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/v2/network/business_profiles/me":
+			w.WriteHeader(http.StatusNotFound)
 		case "/v1/stripecli/context_statuses":
 			w.WriteHeader(http.StatusInternalServerError)
 		default:
@@ -296,6 +321,7 @@ func TestRunWhoamiOAuth_FallsBackToFlatListWhenContextStatusLookupFails(t *testi
 	defer apiSrv.Close()
 
 	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
 	wc.profile = &config.Profile{ProfileName: "default"}
 	wc.accessBaseURL = accessSrv.URL
 	wc.apiBaseURL = apiSrv.URL
@@ -324,4 +350,128 @@ func TestRunWhoamiOAuth_FallsBackToFlatListWhenContextStatusLookupFails(t *testi
 	assert.Contains(t, stdout, "Authorized (2 accounts):")
 	assert.NotContains(t, stdout, "Other sandboxes", "a failed lookup shouldn't be reported as 'checked, no parent found'")
 	assert.NotContains(t, stdout, "└─", "a failed lookup means we have no grouping info, so the list should be flat")
+}
+
+func TestWhoamiNetworkBusinessProfile(t *testing.T) {
+	for _, key := range []string{"sk_test_1234567890abcdef", "sk_live_1234567890abcdef"} {
+		for _, format := range []string{"", "json"} {
+			for _, status := range []int{http.StatusOK, http.StatusNotFound, http.StatusInternalServerError} {
+				t.Run(fmt.Sprintf("%s/format=%s/status=%d", key, format, status), func(t *testing.T) {
+					config.KeyRing = keyring.NewMemoryStore(nil)
+					t.Cleanup(func() { config.KeyRing = nil })
+					calls := 0
+					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						calls++
+						assert.Equal(t, "/v2/network/business_profiles/me", r.URL.Path)
+						assert.Equal(t, "Bearer "+key, r.Header.Get("Authorization"))
+						assert.Equal(t, requests.StripePreviewVersionHeaderValue, r.Header.Get("Stripe-Version"))
+						w.WriteHeader(status)
+						w.Write([]byte(`{"id":"profile_test_123","username":"furever"}`)) //nolint:errcheck
+					}))
+					defer server.Close()
+
+					wc := newWhoamiCmd()
+					wc.cmd.SetContext(context.Background())
+					wc.profile = &config.Profile{ProfileName: "default", APIKey: key}
+					wc.apiBaseURL = server.URL
+					wc.format = format
+					out, err := runWhoami(t, wc)
+					assert.Equal(t, 1, calls)
+					assertWhoamiBusinessProfile(t, out, err, format, status)
+				})
+			}
+		}
+	}
+}
+
+func TestWhoamiOAuthNetworkBusinessProfile(t *testing.T) {
+	for _, livemode := range []bool{false, true} {
+		for _, format := range []string{"", "json"} {
+			for _, status := range []int{http.StatusOK, http.StatusNotFound, http.StatusInternalServerError} {
+				t.Run(fmt.Sprintf("live=%t/format=%s/status=%d", livemode, format, status), func(t *testing.T) {
+					config.KeyRing = keyring.NewMemoryStore(nil)
+					t.Cleanup(func() { config.KeyRing = nil })
+					calls := 0
+					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						switch r.URL.Path {
+						case "/stripecli/oauth2/token/accounts":
+							w.Write([]byte(`{"accounts":[]}`)) //nolint:errcheck
+						case "/v1/stripecli/user_info":
+							w.Write([]byte(`{"email":"user@example.com"}`)) //nolint:errcheck
+						case "/v2/network/business_profiles/me":
+							calls++
+							assert.Equal(t, "Bearer oak_test_123", r.Header.Get("Authorization"))
+							assert.Equal(t, "acct_123", r.Header.Get("Stripe-Context"))
+							assert.Equal(t, strconv.FormatBool(livemode), r.Header.Get("Stripe-Livemode"))
+							w.WriteHeader(status)
+							w.Write([]byte(`{"id":"profile_test_123","username":"furever"}`)) //nolint:errcheck
+						default:
+							http.NotFound(w, r)
+						}
+					}))
+					defer server.Close()
+
+					wc := newWhoamiCmd()
+					wc.cmd.SetContext(context.Background())
+					wc.profile = &config.Profile{ProfileName: "default"}
+					require.NoError(t, wc.profile.SaveActiveContext("acct_123", livemode))
+					wc.apiBaseURL = server.URL
+					wc.accessBaseURL = server.URL
+					wc.format = format
+					buf := new(bytes.Buffer)
+					wc.cmd.SetOut(buf)
+					err := wc.runWhoamiOAuth(wc.cmd, "oak_test_123")
+					assert.Equal(t, 1, calls)
+					assertWhoamiBusinessProfile(t, buf.String(), err, format, status)
+				})
+			}
+		}
+	}
+}
+
+func assertWhoamiBusinessProfile(t *testing.T, out string, err error, format string, status int) {
+	t.Helper()
+	if status == http.StatusInternalServerError {
+		require.ErrorContains(t, err, "failed to fetch network business profile")
+		return
+	}
+	require.NoError(t, err)
+	if format == "json" {
+		var result map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal([]byte(out), &result))
+		if status == http.StatusNotFound {
+			assert.NotContains(t, result, "network_business_profile")
+		} else {
+			assert.JSONEq(t, `{"id":"profile_test_123","username":"furever"}`, string(result["network_business_profile"]))
+		}
+	} else if status == http.StatusNotFound {
+		assert.NotContains(t, out, "Network Business Profile")
+	} else {
+		assert.Regexp(t, `(?m)^Network Business Profile\s+@furever \(profile_test_123\)$`, out)
+	}
+}
+
+func TestWhoamiOAuthNetworkBusinessProfileNoActiveContext(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/stripecli/oauth2/token/accounts" {
+			t.Errorf("unexpected request without an active context: %s", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+		w.Write([]byte(`{"accounts":[]}`)) //nolint:errcheck
+	}))
+	defer server.Close()
+
+	wc := newWhoamiCmd()
+	wc.cmd.SetContext(context.Background())
+	wc.profile = &config.Profile{ProfileName: "default"}
+	wc.accessBaseURL = server.URL
+	wc.apiBaseURL = server.URL
+	wc.format = "json"
+	buf := new(bytes.Buffer)
+	wc.cmd.SetOut(buf)
+	require.NoError(t, wc.runWhoamiOAuth(wc.cmd, "oak_test_123"))
+	assert.NotContains(t, buf.String(), "network_business_profile")
 }
