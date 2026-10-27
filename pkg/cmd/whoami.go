@@ -201,7 +201,7 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		fmt.Fprintln(w)
 	}
 
-	login.PrintAuthorizedContextsList(wc.profile, accounts)
+	login.PrintAuthorizedAccounts(cmd.Context(), wc.apiBaseURL, wc.profile, uat, accounts)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Run 'stripe login' to change permissions or authorize access to additional accounts or sandboxes.")
 	fmt.Fprintln(w, "Run 'stripe switch' to switch to a different account, or between live mode and a sandbox.")

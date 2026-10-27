@@ -757,7 +757,11 @@ func (h *coreCLIHelper) SwitchContext(accountID string, livemode bool) (string, 
 	if accessBaseURL == "" {
 		accessBaseURL = login.DefaultAccessBaseURL
 	}
-	result, err := loginSwitchContext(h.ctx, accessBaseURL, cfg, accountID, livemode)
+	apiBaseURL := h.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+	result, err := loginSwitchContext(h.ctx, accessBaseURL, apiBaseURL, cfg, accountID, livemode)
 	if err != nil {
 		return "", "", false, false, err
 	}
@@ -801,6 +805,10 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 	if accessBaseURL == "" {
 		accessBaseURL = login.DefaultAccessBaseURL
 	}
+	apiBaseURL := h.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
 
 	ctx := h.ctx
 	if timeoutSeconds > 0 {
@@ -817,7 +825,7 @@ func (h *coreCLIHelper) Login(timeoutSeconds int32) (string, string, bool, bool,
 		}
 	}
 
-	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, cfg); err != nil {
+	if err := loginLogin(ctx, dashboardBaseURL, accessBaseURL, apiBaseURL, cfg); err != nil {
 		if ctx.Err() != nil {
 			return "", "", false, false, nil
 		}

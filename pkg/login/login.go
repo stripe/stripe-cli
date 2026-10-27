@@ -33,7 +33,7 @@ func warnIfInsecureStorage() {
 // enrolled in the OAuth feature flag and the OAuth device-code flow is used
 // instead of the legacy RAK flow. accessBaseURL controls which access-srv
 // environment is used (production by default; QA via --access-base).
-func Login(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+func Login(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 	links, useOAuth, err := GetLinks(ctx, dashboardBaseURL, cfg.Profile.DeviceName, cfg.GetMachineUUID())
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func Login(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *con
 	_ = cfg.RemoveAuthFields(cfg.Profile.ProfileName)
 
 	if useOAuth {
-		return LoginWithDeviceCode(ctx, accessBaseURL, cfg)
+		return LoginWithDeviceCode(ctx, accessBaseURL, apiBaseURL, cfg)
 	}
 
 	configurer := keys.NewRAKConfigurer(cfg, afero.NewOsFs())
@@ -328,7 +328,7 @@ func CheckPendingOAuthLogin(ctx context.Context, cfg *config.Config) (*DeviceCod
 
 // PollPendingDeviceAuth loads the OAuth device auth state saved by InitiateLogin and polls
 // the token endpoint until the user approves.
-func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
+func PollPendingDeviceAuth(ctx context.Context, apiBaseURL string, cfg *config.Config) error {
 	waitCtx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
@@ -344,7 +344,8 @@ func PollPendingDeviceAuth(ctx context.Context, cfg *config.Config) error {
 		return nil
 	}
 
-	printAuthorizedSummary(result.Accounts, result.ActiveAccountID, result.ActiveLivemode)
+	uat, _ := cfg.Profile.GetUAT()
+	printAuthorizedSummary(ctx, apiBaseURL, &cfg.Profile, uat, result.Accounts)
 	warnIfInsecureStorage()
 	return nil
 }

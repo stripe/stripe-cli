@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -29,7 +30,7 @@ func (r *SwitchResult) DisplayMode() string {
 // active. If accountID is non-empty it selects that account directly (test mode by default, live
 // if livemode is true). Otherwise it shows an interactive list, returning a nil result if the
 // user cancels it.
-func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*SwitchResult, error) {
+func SwitchContext(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*SwitchResult, error) {
 	uat, err := cfg.Profile.GetUAT()
 	if err != nil {
 		return nil, err
@@ -46,7 +47,10 @@ func SwitchContext(ctx context.Context, accessBaseURL string, cfg *config.Config
 	if accountID != "" {
 		return switchByID(cfg, accounts, accountID, livemode)
 	}
-	return runSwitchContextTUI(cfg, accounts)
+
+	ac, _ := cfg.Profile.GetActiveContext()
+	parentAccountIDs, _ := ResolveParentAccounts(ctx, apiBaseURL, &cfg.Profile, uat, ac, accounts)
+	return runSwitchContextTUI(cfg, accounts, parentAccountIDs)
 }
 
 func switchByID(cfg *config.Config, accounts []config.AuthorizedAccount, accountID string, livemode bool) (*SwitchResult, error) {
@@ -89,18 +93,20 @@ func applyContext(cfg *config.Config, account config.AuthorizedAccount, mode str
 
 // --- TUI ---
 
-type switchRow struct {
-	isSeparator    bool
-	isSectionLabel bool
-	label          string
-	name           string
-	id             string
-	mode           string
-	active         bool
-}
+// switchNestedIndent marks a row that belongs to another account shown above
+// it (a sandbox under its parent, or a legacy account's own test-mode row
+// under its live row) — the same tree-connector convention as
+// PrintGroupedAuthorizedAccounts, scaled down for the TUI's tighter layout.
+const switchNestedIndent = "└─ "
 
-func (r switchRow) selectable() bool {
-	return !r.isSeparator && !r.isSectionLabel
+var switchIndentWidth = utf8.RuneCountInString(switchNestedIndent)
+
+type switchRow struct {
+	name   string
+	id     string
+	mode   string
+	active bool
+	nested bool
 }
 
 type switchContextModel struct {
@@ -112,42 +118,64 @@ type switchContextModel struct {
 	quit   bool
 }
 
-func buildSwitchRows(accounts []config.AuthorizedAccount, activeID, activeMode string) (rows []switchRow, nameW, idW int) {
-	var liveRows, sandboxRows []switchRow
-	for _, a := range accounts {
-		for _, m := range a.Modes {
-			row := switchRow{
-				name:   a.Name,
-				id:     a.ID,
-				mode:   m,
-				active: a.ID == activeID && m == activeMode,
-			}
-			if len(a.Name) > nameW {
-				nameW = len(a.Name)
-			}
-			if len(a.ID) > idW {
-				idW = len(a.ID)
-			}
-			if m == "live" {
-				liveRows = append(liveRows, row)
-			} else {
-				sandboxRows = append(sandboxRows, row)
-			}
+// switchRowsForAccount builds the row(s) for a single authorized account,
+// matching the grouping rules PrintGroupedAuthorizedAccounts uses: a legacy
+// combined account's test-mode row is labeled "Test mode" and nested under
+// its own live row.
+func switchRowsForAccount(a config.AuthorizedAccount, nested bool, activeID, activeMode string) []switchRow {
+	modes := a.Modes
+	if len(modes) == 0 {
+		modes = []string{"test"}
+	}
+	isLegacyCombined := accountHasLiveMode(modes)
+	modes = orderModesLiveFirst(modes)
+
+	rows := make([]switchRow, 0, len(modes))
+	for _, m := range modes {
+		name := a.Name
+		rowNested := nested
+		if m == "test" && isLegacyCombined {
+			name = "Test mode"
+			rowNested = true
+		}
+		rows = append(rows, switchRow{
+			name:   name,
+			id:     a.ID,
+			mode:   m,
+			active: a.ID == activeID && m == activeMode,
+			nested: rowNested,
+		})
+	}
+	return rows
+}
+
+// buildSwitchRows builds the interactive selector's rows, grouping sandboxes
+// underneath their parent (live) account the same way whoami and login list
+// do (see classifyAccountsByParent). A sandbox whose parent can't be
+// resolved is shown as its own standalone row rather than being grouped
+// under a catch-all heading.
+func buildSwitchRows(accounts []config.AuthorizedAccount, parentAccountIDs map[string]string, activeID, activeMode string) (rows []switchRow, nameW, idW int) {
+	classified := classifyAccountsByParent(accounts, parentAccountIDs)
+
+	for _, a := range classified.headers {
+		rows = append(rows, switchRowsForAccount(a, false, activeID, activeMode)...)
+		for _, child := range classified.childrenByParent[a.ID] {
+			rows = append(rows, switchRowsForAccount(child, true, activeID, activeMode)...)
 		}
 	}
 
-	rows = append(rows, liveRows...)
-	if len(sandboxRows) > 0 {
-		if len(rows) > 0 {
-			rows = append(rows, switchRow{isSeparator: true})
+	for _, r := range rows {
+		if len(r.name) > nameW {
+			nameW = len(r.name)
 		}
-		rows = append(rows, switchRow{isSectionLabel: true, label: "Sandboxes"})
-		rows = append(rows, sandboxRows...)
+		if len(r.id) > idW {
+			idW = len(r.id)
+		}
 	}
 	return rows, nameW, idW
 }
 
-func newSwitchContextModel(accounts []config.AuthorizedAccount, profile *config.Profile) switchContextModel {
+func newSwitchContextModel(accounts []config.AuthorizedAccount, profile *config.Profile, parentAccountIDs map[string]string) switchContextModel {
 	activeID, activeMode := "", "test"
 	if ac, _ := profile.GetActiveContext(); ac != nil {
 		activeID = ac.AccountID
@@ -156,23 +184,14 @@ func newSwitchContextModel(accounts []config.AuthorizedAccount, profile *config.
 		}
 	}
 
-	rows, nameW, idW := buildSwitchRows(accounts, activeID, activeMode)
+	rows, nameW, idW := buildSwitchRows(accounts, parentAccountIDs, activeID, activeMode)
 
-	m := switchContextModel{rows: rows, nameW: nameW, idW: idW, cursor: -1}
+	m := switchContextModel{rows: rows, nameW: nameW, idW: idW}
 	for i, r := range rows {
-		if !r.selectable() {
-			continue
-		}
-		if m.cursor == -1 {
-			m.cursor = i
-		}
 		if r.active {
 			m.cursor = i
 			break
 		}
-	}
-	if m.cursor == -1 {
-		m.cursor = 0
 	}
 	return m
 }
@@ -186,18 +205,12 @@ func (m switchContextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	switch {
 	case key.Code == tea.KeyUp || key.Code == 'k':
-		for i := m.cursor - 1; i >= 0; i-- {
-			if m.rows[i].selectable() {
-				m.cursor = i
-				break
-			}
+		if m.cursor > 0 {
+			m.cursor--
 		}
 	case key.Code == tea.KeyDown || key.Code == 'j':
-		for i := m.cursor + 1; i < len(m.rows); i++ {
-			if m.rows[i].selectable() {
-				m.cursor = i
-				break
-			}
+		if m.cursor < len(m.rows)-1 {
+			m.cursor++
 		}
 	case key.Code == tea.KeyEnter:
 		m.done = true
@@ -212,7 +225,6 @@ func (m switchContextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 var (
 	switchHeaderStyle  = lipgloss.NewStyle().Faint(true)
 	switchDividerStyle = lipgloss.NewStyle().Faint(true)
-	switchSectionStyle = lipgloss.NewStyle().Faint(true)
 	switchCursorStyle  = lipgloss.NewStyle().Bold(true)
 	switchActiveStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 )
@@ -220,41 +232,43 @@ var (
 func (m switchContextModel) View() tea.View {
 	var sb strings.Builder
 
-	// pointer(2) + name(nameW) + sep(2) + id(idW) + sep(2) = nameW+idW+6 before mode
-	// Header "Account" starts at col 2 (after pointer space), "Mode" at nameW+idW+6
-	header := fmt.Sprintf("  %-*sMode", m.nameW+m.idW+4, "Account")
+	// The name column is widened by switchIndentWidth so a nested row's
+	// "└─ " connector plus name lines up in the same space a top-level row's
+	// bare name would occupy — otherwise the id/mode columns would drift
+	// out of alignment between nested and top-level rows.
+	nameRegion := m.nameW + switchIndentWidth
+
+	// pointer(2) + nameRegion + sep(2) + id(idW) + sep(2) = nameRegion+idW+6 before mode
+	// Header "Account" starts at col 2 (after pointer space), "Mode" at nameRegion+idW+6
+	header := fmt.Sprintf("  %-*sMode", nameRegion+m.idW+4, "Account")
 	sb.WriteString(switchHeaderStyle.Render(header))
 	sb.WriteByte('\n')
 
-	divLen := 2 + m.nameW + 2 + m.idW + 2 + 7 + 2 + 8 // ends after "● active"
+	divLen := 2 + nameRegion + 2 + m.idW + 2 + 7 + 2 + 8 // ends after "● active"
 	sb.WriteString(switchDividerStyle.Render(strings.Repeat("─", divLen)))
 	sb.WriteByte('\n')
 
 	for i, r := range m.rows {
-		switch {
-		case r.isSeparator:
-			sb.WriteString(switchDividerStyle.Render("──"))
-			sb.WriteByte('\n')
-		case r.isSectionLabel:
-			sb.WriteString(switchSectionStyle.Render(r.label))
-			sb.WriteByte('\n')
-		default:
-			pointer := "  "
-			if i == m.cursor {
-				pointer = "▶ "
-			}
-			activeMarker := ""
-			if r.active {
-				activeMarker = "  " + switchActiveStyle.Render("● active")
-			}
-			line := fmt.Sprintf("%s%-*s  %-*s  %-7s%s", pointer, m.nameW, r.name, m.idW, r.id, displayMode(r.mode), activeMarker)
-			line = strings.TrimRight(line, " ")
-			if i == m.cursor {
-				line = switchCursorStyle.Render(line)
-			}
-			sb.WriteString(line)
-			sb.WriteByte('\n')
+		pointer := "  "
+		if i == m.cursor {
+			pointer = "▶ "
 		}
+		indent := ""
+		if r.nested {
+			indent = switchNestedIndent
+		}
+		namePad := nameRegion - utf8.RuneCountInString(indent)
+		activeMarker := ""
+		if r.active {
+			activeMarker = "  " + switchActiveStyle.Render("● active")
+		}
+		line := fmt.Sprintf("%s%s%-*s  %-*s  %-7s%s", pointer, indent, namePad, r.name, m.idW, r.id, displayMode(r.mode), activeMarker)
+		line = strings.TrimRight(line, " ")
+		if i == m.cursor {
+			line = switchCursorStyle.Render(line)
+		}
+		sb.WriteString(line)
+		sb.WriteByte('\n')
 	}
 
 	sb.WriteString("\nRun 'stripe login' to authorize additional accounts or sandboxes.\n\n")
@@ -262,11 +276,11 @@ func (m switchContextModel) View() tea.View {
 	return tea.NewView(sb.String())
 }
 
-func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount) (*SwitchResult, error) {
+func runSwitchContextTUI(cfg *config.Config, accounts []config.AuthorizedAccount, parentAccountIDs map[string]string) (*SwitchResult, error) {
 	if len(accounts) == 0 {
 		return nil, errorcategory.Errorf(errorcategory.Auth, "no authorized accounts found")
 	}
-	m := newSwitchContextModel(accounts, &cfg.Profile)
+	m := newSwitchContextModel(accounts, &cfg.Profile, parentAccountIDs)
 
 	final, err := tea.NewProgram(m).Run()
 	if err != nil {

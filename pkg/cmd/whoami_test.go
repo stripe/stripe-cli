@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -260,4 +262,66 @@ func TestKeyAvailabilityText(t *testing.T) {
 	assert.Equal(t, "not available", keyAvailabilityText(whoamiKeyInfo{Available: false}))
 	assert.Equal(t, "available", keyAvailabilityText(whoamiKeyInfo{Available: true}))
 	assert.Equal(t, "available (expires 2026-05-01)", keyAvailabilityText(whoamiKeyInfo{Available: true, ExpiresAt: &expiresAt}))
+}
+
+// TestRunWhoamiOAuth_FallsBackToFlatListWhenContextStatusLookupFails exercises
+// the OAuth text-output path end to end: when the context-status endpoint
+// itself fails, whoami should print the plain, ungrouped account list rather
+// than dumping every sandbox under "Other sandboxes" (which would otherwise
+// look like we checked and found no parent, rather than couldn't check at all).
+func TestRunWhoamiOAuth_FallsBackToFlatListWhenContextStatusLookupFails(t *testing.T) {
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = nil })
+
+	accessSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/stripecli/oauth2/token/accounts", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"accounts": []config.AuthorizedAccount{
+				{ID: "acct_live1", Name: "Acme Inc", Modes: []string{"live"}},
+				{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
+			},
+		})
+	}))
+	defer accessSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/stripecli/context_statuses":
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer apiSrv.Close()
+
+	wc := newWhoamiCmd()
+	wc.profile = &config.Profile{ProfileName: "default"}
+	wc.accessBaseURL = accessSrv.URL
+	wc.apiBaseURL = apiSrv.URL
+	require.NoError(t, wc.profile.SaveActiveContext("acct_live1", true))
+
+	wc.cmd.SetContext(context.Background())
+	wc.cmd.SetOut(new(bytes.Buffer))
+
+	// PrintAuthorizedContextsList/PrintGroupedAuthorizedAccounts write
+	// directly to os.Stdout rather than cmd's writer, so that's what must be
+	// captured here.
+	origStdout := os.Stdout
+	r, pipeW, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = pipeW
+
+	runErr := wc.runWhoamiOAuth(wc.cmd, "oak_test_123")
+
+	pipeW.Close()
+	os.Stdout = origStdout
+	var stdoutBuf bytes.Buffer
+	stdoutBuf.ReadFrom(r) //nolint:errcheck
+	require.NoError(t, runErr)
+
+	stdout := stdoutBuf.String()
+	assert.Contains(t, stdout, "Authorized (2 accounts):")
+	assert.NotContains(t, stdout, "Other sandboxes", "a failed lookup shouldn't be reported as 'checked, no parent found'")
+	assert.NotContains(t, stdout, "└─", "a failed lookup means we have no grouping info, so the list should be flat")
 }

@@ -475,7 +475,7 @@ func TestSwitchContextSuccess(t *testing.T) {
 	originalSwitchContext := loginSwitchContext
 	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
 
-	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+	loginSwitchContext = func(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
 		require.Equal(t, "acct_123", accountID)
 		require.True(t, livemode)
 		return &login.SwitchResult{
@@ -497,7 +497,7 @@ func TestSwitchContextCancelledReturnsNotSwitched(t *testing.T) {
 	originalSwitchContext := loginSwitchContext
 	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
 
-	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+	loginSwitchContext = func(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
 		return nil, nil
 	}
 
@@ -514,7 +514,7 @@ func TestSwitchContextPropagatesError(t *testing.T) {
 	t.Cleanup(func() { loginSwitchContext = originalSwitchContext })
 
 	expectedErr := errors.New("boom")
-	loginSwitchContext = func(ctx context.Context, accessBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
+	loginSwitchContext = func(ctx context.Context, accessBaseURL, apiBaseURL string, cfg *config.Config, accountID string, livemode bool) (*login.SwitchResult, error) {
 		return nil, expectedErr
 	}
 
@@ -595,7 +595,7 @@ func TestLoginSuccess(t *testing.T) {
 		revokeCalled = true
 		return nil
 	}
-	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 		require.False(t, revokeCalled, "no oak_-prefixed UAT is set, so login should not be preceded by a revoke")
 		cfg.Profile.AccountID = "acct_123"
 		cfg.Profile.DisplayName = "Acme Inc"
@@ -630,7 +630,7 @@ func TestLoginRevokesExistingOAuthSession(t *testing.T) {
 		revokeCalled = true
 		return nil
 	}
-	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 		require.True(t, revokeCalled, "expected the previous session to be revoked before logging in again")
 		return nil
 	}
@@ -653,7 +653,7 @@ func TestLoginUsesRequestedTimeout(t *testing.T) {
 	t.Cleanup(func() { loginLogin = originalLogin })
 
 	var gotDeadline bool
-	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 		_, gotDeadline = ctx.Deadline()
 		cfg.Profile.AccountID = "acct_123"
 		return nil
@@ -674,7 +674,7 @@ func TestLoginNoTimeoutWaitsIndefinitely(t *testing.T) {
 	originalLogin := loginLogin
 	t.Cleanup(func() { loginLogin = originalLogin })
 
-	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 		_, hasDeadline := ctx.Deadline()
 		require.False(t, hasDeadline, "expected no deadline when timeoutSeconds is 0, matching `stripe login`")
 		return nil
@@ -694,7 +694,7 @@ func TestLoginTimeoutReturnsNotLoggedIn(t *testing.T) {
 	originalLogin := loginLogin
 	t.Cleanup(func() { loginLogin = originalLogin })
 
-	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 		<-ctx.Done()
 		return ctx.Err()
 	}
@@ -712,7 +712,7 @@ func TestLoginPropagatesError(t *testing.T) {
 	t.Cleanup(func() { loginLogin = originalLogin })
 
 	expectedErr := errors.New("boom")
-	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL string, cfg *config.Config) error {
+	loginLogin = func(ctx context.Context, dashboardBaseURL, accessBaseURL, apiBaseURL string, cfg *config.Config) error {
 		return expectedErr
 	}
 

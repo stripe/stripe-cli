@@ -61,7 +61,7 @@ type sandboxCreateCmd struct {
 	apiBaseURL     string
 	dashboardURL   string
 	client         sandboxCreateClient
-	reauth         func(context.Context, string, string, *config.Profile) error
+	reauth         func(context.Context, string, string, string, *config.Profile) error
 	isInteractive  func(*cobra.Command) bool
 }
 
@@ -374,7 +374,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	if scc.nonInteractive {
 		return login.InitiateLogin(cmd.Context(), scc.dashboardURL, rootAccessBaseURL, &Config)
 	}
-	return login.Login(cmd.Context(), scc.dashboardURL, rootAccessBaseURL, &Config)
+	return login.Login(cmd.Context(), scc.dashboardURL, rootAccessBaseURL, scc.apiBaseURL, &Config)
 }
 
 func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
@@ -744,7 +744,7 @@ func (scc *sandboxCreateCmd) authorizeCreatedSandbox(cmd *cobra.Command) {
 	if reauth == nil {
 		reauth = login.ReauthImmediately
 	}
-	if err := reauth(cmd.Context(), rootAccessBaseURL, uat, &Config.Profile); err != nil {
+	if err := reauth(cmd.Context(), rootAccessBaseURL, scc.apiBaseURL, uat, &Config.Profile); err != nil {
 		scc.warnAuthorizationFailure(cmd, err)
 	}
 }
