@@ -317,12 +317,6 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Report version requirements before offering authentication recovery.
-	var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
-	if errors.As(lookupErr, &requiresNewerCLI) {
-		return lookupErr
-	}
-
 	if errors.Is(lookupErr, validators.ErrAPIKeyNotConfigured) {
 		return p.offerLogin(ctx, lookupErr)
 	}

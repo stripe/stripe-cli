@@ -592,7 +592,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		err = fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, err, cachedErr)
 	}
 	if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
-		return nil, errorcategory.With(fmt.Errorf("%w: %w", credentialsErr, err), errorcategory.Auth)
+		return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w", credentialsErr, err)
 	}
 	return nil, err
 }

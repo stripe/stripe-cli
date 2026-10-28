@@ -21,7 +21,7 @@ func CanPrompt(getEnv func(string) string, stdinIsTerminal bool) bool {
 func Offer(name string, cause error, stdin io.Reader, stdout io.Writer, interactive bool, login func() error) error {
 	guidance := fmt.Sprintf("Run 'stripe login', then 'stripe whoami' to verify the active account, then retry 'stripe plugin install %s'.", name)
 	if !interactive {
-		return errorcategory.With(fmt.Errorf("%w. %s", cause, guidance), errorcategory.Auth)
+		return errorcategory.Errorf(errorcategory.Auth, "%w. %s", cause, guidance)
 	}
 
 	fmt.Fprintf(stdout, "%v. %s\n\n", cause, guidance)

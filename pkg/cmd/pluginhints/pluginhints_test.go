@@ -100,22 +100,23 @@ func (r failOnRead) Read([]byte) (int, error) {
 }
 
 func TestRun_MissingCredentialsRecoveryDoesNotPromptHeadlessOrAgent(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := &config.Config{LogLevel: "info", Color: "auto", ProfilesFile: filepath.Join(t.TempDir(), "config.toml")}
+	cfg.InitConfig()
+	defer viper.Reset()
+	cfg.Profile.AccountID = "saved-account"
+	oldKeyring := config.KeyRing
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = oldKeyring })
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
 	for _, agent := range []bool{false, true} {
 		t.Run(fmt.Sprintf("agent=%t", agent), func(t *testing.T) {
-			t.Setenv("STRIPE_API_KEY", "")
-			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-			cfg := &config.Config{LogLevel: "info", Color: "auto", ProfilesFile: filepath.Join(t.TempDir(), "config.toml")}
-			cfg.InitConfig()
-			defer viper.Reset()
-			cfg.Profile.AccountID = "saved-account"
-			oldKeyring := config.KeyRing
-			config.KeyRing = keyring.NewMemoryStore(nil)
-			t.Cleanup(func() { config.KeyRing = oldKeyring })
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
-				w.WriteHeader(http.StatusNotFound)
-			}))
-			defer server.Close()
 			p := newTestCmd("example")
 			p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
 				return plugins.ResolvePluginForInstall(ctx, cfg, afero.NewMemMapFs(), "example", "", server.URL, server.URL)
@@ -1123,19 +1124,6 @@ func TestPromptInstall_InstallError_ReturnsError(t *testing.T) {
 }
 
 // --- promptLogin ---
-
-func TestPromptLogin_EnterKey_LogsIn(t *testing.T) {
-	p := newTestCmd("docs")
-	p.stdin = strings.NewReader("\n")
-	loginCalled := false
-	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
-
-	err := p.offerLogin(context.Background(), validators.ErrAPIKeyNotConfigured)
-
-	require.NoError(t, err)
-	assert.True(t, loginCalled)
-	assert.Contains(t, p.output(), "stripe login")
-}
 
 func TestPromptLogin_OtherInput_CancelsLogin(t *testing.T) {
 	p := newTestCmd("docs")

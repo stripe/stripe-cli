@@ -33,38 +33,6 @@ func (r failOnRead) Read([]byte) (int, error) {
 	return 0, io.EOF
 }
 
-func TestInstallRecoveryAgentDoesNotPrompt(t *testing.T) {
-	cfg, fs, cleanup := setupPluginCommandTest(t)
-	defer cleanup()
-	cfg.Profile.APIKey = ""
-	cfg.Profile.AccountID = "saved-account"
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
-
-	ic := NewInstallCmd(cfg)
-	ic.fs = fs
-	ic.apiBaseURL = server.URL
-	ic.stdinIsTerminal = func() bool { return true }
-	ic.lookupEnvFn = func(key string) string {
-		if key == "CLAUDECODE" {
-			return "1"
-		}
-		return ""
-	}
-	ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
-	ic.Cmd.SetIn(failOnRead{t})
-	ic.Cmd.SetContext(context.Background())
-	err := ic.runInstallCmd(ic.Cmd, []string{"example"})
-	require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
-	category, ok := errorcategory.Get(err)
-	require.True(t, ok)
-	require.Equal(t, errorcategory.Auth, category)
-	require.ErrorContains(t, err, "stripe whoami")
-}
-
 func TestInstallRecoveryEOFDoesNotConsent(t *testing.T) {
 	cfg, fs, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
@@ -204,29 +172,38 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 	cfg.Profile.AccountID = "saved-account"
 
 	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		switch req.URL.Path {
-		case "/ajax/stripecli/plugins_metadata":
-			res.WriteHeader(http.StatusNotFound)
-			_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
-		default:
-			res.WriteHeader(http.StatusNotFound)
-		}
+		require.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
+		res.WriteHeader(http.StatusNotFound)
+		_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
 	}))
 	defer server.Close()
 
-	ic := NewInstallCmd(cfg)
-	ic.fs = fs
-	ic.apiBaseURL = server.URL
-	ic.stdinIsTerminal = func() bool { return false }
-	ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
-	ic.Cmd.SetIn(failOnRead{t})
-	ic.Cmd.SetContext(context.Background())
+	for _, agent := range []bool{false, true} {
+		t.Run(fmt.Sprintf("agent=%t", agent), func(t *testing.T) {
+			ic := NewInstallCmd(cfg)
+			ic.fs = fs
+			ic.apiBaseURL = server.URL
+			ic.stdinIsTerminal = func() bool { return agent }
+			ic.lookupEnvFn = func(key string) string {
+				if agent && key == "CLAUDECODE" {
+					return "1"
+				}
+				return ""
+			}
+			ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+			ic.Cmd.SetIn(failOnRead{t})
+			ic.Cmd.SetContext(context.Background())
 
-	err := ic.runInstallCmd(ic.Cmd, []string{"nonexistent-plugin"})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "stripe login")
-	require.Contains(t, err.Error(), "stripe whoami")
-	require.Contains(t, err.Error(), "retry")
+			err := ic.runInstallCmd(ic.Cmd, []string{"nonexistent-plugin"})
+			require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			category, ok := errorcategory.Get(err)
+			require.True(t, ok)
+			require.Equal(t, errorcategory.Auth, category)
+			require.ErrorContains(t, err, "stripe login")
+			require.ErrorContains(t, err, "stripe whoami")
+			require.ErrorContains(t, err, "retry")
+		})
+	}
 }
 
 // TestRunInstallCmdPluginRequiresNewerCLI ensures version requirements bypass

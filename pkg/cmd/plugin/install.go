@@ -124,12 +124,6 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	isLatest := len(version) == 0
 	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
-		// Logging in cannot make this CLI new enough to run the release.
-		var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
-		if errors.As(err, &requiresNewerCLI) {
-			return err
-		}
-
 		if !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 			return err
 		}
