@@ -194,11 +194,13 @@ func TestRun_PreservesLookupFailure(t *testing.T) {
 		requests.RequestError{StatusCode: http.StatusUnauthorized},
 		&url.Error{Op: "Get", URL: "http://example.test", Err: errors.New("connection refused")},
 	} {
-		p := newTestCmd("example")
+		p := newAutoInstallTestCmd("example")
 		p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) { return nil, cause }
 		p.stdin = failOnRead{t}
 		p.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+		p.installFn = func(context.Context) error { t.Fatal("unexpected install"); return nil }
 		require.ErrorIs(t, p.run(p.Command, nil), cause)
+		require.Empty(t, p.output())
 	}
 }
 
@@ -695,20 +697,6 @@ func TestRun_AutoInstall_UnsetOrFalsyOptOutStillInstalls(t *testing.T) {
 			assert.True(t, installCalled)
 		})
 	}
-}
-
-func TestRun_AutoInstall_PreservesLookupFailure(t *testing.T) {
-	// Auto-install must not mask a failed lookup.
-	p := newAutoInstallTestCmd("directory")
-	p.lookupFn = pluginLookupFails("not found")
-	installCalled := false
-	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
-
-	err := p.run(p.Command, nil)
-
-	require.EqualError(t, err, "not found")
-	assert.False(t, installCalled)
-	assert.Empty(t, p.output())
 }
 
 // TestRun_PluginRequiresNewerCLI_ReportsVersionInsteadOfHints covers a lookup that

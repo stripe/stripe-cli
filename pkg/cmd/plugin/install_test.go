@@ -279,18 +279,14 @@ func TestRunInstallCmdPluginRequiresNewerCLI(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Left empty on purpose: anything reading stdin here is the login prompt, and it
-	// would read EOF and go on to open a browser.
-	origStdin := os.Stdin
-	r, w, _ := os.Pipe()
-	_ = w.Close()
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
-
 	ic := NewInstallCmd(cfg)
 	ic.fs = fs
 	ic.apiBaseURL = server.URL
 	ic.dashboardBaseURL = server.URL
+	ic.stdinIsTerminal = func() bool { return true }
+	ic.lookupEnvFn = func(string) string { return "" }
+	ic.Cmd.SetIn(failOnRead{t})
+	ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
 	ic.Cmd.SetContext(context.Background())
 
 	err := ic.runInstallCmd(ic.Cmd, []string{"appA@2.0.1"})

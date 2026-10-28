@@ -551,11 +551,10 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	creds, err := config.GetProfile().ResolveCredentialsForAnyMode(false)
-	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
-		return nil, err
+	creds, credentialsErr := config.GetProfile().ResolveCredentialsForAnyMode(false)
+	if credentialsErr != nil && !errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
+		return nil, credentialsErr
 	}
-	credentialsErr := err
 	apiKey := creds.Token
 
 	resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey)
@@ -587,11 +586,10 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	}
 
 	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && os.IsNotExist(cachedErr) {
-		err = errorcategory.Errorf(errorcategory.UserInput, "%w: %w", normalizedErr, err)
 		if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
-			return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w", credentialsErr, err)
+			return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w: %w", credentialsErr, normalizedErr, err)
 		}
-		return nil, err
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "%w: %w", normalizedErr, err)
 	}
 	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, err, cachedErr)
 }
