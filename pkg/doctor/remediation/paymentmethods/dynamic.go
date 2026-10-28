@@ -135,7 +135,17 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 			evidence["webhook_handlers_present"] = wh.AllPresent
 			evidence["webhook_events"] = wh.Events
 		}
-		return remediation.Result{Topic: Topic, Title: title, Status: remediation.StatusUnknown, Message: err.Error(), Evidence: evidence, Notes: dashboardNotes}, nil
+		return remediation.Result{
+			Topic: Topic, Title: title, Status: remediation.StatusUnknown, Message: err.Error(), Evidence: evidence, Notes: dashboardNotes,
+			Report: &jsonReport{
+				SchemaVersion: schemaVersion,
+				Check:         checkID,
+				Status:        jsonUnknown,
+				Summary:       err.Error(),
+				Dashboard:     jsonDashboard{RecommendedAction: "After verifying routing and payment handling, review which payment methods to enable.", URL: dashboardConfigURL},
+				Documentation: []jsonDoc{{Title: title, URL: ctx.Rule.Docs}},
+			},
+		}, nil
 	}
 
 	creds, err := stripeapi.LoadCredentials(ctx.Config)
@@ -156,6 +166,7 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 	}
 	result := assess(ctx, vf, pmf, wh)
 	result.FindingVerdicts = findingVerdicts(vf, ctx.Findings)
+	result.Report = buildJSONReport(ctx, vf, pmf, wh)
 	if n := len(ctx.Findings); n > 0 {
 		result.Sections = append([]remediation.ActionSection{findingsSection(ctx, vf)}, result.Sections...)
 		listNoun := "lists"

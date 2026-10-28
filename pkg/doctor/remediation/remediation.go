@@ -87,6 +87,15 @@ type Result struct {
 	FindingVerdicts map[string]string `json:"finding_verdicts,omitempty"`
 	Notes           []string          `json:"notes,omitempty"`
 	Sections        []ActionSection   `json:"sections,omitempty"`
+
+	// Report, when set, is this topic's own fully-formed --json document
+	// (its own schema, versioned independently of doctor's) — doctor's
+	// cmd.go treats it opaquely: if present, it's emitted as the entire
+	// --json body in place of the generic DoctorReport shape, rather than
+	// nested inside remediation_result (hence json:"-" — it's not part
+	// of this Result's own JSON representation). A topic that leaves it
+	// nil is rendered via the generic schema as before.
+	Report any `json:"-"`
 }
 
 // ActionSection is one numbered, human-facing action item a remediation

@@ -187,7 +187,14 @@ behavior (webhook round-trip via stripe listen/trigger).`,
 			}
 
 			if flagJSON {
-				emitJSON(rep)
+				// A remediation's own Report, when set, replaces doctor's
+				// generic DoctorReport body entirely — see
+				// remediation.Result.Report's doc comment.
+				if rep.RemediationResult != nil && rep.RemediationResult.Report != nil {
+					emitJSON(rep.RemediationResult.Report)
+				} else {
+					emitJSON(rep)
+				}
 			} else {
 				renderDoctor(rep)
 			}
