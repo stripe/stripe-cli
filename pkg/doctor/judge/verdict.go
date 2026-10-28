@@ -1,13 +1,13 @@
+// Package judge produces doctor's topic-agnostic judgment for one rule's
+// findings. A "remove" rule's findings get a generic REVIEW verdict here
+// — judge has no domain knowledge of what any particular parameter's
+// values mean, only that the rule wants it removed. A registered
+// remediation (see pkg/doctor/remediation) can override any specific
+// finding's verdict with real topic-specific judgment — see
+// applyFindingVerdicts in cmd.go. An "advise" rule's findings get the
+// rule's own ADVISE message, which is already topic-agnostic (it's just
+// whatever the API says).
 package judge
-
-// Verdicts: doctor's topic-agnostic judgment for one rule's findings. A
-// "remove" rule's findings get a generic REVIEW verdict here — judge has
-// no domain knowledge of what any particular parameter's values mean,
-// only that the rule wants it removed. A registered remediation (see
-// pkg/doctor/remediation) can override any specific finding's verdict
-// with real topic-specific judgment — see applyFindingVerdicts in
-// cmd.go. An "advise" rule's findings get the rule's own ADVISE message,
-// which is already topic-agnostic (it's just whatever the API says).
 
 import (
 	"strings"

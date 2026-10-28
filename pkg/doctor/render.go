@@ -473,11 +473,12 @@ func renderWebhookHandlers(r *DoctorReport) {
 		if i > 0 {
 			fmt.Println()
 		}
-		if e.Present {
+		switch {
+		case e.Present:
 			fmt.Println(okLine(fmt.Sprintf("%s: %s", e.Event, mutedStyle.Render(e.Files[0]))))
-		} else if e.Note != "" {
+		case e.Note != "":
 			fmt.Println(warnLine(fmt.Sprintf("%s: not found — %s", e.Event, e.Note)))
-		} else {
+		default:
 			fmt.Println(warnLine(fmt.Sprintf("%s: not found in scanned code", e.Event)))
 		}
 	}

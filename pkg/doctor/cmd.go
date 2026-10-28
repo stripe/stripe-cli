@@ -28,6 +28,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/judge"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
+
 	// Registers "dpm" with the remediation registry via init(). Other
 	// teams' topics get the same one-line blank import once their
 	// package exists — see pkg/doctor/remediation's package doc for the

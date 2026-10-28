@@ -45,6 +45,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 type apiRule struct {
@@ -105,7 +107,7 @@ func ParseAPIRule(raw []byte) (Rule, error) {
 	}
 	if len(e.Logic) != 1 || e.Logic[0].MatcherType != "conditionGroup" || e.Logic[0].ConditionGroup == nil ||
 		e.Logic[0].ConditionGroup.LogicalOperator != "or" {
-		return Rule{}, fmt.Errorf("doctor: doctor_rule %q: expected exactly one top-level \"or\" condition group", e.Topic)
+		return Rule{}, errorcategory.Errorf(errorcategory.API, "doctor: doctor_rule %q: expected exactly one top-level \"or\" condition group", e.Topic)
 	}
 
 	rule := Rule{
@@ -120,7 +122,7 @@ func ParseAPIRule(raw []byte) (Rule, error) {
 
 	for _, node := range e.Logic[0].ConditionGroup.Items {
 		if node.MatcherType != "entry" || node.Entry == nil {
-			return Rule{}, fmt.Errorf("doctor: doctor_rule %q: expected an \"entry\" node under the top-level group", e.Topic)
+			return Rule{}, errorcategory.Errorf(errorcategory.API, "doctor: doctor_rule %q: expected an \"entry\" node under the top-level group", e.Topic)
 		}
 		entry := node.Entry
 
@@ -136,7 +138,7 @@ func ParseAPIRule(raw []byte) (Rule, error) {
 
 		cond := entry.PostParams[0]
 		if cond.Matcher == nil || cond.Matcher.Operator != "exist" {
-			return Rule{}, fmt.Errorf("doctor: doctor_rule %q: unsupported post_params matcher on %q", e.Topic, cond.Key)
+			return Rule{}, errorcategory.Errorf(errorcategory.API, "doctor: doctor_rule %q: unsupported post_params matcher on %q", e.Topic, cond.Key)
 		}
 
 		rule.Match = append(rule.Match, ParamMatch{
