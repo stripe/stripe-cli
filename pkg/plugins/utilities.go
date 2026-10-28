@@ -587,14 +587,13 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	}
 
 	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && os.IsNotExist(cachedErr) {
-		err = errorcategory.With(normalizedErr, errorcategory.UserInput)
-	} else {
-		err = fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, err, cachedErr)
+		err = errorcategory.Errorf(errorcategory.UserInput, "%w: %w", normalizedErr, err)
+		if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
+			return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w", credentialsErr, err)
+		}
+		return nil, err
 	}
-	if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
-		return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w", credentialsErr, err)
-	}
-	return nil, err
+	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, err, cachedErr)
 }
 
 // ResolvePluginForUpgrade resolves the latest plugin metadata for
@@ -1140,8 +1139,11 @@ func normalizePluginMetadataError(pluginName string, err error) error {
 	}
 
 	var requestErr requests.RequestError
-	if errors.As(err, &requestErr) && requestErr.StatusCode == http.StatusNotFound {
-		return &ErrPluginNotFound{Name: pluginName}
+	if errors.As(err, &requestErr) {
+		if requestErr.StatusCode == http.StatusNotFound {
+			return &ErrPluginNotFound{Name: pluginName}
+		}
+		return nil
 	}
 
 	switch {

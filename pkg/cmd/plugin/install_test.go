@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -111,16 +112,27 @@ func TestInstallRecoveryRetainsRetryFailure(t *testing.T) {
 	}
 }
 
-func TestInstallCredentialFailuresDoNotOfferLogin(t *testing.T) {
-	for _, kind := range []string{"invalid override", "refresh"} {
+func TestInstallFailuresDoNotOfferLogin(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, `{"error":{"message":"metadata unavailable"}}`)
+	}))
+	defer server.Close()
+	closedServer := httptest.NewServer(http.NotFoundHandler())
+	closedServer.Close()
+
+	for _, kind := range []string{"invalid override", "refresh", "transport", "server", "cancellation"} {
 		t.Run(kind, func(t *testing.T) {
 			cfg, fs, cleanup := setupPluginCommandTest(t)
 			defer cleanup()
 			refreshErr := errors.New("session refresh failed")
-			if kind == "invalid override" {
+			cfg.Profile.APIKey = ""
+			cfg.Profile.AccountID = "saved-account"
+			switch kind {
+			case "invalid override":
 				cfg.Profile.APIKey = "malformed"
-			} else {
-				cfg.Profile.APIKey = ""
+			case "refresh":
 				require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.UATKeychainItemKey), []byte("oak_test_fixture"), "test token"))
 				require.NoError(t, cfg.Profile.SaveUATExpiresAt(time.Now().Add(-time.Hour)))
 				previous := config.OAuthTokenRefresher
@@ -129,16 +141,41 @@ func TestInstallCredentialFailuresDoNotOfferLogin(t *testing.T) {
 			}
 			ic := NewInstallCmd(cfg)
 			ic.fs = fs
+			ic.apiBaseURL = server.URL
+			if kind == "transport" {
+				ic.apiBaseURL = closedServer.URL
+			}
+			ic.stdinIsTerminal = func() bool { return true }
+			ic.lookupEnvFn = func(string) string { return "" }
 			ic.Cmd.SetIn(failOnRead{t})
+			var output strings.Builder
+			ic.Cmd.SetErr(&output)
 			ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
-			ic.Cmd.SetContext(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if kind == "cancellation" {
+				cancel()
+			}
+			ic.Cmd.SetContext(ctx)
 			err := ic.runInstallCmd(ic.Cmd, []string{"example"})
-			if kind == "refresh" {
+			switch kind {
+			case "refresh":
 				require.ErrorIs(t, err, refreshErr)
-			} else {
+			case "invalid override":
 				require.ErrorContains(t, err, "too short")
+			case "transport":
+				var transportErr *url.Error
+				require.ErrorAs(t, err, &transportErr)
+			case "server":
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusInternalServerError, requestErr.StatusCode)
+			case "cancellation":
+				require.ErrorIs(t, err, context.Canceled)
 			}
 			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			require.Empty(t, output.String())
+			require.NotContains(t, err.Error(), "stripe login")
 		})
 	}
 }

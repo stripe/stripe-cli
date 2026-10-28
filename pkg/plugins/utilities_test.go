@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1023,25 +1024,57 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testi
 
 	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
 	require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+	var requestErr requests.RequestError
+	require.ErrorAs(t, err, &requestErr)
+	require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
 
 	var pluginNotFound *ErrPluginNotFound
 	require.ErrorAs(t, err, &pluginNotFound)
 	require.Equal(t, "nonexistent", pluginNotFound.Name)
 }
 
-func TestResolvePluginForInstallPreservesTransportFailure(t *testing.T) {
-	config := &TestConfig{}
-	config.InitConfig()
-	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Error("unexpected request")
+func TestResolvePluginForInstallPreservesDiscoveryFailures(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":{"message":"plugin metadata response did not include plugin example"}}`))
 	}))
-	server.Close()
-	_, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "example", "", server.URL, server.URL)
-	var transportErr *url.Error
-	require.ErrorAs(t, err, &transportErr)
-	require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
-	var notFound *ErrPluginNotFound
-	require.False(t, errors.As(err, &notFound))
+	defer server.Close()
+	closedServer := httptest.NewServer(http.NotFoundHandler())
+	closedServer.Close()
+
+	for _, name := range []string{"authenticated transport", "anonymous transport", "anonymous server", "anonymous cancellation"} {
+		t.Run(name, func(t *testing.T) {
+			config := &TestConfig{}
+			config.InitConfig()
+			if name != "authenticated transport" {
+				config.Profile.APIKey = ""
+				config.Profile.AccountID = "saved-account"
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			baseURL := server.URL
+			if strings.Contains(name, "transport") {
+				baseURL = closedServer.URL
+			} else if name == "anonymous cancellation" {
+				cancel()
+			}
+			_, err := ResolvePluginForInstall(ctx, config, afero.NewMemMapFs(), "example", "", baseURL, baseURL)
+			switch name {
+			case "authenticated transport", "anonymous transport":
+				var transportErr *url.Error
+				require.ErrorAs(t, err, &transportErr)
+			case "anonymous server":
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusInternalServerError, requestErr.StatusCode)
+			case "anonymous cancellation":
+				require.ErrorIs(t, err, context.Canceled)
+			}
+			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			var notFound *ErrPluginNotFound
+			require.False(t, errors.As(err, &notFound))
+		})
+	}
 }
 
 func TestResolvePluginForInstallSucceedsForGAPluginWhenNotLoggedIn(t *testing.T) {

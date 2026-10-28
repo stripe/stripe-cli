@@ -99,7 +99,7 @@ func (r failOnRead) Read([]byte) (int, error) {
 	return 0, io.EOF
 }
 
-func TestRun_MissingCredentialsRecoveryDoesNotPromptHeadlessOrAgent(t *testing.T) {
+func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
 	t.Setenv("STRIPE_API_KEY", "")
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	cfg := &config.Config{LogLevel: "info", Color: "auto", ProfilesFile: filepath.Join(t.TempDir(), "config.toml")}
@@ -114,16 +114,30 @@ func TestRun_MissingCredentialsRecoveryDoesNotPromptHeadlessOrAgent(t *testing.T
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
+	failingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, `{"error":{"message":"metadata unavailable"}}`)
+	}))
+	defer failingServer.Close()
+	closedServer := httptest.NewServer(http.NotFoundHandler())
+	closedServer.Close()
 
-	for _, agent := range []bool{false, true} {
-		t.Run(fmt.Sprintf("agent=%t", agent), func(t *testing.T) {
+	for _, name := range []string{"headless not found", "agent not found", "transport", "server", "cancellation"} {
+		t.Run(name, func(t *testing.T) {
+			baseURL := server.URL
+			switch name {
+			case "transport":
+				baseURL = closedServer.URL
+			case "server":
+				baseURL = failingServer.URL
+			}
 			p := newTestCmd("example")
 			p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
-				return plugins.ResolvePluginForInstall(ctx, cfg, afero.NewMemMapFs(), "example", "", server.URL, server.URL)
+				return plugins.ResolvePluginForInstall(ctx, cfg, afero.NewMemMapFs(), "example", "", baseURL, baseURL)
 			}
-			p.stdinIsTerminal = func() bool { return agent }
+			p.stdinIsTerminal = func() bool { return name != "headless not found" }
 			p.lookupEnvFn = func(key string) string {
-				if agent && key == "CLAUDECODE" {
+				if name == "agent not found" && key == "CLAUDECODE" {
 					return "1"
 				}
 				return ""
@@ -131,14 +145,37 @@ func TestRun_MissingCredentialsRecoveryDoesNotPromptHeadlessOrAgent(t *testing.T
 			p.stdin = failOnRead{t}
 			p.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
 			p.openBrowserFn = func(string) error { t.Fatal("unexpected browser"); return nil }
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if name == "cancellation" {
+				cancel()
+			}
+			p.SetContext(ctx)
 			err := p.run(p.Command, nil)
-			require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
-			category, ok := errorcategory.Get(err)
-			require.True(t, ok)
-			require.Equal(t, errorcategory.Auth, category)
-			require.ErrorContains(t, err, "stripe login")
-			require.ErrorContains(t, err, "stripe whoami")
-			require.ErrorContains(t, err, "retry")
+			switch name {
+			case "transport":
+				var transportErr *url.Error
+				require.ErrorAs(t, err, &transportErr)
+			case "server":
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusInternalServerError, requestErr.StatusCode)
+			case "cancellation":
+				require.ErrorIs(t, err, context.Canceled)
+			default:
+				require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+				category, ok := errorcategory.Get(err)
+				require.True(t, ok)
+				require.Equal(t, errorcategory.Auth, category)
+				require.ErrorContains(t, err, "stripe login")
+				require.ErrorContains(t, err, "stripe whoami")
+				require.ErrorContains(t, err, "retry")
+				return
+			}
+			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			require.NotContains(t, err.Error(), "stripe login")
+			require.Empty(t, p.output())
+			require.Empty(t, p.errOutput())
 		})
 	}
 }
