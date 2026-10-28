@@ -63,17 +63,17 @@ const (
 // rendered as their own separate actions, not appended onto Message, so
 // they don't get lost as a trailing clause of an unrelated sentence.
 //
-// Title and Sections drive doctor's human-facing action-plan renderer:
+// Title and Findings drive doctor's human-facing action-plan renderer:
 // Title names the migration in plain English (falling back to the bare
 // topic string if empty); Headline is a short clause for the one-line
 // summary row named by SummaryLabel (falling back to "Dashboard" when
 // SummaryLabel is empty); CodeSummary overrides the summary table's
 // "Code" row value entirely, when the generic finding-count-by-class
 // phrase doctor would otherwise compute doesn't fit this topic's own
-// framing; Sections is the ordered, numbered list of action items this
+// framing; Findings is the ordered, numbered list of action items this
 // remediation wants a human to work through — doctor's renderer treats
-// the words inside each Section opaquely (see ActionSection). A topic
-// that sets neither Title nor Sections still renders fine — doctor falls
+// the words inside each Finding opaquely (see Finding). A topic that
+// sets neither Title nor Findings still renders fine — doctor falls
 // back to its older generic summary/details layout.
 type Result struct {
 	Topic           string            `json:"topic"`
@@ -86,7 +86,7 @@ type Result struct {
 	Evidence        map[string]any    `json:"evidence,omitempty"`
 	FindingVerdicts map[string]string `json:"finding_verdicts,omitempty"`
 	Notes           []string          `json:"notes,omitempty"`
-	Sections        []ActionSection   `json:"sections,omitempty"`
+	Findings        []Finding         `json:"findings,omitempty"`
 
 	// Report, when set, is this topic's own fully-formed --json document
 	// (its own schema, versioned independently of doctor's) — doctor's
@@ -94,31 +94,168 @@ type Result struct {
 	// --json body in place of the generic DoctorReport shape, rather than
 	// nested inside remediation_result (hence json:"-" — it's not part
 	// of this Result's own JSON representation). A topic that leaves it
-	// nil is rendered via the generic schema as before.
+	// nil is rendered via the generic schema as before. A topic whose
+	// Report embeds its own findings array typically builds it by calling
+	// FindingsJSON over (a subset of) this same Result.Findings, rather
+	// than hand-authoring a second, parallel description of the same
+	// facts — see FindingsJSON's doc comment.
 	Report any `json:"-"`
 }
 
-// ActionSection is one numbered, human-facing action item a remediation
-// contributes to doctor's action-plan renderer: a heading, zero or more
+// Finding is one numbered, human-facing action item a remediation
+// contributes to doctor's action-plan renderer — a heading, zero or more
 // body paragraphs, and zero or more line items (a flagged code location,
-// a webhook event, or similar). A body paragraph containing a literal
-// "\n" is split into independently word-wrapped segments with no blank
-// line between them (e.g. a lead-in sentence followed by a bare URL,
-// which — having no spaces — is left intact on its own line regardless
-// of width). Numbering, wrapping, and indentation are the renderer's
-// job; the words are the remediation's.
-type ActionSection struct {
-	Heading string       `json:"heading"`
-	Body    []string     `json:"body,omitempty"`
-	Items   []ActionItem `json:"items,omitempty"`
+// a webhook event, or similar) — AND, via FindingsJSON, the same
+// finding's --json representation. Writing one Finding instead of a
+// separate text description and a separate JSON description is the
+// point: the structured facts (ID, Items, RequiresVerification,
+// SuggestedParameter, Evidence) can only be written once, so they can't
+// drift between the two output modes the way two independently-authored
+// descriptions of the same fact can.
+//
+// A body paragraph containing a literal "\n" is split into independently
+// word-wrapped segments with no blank line between them (e.g. a lead-in
+// sentence followed by a bare URL, which — having no spaces — is left
+// intact on its own line regardless of width). Numbering, wrapping, and
+// indentation in text are the renderer's job; the words are the
+// remediation's.
+//
+// A Finding with Heading == "" is text-only-excluded: the action-plan
+// renderer skips it (a remediation's way of opting a section out, e.g.
+// no webhook signals were scanned at all). A Finding with ID == "" is
+// JSON-only-excluded: FindingsJSON skips it, for a Finding that only
+// makes sense as prose (e.g. a standing Dashboard reminder tied to
+// Result.Status rather than describing one discrete, independently
+// reportable fact).
+//
+// Implication and ActionDescription are this Finding's JSON
+// "implication" and "recommended_action.description" (see FindingsJSON);
+// when left empty, FindingsJSON falls back to Body[0]/Body[1], so a
+// Finding whose text and JSON prose should say the same thing only has
+// to write it once. Set them explicitly when the two audiences
+// genuinely need different wording (as dpm's own findings do — the text
+// renderer's conversational voice and the JSON contract's terser one
+// aren't meant to match word for word).
+type Finding struct {
+	Heading string   `json:"heading,omitempty"`
+	Body    []string `json:"body,omitempty"`
+
+	ID                       string   `json:"id,omitempty"`
+	Status                   Status   `json:"status,omitempty"` // falls back to the enclosing Result's Status when empty
+	Implication              string   `json:"implication,omitempty"`
+	ActionDescription        string   `json:"action_description,omitempty"`
+	Items                    []Item   `json:"items,omitempty"`
+	RequiresVerification     []string `json:"requires_verification,omitempty"`
+	SuggestedParameter       *Param   `json:"suggested_parameter,omitempty"`
+	SafeToApplyWithoutReview bool     `json:"safe_to_apply_without_review,omitempty"`
+	Evidence                 any      `json:"evidence,omitempty"`
 }
 
-// ActionItem is one line item under an ActionSection: a short heading
-// (e.g. "lib/checkout.rb:11" or a webhook event name) plus an optional
-// body line (e.g. the flagged code snippet, or that event's note).
-type ActionItem struct {
-	Heading string `json:"heading"`
+// Item is one line item under a Finding: a flagged code location, a
+// webhook event, or similar. Heading/Body are the text sub-heading and
+// body line (e.g. "lib/checkout.rb:11" / "Current list: ['card']", or a
+// webhook event name / its note). Fields, when set, is this item's own
+// structured data, used by FindingsJSON's default evidence envelope
+// ({"items": [...]}) — ignored when the enclosing Finding's Evidence
+// overrides that envelope with something more specific.
+type Item struct {
+	Heading string `json:"heading,omitempty"`
 	Body    string `json:"body,omitempty"`
+	Fields  any    `json:"fields,omitempty"`
+}
+
+// Param names a suggested parameter/value pair, e.g. for
+// Finding.SuggestedParameter.
+type Param struct {
+	Name  string `json:"name"`
+	Value any    `json:"value"`
+}
+
+// FindingJSON is the generic --json shape one Finding becomes via
+// FindingsJSON.
+type FindingJSON struct {
+	ID                string `json:"id"`
+	Status            string `json:"status"`
+	Evidence          any    `json:"evidence,omitempty"`
+	Implication       string `json:"implication,omitempty"`
+	RecommendedAction any    `json:"recommended_action,omitempty"`
+}
+
+type recommendedActionJSON struct {
+	Description              string   `json:"description"`
+	SuggestedParameter       *Param   `json:"suggested_parameter,omitempty"`
+	RequiresVerification     []string `json:"requires_verification,omitempty"`
+	SafeToApplyWithoutReview bool     `json:"safe_to_apply_without_review"`
+}
+
+// FindingsJSON converts findings to their generic --json shape, for a
+// topic building its own top-level Report to embed under a "findings"
+// key — see Result.Report. A Finding with ID == "" is skipped (see
+// Finding's doc comment). fallback supplies the status for any included
+// Finding whose own Status is empty — typically the enclosing Result's
+// Status.
+func FindingsJSON(findings []Finding, fallback Status) []FindingJSON {
+	var out []FindingJSON
+	for _, f := range findings {
+		if f.ID == "" {
+			continue
+		}
+		status := f.Status
+		if status == "" {
+			status = fallback
+		}
+		implication := f.Implication
+		if implication == "" && len(f.Body) > 0 {
+			implication = f.Body[0]
+		}
+		description := f.ActionDescription
+		if description == "" && len(f.Body) > 1 {
+			description = f.Body[1]
+		}
+		evidence := f.Evidence
+		if evidence == nil && len(f.Items) > 0 {
+			fields := make([]any, 0, len(f.Items))
+			for _, it := range f.Items {
+				if it.Fields != nil {
+					fields = append(fields, it.Fields)
+				}
+			}
+			evidence = map[string]any{"items": fields}
+		}
+		out = append(out, FindingJSON{
+			ID:          f.ID,
+			Status:      JSONStatus(status),
+			Evidence:    evidence,
+			Implication: implication,
+			RecommendedAction: recommendedActionJSON{
+				Description:              description,
+				SuggestedParameter:       f.SuggestedParameter,
+				RequiresVerification:     f.RequiresVerification,
+				SafeToApplyWithoutReview: f.SafeToApplyWithoutReview,
+			},
+		})
+	}
+	return out
+}
+
+// JSONStatus maps remediation's Status vocabulary to the vocabulary
+// doctor's richer --json contracts use — generic across any topic, not
+// specific to any one of them.
+func JSONStatus(s Status) string {
+	switch s {
+	case StatusReady:
+		return "ready"
+	case StatusCaution:
+		return "action_required"
+	case StatusBlocked:
+		return "blocked"
+	case StatusReview:
+		return "review_required"
+	case StatusUnknown:
+		return "unknown"
+	default:
+		return string(s)
+	}
 }
 
 // FindingKey is the stable key a Result.FindingVerdicts entry is looked

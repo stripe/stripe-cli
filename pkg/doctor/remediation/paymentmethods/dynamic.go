@@ -96,7 +96,7 @@ var dashboardNotes = []string{
 // dashboardReviewLead/dashboardConfigURL are the same reminder as
 // dashboardNotes, split into the lead-in-sentence-then-bare-URL shape the
 // action-plan renderer prints as two pre-broken lines (see
-// remediation.ActionSection's doc comment) rather than one long sentence
+// remediation.Finding's doc comment) rather than one long sentence
 // with an inline link.
 const dashboardReviewLead = "Once you've verified your flows support them, enable the payment methods you want in the Dashboard:"
 const dashboardConfigURL = "https://dashboard.stripe.com/settings/payment_methods?types[0]=direct&types[1]=subaccount"
@@ -166,15 +166,15 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 	}
 	result := assess(ctx, vf, pmf, wh)
 	result.FindingVerdicts = findingVerdicts(vf, ctx.Findings)
-	result.Report = buildJSONReport(ctx, vf, pmf, wh)
 	if n := len(ctx.Findings); n > 0 {
-		result.Sections = append([]remediation.ActionSection{findingsSection(ctx, vf)}, result.Sections...)
+		result.Findings = append([]remediation.Finding{findingsFinding(ctx, vf)}, result.Findings...)
 		listNoun := "lists"
 		if n == 1 {
 			listNoun = "list"
 		}
 		result.CodeSummary = fmt.Sprintf("%d explicit payment method %s found", n, listNoun)
 	}
+	result.Report = buildJSONReport(ctx, vf, pmf, wh, result)
 	return result, nil
 }
 
@@ -438,39 +438,65 @@ func findingVerdicts(vf versionFacts, findings []catalog.Finding) map[string]str
 	return out
 }
 
-// relLocation formats a finding's file:line relative to the scanned
-// directory, for the action-plan renderer — the JSON findings contract
+// relPath formats a finding's file path relative to the scanned
+// directory, for display — the JSON findings contract
 // (catalog.Finding.File) keeps the absolute path; this is purely a
 // display nicety. Falls back to the absolute path if it isn't under dir.
-func relLocation(dir string, f catalog.Finding) string {
+func relPath(dir string, f catalog.Finding) string {
 	rel, err := filepath.Rel(dir, f.File)
 	if err != nil {
-		rel = f.File
+		return f.File
 	}
-	return fmt.Sprintf("%s:%d", rel, f.Line)
+	return rel
 }
 
-// findingsSection builds the action-plan item for the scanned code
+// findingsFinding builds the action item for the scanned code
 // locations: one shared reason/instruction when a version problem gates
 // every finding uniformly (the common case), else each finding reviewed
-// on its own classifyIntent/intentVerdict judgment.
-func findingsSection(ctx remediation.Context, vf versionFacts) remediation.ActionSection {
-	sec := remediation.ActionSection{Heading: "Replace explicit lists with automatic payment methods"}
-	if gate := findingsVersionGate(vf); gate.Class != "" {
-		sec.Body = []string{gate.Reason, gate.Instruction}
-		for _, f := range ctx.Findings {
-			sec.Items = append(sec.Items, remediation.ActionItem{Heading: relLocation(ctx.Dir, f), Body: "Current list: " + f.Value})
+// on its own classifyIntent/intentVerdict judgment. Each location's
+// path/line/parameter/expression is built exactly once per finding and
+// used for both the text Item and (via Items[i].Fields, or the explicit
+// Evidence override below) the --json evidence — see
+// remediation.Finding's doc comment.
+func findingsFinding(ctx remediation.Context, vf versionFacts) remediation.Finding {
+	f := remediation.Finding{ID: "explicit_payment_method_lists", Heading: "Replace explicit lists with automatic payment methods"}
+
+	gate := findingsVersionGate(vf)
+	if gate.Class == "" {
+		f.Body = []string{"Each flagged location below needs its own review before removing payment_method_types."}
+		f.Implication = "Dashboard-enabled payment methods will not appear in these flows until the explicit list is removed."
+	} else {
+		f.Body = []string{gate.Reason, gate.Instruction}
+		f.Implication = "Removing payment_method_types alone does not enable automatic payment methods on the observed API versions."
+		f.ActionDescription = "Replace explicit payment method lists with automatic payment methods where appropriate."
+		f.SuggestedParameter = &remediation.Param{Name: "automatic_payment_methods[enabled]", Value: true}
+		f.RequiresVerification = []string{
+			"Confirm the API endpoint and API version used by each flow.",
+			"Confirm the automatic payment methods parameter is supported by that endpoint and version.",
+			"Confirm explicit restrictions are not required by the flow.",
 		}
-		return sec
 	}
-	sec.Body = []string{"Each flagged location below needs its own review before removing payment_method_types."}
-	for _, f := range ctx.Findings {
-		sec.Items = append(sec.Items, remediation.ActionItem{
-			Heading: relLocation(ctx.Dir, f),
-			Body:    intentVerdict(classifyIntent(f.Value)),
+
+	locations := make([]pmListLocation, 0, len(ctx.Findings))
+	for _, finding := range ctx.Findings {
+		loc := pmListLocation{Path: relPath(ctx.Dir, finding), Line: finding.Line, Parameter: finding.Param, SourceExpression: finding.Value}
+		locations = append(locations, loc)
+		body := "Current list: " + loc.SourceExpression
+		if gate.Class == "" {
+			body = intentVerdict(classifyIntent(finding.Value))
+		}
+		f.Items = append(f.Items, remediation.Item{
+			Heading: fmt.Sprintf("%s:%d", loc.Path, loc.Line),
+			Body:    body,
+			Fields:  loc,
 		})
 	}
-	return sec
+	obs := apiVersionObservation{Scope: "recent_account_traffic", VersionsForTheseCodeLocations: "not_verified"}
+	if gate.Class != "" && !vf.VersionsMixed && !vf.NoEvents {
+		obs.AllObservedVersionsBefore = dpmCutoff
+	}
+	f.Evidence = pmListEvidence{Locations: locations, APIVersionObservation: obs}
+	return f
 }
 
 // assess combines payment-method-configuration facts, the scanned
@@ -504,7 +530,7 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 			Message:      msg,
 			Evidence:     evidence,
 			Notes:        dashboardNotes,
-			Sections:     []remediation.ActionSection{dashboardSection(msg), webhooksSection(wh)},
+			Findings:     []remediation.Finding{dashboardFinding(msg), webhooksFinding(wh)},
 		}
 	}
 
@@ -573,45 +599,61 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 		"Ready: the Dashboard already offers everything the code hardcodes, and webhook handling is in place.")
 }
 
-// dashboardSection is the action-plan item for the Dashboard-facing
+// dashboardFinding is the action-plan item for the Dashboard-facing
 // readiness check: msg (assess's own Message for this Result) plus the
 // standing reminder to review which payment methods are enabled,
 // rendered as a lead-in sentence followed by a bare URL rather than one
-// long sentence with an inline link.
-func dashboardSection(msg string) remediation.ActionSection {
-	return remediation.ActionSection{
+// long sentence with an inline link. Deliberately left with no ID: this
+// is prose tied to Result.Status (which branch of assess returned it),
+// not one discrete, independently reportable fact — doctor's --json
+// contract covers the same ground separately, via its own top-level
+// "dashboard" object and (when applicable) its own
+// "runtime_payment_method_routing" finding (see jsonreport.go).
+func dashboardFinding(msg string) remediation.Finding {
+	return remediation.Finding{
 		Heading: "Verify routing before enabling more payment methods",
 		Body:    []string{msg, dashboardReviewLead + "\n" + dashboardConfigURL},
 	}
 }
 
-// webhooksSection is the action-plan item for webhook-handler coverage.
-// Returns a zero-value ActionSection (skipped by the renderer) when wh is
-// nil — no webhook signals were scanned for at all.
-func webhooksSection(wh *codesignals.HandlerSignals) remediation.ActionSection {
+// webhooksFinding is the action-plan item for webhook-handler coverage.
+// Returns a zero-value Finding (skipped by the text renderer and by
+// FindingsJSON) when wh is nil — no webhook signals were scanned for at
+// all. Each event's structured fields are built exactly once and used
+// for both the text Item and the --json evidence override.
+func webhooksFinding(wh *codesignals.HandlerSignals) remediation.Finding {
 	if wh == nil {
-		return remediation.ActionSection{}
+		return remediation.Finding{}
 	}
-	sec := remediation.ActionSection{Heading: "Verify handling for delayed payments"}
-	sec.Body = append(sec.Body, "Checkout can finish before a delayed payment succeeds. Make sure your integration distinguishes checkout completion from payment confirmation.")
+	f := remediation.Finding{
+		ID:                "delayed_payment_webhooks",
+		Heading:           "Verify handling for delayed payments",
+		Implication:       "The scan could not verify that delayed payment outcomes are handled.",
+		ActionDescription: "Look for equivalent handling outside the scanned code before adding handlers. If delayed methods are supported, implement any missing behavior.",
+	}
+	f.Body = append(f.Body, "Checkout can finish before a delayed payment succeeds. Make sure your integration distinguishes checkout completion from payment confirmation.")
 	if wh.AllPresent {
-		sec.Body = append(sec.Body, "All expected webhook handlers were found in the scanned code.")
+		f.Body = append(f.Body, "All expected webhook handlers were found in the scanned code.")
 	} else {
-		sec.Body = append(sec.Body, "These handlers weren't found in the scanned code. If they're implemented elsewhere, verify them there.")
+		f.Body = append(f.Body, "These handlers weren't found in the scanned code. If they're implemented elsewhere, verify them there.")
 	}
+	var handlers []webhookHandler
 	for _, e := range wh.Events {
-		item := remediation.ActionItem{Heading: e.Event}
-		switch {
-		case e.Present && len(e.Files) > 0:
-			item.Body = "Found in " + e.Files[0]
-		case e.Present:
-			item.Body = "Found in scanned code"
-		default:
-			item.Body = e.Note
+		detection, body := "not_found", e.Note
+		if e.Present {
+			detection = "found"
+			body = "Found in scanned code"
+			if len(e.Files) > 0 {
+				body = "Found in " + e.Files[0]
+			}
 		}
-		sec.Items = append(sec.Items, item)
+		m := webhookMeanings[e.Event]
+		h := webhookHandler{Event: e.Event, Detection: detection, Meaning: m.Meaning, ExpectedBehavior: m.ExpectedBehavior}
+		handlers = append(handlers, h)
+		f.Items = append(f.Items, remediation.Item{Heading: e.Event, Body: body, Fields: h})
 	}
-	return sec
+	f.Evidence = webhooksEvidence{Scope: "scanned_code", Handlers: handlers}
+	return f
 }
 
 func sortedKeys(m map[string]bool) []string {

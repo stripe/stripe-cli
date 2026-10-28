@@ -21,8 +21,8 @@ import (
 )
 
 func renderDoctor(r *DoctorReport) {
-	if sections := actionSections(r); len(sections) > 0 {
-		renderActionPlan(r, sections)
+	if findings := actionFindings(r); len(findings) > 0 {
+		renderActionPlan(r, findings)
 	} else {
 		renderRule(r)
 		renderSummary(r)
@@ -36,33 +36,33 @@ func renderDoctor(r *DoctorReport) {
 
 // ---------- action-plan renderer ----------
 //
-// When the declared remediation contributes ActionSections, doctor
-// renders its numbered action-plan layout instead of the generic
+// When the declared remediation contributes Findings, doctor renders its
+// numbered action-plan layout instead of the generic
 // what-it-is/summary/details sections below: a plain-English title, the
 // rule's own message, a short Code/Dashboard/Webhooks summary table, and
-// each ActionSection as one numbered item. doctor's renderer treats every
-// word inside a Section opaquely — see remediation.ActionSection's doc
-// comment; a topic that contributes none renders via the older generic
-// layout instead.
+// each Finding as one numbered item. doctor's renderer treats every word
+// inside a Finding opaquely — see remediation.Finding's doc comment; a
+// topic that contributes none renders via the older generic layout
+// instead.
 
-// actionSections returns the declared remediation's non-empty Sections,
-// if any — a zero-value ActionSection (Heading == "") is a remediation's
-// way of opting a section out (e.g. no webhook signals were scanned at
-// all) rather than contributing a blank numbered item.
-func actionSections(r *DoctorReport) []remediation.ActionSection {
+// actionFindings returns the declared remediation's text-eligible
+// Findings, if any — a Finding with Heading == "" is a remediation's way
+// of opting a section out of the text renderer (e.g. no webhook signals
+// were scanned at all) rather than contributing a blank numbered item.
+func actionFindings(r *DoctorReport) []remediation.Finding {
 	if r.RemediationResult == nil {
 		return nil
 	}
-	var out []remediation.ActionSection
-	for _, s := range r.RemediationResult.Sections {
-		if s.Heading != "" {
-			out = append(out, s)
+	var out []remediation.Finding
+	for _, f := range r.RemediationResult.Findings {
+		if f.Heading != "" {
+			out = append(out, f)
 		}
 	}
 	return out
 }
 
-func renderActionPlan(r *DoctorReport, sections []remediation.ActionSection) {
+func renderActionPlan(r *DoctorReport, findings []remediation.Finding) {
 	title := r.RemediationResult.Title
 	if title == "" {
 		title = strings.ToUpper(r.Topic)
@@ -93,9 +93,9 @@ func renderActionPlan(r *DoctorReport, sections []remediation.ActionSection) {
 		fmt.Printf("  %-*s%s\n", width, row[0], row[1])
 	}
 
-	for i, sec := range sections {
+	for i, f := range findings {
 		fmt.Println()
-		renderActionSection(i+1, sec)
+		renderFinding(i+1, f)
 	}
 
 	if r.Docs != "" {
@@ -105,14 +105,14 @@ func renderActionPlan(r *DoctorReport, sections []remediation.ActionSection) {
 	}
 }
 
-// renderActionSection prints one numbered ActionSection: its heading,
-// each Body paragraph (word-wrapped, except a paragraph containing a
-// literal "\n", which is printed as pre-broken lines — e.g. a lead-in
-// sentence followed by a bare URL), then each Item as its own
-// sub-heading plus an indented body line.
-func renderActionSection(num int, sec remediation.ActionSection) {
-	fmt.Printf("%d. %s\n", num, sec.Heading)
-	for _, p := range sec.Body {
+// renderFinding prints one numbered Finding: its heading, each Body
+// paragraph (word-wrapped, except a paragraph containing a literal
+// "\n", which is printed as pre-broken lines — e.g. a lead-in sentence
+// followed by a bare URL), then any RequiresVerification checklist, then
+// each Item as its own sub-heading plus an indented body line.
+func renderFinding(num int, f remediation.Finding) {
+	fmt.Printf("%d. %s\n", num, f.Heading)
+	for _, p := range f.Body {
 		fmt.Println()
 		for _, seg := range strings.Split(p, "\n") {
 			for _, line := range wrapText(seg, 73) {
@@ -120,7 +120,20 @@ func renderActionSection(num int, sec remediation.ActionSection) {
 			}
 		}
 	}
-	for _, item := range sec.Items {
+	if len(f.RequiresVerification) > 0 {
+		fmt.Println()
+		fmt.Println("   Before applying this, confirm:")
+		for _, v := range f.RequiresVerification {
+			for j, line := range wrapText(v, 69) {
+				prefix := "     - "
+				if j > 0 {
+					prefix = "       "
+				}
+				fmt.Println(prefix + line)
+			}
+		}
+	}
+	for _, item := range f.Items {
 		fmt.Println()
 		fmt.Println("   " + item.Heading)
 		for _, line := range wrapText(item.Body, 71) {

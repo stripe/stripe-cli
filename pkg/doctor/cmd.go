@@ -70,10 +70,25 @@ func fail(err error) {
 	exitWith(2)
 }
 
+// defaultTopic returns the sole registered topic when there's exactly
+// one — doctor's engine has no built-in favorite, so a bare
+// `stripe doctor <dir>` (no topic argument) only has an unambiguous
+// default while the registry has exactly one entry. Returns "" otherwise,
+// so topicAndDir falls through to requiring an explicit topic argument.
+func defaultTopic() string {
+	if len(catalog.Rules) != 1 {
+		return ""
+	}
+	for name := range catalog.Rules {
+		return name
+	}
+	return ""
+}
+
 // topicAndDir resolves the optional [topic] [dir] argument pair: an argument
 // naming a known topic is the topic; anything else is the directory.
 func topicAndDir(args []string) (string, string, error) {
-	topic, dir := "dpm", "."
+	topic, dir := defaultTopic(), "."
 	var nonTopic []string
 	for _, a := range args {
 		if _, ok := catalog.Rules[a]; ok {
@@ -89,6 +104,9 @@ func topicAndDir(args []string) (string, string, error) {
 	}
 	if len(nonTopic) == 1 {
 		dir = nonTopic[0]
+	}
+	if topic == "" {
+		return "", "", errorcategory.Errorf(errorcategory.UserInput, "a topic is required (available: %s)", topicList())
 	}
 	return topic, dir, nil
 }

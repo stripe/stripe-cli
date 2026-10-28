@@ -7,11 +7,18 @@ package paymentmethods
 // opaquely: when a remediation sets one, it's emitted as the whole
 // --json body instead of the generic schema. Every field name and
 // finding id below is this topic's own vocabulary, not doctor's.
+//
+// The "findings" array itself is built by calling remediation.FindingsJSON
+// over the same result.Findings dynamic.go already built for the text
+// action-plan renderer — see that function's doc comment for why that
+// matters: the structured facts (locations, webhook handlers, etc.)
+// only get written once. The one exception is
+// "runtime_payment_method_routing": dynamic.go's corresponding Finding
+// (dashboardFinding) is deliberately prose tied to Result.Status, not a
+// discrete reportable fact, so its own --json entry is still
+// hand-authored here and spliced into the same slot.
 
 import (
-	"path/filepath"
-
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/codesignals"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 )
@@ -26,28 +33,19 @@ const checkID = "dynamic_payment_methods"
 // that genuinely are blocking or clear.
 const (
 	jsonReviewRequired = "review_required"
-	jsonActionRequired = "action_required"
 	jsonBlocked        = "blocked"
 	jsonReady          = "ready"
 	jsonUnknown        = "unknown"
 )
 
 type jsonReport struct {
-	SchemaVersion string        `json:"schema_version"`
-	Check         string        `json:"check"`
-	Status        string        `json:"status"`
-	Summary       string        `json:"summary"`
-	Findings      []jsonFinding `json:"findings"`
-	Dashboard     jsonDashboard `json:"dashboard"`
-	Documentation []jsonDoc     `json:"documentation"`
-}
-
-type jsonFinding struct {
-	ID                string `json:"id"`
-	Status            string `json:"status"`
-	Evidence          any    `json:"evidence"`
-	Implication       string `json:"implication"`
-	RecommendedAction any    `json:"recommended_action"`
+	SchemaVersion string                    `json:"schema_version"`
+	Check         string                    `json:"check"`
+	Status        string                    `json:"status"`
+	Summary       string                    `json:"summary"`
+	Findings      []remediation.FindingJSON `json:"findings"`
+	Dashboard     jsonDashboard             `json:"dashboard"`
+	Documentation []jsonDoc                 `json:"documentation"`
 }
 
 type jsonDashboard struct {
@@ -81,19 +79,11 @@ type pmListEvidence struct {
 	APIVersionObservation apiVersionObservation `json:"api_version_observation"`
 }
 
-type suggestedParameter struct {
-	Name  string `json:"name"`
-	Value any    `json:"value"`
-}
-
-type pmListAction struct {
-	Description              string              `json:"description"`
-	SuggestedParameter       *suggestedParameter `json:"suggested_parameter,omitempty"`
-	RequiresVerification     []string            `json:"requires_verification,omitempty"`
-	SafeToApplyWithoutReview bool                `json:"safe_to_apply_without_review"`
-}
-
 // ---------- finding: runtime_payment_method_routing ----------
+//
+// Hand-authored (see package doc comment) rather than built from a
+// Finding — dynamic.go's dashboardFinding is prose tied to Result.Status,
+// not a discrete fact this schema's generic conversion fits.
 
 type routingEvidence struct {
 	Observation string `json:"observation"`
@@ -103,6 +93,19 @@ type routingEvidence struct {
 type simpleAction struct {
 	Description              string `json:"description"`
 	SafeToApplyWithoutReview bool   `json:"safe_to_apply_without_review"`
+}
+
+func routingFindingJSON() remediation.FindingJSON {
+	return remediation.FindingJSON{
+		ID:          "runtime_payment_method_routing",
+		Status:      remediation.JSONStatus(remediation.StatusReview),
+		Evidence:    routingEvidence{Observation: "Some payment_method_types values are computed at runtime.", Locations: nil},
+		Implication: "Switching to Dashboard-managed payment methods may change which methods are offered in individual flows.",
+		RecommendedAction: simpleAction{
+			Description:              "Inspect runtime routing and preserve any required payment method restrictions before enabling additional methods.",
+			SafeToApplyWithoutReview: false,
+		},
+	}
 }
 
 // ---------- finding: delayed_payment_webhooks ----------
@@ -138,12 +141,13 @@ var webhookMeanings = map[string]struct{ Meaning, ExpectedBehavior string }{
 	},
 }
 
-// buildJSONReport assembles this topic's full --json contract from the
-// same evidence assess/findingVerdicts already gathered. hasDynamic
-// mirrors assess's own classification of ctx.Findings — recomputed here
-// rather than threaded through, since it's a one-pass, side-effect-free
-// scan over data Run already has in hand.
-func buildJSONReport(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *codesignals.HandlerSignals) *jsonReport {
+// buildJSONReport assembles this topic's full --json contract, built
+// around result.Findings — the same Findings dynamic.go already
+// constructed for the text action-plan renderer. hasDynamic mirrors
+// assess's own classification of ctx.Findings — recomputed here rather
+// than threaded through, since it's a one-pass, side-effect-free scan
+// over data Run already has in hand.
+func buildJSONReport(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *codesignals.HandlerSignals, result remediation.Result) *jsonReport {
 	hasDynamic := false
 	for _, f := range ctx.Findings {
 		if classifyIntent(f.Value) == "dynamic" {
@@ -151,15 +155,19 @@ func buildJSONReport(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts
 		}
 	}
 
-	var findings []jsonFinding
-	if len(ctx.Findings) > 0 {
-		findings = append(findings, pmListsFinding(ctx, vf))
-	}
-	if hasDynamic {
-		findings = append(findings, routingFinding())
-	}
-	if wh != nil {
-		findings = append(findings, webhooksFinding(wh))
+	// dashboardFinding (ID == "") sits in result.Findings right where
+	// "runtime_payment_method_routing" belongs in this schema's findings
+	// array — splice it in there instead of appending it, so the order
+	// matches regardless of how many other findings surround it.
+	var findings []remediation.FindingJSON
+	for _, f := range result.Findings {
+		if f.ID != "" {
+			findings = append(findings, remediation.FindingsJSON([]remediation.Finding{f}, result.Status)[0])
+			continue
+		}
+		if hasDynamic {
+			findings = append(findings, routingFindingJSON())
+		}
 	}
 
 	status := jsonReady
@@ -197,97 +205,4 @@ func jsonSummary(ctx remediation.Context, status string) string {
 		return "Explicit payment method lists were found, and no payment methods are currently enabled in the Dashboard."
 	}
 	return "Explicit payment method lists prevent Dashboard-enabled methods from appearing automatically in these checkout flows."
-}
-
-func pmListsFinding(ctx remediation.Context, vf versionFacts) jsonFinding {
-	locations := make([]pmListLocation, 0, len(ctx.Findings))
-	for _, f := range ctx.Findings {
-		locations = append(locations, pmListLocation{
-			Path:             relLocationPath(ctx.Dir, f),
-			Line:             f.Line,
-			Parameter:        f.Param,
-			SourceExpression: f.Value,
-		})
-	}
-
-	gate := findingsVersionGate(vf)
-	obs := apiVersionObservation{
-		Scope:                         "recent_account_traffic",
-		VersionsForTheseCodeLocations: "not_verified",
-	}
-	implication := "Dashboard-enabled payment methods will not appear in these flows until the explicit list is removed."
-	if gate.Class != "" && !vf.VersionsMixed && !vf.NoEvents {
-		obs.AllObservedVersionsBefore = dpmCutoff
-		implication = "Removing payment_method_types alone does not enable automatic payment methods on the observed API versions."
-	}
-
-	return jsonFinding{
-		ID:          "explicit_payment_method_lists",
-		Status:      jsonReviewRequired,
-		Evidence:    pmListEvidence{Locations: locations, APIVersionObservation: obs},
-		Implication: implication,
-		RecommendedAction: pmListAction{
-			Description: "Replace explicit payment method lists with automatic payment methods where appropriate.",
-			SuggestedParameter: &suggestedParameter{
-				Name:  "automatic_payment_methods[enabled]",
-				Value: true,
-			},
-			RequiresVerification: []string{
-				"Confirm the API endpoint and API version used by each flow.",
-				"Confirm the automatic payment methods parameter is supported by that endpoint and version.",
-				"Confirm explicit restrictions are not required by the flow.",
-			},
-			SafeToApplyWithoutReview: false,
-		},
-	}
-}
-
-func routingFinding() jsonFinding {
-	return jsonFinding{
-		ID:          "runtime_payment_method_routing",
-		Status:      jsonReviewRequired,
-		Evidence:    routingEvidence{Observation: "Some payment_method_types values are computed at runtime.", Locations: nil},
-		Implication: "Switching to Dashboard-managed payment methods may change which methods are offered in individual flows.",
-		RecommendedAction: simpleAction{
-			Description:              "Inspect runtime routing and preserve any required payment method restrictions before enabling additional methods.",
-			SafeToApplyWithoutReview: false,
-		},
-	}
-}
-
-func webhooksFinding(wh *codesignals.HandlerSignals) jsonFinding {
-	handlers := make([]webhookHandler, 0, len(wh.Events))
-	for _, e := range wh.Events {
-		detection := "not_found"
-		if e.Present {
-			detection = "found"
-		}
-		m := webhookMeanings[e.Event]
-		handlers = append(handlers, webhookHandler{
-			Event:            e.Event,
-			Detection:        detection,
-			Meaning:          m.Meaning,
-			ExpectedBehavior: m.ExpectedBehavior,
-		})
-	}
-	return jsonFinding{
-		ID:          "delayed_payment_webhooks",
-		Status:      jsonReviewRequired,
-		Evidence:    webhooksEvidence{Scope: "scanned_code", Handlers: handlers},
-		Implication: "The scan could not verify that delayed payment outcomes are handled.",
-		RecommendedAction: simpleAction{
-			Description:              "Look for equivalent handling outside the scanned code before adding handlers. If delayed methods are supported, implement any missing behavior.",
-			SafeToApplyWithoutReview: false,
-		},
-	}
-}
-
-// relLocationPath is relLocation's path half, for this schema's
-// path/line split (rather than one combined "path:line" string).
-func relLocationPath(dir string, f catalog.Finding) string {
-	rel, err := filepath.Rel(dir, f.File)
-	if err != nil {
-		return f.File
-	}
-	return rel
 }
