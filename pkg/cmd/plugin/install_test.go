@@ -2,7 +2,9 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,14 +12,168 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
+
+type failOnRead struct{ t *testing.T }
+
+func (r failOnRead) Read([]byte) (int, error) {
+	r.t.Fatal("recovery must not read stdin")
+	return 0, io.EOF
+}
+
+func TestInstallRecoveryAgentDoesNotPrompt(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+	cfg.Profile.APIKey = ""
+	cfg.Profile.AccountID = "saved-account"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	ic := NewInstallCmd(cfg)
+	ic.fs = fs
+	ic.apiBaseURL = server.URL
+	ic.stdinIsTerminal = func() bool { return true }
+	ic.lookupEnvFn = func(key string) string {
+		if key == "CLAUDECODE" {
+			return "1"
+		}
+		return ""
+	}
+	ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+	ic.Cmd.SetIn(failOnRead{t})
+	ic.Cmd.SetContext(context.Background())
+	err := ic.runInstallCmd(ic.Cmd, []string{"example"})
+	require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+	category, ok := errorcategory.Get(err)
+	require.True(t, ok)
+	require.Equal(t, errorcategory.Auth, category)
+	require.ErrorContains(t, err, "stripe whoami")
+}
+
+func TestInstallRecoveryEOFDoesNotConsent(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+	cfg.Profile.APIKey = ""
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	ic := NewInstallCmd(cfg)
+	ic.fs = fs
+	ic.apiBaseURL = server.URL
+	ic.stdinIsTerminal = func() bool { return true }
+	ic.lookupEnvFn = func(string) string { return "" }
+	ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+	ic.Cmd.SetIn(strings.NewReader(""))
+	ic.Cmd.SetErr(io.Discard)
+	ic.Cmd.SetContext(context.Background())
+	require.EqualError(t, ic.runInstallCmd(ic.Cmd, []string{"example"}), "login canceled")
+}
+
+func TestInstallRecoveryRetainsRetryFailure(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		status int
+		body   string
+		want   string
+	}{
+		{"not found", http.StatusNotFound, `{"error":{"message":"not found"}}`, "could not find an available release"},
+		{"server auth", http.StatusUnauthorized, `{"error":{"message":"invalid credentials"}}`, "invalid credentials"},
+		{"server error", http.StatusInternalServerError, `{"error":{"message":"metadata unavailable"}}`, "metadata unavailable"},
+		{"minimum version", http.StatusBadRequest, `{"error":{"code":"plugin_requires_newer_cli","message":"upgrade required","min_core_version":"99.0.0"}}`, "99.0.0"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cfg, fs, cleanup := setupPluginCommandTest(t)
+			defer cleanup()
+			key := cfg.Profile.APIKey
+			cfg.Profile.APIKey = ""
+			requestCount := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path == "/ajax/stripecli/plugins_metadata" {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				require.Equal(t, "/v1/stripecli/get-plugin-metadata", r.URL.Path)
+				w.WriteHeader(test.status)
+				_, _ = io.WriteString(w, test.body)
+			}))
+			defer server.Close()
+			ic := NewInstallCmd(cfg)
+			ic.fs = fs
+			ic.apiBaseURL = server.URL
+			ic.stdinIsTerminal = func() bool { return true }
+			ic.lookupEnvFn = func(string) string { return "" }
+			logins := 0
+			ic.loginFn = func(context.Context) error { logins++; cfg.Profile.APIKey = key; return nil }
+			ic.Cmd.SetIn(strings.NewReader("\n"))
+			ic.Cmd.SetErr(io.Discard)
+			ic.Cmd.SetContext(context.Background())
+
+			err := ic.runInstallCmd(ic.Cmd, []string{"example"})
+			require.ErrorContains(t, err, test.want)
+			require.Equal(t, 1, logins)
+			require.Equal(t, 2, requestCount)
+			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			if test.name == "minimum version" {
+				var newer *plugins.ErrPluginRequiresNewerCLI
+				require.ErrorAs(t, err, &newer)
+			} else if test.status != http.StatusNotFound {
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, test.status, requestErr.StatusCode)
+			}
+		})
+	}
+}
+
+func TestInstallCredentialFailuresDoNotOfferLogin(t *testing.T) {
+	for _, kind := range []string{"invalid override", "refresh"} {
+		t.Run(kind, func(t *testing.T) {
+			cfg, fs, cleanup := setupPluginCommandTest(t)
+			defer cleanup()
+			refreshErr := errors.New("session refresh failed")
+			if kind == "invalid override" {
+				cfg.Profile.APIKey = "malformed"
+			} else {
+				cfg.Profile.APIKey = ""
+				require.NoError(t, config.KeyRing.Set(cfg.Profile.KeyringKey(config.UATKeychainItemKey), []byte("oak_test_fixture"), "test token"))
+				require.NoError(t, cfg.Profile.SaveUATExpiresAt(time.Now().Add(-time.Hour)))
+				previous := config.OAuthTokenRefresher
+				t.Cleanup(func() { config.OAuthTokenRefresher = previous })
+				config.OAuthTokenRefresher = func(*config.Profile) error { return refreshErr }
+			}
+			ic := NewInstallCmd(cfg)
+			ic.fs = fs
+			ic.Cmd.SetIn(failOnRead{t})
+			ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+			ic.Cmd.SetContext(context.Background())
+			err := ic.runInstallCmd(ic.Cmd, []string{"example"})
+			if kind == "refresh" {
+				require.ErrorIs(t, err, refreshErr)
+			} else {
+				require.ErrorContains(t, err, "too short")
+			}
+			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+		})
+	}
+}
 
 func TestParseArg(t *testing.T) {
 	// No version
@@ -45,7 +201,7 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 	cfg, fs, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
 	cfg.Profile.APIKey = ""
-	cfg.Profile.AccountID = ""
+	cfg.Profile.AccountID = "saved-account"
 
 	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -58,28 +214,23 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Redirect stdin to simulate user typing "cancel" to skip login prompt
-	origStdin := os.Stdin
-	r, w, _ := os.Pipe()
-	_, _ = w.WriteString("cancel\n")
-	_ = w.Close()
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
-
 	ic := NewInstallCmd(cfg)
 	ic.fs = fs
 	ic.apiBaseURL = server.URL
+	ic.stdinIsTerminal = func() bool { return false }
+	ic.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+	ic.Cmd.SetIn(failOnRead{t})
 	ic.Cmd.SetContext(context.Background())
 
 	err := ic.runInstallCmd(ic.Cmd, []string{"nonexistent-plugin"})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "login canceled")
+	require.Contains(t, err.Error(), "stripe login")
+	require.Contains(t, err.Error(), "stripe whoami")
+	require.Contains(t, err.Error(), "retry")
 }
 
-// TestRunInstallCmdPluginRequiresNewerCLI pins that a version problem is reported
-// as one. Not being logged in is the other reason a plugin can fail to resolve, and
-// the command cannot tell the two apart from the error alone -- so without the
-// typed check it offers to log in, which can never make this CLI new enough.
+// TestRunInstallCmdPluginRequiresNewerCLI ensures version requirements bypass
+// authentication recovery and available cached metadata.
 func TestRunInstallCmdPluginRequiresNewerCLI(t *testing.T) {
 	cfg, fs, cleanup := setupPluginCommandTest(t)
 	defer cleanup()
@@ -159,9 +310,11 @@ func TestRunInstallCmdNonExistentPluginLoggedIn(t *testing.T) {
 
 	err := ic.runInstallCmd(ic.Cmd, []string{"nonexistent-plugin"})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no plugin named")
+	require.Contains(t, err.Error(), "could not find an available release")
 	require.Contains(t, err.Error(), "nonexistent-plugin")
-	require.Contains(t, err.Error(), "exists")
+	require.Contains(t, err.Error(), "plugin name")
+	require.Contains(t, err.Error(), "stripe whoami")
+	require.Contains(t, err.Error(), "active account")
 }
 
 func TestPrintUnrequestedDowngradeNote(t *testing.T) {

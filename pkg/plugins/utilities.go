@@ -555,6 +555,7 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 		return nil, err
 	}
+	credentialsErr := err
 	apiKey := creds.Token
 
 	resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey)
@@ -586,10 +587,14 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	}
 
 	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && os.IsNotExist(cachedErr) {
-		return nil, normalizedErr
+		err = errorcategory.With(normalizedErr, errorcategory.UserInput)
+	} else {
+		err = fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, err, cachedErr)
 	}
-
-	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %v; cached lookup failed: %w", pluginName, err, cachedErr)
+	if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
+		return nil, errorcategory.With(fmt.Errorf("%w: %w", credentialsErr, err), errorcategory.Auth)
+	}
+	return nil, err
 }
 
 // ResolvePluginForUpgrade resolves the latest plugin metadata for
@@ -1156,7 +1161,7 @@ type ErrPluginNotFound struct {
 }
 
 func (e *ErrPluginNotFound) Error() string {
-	return fmt.Sprintf("no plugin named %q exists", e.Name)
+	return fmt.Sprintf("could not find an available release for plugin %q; check the plugin name and run 'stripe whoami' to verify the active account", e.Name)
 }
 
 // FetchRemoteResource returns the remote resource body.

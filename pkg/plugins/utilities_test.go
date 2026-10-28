@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,6 +23,7 @@ import (
 	cfgpkg "github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // CustomTestConfig is a test config that allows overriding the config folder path.
@@ -1006,6 +1008,7 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testi
 	config := &TestConfig{}
 	config.InitConfig()
 	config.Profile.APIKey = ""
+	config.Profile.AccountID = "saved-account"
 
 	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -1019,11 +1022,26 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testi
 	defer failingServer.Close()
 
 	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
-	require.Error(t, err)
+	require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
 
 	var pluginNotFound *ErrPluginNotFound
 	require.ErrorAs(t, err, &pluginNotFound)
 	require.Equal(t, "nonexistent", pluginNotFound.Name)
+}
+
+func TestResolvePluginForInstallPreservesTransportFailure(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("unexpected request")
+	}))
+	server.Close()
+	_, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "example", "", server.URL, server.URL)
+	var transportErr *url.Error
+	require.ErrorAs(t, err, &transportErr)
+	require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+	var notFound *ErrPluginNotFound
+	require.False(t, errors.As(err, &notFound))
 }
 
 func TestResolvePluginForInstallSucceedsForGAPluginWhenNotLoggedIn(t *testing.T) {
