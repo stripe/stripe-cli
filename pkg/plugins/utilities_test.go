@@ -1021,18 +1021,18 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testi
 	}))
 	defer failingServer.Close()
 
-	for _, cache := range []string{"missing", "populated", "corrupt"} {
-		t.Run(cache, func(t *testing.T) {
-			fs := afero.NewMemMapFs()
-			if cache != "missing" {
-				manifest := []byte(`[[Plugin]]
+	for cache, manifest := range map[string]string{
+		"missing": "",
+		"populated": `[[Plugin]]
 Shortname = "another-plugin"
 Binary = "stripe-cli-another-plugin"
-`)
-				if cache == "corrupt" {
-					manifest = []byte("not valid TOML [")
-				}
-				require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifest, 0600))
+`,
+		"corrupt": "not valid TOML [",
+	} {
+		t.Run(cache, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			if manifest != "" {
+				require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), []byte(manifest), 0600))
 			}
 			_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
 			var requestErr requests.RequestError
